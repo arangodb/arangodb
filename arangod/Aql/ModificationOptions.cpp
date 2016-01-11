@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AQL, data-modification query options
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ModificationOptions.h"
@@ -31,29 +27,30 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 
-ModificationOptions::ModificationOptions (Json const& json) {
+ModificationOptions::ModificationOptions(Json const& json) {
   Json obj = json.get("modificationFlags");
 
-  ignoreErrors           = JsonHelper::getBooleanValue(obj.json(), "ignoreErrors", false);
-  waitForSync            = JsonHelper::getBooleanValue(obj.json(), "waitForSync", false);
-  nullMeansRemove        = JsonHelper::getBooleanValue(obj.json(), "nullMeansRemove", false);
-  mergeObjects           = JsonHelper::getBooleanValue(obj.json(), "mergeObjects", true);
-  ignoreDocumentNotFound = JsonHelper::getBooleanValue(obj.json(), "ignoreDocumentNotFound", false);
-  readCompleteInput      = JsonHelper::getBooleanValue(obj.json(), "readCompleteInput", true);
+  ignoreErrors = JsonHelper::getBooleanValue(obj.json(), "ignoreErrors", false);
+  waitForSync = JsonHelper::getBooleanValue(obj.json(), "waitForSync", false);
+  nullMeansRemove =
+      JsonHelper::getBooleanValue(obj.json(), "nullMeansRemove", false);
+  mergeObjects = JsonHelper::getBooleanValue(obj.json(), "mergeObjects", true);
+  ignoreDocumentNotFound =
+      JsonHelper::getBooleanValue(obj.json(), "ignoreDocumentNotFound", false);
+  readCompleteInput =
+      JsonHelper::getBooleanValue(obj.json(), "readCompleteInput", true);
 }
 
-void ModificationOptions::toJson (triagens::basics::Json& json,
-                                  TRI_memory_zone_t* zone) const {
+void ModificationOptions::toJson(triagens::basics::Json& json,
+                                 TRI_memory_zone_t* zone) const {
   Json flags;
 
-  flags = Json(Json::Object, 6)
-    ("ignoreErrors", Json(ignoreErrors))
-    ("waitForSync", Json(waitForSync))
-    ("nullMeansRemove", Json(nullMeansRemove))
-    ("mergeObjects", Json(mergeObjects))
-    ("ignoreDocumentNotFound", Json(ignoreDocumentNotFound))
-    ("readCompleteInput", Json(readCompleteInput));
+  flags = Json(Json::Object, 6)("ignoreErrors", Json(ignoreErrors))(
+      "waitForSync", Json(waitForSync))("nullMeansRemove",
+                                        Json(nullMeansRemove))(
+      "mergeObjects", Json(mergeObjects))("ignoreDocumentNotFound",
+                                          Json(ignoreDocumentNotFound))(
+      "readCompleteInput", Json(readCompleteInput));
 
   json("modificationFlags", flags);
 }
-

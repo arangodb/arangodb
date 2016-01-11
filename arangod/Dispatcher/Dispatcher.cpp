@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief job dispatcher
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Dispatcher.h"
@@ -42,29 +36,22 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the default dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-static DispatcherThread* CreateDispatcherThread (DispatcherQueue* queue) {
+static DispatcherThread* CreateDispatcherThread(DispatcherQueue* queue) {
   return new DispatcherThread(queue);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Dispatcher::Dispatcher (Scheduler* scheduler)
-  : _scheduler(scheduler),
-    _stopping(false) {
+Dispatcher::Dispatcher(Scheduler* scheduler)
+    : _scheduler(scheduler), _stopping(false) {
   _queues.resize(SYSTEM_QUEUE_SIZE, nullptr);
 }
 
@@ -72,46 +59,34 @@ Dispatcher::Dispatcher (Scheduler* scheduler)
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Dispatcher::~Dispatcher () {
-  for (size_t i = 0;  i < SYSTEM_QUEUE_SIZE;  ++i) {
+Dispatcher::~Dispatcher() {
+  for (size_t i = 0; i < SYSTEM_QUEUE_SIZE; ++i) {
     delete _queues[i];
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the standard queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addStandardQueue (size_t nrThreads, size_t maxSize) {
+void Dispatcher::addStandardQueue(size_t nrThreads, size_t maxSize) {
   TRI_ASSERT(_queues[STANDARD_QUEUE] == nullptr);
 
-  _queues[STANDARD_QUEUE] = new DispatcherQueue(
-    _scheduler,
-    this,
-    STANDARD_QUEUE,
-    CreateDispatcherThread,
-    nrThreads,
-    maxSize);
+  _queues[STANDARD_QUEUE] =
+      new DispatcherQueue(_scheduler, this, STANDARD_QUEUE,
+                          CreateDispatcherThread, nrThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the AQL queue (used for the cluster)
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addAQLQueue (size_t nrThreads, size_t maxSize) {
+void Dispatcher::addAQLQueue(size_t nrThreads, size_t maxSize) {
   TRI_ASSERT(_queues[AQL_QUEUE] == nullptr);
 
   _queues[AQL_QUEUE] = new DispatcherQueue(
-    _scheduler,
-    this,
-    AQL_QUEUE,
-    CreateDispatcherThread,
-    nrThreads,
-    maxSize);
+      _scheduler, this, AQL_QUEUE, CreateDispatcherThread, nrThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,9 +95,8 @@ void Dispatcher::addAQLQueue (size_t nrThreads, size_t maxSize) {
 /// This is not thread safe. Only used during initialization.
 ////////////////////////////////////////////////////////////////////////////////
 
-int Dispatcher::addExtraQueue (size_t identifier,
-			       size_t nrThreads,
-			       size_t maxSize) {
+int Dispatcher::addExtraQueue(size_t identifier, size_t nrThreads,
+                              size_t maxSize) {
   if (identifier == 0) {
     return TRI_ERROR_QUEUE_ALREADY_EXISTS;
   }
@@ -141,13 +115,8 @@ int Dispatcher::addExtraQueue (size_t identifier,
     return TRI_ERROR_DISPATCHER_IS_STOPPING;
   }
 
-  _queues[n] = new DispatcherQueue(
-    _scheduler,
-    this,
-    n,
-    CreateDispatcherThread,
-    nrThreads,
-    maxSize);
+  _queues[n] = new DispatcherQueue(_scheduler, this, n, CreateDispatcherThread,
+                                   nrThreads, maxSize);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -156,8 +125,8 @@ int Dispatcher::addExtraQueue (size_t identifier,
 /// @brief adds a new job
 ////////////////////////////////////////////////////////////////////////////////
 
-int Dispatcher::addJob (Job* job) {
-  RequestStatisticsAgentSetQueueStart(job);
+int Dispatcher::addJob(std::unique_ptr<Job>& job) {
+  job->requestStatisticsAgentSetQueueStart();
 
   // do not start new jobs if we are already shutting down
   if (_stopping.load(memory_order_relaxed)) {
@@ -169,13 +138,15 @@ int Dispatcher::addJob (Job* job) {
   DispatcherQueue* queue;
 
   if (qnr >= _queues.size() || (queue = _queues[qnr]) == nullptr) {
-    LOG_WARNING("unknown queue '%lu'", (unsigned long) qnr);
+    LOG_WARNING("unknown queue '%lu'", (unsigned long)qnr);
     return TRI_ERROR_QUEUE_UNKNOWN;
   }
 
-  // log success, but do this BEFORE the real add, because the addJob might execute
+  // log success, but do this BEFORE the real add, because the addJob might
+  // execute
   // and delete the job before we have a chance to log something
-  LOG_TRACE("added job %p to queue '%lu'", (void*) job, (unsigned long) qnr);
+  LOG_TRACE("added job %p to queue '%lu'", (void*)(job.get()),
+            (unsigned long)qnr);
 
   // add the job to the list of ready jobs
   return queue->addJob(job);
@@ -185,10 +156,10 @@ int Dispatcher::addJob (Job* job) {
 /// @brief tries to cancel a job
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Dispatcher::cancelJob (uint64_t jobId) {
+bool Dispatcher::cancelJob(uint64_t jobId) {
   bool done = false;
 
-  for (size_t i = 0;  ! done && i < _queues.size();  ++i) {
+  for (size_t i = 0; !done && i < _queues.size(); ++i) {
     DispatcherQueue* queue = _queues[i];
 
     if (queue != nullptr) {
@@ -203,7 +174,7 @@ bool Dispatcher::cancelJob (uint64_t jobId) {
 /// @brief begins shutdown process
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::beginShutdown () {
+void Dispatcher::beginShutdown() {
   if (_stopping) {
     return;
   }
@@ -212,7 +183,7 @@ void Dispatcher::beginShutdown () {
 
   _stopping = true;
 
-  for (size_t i = 0;  i < _queues.size();  ++i) {
+  for (size_t i = 0; i < _queues.size(); ++i) {
     DispatcherQueue* queue = _queues[i];
 
     if (queue != nullptr) {
@@ -225,10 +196,10 @@ void Dispatcher::beginShutdown () {
 /// @brief shut downs the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::shutdown () {
+void Dispatcher::shutdown() {
   LOG_DEBUG("shutting down the dispatcher");
 
-  for (size_t i = 0;  i < _queues.size();  ++i) {
+  for (size_t i = 0; i < _queues.size(); ++i) {
     DispatcherQueue* queue = _queues[i];
 
     if (queue != nullptr) {
@@ -241,19 +212,18 @@ void Dispatcher::shutdown () {
 /// @brief reports status of dispatcher queues
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::reportStatus () {
+void Dispatcher::reportStatus() {
 #ifdef TRI_ENABLE_LOGGER
 
-  for (size_t i = 0;  i < _queues.size();  ++i) {
+  for (size_t i = 0; i < _queues.size(); ++i) {
     DispatcherQueue* queue = _queues[i];
 
     if (queue != nullptr) {
-      LOG_INFO("dispatcher queue '%lu': initial = %d, running = %d, waiting = %d, blocked = %d",
-               (unsigned long) i,
-               (int) queue->_nrThreads,
-               (int) queue->_nrRunning,
-               (int) queue->_nrWaiting,
-               (int) queue->_nrBlocked);
+      LOG_INFO(
+          "dispatcher queue '%lu': initial = %d, running = %d, waiting = %d, "
+          "blocked = %d",
+          (unsigned long)i, (int)queue->_nrThreads, (int)queue->_nrRunning,
+          (int)queue->_nrWaiting, (int)queue->_nrBlocked);
     }
   }
 
@@ -264,7 +234,8 @@ void Dispatcher::reportStatus () {
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::setProcessorAffinity (size_t id, std::vector<size_t> const& cores) {
+void Dispatcher::setProcessorAffinity(size_t id,
+                                      std::vector<size_t> const& cores) {
   DispatcherQueue* queue;
 
   if (id >= _queues.size() || (queue = _queues[id]) == nullptr) {
@@ -274,6 +245,4 @@ void Dispatcher::setProcessorAffinity (size_t id, std::vector<size_t> const& cor
   queue->setProcessorAffinity(cores);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

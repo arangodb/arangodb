@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for self-contained, single collection read transactions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H
-#define ARANGODB_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H 1
+#ifndef ARANGOD_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H
+#define ARANGOD_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 
@@ -40,62 +34,43 @@
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
+class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
+  
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the transaction, using a collection object
+  ///
+  /// A self-contained read transaction is a transaction on a single collection
+  /// that only allows read operations. Write operations are not supported.
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                         class SingleCollectionReadOnlyTransaction
-// -----------------------------------------------------------------------------
+  SingleCollectionReadOnlyTransaction(TransactionContext* transactionContext,
+                                      TRI_vocbase_t* vocbase, TRI_voc_cid_t cid)
+      : SingleCollectionTransaction(transactionContext, vocbase, cid,
+                                    TRI_TRANSACTION_READ) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief same as above, but create using collection name
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  SingleCollectionReadOnlyTransaction(TransactionContext* transactionContext,
+                                      TRI_vocbase_t* vocbase,
+                                      std::string const& name)
+      : SingleCollectionTransaction(transactionContext, vocbase, name,
+                                    TRI_TRANSACTION_READ) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction, using a collection object
-///
-/// A self-contained read transaction is a transaction on a single collection
-/// that only allows read operations. Write operations are not supported.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief end the transaction
+  ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (TransactionContext* transactionContext,
-                                             TRI_vocbase_t* vocbase,
-                                             TRI_voc_cid_t cid) 
-          : SingleCollectionTransaction(transactionContext, vocbase, cid, TRI_TRANSACTION_READ) {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief same as above, but create using collection name
-////////////////////////////////////////////////////////////////////////////////
-
-        SingleCollectionReadOnlyTransaction (TransactionContext* transactionContext,
-                                             TRI_vocbase_t* vocbase,
-                                             std::string const& name) 
-          : SingleCollectionTransaction(transactionContext, vocbase, name, TRI_TRANSACTION_READ) {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ~SingleCollectionReadOnlyTransaction () {
-        }
-
-    };
-
-  }
+  ~SingleCollectionReadOnlyTransaction() {}
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

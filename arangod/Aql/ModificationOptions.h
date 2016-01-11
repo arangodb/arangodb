@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AQL, data-modification query options
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,69 +16,53 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_MODIFICATION_OPTIONS_H
-#define ARANGODB_AQL_MODIFICATION_OPTIONS_H 1
+#ifndef ARANGOD_AQL_MODIFICATION_OPTIONS_H
+#define ARANGOD_AQL_MODIFICATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ModificationOptions
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct ModificationOptions {
+struct ModificationOptions {
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor, using default values
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor, using default values
-////////////////////////////////////////////////////////////////////////////////
+  ModificationOptions(triagens::basics::Json const&);
 
-      ModificationOptions (triagens::basics::Json const&);
+  ModificationOptions()
+      : ignoreErrors(false),
+        waitForSync(false),
+        nullMeansRemove(false),
+        mergeObjects(true),
+        ignoreDocumentNotFound(false),
+        readCompleteInput(true) {}
 
-      ModificationOptions ()
-        : ignoreErrors(false),
-          waitForSync(false),
-          nullMeansRemove(false),
-          mergeObjects(true),
-          ignoreDocumentNotFound(false),
-          readCompleteInput(true) {
-      }
+  void toJson(triagens::basics::Json&, TRI_memory_zone_t*) const;
 
-      void toJson (triagens::basics::Json&, 
-                   TRI_memory_zone_t*) const;
+  
+  bool ignoreErrors;
+  bool waitForSync;
+  bool nullMeansRemove;
+  bool mergeObjects;
+  bool ignoreDocumentNotFound;
+  bool readCompleteInput;
+};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-      bool ignoreErrors;
-      bool waitForSync;
-      bool nullMeansRemove;
-      bool mergeObjects;
-      bool ignoreDocumentNotFound;
-      bool readCompleteInput;
-
-    };
-
-  }  // namespace triagens::aql
+}  // namespace triagens::aql
 }  // namespace triagens
 
 #endif
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
 

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Write-ahead logfile remover thread
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RemoverThread.h"
@@ -36,9 +30,6 @@
 
 using namespace triagens::wal;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class RemoverThread
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait interval for the remover thread when idle
@@ -46,20 +37,16 @@ using namespace triagens::wal;
 
 uint64_t const RemoverThread::Interval = 500000;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the remover thread
 ////////////////////////////////////////////////////////////////////////////////
 
-RemoverThread::RemoverThread (LogfileManager* logfileManager)
-  : Thread("WalRemover"),
-    _logfileManager(logfileManager),
-    _condition(),
-    _stop(0) {
-
+RemoverThread::RemoverThread(LogfileManager* logfileManager)
+    : Thread("WalRemover"),
+      _logfileManager(logfileManager),
+      _condition(),
+      _stop(0) {
   allowAsynchronousCancelation();
 }
 
@@ -67,18 +54,14 @@ RemoverThread::RemoverThread (LogfileManager* logfileManager)
 /// @brief destroy the remover thread
 ////////////////////////////////////////////////////////////////////////////////
 
-RemoverThread::~RemoverThread () {
-}
+RemoverThread::~RemoverThread() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops the remover thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void RemoverThread::stop () {
+void RemoverThread::stop() {
   if (_stop > 0) {
     return;
   }
@@ -91,39 +74,34 @@ void RemoverThread::stop () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main loop
 ////////////////////////////////////////////////////////////////////////////////
 
-void RemoverThread::run () {
+void RemoverThread::run() {
   while (true) {
-    int stop = (int) _stop;
+    int stop = (int)_stop;
     bool worked = false;
 
     try {
       if (stop == 0) {
         worked = _logfileManager->removeLogfiles();
       }
-    }
-    catch (triagens::basics::Exception const& ex) {
+    } catch (triagens::basics::Exception const& ex) {
       int res = ex.code();
-      LOG_ERROR("got unexpected error in removerThread::run: %s", TRI_errno_string(res));
-    }
-    catch (...) {
+      LOG_ERROR("got unexpected error in removerThread::run: %s",
+                TRI_errno_string(res));
+    } catch (...) {
       LOG_ERROR("got unspecific error in removerThread::run");
     }
 
-    if (stop == 0 && ! worked) {
+    if (stop == 0 && !worked) {
       // sleep only if there was nothing to do
       CONDITION_LOCKER(guard, _condition);
 
       guard.wait(Interval);
-    }
-    else if (stop == 1) {
+    } else if (stop == 1) {
       break;
     }
 
@@ -133,11 +111,4 @@ void RemoverThread::run () {
   _stop = 2;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tasks used to handle signals
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SignalTask.h"
@@ -42,30 +36,25 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-SignalTask::SignalTask ()
-  : Task("SignalTask") {
-
-  for (size_t i = 0;  i < MAX_SIGNALS;  ++i) {
+SignalTask::SignalTask() : Task("SignalTask") {
+  for (size_t i = 0; i < MAX_SIGNALS; ++i) {
     _watchers[i] = nullptr;
   }
 }
 
-SignalTask::~SignalTask () {
-  cleanup();
-}
+SignalTask::~SignalTask() { cleanup(); }
 
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
 
-bool SignalTask::addSignal (int signal) {
+bool SignalTask::addSignal(int signal) {
   MUTEX_LOCKER(_changeLock);
 
   if (_signals.size() >= MAX_SIGNALS) {
     LOG_ERROR("maximal number of signals reached");
     return false;
-  }
-  else {
+  } else {
     if (_scheduler != nullptr) {
       _scheduler->unregisterTask(this);
     }
@@ -84,7 +73,7 @@ bool SignalTask::addSignal (int signal) {
 // Task methods
 // -----------------------------------------------------------------------------
 
-bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool SignalTask::setup(Scheduler* scheduler, EventLoop loop) {
   _scheduler = scheduler;
   _loop = loop;
 
@@ -97,8 +86,8 @@ bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
   return true;
 }
 
-void SignalTask::cleanup () {
-  for (size_t pos = 0;  pos < _signals.size() && pos < MAX_SIGNALS;  ++pos) {
+void SignalTask::cleanup() {
+  for (size_t pos = 0; pos < _signals.size() && pos < MAX_SIGNALS; ++pos) {
     if (_scheduler != nullptr) {
       _scheduler->uninstallEvent(_watchers[pos]);
     }
@@ -106,14 +95,13 @@ void SignalTask::cleanup () {
   }
 }
 
-bool SignalTask::handleEvent (EventToken token, 
-                              EventType revents) {
+bool SignalTask::handleEvent(EventToken token, EventType revents) {
   TRI_ASSERT(token != nullptr);
 
   bool result = true;
 
   if (revents & EVENT_SIGNAL) {
-    for (size_t pos = 0;  pos < _signals.size() && pos < MAX_SIGNALS;  ++pos) {
+    for (size_t pos = 0; pos < _signals.size() && pos < MAX_SIGNALS; ++pos) {
       if (token == _watchers[pos]) {
         result = handleSignal();
         break;
@@ -124,15 +112,6 @@ bool SignalTask::handleEvent (EventToken token,
   return result;
 }
 
-bool SignalTask::needsMainEventLoop () const {
-  return true;
-}
+bool SignalTask::needsMainEventLoop() const { return true; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

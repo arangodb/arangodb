@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief memory mapped files in windows
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_MEMORY__MAP__WIN32_H
-#define ARANGODB_BASICS_C_MEMORY__MAP__WIN32_H 1
+#ifndef LIB_BASICS_MEMORY_MAP_WIN32_H
+#define LIB_BASICS_MEMORY_MAP_WIN32_H 1
 
 #include "Basics/Common.h"
 
@@ -36,23 +30,21 @@
 
 #include <Windows.h>
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief undefine this so anonymous memory mapping is disabled
 ///
 /// anonymous memory mapping may or may not work on Windows
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Flags used when we create a memory map -- dummy flags for windows for now
 ////////////////////////////////////////////////////////////////////////////////
 
-#define MAP_SHARED      0x01            /* Share changes */
-#define MAP_PRIVATE     0x02            /* Changes are private */
-#define MAP_TYPE        0x0f            /* Mask for type of mapping */
-#define MAP_FIXED       0x10            /* Interpret addr exactly */
-#define MAP_ANONYMOUS   0x20            /* don't use a file */
+#define MAP_SHARED 0x01    /* Share changes */
+#define MAP_PRIVATE 0x02   /* Changes are private */
+#define MAP_TYPE 0x0f      /* Mask for type of mapping */
+#define MAP_FIXED 0x10     /* Interpret addr exactly */
+#define MAP_ANONYMOUS 0x20 /* don't use a file */
 
 #define TRI_MMAP_ANONYMOUS MAP_ANONYMOUS
 
@@ -62,18 +54,18 @@
 // file flushes are synchronous.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define MS_ASYNC        1             /* sync memory asynchronously */
-#define MS_INVALIDATE   2             /* invalidate the caches */
-#define MS_SYNC         4             /* synchronous memory sync */
+#define MS_ASYNC 1      /* sync memory asynchronously */
+#define MS_INVALIDATE 2 /* invalidate the caches */
+#define MS_SYNC 4       /* synchronous memory sync */
 
-
-
-#define PROT_READ       0x1             /* Page can be read.  */
-#define PROT_WRITE      0x2             /* Page can be written.  */
-#define PROT_EXEC       0x4             /* Page can be executed.  */
-#define PROT_NONE       0x0             /* Page can not be accessed.  */
-#define PROT_GROWSDOWN  0x01000000      /* Extend change to start of growsdown vma (mprotect only).  */
-#define PROT_GROWSUP    0x02000000      /* Extend change to start of growsup vma (mprotect only).  */
+#define PROT_READ 0x1  /* Page can be read.  */
+#define PROT_WRITE 0x2 /* Page can be written.  */
+#define PROT_EXEC 0x4  /* Page can be executed.  */
+#define PROT_NONE 0x0  /* Page can not be accessed.  */
+#define PROT_GROWSDOWN \
+  0x01000000 /* Extend change to start of growsdown vma (mprotect only).  */
+#define PROT_GROWSUP \
+  0x02000000 /* Extend change to start of growsup vma (mprotect only).  */
 
 #endif
 
@@ -82,17 +74,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_MADVISE_SEQUENTIAL 0
-#define TRI_MADVISE_RANDOM     0
-#define TRI_MADVISE_WILLNEED   0
-#define TRI_MADVISE_DONTNEED   0
+#define TRI_MADVISE_RANDOM 0
+#define TRI_MADVISE_WILLNEED 0
+#define TRI_MADVISE_DONTNEED 0
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

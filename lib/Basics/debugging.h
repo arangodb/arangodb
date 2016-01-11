@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief debugging helpers
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_DEBUGGING_H
-#define ARANGODB_BASICS_C_DEBUGGING_H 1
+#ifndef LIB_BASICS_DEBUGGING_H
+#define LIB_BASICS_DEBUGGING_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
@@ -36,9 +30,6 @@
 
 #include <ostream>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro TRI_IF_FAILURE
@@ -57,20 +48,15 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-void TRI_SegfaultDebugging (char const*);
+void TRI_SegfaultDebugging(char const*);
 #else
-static inline void TRI_SegfaultDebugging (char const* unused) {
-  (void) unused;
-}
+static inline void TRI_SegfaultDebugging(char const* unused) { (void)unused; }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,10 +64,10 @@ static inline void TRI_SegfaultDebugging (char const* unused) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-bool TRI_ShouldFailDebugging (char const*);
+bool TRI_ShouldFailDebugging(char const*);
 #else
-static inline bool TRI_ShouldFailDebugging (char const* unused) {
-  (void) unused;
+static inline bool TRI_ShouldFailDebugging(char const* unused) {
+  (void)unused;
   return false;
 }
 #endif
@@ -91,10 +77,10 @@ static inline bool TRI_ShouldFailDebugging (char const* unused) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-void TRI_AddFailurePointDebugging (char const*);
+void TRI_AddFailurePointDebugging(char const*);
 #else
-static inline void TRI_AddFailurePointDebugging (char const* unused) {
-  (void) unused;
+static inline void TRI_AddFailurePointDebugging(char const* unused) {
+  (void)unused;
 }
 #endif
 
@@ -103,10 +89,10 @@ static inline void TRI_AddFailurePointDebugging (char const* unused) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-void TRI_RemoveFailurePointDebugging (char const*);
+void TRI_RemoveFailurePointDebugging(char const*);
 #else
-static inline void TRI_RemoveFailurePointDebugging (char const* unused) {
-  (void) unused;
+static inline void TRI_RemoveFailurePointDebugging(char const* unused) {
+  (void)unused;
 }
 #endif
 
@@ -115,17 +101,16 @@ static inline void TRI_RemoveFailurePointDebugging (char const* unused) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-void TRI_ClearFailurePointsDebugging (void);
+void TRI_ClearFailurePointsDebugging(void);
 #else
-static inline void TRI_ClearFailurePointsDebugging (void) {
-}
+static inline void TRI_ClearFailurePointsDebugging(void) {}
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether failure point debugging can be used
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_CanUseFailurePointsDebugging (void) {
+static inline bool TRI_CanUseFailurePointsDebugging(void) {
 #ifdef TRI_ENABLE_FAILURE_TESTS
   return true;
 #else
@@ -137,105 +122,97 @@ static inline bool TRI_CanUseFailurePointsDebugging (void) {
 /// @brief appends a backtrace to the string provided
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_GetBacktrace (std::string& btstr);
+void TRI_GetBacktrace(std::string& btstr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a backtrace on stderr
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintBacktrace ();
+void TRI_PrintBacktrace();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeDebugging (void);
+void TRI_InitializeDebugging(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownDebugging (void);
+void TRI_ShutdownDebugging(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump vector contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename T>        
-std::ostream& operator<< (std::ostream& stream, std::vector<T> const& data) {
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, std::vector<T> const& data) {
   bool first = true;
 
-  stream << "["; 
+  stream << "[";
   for (auto const& it : data) {
     if (first) {
       stream << " ";
       first = false;
-    }
-    else {
+    } else {
       stream << ", ";
     }
     stream << it;
   }
-  stream << " ]"; 
+  stream << " ]";
 
-  return stream; 
+  return stream;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump unordered_set contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename T>        
-std::ostream& operator<< (std::ostream& stream, std::unordered_set<T> const& data) {
+template <typename T>
+std::ostream& operator<<(std::ostream& stream,
+                         std::unordered_set<T> const& data) {
   bool first = true;
 
-  stream << "{"; 
+  stream << "{";
   for (auto const& it : data) {
     if (first) {
       stream << " ";
       first = false;
-    }
-    else {
+    } else {
       stream << ", ";
     }
     stream << it;
   }
-  stream << " }"; 
+  stream << " }";
 
-  return stream; 
+  return stream;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump unordered_map contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename K, typename V>        
-std::ostream& operator<< (std::ostream& stream, std::unordered_map<K, V> const& data) {
+template <typename K, typename V>
+std::ostream& operator<<(std::ostream& stream,
+                         std::unordered_map<K, V> const& data) {
   bool first = true;
 
-  stream << "{"; 
+  stream << "{";
   for (auto const& it : data) {
     if (first) {
       stream << " ";
       first = false;
-    }
-    else {
+    } else {
       stream << ", ";
     }
     stream << it.first << ": " << it.second;
   }
-  stream << " }"; 
+  stream << " }";
 
-  return stream; 
+  return stream;
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

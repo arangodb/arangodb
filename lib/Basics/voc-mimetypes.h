@@ -1,12 +1,11 @@
 
-#ifndef TRIAGENS_BASICS_VOC_MIMETYPES_H
-#define TRIAGENS_BASICS_VOC_MIMETYPES_H 1
+#ifndef LIB_BASICS_VOC_MIMETYPES_H
+#define LIB_BASICS_VOC_MIMETYPES_H 1
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeEntriesMimetypes ();
+void TRI_InitializeEntriesMimetypes();
 
 #endif
-

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edge collection functionality
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "edge-collection.h"
@@ -33,37 +27,37 @@
 #include "Indexes/EdgeIndex.h"
 #include "VocBase/document-collection.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       EDGES INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the _from and _to end of an edge are identical
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+static bool IsReflexive(TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
+      mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    auto const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
+    auto const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
+        marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (edge->_toCid == edge->_fromCid) {
-      char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
-      char const* toKey =   reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
+      char const* fromKey =
+          reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
+      char const* toKey =
+          reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
 
       return strcmp(fromKey, toKey) == 0;
     }
-  }
-  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    auto const* edge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    auto const* edge = reinterpret_cast<triagens::wal::edge_marker_t const*>(
+        marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (edge->_toCid == edge->_fromCid) {
-      char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
-      char const* toKey =   reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
+      char const* fromKey =
+          reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
+      char const* toKey =
+          reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
 
       return strcmp(fromKey, toKey) == 0;
     }
@@ -80,22 +74,19 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
 /// opposite direction (with matchType 2 or 3) to find all counterparts
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FindEdges (triagens::arango::Transaction* trx,
-                       TRI_edge_direction_e direction,
-                       triagens::arango::EdgeIndex* edgeIndex,
-                       std::vector<TRI_doc_mptr_copy_t>& result,
-                       TRI_edge_header_t const* entry,
-                       int matchType) {
+static bool FindEdges(triagens::arango::Transaction* trx,
+                      TRI_edge_direction_e direction,
+                      triagens::arango::EdgeIndex* edgeIndex,
+                      std::vector<TRI_doc_mptr_copy_t>& result,
+                      TRI_edge_header_t const* entry, int matchType) {
   std::unique_ptr<std::vector<TRI_doc_mptr_t*>> found;
 
   if (direction == TRI_EDGE_OUT) {
     found.reset(edgeIndex->from()->lookupByKey(trx, entry));
-  }
-  else if (direction == TRI_EDGE_IN) {
+  } else if (direction == TRI_EDGE_IN) {
     found.reset(edgeIndex->to()->lookupByKey(trx, entry));
-  }
-  else {
-    TRI_ASSERT(false);   // TRI_EDGE_ANY not supported here
+  } else {
+    TRI_ASSERT(false);  // TRI_EDGE_ANY not supported here
   }
 
   size_t const n = found->size();
@@ -108,7 +99,7 @@ static bool FindEdges (triagens::arango::Transaction* trx,
     }
 
     // add all results found
-    for (size_t i = 0;  i < n;  ++i) {
+    for (size_t i = 0; i < n; ++i) {
       TRI_doc_mptr_t* edge = found->at(i);
 
       // the following queries will use the following sequences of matchTypes:
@@ -122,7 +113,6 @@ static bool FindEdges (triagens::arango::Transaction* trx,
       // loop edges now (we already got them in iteration 1)
 
       if (matchType > 1) {
-
         // if the edge is a loop, we have already found it in iteration 1
         // we must skip it here, otherwise we would produce duplicates
         if (IsReflexive(edge)) {
@@ -137,20 +127,15 @@ static bool FindEdges (triagens::arango::Transaction* trx,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
-                                        triagens::arango::Transaction* trx,
-                                        TRI_document_collection_t* document,
-                                        TRI_edge_direction_e direction,
-                                        TRI_voc_cid_t cid,
-                                        TRI_voc_key_t const key) {
+std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
+    triagens::arango::Transaction* trx, TRI_document_collection_t* document,
+    TRI_edge_direction_e direction, TRI_voc_cid_t cid,
+    TRI_voc_key_t const key) {
   // search criteria
   TRI_edge_header_t entry(cid, key);
 
@@ -167,12 +152,10 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
   if (direction == TRI_EDGE_IN) {
     // get all edges with a matching IN vertex
     FindEdges(trx, TRI_EDGE_IN, edgeIndex, result, &entry, 1);
-  }
-  else if (direction == TRI_EDGE_OUT) {
+  } else if (direction == TRI_EDGE_OUT) {
     // get all edges with a matching OUT vertex
     FindEdges(trx, TRI_EDGE_OUT, edgeIndex, result, &entry, 1);
-  }
-  else if (direction == TRI_EDGE_ANY) {
+  } else if (direction == TRI_EDGE_ANY) {
     // get all edges with a matching IN vertex
     FindEdges(trx, TRI_EDGE_IN, edgeIndex, result, &entry, 1);
     // add all non-reflexive edges with a matching OUT vertex
@@ -182,11 +165,4 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

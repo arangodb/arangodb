@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief source code loader
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_JSLOADER_H
-#define ARANGODB_V8_JSLOADER_H 1
+#ifndef LIB_V8_JSLOADER_H
+#define LIB_V8_JSLOADER_H 1
 
 #include "Basics/Common.h"
 
@@ -36,91 +30,65 @@
 
 #include <v8.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class JSLoader
-// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript source code loader
 ////////////////////////////////////////////////////////////////////////////////
 
-    class JSLoader : public ScriptLoader {
+class JSLoader : public ScriptLoader {
+  
+ public:
+  enum eState { eFailLoad, eFailExecute, eSuccess };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructs a loader
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  JSLoader();
 
-      enum eState {
-        eFailLoad,
-        eFailExecute,
-        eSuccess
-      };
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes a named script in the global context
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a loader
-////////////////////////////////////////////////////////////////////////////////
+  v8::Handle<v8::Value> executeGlobalScript(v8::Isolate* isolate,
+                                            v8::Handle<v8::Context> context,
+                                            std::string const& name);
 
-        JSLoader ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief loads a named script
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  JSLoader::eState loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>&,
+                              std::string const& name);
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief loads all scripts
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a named script in the global context
-////////////////////////////////////////////////////////////////////////////////
+  bool loadAllScripts(v8::Isolate* isolate, v8::Handle<v8::Context>& context);
 
-        v8::Handle<v8::Value> executeGlobalScript (v8::Isolate* isolate,
-                                                   v8::Handle<v8::Context> context,
-                                                   std::string const& name);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes a named script
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a named script
-////////////////////////////////////////////////////////////////////////////////
+  bool executeScript(v8::Isolate* isolate, v8::Handle<v8::Context>& context,
+                     std::string const& name);
 
-        JSLoader::eState loadScript (v8::Isolate* isolate,
-                                     v8::Handle<v8::Context>&,
-                                     std::string const& name);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes all scripts
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads all scripts
-////////////////////////////////////////////////////////////////////////////////
-
-        bool loadAllScripts (v8::Isolate* isolate,
-                             v8::Handle<v8::Context>& context);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a named script
-////////////////////////////////////////////////////////////////////////////////
-
-        bool executeScript (v8::Isolate* isolate,
-                            v8::Handle<v8::Context>& context,
-                            std::string const& name);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes all scripts
-////////////////////////////////////////////////////////////////////////////////
-
-        bool executeAllScripts (v8::Isolate* isolate,
-                                v8::Handle<v8::Context>& context);
-    };
-  }
+  bool executeAllScripts(v8::Isolate* isolate,
+                         v8::Handle<v8::Context>& context);
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

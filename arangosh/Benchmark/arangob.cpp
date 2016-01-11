@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief arango benchmark tool
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
@@ -39,8 +33,8 @@
 #include "Basics/init.h"
 #include "Basics/logging.h"
 #include "Basics/random.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
-#include "Basics/string-buffer.h"
 #include "Basics/terminal-utils.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"
@@ -58,9 +52,6 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace triagens::arangob;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -153,33 +144,25 @@ static bool verbose = false;
 #include "Benchmark/test-cases.h"
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update the number of ready threads. this is a callback function
 /// that is called by each thread after it is created
 ////////////////////////////////////////////////////////////////////////////////
 
-static void UpdateStartCounter () {
-  ++Started;
-}
+static void UpdateStartCounter() { ++Started; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the value of the number of started threads counter
 ////////////////////////////////////////////////////////////////////////////////
 
-static int GetStartCounter () {
-  return Started;
-}
+static int GetStartCounter() { return Started; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print a status line (if ! quiet)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Status (const string& value) {
-  if (! BaseClient.quiet()) {
+static void Status(const string& value) {
+  if (!BaseClient.quiet()) {
     cout << value << endl;
   }
 }
@@ -188,22 +171,27 @@ static void Status (const string& value) {
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ParseProgramOptions (int argc, char* argv[]) {
+static void ParseProgramOptions(int argc, char* argv[]) {
   ProgramOptionsDescription description("STANDARD options");
 
-  description
-    ("async", &Async, "send asynchronous requests")
-    ("concurrency", &ThreadConcurrency, "number of parallel connections")
-    ("requests", &Operations, "total number of operations")
-    ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching)")
-    ("keep-alive", &KeepAlive, "use HTTP keep-alive")
-    ("collection", &Collection, "collection name to use in tests")
-    ("test-case", &TestCase, "test case to use (possible values: version, document, collection, import-document, hash, skiplist, edge, shapes, shapes-append, random-shapes, crud, crud-append, crud-write-read, aqltrx, counttrx, multitrx, multi-collection, aqlinsert, aqlv8)")
-    ("complexity", &Complexity, "complexity parameter for the test")
-    ("delay", &Delay, "use a startup delay (necessary only when run in series)")
-    ("progress", &Progress, "show progress")
-    ("verbose", &verbose, "print out replies if the http-header indicates db-errors")
-  ;
+  description("async", &Async, "send asynchronous requests")(
+      "concurrency", &ThreadConcurrency, "number of parallel connections")(
+      "requests", &Operations, "total number of operations")(
+      "batch-size", &BatchSize,
+      "number of operations in one batch (0 disables batching)")(
+      "keep-alive", &KeepAlive, "use HTTP keep-alive")(
+      "collection", &Collection, "collection name to use in tests")(
+      "test-case", &TestCase,
+      "test case to use (possible values: version, document, collection, "
+      "import-document, hash, skiplist, edge, shapes, shapes-append, "
+      "random-shapes, crud, crud-append, crud-write-read, aqltrx, counttrx, "
+      "multitrx, multi-collection, aqlinsert, aqlv8)")(
+      "complexity", &Complexity, "complexity parameter for the test")(
+      "delay", &Delay,
+      "use a startup delay (necessary only when run in series)")(
+      "progress", &Progress, "show progress")(
+      "verbose", &verbose,
+      "print out replies if the http-header indicates db-errors");
 
   BaseClient.setupGeneral(description);
   BaseClient.setupServer(description);
@@ -212,19 +200,19 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description.arguments(&arguments);
 
   ProgramOptions options;
-  BaseClient.parse(options, description, "--concurrency <concurrency> --requests <request> --test-case <case> ...", argc, argv, "arangob.conf");
+  BaseClient.parse(
+      options, description,
+      "--concurrency <concurrency> --requests <request> --test-case <case> ...",
+      argc, argv, "arangob.conf");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void arangobEntryFunction ();
-static void arangobExitFunction (int, void*);
+static void arangobEntryFunction();
+static void arangobExitFunction(int, void*);
 
 #ifdef _WIN32
 
@@ -232,7 +220,7 @@ static void arangobExitFunction (int, void*);
 // Call this function to do various initializations for windows only
 // .............................................................................
 
-void arangobEntryFunction () {
+void arangobEntryFunction() {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -241,14 +229,15 @@ void arangobEntryFunction () {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  //res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+  // res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
   if (res != 0) {
     _exit(1);
   }
 
-  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
+                          (const char*)(&maxOpenFiles));
   if (res != 0) {
     _exit(1);
   }
@@ -261,7 +250,7 @@ void arangobEntryFunction () {
   TRI_Application_Exit_SetExit(arangobExitFunction);
 }
 
-static void arangobExitFunction (int exitCode, void* data) {
+static void arangobExitFunction(int exitCode, void* data) {
   int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
@@ -272,11 +261,9 @@ static void arangobExitFunction (int exitCode, void* data) {
 }
 #else
 
-static void arangobEntryFunction () {
-}
+static void arangobEntryFunction() {}
 
-static void arangobExitFunction (int exitCode, void* data) {
-}
+static void arangobExitFunction(int exitCode, void* data) {}
 
 #endif
 
@@ -284,7 +271,7 @@ static void arangobExitFunction (int exitCode, void* data) {
 /// @brief main
 ////////////////////////////////////////////////////////////////////////////////
 
-int main (int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
   int ret = EXIT_SUCCESS;
 
   arangobEntryFunction();
@@ -309,34 +296,36 @@ int main (int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == nullptr) {
-    LOG_FATAL_AND_EXIT("invalid value for --server.endpoint ('%s')", BaseClient.endpointString().c_str());
+    LOG_FATAL_AND_EXIT("invalid value for --server.endpoint ('%s')",
+                       BaseClient.endpointString().c_str());
   }
 
   BenchmarkOperation* testCase = GetTestCase(TestCase);
 
   if (testCase == nullptr) {
     LOG_FATAL_AND_EXIT("invalid test case name '%s'", TestCase.c_str());
-    return EXIT_FAILURE; // will not be reached
+    return EXIT_FAILURE;  // will not be reached
   }
 
   Status("starting threads...");
 
-  BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
+  BenchmarkCounter<unsigned long> operationsCounter(0,
+                                                    (unsigned long)Operations);
   ConditionVariable startCondition;
-
 
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
 
-  const double stepSize = (double) Operations / (double) ThreadConcurrency;
-  int64_t realStep = (int64_t) stepSize;
-  if (stepSize - (double) ((int64_t) stepSize) > 0.0) {
+  const double stepSize = (double)Operations / (double)ThreadConcurrency;
+  int64_t realStep = (int64_t)stepSize;
+  if (stepSize - (double)((int64_t)stepSize) > 0.0) {
     realStep++;
   }
   if (realStep % 1000 != 0) {
     realStep += 1000 - (realStep % 1000);
   }
-  // add some more offset so we don't get into trouble with threads of different speed
+  // add some more offset so we don't get into trouble with threads of different
+  // speed
   realStep += 10000;
 
   // start client threads
@@ -344,25 +333,15 @@ int main (int argc, char* argv[]) {
     Endpoint* endpoint = Endpoint::clientFactory(BaseClient.endpointString());
     endpoints.push_back(endpoint);
 
-    BenchmarkThread* thread = new BenchmarkThread(testCase,
-        &startCondition,
-        &UpdateStartCounter,
-        i,
-        (unsigned long) BatchSize,
-        &operationsCounter,
-        endpoint,
-        BaseClient.databaseName(),
-        BaseClient.username(),
-        BaseClient.password(),
-        BaseClient.requestTimeout(),
-        BaseClient.connectTimeout(),
-        BaseClient.sslProtocol(),
-        KeepAlive,
-        Async,
-        verbose);
+    BenchmarkThread* thread = new BenchmarkThread(
+        testCase, &startCondition, &UpdateStartCounter, i,
+        (unsigned long)BatchSize, &operationsCounter, endpoint,
+        BaseClient.databaseName(), BaseClient.username(), BaseClient.password(),
+        BaseClient.requestTimeout(), BaseClient.connectTimeout(),
+        BaseClient.sslProtocol(), KeepAlive, Async, verbose);
 
     threads.push_back(thread);
-    thread->setOffset((size_t) (i * realStep));
+    thread->setOffset((size_t)(i * realStep));
     thread->start();
   }
 
@@ -370,7 +349,6 @@ int main (int argc, char* argv[]) {
   while (GetStartCounter() < ThreadConcurrency) {
     usleep(5000);
   }
-
 
   if (Delay) {
     Status("sleeping (startup delay)...");
@@ -396,12 +374,12 @@ int main (int argc, char* argv[]) {
   while (1) {
     const size_t numOperations = operationsCounter.getDone();
 
-    if (numOperations >= (size_t) Operations) {
+    if (numOperations >= (size_t)Operations) {
       break;
     }
 
     if (Progress && numOperations >= nextReportValue) {
-      LOG_INFO("number of operations: %d", (int) nextReportValue);
+      LOG_INFO("number of operations: %d", (int)nextReportValue);
       nextReportValue += stepValue;
     }
 
@@ -419,31 +397,35 @@ int main (int argc, char* argv[]) {
   size_t incomplete = operationsCounter.incompleteFailures();
 
   cout << endl;
-  cout << "Total number of operations: " << Operations <<
-          ", keep alive: " << (KeepAlive ? "yes" : "no") <<
-          ", async: " << (Async ? "yes" : "no")  <<
-          ", batch size: " << BatchSize <<
-          ", concurrency level (threads): " << ThreadConcurrency <<
-          endl;
+  cout << "Total number of operations: " << Operations
+       << ", keep alive: " << (KeepAlive ? "yes" : "no")
+       << ", async: " << (Async ? "yes" : "no") << ", batch size: " << BatchSize
+       << ", concurrency level (threads): " << ThreadConcurrency << endl;
 
-  cout << "Test case: " << TestCase <<
-          ", complexity: " << Complexity <<
-          ", database: '" << BaseClient.databaseName() <<
-          "', collection: '" << Collection << "'" <<
-          endl;
+  cout << "Test case: " << TestCase << ", complexity: " << Complexity
+       << ", database: '" << BaseClient.databaseName() << "', collection: '"
+       << Collection << "'" << endl;
 
-  cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
-  cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) ThreadConcurrency) << " s" << endl;
-  cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
-  cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) ThreadConcurrency) << " s" << endl;
-  cout << "Operations per second rate: " << fixed << ((double) Operations / time) << endl;
-  cout << "Elapsed time since start: " << fixed << time << " s" << endl << endl;
+  cout << "Total request/response duration (sum of all threads): " << fixed
+       << requestTime << " s" << endl;
+  cout << "Request/response duration (per thread): " << fixed
+       << (requestTime / (double)ThreadConcurrency) << " s" << endl;
+  cout << "Time needed per operation: " << fixed << (time / Operations) << " s"
+       << endl;
+  cout << "Time needed per operation per thread: " << fixed
+       << (time / (double)Operations * (double)ThreadConcurrency) << " s"
+       << endl;
+  cout << "Operations per second rate: " << fixed << ((double)Operations / time)
+       << endl;
+  cout << "Elapsed time since start: " << fixed << time << " s" << endl
+       << endl;
 
   if (failures > 0) {
     cerr << "WARNING: " << failures << " arangob request(s) failed!!" << endl;
   }
   if (incomplete > 0) {
-    cerr << "WARNING: " << incomplete << " arangob requests with incomplete results!!" << endl;
+    cerr << "WARNING: " << incomplete
+         << " arangob requests with incomplete results!!" << endl;
   }
 
   testCase->tearDown();
@@ -467,11 +449,4 @@ int main (int argc, char* argv[]) {
   return ret;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

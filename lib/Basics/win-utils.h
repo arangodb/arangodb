@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief windows utilities
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_WIN__UTILS_H
-#define ARANGODB_BASICS_C_WIN__UTILS_H 1
+#ifndef LIB_BASICS_WIN_UTILS_H
+#define LIB_BASICS_WIN_UTILS_H 1
 
 #include <WinSock2.h>
 
@@ -40,70 +34,68 @@
 typedef enum {
   TRI_WIN_FINAL_SET_INVALID_HANLE_HANDLER,
   TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL
-}
-TRI_win_finalize_e;
+} TRI_win_finalize_e;
 
 typedef enum {
   TRI_WIN_INITIAL_SET_DEBUG_FLAG,
   TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER,
   TRI_WIN_INITIAL_SET_MAX_STD_IO,
   TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
-}
-TRI_win_initialize_e;
+} TRI_win_initialize_e;
 
-int finalizeWindows (const TRI_win_finalize_e, const char*);
-int initializeWindows (const TRI_win_initialize_e, const char*);
+int finalizeWindows(const TRI_win_finalize_e, const char*);
+int initializeWindows(const TRI_win_initialize_e, const char*);
 
 // .............................................................................
 // windows equivalent of ftruncate (the truncation of an open file) is
 // _chsize
 // .............................................................................
 
-int ftruncate (int, long);
+int ftruncate(int, long);
 
 // .............................................................................
 // windows does not have a function called getpagesize -- create one here
 // .............................................................................
 
-int getpagesize (void);
+int getpagesize(void);
 
 // .............................................................................
 // This function uses the CreateFile windows method rather than _open which
 // then will allow the application to rename files on the fly.
 // .............................................................................
 
-int TRI_createFile (const char* filename, int openFlags, int modeFlags);
+int TRI_createFile(const char* filename, int openFlags, int modeFlags);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a file for windows
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_OPEN_WIN32 (const char* filename, int openFlags);
+int TRI_OPEN_WIN32(const char* filename, int openFlags);
 
 // .............................................................................
 // the sleep function in windows is for milliseconds, on linux it is for seconds
 // this provides a translation
 // .............................................................................
 
-void TRI_sleep (unsigned long);
+void TRI_sleep(unsigned long);
 
 // .............................................................................
 // there is no usleep (micro sleep) in windows, so we create one here
 // .............................................................................
 
-void TRI_usleep (unsigned long);
+void TRI_usleep(unsigned long);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fixes the ICU_DATA environment path 
+/// @brief fixes the ICU_DATA environment path
 ////////////////////////////////////////////////////////////////////////////////
- 
-void TRI_FixIcuDataEnv ();
+
+void TRI_FixIcuDataEnv();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MapSystemError (DWORD);
+int TRI_MapSystemError(DWORD);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
@@ -112,19 +104,9 @@ int TRI_MapSystemError (DWORD);
 /// the arango internal logging will handle that usually.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogWindowsEventlog (char const* func,
-                             char const* file,
-                             int line,
-                             char const* fmt,
-                             va_list ap);
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
+                            char const* fmt, va_list ap);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

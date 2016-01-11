@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tasks used to establish connections
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpListenTask.h"
@@ -34,42 +28,24 @@
 
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class HttpListenTask
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpListenTask::HttpListenTask (HttpServer* server, Endpoint* endpoint)
-  : Task("HttpListenTask"),
-    ListenTask(endpoint),
-    _server(server) {
-}
+HttpListenTask::HttpListenTask(HttpServer* server, Endpoint* endpoint)
+    : Task("HttpListenTask"), ListenTask(endpoint), _server(server) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                ListenTask methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpListenTask::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
+bool HttpListenTask::handleConnected(TRI_socket_t s,
+                                     const ConnectionInfo& info) {
   _server->handleConnected(s, info);
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,39 +19,23 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 static void defaultExitFunction(int, void*);
 
 TRI_ExitFunction_t TRI_EXIT_FUNCTION = defaultExitFunction;
 
+void defaultExitFunction(int exitCode, void* data) { _exit(exitCode); }
 
-void defaultExitFunction (int exitCode, void* data) {
-  _exit(exitCode);
-}
-
-void TRI_Application_Exit_SetExit (TRI_ExitFunction_t exitFunction) {
+void TRI_Application_Exit_SetExit(TRI_ExitFunction_t exitFunction) {
   if (exitFunction != NULL) {
     TRI_EXIT_FUNCTION = exitFunction;
-  }
-  else {
+  } else {
     TRI_EXIT_FUNCTION = defaultExitFunction;
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief utilities for figures
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,105 +19,83 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_STATISTICS_FIGURES_H
-#define ARANGODB_STATISTICS_FIGURES_H 1
+#ifndef ARANGOD_STATISTICS_FIGURES_H
+#define ARANGOD_STATISTICS_FIGURES_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vector generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct StatisticsVector {
-      StatisticsVector ()
-        : _value() {
-      }
+struct StatisticsVector {
+  StatisticsVector() : _value() {}
 
-      StatisticsVector& operator<< (double v) {
-        _value.push_back(v);
-        return *this;
-      }
+  StatisticsVector& operator<<(double v) {
+    _value.push_back(v);
+    return *this;
+  }
 
-      std::vector<double> _value;
-    };
+  std::vector<double> _value;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a simple counter
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct StatisticsCounter {
-      StatisticsCounter()
-        : _count(0) {
-      }
+struct StatisticsCounter {
+  StatisticsCounter() : _count(0) {}
 
-      void incCounter () {
-        ++_count;
-      }
+  void incCounter() { ++_count; }
 
-      void decCounter () {
-        --_count;
-      }
+  void decCounter() { --_count; }
 
-      int64_t _count;
-    };
+  int64_t _count;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a distribution with count, min, max, mean, and variance
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct StatisticsDistribution {
-      StatisticsDistribution ()
-        : _count(0), _total(0.0), _cuts(), _counts() {
-      }
+struct StatisticsDistribution {
+  StatisticsDistribution() : _count(0), _total(0.0), _cuts(), _counts() {}
 
-      StatisticsDistribution (StatisticsVector const& dist)
-        : _count(0), _total(0.0), _cuts(dist._value), _counts() {
-        _counts.resize(_cuts.size() + 1);
-      }
-
-      void addFigure (double value) {
-        ++_count;
-        _total += value;
-
-        std::vector<double>::iterator i = _cuts.begin();
-        std::vector<uint64_t>::iterator j = _counts.begin();
-
-        for (;  i != _cuts.end();  ++i, ++j) {
-          if (value < *i) {
-            ++(*j);
-            return;
-          }
-        }
-
-        ++(*j);
-      }
-
-      uint64_t _count;
-      double _total;
-      std::vector<double> _cuts;
-      std::vector<uint64_t> _counts;
-    };
+  StatisticsDistribution(StatisticsVector const& dist)
+      : _count(0), _total(0.0), _cuts(dist._value), _counts() {
+    _counts.resize(_cuts.size() + 1);
   }
+
+  void addFigure(double value) {
+    ++_count;
+    _total += value;
+
+    std::vector<double>::iterator i = _cuts.begin();
+    std::vector<uint64_t>::iterator j = _counts.begin();
+
+    for (; i != _cuts.end(); ++i, ++j) {
+      if (value < *i) {
+        ++(*j);
+        return;
+      }
+    }
+
+    ++(*j);
+  }
+
+  uint64_t _count;
+  double _total;
+  std::vector<double> _cuts;
+  std::vector<uint64_t> _counts;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

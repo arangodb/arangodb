@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief export request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,109 +19,79 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_EXPORT_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_EXPORT_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_EXPORT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_EXPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Utils/CollectionExport.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class RestExportHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 
-  namespace arango {
+namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestExportHandler : public RestVocbaseBaseHandler {
+class RestExportHandler : public RestVocbaseBaseHandler {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  explicit RestExportHandler(rest::HttpRequest*);
 
-      public:
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  status_t execute() override;
 
-        explicit RestExportHandler (rest::HttpRequest*);
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief build options for the query as JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
+  VPackBuilder buildOptions(VPackSlice const&);
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create an export cursor and return the first results
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+  void createCursor();
 
-        status_t execute () override;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the next results from an existing cursor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  void modifyCursor();
 
-      private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief dispose an existing cursor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief build options for the query as JSON
-////////////////////////////////////////////////////////////////////////////////
+  void deleteCursor();
 
-        VPackBuilder buildOptions (VPackSlice const&);
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief restrictions for export
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an export cursor and return the first results
-////////////////////////////////////////////////////////////////////////////////
-
-        void createCursor ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the next results from an existing cursor
-////////////////////////////////////////////////////////////////////////////////
-
-        void modifyCursor ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dispose an existing cursor
-////////////////////////////////////////////////////////////////////////////////
-
-        void deleteCursor ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief restrictions for export
-////////////////////////////////////////////////////////////////////////////////
-
-        CollectionExport::Restrictions _restrictions; 
-
-    };
-  }
+  CollectionExport::Restrictions _restrictions;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

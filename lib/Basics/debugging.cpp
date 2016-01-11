@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief debugging helpers
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
@@ -35,6 +29,7 @@
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
+#include <sstream>
 #ifdef _WIN32
 #include <DbgHelp.h>
 #else
@@ -44,9 +39,6 @@
 #endif
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global string containing the currently registered failure points
@@ -63,9 +55,6 @@ triagens::basics::ReadWriteLock FailurePointsLock;
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make a delimited value from a string, so we can unambigiously
@@ -73,12 +62,13 @@ triagens::basics::ReadWriteLock FailurePointsLock;
 /// so we'll be putting the value inside some delimiter: ",foo,")
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* MakeValue (char const* value) {
+static char* MakeValue(char const* value) {
   if (value == nullptr || strlen(value) == 0) {
     return nullptr;
   }
 
-  char* delimited = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, strlen(value) + 3, false));
+  char* delimited = static_cast<char*>(
+      TRI_Allocate(TRI_CORE_MEM_ZONE, strlen(value) + 3, false));
 
   if (delimited != nullptr) {
     memcpy(delimited + 1, value, strlen(value));
@@ -90,24 +80,21 @@ static char* MakeValue (char const* value) {
   return delimited;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
 /// this is used for crash and recovery tests
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SegfaultDebugging (char const* message) {
+void TRI_SegfaultDebugging(char const* message) {
   LOG_WARNING("%s: summon Baal!", message);
   // make sure the latest log messages are flushed
   TRI_ShutdownLogging(true);
 
-  // and now crash
+// and now crash
 #ifndef __APPLE__
   // on MacOS, the following statement makes the server hang but not crash
-  *((char*) -1) = '!';
+  *((char*)-1) = '!';
 #endif
 
   // ensure the process is terminated
@@ -118,7 +105,7 @@ void TRI_SegfaultDebugging (char const* message) {
 /// @brief check whether we should fail at a specific failure point
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ShouldFailDebugging (char const* value) {
+bool TRI_ShouldFailDebugging(char const* value) {
   char* found = nullptr;
 
   // try without the lock first (to speed things up)
@@ -144,7 +131,7 @@ bool TRI_ShouldFailDebugging (char const* value) {
 /// @brief add a failure point
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddFailurePointDebugging (char const* value) {
+void TRI_AddFailurePointDebugging(char const* value) {
   char* found;
   char* checkValue = MakeValue(value);
 
@@ -156,8 +143,7 @@ void TRI_AddFailurePointDebugging (char const* value) {
 
   if (FailurePoints == nullptr) {
     found = nullptr;
-  }
-  else {
+  } else {
     found = strstr(FailurePoints, checkValue);
   }
 
@@ -165,7 +151,9 @@ void TRI_AddFailurePointDebugging (char const* value) {
     // not yet found. so add it
     char* copy;
 
-    LOG_WARNING("activating intentional failure point '%s'. the server will misbehave!", value);
+    LOG_WARNING(
+        "activating intentional failure point '%s'. the server will misbehave!",
+        value);
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {
@@ -178,9 +166,9 @@ void TRI_AddFailurePointDebugging (char const* value) {
 
       memcpy(copy, checkValue, n);
       copy[n] = '\0';
-    }
-    else {
-      copy = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, n + strlen(FailurePoints), false));
+    } else {
+      copy = static_cast<char*>(
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n + strlen(FailurePoints), false));
 
       if (copy == nullptr) {
         TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
@@ -190,7 +178,7 @@ void TRI_AddFailurePointDebugging (char const* value) {
       memcpy(copy, FailurePoints, strlen(FailurePoints));
       memcpy(copy + strlen(FailurePoints) - 1, checkValue, n);
       copy[strlen(FailurePoints) + n - 1] = '\0';
-      
+
       TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
     }
 
@@ -204,7 +192,7 @@ void TRI_AddFailurePointDebugging (char const* value) {
 /// @brief remove a failure points
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveFailurePointDebugging (char const* value) {
+void TRI_RemoveFailurePointDebugging(char const* value) {
   WRITE_LOCKER(FailurePointsLock);
 
   if (FailurePoints == nullptr) {
@@ -233,7 +221,9 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
       return;
     }
 
-    copy = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, strlen(FailurePoints) - strlen(checkValue) + 2, false));
+    copy = static_cast<char*>(
+        TRI_Allocate(TRI_CORE_MEM_ZONE,
+                     strlen(FailurePoints) - strlen(checkValue) + 2, false));
 
     if (copy == nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
@@ -245,7 +235,8 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
     memcpy(copy, FailurePoints, n);
 
     // copy remainder of string
-    memcpy(copy + n, found + strlen(checkValue) - 1, strlen(FailurePoints) - strlen(checkValue) - n + 1);
+    memcpy(copy + n, found + strlen(checkValue) - 1,
+           strlen(FailurePoints) - strlen(checkValue) - n + 1);
 
     copy[strlen(FailurePoints) - strlen(checkValue) + 1] = '\0';
     TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
@@ -259,7 +250,7 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
 /// @brief clear all failure points
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ClearFailurePointsDebugging () {
+void TRI_ClearFailurePointsDebugging() {
   WRITE_LOCKER(FailurePointsLock);
 
   if (FailurePoints != nullptr) {
@@ -275,14 +266,13 @@ void TRI_ClearFailurePointsDebugging () {
 /// @brief initialize the debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeDebugging () {
-}
+void TRI_InitializeDebugging() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownDebugging () {
+void TRI_ShutdownDebugging() {
   if (FailurePoints != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
   }
@@ -294,7 +284,7 @@ void TRI_ShutdownDebugging () {
 /// @brief appends a backtrace to the string provided
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_GetBacktrace (std::string& btstr) {
+void TRI_GetBacktrace(std::string& btstr) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
 #ifdef _WIN32
@@ -308,7 +298,7 @@ void TRI_GetBacktrace (std::string& btstr) {
   SymInitialize(process, nullptr, true);
 
   frames = CaptureStackBackTrace(0, 100, stack, nullptr);
-  symbol = (SYMBOL_INFO*) calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+  symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
 
   if (symbol == nullptr) {
     // cannot allocate memory
@@ -320,10 +310,11 @@ void TRI_GetBacktrace (std::string& btstr) {
 
   for (unsigned int i = 0; i < frames; i++) {
     char address[64];
-    SymFromAddr(process, (DWORD64) stack[i], 0, symbol);
+    SymFromAddr(process, (DWORD64)stack[i], 0, symbol);
 
-    snprintf(address, sizeof(address), "0x%0X", (unsigned int) symbol->Address);
-    btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name + std::string(" [") + address + std::string("]\n");
+    snprintf(address, sizeof(address), "0x%0X", (unsigned int)symbol->Address);
+    btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name +
+             std::string(" [") + address + std::string("]\n");
   }
 
   TRI_SystemFree(symbol);
@@ -337,22 +328,21 @@ void TRI_GetBacktrace (std::string& btstr) {
   for (size_t i = 0; i < size; i++) {
     std::stringstream ss;
     if (strings != nullptr) {
-      char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
+      char* mangled_name = nullptr, * offset_begin = nullptr,
+            * offset_end = nullptr;
 
       // find parantheses and +address offset surrounding mangled name
-      for (char *p = strings[i]; *p; ++p) {
+      for (char* p = strings[i]; *p; ++p) {
         if (*p == '(') {
-          mangled_name = p; 
-        }
-        else if (*p == '+') {
+          mangled_name = p;
+        } else if (*p == '+') {
           offset_begin = p;
-        }
-        else if (*p == ')') {
+        } else if (*p == ')') {
           offset_end = p;
           break;
         }
       }
-      if (mangled_name && offset_begin && offset_end && 
+      if (mangled_name && offset_begin && offset_end &&
           mangled_name < offset_begin) {
         *mangled_name++ = '\0';
         *offset_begin++ = '\0';
@@ -363,25 +353,23 @@ void TRI_GetBacktrace (std::string& btstr) {
         if (demangled_name != nullptr) {
           if (status == 0) {
             ss << stack_frames[i];
-            btstr += strings[i] + std::string("() [") + ss.str() + std::string("] ") + demangled_name + std::string("\n");
-          }
-          else {
+            btstr += strings[i] + std::string("() [") + ss.str() +
+                     std::string("] ") + demangled_name + std::string("\n");
+          } else {
             btstr += strings[i] + std::string("\n");
           }
           TRI_SystemFree(demangled_name);
         }
-      }
-      else {
+      } else {
         btstr += strings[i] + std::string("\n");
       }
-    }
-    else {
+    } else {
       ss << stack_frames[i];
       btstr += ss.str() + std::string("\n");
     }
   }
   if (strings != nullptr) {
-    TRI_SystemFree(strings);  
+    TRI_SystemFree(strings);
   }
 #endif
 #endif
@@ -392,7 +380,7 @@ void TRI_GetBacktrace (std::string& btstr) {
 /// @brief prints a backtrace on stderr
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintBacktrace () {
+void TRI_PrintBacktrace() {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
   std::string out;
@@ -402,11 +390,4 @@ void TRI_PrintBacktrace () {
 #endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

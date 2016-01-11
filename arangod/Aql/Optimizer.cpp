@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief infrastructure for query optimizer
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Optimizer.h"
@@ -30,14 +28,8 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               the optimizer class
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            static initializations
-// -----------------------------------------------------------------------------
-        
+
 triagens::basics::Mutex Optimizer::SetupLock;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,47 +44,38 @@ std::map<int, Optimizer::Rule> Optimizer::_rules;
 
 std::unordered_map<std::string, int> Optimizer::_ruleLookup;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief constructor, this will initialize the rules database
 ////////////////////////////////////////////////////////////////////////////////
 
-Optimizer::Optimizer (size_t maxNumberOfPlans) 
-  : _maxNumberOfPlans(maxNumberOfPlans > 0 ? maxNumberOfPlans : DefaultMaxNumberOfPlans) {
-
+Optimizer::Optimizer(size_t maxNumberOfPlans)
+    : _maxNumberOfPlans(maxNumberOfPlans > 0 ? maxNumberOfPlans
+                                             : DefaultMaxNumberOfPlans) {
   if (_rules.empty()) {
     setupRules();
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief add a plan to the optimizer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Optimizer::addPlan (ExecutionPlan* plan,
-                         Rule const* rule,
-                         bool wasModified,
-                         int newLevel) {
+bool Optimizer::addPlan(ExecutionPlan* plan, Rule const* rule, bool wasModified,
+                        int newLevel) {
   TRI_ASSERT(plan != nullptr);
- 
-  if (newLevel > 0) { 
+
+  if (newLevel > 0) {
     // use user-specified new level
     _newPlans.push_back(plan, newLevel);
-  }
-  else {
+  } else {
     // use rule's level
     _newPlans.push_back(plan, rule->level);
   }
 
   if (wasModified) {
-    if (! rule->isHidden) {
+    if (!rule->isHidden) {
       // register which rules modified / created the plan
       // hidden rules are excluded here
       plan->addAppliedRule(static_cast<int>(rule->level));
@@ -103,31 +86,30 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
 
     plan->findVarUsage();
   }
-    
+
   if (_newPlans.size() >= _maxNumberOfPlans) {
     return false;
   }
-  
-  return true; 
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief the actual optimization
 ////////////////////////////////////////////////////////////////////////////////
 
-int Optimizer::createPlans (ExecutionPlan* plan,
-                            std::vector<std::string> const& rulesSpecification,
-                            bool inspectSimplePlans) {
-  if (! inspectSimplePlans &&
-      ! triagens::arango::ServerState::instance()->isCoordinator() && 
+int Optimizer::createPlans(ExecutionPlan* plan,
+                           std::vector<std::string> const& rulesSpecification,
+                           bool inspectSimplePlans) {
+  if (!inspectSimplePlans &&
+      !triagens::arango::ServerState::instance()->isCoordinator() &&
       plan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
     _plans.clear();
     try {
       _plans.push_back(plan, 0);
-    }
-    catch (...) {
+    } catch (...) {
       delete plan;
       throw;
     }
@@ -140,7 +122,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   bool runOnlyRequiredRules = false;
   int leastDoneLevel = 0;
 
-  TRI_ASSERT(! _rules.empty());
+  TRI_ASSERT(!_rules.empty());
   int maxRuleLevel = _rules.rbegin()->first;
 
   // which optimizer rules are disabled?
@@ -150,8 +132,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   _plans.clear();
   try {
     _plans.push_back(plan, 0);
-  }
-  catch (...) {
+  } catch (...) {
     delete plan;
     throw;
   }
@@ -176,12 +157,11 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
       if (level >= maxRuleLevel) {
         _newPlans.push_back(p, level);  // nothing to do, just keep it
-      }
-      else {   // find next rule
+      } else {                          // find next rule
         auto it = _rules.upper_bound(level);
         TRI_ASSERT(it != _rules.end());
-       
-        /* 
+
+        /*
         std::cout << "Trying rule " << it->second.name << " with level "
                   << it->first << " on plan " << count++
                   << std::endl;
@@ -190,14 +170,16 @@ int Optimizer::createPlans (ExecutionPlan* plan,
         level = (*it).first;
         auto& rule = (*it).second;
 
-        if ((runOnlyRequiredRules || disabledIds.find(level) != disabledIds.end()) &&
+        if ((runOnlyRequiredRules ||
+             disabledIds.find(level) != disabledIds.end()) &&
             rule.canBeDisabled) {
-          // we picked a disabled rule or we have reached the max number of plans
+          // we picked a disabled rule or we have reached the max number of
+          // plans
           // and just skip this rule
 
           _newPlans.push_back(p, level);  // nothing to do, just keep it
 
-          if (! rule.isHidden) {
+          if (!rule.isHidden) {
             ++_stats.rulesSkipped;
           }
           // now try next
@@ -208,25 +190,27 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           TRI_IF_FAILURE("Optimizer::createPlansOom") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-      
-          if (! p->varUsageComputed()) {
+
+          if (!p->varUsageComputed()) {
             p->findVarUsage();
           }
 
           // all optimizer rule functions must obey the following guidelines:
-          // - the original plan passed to the rule function must be deleted if and only
-          //   if it has not been added (back) to the optimizer (using addPlan). 
-          // - if the rule throws, then the original plan will be deleted by the optimizer.
-          //   thus the rule must not have deleted the plan itself or add it back to the
+          // - the original plan passed to the rule function must be deleted if
+          // and only
+          //   if it has not been added (back) to the optimizer (using addPlan).
+          // - if the rule throws, then the original plan will be deleted by the
+          // optimizer.
+          //   thus the rule must not have deleted the plan itself or add it
+          //   back to the
           //   optimizer
           rule.func(this, p, &rule);
 
-          if (! rule.isHidden) {
+          if (!rule.isHidden) {
             ++_stats.rulesExecuted;
           }
-        }
-        catch (...) {
-          if (! _newPlans.isContained(p)) {
+        } catch (...) {
+          if (!_newPlans.isContained(p)) {
             // only delete the plan if not yet contained in _newPlans
             delete p;
           }
@@ -249,17 +233,16 @@ int Optimizer::createPlans (ExecutionPlan* plan,
     // std::cout << "Least done level is " << leastDoneLevel << std::endl;
 
     // Stop if the result gets out of hand:
-    if (! runOnlyRequiredRules &&
-        _plans.size() >= _maxNumberOfPlans) {
-      // must still iterate over all REQUIRED remaining transformation rules 
+    if (!runOnlyRequiredRules && _plans.size() >= _maxNumberOfPlans) {
+      // must still iterate over all REQUIRED remaining transformation rules
       // because there are some rules which are required to make the query
       // work in cluster mode etc
       runOnlyRequiredRules = true;
     }
   }
-  
+
   _stats.plansCreated = _plans.size();
-  
+
   TRI_ASSERT(_plans.size() >= 1);
 
   estimatePlans();
@@ -282,14 +265,15 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 /// @brief translate a list of rule ids into rule names
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> Optimizer::translateRules (std::vector<int> const& rules) {
+std::vector<std::string> Optimizer::translateRules(
+    std::vector<int> const& rules) {
   std::vector<std::string> names;
   names.reserve(rules.size());
 
   for (auto const& rule : rules) {
     char const* name = translateRule(rule);
 
-    if (name !=  nullptr) {
+    if (name != nullptr) {
       names.emplace_back(std::string(name));
     }
   }
@@ -300,7 +284,7 @@ std::vector<std::string> Optimizer::translateRules (std::vector<int> const& rule
 /// @brief translate a single rule
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* Optimizer::translateRule (int rule) {
+char const* Optimizer::translateRule(int rule) {
   auto it = _rules.find(rule);
 
   if (it != _rules.end()) {
@@ -310,17 +294,14 @@ char const* Optimizer::translateRule (int rule) {
   return nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimatePlans
 ////////////////////////////////////////////////////////////////////////////////
 
-void Optimizer::estimatePlans () {
+void Optimizer::estimatePlans() {
   for (auto& p : _plans.list) {
-    if (! p->varUsageComputed()) {
+    if (!p->varUsageComputed()) {
       p->findVarUsage();
     }
     p->getCost();
@@ -333,17 +314,18 @@ void Optimizer::estimatePlans () {
 /// @brief sortPlans
 ////////////////////////////////////////////////////////////////////////////////
 
-void Optimizer::sortPlans () {
-  std::sort(_plans.list.begin(), _plans.list.end(), [](ExecutionPlan* const& a, ExecutionPlan* const& b) -> bool {
-    return a->getCost() < b->getCost();
-  });
+void Optimizer::sortPlans() {
+  std::sort(_plans.list.begin(), _plans.list.end(),
+            [](ExecutionPlan* const& a, ExecutionPlan* const& b)
+                -> bool { return a->getCost() < b->getCost(); });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief look up the ids of all disabled rules
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> const& names) const {
+std::unordered_set<int> Optimizer::getDisabledRuleIds(
+    std::vector<std::string> const& names) const {
   std::unordered_set<int> disabled;
 
   // lookup ids of all disabled rules
@@ -355,8 +337,7 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> 
         for (auto const& it : _rules) {
           disabled.emplace(it.first);
         }
-      }
-      else {
+      } else {
         // disable a specific rule
         auto it = _ruleLookup.find(std::string(name.c_str() + 1));
 
@@ -364,14 +345,12 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> 
           disabled.emplace((*it).second);
         }
       }
-    }
-    else if (name[0] == '+') {
+    } else if (name[0] == '+') {
       // enable rule
       if (name == "+all") {
         // enable all rules
         disabled.clear();
-      }
-      else {
+      } else {
         auto it = _ruleLookup.find(std::string(name.c_str() + 1));
 
         if (it != _ruleLookup.end()) {
@@ -388,22 +367,22 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> 
 /// @brief set up the optimizer rules once and forever
 ////////////////////////////////////////////////////////////////////////////////
 
-void Optimizer::setupRules () {
+void Optimizer::setupRules() {
   MUTEX_LOCKER(SetupLock);
-  
-  if (! _rules.empty()) {
+
+  if (!_rules.empty()) {
     // race condition... prevent duplicate registration of rules
     return;
   }
 
-  // List all the rules in the system here:
-  // lower level values mean earlier rule execution
-  
-  // note that levels must be unique
+// List all the rules in the system here:
+// lower level values mean earlier rule execution
 
-  //////////////////////////////////////////////////////////////////////////////
-  // "Pass 1": moving nodes "up" (potentially outside loops):
-  //////////////////////////////////////////////////////////////////////////////
+// note that levels must be unique
+
+//////////////////////////////////////////////////////////////////////////////
+// "Pass 1": moving nodes "up" (potentially outside loops):
+//////////////////////////////////////////////////////////////////////////////
 
 #if 0
   // rule not yet tested
@@ -413,33 +392,26 @@ void Optimizer::setupRules () {
                true);
 #endif
 
-  // determine the "right" type of AggregateNode and 
-  // add a sort node for each COLLECT (may be removed later) 
-  // this rule cannot be turned off (otherwise, the query result might be wrong!)
-  registerHiddenRule("specialize-collect",
-                     specializeCollectRule,
-                     specializeCollectRule_pass1,
-                     false);
+  // determine the "right" type of AggregateNode and
+  // add a sort node for each COLLECT (may be removed later)
+  // this rule cannot be turned off (otherwise, the query result might be
+  // wrong!)
+  registerHiddenRule("specialize-collect", specializeCollectRule,
+                     specializeCollectRule_pass1, false);
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
-  registerRule("move-calculations-up",
-               moveCalculationsUpRule,
-               moveCalculationsUpRule_pass1, 
-               true);
+  registerRule("move-calculations-up", moveCalculationsUpRule,
+               moveCalculationsUpRule_pass1, true);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
-  registerRule("move-filters-up",
-               moveFiltersUpRule,
-               moveFiltersUpRule_pass1,
+  registerRule("move-filters-up", moveFiltersUpRule, moveFiltersUpRule_pass1,
                true);
-  
+
   // remove redundant calculations
-  registerRule("remove-redundant-calculations", 
-               removeRedundantCalculationsRule,
-               removeRedundantCalculationsRule_pass1, 
-               true);
+  registerRule("remove-redundant-calculations", removeRedundantCalculationsRule,
+               removeRedundantCalculationsRule_pass1, true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 2": try to remove redundant or unnecessary nodes
@@ -448,22 +420,17 @@ void Optimizer::setupRules () {
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-  registerRule("remove-unnecessary-filters",
-               removeUnnecessaryFiltersRule,
-               removeUnnecessaryFiltersRule_pass2,
-               true);
-  
+  registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule,
+               removeUnnecessaryFiltersRule_pass2, true);
+
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations", 
+  registerRule("remove-unnecessary-calculations",
                removeUnnecessaryCalculationsRule,
-               removeUnnecessaryCalculationsRule_pass2,
-               true);
+               removeUnnecessaryCalculationsRule_pass2, true);
 
   // remove redundant sort blocks
-  registerRule("remove-redundant-sorts",
-               removeRedundantSortsRule,
-               removeRedundantSortsRule_pass2,
-               true);
+  registerRule("remove-redundant-sorts", removeRedundantSortsRule,
+               removeRedundantSortsRule_pass2, true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
@@ -471,10 +438,9 @@ void Optimizer::setupRules () {
   ///           levels go back to this or lower levels!
   //////////////////////////////////////////////////////////////////////////////
 
-  registerRule("interchange-adjacent-enumerations", 
+  registerRule("interchange-adjacent-enumerations",
                interchangeAdjacentEnumerationsRule,
-               interchangeAdjacentEnumerationsRule_pass3,
-               true);
+               interchangeAdjacentEnumerationsRule_pass3, true);
 
   //////////////////////////////////////////////////////////////////////////////
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
@@ -482,24 +448,18 @@ void Optimizer::setupRules () {
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
-  registerRule("move-calculations-up-2",
-               moveCalculationsUpRule,
-               moveCalculationsUpRule_pass4,
-               true);
+  registerRule("move-calculations-up-2", moveCalculationsUpRule,
+               moveCalculationsUpRule_pass4, true);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
-  registerRule("move-filters-up-2",
-               moveFiltersUpRule,
-               moveFiltersUpRule_pass4,
+  registerRule("move-filters-up-2", moveFiltersUpRule, moveFiltersUpRule_pass4,
                true);
 
   // merge filters into traversals
-  registerRule("merge-traversal-filter",
-               mergeFilterIntoTraversalRule,
-               mergeFilterIntoTraversalRule_pass6,
-               true);
-  
+  registerRule("merge-traversal-filter", mergeFilterIntoTraversalRule,
+               mergeFilterIntoTraversalRule_pass6, true);
+
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
   //////////////////////////////////////////////////////////////////////////////
@@ -507,145 +467,103 @@ void Optimizer::setupRules () {
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-  registerRule("remove-unnecessary-filters-2",
-               removeUnnecessaryFiltersRule,
-               removeUnnecessaryFiltersRule_pass6,
-               true);
-  
+  registerRule("remove-unnecessary-filters-2", removeUnnecessaryFiltersRule,
+               removeUnnecessaryFiltersRule_pass6, true);
+
   // remove redundant sort node
-  registerRule("remove-redundant-sorts-2",
-               removeRedundantSortsRule,
-               removeRedundantSortsRule_pass5,
-               true);
-  
+  registerRule("remove-redundant-sorts-2", removeRedundantSortsRule,
+               removeRedundantSortsRule_pass5, true);
+
   // SORT RAND() if appropriate
-  registerRule("remove-sort-rand",
-               removeSortRandRule,
-               removeSortRandRule_pass5,
+  registerRule("remove-sort-rand", removeSortRandRule, removeSortRandRule_pass5,
                true);
 
   // remove INTO from COLLECT
-  registerRule("remove-collect-into",
-               removeCollectIntoRule,
-               removeCollectIntoRule_pass5,
-               true);
-  
+  registerRule("remove-collect-into", removeCollectIntoRule,
+               removeCollectIntoRule_pass5, true);
+
   // remove unused out variables for data-modification queries
   registerRule("remove-data-modification-out-variables",
                removeDataModificationOutVariablesRule,
-               removeDataModificationOutVariablesRule_pass5,
-               true);
-        
+               removeDataModificationOutVariablesRule_pass5, true);
+
   // propagate constant attributes in FILTERs
-  registerRule("propagate-constant-attributes",
-               propagateConstantAttributesRule,
-               propagateConstantAttributesRule_pass5,
-               true);
+  registerRule("propagate-constant-attributes", propagateConstantAttributesRule,
+               propagateConstantAttributesRule_pass5, true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   //////////////////////////////////////////////////////////////////////////////
-  
+
   // try to replace simple OR conditions with IN
-  registerRule("replace-or-with-in",
-               replaceOrWithInRule,
-               replaceOrWithInRule_pass6,
-               true);
+  registerRule("replace-or-with-in", replaceOrWithInRule,
+               replaceOrWithInRule_pass6, true);
 
   // try to remove redundant OR conditions
-  registerRule("remove-redundant-or",
-               removeRedundantOrRule,
-               removeRedundantOrRule_pass6,
-               true);
-  
-  // try to find a filter after an enumerate collection and find indexes
-  registerRule("use-indexes",
-               useIndexesRule,
-               useIndexesRule_pass6,
-               true);
+  registerRule("remove-redundant-or", removeRedundantOrRule,
+               removeRedundantOrRule_pass6, true);
 
-  // try to remove filters which are covered by index ranges  
+  // try to find a filter after an enumerate collection and find indexes
+  registerRule("use-indexes", useIndexesRule, useIndexesRule_pass6, true);
+
+  // try to remove filters which are covered by index ranges
   registerRule("remove-filter-covered-by-index",
                removeFiltersCoveredByIndexRule,
-               removeFiltersCoveredByIndexRule_pass6,
-               true);
+               removeFiltersCoveredByIndexRule_pass6, true);
 
   // try to find sort blocks which are superseeded by indexes
-  registerRule("use-index-for-sort",
-               useIndexForSortRule,
-               useIndexForSortRule_pass6,
-               true);
+  registerRule("use-index-for-sort", useIndexForSortRule,
+               useIndexForSortRule_pass6, true);
 
-  // sort in-values in filters (note: must come after remove-filter-covered-by-index rule)
-  registerRule("sort-in-values",
-               sortInValuesRule,
-               sortInValuesRule_pass6,
+  // sort in-values in filters (note: must come after
+  // remove-filter-covered-by-index rule)
+  registerRule("sort-in-values", sortInValuesRule, sortInValuesRule_pass6,
                true);
 
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations-2", 
+  registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,
-               removeUnnecessaryCalculationsRule_pass6,
-               true);
+               removeUnnecessaryCalculationsRule_pass6, true);
 
   // finally, push calculations as far down as possible
-  registerRule("move-calculations-down",
-               moveCalculationsDownRule,
-               moveCalculationsDownRule_pass9,
-               true);
-  
-  // fuse calculations 
+  registerRule("move-calculations-down", moveCalculationsDownRule,
+               moveCalculationsDownRule_pass9, true);
+
+// fuse calculations
 #if 0
   registerRule("fuse-calculations",
                fuseCalculationsRule,
                fuseCalculationsRule_pass9,
                true);
 #endif
-  
+
   // patch update statements
-  registerRule("patch-update-statements",
-               patchUpdateStatementsRule,
-               patchUpdateStatementsRule_pass9,
-               true);
+  registerRule("patch-update-statements", patchUpdateStatementsRule,
+               patchUpdateStatementsRule_pass9, true);
 
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster
-    registerRule("scatter-in-cluster",
-                 scatterInClusterRule,
-                 scatterInClusterRule_pass10,
-                 false);
-    
-    registerRule("distribute-in-cluster",
-                 distributeInClusterRule,
-                 distributeInClusterRule_pass10,
-                 false);
+    registerRule("scatter-in-cluster", scatterInClusterRule,
+                 scatterInClusterRule_pass10, false);
+
+    registerRule("distribute-in-cluster", distributeInClusterRule,
+                 distributeInClusterRule_pass10, false);
 
     // distribute operations in cluster
     registerRule("distribute-filtercalc-to-cluster",
                  distributeFilternCalcToClusterRule,
-                 distributeFilternCalcToClusterRule_pass10,
-                 true);
+                 distributeFilternCalcToClusterRule_pass10, true);
 
-    registerRule("distribute-sort-to-cluster",
-                 distributeSortToClusterRule,
-                 distributeSortToClusterRule_pass10,
-                 true);
-    
+    registerRule("distribute-sort-to-cluster", distributeSortToClusterRule,
+                 distributeSortToClusterRule_pass10, true);
+
     registerRule("remove-unnecessary-remote-scatter",
                  removeUnnecessaryRemoteScatterRule,
-                 removeUnnecessaryRemoteScatterRule_pass10,
-                 true);
-    
+                 removeUnnecessaryRemoteScatterRule_pass10, true);
+
     registerRule("undistribute-remove-after-enum-coll",
                  undistributeRemoveAfterEnumCollRule,
-                 undistributeRemoveAfterEnumCollRule_pass10,
-                 true);
-
+                 undistributeRemoveAfterEnumCollRule_pass10, true);
   }
 }
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
 

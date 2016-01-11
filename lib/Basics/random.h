@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief random functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,63 +19,44 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_RANDOM_H
-#define ARANGODB_BASICS_C_RANDOM_H 1
+#ifndef LIB_BASICS_RANDOM_H
+#define LIB_BASICS_RANDOM_H 1
 
 #ifdef _WIN32
 #define _CRT_RAND_S
 #endif
 
-
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a 16 bit random unsigned integer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint16_t TRI_UInt16Random (void);
+uint16_t TRI_UInt16Random(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a 32 bit random unsigned integer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_UInt32Random (void);
+uint32_t TRI_UInt32Random(void);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            MODULE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the random components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeRandom (void);
+void TRI_InitializeRandom(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the random components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownRandom (void);
+void TRI_ShutdownRandom(void);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

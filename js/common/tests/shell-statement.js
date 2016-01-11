@@ -252,6 +252,8 @@ function StatementSuite () {
       assertTrue(plan.hasOwnProperty("collections"));
       assertEqual([ ], plan.collections);
       assertTrue(plan.hasOwnProperty("variables"));
+      assertTrue(result.hasOwnProperty("cacheable"));
+      assertTrue(result.cacheable);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,6 +277,7 @@ function StatementSuite () {
       assertTrue(plan.hasOwnProperty("collections"));
       assertEqual([ ], plan.collections);
       assertTrue(plan.hasOwnProperty("variables"));
+      assertFalse(result.hasOwnProperty("cacheable"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,6 +301,7 @@ function StatementSuite () {
       assertTrue(plan.hasOwnProperty("collections"));
       assertEqual([ ], plan.collections);
       assertTrue(plan.hasOwnProperty("variables"));
+      assertFalse(result.hasOwnProperty("cacheable"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,6 +374,8 @@ function StatementSuite () {
       assertTrue(plan.hasOwnProperty("collections"));
       assertEqual([ ], plan.collections);
       assertTrue(plan.hasOwnProperty("variables"));
+      assertTrue(result.hasOwnProperty("cacheable"));
+      assertTrue(result.cacheable);
     },
 
 
@@ -393,6 +399,24 @@ function StatementSuite () {
       assertTrue(plan.hasOwnProperty("collections"));
       assertEqual([ ], plan.collections);
       assertTrue(plan.hasOwnProperty("variables"));
+      assertTrue(result.hasOwnProperty("cacheable"));
+      assertFalse(result.cacheable);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non cacheable
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainNoncacheable : function () {
+      var st = db._createStatement({ query : "RETURN RAND()" });
+      var result = st.explain();
+
+      assertEqual(0, result.warnings.length);
+      assertTrue(result.hasOwnProperty("plan"));
+      assertFalse(result.hasOwnProperty("plans"));
+
+      assertTrue(result.hasOwnProperty("cacheable"));
+      assertFalse(result.cacheable);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

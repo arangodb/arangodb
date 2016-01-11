@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force symbols into program
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/InitializeBasics.h"
@@ -37,37 +31,26 @@
 #include "Basics/RandomGenerator.h"
 
 namespace triagens {
-  namespace basics {
-    void InitializeBasics (int argv, char* argc[]) {
-      TRIAGENS_C_INITIALIZE(argv, argc);
+namespace basics {
+void InitializeBasics(int argv, char* argc[]) {
+  TRIAGENS_C_INITIALIZE(argv, argc);
 
-      // use the rng so the linker does not remove it from the executable
-      // we might need it later because .so files might refer to the symbols
-      Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
-      Random::UniformInteger random(0, INT32_MAX);
-      random.random();
-      Random::selectVersion(v);
+  // use the rng so the linker does not remove it from the executable
+  // we might need it later because .so files might refer to the symbols
+  Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
+  Random::UniformInteger random(0, INT32_MAX);
+  random.random();
+  Random::selectVersion(v);
 
 #ifdef TRI_BROKEN_CXA_GUARD
-      pthread_cond_t cond;
-      pthread_cond_init(&cond, 0);
-      pthread_cond_broadcast(&cond);
+  pthread_cond_t cond;
+  pthread_cond_init(&cond, 0);
+  pthread_cond_broadcast(&cond);
 #endif
-    }
-
-
-
-    void ShutdownBasics () {
-      TRIAGENS_C_SHUTDOWN;
-    }
-  }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+void ShutdownBasics() { TRIAGENS_C_SHUTDOWN; }
+}
+}
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
+

@@ -27,7 +27,7 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore'),
+var _ = require('lodash'),
   joi = require('joi');
 
 function toJSONSchema(id, schema) {

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recursive execution plan walker
-///
-/// @file 
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,109 +16,80 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_WALKER_WORKER_H
-#define ARANGODB_AQL_WALKER_WORKER_H 1
+#ifndef ARANGOD_AQL_WALKER_WORKER_H
+#define ARANGOD_AQL_WALKER_WORKER_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<class T> class WalkerWorker {
+template <class T>
+class WalkerWorker {
+  
+ public:
+  WalkerWorker() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  virtual ~WalkerWorker() {}
 
-      public:
+  
+  virtual bool before(T*) {
+    return false;  // true to abort the whole walking process
+  }
 
-        WalkerWorker () {
-        }
+  virtual void after(T*) {}
 
-        virtual ~WalkerWorker () {
-        }
+  virtual bool enterSubquery(T*, T*) {  // super, sub
+    return true;
+  }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-        virtual bool before (T*) {
-          return false; // true to abort the whole walking process
-        }
-
-        virtual void after (T*) {
-        }
-
-        virtual bool enterSubquery (T*, T*) { // super, sub
-          return true;
-        }
-
-        virtual void leaveSubquery (T*, // super,
-                                    T*  // sub
-                                   ) {
-        }
-
+  virtual void leaveSubquery(T*,  // super,
+                             T*   // sub
+                             ) {}
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 
-        bool done (T* en) {
-          // make sure a node is only processed once
-          if (_done.find(en) == _done.end()) {
-            _done.emplace(en);
-            return false;
-          }
+  bool done(T* en) {
+    // make sure a node is only processed once
+    if (_done.find(en) == _done.end()) {
+      _done.emplace(en);
+      return false;
+    }
 
-          TRI_ASSERT(false);
+    TRI_ASSERT(false);
 
-          return true;
-        }
+    return true;
+  }
 
-        void reset () {
-          _done.clear();
-        }
+  void reset() { _done.clear(); }
 
 #else
 
-        // this is a no-op in non-failure mode
-        bool done (T*) {
-          return false;
-        }
+  // this is a no-op in non-failure mode
+  bool done(T*) { return false; }
 
-        // this is a no-op in non-failure mode
-        void reset () {
-        }
+  // this is a no-op in non-failure mode
+  void reset() {}
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
+  
+ private:
 #ifdef TRI_ENABLE_FAILURE_TESTS
-        std::unordered_set<T*> _done;
+  std::unordered_set<T*> _done;
 #endif
-
-    };
-
-  }
-} 
+};
+}
+}
 
 #endif
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
 

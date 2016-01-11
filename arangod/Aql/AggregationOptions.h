@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AQL, options for COLLECT
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,103 +16,81 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_AGGREGATION_OPTIONS_H
-#define ARANGODB_AQL_AGGREGATION_OPTIONS_H 1
+#ifndef ARANGOD_AQL_AGGREGATION_OPTIONS_H
+#define ARANGOD_AQL_AGGREGATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AggregationOptions
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct AggregationOptions {
+struct AggregationOptions {
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief selected aggregation method
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
+  enum AggregationMethod {
+    AGGREGATION_METHOD_UNDEFINED,
+    AGGREGATION_METHOD_HASH,
+    AGGREGATION_METHOD_SORTED
+  };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selected aggregation method
-////////////////////////////////////////////////////////////////////////////////
-        
-      enum AggregationMethod {
-        AGGREGATION_METHOD_UNDEFINED,
-        AGGREGATION_METHOD_HASH,
-        AGGREGATION_METHOD_SORTED
-      };
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor, using default values
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor, using default values
-////////////////////////////////////////////////////////////////////////////////
+  AggregationOptions() : method(AGGREGATION_METHOD_UNDEFINED) {}
 
-      AggregationOptions ()
-        : method(AGGREGATION_METHOD_UNDEFINED) {
-      }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor, using JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor, using JSON
-////////////////////////////////////////////////////////////////////////////////
-      
-      AggregationOptions (triagens::basics::Json const&);
+  AggregationOptions(triagens::basics::Json const&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the hash method can be used
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the hash method can be used
-////////////////////////////////////////////////////////////////////////////////
+  bool canUseHashMethod() const;
 
-      bool canUseHashMethod () const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief convert the options to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert the options to JSON
-////////////////////////////////////////////////////////////////////////////////
+  void toJson(triagens::basics::Json&, TRI_memory_zone_t*) const;
 
-      void toJson (triagens::basics::Json&, 
-                   TRI_memory_zone_t*) const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the aggregation method from a string
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the aggregation method from a string
-////////////////////////////////////////////////////////////////////////////////
-          
-      static AggregationMethod methodFromString (std::string const&);
+  static AggregationMethod methodFromString(std::string const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify the aggregation method
-////////////////////////////////////////////////////////////////////////////////
-          
-      static std::string methodToString (AggregationOptions::AggregationMethod method);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief stringify the aggregation method
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
+  static std::string methodToString(
+      AggregationOptions::AggregationMethod method);
 
-      AggregationMethod method;
+  
+  AggregationMethod method;
+};
 
-    };
-
-  }  // namespace triagens::aql
+}  // namespace triagens::aql
 }  // namespace triagens
 
 #endif
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
 

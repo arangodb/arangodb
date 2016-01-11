@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collections of terminal functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,31 +19,26 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "terminal-utils.h"
 
 #include "Basics/conversions.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-#if ! defined(TRI_HAVE_SYS_IOCTL_H) && ! defined(TRI_WIN32_CONSOLE)
+#if !defined(TRI_HAVE_SYS_IOCTL_H) && !defined(TRI_WIN32_CONSOLE)
 
-int TRI_ColumnsWidth (void) {
+int TRI_ColumnsWidth(void) {
   char* e;
 
   e = getenv("COLUMNS");
 
   if (e != 0) {
-    int c = (int) TRI_Int32String(e);
+    int c = (int)TRI_Int32String(e);
 
     if (c == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
       return TRI_DEFAULT_COLUMNS;
@@ -65,26 +56,18 @@ int TRI_ColumnsWidth (void) {
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetStdinVisibility (bool visible) {
+void TRI_SetStdinVisibility(bool visible) {
 #ifdef TRI_HAVE_TERMIOS_H
   struct termios tty;
 
   tcgetattr(STDIN_FILENO, &tty);
   if (visible) {
     tty.c_lflag |= ECHO;
-  }
-  else {
+  } else {
     tty.c_lflag &= ~ECHO;
   }
-  (void) tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+  (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
 #endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

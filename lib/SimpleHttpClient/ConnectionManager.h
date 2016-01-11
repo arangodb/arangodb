@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief manages open HTTP connections on the client side
-///
-/// @file ConnectionManager.h
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H 1
+#ifndef LIB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H
+#define LIB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -36,220 +31,191 @@
 #include <list>
 
 // TODO: change to constexpr when feasible
-#define CONNECTION_MANAGER_BUCKETS 8 
+#define CONNECTION_MANAGER_BUCKETS 8
 
 namespace triagens {
-  namespace httpclient {
+namespace httpclient {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 ConnectionManager
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief options for connections
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct ConnectionOptions {
-      double _connectTimeout;
-      double _requestTimeout;
-      size_t _connectRetries;
-      double _singleRequestTimeout;
-      uint32_t _sslProtocol;
-    };
+struct ConnectionOptions {
+  double _connectTimeout;
+  double _requestTimeout;
+  size_t _connectRetries;
+  double _singleRequestTimeout;
+  uint32_t _sslProtocol;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the class to manage open client connections
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ConnectionManager {
+class ConnectionManager {
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initializes library
+  ///
+  /// We are a singleton class, therefore nobody is allowed to create
+  /// new instances or copy them, except we ourselves.
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     constructors and destructors
-// -----------------------------------------------------------------------------
+ private:
+  ConnectionManager() = default;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes library
-///
-/// We are a singleton class, therefore nobody is allowed to create
-/// new instances or copy them, except we ourselves.
-////////////////////////////////////////////////////////////////////////////////
+  ConnectionManager(ConnectionManager const&) = delete;
+  ConnectionManager& operator=(ConnectionManager const&) = delete;
 
-      private:
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief shuts down library
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ConnectionManager () = default; 
+  ~ConnectionManager();
 
-        ConnectionManager (ConnectionManager const&) = delete;
-        ConnectionManager& operator= (ConnectionManager const&) = delete;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initializes library
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  static void initialize();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down library
-////////////////////////////////////////////////////////////////////////////////
+  
+  struct ServerConnections;
 
-        ~ConnectionManager ( );
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief class to administrate one connection to a server
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes library
-////////////////////////////////////////////////////////////////////////////////
+  struct SingleServerConnection {
+    ServerConnections* _connections;
+    GeneralClientConnection* _connection;
+    triagens::rest::Endpoint* _endpoint;
+    std::string const _endpointSpecification;
+    time_t _lastUsed;
 
-        static void initialize ();
+    SingleServerConnection(ServerConnections* manager,
+                           GeneralClientConnection* connection,
+                           triagens::rest::Endpoint* endpoint,
+                           std::string const& endpointSpecification)
+        : _connections(manager),
+          _connection(connection),
+          _endpoint(endpoint),
+          _endpointSpecification(endpointSpecification),
+          _lastUsed(::time(0)) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 public subclasses
-// -----------------------------------------------------------------------------
+    ~SingleServerConnection();
+  };
 
-        struct ServerConnections;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief class to administrate all connections to a server
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief class to administrate one connection to a server
-////////////////////////////////////////////////////////////////////////////////
+  struct ServerConnections {
+    std::vector<SingleServerConnection*> _connections;
+    std::list<SingleServerConnection*> _unused;
+    triagens::basics::ReadWriteLock _lock;
 
-        struct SingleServerConnection {
-          ServerConnections*         _connections;
-          GeneralClientConnection*   _connection;
-          triagens::rest::Endpoint*  _endpoint;
-          std::string const          _endpointSpecification;
-          time_t                     _lastUsed;
+    ServerConnections() = default;
 
-          SingleServerConnection (ServerConnections* manager,
-                                  GeneralClientConnection* connection,
-                                  triagens::rest::Endpoint* endpoint,
-                                  std::string const& endpointSpecification)
-            : _connections(manager),
-              _connection(connection), 
-              _endpoint(endpoint), 
-              _endpointSpecification(endpointSpecification),
-              _lastUsed(::time(0)) {
-          }
+    ~ServerConnections();  // closes all connections
 
-          ~SingleServerConnection ();
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief adds a single connection
+    ////////////////////////////////////////////////////////////////////////////////
 
-        };
+    void addConnection(SingleServerConnection*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief class to administrate all connections to a server
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief pop a free connection - returns nullptr if no connection is
+    /// available
+    ////////////////////////////////////////////////////////////////////////////////
 
-        struct ServerConnections {
-          std::vector<SingleServerConnection*> _connections;
-          std::list<SingleServerConnection*>   _unused;
-          triagens::basics::ReadWriteLock      _lock;
+    SingleServerConnection* popConnection();
 
-          ServerConnections () = default;
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief push a unused connection back on the stack, allowing its re-use
+    ////////////////////////////////////////////////////////////////////////////////
 
-          ~ServerConnections ();   // closes all connections
+    void pushConnection(SingleServerConnection*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a single connection
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief remove a (broken) connection from the list of connections
+    ////////////////////////////////////////////////////////////////////////////////
 
-          void addConnection (SingleServerConnection*);
+    void removeConnection(SingleServerConnection*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pop a free connection - returns nullptr if no connection is
-/// available
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief closes unused connections
+    ////////////////////////////////////////////////////////////////////////////////
 
-          SingleServerConnection* popConnection ();
+    void closeUnusedConnections(double);
+  };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief push a unused connection back on the stack, allowing its re-use
-////////////////////////////////////////////////////////////////////////////////
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the unique instance
+  ////////////////////////////////////////////////////////////////////////////////
 
-          void pushConnection (SingleServerConnection*);
+  static ConnectionManager* instance();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a (broken) connection from the list of connections
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief open or get a previously cached connection to a server
+  ////////////////////////////////////////////////////////////////////////////////
 
-          void removeConnection (SingleServerConnection*);
+  SingleServerConnection* leaseConnection(std::string const& endpoint);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes unused connections
-////////////////////////////////////////////////////////////////////////////////
-          
-          void closeUnusedConnections (double);
-        };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return leased connection to a server
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   public methods
-// -----------------------------------------------------------------------------
+  void returnConnection(SingleServerConnection* singleConnection);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the unique instance
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief report a leased connection as being broken
+  ////////////////////////////////////////////////////////////////////////////////
 
-        static ConnectionManager* instance ();
+  void brokenConnection(SingleServerConnection* singleConnection);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief open or get a previously cached connection to a server
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief closes all connections that have been unused for more than
+  /// limit seconds
+  ////////////////////////////////////////////////////////////////////////////////
 
-        SingleServerConnection* leaseConnection (std::string const& endpoint);
+  void closeUnusedConnections(double limit);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return leased connection to a server
-////////////////////////////////////////////////////////////////////////////////
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief hash the endpoint value into a bucket
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void returnConnection (SingleServerConnection* singleConnection);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief report a leased connection as being broken
-////////////////////////////////////////////////////////////////////////////////
-
-        void brokenConnection(SingleServerConnection* singleConnection);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes all connections that have been unused for more than
-/// limit seconds
-////////////////////////////////////////////////////////////////////////////////
-
-        void closeUnusedConnections (double limit);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         private methods and data
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hash the endpoint value into a bucket
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t bucket (std::string const& endpoint) const {
-          return std::hash<std::string>()(endpoint) % CONNECTION_MANAGER_BUCKETS;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global options for connections
-////////////////////////////////////////////////////////////////////////////////
-
-        static ConnectionOptions _globalConnectionOptions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief map to store all connections to all servers with corresponding lock
-////////////////////////////////////////////////////////////////////////////////
-
-        // We keep connections to servers open:
-        struct TRI_ALIGNAS(64) ConnectionsBucket {
-          std::unordered_map<std::string, ServerConnections*> _connections;
-
-          triagens::basics::ReadWriteLock _lock;
-        };
-
-        ConnectionsBucket _connectionsBuckets[CONNECTION_MANAGER_BUCKETS];
-
-    };
+  size_t bucket(std::string const& endpoint) const {
+    return std::hash<std::string>()(endpoint) % CONNECTION_MANAGER_BUCKETS;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief global options for connections
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static ConnectionOptions _globalConnectionOptions;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief map to store all connections to all servers with corresponding lock
+  ////////////////////////////////////////////////////////////////////////////////
+
+  // We keep connections to servers open:
+  struct TRI_ALIGNAS(64) ConnectionsBucket {
+    std::unordered_map<std::string, ServerConnections*> _connections;
+
+    triagens::basics::ReadWriteLock _lock;
+  };
+
+  ConnectionsBucket _connectionsBuckets[CONNECTION_MANAGER_BUCKETS];
+};
+}
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

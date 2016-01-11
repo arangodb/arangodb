@@ -28,7 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
   var jsunity = require("jsunity");
-  var _ = require("underscore");
+  var _ = require("lodash");
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                              agency-result-helper

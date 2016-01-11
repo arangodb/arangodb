@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection write locker
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,102 +19,72 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_COLLECTION_WRITE_LOCKER_H
-#define ARANGODB_UTILS_COLLECTION_WRITE_LOCKER_H 1
+#ifndef ARANGOD_UTILS_COLLECTION_WRITE_LOCKER_H
+#define ARANGOD_UTILS_COLLECTION_WRITE_LOCKER_H 1
 
 #include "Basics/Common.h"
 
 #include "VocBase/document-collection.h"
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       class CollectionWriteLocker
-// -----------------------------------------------------------------------------
 
-    class CollectionWriteLocker {
+class CollectionWriteLocker {
+  
+ public:
+  CollectionWriteLocker(CollectionWriteLocker const&) = delete;
+  CollectionWriteLocker& operator=(CollectionWriteLocker const&) = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the locker
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
-        CollectionWriteLocker (CollectionWriteLocker const&) = delete;
-        CollectionWriteLocker& operator= (CollectionWriteLocker const&) = delete;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the locker
-////////////////////////////////////////////////////////////////////////////////
-
-        CollectionWriteLocker (TRI_document_collection_t* document,
-                               bool doLock)
-          : _document(document),
-            _doLock(false) {
-
-          if (doLock) {
-            _document->beginWrite();
-            _doLock = true;
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the locker
-////////////////////////////////////////////////////////////////////////////////
-
-        ~CollectionWriteLocker () {
-          unlock();
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief release the lock
-////////////////////////////////////////////////////////////////////////////////
-
-        inline void unlock () {
-          if (_doLock) {
-            _document->endWrite();
-            _doLock = false;
-          }
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection pointer
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_document_collection_t* _document;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock flag
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _doLock;
-
-    };
+  CollectionWriteLocker(TRI_document_collection_t* document, bool doLock)
+      : _document(document), _doLock(false) {
+    if (doLock) {
+      _document->beginWrite();
+      _doLock = true;
+    }
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroy the locker
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ~CollectionWriteLocker() { unlock(); }
+
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief release the lock
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline void unlock() {
+    if (_doLock) {
+      _document->endWrite();
+      _doLock = false;
+    }
+  }
+
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief collection pointer
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_document_collection_t* _document;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lock flag
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool _doLock;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

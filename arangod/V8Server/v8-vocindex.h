@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8-vocbase bridge
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__INDEX_H
-#define ARANGODB_V8SERVER_V8__INDEX_H 1
+#ifndef ARANGOD_V8_SERVER_V8_VOCINDEX_H
+#define ARANGOD_V8_SERVER_V8_VOCINDEX_H 1
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -37,25 +31,25 @@
 #include "VocBase/server.h"
 
 namespace triagens {
-  namespace arango {
-    class Index;
-  }
+namespace arango {
+class Index;
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupIndexByHandle (v8::Isolate* isolate,
-                                                  triagens::arango::CollectionNameResolver const* resolver,
-                                                  TRI_vocbase_col_t const* collection,
-                                                  v8::Handle<v8::Value> const val,
-                                                  bool ignoreNotFound);
+triagens::arango::Index* TRI_LookupIndexByHandle(
+    v8::Isolate* isolate,
+    triagens::arango::CollectionNameResolver const* resolver,
+    TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val,
+    bool ignoreNotFound);
 
-void TRI_InitV8indexArangoDB (v8::Isolate* isolate,
-                              v8::Handle<v8::ObjectTemplate>  ArangoDBNS);
+void TRI_InitV8indexArangoDB(v8::Isolate* isolate,
+                             v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 
-void TRI_InitV8indexCollection (v8::Isolate* isolate,
-                                v8::Handle<v8::ObjectTemplate> rt);
+void TRI_InitV8indexCollection(v8::Isolate* isolate,
+                               v8::Handle<v8::ObjectTemplate> rt);
 
 #endif

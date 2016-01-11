@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, item block manager
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,89 +19,61 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_ITEM_BLOCK_MANAGER_H
-#define ARANGODB_AQL_ITEM_BLOCK_MANAGER_H 1
+#ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
+#define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
 
 #include "Basics/Common.h"
 #include "Aql/types.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-    class AqlItemBlock;
+class AqlItemBlock;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class AqlItemBlockManager
-// -----------------------------------------------------------------------------
 
-    class AqlItemBlockManager {
+class AqlItemBlockManager {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the manager
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  AqlItemBlockManager();
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroy the manager
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the manager
-////////////////////////////////////////////////////////////////////////////////
+  ~AqlItemBlockManager();
 
-        AqlItemBlockManager ();
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief request a block with the specified size
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the manager
-////////////////////////////////////////////////////////////////////////////////
+  AqlItemBlock* requestBlock(size_t, RegisterId);
 
-        ~AqlItemBlockManager ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return a block to the manager
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  void returnBlock(AqlItemBlock*&);
 
-      public:
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief last block handed back to the manager
+  /// this is the block that may be recycled
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request a block with the specified size
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* requestBlock (size_t, 
-                                    RegisterId);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a block to the manager
-////////////////////////////////////////////////////////////////////////////////
-
-        void returnBlock (AqlItemBlock*&);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief last block handed back to the manager
-/// this is the block that may be recycled
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* _last;
-
-    };
-
-  }
+  AqlItemBlock* _last;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

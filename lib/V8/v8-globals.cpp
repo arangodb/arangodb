@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 globals
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,123 +19,115 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-globals.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
-  : JSCollections(),
-    JSDitches(),
+TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
+    : JSCollections(),
+      JSDitches(),
 
-    AgencyTempl(),
-    ClusterInfoTempl(),
-    ServerStateTempl(),
-    ClusterCommTempl(),
-    ArangoErrorTempl(),
-    SleepAndRequeueTempl(),
-    SleepAndRequeueFuncTempl(),
-    GeneralCursorTempl(),
-    ShapedJsonTempl(),
-    VocbaseColTempl(),
-    VocbaseTempl(),
+      AgencyTempl(),
+      ClusterInfoTempl(),
+      ServerStateTempl(),
+      ClusterCommTempl(),
+      ArangoErrorTempl(),
+      GeneralCursorTempl(),
+      ShapedJsonTempl(),
+      VocbaseColTempl(),
+      VocbaseTempl(),
 
-    BufferTempl(),
-    FastBufferConstructor(),
+      BufferTempl(),
+      FastBufferConstructor(),
 
-    BufferConstant(),
-    DeleteConstant(),
-    GetConstant(),
-    HeadConstant(),
-    OptionsConstant(),
-    PatchConstant(),
-    PostConstant(),
-    PutConstant(),
+      BufferConstant(),
+      DeleteConstant(),
+      GetConstant(),
+      HeadConstant(),
+      OptionsConstant(),
+      PatchConstant(),
+      PostConstant(),
+      PutConstant(),
 
-    AddressKey(),
-    AllowUseDatabaseKey(),
-    BodyFromFileKey(),
-    BodyKey(),
-    ClientKey(),
-    ClientTransactionIDKey(),
-    CodeKey(),
-    CompatibilityKey(),
-    ContentTypeKey(),
-    CoordTransactionIDKey(),
-    DatabaseKey(),
-    DoCompactKey(),
-    DomainKey(),
-    ErrorKey(),
-    ErrorMessageKey(),
-    ErrorNumKey(),
-    HeadersKey(),
-    HttpOnlyKey(),
-    IdKey(),
-    IsSystemKey(),
-    IsVolatileKey(),
-    JournalSizeKey(),
-    KeepNullKey(),
-    KeyOptionsKey(),
-    LengthKey(),
-    LifeTimeKey(),
-    MergeObjectsKey(),
-    NameKey(),
-    OperationIDKey(),
-    ParametersKey(),
-    PathKey(),
-    PrefixKey(),
-    PortKey(),
-    PortTypeKey(),
-    ProtocolKey(),
-    RequestBodyKey(),
-    RequestTypeKey(),
-    ResponseCodeKey(),
-    SecureKey(),
-    ServerKey(),
-    ShardIDKey(),
-    SilentKey(),
-    SleepKey(),
-    StatusKey(),
-    SuffixKey(),
-    TimeoutKey(),
-    TransformationsKey(),
-    UrlKey(),
-    UserKey(),
-    ValueKey(),
-    VersionKey(),
-    VersionKeyHidden(),
-    WaitForSyncKey(),
+      AddressKey(),
+      AllowUseDatabaseKey(),
+      BodyFromFileKey(),
+      BodyKey(),
+      ClientKey(),
+      ClientTransactionIDKey(),
+      CodeKey(),
+      CompatibilityKey(),
+      ContentTypeKey(),
+      CoordTransactionIDKey(),
+      DatabaseKey(),
+      DoCompactKey(),
+      DomainKey(),
+      ErrorKey(),
+      ErrorMessageKey(),
+      ErrorNumKey(),
+      HeadersKey(),
+      HttpOnlyKey(),
+      IdKey(),
+      IsSystemKey(),
+      IsVolatileKey(),
+      JournalSizeKey(),
+      KeepNullKey(),
+      KeyOptionsKey(),
+      LengthKey(),
+      LifeTimeKey(),
+      MergeObjectsKey(),
+      NameKey(),
+      OperationIDKey(),
+      ParametersKey(),
+      PathKey(),
+      PrefixKey(),
+      PortKey(),
+      PortTypeKey(),
+      ProtocolKey(),
+      RequestBodyKey(),
+      RequestTypeKey(),
+      ResponseCodeKey(),
+      SecureKey(),
+      ServerKey(),
+      ShardIDKey(),
+      SilentKey(),
+      SleepKey(),
+      StatusKey(),
+      SuffixKey(),
+      TimeoutKey(),
+      TransformationsKey(),
+      UrlKey(),
+      UserKey(),
+      ValueKey(),
+      VersionKey(),
+      VersionKeyHidden(),
+      WaitForSyncKey(),
 
-    _FromKey(),
-    _DbNameKey(),
-    _IdKey(),
-    _KeyKey(),
-    _OldRevKey(),
-    _RevKey(),
-    _ToKey(),
+      _FromKey(),
+      _DbNameKey(),
+      _IdKey(),
+      _KeyKey(),
+      _OldRevKey(),
+      _RevKey(),
+      _ToKey(),
 
-    _currentRequest(),
-    _currentResponse(),
-    _transactionContext(nullptr),
-    _queryRegistry(nullptr),
-    _query(nullptr),
-    _server(nullptr),
-    _vocbase(nullptr),
-    _activeExternals(0),
-    _applicationV8(nullptr),
-    _loader(nullptr),
-    _canceled(false),
-    _allowUseDatabase(true) {
-
+      _currentRequest(),
+      _currentResponse(),
+      _transactionContext(nullptr),
+      _queryRegistry(nullptr),
+      _query(nullptr),
+      _server(nullptr),
+      _vocbase(nullptr),
+      _activeExternals(0),
+      _applicationV8(nullptr),
+      _loader(nullptr),
+      _canceled(false),
+      _allowUseDatabase(true) {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING("Buffer"));
@@ -156,12 +144,14 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   BodyFromFileKey.Reset(isolate, TRI_V8_ASCII_STRING("bodyFromFile"));
   BodyKey.Reset(isolate, TRI_V8_ASCII_STRING("body"));
   ClientKey.Reset(isolate, TRI_V8_ASCII_STRING("client"));
-  ClientTransactionIDKey.Reset(isolate, TRI_V8_ASCII_STRING("clientTransactionID"));
+  ClientTransactionIDKey.Reset(isolate,
+                               TRI_V8_ASCII_STRING("clientTransactionID"));
   CodeKey.Reset(isolate, TRI_V8_ASCII_STRING("code"));
   CompatibilityKey.Reset(isolate, TRI_V8_ASCII_STRING("compatibility"));
   ContentTypeKey.Reset(isolate, TRI_V8_ASCII_STRING("contentType"));
   CookiesKey.Reset(isolate, TRI_V8_ASCII_STRING("cookies"));
-  CoordTransactionIDKey.Reset(isolate, TRI_V8_ASCII_STRING("coordTransactionID"));
+  CoordTransactionIDKey.Reset(isolate,
+                              TRI_V8_ASCII_STRING("coordTransactionID"));
   DatabaseKey.Reset(isolate, TRI_V8_ASCII_STRING("database"));
   DoCompactKey.Reset(isolate, TRI_V8_ASCII_STRING("doCompact"));
   DomainKey.Reset(isolate, TRI_V8_ASCII_STRING("domain"));
@@ -220,18 +210,14 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_s::~TRI_v8_global_s () {
-}
+TRI_v8_global_s::~TRI_v8_global_s() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  GLOBAL FUNCTIONS
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_t* TRI_CreateV8Globals (v8::Isolate* isolate) {
+TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g == nullptr);
@@ -245,7 +231,7 @@ TRI_v8_global_t* TRI_CreateV8Globals (v8::Isolate* isolate) {
 /// @brief returns a global context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_t* TRI_GetV8Globals (v8::Isolate* isolate) {
+TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
   if (v8g == nullptr) {
     v8g = TRI_CreateV8Globals(isolate);
@@ -259,16 +245,14 @@ TRI_v8_global_t* TRI_GetV8Globals (v8::Isolate* isolate) {
 /// @brief adds a method to an object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddMethodVocbase (v8::Isolate* isolate,
-                           v8::Handle<v8::ObjectTemplate> tpl,
-                           v8::Handle<v8::String> name,
-                           void(*func)(v8::FunctionCallbackInfo<v8::Value> const&),
-                           bool isHidden) {
+void TRI_AddMethodVocbase(
+    v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
+    v8::Handle<v8::String> name,
+    void (*func)(v8::FunctionCallbackInfo<v8::Value> const&), bool isHidden) {
   if (isHidden) {
     // hidden method
     tpl->Set(name, v8::FunctionTemplate::New(isolate, func), v8::DontEnum);
-  }
-  else {
+  } else {
     // normal method
     tpl->Set(name, v8::FunctionTemplate::New(isolate, func));
   }
@@ -278,21 +262,19 @@ void TRI_AddMethodVocbase (v8::Isolate* isolate,
 /// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalFunctionVocbase (v8::Isolate* isolate,
-                                   v8::Handle<v8::Context> context,
-                                   v8::Handle<v8::String> name,
-                                   void(*func)(v8::FunctionCallbackInfo<v8::Value> const&),
-                                   bool isHidden) {
+void TRI_AddGlobalFunctionVocbase(
+    v8::Isolate* isolate, v8::Handle<v8::Context> context,
+    v8::Handle<v8::String> name,
+    void (*func)(v8::FunctionCallbackInfo<v8::Value> const&), bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->ForceSet(name,
-                                v8::FunctionTemplate::New(isolate, func)->GetFunction(),
-                                static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
-  }
-  else {
-    context->Global()->ForceSet(name,
-                                v8::FunctionTemplate::New(isolate, func)->GetFunction(),
-                                v8::ReadOnly);
+    context->Global()->ForceSet(
+        name, v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+        static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+  } else {
+    context->Global()->ForceSet(
+        name, v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+        v8::ReadOnly);
   }
 }
 
@@ -300,21 +282,17 @@ void TRI_AddGlobalFunctionVocbase (v8::Isolate* isolate,
 /// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalFunctionVocbase (v8::Isolate* isolate,
-                                   v8::Handle<v8::Context> context,
-                                   v8::Handle<v8::String> name,
-                                   v8::Handle<v8::Function> func,
-                                   bool isHidden) {
+void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate,
+                                  v8::Handle<v8::Context> context,
+                                  v8::Handle<v8::String> name,
+                                  v8::Handle<v8::Function> func,
+                                  bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->ForceSet(name,
-                                func,
-                                static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
-  }
-  else {
-    context->Global()->ForceSet(name,
-                                func,
-                                v8::ReadOnly);
+    context->Global()->ForceSet(name, func, static_cast<v8::PropertyAttribute>(
+                                                v8::ReadOnly | v8::DontEnum));
+  } else {
+    context->Global()->ForceSet(name, func, v8::ReadOnly);
   }
 }
 
@@ -322,19 +300,12 @@ void TRI_AddGlobalFunctionVocbase (v8::Isolate* isolate,
 /// @brief adds a global read-only variable to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalVariableVocbase (v8::Isolate* isolate,
-                                   v8::Handle<v8::Context> context,
-                                   v8::Handle<v8::String> name,
-                                   v8::Handle<v8::Value> value) {
+void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate,
+                                  v8::Handle<v8::Context> context,
+                                  v8::Handle<v8::String> name,
+                                  v8::Handle<v8::Value> value) {
   // all global variables are read-only
   context->Global()->ForceSet(name, value, v8::ReadOnly);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

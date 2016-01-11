@@ -43,7 +43,7 @@
   var marked = require("marked");
   var highlightAuto = require("highlight.js").highlightAuto;
   var docu = require("./lib/swagger").Swagger;
-  var underscore = require("underscore");
+  var underscore = require("lodash");
   var mountPoint = {
     type: joi.string().required().description(
       "The mount point of the app. Has to be url-encoded."

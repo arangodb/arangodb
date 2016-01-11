@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase types
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,29 +19,21 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_VOC__TYPES_H
-#define ARANGODB_VOC_BASE_VOC__TYPES_H 1
+#ifndef ARANGOD_VOC_BASE_VOC_TYPES_H
+#define ARANGOD_VOC_BASE_VOC_TYPES_H 1
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection meta info filename
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_PARAMETER_FILE  "parameter.json"
+#define TRI_VOC_PARAMETER_FILE "parameter.json"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tick type (48bit)
@@ -128,18 +116,16 @@ typedef enum {
   TRI_VOC_DOCUMENT_OPERATION_INSERT,
   TRI_VOC_DOCUMENT_OPERATION_UPDATE,
   TRI_VOC_DOCUMENT_OPERATION_REMOVE
-}
-TRI_voc_document_operation_e;
+} TRI_voc_document_operation_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server operation modes
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_VOCBASE_MODE_NORMAL    = 1,    // CRUD is allowed
+  TRI_VOCBASE_MODE_NORMAL = 1,     // CRUD is allowed
   TRI_VOCBASE_MODE_NO_CREATE = 2,  // C & U not allowed RD allowed
-}
-TRI_vocbase_operationmode_e;
+} TRI_vocbase_operationmode_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge from and to
@@ -151,16 +137,8 @@ typedef struct TRI_document_edge_s {
 
   TRI_voc_cid_t _toCid;
   TRI_voc_key_t _toKey;
-}
-TRI_document_edge_t;
+} TRI_document_edge_t;
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

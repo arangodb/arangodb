@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief json shaper used to compute the shape of an json object
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,112 +20,88 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_SHAPER_H
-#define ARANGODB_VOC_BASE_SHAPER_H 1
+#ifndef ARANGOD_VOC_BASE_SHAPER_H
+#define ARANGOD_VOC_BASE_SHAPER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
 #include "VocBase/shaped-json.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       BasicShapes
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static const information about basic shape types
 ////////////////////////////////////////////////////////////////////////////////
 
 struct BasicShapes {
-  static TRI_shape_pid_t const   TRI_SHAPE_SID_ILLEGAL;
-  static TRI_shape_pid_t const   TRI_SHAPE_SID_NULL;
-  static TRI_shape_pid_t const   TRI_SHAPE_SID_BOOLEAN;
-  static TRI_shape_pid_t const   TRI_SHAPE_SID_NUMBER;
-  static TRI_shape_pid_t const   TRI_SHAPE_SID_SHORT_STRING;
-  static TRI_shape_pid_t const   TRI_SHAPE_SID_LONG_STRING;
-  static TRI_shape_pid_t const   TRI_SHAPE_SID_LIST;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_ILLEGAL;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_NULL;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_BOOLEAN;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_NUMBER;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_SHORT_STRING;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_LONG_STRING;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_LIST;
 
-  static TRI_shape_t const       _shapeNull;
-  static TRI_shape_t const       _shapeBoolean;
-  static TRI_shape_t const       _shapeNumber;
-  static TRI_shape_t const       _shapeShortString;
-  static TRI_shape_t const       _shapeLongString;
-  static TRI_shape_t const       _shapeList;
+  static TRI_shape_t const _shapeNull;
+  static TRI_shape_t const _shapeBoolean;
+  static TRI_shape_t const _shapeNumber;
+  static TRI_shape_t const _shapeShortString;
+  static TRI_shape_t const _shapeLongString;
+  static TRI_shape_t const _shapeList;
 
-  static uint32_t const          TypeLengths[5];
-  static TRI_shape_t const*      ShapeAddresses[7]; 
+  static uint32_t const TypeLengths[5];
+  static TRI_shape_t const* ShapeAddresses[7];
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Shaper
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shaper
 ////////////////////////////////////////////////////////////////////////////////
 
 class Shaper {
+  
+ public:
+  Shaper(Shaper const&) = delete;
+  Shaper& operator=(Shaper const&) = delete;
+  Shaper();
+  virtual ~Shaper();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up a shape by identifier
+  ////////////////////////////////////////////////////////////////////////////////
 
-  public:
-    Shaper (Shaper const&) = delete;
-    Shaper& operator= (Shaper const&) = delete;
-    Shaper ();
-    virtual ~Shaper ();
+  virtual TRI_shape_t const* lookupShapeId(TRI_shape_sid_t) = 0;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up an attribute name by identifier
+  ////////////////////////////////////////////////////////////////////////////////
 
-  public:
+  virtual char const* lookupAttributeId(TRI_shape_aid_t) = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a shape by identifier
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks whether a shape is of primitive type
+  ////////////////////////////////////////////////////////////////////////////////
 
-    virtual TRI_shape_t const* lookupShapeId (TRI_shape_sid_t) = 0;
+  static TRI_shape_t const* lookupSidBasicShape(TRI_shape_sid_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an attribute name by identifier
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks whether a shape is of primitive type
+  ////////////////////////////////////////////////////////////////////////////////
 
-    virtual char const* lookupAttributeId (TRI_shape_aid_t) = 0;
+  static TRI_shape_t const* lookupBasicShape(TRI_shape_t const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a shape is of primitive type
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the first id for user-defined shapes
+  ////////////////////////////////////////////////////////////////////////////////
 
-    static TRI_shape_t const* lookupSidBasicShape (TRI_shape_sid_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a shape is of primitive type
-////////////////////////////////////////////////////////////////////////////////
-
-    static TRI_shape_t const* lookupBasicShape (TRI_shape_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the first id for user-defined shapes
-////////////////////////////////////////////////////////////////////////////////
-
-    static inline TRI_shape_sid_t firstCustomShapeId () {
-      return BasicShapes::TRI_SHAPE_SID_LIST + 1;
-    }
-
+  static inline TRI_shape_sid_t firstCustomShapeId() {
+    return BasicShapes::TRI_SHAPE_SID_LIST + 1;
+  }
 };
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief SpinLocker
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SpinLocker.h"
@@ -36,9 +30,6 @@
 
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
@@ -54,9 +45,8 @@ using namespace triagens::basics;
 /// The constructor aquires a lock, the destructor releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-SpinLocker::SpinLocker (SpinLock* lock, char const* file, int line)
-  : _lock(lock), _file(file), _line(line) {
-  
+SpinLocker::SpinLocker(SpinLock* lock, char const* file, int line)
+    : _lock(lock), _file(file), _line(line) {
   double t = TRI_microtime();
   _lock->lock();
   _time = TRI_microtime() - t;
@@ -64,11 +54,7 @@ SpinLocker::SpinLocker (SpinLock* lock, char const* file, int line)
 
 #else
 
-SpinLocker::SpinLocker (SpinLock* lock)
-  : _lock(lock) {
-  
-  _lock->lock();
-}
+SpinLocker::SpinLocker(SpinLock* lock) : _lock(lock) { _lock->lock(); }
 
 #endif
 
@@ -76,21 +62,14 @@ SpinLocker::SpinLocker (SpinLock* lock)
 /// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-SpinLocker::~SpinLocker () {
+SpinLocker::~SpinLocker() {
   _lock->unlock();
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
     LOG_WARNING("SpinLocker %s:%d took %f s", _file, _line, _time);
   }
-#endif  
+#endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

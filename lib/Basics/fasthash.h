@@ -23,9 +23,8 @@
    SOFTWARE.
 */
 
-#ifndef _FASTHASH_H
-#define _FASTHASH_H
-
+#ifndef LIB_BASICS_FASTHASH_H
+#define LIB_BASICS_FASTHASH_H 1
 #include "Basics/Common.h"
 
 /**
@@ -34,7 +33,7 @@
  * @len:  data size
  * @seed: the seed
  */
-uint32_t fasthash32(const void *buf, size_t len, uint32_t seed);
+uint32_t fasthash32(const void* buf, size_t len, uint32_t seed);
 
 /**
  * fasthash64 - 64-bit implementation of fasthash
@@ -42,14 +41,7 @@ uint32_t fasthash32(const void *buf, size_t len, uint32_t seed);
  * @len:  data size
  * @seed: the seed
  */
-uint64_t fasthash64(const void *buf, size_t len, uint64_t seed);
+uint64_t fasthash64(const void* buf, size_t len, uint64_t seed);
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

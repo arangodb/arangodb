@@ -147,7 +147,8 @@ ArangoStatement.prototype.explain = function (options) {
     return {
       plan: requestResult.plan,
       warnings: requestResult.warnings,
-      stats: requestResult.stats
+      stats: requestResult.stats,
+      cacheable: requestResult.cacheable
     };
   }
 };

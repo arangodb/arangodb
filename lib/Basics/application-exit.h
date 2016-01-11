@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,26 +19,21 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_APPLICATION__EXIT_H
-#define ARANGODB_BASICS_C_APPLICATION__EXIT_H 1
+#ifndef LIB_BASICS_APPLICATION_EXIT_H
+#define LIB_BASICS_APPLICATION_EXIT_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          Special Application Exit
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exit function type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef void (*TRI_ExitFunction_t) (int, void*);
+typedef void (*TRI_ExitFunction_t)(int, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exit function
@@ -54,15 +45,8 @@ extern TRI_ExitFunction_t TRI_EXIT_FUNCTION;
 /// @brief defines a exit function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Application_Exit_SetExit (TRI_ExitFunction_t);
+void TRI_Application_Exit_SetExit(TRI_ExitFunction_t);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

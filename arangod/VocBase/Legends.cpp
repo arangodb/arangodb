@@ -1,12 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief legends for shaped JSON objects to make them self-contained
-///
-/// @file
-/// Code for legends.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Legends.h"
@@ -88,7 +82,7 @@ using namespace triagens::basics;
 /// @brief clear all data to build a new legend, keep shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-void JsonLegend::clear () {
+void JsonLegend::clear() {
   _have_attribute.clear();
   _attribs.clear();
   _att_data.clear();
@@ -101,7 +95,7 @@ void JsonLegend::clear () {
 /// @brief add an attribute ID to the legend
 ////////////////////////////////////////////////////////////////////////////////
 
-int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
+int JsonLegend::addAttributeId(TRI_shape_aid_t aid) {
   auto it = _have_attribute.find(aid);
 
   if (it != _have_attribute.end()) {
@@ -117,7 +111,7 @@ int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
   _have_attribute.insert(it, aid);
   size_t len = strlen(p);
   _attribs.emplace_back(aid, _att_data.length());
-  _att_data.appendText(p, len + 1);   // including the zero byte
+  _att_data.appendText(p, len + 1);  // including the zero byte
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -126,9 +120,7 @@ int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
 /// @brief add a shape to the legend
 ////////////////////////////////////////////////////////////////////////////////
 
-int JsonLegend::addShape (TRI_shape_sid_t sid,
-                          char const* data,
-                          uint32_t len) {
+int JsonLegend::addShape(TRI_shape_sid_t sid, char const* data, uint32_t len) {
   // data and len must always be given, because in general we might have
   // to sniff recursively into the subobjects. :-(
   int res = TRI_ERROR_NO_ERROR;
@@ -142,8 +134,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     shape = Shaper::lookupSidBasicShape(sid);
 
     TRI_ASSERT(shape != nullptr);
-  }
-  else {
+  } else {
     shape = _shaper->lookupShapeId(sid);
 
     if (nullptr == shape) {
@@ -156,7 +147,8 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
       _have_shape.insert(it, sid);
       Shape sh(sid, _shape_data.length(), shape->_size);
       _shapes.push_back(sh);
-      _shape_data.appendText(reinterpret_cast<char const*>(shape), static_cast<size_t>(shape->_size));
+      _shape_data.appendText(reinterpret_cast<char const*>(shape),
+                             static_cast<size_t>(shape->_size));
     }
   }
 
@@ -170,35 +162,37 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     // inhomogeneous list, because they could be lists that have the
     // same size by sheer coincidence. Therefore we have to visit them
     // all recursively. :-(
-    auto shape_spec = reinterpret_cast<TRI_homogeneous_sized_list_shape_t const*>(shape);
+    auto shape_spec =
+        reinterpret_cast<TRI_homogeneous_sized_list_shape_t const*>(shape);
     auto len = reinterpret_cast<TRI_shape_length_list_t const*>(data);
-    auto ptr = reinterpret_cast<char const*>(len+1);
+    auto ptr = reinterpret_cast<char const*>(len + 1);
     res = TRI_ERROR_NO_ERROR;  // just in case the length is 0
     TRI_shape_length_list_t i;
     for (i = 0; i < *len; i++) {
-      res = addShape(shape_spec->_sidEntry, ptr, static_cast<uint32_t>(shape_spec->_sizeEntry));
+      res = addShape(shape_spec->_sidEntry, ptr,
+                     static_cast<uint32_t>(shape_spec->_sizeEntry));
       ptr += shape_spec->_sizeEntry;
       if (res != TRI_ERROR_NO_ERROR) {
         break;
       }
     }
-  }
-  else if (shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST) {
+  } else if (shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST) {
     // Handle a homogeneous list: Only one sid, but the subobjects can
     // contain inhomogeneous lists.
-    auto shape_spec = reinterpret_cast<TRI_homogeneous_list_shape_t const*> (shape);
+    auto shape_spec =
+        reinterpret_cast<TRI_homogeneous_list_shape_t const*>(shape);
     res = TRI_ERROR_NO_ERROR;  // just in case the length is 0
     auto len = reinterpret_cast<TRI_shape_length_list_t const*>(data);
     auto offsets = reinterpret_cast<TRI_shape_size_t const*>(len + 1);
     TRI_shape_length_list_t i;
     for (i = 0; i < *len; i++) {
-      res = addShape(shape_spec->_sidEntry, data + offsets[i], static_cast<uint32_t>(offsets[i + 1] - offsets[i]));
+      res = addShape(shape_spec->_sidEntry, data + offsets[i],
+                     static_cast<uint32_t>(offsets[i + 1] - offsets[i]));
       if (res != TRI_ERROR_NO_ERROR) {
         break;
       }
     }
-  }
-  else if (shape->_type == TRI_SHAPE_LIST) {
+  } else if (shape->_type == TRI_SHAPE_LIST) {
     // Handle an inhomogeneous list:
     // We have to scan recursively all entries of the list since they
     // contain sids in the data area.
@@ -209,36 +203,41 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     TRI_shape_length_list_t i;
 
     for (i = 0; i < *len; i++) {
-      res = addShape(sids[i], data + offsets[i], static_cast<uint32_t>(offsets[i + 1] - offsets[i]));
+      res = addShape(sids[i], data + offsets[i],
+                     static_cast<uint32_t>(offsets[i + 1] - offsets[i]));
       if (res != TRI_ERROR_NO_ERROR) {
         break;
       }
     }
-  }
-  else if (shape->_type == TRI_SHAPE_ARRAY) {
+  } else if (shape->_type == TRI_SHAPE_ARRAY) {
     // Handle an array:
     // Distinguish between fixed size subobjects and variable size
     // subobjects. The fixed ones cannot contain inhomogeneous lists.
     auto shape_spec = reinterpret_cast<TRI_array_shape_t const*>(shape);
     auto sids = reinterpret_cast<TRI_shape_sid_t const*>(shape_spec + 1);
-    auto aids = reinterpret_cast<TRI_shape_aid_t const*>(sids + (shape_spec->_fixedEntries + shape_spec->_variableEntries));
-    auto offsetsF = reinterpret_cast<TRI_shape_size_t const*>(aids + (shape_spec->_fixedEntries + shape_spec->_variableEntries));
+    auto aids = reinterpret_cast<TRI_shape_aid_t const*>(
+        sids + (shape_spec->_fixedEntries + shape_spec->_variableEntries));
+    auto offsetsF = reinterpret_cast<TRI_shape_size_t const*>(
+        aids + (shape_spec->_fixedEntries + shape_spec->_variableEntries));
     auto offsetsV = reinterpret_cast<TRI_shape_size_t const*>(data);
 
     TRI_shape_size_t i;
-    for (i = 0; res == TRI_ERROR_NO_ERROR &&
-                i < shape_spec->_fixedEntries + shape_spec->_variableEntries;
+    for (i = 0;
+         res == TRI_ERROR_NO_ERROR &&
+             i < shape_spec->_fixedEntries + shape_spec->_variableEntries;
          i++) {
       res = addAttributeId(aids[i]);
     }
     for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_fixedEntries;
          i++) {
       // Fixed size subdocs cannot have inhomogeneous lists as subdocs:
-      res = addShape(sids[i], data + offsetsF[i], static_cast<uint32_t>(offsetsF[i + 1] - offsetsF[i]));
+      res = addShape(sids[i], data + offsetsF[i],
+                     static_cast<uint32_t>(offsetsF[i + 1] - offsetsF[i]));
     }
     for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_variableEntries;
          i++) {
-      addShape(sids[i + shape_spec->_fixedEntries], data + offsetsV[i], static_cast<uint32_t>(offsetsV[i + 1] - offsetsV[i]));
+      addShape(sids[i + shape_spec->_fixedEntries], data + offsetsV[i],
+               static_cast<uint32_t>(offsetsV[i + 1] - offsetsV[i]));
     }
   }
 
@@ -249,7 +248,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
 /// @brief round a value to the next multiple of 8
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_shape_size_t roundup8 (TRI_shape_size_t x) {
+static inline TRI_shape_size_t roundup8(TRI_shape_size_t x) {
   return (x + 7) - ((x + 7) & 7);
 }
 
@@ -257,15 +256,18 @@ static inline TRI_shape_size_t roundup8 (TRI_shape_size_t x) {
 /// @brief get the total size in bytes of the legend
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t JsonLegend::getSize () const {
+size_t JsonLegend::getSize() const {
   // Add string pool size and shape pool size and add space for header
   // and tables in bytes.
-  return   sizeof(TRI_shape_size_t)                               // number of aids
-         + sizeof(AttributeId) * _attribs.size()                  // aid entries
-         + sizeof(TRI_shape_size_t)                               // number of sids
-         + sizeof(Shape) * _shapes.size()                         // sid entries
-         + static_cast<size_t>(roundup8(_att_data.length()))      // string data, padded
-         + static_cast<size_t>(roundup8(_shape_data.length()));   // shape data, padded
+  return sizeof(TRI_shape_size_t)                 // number of aids
+         + sizeof(AttributeId) * _attribs.size()  // aid entries
+         + sizeof(TRI_shape_size_t)               // number of sids
+         + sizeof(Shape) * _shapes.size()         // sid entries
+         + static_cast<size_t>(
+               roundup8(_att_data.length()))  // string data, padded
+         +
+         static_cast<size_t>(
+             roundup8(_shape_data.length()));  // shape data, padded
 }
 
 JsonLegend::AttributeComparerClass JsonLegend::AttributeComparerObject;
@@ -275,7 +277,7 @@ JsonLegend::ShapeComparerClass JsonLegend::ShapeComparerObject;
 /// @brief dump the legend to the buffer pointed to by buf
 ////////////////////////////////////////////////////////////////////////////////
 
-void JsonLegend::dump (void* buf) {
+void JsonLegend::dump(void* buf) {
   // Dump the resulting legend to a given buffer.
 
   // First sort the aids in ascending order:
@@ -285,10 +287,9 @@ void JsonLegend::dump (void* buf) {
   sort(_shapes.begin(), _shapes.end(), ShapeComparerObject);
 
   // Total length of table data to add to offsets:
-  TRI_shape_size_t socle =   sizeof(TRI_shape_size_t)
-                           + sizeof(AttributeId) * _attribs.size()
-                           + sizeof(TRI_shape_size_t)
-                           + sizeof(Shape) * _shapes.size();
+  TRI_shape_size_t socle =
+      sizeof(TRI_shape_size_t) + sizeof(AttributeId) * _attribs.size() +
+      sizeof(TRI_shape_size_t) + sizeof(Shape) * _shapes.size();
 
   // Attribute ID table:
   TRI_shape_size_t* p = reinterpret_cast<TRI_shape_size_t*>(buf);
@@ -332,11 +333,4 @@ void JsonLegend::dump (void* buf) {
     memset(c + shapeDataLength, 0, static_cast<size_t>(i) - shapeDataLength);
   }
 }
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

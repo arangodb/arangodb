@@ -35,7 +35,7 @@ var graph = require("@arangodb/general-graph");
 var cluster = require("@arangodb/cluster");
 var ERRORS = arangodb.errors;
 
-var _ = require("underscore");
+var _ = require("lodash");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      graph module

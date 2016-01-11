@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Mutex
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,60 +20,36 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Mutex.h"
 
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-Mutex::Mutex ()
-  : _mutex() {
-  TRI_InitMutex(&_mutex);
-}
+Mutex::Mutex() : _mutex() { TRI_InitMutex(&_mutex); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-Mutex::~Mutex () {
-  TRI_DestroyMutex(&_mutex);
-}
+Mutex::~Mutex() { TRI_DestroyMutex(&_mutex); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief acquires the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void Mutex::lock () {
-  TRI_LockMutex(&_mutex);
-}
+void Mutex::lock() { TRI_LockMutex(&_mutex); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void Mutex::unlock () {
-  TRI_UnlockMutex(&_mutex);
-}
+void Mutex::unlock() { TRI_UnlockMutex(&_mutex); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

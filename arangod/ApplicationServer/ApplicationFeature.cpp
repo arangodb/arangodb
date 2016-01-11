@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application server feature
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeature.h"
@@ -33,51 +27,40 @@ using namespace triagens;
 using namespace triagens::rest;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationFeature::ApplicationFeature (string const& name)
-  : _disabled(false), 
-    _name(name) {
-}
+ApplicationFeature::ApplicationFeature(string const& name)
+    : _disabled(false), _name(name) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationFeature::~ApplicationFeature () {
-}
+ApplicationFeature::~ApplicationFeature() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ApplicationFeature::getName () const {
-  return _name;
-}
+string const& ApplicationFeature::getName() const { return _name; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the options
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationFeature::setupOptions (map<string, basics::ProgramOptionsDescription>&) {
-}
+void ApplicationFeature::setupOptions(
+    map<string, basics::ProgramOptionsDescription>&) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback after options parsing and config file reading, 
+/// @brief callback after options parsing and config file reading,
 /// before dropping privileges
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::afterOptionParsing (basics::ProgramOptions&) {
+bool ApplicationFeature::afterOptionParsing(basics::ProgramOptions&) {
   return true;
 }
 
@@ -85,61 +68,42 @@ bool ApplicationFeature::afterOptionParsing (basics::ProgramOptions&) {
 /// @brief prepares the feature
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::prepare () {
-  return true;
-}
+bool ApplicationFeature::prepare() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares the feature
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::prepare2 () {
-  return true;
-}
+bool ApplicationFeature::prepare2() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the feature
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::start () {
-  return true;
-}
+bool ApplicationFeature::start() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the feature for business
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::open () {
-  return true;
-}
+bool ApplicationFeature::open() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes the feature
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationFeature::close () {
-}
+void ApplicationFeature::close() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops everything
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationFeature::stop () {
-}
+void ApplicationFeature::stop() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable feature
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationFeature::disable () {
-  _disabled = true;
-}
+void ApplicationFeature::disable() { _disabled = true; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

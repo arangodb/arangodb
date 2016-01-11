@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, NodeFinder
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,86 +19,62 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_NODE_FINDER_H
-#define ARANGODB_AQL_NODE_FINDER_H 1
+#ifndef ARANGOD_AQL_NODE_FINDER_H
+#define ARANGOD_AQL_NODE_FINDER_H 1
 
 #include "Basics/Common.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class NodeFinder
-// -----------------------------------------------------------------------------
 
-    template<typename T>
-    class NodeFinder final : public WalkerWorker<ExecutionNode> {
+template <typename T>
+class NodeFinder final : public WalkerWorker<ExecutionNode> {
+  T _lookingFor;
 
-        T _lookingFor;
+  std::vector<ExecutionNode*>& _out;
 
-        std::vector<ExecutionNode*>& _out;
+  bool _enterSubqueries;
 
-        bool _enterSubqueries;
+ public:
+  NodeFinder(T, std::vector<ExecutionNode*>&, bool);
 
-      public:
+  bool before(ExecutionNode*) override final;
 
-        NodeFinder (T,
-                    std::vector<ExecutionNode*>&,
-                    bool);
-
-        bool before (ExecutionNode*) override final;
-
-        bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
-          return _enterSubqueries;
-        }
-
-    };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class EndNodeFinder
-// -----------------------------------------------------------------------------
-
-    class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
-
-        std::vector<ExecutionNode*>& _out;
-
-        std::vector<bool> _found;
-
-        bool _enterSubqueries;
-
-      public:
-
-        EndNodeFinder (std::vector<ExecutionNode*>&,
-                       bool);
-
-        bool before (ExecutionNode*) override final;
-
-        bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
-          _found.push_back(false);
-          return _enterSubqueries;
-        }
-        
-        void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
-          _found.pop_back();
-        }
-
-    };
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    return _enterSubqueries;
   }
+};
+
+
+class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
+  std::vector<ExecutionNode*>& _out;
+
+  std::vector<bool> _found;
+
+  bool _enterSubqueries;
+
+ public:
+  EndNodeFinder(std::vector<ExecutionNode*>&, bool);
+
+  bool before(ExecutionNode*) override final;
+
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    _found.push_back(false);
+    return _enterSubqueries;
+  }
+
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
+    _found.pop_back();
+  }
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

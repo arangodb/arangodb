@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief OpenSSL class to interface libssl
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,153 +19,164 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SSL_INTERFACE_H
-#define ARANGODB_REST_SSL_INTERFACE_H 1
+#ifndef LIB_REST_SSL_INTERFACE_H
+#define LIB_REST_SSL_INTERFACE_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace rest {
-    namespace SslInterface {
+namespace rest {
+namespace SslInterface {
 
-      enum Algorithm {
-        ALGORITHM_SHA256 = 0,
-        ALGORITHM_SHA1   = 1,
-        ALGORITHM_MD5    = 2,
-        ALGORITHM_SHA224   = 3,
-        ALGORITHM_SHA384   = 4,
-        ALGORITHM_SHA512   = 5
-      };
-
-//////////////////////////////////////////////////////////////////////////
-/// @brief md5 hash
-//////////////////////////////////////////////////////////////////////////
-
-      std::string sslMD5 (std::string const&);
+enum Algorithm {
+  ALGORITHM_SHA256 = 0,
+  ALGORITHM_SHA1 = 1,
+  ALGORITHM_MD5 = 2,
+  ALGORITHM_SHA224 = 3,
+  ALGORITHM_SHA384 = 4,
+  ALGORITHM_SHA512 = 5
+};
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief md5 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslMD5 (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen);
+std::string sslMD5(std::string const&);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief md5 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslMD5 (char const* inputStr, char*& outputStr, size_t& outputLen);
+void sslMD5(char const* inputStr, size_t length, char*& outputStr,
+            size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief md5 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslMD5 (char const* input1, size_t length1, char const* input2, size_t length2, char*& outputStr, size_t& outputLen);
+void sslMD5(char const* inputStr, char*& outputStr, size_t& outputLen);
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief md5 hash
+//////////////////////////////////////////////////////////////////////////
+
+void sslMD5(char const* input1, size_t length1, char const* input2,
+            size_t length2, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha1 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA1 (char const* inputStr, const size_t length, char*& outputStr, size_t& outputLen);
+void sslSHA1(char const* inputStr, const size_t length, char*& outputStr,
+             size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha1 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA1 (char const* inputStr, char*& outputStr, size_t& outputLen);
+void sslSHA1(char const* inputStr, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha224 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA224 (char const* inputStr, const size_t length, char*& outputStr, size_t& outputLen);
+void sslSHA224(char const* inputStr, const size_t length, char*& outputStr,
+               size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha224 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA224 (char const* inputStr, char*& outputStr, size_t& outputLen);
+void sslSHA224(char const* inputStr, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha256 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA256 (char const* inputStr, const size_t length, char*& outputStr, size_t& outputLen);
+void sslSHA256(char const* inputStr, const size_t length, char*& outputStr,
+               size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha256 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA256 (char const* inputStr, char*& outputStr, size_t& outputLen);
+void sslSHA256(char const* inputStr, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha384 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA384 (char const* inputStr, const size_t length, char*& outputStr, size_t& outputLen);
+void sslSHA384(char const* inputStr, const size_t length, char*& outputStr,
+               size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha384 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA384 (char const* inputStr, char*& outputStr, size_t& outputLen);
+void sslSHA384(char const* inputStr, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha512 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA512 (char const* inputStr, const size_t length, char*& outputStr, size_t& outputLen);
+void sslSHA512(char const* inputStr, const size_t length, char*& outputStr,
+               size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha512 hash
 //////////////////////////////////////////////////////////////////////////
 
-      void sslSHA512 (char const* inputStr, char*& outputStr, size_t& outputLen);
+void sslSHA512(char const* inputStr, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HEX
 //////////////////////////////////////////////////////////////////////////
 
-      void sslHEX (char const* inputStr, const size_t length, char*& outputStr, size_t& outputLen);
+void sslHEX(char const* inputStr, const size_t length, char*& outputStr,
+            size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HEX
 //////////////////////////////////////////////////////////////////////////
 
-      void sslHEX (char const* inputStr, char*& outputStr, size_t& outputLen);
+void sslHEX(char const* inputStr, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief BASE64
 //////////////////////////////////////////////////////////////////////////
 
-      void sslBASE64 (char const* inputStr, const size_t length, char*& outputStr, size_t& outputLen);
+void sslBASE64(char const* inputStr, const size_t length, char*& outputStr,
+               size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief BASE64
 //////////////////////////////////////////////////////////////////////////
 
-      void sslBASE64 (char const* inputStr, char*& outputStr, size_t& outputLen);
+void sslBASE64(char const* inputStr, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief PBKDF2
 //////////////////////////////////////////////////////////////////////////
 
-      std::string sslPBKDF2 (char const* salt, size_t saltLength, char const* pass, size_t passLength, int iter, int keyLength);
+std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
+                      size_t passLength, int iter, int keyLength);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HMAC
 //////////////////////////////////////////////////////////////////////////
 
-      std::string sslHMAC (char const* key, size_t keyLength, char const* message, size_t messageLen, Algorithm algorithm);
+std::string sslHMAC(char const* key, size_t keyLength, char const* message,
+                    size_t messageLen, Algorithm algorithm);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HMAC
 //////////////////////////////////////////////////////////////////////////
 
-      bool verifyHMAC (char const* challenge, size_t challengeLength, char const* secret, size_t secretLen, char const* response, size_t responseLen, Algorithm algorithm);
+bool verifyHMAC(char const* challenge, size_t challengeLength,
+                char const* secret, size_t secretLen, char const* response,
+                size_t responseLen, Algorithm algorithm);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief generate a random number using OpenSsl
@@ -177,7 +184,7 @@ namespace triagens {
 /// will return 0 on success, and != 0 on error
 //////////////////////////////////////////////////////////////////////////
 
-      int sslRand (uint64_t*);
+int sslRand(uint64_t*);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief generate a random number using OpenSsl
@@ -185,7 +192,7 @@ namespace triagens {
 /// will return 0 on success, and != 0 on error
 //////////////////////////////////////////////////////////////////////////
 
-      int sslRand (int64_t*);
+int sslRand(int64_t*);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief generate a random number using OpenSsl
@@ -193,29 +200,22 @@ namespace triagens {
 /// will return 0 on success, and != 0 on error
 //////////////////////////////////////////////////////////////////////////
 
-      int sslRand (int32_t*);
+int sslRand(int32_t*);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief salt
 //////////////////////////////////////////////////////////////////////////
 
-      void salt64 (uint64_t& saltInt);
+void salt64(uint64_t& saltInt);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief salt
 //////////////////////////////////////////////////////////////////////////
 
-      void saltChar (char*& result, size_t length = 8);
-    }
-  }
+void saltChar(char*& result, size_t length = 8);
+}
+}
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

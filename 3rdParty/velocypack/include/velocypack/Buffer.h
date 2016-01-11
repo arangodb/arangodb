@@ -91,7 +91,7 @@ class Buffer {
     }
   }
 
-  ~Buffer() { reset(); }
+  ~Buffer() { clear(); }
 
   inline T* data() { return _buffer; }
 

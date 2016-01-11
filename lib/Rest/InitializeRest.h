@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force symbols into program
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_INITIALIZE_REST_H
-#define ARANGODB_REST_INITIALIZE_REST_H 1
+#ifndef LIB_REST_INITIALIZE_REST_H
+#define LIB_REST_INITIALIZE_REST_H 1
 
 #include "Basics/Common.h"
 
@@ -38,46 +32,39 @@ namespace triagens {
 /// @brief rest server
 ////////////////////////////////////////////////////////////////////////////////
 
-  namespace rest {
+namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void InitializeRest (int argc, char* argv[]);
+extern void InitializeRest(int argc, char* argv[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void ShutdownRest ();
-  }
+extern void ShutdownRest();
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_REST_INITIALIZE(a,b)           \
-  do {                                          \
-    triagens::rest::InitializeRest((a), (b));   \
+#define TRIAGENS_REST_INITIALIZE(a, b)        \
+  do {                                        \
+    triagens::rest::InitializeRest((a), (b)); \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_REST_SHUTDOWN           \
-  do {                                   \
-    triagens::rest::ShutdownRest();      \
+#define TRIAGENS_REST_SHUTDOWN      \
+  do {                              \
+    triagens::rest::ShutdownRest(); \
   } while (0)
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

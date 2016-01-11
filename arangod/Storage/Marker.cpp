@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief WAL and datafile markers
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Storage/Marker.h"
@@ -33,7 +27,7 @@
 using namespace arangodb;
 
 // returns a type name for a marker
-char const* MarkerHelper::typeName (MarkerType type) {
+char const* MarkerHelper::typeName(MarkerType type) {
   switch (type) {
     case MarkerTypeHeader:
       return "header";
@@ -78,7 +72,7 @@ char const* MarkerHelper::typeName (MarkerType type) {
 // the static length is the total length of the marker's static data fields,
 // excluding the base marker's fields and excluding the marker's dynamic
 // VPack data values
-uint64_t MarkerHelper::staticLength (MarkerType type) {
+uint64_t MarkerHelper::staticLength(MarkerType type) {
   switch (type) {
     case MarkerTypeHeader:
     case MarkerTypeFooter:
@@ -90,89 +84,97 @@ uint64_t MarkerHelper::staticLength (MarkerType type) {
     case MarkerTypeDocument:
     case MarkerTypeDocumentDeletion:
       return MarkerReaderDocument::staticLength();
-    
+
     case MarkerTypeTransactionBegin:
     case MarkerTypeTransactionCommit:
     case MarkerTypeTransactionAbort:
       return MarkerReaderTransaction::staticLength();
-    
+
     case MarkerTypeCollectionCreate:
     case MarkerTypeCollectionDrop:
     case MarkerTypeCollectionRename:
     case MarkerTypeCollectionProperties:
       return MarkerReaderCollection::staticLength();
-    
+
     case MarkerTypeIndexCreate:
     case MarkerTypeIndexDrop:
       return MarkerReaderIndex::staticLength();
-    
+
     case MarkerTypeDatabaseCreate:
     case MarkerTypeDatabaseDrop:
       return MarkerReaderDatabase::staticLength();
-    
+
     case MarkerMax:
       break;
   }
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
-    
+
 // calculate the required length for a marker of the specified type, given a
 // payload of the specified length
-uint64_t MarkerHelper::calculateMarkerLength (MarkerType type, uint64_t payloadLength) {
-  uint64_t bodyLength = staticLength(type) + payloadLength; 
+uint64_t MarkerHelper::calculateMarkerLength(MarkerType type,
+                                             uint64_t payloadLength) {
+  uint64_t bodyLength = staticLength(type) + payloadLength;
   return calculateHeaderLength(bodyLength) + bodyLength;
 }
 
 // calculate the required length for the header of a marker, given a body
 // of the specified length
-uint64_t MarkerHelper::calculateHeaderLength (uint64_t bodyLength) {
+uint64_t MarkerHelper::calculateHeaderLength(uint64_t bodyLength) {
   if (bodyLength < (1 << (3 * 8))) {
     return 16;
   }
   return 24;
 }
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReader const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReader const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type())
+         << ", size: " << marker->length() << "]";
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderMeta const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderMeta const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type())
+         << ", size: " << marker->length() << "]";
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDocumentPreface const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderDocumentPreface const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type())
+         << ", size: " << marker->length() << "]";
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDocument const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderDocument const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type())
+         << ", size: " << marker->length() << "]";
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDatabase const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderDatabase const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type())
+         << ", size: " << marker->length() << "]";
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderCollection const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderCollection const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type())
+         << ", size: " << marker->length() << "]";
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderIndex const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderIndex const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type())
+         << ", size: " << marker->length() << "]";
   return stream;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

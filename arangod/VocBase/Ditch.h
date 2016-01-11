@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ditches for documents, datafiles etc.
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,600 +19,436 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_DITCH_H
-#define ARANGODB_VOC_BASE_DITCH_H 1
+#ifndef ARANGOD_VOC_BASE_DITCH_H
+#define ARANGOD_VOC_BASE_DITCH_H 1
 
 #include "Basics/Common.h"
 #include "Basics/locks.h"
 #include "Basics/Mutex.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
+#include <functional>
+
 
 struct TRI_document_collection_t;
 struct TRI_collection_t;
 struct TRI_datafile_s;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class Ditches;
+class Ditches;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       class Ditch
-// -----------------------------------------------------------------------------
 
-    class Ditch {
+class Ditch {
+  friend class Ditches;
 
-      friend class Ditches;
+  
+ protected:
+  Ditch(Ditch const&) = delete;
+  Ditch& operator=(Ditch const&) = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  Ditch(Ditches*, char const*, int);
 
-      protected:
+ public:
+  virtual ~Ditch();
 
-        Ditch (Ditch const&) = delete;
-        Ditch& operator= (Ditch const&) = delete;
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief ditch type
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Ditch (Ditches*, char const*, int);
-        
-      public:
+  enum DitchType {
+    TRI_DITCH_DOCUMENT = 1,
+    TRI_DITCH_REPLICATION,
+    TRI_DITCH_COMPACTION,
+    TRI_DITCH_DATAFILE_DROP,
+    TRI_DITCH_DATAFILE_RENAME,
+    TRI_DITCH_COLLECTION_UNLOAD,
+    TRI_DITCH_COLLECTION_DROP
+  };
 
-        virtual ~Ditch ();
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the ditch type
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
+  virtual DitchType type() const = 0;
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the ditch type name
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ditch type
-////////////////////////////////////////////////////////////////////////////////
+  virtual char const* typeName() const = 0;
 
-        enum DitchType {
-          TRI_DITCH_DOCUMENT = 1,
-          TRI_DITCH_REPLICATION,
-          TRI_DITCH_COMPACTION,
-          TRI_DITCH_DATAFILE_DROP,
-          TRI_DITCH_DATAFILE_RENAME,
-          TRI_DITCH_COLLECTION_UNLOAD,
-          TRI_DITCH_COLLECTION_DROP
-        };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the associated source filename
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  char const* filename() const { return _filename; }
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the associated source line
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ditch type
-////////////////////////////////////////////////////////////////////////////////
+  int line() const { return _line; }
 
-        virtual DitchType type () const = 0;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the next ditch in the linked list
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ditch type name
-////////////////////////////////////////////////////////////////////////////////
-        
-        virtual char const* typeName () const = 0;
+  inline Ditch* next() const { return _next; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the associated source filename
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the link to all ditches
+  ////////////////////////////////////////////////////////////////////////////////
 
-        char const* filename () const {
-          return _filename;
-        }
+  Ditches* ditches() { return _ditches; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the associated source line
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the associated collection
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int line () const {
-          return _line;
-        }
+  struct TRI_document_collection_t* collection() const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the next ditch in the linked list
-////////////////////////////////////////////////////////////////////////////////
+  
+ protected:
+  Ditches* _ditches;
 
-        inline Ditch* next () const {
-          return _next;
-        }
+  
+ private:
+  Ditch* _prev;
+  Ditch* _next;
+  char const* _filename;
+  int _line;
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the link to all ditches
-////////////////////////////////////////////////////////////////////////////////
-
-        Ditches* ditches () {
-          return _ditches;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the associated collection
-////////////////////////////////////////////////////////////////////////////////
-
-        struct TRI_document_collection_t* collection () const;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-        
-      protected:
-
-        Ditches*         _ditches;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        Ditch*           _prev;
-        Ditch*           _next;
-        char const*      _filename;
-        int              _line;
-
-    };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class DocumentDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-    class DocumentDitch : public Ditch {
-      
-      friend class Ditches;
+class DocumentDitch : public Ditch {
+  friend class Ditches;
 
-      public:
+ public:
+  DocumentDitch(Ditches* ditches, bool usedByTransaction, char const* filename,
+                int line);
 
-        DocumentDitch (Ditches* ditches, 
-                       bool usedByTransaction, 
-                       char const* filename, 
-                       int line);
+  ~DocumentDitch();
 
-        ~DocumentDitch ();
+ public:
+  DitchType type() const override final { return TRI_DITCH_DOCUMENT; }
 
-      public:
+  char const* typeName() const override final { return "document-reference"; }
 
-        DitchType type () const override final {
-          return TRI_DITCH_DOCUMENT;
-        }
+  void setUsedByTransaction();
+  void setUsedByExternal();
 
-        char const* typeName () const override final {
-          return "document-reference";
-        }
-      
-        void setUsedByTransaction ();
-        void setUsedByExternal ();
+ private:
+  uint32_t _usedByExternal;
+  bool _usedByTransaction;
+};
 
-      private:
-
-        uint32_t      _usedByExternal;
-        bool          _usedByTransaction;
-    };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class ReplicationDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ReplicationDitch : public Ditch {
+class ReplicationDitch : public Ditch {
+ public:
+  ReplicationDitch(Ditches* ditches, char const* filename, int line);
 
-      public:
+  ~ReplicationDitch();
 
-        ReplicationDitch (Ditches* ditches, 
-                          char const* filename, 
-                          int line);
+ public:
+  DitchType type() const override final { return TRI_DITCH_REPLICATION; }
 
-        ~ReplicationDitch ();
-        
-      public: 
+  char const* typeName() const override final { return "replication"; }
+};
 
-        DitchType type () const override final {
-          return TRI_DITCH_REPLICATION;
-        }
-        
-        char const* typeName () const override final {
-          return "replication";
-        }
-    };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CompactionDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compaction ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-    class CompactionDitch : public Ditch {
+class CompactionDitch : public Ditch {
+ public:
+  CompactionDitch(Ditches* ditches, char const* filename, int line);
 
-      public:
+  ~CompactionDitch();
 
-        CompactionDitch (Ditches* ditches,
-                         char const* filename,
-                         int line);
+ public:
+  DitchType type() const override final { return TRI_DITCH_COMPACTION; }
 
-        ~CompactionDitch ();
+  char const* typeName() const override final { return "compaction"; }
+};
 
-      public:
-
-        DitchType type () const override final {
-          return TRI_DITCH_COMPACTION;
-        }
-        
-        char const* typeName () const override final {
-          return "compaction";
-        }
-    };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class DropDatafileDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile removal ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-    class DropDatafileDitch : public Ditch {
+class DropDatafileDitch : public Ditch {
+ public:
+  DropDatafileDitch(Ditches* ditches, struct TRI_datafile_s* datafile,
+                    void* data,
+                    std::function<void(struct TRI_datafile_s*, void*)>,
+                    char const* filename, int line);
 
-      public:
+  ~DropDatafileDitch();
 
-        DropDatafileDitch (Ditches* ditches,
-                           struct TRI_datafile_s* datafile, 
-                           void* data, 
-                           std::function<void(struct TRI_datafile_s*, void*)>,
-                           char const* filename,
-                           int line);
+ public:
+  DitchType type() const override final { return TRI_DITCH_DATAFILE_DROP; }
 
-        ~DropDatafileDitch ();
-      
-      public:
+  char const* typeName() const override final { return "datafile-drop"; }
 
-        DitchType type () const override final {
-          return TRI_DITCH_DATAFILE_DROP;
-        }
-        
-        char const* typeName () const override final {
-          return "datafile-drop";
-        }
+  void executeCallback() { _callback(_datafile, _data); }
 
-        void executeCallback () {
-          _callback(_datafile, _data);
-        }
+ private:
+  struct TRI_datafile_s* _datafile;
+  void* _data;
+  std::function<void(struct TRI_datafile_s*, void*)> _callback;
+};
 
-      private:
-
-        struct TRI_datafile_s*                             _datafile;
-        void*                                              _data;
-        std::function<void(struct TRI_datafile_s*, void*)> _callback;
-    };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class RenameDatafileDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile rename ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RenameDatafileDitch : public Ditch {
+class RenameDatafileDitch : public Ditch {
+ public:
+  RenameDatafileDitch(Ditches* ditches, struct TRI_datafile_s* datafile,
+                      void* data,
+                      std::function<void(struct TRI_datafile_s*, void*)>,
+                      char const* filename, int line);
 
-      public:
+  ~RenameDatafileDitch();
 
-        RenameDatafileDitch (Ditches* ditches,
-                             struct TRI_datafile_s* datafile, 
-                             void* data,
-                             std::function<void(struct TRI_datafile_s*, void*)>,
-                             char const* filename,
-                             int line);
+ public:
+  DitchType type() const override final { return TRI_DITCH_DATAFILE_RENAME; }
 
-        ~RenameDatafileDitch ();
-        
-      public:
-        
-        DitchType type () const override final {
-          return TRI_DITCH_DATAFILE_RENAME;
-        }
-        
-        char const* typeName () const override final {
-          return "datafile-rename";
-        }
-        
-        void executeCallback () {
-          _callback(_datafile, _data);
-        }
-      
-      private:
+  char const* typeName() const override final { return "datafile-rename"; }
 
-        struct TRI_datafile_s*                             _datafile;
-        void*                                              _data;
-        std::function<void(struct TRI_datafile_s*, void*)> _callback;
-    };
+  void executeCallback() { _callback(_datafile, _data); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CollectionDitch
-// -----------------------------------------------------------------------------
+ private:
+  struct TRI_datafile_s* _datafile;
+  void* _data;
+  std::function<void(struct TRI_datafile_s*, void*)> _callback;
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection unload ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-    class UnloadCollectionDitch : public Ditch {
+class UnloadCollectionDitch : public Ditch {
+ public:
+  UnloadCollectionDitch(
+      Ditches* ditches, struct TRI_collection_t* collection, void* data,
+      std::function<bool(struct TRI_collection_t*, void*)> callback,
+      char const* filename, int line);
 
-      public:
+  ~UnloadCollectionDitch();
 
-        UnloadCollectionDitch (Ditches* ditches,
-                               struct TRI_collection_t* collection, 
-                               void* data,
-                               std::function<bool(struct TRI_collection_t*, void*)> callback,
-                               char const* filename,
-                               int line);
+  DitchType type() const override final { return TRI_DITCH_COLLECTION_UNLOAD; }
 
-        ~UnloadCollectionDitch ();
-        
-        DitchType type () const override final {
-          return TRI_DITCH_COLLECTION_UNLOAD;
-        }
-        
-        char const* typeName () const override final {
-          return "collection-unload";
-        }
-        
-        bool executeCallback () {
-          return _callback(_collection, _data);
-        }
+  char const* typeName() const override final { return "collection-unload"; }
 
-      private:
+  bool executeCallback() { return _callback(_collection, _data); }
 
-        struct TRI_collection_t*                             _collection;
-        void*                                                _data;
-        std::function<bool(struct TRI_collection_t*, void*)> _callback;
-    };
+ private:
+  struct TRI_collection_t* _collection;
+  void* _data;
+  std::function<bool(struct TRI_collection_t*, void*)> _callback;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection drop ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-    class DropCollectionDitch : public Ditch {
+class DropCollectionDitch : public Ditch {
+ public:
+  DropCollectionDitch(
+      triagens::arango::Ditches* ditches, struct TRI_collection_t* collection,
+      void* data, std::function<bool(struct TRI_collection_t*, void*)> callback,
+      char const* filename, int line);
 
-      public:
+  ~DropCollectionDitch();
 
-        DropCollectionDitch (triagens::arango::Ditches* ditches,
-                             struct TRI_collection_t* collection, 
-                             void* data,
-                             std::function<bool(struct TRI_collection_t*, void*)> callback,
-                             char const* filename,
-                             int line);
+  DitchType type() const override final { return TRI_DITCH_COLLECTION_DROP; }
 
-        ~DropCollectionDitch ();
-        
-        DitchType type () const override final {
-          return TRI_DITCH_COLLECTION_DROP;
-        }
-        
-        char const* typeName () const override final {
-          return "collection-drop";
-        }
-        
-        bool executeCallback () {
-          return _callback(_collection, _data);
-        }
-      
-      private:
+  char const* typeName() const override final { return "collection-drop"; }
 
-        struct TRI_collection_t*                             _collection;
-        void*                                                _data;
-        std::function<bool(struct TRI_collection_t*, void*)> _callback;
-    };
+  bool executeCallback() { return _callback(_collection, _data); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     class Ditches
-// -----------------------------------------------------------------------------
+ private:
+  struct TRI_collection_t* _collection;
+  void* _data;
+  std::function<bool(struct TRI_collection_t*, void*)> _callback;
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief doubly linked list of ditches
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Ditches {
+class Ditches {
+  
+ public:
+  Ditches(Ditches const&) = delete;
+  Ditches& operator=(Ditches const&) = delete;
+  Ditches() = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  explicit Ditches(struct TRI_document_collection_t*);
+  ~Ditches();
 
-      public:
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroy the ditches - to be called on shutdown only
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Ditches (Ditches const&) = delete;
-        Ditches& operator= (Ditches const&) = delete;
-        Ditches () = delete;
+  void destroy();
 
-        explicit Ditches (struct TRI_document_collection_t*);
-        ~Ditches ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the associated collection
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  TRI_document_collection_t* collection() const;
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief run a user-defined function under the lock
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the ditches - to be called on shutdown only
-////////////////////////////////////////////////////////////////////////////////
+  void executeProtected(std::function<void()>);
 
-        void destroy ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief process the first element from the list
+  /// the list will remain unchanged if the first element is either a
+  /// DocumentDitch, a ReplicationDitch or a CompactionDitch, or if the list
+  /// contains any DocumentDitches.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the associated collection
-////////////////////////////////////////////////////////////////////////////////
+  Ditch* process(bool&, std::function<bool(Ditch const*)>);
 
-        TRI_document_collection_t* collection () const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type name of the ditch at the head of the active ditches
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a user-defined function under the lock
-////////////////////////////////////////////////////////////////////////////////
+  char const* head();
 
-        void executeProtected (std::function<void()>);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the number of document ditches active
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the first element from the list
-/// the list will remain unchanged if the first element is either a
-/// DocumentDitch, a ReplicationDitch or a CompactionDitch, or if the list 
-/// contains any DocumentDitches.
-////////////////////////////////////////////////////////////////////////////////
+  uint64_t numDocumentDitches();
 
-        Ditch* process (bool&, std::function<bool(Ditch const*)>);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check whether the ditches contain a ditch of a certain type
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name of the ditch at the head of the active ditches
-////////////////////////////////////////////////////////////////////////////////
+  bool contains(Ditch::DitchType);
 
-        char const* head ();
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of document ditches active
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unlinks and frees a ditch
+  ////////////////////////////////////////////////////////////////////////////////
 
-        uint64_t numDocumentDitches ();
+  void freeDitch(Ditch*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the ditches contain a ditch of a certain type
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unlinks and frees a document ditch
+  /// this is used for ditches used by transactions or by externals to protect
+  /// the flags by the lock
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool contains (Ditch::DitchType);
+  void freeDocumentDitch(DocumentDitch*, bool fromTransaction);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlinks and frees a ditch
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a new document ditch and links it
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void freeDitch (Ditch*);
+  DocumentDitch* createDocumentDitch(bool usedByTransaction,
+                                     char const* filename, int line);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlinks and frees a document ditch
-/// this is used for ditches used by transactions or by externals to protect
-/// the flags by the lock
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a new replication ditch and links it
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void freeDocumentDitch (DocumentDitch*, bool fromTransaction);
+  ReplicationDitch* createReplicationDitch(char const* filename, int line);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new document ditch and links it
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a new compaction ditch and links it
+  ////////////////////////////////////////////////////////////////////////////////
 
-        DocumentDitch* createDocumentDitch (bool usedByTransaction,
-                                            char const* filename,
-                                            int line);
+  CompactionDitch* createCompactionDitch(char const* filename, int line);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new replication ditch and links it
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a new datafile deletion ditch
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ReplicationDitch* createReplicationDitch (char const* filename,
-                                                  int line);
+  DropDatafileDitch* createDropDatafileDitch(
+      struct TRI_datafile_s* datafile, void* data,
+      std::function<void(struct TRI_datafile_s*, void*)> callback,
+      char const* filename, int line);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new compaction ditch and links it
-////////////////////////////////////////////////////////////////////////////////
-        
-        CompactionDitch* createCompactionDitch (char const* filename,
-                                                int line);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a new datafile rename ditch
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new datafile deletion ditch
-////////////////////////////////////////////////////////////////////////////////
+  RenameDatafileDitch* createRenameDatafileDitch(
+      struct TRI_datafile_s* datafile, void* data,
+      std::function<void(struct TRI_datafile_s*, void*)> callback,
+      char const* filename, int line);
 
-        DropDatafileDitch* createDropDatafileDitch (struct TRI_datafile_s* datafile,
-                                                    void* data,
-                                                    std::function<void(struct TRI_datafile_s*, void*)> callback,
-                                                    char const* filename,
-                                                    int line);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a new collection unload ditch
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new datafile rename ditch
-////////////////////////////////////////////////////////////////////////////////
+  UnloadCollectionDitch* createUnloadCollectionDitch(
+      struct TRI_collection_t* collection, void* data,
+      std::function<bool(struct TRI_collection_t*, void*)> callback,
+      char const* filename, int line);
 
-        RenameDatafileDitch* createRenameDatafileDitch (struct TRI_datafile_s* datafile,
-                                                        void* data,
-                                                        std::function<void(struct TRI_datafile_s*, void*)> callback,
-                                                        char const* filename,
-                                                        int line);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a new collection drop ditch
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new collection unload ditch
-////////////////////////////////////////////////////////////////////////////////
+  DropCollectionDitch* createDropCollectionDitch(
+      struct TRI_collection_t* collection, void* data,
+      std::function<bool(struct TRI_collection_t*, void*)> callback,
+      char const* filename, int line);
 
-        UnloadCollectionDitch* createUnloadCollectionDitch (struct TRI_collection_t* collection,
-                                                            void* data,
-                                                            std::function<bool(struct TRI_collection_t*, void*)> callback,
-                                                            char const* filename,
-                                                            int line);
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief inserts the ditch into the linked list of ditches
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new collection drop ditch
-////////////////////////////////////////////////////////////////////////////////
-        
-        DropCollectionDitch* createDropCollectionDitch (struct TRI_collection_t* collection,
-                                                        void* data,
-                                                        std::function<bool(struct TRI_collection_t*, void*)> callback,
-                                                        char const* filename,
-                                                        int line);
+  void link(Ditch*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unlinks the ditch from the linked list of ditches
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  void unlink(Ditch*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts the ditch into the linked list of ditches
-////////////////////////////////////////////////////////////////////////////////
+  
+ private:
+  struct TRI_document_collection_t* _collection;
 
-        void link (Ditch*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlinks the ditch from the linked list of ditches
-////////////////////////////////////////////////////////////////////////////////
-        
-        void unlink (Ditch*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        struct TRI_document_collection_t* _collection;
-
-        triagens::basics::Mutex _lock;
-        Ditch* _begin;
-        Ditch* _end;
-        uint64_t _numDocumentDitches;
-    };
-
-  }
+  triagens::basics::Mutex _lock;
+  Ditch* _begin;
+  Ditch* _end;
+  uint64_t _numDocumentDitches;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

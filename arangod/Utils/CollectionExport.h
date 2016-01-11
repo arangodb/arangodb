@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection export result container
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ARANGO_COLLECTION_EXPORT_H
-#define ARANGODB_ARANGO_COLLECTION_EXPORT_H 1
+#ifndef ARANGOD_UTILS_COLLECTION_EXPORT_H
+#define ARANGOD_UTILS_COLLECTION_EXPORT_H 1
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -38,81 +32,50 @@ struct TRI_document_collection_t;
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class CollectionGuard;
-    class DocumentDitch;
+class CollectionGuard;
+class DocumentDitch;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class CollectionExport
-// -----------------------------------------------------------------------------
 
-    class CollectionExport {
+class CollectionExport {
+  friend class ExportCursor;
 
-      friend class ExportCursor;
+ public:
+  struct Restrictions {
+    enum Type { RESTRICTION_NONE, RESTRICTION_INCLUDE, RESTRICTION_EXCLUDE };
 
-      public:
+    Restrictions() : fields(), type(RESTRICTION_NONE) {}
 
-        struct Restrictions {
-          enum Type {
-            RESTRICTION_NONE,
-            RESTRICTION_INCLUDE,
-            RESTRICTION_EXCLUDE
-          };
+    std::unordered_set<std::string> fields;
+    Type type;
+  };
 
-          Restrictions () 
-            : fields(),
-              type(RESTRICTION_NONE) {
-          }
+ public:
+  CollectionExport(CollectionExport const&) = delete;
+  CollectionExport& operator=(CollectionExport const&) = delete;
 
-          std::unordered_set<std::string> fields;
-          Type type;
-        };
+  CollectionExport(TRI_vocbase_t*, std::string const&, Restrictions const&);
 
-      public:
+  ~CollectionExport();
 
-        CollectionExport (CollectionExport const&) = delete;
-        CollectionExport& operator= (CollectionExport const&) = delete;
+  
+ public:
+  void run(uint64_t, size_t);
 
-        CollectionExport (TRI_vocbase_t*, 
-                          std::string const&,
-                          Restrictions const&);
-
-        ~CollectionExport ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-      public:
-
-        void run (uint64_t, size_t);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        triagens::arango::CollectionGuard*           _guard;
-        struct TRI_document_collection_t*            _document;
-        triagens::arango::DocumentDitch*             _ditch;
-        std::string const                            _name;
-        triagens::arango::CollectionNameResolver     _resolver;
-        Restrictions                                 _restrictions;
-        std::vector<void const*>*                    _documents;
-    };
-
-  }
+  
+ private:
+  triagens::arango::CollectionGuard* _guard;
+  struct TRI_document_collection_t* _document;
+  triagens::arango::DocumentDitch* _ditch;
+  std::string const _name;
+  triagens::arango::CollectionNameResolver _resolver;
+  Restrictions _restrictions;
+  std::vector<void const*>* _documents;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

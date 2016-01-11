@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief implementation of basis class LineEditor
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LineEditor.h"
@@ -35,69 +29,50 @@ using namespace std;
 using namespace triagens;
 using namespace arangodb;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class LineEditor
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor ()
-  : _shell(nullptr),
-    _signalFunc(nullptr) {
-}
+LineEditor::LineEditor() : _shell(nullptr), _signalFunc(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::~LineEditor () {
+LineEditor::~LineEditor() {
   if (_shell != nullptr) {
     close();
     delete _shell;
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the shell implementation supports colors
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::supportsColors () const {
-  return _shell->supportsColors();
-}
+bool LineEditor::supportsColors() const { return _shell->supportsColors(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool autoComplete) {
-  return _shell->open(autoComplete);
-}
+bool LineEditor::open(bool autoComplete) { return _shell->open(autoComplete); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::close () {
-  return _shell->close();
-}
+bool LineEditor::close() { return _shell->close(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::prompt (const string& prompt,
-                           const string& begin,
-                           bool& eof) {
+string LineEditor::prompt(const string& prompt, const string& begin,
+                          bool& eof) {
   return _shell->prompt(prompt, begin, eof);
 }
 
@@ -105,7 +80,7 @@ string LineEditor::prompt (const string& prompt,
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (const std::string& line) {
+void LineEditor::addHistory(const std::string& line) {
   return _shell->addHistory(line);
 }
 
@@ -113,7 +88,7 @@ void LineEditor::addHistory (const std::string& line) {
 /// @brief send a signal to the shell implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::signal () {
+void LineEditor::signal() {
   if (_signalFunc != nullptr) {
     _signalFunc();
   }
@@ -124,10 +99,8 @@ void LineEditor::signal () {
 /// @brief register a callback function to be executed on signal receipt
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::setSignalFunction (std::function<void()> const& func) {
+void LineEditor::setSignalFunction(std::function<void()> const& func) {
   _signalFunc = func;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

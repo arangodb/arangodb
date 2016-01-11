@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server version information
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Rest/Version.h"
@@ -43,24 +37,19 @@
 
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     class Version
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           public static functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-void Version::initialize () {
-  if (! Values.empty()) {
+void Version::initialize() {
+  if (!Values.empty()) {
     return;
   }
 
-  Values["architecture"] = (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
+  Values["architecture"] =
+      (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
   Values["server-version"] = getServerVersion();
   Values["icu-version"] = getICUVersion();
   Values["openssl-version"] = getOpenSSLVersion();
@@ -97,7 +86,7 @@ void Version::initialize () {
 /// @brief get numeric server version
 ////////////////////////////////////////////////////////////////////////////////
 
-int32_t Version::getNumericServerVersion () {
+int32_t Version::getNumericServerVersion() {
   char const* apiVersion = TRI_VERSION;
   char const* p = apiVersion;
 
@@ -119,22 +108,20 @@ int32_t Version::getNumericServerVersion () {
   TRI_ASSERT((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion);
   int32_t minor = TRI_Int32String2(apiVersion, (p - apiVersion));
 
-  return (int32_t) (minor * 100L + major * 10000L);
+  return (int32_t)(minor * 100L + major * 10000L);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get server version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getServerVersion () {
-  return std::string(TRI_VERSION);
-}
+std::string Version::getServerVersion() { return std::string(TRI_VERSION); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get V8 version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getV8Version () {
+std::string Version::getV8Version() {
 #ifdef TRI_V8_VERSION
   return std::string(TRI_V8_VERSION);
 #else
@@ -146,7 +133,7 @@ std::string Version::getV8Version () {
 /// @brief get OpenSSL version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getOpenSSLVersion () {
+std::string Version::getOpenSSLVersion() {
 #ifdef OPENSSL_VERSION_TEXT
   return std::string(OPENSSL_VERSION_TEXT);
 #else
@@ -158,7 +145,7 @@ std::string Version::getOpenSSLVersion () {
 /// @brief get libev version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getLibevVersion () {
+std::string Version::getLibevVersion() {
 #ifdef TRI_LIBEV_VERSION
   return std::string(TRI_LIBEV_VERSION);
 #else
@@ -170,7 +157,7 @@ std::string Version::getLibevVersion () {
 /// @brief get zlib version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getZLibVersion () {
+std::string Version::getZLibVersion() {
 #ifdef TRI_ZLIB_VERSION
   return std::string(TRI_ZLIB_VERSION);
 #else
@@ -182,7 +169,7 @@ std::string Version::getZLibVersion () {
 /// @brief get ICU version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getICUVersion () {
+std::string Version::getICUVersion() {
   UVersionInfo icuVersion;
   char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
   u_getVersion(icuVersion);
@@ -195,7 +182,7 @@ std::string Version::getICUVersion () {
 /// @brief get configure
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getConfigure () {
+std::string Version::getConfigure() {
   std::string configure("");
 
 #ifdef TRI_CONFIGURE_COMMAND
@@ -210,7 +197,7 @@ std::string Version::getConfigure () {
 /// @brief get configure environment
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getConfigureEnvironment () {
+std::string Version::getConfigureEnvironment() {
   std::string env("");
 
 #ifdef TRI_CONFIGURE_FLAGS
@@ -223,7 +210,7 @@ std::string Version::getConfigureEnvironment () {
 /// @brief get repository version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getRepositoryVersion () {
+std::string Version::getRepositoryVersion() {
 #ifdef TRI_REPOSITORY_VERSION
   return std::string(TRI_REPOSITORY_VERSION);
 #else
@@ -235,8 +222,8 @@ std::string Version::getRepositoryVersion () {
 /// @brief get build date
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getBuildDate () {
-  // the OpenSuSE build system does not liked it, if __DATE__ is used
+std::string Version::getBuildDate() {
+// the OpenSuSE build system does not liked it, if __DATE__ is used
 #ifdef TRI_BUILD_DATE
   return std::string(TRI_BUILD_DATE).append(" ").append(__TIME__);
 #else
@@ -248,12 +235,11 @@ std::string Version::getBuildDate () {
 /// @brief return a server version string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getVerboseVersionString () {
+std::string Version::getVerboseVersionString() {
   std::ostringstream version;
 
-  version << "ArangoDB "
-          << TRI_VERSION_FULL
-          << " " << (sizeof(void*) == 4 ? "32" : "64") << "bit"
+  version << "ArangoDB " << TRI_VERSION_FULL << " "
+          << (sizeof(void*) == 4 ? "32" : "64") << "bit"
 #ifdef TRI_ENABLE_MAINTAINER_MODE
           << " maintainer mode"
 #endif
@@ -262,8 +248,7 @@ std::string Version::getVerboseVersionString () {
           << "tcmalloc, "
 #endif
           << "ICU " << getICUVersion() << ", "
-          << "V8 " << getV8Version() << ", "
-          << getOpenSSLVersion();
+          << "V8 " << getV8Version() << ", " << getOpenSSLVersion();
 
   return version.str();
 }
@@ -272,14 +257,14 @@ std::string Version::getVerboseVersionString () {
 /// @brief get detailed version information as a (multi-line) string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getDetailed () {
+std::string Version::getDetailed() {
   std::string result;
 
   for (auto& it : Values) {
     std::string value = it.second;
     triagens::basics::StringUtils::trimInPlace(value);
 
-    if (! value.empty()) {
+    if (!value.empty()) {
       result.append(it.first);
       result.append(": ");
       result.append(it.second);
@@ -298,15 +283,17 @@ std::string Version::getDetailed () {
 /// @brief JSONise all data
 ////////////////////////////////////////////////////////////////////////////////
 
-void Version::getJson (TRI_memory_zone_t* zone, TRI_json_t* dst) {
+void Version::getJson(TRI_memory_zone_t* zone, TRI_json_t* dst) {
   for (auto& it : Values) {
     std::string value = it.second;
     triagens::basics::StringUtils::trimInPlace(value);
 
-    if (! value.empty()) {
+    if (!value.empty()) {
       std::string const& key = it.first;
 
-      TRI_Insert3ObjectJson(zone, dst, key.c_str(), TRI_CreateStringCopyJson(zone, value.c_str(), value.size()));
+      TRI_Insert3ObjectJson(
+          zone, dst, key.c_str(),
+          TRI_CreateStringCopyJson(zone, value.c_str(), value.size()));
     }
   }
 }
@@ -315,30 +302,18 @@ void Version::getJson (TRI_memory_zone_t* zone, TRI_json_t* dst) {
 /// @brief VelocyPack all data
 ////////////////////////////////////////////////////////////////////////////////
 
-void Version::getVPack (VPackBuilder& dst) {
+void Version::getVPack(VPackBuilder& dst) {
   for (auto& it : Values) {
     std::string value = it.second;
     triagens::basics::StringUtils::trimInPlace(value);
 
-    if (! value.empty()) {
+    if (!value.empty()) {
       dst.add(it.first, VPackValue(value));
     }
   }
 }
 
 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           public static variables
-// -----------------------------------------------------------------------------
-
 std::map<std::string, std::string> Version::Values;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

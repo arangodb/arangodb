@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief arango server
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ArangoServer.h"
@@ -94,26 +88,24 @@
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
+using namespace std;
 
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
 bool IGNORE_DATAFILE_ERRORS;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts list of size_t to string
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename T> 
-static std::string ToString (std::vector<T> const& v) {
+template <typename T>
+static std::string ToString(std::vector<T> const& v) {
   std::string result = "";
   std::string sep = "[";
 
@@ -129,27 +121,30 @@ static std::string ToString (std::vector<T> const& v) {
 /// @brief define "_api" and "_admin" handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
-
+void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   // First the "_api" handlers:
- 
+
   // add an upgrade warning
-  factory->addPrefixHandler("/_msg/please-upgrade",
-                            RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
+  factory->addPrefixHandler(
+      "/_msg/please-upgrade",
+      RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                             RestHandlerCreator<RestBatchHandler>::createNoData);
-  
+
   // add "/cursor" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::CURSOR_PATH,
-                            RestHandlerCreator<RestCursorHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAqlHandler);
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::CURSOR_PATH,
+      RestHandlerCreator<RestCursorHandler>::createData<
+          std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+      _pairForAqlHandler);
 
   // add "/document" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
-                            RestHandlerCreator<RestDocumentHandler>::createNoData);
-  
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::DOCUMENT_PATH,
+      RestHandlerCreator<RestDocumentHandler>::createNoData);
+
   // add "/edge" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH,
                             RestHandlerCreator<RestEdgeHandler>::createNoData);
@@ -157,89 +152,114 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/edges" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::EDGES_PATH,
                             RestHandlerCreator<RestEdgesHandler>::createNoData);
-  
+
   // add "/export" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::EXPORT_PATH,
-                            RestHandlerCreator<RestExportHandler>::createNoData);
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::EXPORT_PATH,
+      RestHandlerCreator<RestExportHandler>::createNoData);
 
   // add "/import" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
-                            RestHandlerCreator<RestImportHandler>::createNoData);
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::IMPORT_PATH,
+      RestHandlerCreator<RestImportHandler>::createNoData);
 
   // add "/replication" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
-                            RestHandlerCreator<RestReplicationHandler>::createNoData);
-  
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::REPLICATION_PATH,
+      RestHandlerCreator<RestReplicationHandler>::createNoData);
+
   // add "/simple/all" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
-                            RestHandlerCreator<RestSimpleQueryHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAqlHandler);
-  
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<
+          std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+      _pairForAqlHandler);
+
   // add "/simple/lookup-by-key" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
-                            RestHandlerCreator<RestSimpleHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAqlHandler);
-  
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
+      RestHandlerCreator<RestSimpleHandler>::createData<
+          std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+      _pairForAqlHandler);
+
   // add "/simple/remove-by-key" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
-                            RestHandlerCreator<RestSimpleHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAqlHandler);
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
+      RestHandlerCreator<RestSimpleHandler>::createData<
+          std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+      _pairForAqlHandler);
 
   // add "/upload" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                            RestHandlerCreator<RestUploadHandler>::createNoData);
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::UPLOAD_PATH,
+      RestHandlerCreator<RestUploadHandler>::createNoData);
 
   // add "/shard-comm" handler
-  factory->addPrefixHandler("/_api/shard-comm",
-                            RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
-                            _applicationDispatcher->dispatcher());
+  factory->addPrefixHandler(
+      "/_api/shard-comm",
+      RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
+      _applicationDispatcher->dispatcher());
 
   // add "/aql" handler
-  factory->addPrefixHandler("/_api/aql",
-                            RestHandlerCreator<aql::RestAqlHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAqlHandler);
+  factory->addPrefixHandler(
+      "/_api/aql", RestHandlerCreator<aql::RestAqlHandler>::createData<
+                       std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+      _pairForAqlHandler);
 
-  factory->addPrefixHandler("/_api/query",
-                            RestHandlerCreator<RestQueryHandler>::createData<ApplicationV8*>,
-                            _applicationV8);
+  factory->addPrefixHandler(
+      "/_api/query",
+      RestHandlerCreator<RestQueryHandler>::createData<ApplicationV8*>,
+      _applicationV8);
 
-  factory->addPrefixHandler("/_api/query-cache",
-                            RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+  factory->addPrefixHandler(
+      "/_api/query-cache",
+      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
 
   // And now some handlers which are registered in both /_api and /_admin
-  factory->addPrefixHandler("/_api/job",
-                            RestHandlerCreator<triagens::admin::RestJobHandler>::createData<pair<Dispatcher*, AsyncJobManager*>*>,
-                            _pairForJobHandler);
+  factory->addPrefixHandler(
+      "/_api/job",
+      RestHandlerCreator<triagens::admin::RestJobHandler>::createData<
+          pair<Dispatcher*, AsyncJobManager*>*>,
+      _pairForJobHandler);
 
-  factory->addHandler("/_api/version", 
-                      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData, 
-                      nullptr);
+  factory->addHandler(
+      "/_api/version",
+      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData,
+      nullptr);
 
-  factory->addHandler("/_api/debug-helper", 
-                      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData, 
-                      nullptr);
+  factory->addHandler(
+      "/_api/debug-helper",
+      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData,
+      nullptr);
 
   // And now the _admin handlers
-  factory->addPrefixHandler("/_admin/job",
-                            RestHandlerCreator<triagens::admin::RestJobHandler>::createData<pair<Dispatcher*, AsyncJobManager*>*>,
-                            _pairForJobHandler);
+  factory->addPrefixHandler(
+      "/_admin/job",
+      RestHandlerCreator<triagens::admin::RestJobHandler>::createData<
+          pair<Dispatcher*, AsyncJobManager*>*>,
+      _pairForJobHandler);
 
-  factory->addHandler("/_admin/version", 
-                      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData, 
-                      nullptr);
+  factory->addHandler(
+      "/_admin/version",
+      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData,
+      nullptr);
 
-  factory->addHandler("/_admin/debug-helper", 
-                      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData, 
-                      nullptr);
+  factory->addHandler(
+      "/_admin/debug-helper",
+      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData,
+      nullptr);
 
   // further admin handlers
-  factory->addHandler("/_admin/log", 
-                      RestHandlerCreator<triagens::admin::RestAdminLogHandler>::createNoData, 
-                      nullptr);
+  factory->addHandler(
+      "/_admin/log",
+      RestHandlerCreator<triagens::admin::RestAdminLogHandler>::createNoData,
+      nullptr);
 
-  factory->addPrefixHandler("/_admin/shutdown",
-                            RestHandlerCreator<triagens::admin::RestShutdownHandler>::createData<void*>,
-                            static_cast<void*>(_applicationServer));
+  factory->addPrefixHandler(
+      "/_admin/shutdown",
+      RestHandlerCreator<triagens::admin::RestShutdownHandler>::createData<
+          void*>,
+      static_cast<void*>(_applicationServer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,38 +268,39 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
 /// reference-counter is increased by one
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* request,
-                                                 TRI_server_t* server) {
+static TRI_vocbase_t* LookupDatabaseFromRequest(
+    triagens::rest::HttpRequest* request, TRI_server_t* server) {
   // get the request endpoint
   ConnectionInfo const& ci = request->connectionInfo();
   std::string const& endpoint = ci.endpoint;
 
   // get the databases mapped to the endpoint
-  ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
+  ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(
+      server->_applicationEndpointServer);
   std::vector<std::string> const& databases = s->getEndpointMapping(endpoint);
 
   // get database name from request
   std::string dbName = request->databaseName();
 
   if (databases.empty()) {
-    // no databases defined. this means all databases are accessible via the endpoint
+    // no databases defined. this means all databases are accessible via the
+    // endpoint
 
     if (dbName.empty()) {
-      // if no databases was specified in the request, use system database name as a fallback
+      // if no databases was specified in the request, use system database name
+      // as a fallback
       dbName = TRI_VOC_SYSTEM_DATABASE;
       request->setDatabaseName(dbName);
     }
-  }
-  else {
+  } else {
     // only some databases are allowed for this endpoint
     if (dbName.empty()) {
       // no specific database requested, so use first mapped database
-      TRI_ASSERT(! databases.empty());
+      TRI_ASSERT(!databases.empty());
 
       dbName = databases[0];
       request->setDatabaseName(dbName);
-    }
-    else {
+    } else {
       bool found = false;
 
       for (size_t i = 0; i < databases.size(); ++i) {
@@ -291,7 +312,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
       }
 
       // requested database not found
-      if (! found) {
+      if (!found) {
         return nullptr;
       }
     }
@@ -308,10 +329,9 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 /// @brief add the context to a request
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SetRequestContext (triagens::rest::HttpRequest* request,
-                               void* data) {
-
-  TRI_server_t* server   = static_cast<TRI_server_t*>(data);
+static bool SetRequestContext(triagens::rest::HttpRequest* request,
+                              void* data) {
+  TRI_server_t* server = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
   // invalid database name specified, database not found etc.
@@ -320,12 +340,13 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
   }
 
   // database needs upgrade
-  if (vocbase->_state == (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION) {
+  if (vocbase->_state == (sig_atomic_t)TRI_VOCBASE_STATE_FAILED_VERSION) {
     request->setRequestPath("/_msg/please-upgrade");
     return false;
   }
 
-  VocbaseContext* ctx = new triagens::arango::VocbaseContext(request, server, vocbase);
+  VocbaseContext* ctx =
+      new triagens::arango::VocbaseContext(request, server, vocbase);
 
   if (ctx == nullptr) {
     // out of memory
@@ -338,61 +359,54 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class ArangoServer
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoServer::ArangoServer (int argc, char** argv)
-  : _argc(argc),
-    _argv(argv),
-    _tempPath(),
-    _applicationScheduler(nullptr),
-    _applicationDispatcher(nullptr),
-    _applicationEndpointServer(nullptr),
-    _applicationCluster(nullptr),
-    _jobManager(nullptr),
-    _applicationV8(nullptr),
-    _authenticateSystemOnly(false),
-    _disableAuthentication(false),
-    _disableAuthenticationUnixSockets(false),
-    _dispatcherThreads(8),
-    _dispatcherQueueSize(16384),
-    _v8Contexts(8),
-    _indexThreads(2),
-    _databasePath(),
-    _queryCacheMode("off"),
-    _queryCacheMaxResults(128),
-    _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
-    _defaultWaitForSync(false),
-    _forceSyncProperties(true),
-    _ignoreDatafileErrors(false),
-    _disableReplicationApplier(false),
-    _disableQueryTracking(false),
-    _throwCollectionNotLoadedError(false),
-    _foxxQueues(true),
-    _foxxQueuesPollInterval(1.0),
-    _server(nullptr),
-    _queryRegistry(nullptr),
-    _pairForAqlHandler(nullptr),
-    _pairForJobHandler(nullptr),
-    _indexPool(nullptr),
-    _threadAffinity(0) {
-
+ArangoServer::ArangoServer(int argc, char** argv)
+    : _argc(argc),
+      _argv(argv),
+      _tempPath(),
+      _applicationScheduler(nullptr),
+      _applicationDispatcher(nullptr),
+      _applicationEndpointServer(nullptr),
+      _applicationCluster(nullptr),
+      _jobManager(nullptr),
+      _applicationV8(nullptr),
+      _authenticateSystemOnly(false),
+      _disableAuthentication(false),
+      _disableAuthenticationUnixSockets(false),
+      _dispatcherThreads(8),
+      _dispatcherQueueSize(16384),
+      _v8Contexts(8),
+      _indexThreads(2),
+      _databasePath(),
+      _queryCacheMode("off"),
+      _queryCacheMaxResults(128),
+      _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+      _defaultWaitForSync(false),
+      _forceSyncProperties(true),
+      _ignoreDatafileErrors(false),
+      _disableReplicationApplier(false),
+      _disableQueryTracking(false),
+      _throwCollectionNotLoadedError(false),
+      _foxxQueues(true),
+      _foxxQueuesPollInterval(1.0),
+      _server(nullptr),
+      _queryRegistry(nullptr),
+      _pairForAqlHandler(nullptr),
+      _pairForJobHandler(nullptr),
+      _indexPool(nullptr),
+      _threadAffinity(0) {
   TRI_SetApplicationName("arangod");
 
 #ifndef TRI_HAVE_THREAD_AFFINITY
   _threadAffinity = 0;
 #endif
 
-  // set working directory and database directory
+// set working directory and database directory
 #ifdef _WIN32
   _workingDirectory = ".";
 #else
@@ -400,7 +414,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
 #endif
 
   _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-
 
   TRI_InitServerGlobals();
 
@@ -411,7 +424,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoServer::~ArangoServer () {
+ArangoServer::~ArangoServer() {
   delete _indexPool;
   delete _jobManager;
   delete _server;
@@ -419,23 +432,24 @@ ArangoServer::~ArangoServer () {
   Nonce::destroy();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 AnyServer methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::buildApplicationServer () {
-  _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
+void ArangoServer::buildApplicationServer() {
+  _applicationServer =
+      new ApplicationServer("arangod", "[<options>] <database-directory>",
+                            rest::Version::getDetailed());
 
   string conf = TRI_BinaryName(_argv[0]) + ".conf";
 
   _applicationServer->setSystemConfigFile(conf);
 
-  // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
-  _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
+  // arangod allows defining a user-specific configuration file. arangosh and
+  // the other binaries don't
+  _applicationServer->setUserConfigFile(
+      ".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
   // initialize the server's write ahead log
   wal::LogfileManager::initialize(&_databasePath, _server);
@@ -464,7 +478,7 @@ void ArangoServer::buildApplicationServer () {
   _applicationDispatcher->setApplicationScheduler(_applicationScheduler);
 
   _applicationServer->addFeature(_applicationScheduler);
-  
+
   // ...........................................................................
   // create QueryRegistry
   // ...........................................................................
@@ -476,10 +490,8 @@ void ArangoServer::buildApplicationServer () {
   // V8 engine
   // .............................................................................
 
-  _applicationV8 = new ApplicationV8(_server,
-                                     _queryRegistry,
-                                     _applicationScheduler,
-                                     _applicationDispatcher);
+  _applicationV8 = new ApplicationV8(
+      _server, _queryRegistry, _applicationScheduler, _applicationDispatcher);
 
   _applicationServer->addFeature(_applicationV8);
 
@@ -490,102 +502,116 @@ void ArangoServer::buildApplicationServer () {
   string ignoreOpt;
   map<string, ProgramOptionsDescription> additional;
 
-  additional["Hidden Options"]
-    ("ruby.gc-interval", &ignoreOpt, "Ruby garbage collection interval (each x requests)")
-    ("ruby.action-directory", &ignoreOpt, "path to the Ruby action directory")
-    ("ruby.modules-path", &ignoreOpt, "one or more directories separated by (semi-) colons")
-    ("ruby.startup-directory", &ignoreOpt, "path to the directory containing alternate Ruby startup scripts")
-    ("server.disable-replication-logger", &ignoreOpt, "start with replication logger turned off")
-    ("database.force-sync-shapes", &ignoreOpt, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
-    ("database.remove-on-drop", &ignoreOpt, "wipe a collection from disk after dropping")
-  ;
+  additional["Hidden Options"](
+      "ruby.gc-interval", &ignoreOpt,
+      "Ruby garbage collection interval (each x requests)")(
+      "ruby.action-directory", &ignoreOpt, "path to the Ruby action directory")(
+      "ruby.modules-path", &ignoreOpt,
+      "one or more directories separated by (semi-) colons")(
+      "ruby.startup-directory", &ignoreOpt,
+      "path to the directory containing alternate Ruby startup scripts")(
+      "server.disable-replication-logger", &ignoreOpt,
+      "start with replication logger turned off")(
+      "database.force-sync-shapes", &ignoreOpt,
+      "force syncing of shape data to disk, will use waitForSync value of "
+      "collection when turned off (deprecated)")(
+      "database.remove-on-drop", &ignoreOpt,
+      "wipe a collection from disk after dropping");
 
   // .............................................................................
   // define server options
   // .............................................................................
 
   // command-line only options
-  additional["General Options:help-default"]
-    ("console", "do not start as server, start a JavaScript emergency console instead")
-    ("upgrade", "perform a database upgrade")
-    ("check-version", "checks the versions of the database and exit")
-  ;
+  additional["General Options:help-default"](
+      "console",
+      "do not start as server, start a JavaScript emergency console instead")(
+      "upgrade", "perform a database upgrade")(
+      "check-version", "checks the versions of the database and exit");
 
   // .............................................................................
   // set language of default collator
   // .............................................................................
 
-  additional["Server Options:help-default"]
-    ("temp-path", &_tempPath, "temporary path")
-    ("default-language", &_defaultLanguage, "ISO-639 language code")
-  ;
+  additional["Server Options:help-default"]("temp-path", &_tempPath,
+                                            "temporary path")(
+      "default-language", &_defaultLanguage, "ISO-639 language code");
 
   // other options
-  additional["Hidden Options"]
-    ("no-upgrade", "skip a database upgrade")
-    ("start-service", "used to start as windows service")
-    ("no-server", "do not start the server, if console is requested")
-    ("use-thread-affinity", &_threadAffinity, "try to set thread affinity (0=disable, 1=disjunct, 2=overlap, 3=scheduler, 4=dispatcher)")
-  ;
+  additional["Hidden Options"]("no-upgrade", "skip a database upgrade")(
+      "start-service", "used to start as windows service")(
+      "no-server", "do not start the server, if console is requested")(
+      "use-thread-affinity", &_threadAffinity,
+      "try to set thread affinity (0=disable, 1=disjunct, 2=overlap, "
+      "3=scheduler, 4=dispatcher)");
 
-  // .............................................................................
-  // daemon and supervisor mode
-  // .............................................................................
+// .............................................................................
+// daemon and supervisor mode
+// .............................................................................
 
 #ifndef _WIN32
-  additional["General Options:help-admin"]
-    ("daemon", "run as daemon")
-    ("pid-file", &_pidFile, "pid-file in daemon mode")
-    ("supervisor", "starts a supervisor and runs as daemon")
-    ("working-directory", &_workingDirectory, "working directory in daemon mode")
-  ;
+  additional["General Options:help-admin"]("daemon", "run as daemon")(
+      "pid-file", &_pidFile, "pid-file in daemon mode")(
+      "supervisor", "starts a supervisor and runs as daemon")(
+      "working-directory", &_workingDirectory,
+      "working directory in daemon mode");
 #endif
 
 #ifdef __APPLE__
-  additional["General Options:help-admin"]
-    ("voice", "enable voice based welcome")
-  ;
+  additional["General Options:help-admin"]("voice",
+                                           "enable voice based welcome");
 #endif
 
-  additional["Hidden Options"]
-    ("development-mode", "start server in development mode")
-  ;
+  additional["Hidden Options"]("development-mode",
+                               "start server in development mode");
 
   // .............................................................................
   // javascript options
   // .............................................................................
 
-  additional["Javascript Options:help-admin"]
-    ("javascript.script", &_scriptFile, "do not start as server, run script instead")
-    ("javascript.script-parameter", &_scriptParameters, "script parameter")
-  ;
+  additional["Javascript Options:help-admin"](
+      "javascript.script", &_scriptFile,
+      "do not start as server, run script instead")(
+      "javascript.script-parameter", &_scriptParameters, "script parameter");
 
-  additional["Hidden Options"]
-    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
-  ;
+  additional["Hidden Options"](
+      "javascript.unit-tests", &_unitTests,
+      "do not start as server, run unit tests instead");
 
   // .............................................................................
   // database options
   // .............................................................................
 
-  additional["Database Options:help-admin"]
-    ("database.directory", &_databasePath, "path to the database directory")
-    ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
-    ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
-    ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
-    ("database.ignore-datafile-errors", &_ignoreDatafileErrors, "load collections even if datafiles may contain errors")
-    ("database.disable-query-tracking", &_disableQueryTracking, "turn off AQL query tracking by default")
-    ("database.query-cache-mode", &_queryCacheMode, "mode for the AQL query cache (on, off, demand)")
-    ("database.query-cache-max-results", &_queryCacheMaxResults, "maximum number of results in query cache per database")
-    ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
-    ("database.throw-collection-not-loaded-error", &_throwCollectionNotLoadedError, "throw an error when accessing a collection that is still loading")
-  ;
+  additional["Database Options:help-admin"](
+      "database.directory", &_databasePath, "path to the database directory")(
+      "database.maximal-journal-size", &_defaultMaximalSize,
+      "default maximal journal size, can be overwritten when creating a "
+      "collection")("database.wait-for-sync", &_defaultWaitForSync,
+                    "default wait-for-sync behavior, can be overwritten when "
+                    "creating a collection")(
+      "database.force-sync-properties", &_forceSyncProperties,
+      "force syncing of collection properties to disk, will use waitForSync "
+      "value of collection when turned off")(
+      "database.ignore-datafile-errors", &_ignoreDatafileErrors,
+      "load collections even if datafiles may contain errors")(
+      "database.disable-query-tracking", &_disableQueryTracking,
+      "turn off AQL query tracking by default")(
+      "database.query-cache-mode", &_queryCacheMode,
+      "mode for the AQL query cache (on, off, demand)")(
+      "database.query-cache-max-results", &_queryCacheMaxResults,
+      "maximum number of results in query cache per database")(
+      "database.index-threads", &_indexThreads,
+      "threads to start for parallel background index creation")(
+      "database.throw-collection-not-loaded-error",
+      &_throwCollectionNotLoadedError,
+      "throw an error when accessing a collection that is still loading");
 
   // .............................................................................
   // cluster options
   // .............................................................................
 
-  _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
+  _applicationCluster =
+      new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
   _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
@@ -596,57 +622,63 @@ void ArangoServer::buildApplicationServer () {
   // for this server we display our own options such as port to use
   // .............................................................................
 
-  additional["Server Options:help-admin"]
-    ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
-    ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
+  additional["Server Options:help-admin"](
+      "server.authenticate-system-only", &_authenticateSystemOnly,
+      "use HTTP authentication only for requests to /_api and /_admin")(
+      "server.disable-authentication", &_disableAuthentication,
+      "disable authentication for ALL client requests")
 #ifdef TRI_HAVE_LINUX_SOCKETS
-    ("server.disable-authentication-unix-sockets", &_disableAuthenticationUnixSockets, "disable authentication for requests via UNIX domain sockets")
+      ("server.disable-authentication-unix-sockets",
+       &_disableAuthenticationUnixSockets,
+       "disable authentication for requests via UNIX domain sockets")
 #endif
-    ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
-    ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
-    ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
-    ("server.additional-threads", &_additionalThreads, "number of threads in additional queues")
-    ("server.hide-product-header", &HttpResponse::HideProductHeader, "do not expose \"Server: ArangoDB\" header in HTTP responses")
-    ("server.foxx-queues", &_foxxQueues, "enable Foxx queues")
-    ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
-    ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")
-  ;
+          ("server.disable-replication-applier", &_disableReplicationApplier,
+           "start with replication applier turned off")(
+              "server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS,
+              "allow change of database in REST actions, only needed for "
+              "unittests")("server.threads", &_dispatcherThreads,
+                           "number of threads for basic operations")(
+              "server.additional-threads", &_additionalThreads,
+              "number of threads in additional queues")(
+              "server.hide-product-header", &HttpResponse::HideProductHeader,
+              "do not expose \"Server: ArangoDB\" header in HTTP responses")(
+              "server.foxx-queues", &_foxxQueues, "enable Foxx queues")(
+              "server.foxx-queues-poll-interval", &_foxxQueuesPollInterval,
+              "Foxx queue manager poll interval (in seconds)")(
+              "server.session-timeout", &VocbaseContext::ServerSessionTtl,
+              "timeout of web interface server sessions (in seconds)");
 
   bool disableStatistics = false;
 
-  additional["Server Options:help-admin"]
-    ("server.disable-statistics", &disableStatistics, "turn off statistics gathering")
-  ;
+  additional["Server Options:help-admin"]("server.disable-statistics",
+                                          &disableStatistics,
+                                          "turn off statistics gathering");
 
-  additional["Javascript Options:help-admin"]
-    ("javascript.v8-contexts", &_v8Contexts, "number of V8 contexts that are created for executing JavaScript actions")
-  ;
+  additional["Javascript Options:help-admin"](
+      "javascript.v8-contexts", &_v8Contexts,
+      "number of V8 contexts that are created for executing JavaScript "
+      "actions");
 
-  additional["Server Options:help-admin"]
-    ("scheduler.maximal-queue-size", &_dispatcherQueueSize, "maximum size of queue for asynchronous operations")
-  ;
+  additional["Server Options:help-admin"](
+      "scheduler.maximal-queue-size", &_dispatcherQueueSize,
+      "maximum size of queue for asynchronous operations");
 
   // .............................................................................
   // endpoint server
   // .............................................................................
 
-  _jobManager = new AsyncJobManager(&TRI_NewTickServer,
-                                    ClusterCommRestCallback);
+  _jobManager = new AsyncJobManager(ClusterCommRestCallback);
 
-  _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
-                                                             _applicationScheduler,
-                                                             _applicationDispatcher,
-                                                             _jobManager,
-                                                             "arangodb",
-                                                             &SetRequestContext,
-                                                             (void*) _server);
+  _applicationEndpointServer = new ApplicationEndpointServer(
+      _applicationServer, _applicationScheduler, _applicationDispatcher,
+      _jobManager, "arangodb", &SetRequestContext, (void*)_server);
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
   // parse the command line options - exit if there is a parse error
   // .............................................................................
 
-  if (! _applicationServer->parse(_argc, _argv, additional)) {
+  if (!_applicationServer->parse(_argc, _argv, additional)) {
     LOG_FATAL_AND_EXIT("cannot parse command line arguments");
   }
 
@@ -654,31 +686,33 @@ void ArangoServer::buildApplicationServer () {
   _tempPath = StringUtils::rTrim(_tempPath, TRI_DIR_SEPARATOR_STR);
 
   if (_applicationServer->programOptions().has("temp-path")) {
-    TRI_SetUserTempPath((char*) _tempPath.c_str());
+    TRI_SetUserTempPath((char*)_tempPath.c_str());
   }
 
-  // must be used after drop privileges and be called to set it to avoid raise conditions
+  // must be used after drop privileges and be called to set it to avoid raise
+  // conditions
   char* pp = TRI_GetTempPath();
   TRI_FreeString(TRI_CORE_MEM_ZONE, pp);
 
-
   IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
-  
+
   // .............................................................................
   // set language name
   // .............................................................................
 
   string languageName;
 
-  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
     char const* ICU_env = getenv("ICU_DATA");
-    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
+    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'",
+                       (ICU_env) ? ICU_env : "");
   }
 
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-  }
-  else {
+    languageName =
+        string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
+               Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+  } else {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
@@ -689,7 +723,7 @@ void ArangoServer::buildApplicationServer () {
   uint32_t optionNonceHashSize = 0;
 
   if (optionNonceHashSize > 0) {
-    LOG_DEBUG("setting nonce hash size to %d", (int) optionNonceHashSize);
+    LOG_DEBUG("setting nonce hash size to %d", (int)optionNonceHashSize);
     Nonce::create(optionNonceHashSize);
   }
 
@@ -699,7 +733,10 @@ void ArangoServer::buildApplicationServer () {
 
   // validate journal size
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    LOG_FATAL_AND_EXIT("invalid value for '--database.maximal-journal-size'. expected at least %d", (int) TRI_JOURNAL_MINIMAL_SIZE);
+    LOG_FATAL_AND_EXIT(
+        "invalid value for '--database.maximal-journal-size'. expected at "
+        "least %d",
+        (int)TRI_JOURNAL_MINIMAL_SIZE);
   }
 
   // validate queue size
@@ -714,9 +751,9 @@ void ArangoServer::buildApplicationServer () {
   vector<string> arguments = _applicationServer->programArguments();
 
   if (1 < arguments.size()) {
-    LOG_FATAL_AND_EXIT("expected at most one database directory, got %d", (int) arguments.size());
-  }
-  else if (1 == arguments.size()) {
+    LOG_FATAL_AND_EXIT("expected at most one database directory, got %d",
+                       (int)arguments.size());
+  } else if (1 == arguments.size()) {
     _databasePath = arguments[0];
   }
 
@@ -725,34 +762,37 @@ void ArangoServer::buildApplicationServer () {
     LOG_FATAL_AND_EXIT("no database path has been supplied, giving up");
   }
 
-  runStartupChecks(); 
+  runStartupChecks();
 
   // strip trailing separators
   _databasePath = StringUtils::rTrim(_databasePath, TRI_DIR_SEPARATOR_STR);
 
   _applicationEndpointServer->setBasePath(_databasePath);
 
-
   // disable certain options in unittest or script mode
-  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+  OperationMode::server_operation_mode_e mode =
+      OperationMode::determineMode(_applicationServer->programOptions());
 
   if (mode == OperationMode::MODE_CONSOLE) {
     _applicationScheduler->disableControlCHandler();
   }
- 
-  if (mode == OperationMode::MODE_SCRIPT || mode == OperationMode::MODE_UNITTESTS) {
+
+  if (mode == OperationMode::MODE_SCRIPT ||
+      mode == OperationMode::MODE_UNITTESTS) {
     // testing disables authentication
     _disableAuthentication = true;
   }
- 
-  TRI_SetThrowCollectionNotLoadedVocBase(nullptr, _throwCollectionNotLoadedError);
-  
+
+  TRI_SetThrowCollectionNotLoadedVocBase(nullptr,
+                                         _throwCollectionNotLoadedError);
+
   // set global query tracking flag
   triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);
 
   // configure the query cache
   {
-    std::pair<std::string, size_t> cacheProperties{ _queryCacheMode, _queryCacheMaxResults };
+    std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
+                                                   _queryCacheMaxResults};
     triagens::aql::QueryCache::instance()->setProperties(cacheProperties);
   }
 
@@ -782,26 +822,30 @@ void ArangoServer::buildApplicationServer () {
   if (_daemonMode || _supervisorMode) {
     if (_pidFile.empty()) {
       LOG_INFO("please use the '--pid-file' option");
-      LOG_FATAL_AND_EXIT("no pid-file defined, but daemon or supervisor mode was requested");
+      LOG_FATAL_AND_EXIT(
+          "no pid-file defined, but daemon or supervisor mode was requested");
     }
-  
-    OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+
+    OperationMode::server_operation_mode_e mode =
+        OperationMode::determineMode(_applicationServer->programOptions());
     if (mode != OperationMode::MODE_SERVER) {
-      LOG_FATAL_AND_EXIT("invalid mode. must not specify --console together with --daemon or --supervisor");
+      LOG_FATAL_AND_EXIT(
+          "invalid mode. must not specify --console together with --daemon or "
+          "--supervisor");
     }
 
     // make the pid filename absolute
     int err = 0;
     string currentDir = FileUtils::currentDirectory(&err);
-    char* absoluteFile = TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
+    char* absoluteFile =
+        TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
 
     if (absoluteFile != nullptr) {
       _pidFile = string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
 
       LOG_DEBUG("using absolute pid file '%s'", _pidFile.c_str());
-    }
-    else {
+    } else {
       LOG_FATAL_AND_EXIT("cannot determine current directory");
     }
   }
@@ -818,10 +862,11 @@ void ArangoServer::buildApplicationServer () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::startupServer () {
+int ArangoServer::startupServer() {
   TRI_InitializeStatistics();
 
-  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+  OperationMode::server_operation_mode_e mode =
+      OperationMode::determineMode(_applicationServer->programOptions());
   bool startServer = true;
 
   if (_applicationServer->programOptions().has("no-server")) {
@@ -866,8 +911,8 @@ int ArangoServer::startupServer () {
   // the log must exist before all other server operations can start
   LOG_TRACE("starting WAL logfile manager");
 
-  if (! wal::LogfileManager::instance()->prepare() ||
-      ! wal::LogfileManager::instance()->start()) {
+  if (!wal::LogfileManager::instance()->prepare() ||
+      !wal::LogfileManager::instance()->start()) {
     // unable to initialize & start WAL logfile manager
     LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
   }
@@ -885,12 +930,13 @@ int ArangoServer::startupServer () {
   startupProgress();
 
   // open all databases
-  bool const iterateMarkersOnOpen = ! wal::LogfileManager::instance()->hasFoundLastTick();
+  bool const iterateMarkersOnOpen =
+      !wal::LogfileManager::instance()->hasFoundLastTick();
 
   openDatabases(checkVersion, performUpgrade, iterateMarkersOnOpen);
 
-  if (! checkVersion) {
-    if (! wal::LogfileManager::instance()->open()) {
+  if (!checkVersion) {
+    if (!wal::LogfileManager::instance()->open()) {
       LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
     }
   }
@@ -898,10 +944,12 @@ int ArangoServer::startupServer () {
   startupProgress();
 
   // fetch the system database
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  TRI_vocbase_t* vocbase =
+      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
   if (vocbase == nullptr) {
-    LOG_FATAL_AND_EXIT("No _system database found in database directory. Cannot start!");
+    LOG_FATAL_AND_EXIT(
+        "No _system database found in database directory. Cannot start!");
   }
 
   TRI_ASSERT(vocbase != nullptr);
@@ -909,9 +957,10 @@ int ArangoServer::startupServer () {
   startupProgress();
 
   // initialize V8
-  if (! _applicationServer->programOptions().has("javascript.v8-contexts")) {
+  if (!_applicationServer->programOptions().has("javascript.v8-contexts")) {
     // the option was added recently so it's not always set
-    // the behavior in older ArangoDB was to create one V8 context per dispatcher thread
+    // the behavior in older ArangoDB was to create one V8 context per
+    // dispatcher thread
     _v8Contexts = _dispatcherThreads;
   }
 
@@ -924,10 +973,11 @@ int ArangoServer::startupServer () {
     if (startServer) {
       ++_v8Contexts;
     }
-  }
-  else if (mode == OperationMode::MODE_UNITTESTS || mode == OperationMode::MODE_SCRIPT) {
+  } else if (mode == OperationMode::MODE_UNITTESTS ||
+             mode == OperationMode::MODE_SCRIPT) {
     if (_v8Contexts == 1) {
-      // at least two to allow both the test-runner and the scheduler to use a V8 instance
+      // at least two to allow both the test-runner and the scheduler to use a
+      // V8 instance
       _v8Contexts = 2;
     }
   }
@@ -945,7 +995,7 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
-  if (! startServer) {
+  if (!startServer) {
     _applicationScheduler->disable();
     _applicationDispatcher->disable();
     _applicationEndpointServer->disable();
@@ -961,27 +1011,27 @@ int ArangoServer::startupServer () {
 
   // now we can create the queues
   if (startServer) {
-    _applicationDispatcher->buildStandardQueue(_dispatcherThreads, 
-                                               (int) _dispatcherQueueSize);
+    _applicationDispatcher->buildStandardQueue(_dispatcherThreads,
+                                               (int)_dispatcherQueueSize);
 
-    if (role == ServerState::ROLE_COORDINATOR || 
-        role == ServerState::ROLE_PRIMARY || 
+    if (role == ServerState::ROLE_COORDINATOR ||
+        role == ServerState::ROLE_PRIMARY ||
         role == ServerState::ROLE_SECONDARY) {
       _applicationDispatcher->buildAQLQueue(_dispatcherThreads,
-                                            (int) _dispatcherQueueSize);
+                                            (int)_dispatcherQueueSize);
     }
 
-    for (size_t i = 0;  i < _additionalThreads.size();  ++i) {
+    for (size_t i = 0; i < _additionalThreads.size(); ++i) {
       int n = _additionalThreads[i];
 
       if (n < 1) {
-	n = 1;
+        n = 1;
       }
 
       _additionalThreads[i] = n;
 
-      _applicationDispatcher->buildExtraQueue(
-        i + 1, n, (int) _dispatcherQueueSize);
+      _applicationDispatcher->buildExtraQueue(i + 1, n,
+                                              (int)_dispatcherQueueSize);
     }
   }
 
@@ -1010,8 +1060,10 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
-  _pairForAqlHandler = new std::pair<ApplicationV8*, aql::QueryRegistry*>(_applicationV8, _queryRegistry);
-  _pairForJobHandler = new std::pair<Dispatcher*, AsyncJobManager*>(_applicationDispatcher->dispatcher(), _jobManager);
+  _pairForAqlHandler = new std::pair<ApplicationV8*, aql::QueryRegistry*>(
+      _applicationV8, _queryRegistry);
+  _pairForJobHandler = new std::pair<Dispatcher*, AsyncJobManager*>(
+      _applicationDispatcher->dispatcher(), _jobManager);
 
   // ...........................................................................
   // create endpoints and handlers
@@ -1022,22 +1074,22 @@ int ArangoServer::startupServer () {
   httpOptions._vocbase = vocbase;
 
   if (startServer) {
-
     // start with enabled maintenance mode
     HttpHandlerFactory::setMaintenance(true);
 
     // create the server
     _applicationEndpointServer->buildServers();
 
-    HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
+    HttpHandlerFactory* handlerFactory =
+        _applicationEndpointServer->getHandlerFactory();
 
     defineHandlers(handlerFactory);
 
     // add action handler
     handlerFactory->addPrefixHandler(
-      "/",
-      RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-      (void*) &httpOptions);
+        "/", RestHandlerCreator<RestActionHandler>::createData<
+                 RestActionHandler::action_options_t*>,
+        (void*)&httpOptions);
   }
 
   startupProgress();
@@ -1053,10 +1105,11 @@ int ArangoServer::startupServer () {
     size_t nd = _applicationDispatcher->numberOfThreads();
 
     if (ns != 0 && nd != 0) {
-      LOG_INFO("the server has %d (hyper) cores, using %d scheduler threads, %d dispatcher threads",
-          (int) n, (int) ns, (int) nd);
-    }
-    else {
+      LOG_INFO(
+          "the server has %d (hyper) cores, using %d scheduler threads, %d "
+          "dispatcher threads",
+          (int)n, (int)ns, (int)nd);
+    } else {
       _threadAffinity = 0;
     }
 
@@ -1066,13 +1119,22 @@ int ArangoServer::startupServer () {
           ns = static_cast<size_t>(round(1.0 * n * ns / (ns + nd)));
           nd = static_cast<size_t>(round(1.0 * n * nd / (ns + nd)));
 
-          if (ns < 1) { ns = 1; }
-          if (nd < 1) { nd = 1; }
+          if (ns < 1) {
+            ns = 1;
+          }
+          if (nd < 1) {
+            nd = 1;
+          }
 
           while (n < ns + nd) {
-            if (1 < ns) { ns -= 1; }
-            else if (1 < nd) { nd -= 1; }
-            else { ns = 1; nd = 1; }
+            if (1 < ns) {
+              ns -= 1;
+            } else if (1 < nd) {
+              nd -= 1;
+            } else {
+              ns = 1;
+              nd = 1;
+            }
           }
         }
 
@@ -1119,11 +1181,11 @@ int ArangoServer::startupServer () {
       vector<size_t> ps;
       vector<size_t> pd;
 
-      for (size_t i = 0;  i < ns;  ++i) {
+      for (size_t i = 0; i < ns; ++i) {
         ps.push_back(i);
       }
 
-      for (size_t i = 0;  i < nd;  ++i) {
+      for (size_t i = 0; i < nd; ++i) {
         pd.push_back(n - i - 1);
       }
 
@@ -1141,11 +1203,16 @@ int ArangoServer::startupServer () {
       if (0 < nd) {
         LOG_INFO("dispatcher cores: %s", ToString(pd).c_str());
       }
-    }
-    else {
-      LOG_INFO("the server has %d (hyper) cores", (int) n);
+    } else {
+      LOG_INFO("the server has %d (hyper) cores", (int)n);
     }
   }
+
+  // .............................................................................
+  // start the work monitor
+  // .............................................................................
+
+  InitializeWorkMonitor();
 
   // .............................................................................
   // start the main event loop
@@ -1156,13 +1223,13 @@ int ArangoServer::startupServer () {
   // for a cluster coordinator, the users are loaded at a later stage;
   // the kickstarter will trigger a bootstrap process
   //
-  if (role != ServerState::ROLE_COORDINATOR && 
-      role != ServerState::ROLE_PRIMARY && 
+  if (role != ServerState::ROLE_COORDINATOR &&
+      role != ServerState::ROLE_PRIMARY &&
       role != ServerState::ROLE_SECONDARY) {
-
-    // if the authentication info could not be loaded, but authentication is turned on,
+    // if the authentication info could not be loaded, but authentication is
+    // turned on,
     // then we refuse to start
-    if (! vocbase->_authInfoLoaded && ! _disableAuthentication) {
+    if (!vocbase->_authInfoLoaded && !_disableAuthentication) {
       LOG_FATAL_AND_EXIT("could not load required authentication information");
     }
   }
@@ -1171,7 +1238,8 @@ int ArangoServer::startupServer () {
     LOG_INFO("Authentication is turned off");
   }
 
-  LOG_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
+  LOG_INFO("ArangoDB (version " TRI_VERSION_FULL
+           ") is ready for business. Have fun!");
 
   startupFinished();
 
@@ -1179,14 +1247,11 @@ int ArangoServer::startupServer () {
 
   if (mode == OperationMode::MODE_CONSOLE) {
     res = runConsole(vocbase);
-  }
-  else if (mode == OperationMode::MODE_UNITTESTS) {
+  } else if (mode == OperationMode::MODE_UNITTESTS) {
     res = runUnitTests(vocbase);
-  }
-  else if (mode == OperationMode::MODE_SCRIPT) {
+  } else if (mode == OperationMode::MODE_SCRIPT) {
     res = runScript(vocbase);
-  }
-  else {
+  } else {
     res = runServer(vocbase);
   }
 
@@ -1209,37 +1274,36 @@ int ArangoServer::startupServer () {
   closeDatabases();
 
   if (mode == OperationMode::MODE_CONSOLE) {
-    cout << endl << TRI_BYE_MESSAGE << endl;
+    cout << endl
+         << TRI_BYE_MESSAGE << endl;
   }
 
   TRI_ShutdownStatistics();
+  ShutdownWorkMonitor();
 
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run arbitrary checks at startup
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::runStartupChecks () {
+void ArangoServer::runStartupChecks() {
 #ifdef __arm__
   // detect alignment settings for ARM
   {
     // To change the alignment trap behavior, simply echo a number into
     // /proc/cpu/alignment.  The number is made up from various bits:
-    // 
+    //
     // bit             behavior when set
     // ---             -----------------
-    // 
+    //
     // 0               A user process performing an unaligned memory access
     //                 will cause the kernel to print a message indicating
     //                 process name, pid, pc, instruction, address, and the
     //                 fault code.
-    // 
+    //
     // 1               The kernel will attempt to fix up the user process
     //                 performing the unaligned access.  This is of course
     //                 slow (think about the floating point emulator) and
@@ -1251,7 +1315,8 @@ void ArangoServer::runStartupChecks () {
 
     std::string const filename("/proc/cpu/alignment");
     try {
-      std::string const cpuAlignment = triagens::basics::FileUtils::slurp(filename);
+      std::string const cpuAlignment =
+          triagens::basics::FileUtils::slurp(filename);
       auto start = cpuAlignment.find("User faults:");
 
       if (start != std::string::npos) {
@@ -1260,8 +1325,7 @@ void ArangoServer::runStartupChecks () {
         while (end < cpuAlignment.size()) {
           if (cpuAlignment[end] == ' ' || cpuAlignment[end] == '\t') {
             ++end;
-          }
-          else {
+          } else {
             break;
           }
         }
@@ -1271,27 +1335,34 @@ void ArangoServer::runStartupChecks () {
             break;
           }
         }
-      
-        int64_t alignment = std::stol(std::string(cpuAlignment.c_str() + start, end - start));
+
+        int64_t alignment =
+            std::stol(std::string(cpuAlignment.c_str() + start, end - start));
         if ((alignment & 2) == 0) {
-          LOG_FATAL_AND_EXIT("possibly incompatible CPU alignment settings found in '%s'. this may cause arangod to abort with SIGBUS. please set the value in '%s' to 2", 
-                             filename.c_str(), 
-                             filename.c_str());
+          LOG_FATAL_AND_EXIT(
+              "possibly incompatible CPU alignment settings found in '%s'. "
+              "this may cause arangod to abort with SIGBUS. please set the "
+              "value in '%s' to 2",
+              filename.c_str(), filename.c_str());
         }
 
         alignmentDetected = true;
       }
 
-    }
-    catch (...) {
+    } catch (...) {
       // ignore that we cannot detect the alignment
-      LOG_TRACE("unable to detect CPU alignment settings. could not process file '%s'", filename.c_str());
+      LOG_TRACE(
+          "unable to detect CPU alignment settings. could not process file "
+          "'%s'",
+          filename.c_str());
     }
 
-    if (! alignmentDetected) {
-      LOG_WARNING("unable to detect CPU alignment settings. could not process file '%s'. this may cause arangod to abort with SIGBUS. it may be necessary to set the value in '%s' to 2", 
-        filename.c_str(),
-        filename.c_str());
+    if (!alignmentDetected) {
+      LOG_WARNING(
+          "unable to detect CPU alignment settings. could not process file "
+          "'%s'. this may cause arangod to abort with SIGBUS. it may be "
+          "necessary to set the value in '%s' to 2",
+          filename.c_str(), filename.c_str());
     }
   }
 #endif
@@ -1303,8 +1374,8 @@ void ArangoServer::runStartupChecks () {
 /// run at least once
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::waitForHeartbeat () {
-  if (! ServerState::instance()->isCoordinator()) {
+void ArangoServer::waitForHeartbeat() {
+  if (!ServerState::instance()->isCoordinator()) {
     // waiting for the heartbeart thread is necessary on coordinator only
     return;
   }
@@ -1321,7 +1392,7 @@ void ArangoServer::waitForHeartbeat () {
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
+int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
   // disabled maintenance mode
   waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
@@ -1336,7 +1407,7 @@ int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
+int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
   ConsoleThread console(_applicationServer, _applicationV8, vocbase);
   console.start();
 
@@ -1368,8 +1439,8 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 
   int iterations = 0;
 
-  while (! console.done() && ++iterations < 30) {
-    usleep(100000); // spin while console is still needed
+  while (!console.done() && ++iterations < 30) {
+    usleep(100000);  // spin while console is still needed
   }
 
   return EXIT_SUCCESS;
@@ -1379,8 +1450,9 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 /// @brief runs unit tests
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
+int ArangoServer::runUnitTests(TRI_vocbase_t* vocbase) {
+  ApplicationV8::V8Context* context =
+      _applicationV8->enterContext(vocbase, true);
 
   auto isolate = context->isolate;
 
@@ -1388,7 +1460,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
   {
     v8::TryCatch tryCatch;
     v8::HandleScope scope(isolate);
-  
+
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Enter();
 
@@ -1396,30 +1468,32 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
     // set-up unit tests array
     v8::Handle<v8::Array> sysTestFiles = v8::Array::New(isolate);
 
-    for (size_t i = 0;  i < _unitTests.size();  ++i) {
-      sysTestFiles->Set((uint32_t) i, TRI_V8_STD_STRING(_unitTests[i]));
+    for (size_t i = 0; i < _unitTests.size(); ++i) {
+      sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(_unitTests[i]));
     }
 
-    localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"), sysTestFiles);
-    localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"), v8::True(isolate));
+    localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"),
+                                sysTestFiles);
+    localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"),
+                                v8::True(isolate));
 
     v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
     // run tests
-    auto input = TRI_V8_ASCII_STRING("require(\"@arangodb/testrunner\").runCommandLineTests();");
+    auto input = TRI_V8_ASCII_STRING(
+        "require(\"@arangodb/testrunner\").runCommandLineTests();");
     TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
 
     if (tryCatch.HasCaught()) {
       if (tryCatch.CanContinue()) {
         std::cerr << TRI_StringifyV8Exception(isolate, &tryCatch);
-      }
-      else {
+      } else {
         // will stop, so need for v8g->_canceled = true;
-        TRI_ASSERT(! ok);
+        TRI_ASSERT(!ok);
       }
-    }
-    else {
-      ok = TRI_ObjectToBoolean(localContext->Global()->Get(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
+    } else {
+      ok = TRI_ObjectToBoolean(localContext->Global()->Get(
+          TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
     }
 
     localContext->Exit();
@@ -1434,9 +1508,10 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 /// @brief runs a script
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
+int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
   bool ok = false;
-  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
+  ApplicationV8::V8Context* context =
+      _applicationV8->enterContext(vocbase, true);
   auto isolate = context->isolate;
 
   {
@@ -1447,14 +1522,16 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
     {
       v8::TryCatch tryCatch;
       v8::Context::Scope contextScope(localContext);
-      for (size_t i = 0;  i < _scriptFile.size();  ++i) {
-        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str());
+      for (size_t i = 0; i < _scriptFile.size(); ++i) {
+        bool r =
+            TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str());
 
-        if (! r) {
-          LOG_FATAL_AND_EXIT("cannot load script '%s', giving up", _scriptFile[i].c_str());
+        if (!r) {
+          LOG_FATAL_AND_EXIT("cannot load script '%s', giving up",
+                             _scriptFile[i].c_str());
         }
       }
- 
+
       // run the garbage collection for at most 30 seconds
       TRI_RunGarbageCollectionV8(isolate, 30.0);
 
@@ -1463,19 +1540,19 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
 
       params->Set(0, TRI_V8_STD_STRING(_scriptFile[_scriptFile.size() - 1]));
 
-      for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
-        params->Set((uint32_t) (i + 1), TRI_V8_STD_STRING(_scriptParameters[i]));
+      for (size_t i = 0; i < _scriptParameters.size(); ++i) {
+        params->Set((uint32_t)(i + 1), TRI_V8_STD_STRING(_scriptParameters[i]));
       }
 
       // call main
       v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING("main");
-      v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(localContext->Global()->Get(mainFuncName));
+      v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(
+          localContext->Global()->Get(mainFuncName));
 
       if (main.IsEmpty() || main->IsUndefined()) {
         LOG_FATAL_AND_EXIT("no main function defined, giving up");
-      }
-      else {
-        v8::Handle<v8::Value> args[] = { params };
+      } else {
+        v8::Handle<v8::Value> args[] = {params};
 
         try {
           v8::Handle<v8::Value> result = main->Call(main, 1, args);
@@ -1483,25 +1560,22 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
           if (tryCatch.HasCaught()) {
             if (tryCatch.CanContinue()) {
               TRI_LogV8Exception(isolate, &tryCatch);
-            }
-            else {
+            } else {
               // will stop, so need for v8g->_canceled = true;
-              TRI_ASSERT(! ok);
+              TRI_ASSERT(!ok);
             }
-          }
-          else {
+          } else {
             ok = TRI_ObjectToDouble(result) == 0;
           }
-        }
-        catch (triagens::basics::Exception const& ex) {
-          LOG_ERROR("caught exception %s: %s", TRI_errno_string(ex.code()), ex.what());
+        } catch (triagens::basics::Exception const& ex) {
+          LOG_ERROR("caught exception %s: %s", TRI_errno_string(ex.code()),
+                    ex.what());
           ok = false;
-        }
-        catch (std::bad_alloc const&) {
-          LOG_ERROR("caught exception %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+        } catch (std::bad_alloc const&) {
+          LOG_ERROR("caught exception %s",
+                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
           ok = false;
-        }
-        catch (...) {
+        } catch (...) {
           LOG_ERROR("caught unknown exception");
           ok = false;
         }
@@ -1519,34 +1593,30 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
 /// @brief opens all databases
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::openDatabases (bool checkVersion,
-                                  bool performUpgrade,
-                                  bool iterateMarkersOnOpen) {
+void ArangoServer::openDatabases(bool checkVersion, bool performUpgrade,
+                                 bool iterateMarkersOnOpen) {
   TRI_vocbase_defaults_t defaults;
 
   // override with command-line options
-  defaults.defaultMaximalSize               = _defaultMaximalSize;
-  defaults.defaultWaitForSync               = _defaultWaitForSync;
-  defaults.requireAuthentication            = ! _disableAuthentication;
-  defaults.requireAuthenticationUnixSockets = ! _disableAuthenticationUnixSockets;
-  defaults.authenticateSystemOnly           = _authenticateSystemOnly;
-  defaults.forceSyncProperties              = _forceSyncProperties;
+  defaults.defaultMaximalSize = _defaultMaximalSize;
+  defaults.defaultWaitForSync = _defaultWaitForSync;
+  defaults.requireAuthentication = !_disableAuthentication;
+  defaults.requireAuthenticationUnixSockets =
+      !_disableAuthenticationUnixSockets;
+  defaults.authenticateSystemOnly = _authenticateSystemOnly;
+  defaults.forceSyncProperties = _forceSyncProperties;
 
   TRI_ASSERT(_server != nullptr);
 
-
   if (_indexThreads > 0) {
-    _indexPool = new triagens::basics::ThreadPool(_indexThreads, "IndexBuilder");
+    _indexPool =
+        new triagens::basics::ThreadPool(_indexThreads, "IndexBuilder");
   }
 
-  int res = TRI_InitServer(_server,
-                           _applicationEndpointServer,
-                           _indexPool,
+  int res = TRI_InitServer(_server, _applicationEndpointServer, _indexPool,
                            _databasePath.c_str(),
-                           _applicationV8->appPath().c_str(),
-                           &defaults,
-                           _disableReplicationApplier,
-                           iterateMarkersOnOpen);
+                           _applicationV8->appPath().c_str(), &defaults,
+                           _disableReplicationApplier, iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
@@ -1569,11 +1639,11 @@ void ArangoServer::openDatabases (bool checkVersion,
 /// @brief closes all databases
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::closeDatabases () {
+void ArangoServer::closeDatabases() {
   TRI_ASSERT(_server != nullptr);
 
   TRI_CleanupActions();
-  
+
   // stop the replication appliers so all replication transactions can end
   TRI_StopReplicationAppliersServer(_server);
 
@@ -1586,6 +1656,4 @@ void ArangoServer::closeDatabases () {
   LOG_INFO("ArangoDB has been shut down");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

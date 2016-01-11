@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shell colors
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,16 +19,11 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_SHELL__COLORS_H
-#define ARANGODB_BASICS_C_SHELL__COLORS_H 1
+#ifndef LIB_BASICS_SHELL_COLORS_H
+#define LIB_BASICS_SHELL_COLORS_H 1
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 #ifndef _WIN32
 
@@ -151,9 +142,9 @@
 #define TRI_SHELL_COLOR_RESET "\x1b[0m"
 
 #else
-  // .............................................................................
-  // Quick hack for windows
-  // .............................................................................
+// .............................................................................
+// Quick hack for windows
+// .............................................................................
 
 #define TRI_SHELL_COLOR_RED ""
 #define TRI_SHELL_COLOR_BOLD_RED ""
@@ -179,11 +170,4 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

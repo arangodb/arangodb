@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library for intra-cluster communications
-///
-/// @file ClusterComm.h
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_CLUSTER_COMM_H
-#define ARANGODB_CLUSTER_CLUSTER_COMM_H 1
+#ifndef ARANGOD_CLUSTER_CLUSTER_COMM_H
+#define ARANGOD_CLUSTER_CLUSTER_COMM_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -44,86 +38,77 @@
 #include "Cluster/ServerState.h"
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             forward declarations
-// -----------------------------------------------------------------------------
 
-    class ClusterCommThread;
+class ClusterCommThread;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       some types for ClusterComm
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a client transaction ID
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef std::string ClientTransactionID;
+typedef std::string ClientTransactionID;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a coordinator transaction ID
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef TRI_voc_tick_t CoordTransactionID;
+typedef TRI_voc_tick_t CoordTransactionID;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief trype of an operation ID
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef TRI_voc_tick_t OperationID;
+typedef TRI_voc_tick_t OperationID;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of an (a-)synchronous cluster operation
 ////////////////////////////////////////////////////////////////////////////////
 
-    enum ClusterCommOpStatus {
-      CL_COMM_SUBMITTED = 1,      // initial request queued, but not yet sent
-      CL_COMM_SENDING = 2,        // in the process of sending
-      CL_COMM_SENT = 3,           // initial request sent, response available
-      CL_COMM_TIMEOUT = 4,        // no answer received until timeout
-      CL_COMM_RECEIVED = 5,       // answer received
-      CL_COMM_ERROR = 6,          // original request could not be sent
-      CL_COMM_DROPPED = 7         // operation was dropped, not known
-                                  // this is only used to report an error
-                                  // in the wait or enquire methods
-    };
+enum ClusterCommOpStatus {
+  CL_COMM_SUBMITTED = 1,  // initial request queued, but not yet sent
+  CL_COMM_SENDING = 2,    // in the process of sending
+  CL_COMM_SENT = 3,       // initial request sent, response available
+  CL_COMM_TIMEOUT = 4,    // no answer received until timeout
+  CL_COMM_RECEIVED = 5,   // answer received
+  CL_COMM_ERROR = 6,      // original request could not be sent
+  CL_COMM_DROPPED = 7     // operation was dropped, not known
+                          // this is only used to report an error
+                          // in the wait or enquire methods
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to report the status, progress and possibly result of
 /// an operation
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct ClusterCommResult {
-      ClientTransactionID clientTransactionID;
-      CoordTransactionID  coordTransactionID;
-      OperationID         operationID;
-      ShardID             shardID;
-      ServerID            serverID;   // the actual server ID of the sender
-      std::string         errorMessage;
-      ClusterCommOpStatus status;
-      bool                dropped; // this is set to true, if the operation
-                                   // is dropped whilst in state CL_COMM_SENDING
-                                   // it is then actually dropped when it has
-                                   // been sent
-      bool                invalid; // can only explicitly be set
+struct ClusterCommResult {
+  ClientTransactionID clientTransactionID;
+  CoordTransactionID coordTransactionID;
+  OperationID operationID;
+  ShardID shardID;
+  ServerID serverID;  // the actual server ID of the sender
+  std::string errorMessage;
+  ClusterCommOpStatus status;
+  bool dropped;  // this is set to true, if the operation
+                 // is dropped whilst in state CL_COMM_SENDING
+                 // it is then actually dropped when it has
+                 // been sent
+  bool invalid;  // can only explicitly be set
 
-      // The field result is != 0 ifs status is >= CL_COMM_SENT.
-      // Note that if status is CL_COMM_TIMEOUT, then the result
-      // field is a response object that only says "timeout"
-      std::shared_ptr<httpclient::SimpleHttpResult> result;
-      // the field answer is != 0 if status is == CL_COMM_RECEIVED
-      // answer_code is valid iff answer is != 0
-      std::shared_ptr<rest::HttpRequest> answer;
-      rest::HttpResponse::HttpResponseCode answer_code;
+  // The field result is != 0 ifs status is >= CL_COMM_SENT.
+  // Note that if status is CL_COMM_TIMEOUT, then the result
+  // field is a response object that only says "timeout"
+  std::shared_ptr<httpclient::SimpleHttpResult> result;
+  // the field answer is != 0 if status is == CL_COMM_RECEIVED
+  // answer_code is valid iff answer is != 0
+  std::shared_ptr<rest::HttpRequest> answer;
+  rest::HttpResponse::HttpResponseCode answer_code;
 
-      ClusterCommResult ()
-        : dropped(false), 
-          invalid(false),
-          answer_code(rest::HttpResponse::OK) {
-      }
-    };
+  ClusterCommResult()
+      : dropped(false), invalid(false), answer_code(rest::HttpResponse::OK) {}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type for a callback for a cluster operation
@@ -134,407 +119,353 @@ namespace triagens {
 /// queue! Therefore the operation should be quick.
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct ClusterCommCallback {
+struct ClusterCommCallback {
+  ClusterCommCallback() {}
+  virtual ~ClusterCommCallback(){};
 
-      ClusterCommCallback () {}
-      virtual ~ClusterCommCallback () {};
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the actual callback function
+  ///
+  /// Result indicates whether or not the returned result is already
+  /// fully processed. If so, it is removed from all queues. In this
+  /// case the object is automatically destructed, so that the
+  /// callback must not call delete in any case.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual callback function
-///
-/// Result indicates whether or not the returned result is already
-/// fully processed. If so, it is removed from all queues. In this
-/// case the object is automatically destructed, so that the
-/// callback must not call delete in any case.
-////////////////////////////////////////////////////////////////////////////////
-
-      virtual bool operator() (ClusterCommResult*) = 0;
-    };
+  virtual bool operator()(ClusterCommResult*) = 0;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a timeout specification, is meant in seconds
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef double ClusterCommTimeout;
+typedef double ClusterCommTimeout;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to store the status, progress and possibly result of
 /// an operation
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct ClusterCommOperation {
-      ClusterCommResult result;
-      rest::HttpRequest::HttpRequestType reqtype;
-      std::string path;
-      std::shared_ptr<std::string const> body;
-      std::unique_ptr<std::map<std::string, std::string>> headerFields;
-      std::shared_ptr<ClusterCommCallback> callback;
-      ClusterCommTimeout endTime;
-    };
-
+struct ClusterCommOperation {
+  ClusterCommResult result;
+  rest::HttpRequest::HttpRequestType reqtype;
+  std::string path;
+  std::shared_ptr<std::string const> body;
+  std::unique_ptr<std::map<std::string, std::string>> headerFields;
+  std::shared_ptr<ClusterCommCallback> callback;
+  ClusterCommTimeout endTime;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global callback for asynchronous REST handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* response);
+void ClusterCommRestCallback(std::string& coordinator,
+                             rest::HttpResponse* response);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      ClusterComm
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the class for the cluster communications library
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ClusterComm {
+class ClusterComm {
+  friend class ClusterCommThread;
 
-      friend class ClusterCommThread;
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initializes library
+  ///
+  /// We are a singleton class, therefore nobody is allowed to create
+  /// new instances or copy them, except we ourselves.
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     constructors and destructors
-// -----------------------------------------------------------------------------
+  ClusterComm();
+  ClusterComm(ClusterComm const&);     // not implemented
+  void operator=(ClusterComm const&);  // not implemented
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes library
-///
-/// We are a singleton class, therefore nobody is allowed to create
-/// new instances or copy them, except we ourselves.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief shuts down library
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterComm ( );
-        ClusterComm (ClusterComm const&);    // not implemented
-        void operator= (ClusterComm const&); // not implemented
+ public:
+  ~ClusterComm();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down library
-////////////////////////////////////////////////////////////////////////////////
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the unique instance
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  static ClusterComm* instance();
 
-        ~ClusterComm ( );
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize function to call once when still single-threaded
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   public methods
-// -----------------------------------------------------------------------------
+  static void initialize();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the unique instance
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief cleanup function to call once when shutting down
+  ////////////////////////////////////////////////////////////////////////////////
 
-        static ClusterComm* instance ();
+  static void cleanup();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize function to call once when still single-threaded
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not connection errors should be logged as errors
+  ////////////////////////////////////////////////////////////////////////////////
 
-        static void initialize ();
+  bool enableConnectionErrorLogging(bool value = true) {
+    bool result = _logConnectionErrors;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup function to call once when shutting down
-////////////////////////////////////////////////////////////////////////////////
+    _logConnectionErrors = value;
 
-        static void cleanup ();
+    return result;
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not connection errors should be logged as errors
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not connection errors are logged as errors
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool enableConnectionErrorLogging (bool value = true) {
-          bool result = _logConnectionErrors;
+  bool logConnectionErrors() const { return _logConnectionErrors; }
 
-          _logConnectionErrors = value;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief start the communication background thread
+  ////////////////////////////////////////////////////////////////////////////////
 
-          return result;
-        }
+  void startBackgroundThread();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not connection errors are logged as errors
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief submit an HTTP request to a shard asynchronously.
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool logConnectionErrors () const {
-          return _logConnectionErrors;
-        }
+  ClusterCommResult const asyncRequest(
+      ClientTransactionID const clientTransactionID,
+      CoordTransactionID const coordTransactionID,
+      std::string const& destination,
+      rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+      std::shared_ptr<std::string const> body,
+      std::unique_ptr<std::map<std::string, std::string>>& headerFields,
+      std::shared_ptr<ClusterCommCallback> callback,
+      ClusterCommTimeout timeout);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start the communication background thread
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief submit a single HTTP request to a shard synchronously.
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void startBackgroundThread ();
+  std::unique_ptr<ClusterCommResult> syncRequest(
+      ClientTransactionID const& clientTransactionID,
+      CoordTransactionID const coordTransactionID,
+      std::string const& destination,
+      rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+      std::string const& body,
+      std::map<std::string, std::string> const& headerFields,
+      ClusterCommTimeout timeout);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief submit an HTTP request to a shard asynchronously.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check on the status of an operation
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommResult const asyncRequest (
-                ClientTransactionID const            clientTransactionID,
-                CoordTransactionID const             coordTransactionID,
-                std::string const&                   destination,
-                rest::HttpRequest::HttpRequestType   reqtype,
-                std::string const&                   path,
-                std::shared_ptr<std::string const>   body,
-                std::unique_ptr<std::map<std::string, std::string>>&
-                                                     headerFields,
-                std::shared_ptr<ClusterCommCallback> callback,
-                ClusterCommTimeout                   timeout);
+  ClusterCommResult const enquire(OperationID const operationID);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief submit a single HTTP request to a shard synchronously.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief wait for one answer matching the criteria
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::unique_ptr<ClusterCommResult> syncRequest (
-                ClientTransactionID const&           clientTransactionID,
-                CoordTransactionID const             coordTransactionID,
-                std::string const&                   destination,
-                rest::HttpRequest::HttpRequestType   reqtype,
-                std::string const&                   path,
-                std::string const&                   body,
-                std::map<std::string, std::string> const&  headerFields,
-                ClusterCommTimeout                   timeout);
+  ClusterCommResult const wait(ClientTransactionID const& clientTransactionID,
+                               CoordTransactionID const coordTransactionID,
+                               OperationID const operationID,
+                               ShardID const& shardID,
+                               ClusterCommTimeout timeout = 0.0);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check on the status of an operation
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief ignore and drop current and future answers matching
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommResult const enquire (OperationID const operationID);
+  void drop(ClientTransactionID const& clientTransactionID,
+            CoordTransactionID const coordTransactionID,
+            OperationID const operationID, ShardID const& shardID);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for one answer matching the criteria
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief process an answer coming in on the HTTP socket
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommResult const wait (
-                ClientTransactionID const& clientTransactionID,
-                CoordTransactionID const   coordTransactionID,
-                OperationID const          operationID,
-                ShardID const&             shardID,
-                ClusterCommTimeout         timeout = 0.0);
+  std::string processAnswer(std::string& coordinatorHeader,
+                            rest::HttpRequest* answer);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ignore and drop current and future answers matching
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief send an answer HTTP request to a coordinator
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void drop (ClientTransactionID const& clientTransactionID,
-                   CoordTransactionID const   coordTransactionID,
-                   OperationID const          operationID,
-                   ShardID const&             shardID);
+  void asyncAnswer(std::string& coordinatorHeader,
+                   rest::HttpResponse* responseToSend);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process an answer coming in on the HTTP socket
-////////////////////////////////////////////////////////////////////////////////
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the pointer to the singleton instance
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::string processAnswer (std::string& coordinatorHeader,
-                                   rest::HttpRequest* answer);
+  static ClusterComm* _theinstance;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief send an answer HTTP request to a coordinator
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief produces an operation ID which is unique in this process
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void asyncAnswer (std::string& coordinatorHeader,
-                          rest::HttpResponse* responseToSend);
+  static OperationID getOperationID();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          private methods and data
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief send queue with lock and index
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  std::list<ClusterCommOperation*> toSend;
+  std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
+      toSendByOpID;
+  triagens::basics::ConditionVariable somethingToSend;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the pointer to the singleton instance
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief received queue with lock and index
+  ////////////////////////////////////////////////////////////////////////////////
 
-        static ClusterComm* _theinstance;
+  // Receiving answers:
+  std::list<ClusterCommOperation*> received;
+  std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
+      receivedByOpID;
+  triagens::basics::ConditionVariable somethingReceived;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief produces an operation ID which is unique in this process
-////////////////////////////////////////////////////////////////////////////////
+  // Note: If you really have to lock both `somethingToSend`
+  // and `somethingReceived` at the same time (usually you should
+  // not have to!), then: first lock `somethingToReceive`, then
+  // lock `somethingtoSend` in this order!
 
-        static OperationID getOperationID ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief iterator type which is frequently used
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief send queue with lock and index
-////////////////////////////////////////////////////////////////////////////////
+  typedef std::list<ClusterCommOperation*>::iterator QueueIterator;
 
-        std::list<ClusterCommOperation*> toSend;
-        std::map<OperationID, std::list<ClusterCommOperation*>::iterator> toSendByOpID;
-        triagens::basics::ConditionVariable somethingToSend;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief iterator type which is frequently used
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief received queue with lock and index
-////////////////////////////////////////////////////////////////////////////////
+  typedef std::map<OperationID, QueueIterator>::iterator IndexIterator;
 
-        // Receiving answers:
-        std::list<ClusterCommOperation*> received;
-        std::map<OperationID, std::list<ClusterCommOperation*>::iterator> receivedByOpID;
-        triagens::basics::ConditionVariable somethingReceived;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief internal function to match an operation:
+  ////////////////////////////////////////////////////////////////////////////////
 
-        // Note: If you really have to lock both `somethingToSend`
-        // and `somethingReceived` at the same time (usually you should
-        // not have to!), then: first lock `somethingToReceive`, then
-        // lock `somethingtoSend` in this order!
+  bool match(ClientTransactionID const& clientTransactionID,
+             CoordTransactionID const coordTransactionID,
+             ShardID const& shardID, ClusterCommOperation* op);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterator type which is frequently used
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief move an operation from the send to the receive queue
+  ////////////////////////////////////////////////////////////////////////////////
 
-        typedef std::list<ClusterCommOperation*>::iterator QueueIterator;
+  bool moveFromSendToReceived(OperationID operationID);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterator type which is frequently used
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief cleanup all queues
+  ////////////////////////////////////////////////////////////////////////////////
 
-        typedef std::map<OperationID, QueueIterator>::iterator IndexIterator;
+  void cleanupAllQueues();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal function to match an operation:
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief our background communications thread
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool match (ClientTransactionID const& clientTransactionID,
-                    CoordTransactionID const   coordTransactionID,
-                    ShardID const&             shardID,
-                    ClusterCommOperation* op);
+  ClusterCommThread* _backgroundThread;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move an operation from the send to the receive queue
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not connection errors should be logged as errors
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool moveFromSendToReceived (OperationID operationID);
+  bool _logConnectionErrors;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup all queues
-////////////////////////////////////////////////////////////////////////////////
+};  // end of class ClusterComm
 
-        void cleanupAllQueues();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our background communications thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommThread* _backgroundThread;
+class ClusterCommThread : public basics::Thread {
+  
+ private:
+  ClusterCommThread(ClusterCommThread const&);
+  ClusterCommThread& operator=(ClusterCommThread const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not connection errors should be logged as errors
-////////////////////////////////////////////////////////////////////////////////
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructs the ClusterCommThread
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool _logConnectionErrors;
+  ClusterCommThread();
 
-    };  // end of class ClusterComm
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroys the ClusterCommThread
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                ClusterCommThread
-// -----------------------------------------------------------------------------
+  ~ClusterCommThread();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief our background communications thread
-////////////////////////////////////////////////////////////////////////////////
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initializes the ClusterCommThread
+  ////////////////////////////////////////////////////////////////////////////////
 
-    class ClusterCommThread : public basics::Thread {
+  bool init();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief stops the ClusterCommThread
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
-        ClusterCommThread (ClusterCommThread const&);
-        ClusterCommThread& operator= (ClusterCommThread const&);
+  void stop() {
+    if (_stop > 0) {
+      return;
+    }
 
-      public:
+    LOG_TRACE("stopping ClusterCommThread");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs the ClusterCommThread
-////////////////////////////////////////////////////////////////////////////////
+    _stop = 1;
+    _condition.signal();
 
-        ClusterCommThread ();
+    while (_stop != 2) {
+      usleep(1000);
+    }
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the ClusterCommThread
-////////////////////////////////////////////////////////////////////////////////
+  
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief ClusterCommThread main loop
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ~ClusterCommThread ();
+  void run();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  
+ private:
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief AgencyComm instance
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  AgencyComm _agency;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the ClusterCommThread
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief condition variable for ClusterCommThread
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool init ();
+  triagens::basics::ConditionVariable _condition;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the ClusterCommThread
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief stop flag
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void stop () {
-          if (_stop > 0) {
-            return;
-          }
-
-          LOG_TRACE("stopping ClusterCommThread");
-
-          _stop = 1;
-          _condition.signal();
-
-          while (_stop != 2) {
-            usleep(1000);
-          }
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ClusterCommThread main loop
-////////////////////////////////////////////////////////////////////////////////
-
-        void run ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief AgencyComm instance
-////////////////////////////////////////////////////////////////////////////////
-
-        AgencyComm _agency;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief condition variable for ClusterCommThread
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::basics::ConditionVariable _condition;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop flag
-////////////////////////////////////////////////////////////////////////////////
-
-        volatile sig_atomic_t _stop;
-
-    };
-  }  // namespace arango
+  volatile sig_atomic_t _stop;
+};
+}  // namespace arango
 }  // namespace triagens
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

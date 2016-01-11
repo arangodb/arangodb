@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple query handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,82 +19,57 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestCursorHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class RestSimpleQueryHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace aql {
-    class QueryRegistry;
-  }
+namespace aql {
+class QueryRegistry;
+}
 
-  namespace arango {
-    class ApplicationV8;
+namespace arango {
+class ApplicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestSimpleQueryHandler : public RestCursorHandler {
+class RestSimpleQueryHandler : public RestCursorHandler {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  RestSimpleQueryHandler(rest::HttpRequest*,
+                         std::pair<triagens::arango::ApplicationV8*,
+                                   triagens::aql::QueryRegistry*>*);
 
-      public:
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  status_t execute() override final;
 
-        RestSimpleQueryHandler (rest::HttpRequest*,
-                                std::pair<triagens::arango::ApplicationV8*, triagens::aql::QueryRegistry*>*);
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return a cursor with all documents from the collection
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute () override final;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a cursor with all documents from the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        void allDocuments ();
-
-    };
-  }
+  void allDocuments();
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

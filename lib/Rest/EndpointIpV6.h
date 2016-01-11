@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoint, IPv6-based
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,83 +19,55 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_ENDPOINT_IP_V6_H
-#define ARANGODB_REST_ENDPOINT_IP_V6_H 1
+#ifndef LIB_REST_ENDPOINT_IP_V6_H
+#define LIB_REST_ENDPOINT_IP_V6_H 1
 
 #include "Basics/Common.h"
 
 #include "Rest/EndpointIp.h"
 
 namespace triagens {
-  namespace rest {
+namespace rest {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      EndpointIpV6
-// -----------------------------------------------------------------------------
 
-    class EndpointIpV6 final : public EndpointIp {
+class EndpointIpV6 final : public EndpointIp {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates an endpoint
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  EndpointIpV6(const EndpointType, const EncryptionType, const std::string&,
+               int, bool, const std::string&, const uint16_t);
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroys an endpoint
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an endpoint
-////////////////////////////////////////////////////////////////////////////////
+  ~EndpointIpV6();
 
-        EndpointIpV6 (const EndpointType,
-                      const EncryptionType,
-                      const std::string&,
-                      int,
-                      bool,
-                      const std::string&,
-                      const uint16_t);
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get endpoint domain
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an endpoint
-////////////////////////////////////////////////////////////////////////////////
+  int getDomain() const { return AF_INET6; }
 
-        ~EndpointIpV6 ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get host string for HTTP requests
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get endpoint domain
-////////////////////////////////////////////////////////////////////////////////
-
-        int getDomain () const {
-          return AF_INET6;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get host string for HTTP requests
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string getHostString  () const {
-          return '[' + getHost() + "]:" + triagens::basics::StringUtils::itoa(getPort());
-        }
-
-    };
+  std::string getHostString() const {
+    return '[' + getHost() + "]:" +
+           triagens::basics::StringUtils::itoa(getPort());
   }
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief WAL markers
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Marker.h"
@@ -35,43 +29,33 @@
 
 using namespace triagens::wal;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Marker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a marker from a marker existing in memory
 ////////////////////////////////////////////////////////////////////////////////
 
-Marker::Marker (TRI_df_marker_t const* existing,
-                TRI_voc_fid_t fid)
-  : _buffer(reinterpret_cast<char*>(const_cast<TRI_df_marker_t*>(existing))),
-    _size(existing->_size),
-    _mustFree(false),
-    _fid(fid) {
-}
+Marker::Marker(TRI_df_marker_t const* existing, TRI_voc_fid_t fid)
+    : _buffer(reinterpret_cast<char*>(const_cast<TRI_df_marker_t*>(existing))),
+      _size(existing->_size),
+      _mustFree(false),
+      _fid(fid) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker with a sized buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-Marker::Marker (TRI_df_marker_type_e type,
-                size_t size)
-  : _buffer(new char[size]),
-    _size(static_cast<uint32_t>(size)),
-    _mustFree(true),
-    _fid(0) {
-
+Marker::Marker(TRI_df_marker_type_e type, size_t size)
+    : _buffer(new char[size]),
+      _size(static_cast<uint32_t>(size)),
+      _mustFree(true),
+      _fid(0) {
   TRI_df_marker_t* m = reinterpret_cast<TRI_df_marker_t*>(begin());
   memset(m, 0, size);
 
   m->_type = type;
   m->_size = static_cast<TRI_voc_size_t>(size);
-  m->_crc  = 0;
+  m->_crc = 0;
   m->_tick = 0;
 }
 
@@ -79,22 +63,18 @@ Marker::Marker (TRI_df_marker_type_e type,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-Marker::~Marker () {
+Marker::~Marker() {
   if (_buffer != nullptr && _mustFree) {
     delete[] _buffer;
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief store a null-terminated string inside the marker
 ////////////////////////////////////////////////////////////////////////////////
 
-void Marker::storeSizedString (size_t offset,
-                               std::string const& value) {
+void Marker::storeSizedString(size_t offset, std::string const& value) {
   return storeSizedString(offset, value.c_str(), value.size());
 }
 
@@ -102,9 +82,7 @@ void Marker::storeSizedString (size_t offset,
 /// @brief store a null-terminated string inside the marker
 ////////////////////////////////////////////////////////////////////////////////
 
-void Marker::storeSizedString (size_t offset,
-                               char const* value,
-                               size_t length) {
+void Marker::storeSizedString(size_t offset, char const* value, size_t length) {
   char* p = static_cast<char*>(begin()) + offset;
 
   // store actual key
@@ -118,8 +96,7 @@ void Marker::storeSizedString (size_t offset,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-std::string Marker::hexifyPart (char const* offset,
-                                size_t length) const {
+std::string Marker::hexifyPart(char const* offset, size_t length) const {
   size_t destLength;
   char* s = TRI_EncodeHexString(offset, length, &destLength);
 
@@ -138,8 +115,7 @@ std::string Marker::hexifyPart (char const* offset,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-std::string Marker::stringifyPart (char const* offset,
-                                   size_t length) const {
+std::string Marker::stringifyPart(char const* offset, size_t length) const {
   char* s = TRI_PrintableString(offset, length);
 
   if (s != nullptr) {
@@ -157,61 +133,48 @@ std::string Marker::stringifyPart (char const* offset,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void Marker::dumpBinary () const {
+void Marker::dumpBinary() const {
   std::cout << "BINARY:     '" << stringifyPart(begin(), size()) << "'\n\n";
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    EnvelopeMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-EnvelopeMarker::EnvelopeMarker (TRI_df_marker_t const* existing,
-                                TRI_voc_fid_t fid) 
-  : Marker(existing, fid) {
-}
+EnvelopeMarker::EnvelopeMarker(TRI_df_marker_t const* existing,
+                               TRI_voc_fid_t fid)
+    : Marker(existing, fid) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-EnvelopeMarker::~EnvelopeMarker () {
-}
+EnvelopeMarker::~EnvelopeMarker() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
 
-// -----------------------------------------------------------------------------
 // --SECTION--                                                   AttributeMarker
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AttributeMarker::AttributeMarker (TRI_voc_tick_t databaseId,
-                                  TRI_voc_cid_t collectionId,
-                                  TRI_shape_aid_t attributeId,
-                                  std::string const& attributeName)
-  : Marker(TRI_WAL_MARKER_ATTRIBUTE, sizeof(attribute_marker_t) + alignedSize(attributeName.size() + 1)) {
-
+AttributeMarker::AttributeMarker(TRI_voc_tick_t databaseId,
+                                 TRI_voc_cid_t collectionId,
+                                 TRI_shape_aid_t attributeId,
+                                 std::string const& attributeName)
+    : Marker(
+          TRI_WAL_MARKER_ATTRIBUTE,
+          sizeof(attribute_marker_t) + alignedSize(attributeName.size() + 1)) {
   attribute_marker_t* m = reinterpret_cast<attribute_marker_t*>(begin());
 
-  m->_databaseId   = databaseId;
+  m->_databaseId = databaseId;
   m->_collectionId = collectionId;
-  m->_attributeId  = attributeId;
+  m->_attributeId = attributeId;
 
   storeSizedString(sizeof(attribute_marker_t), attributeName);
 
@@ -224,18 +187,14 @@ AttributeMarker::AttributeMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AttributeMarker::~AttributeMarker () {
-}
+AttributeMarker::~AttributeMarker() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change the type
 ////////////////////////////////////////////////////////////////////////////////
 
-void AttributeMarker::setType (TRI_df_marker_type_t type) {
+void AttributeMarker::setType(TRI_df_marker_type_t type) {
   TRI_df_marker_t* m = reinterpret_cast<attribute_marker_t*>(begin());
 
   m->_type = type;
@@ -246,14 +205,13 @@ void AttributeMarker::setType (TRI_df_marker_type_t type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void AttributeMarker::dump () const {
+void AttributeMarker::dump() const {
   attribute_marker_t* m = reinterpret_cast<attribute_marker_t*>(begin());
 
   std::cout << "WAL ATTRIBUTE MARKER FOR DB " << m->_databaseId
             << ", COLLECTION " << m->_collectionId
             << ", ATTRIBUTE ID: " << m->_attributeId
-            << ", ATTRIBUTE: " << attributeName()
-            << ", SIZE: " << size()
+            << ", ATTRIBUTE: " << attributeName() << ", SIZE: " << size()
             << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
@@ -262,26 +220,19 @@ void AttributeMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       ShapeMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-ShapeMarker::ShapeMarker (TRI_voc_tick_t databaseId,
-                          TRI_voc_cid_t collectionId,
-                          TRI_shape_t const* shape)
-  : Marker(TRI_WAL_MARKER_SHAPE, sizeof(shape_marker_t) + static_cast<size_t>(shape->_size)) {
-
+ShapeMarker::ShapeMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                         TRI_shape_t const* shape)
+    : Marker(TRI_WAL_MARKER_SHAPE,
+             sizeof(shape_marker_t) + static_cast<size_t>(shape->_size)) {
   shape_marker_t* m = reinterpret_cast<shape_marker_t*>(begin());
 
-  m->_databaseId   = databaseId;
+  m->_databaseId = databaseId;
   m->_collectionId = collectionId;
 
   memcpy(this->shape(), shape, static_cast<size_t>(shape->_size));
@@ -295,22 +246,19 @@ ShapeMarker::ShapeMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-ShapeMarker::~ShapeMarker () {
-}
+ShapeMarker::~ShapeMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void ShapeMarker::dump () const {
+void ShapeMarker::dump() const {
   shape_marker_t* m = reinterpret_cast<shape_marker_t*>(begin());
 
-  std::cout << "WAL SHAPE MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", SHAPE ID: " << shapeId()
-            << ", SIZE: " << size()
-            << "\n";
+  std::cout << "WAL SHAPE MARKER FOR DB " << m->_databaseId << ", COLLECTION "
+            << m->_collectionId << ", SHAPE ID: " << shapeId()
+            << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -318,23 +266,19 @@ void ShapeMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              CreateDatabaseMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CreateDatabaseMarker::CreateDatabaseMarker (TRI_voc_tick_t databaseId,
-                                            std::string const& properties)
-  : Marker(TRI_WAL_MARKER_CREATE_DATABASE, sizeof(database_create_marker_t) + alignedSize(properties.size() + 1)) {
-
-  database_create_marker_t* m = reinterpret_cast<database_create_marker_t*>(begin());
+CreateDatabaseMarker::CreateDatabaseMarker(TRI_voc_tick_t databaseId,
+                                           std::string const& properties)
+    : Marker(TRI_WAL_MARKER_CREATE_DATABASE,
+             sizeof(database_create_marker_t) +
+                 alignedSize(properties.size() + 1)) {
+  database_create_marker_t* m =
+      reinterpret_cast<database_create_marker_t*>(begin());
 
   m->_databaseId = databaseId;
 
@@ -349,21 +293,19 @@ CreateDatabaseMarker::CreateDatabaseMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CreateDatabaseMarker::~CreateDatabaseMarker () {
-}
+CreateDatabaseMarker::~CreateDatabaseMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void CreateDatabaseMarker::dump () const {
-  database_create_marker_t* m = reinterpret_cast<database_create_marker_t*>(begin());
+void CreateDatabaseMarker::dump() const {
+  database_create_marker_t* m =
+      reinterpret_cast<database_create_marker_t*>(begin());
 
   std::cout << "WAL CREATE DATABASE MARKER FOR DB " << m->_databaseId
-            << ", PROPERTIES " << properties()
-            << ", SIZE: " << size()
-            << "\n";
+            << ", PROPERTIES " << properties() << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -371,22 +313,16 @@ void CreateDatabaseMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                DropDatabaseMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-DropDatabaseMarker::DropDatabaseMarker (TRI_voc_tick_t databaseId)
-  : Marker(TRI_WAL_MARKER_DROP_DATABASE, sizeof(database_drop_marker_t)) {
-
-  database_drop_marker_t* m = reinterpret_cast<database_drop_marker_t*>(begin());
+DropDatabaseMarker::DropDatabaseMarker(TRI_voc_tick_t databaseId)
+    : Marker(TRI_WAL_MARKER_DROP_DATABASE, sizeof(database_drop_marker_t)) {
+  database_drop_marker_t* m =
+      reinterpret_cast<database_drop_marker_t*>(begin());
 
   m->_databaseId = databaseId;
 
@@ -399,20 +335,19 @@ DropDatabaseMarker::DropDatabaseMarker (TRI_voc_tick_t databaseId)
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-DropDatabaseMarker::~DropDatabaseMarker () {
-}
+DropDatabaseMarker::~DropDatabaseMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void DropDatabaseMarker::dump () const {
-  database_drop_marker_t* m = reinterpret_cast<database_drop_marker_t*>(begin());
+void DropDatabaseMarker::dump() const {
+  database_drop_marker_t* m =
+      reinterpret_cast<database_drop_marker_t*>(begin());
 
   std::cout << "WAL DROP DATABASE MARKER FOR DB " << m->_databaseId
-            << ", SIZE: " << size()
-            << "\n";
+            << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -420,26 +355,22 @@ void DropDatabaseMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            CreateCollectionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CreateCollectionMarker::CreateCollectionMarker (TRI_voc_tick_t databaseId,
-                                                TRI_voc_cid_t collectionId,
-                                                std::string const& properties)
-  : Marker(TRI_WAL_MARKER_CREATE_COLLECTION, sizeof(collection_create_marker_t) + alignedSize(properties.size() + 1)) {
+CreateCollectionMarker::CreateCollectionMarker(TRI_voc_tick_t databaseId,
+                                               TRI_voc_cid_t collectionId,
+                                               std::string const& properties)
+    : Marker(TRI_WAL_MARKER_CREATE_COLLECTION,
+             sizeof(collection_create_marker_t) +
+                 alignedSize(properties.size() + 1)) {
+  collection_create_marker_t* m =
+      reinterpret_cast<collection_create_marker_t*>(begin());
 
-  collection_create_marker_t* m = reinterpret_cast<collection_create_marker_t*>(begin());
-
-  m->_databaseId   = databaseId;
+  m->_databaseId = databaseId;
   m->_collectionId = collectionId;
 
   storeSizedString(sizeof(collection_create_marker_t), properties);
@@ -453,22 +384,20 @@ CreateCollectionMarker::CreateCollectionMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CreateCollectionMarker::~CreateCollectionMarker () {
-}
+CreateCollectionMarker::~CreateCollectionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void CreateCollectionMarker::dump () const {
-  collection_create_marker_t* m = reinterpret_cast<collection_create_marker_t*>(begin());
+void CreateCollectionMarker::dump() const {
+  collection_create_marker_t* m =
+      reinterpret_cast<collection_create_marker_t*>(begin());
 
   std::cout << "WAL CREATE COLLECTION MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", PROPERTIES " << properties()
-            << ", SIZE: " << size()
-            << "\n";
+            << ", COLLECTION " << m->_collectionId << ", PROPERTIES "
+            << properties() << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -476,25 +405,19 @@ void CreateCollectionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              DropCollectionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-DropCollectionMarker::DropCollectionMarker (TRI_voc_tick_t databaseId,
-                                            TRI_voc_cid_t collectionId)
-  : Marker(TRI_WAL_MARKER_DROP_COLLECTION, sizeof(collection_drop_marker_t)) {
+DropCollectionMarker::DropCollectionMarker(TRI_voc_tick_t databaseId,
+                                           TRI_voc_cid_t collectionId)
+    : Marker(TRI_WAL_MARKER_DROP_COLLECTION, sizeof(collection_drop_marker_t)) {
+  collection_drop_marker_t* m =
+      reinterpret_cast<collection_drop_marker_t*>(begin());
 
-  collection_drop_marker_t* m = reinterpret_cast<collection_drop_marker_t*>(begin());
-
-  m->_databaseId   = databaseId;
+  m->_databaseId = databaseId;
   m->_collectionId = collectionId;
 
 #ifdef DEBUG_WAL
@@ -506,20 +429,19 @@ DropCollectionMarker::DropCollectionMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-DropCollectionMarker::~DropCollectionMarker () {
-}
+DropCollectionMarker::~DropCollectionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void DropCollectionMarker::dump () const {
-  collection_drop_marker_t* m = reinterpret_cast<collection_drop_marker_t*>(begin());
+void DropCollectionMarker::dump() const {
+  collection_drop_marker_t* m =
+      reinterpret_cast<collection_drop_marker_t*>(begin());
 
   std::cout << "WAL DROP COLLECTION MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", SIZE: " << size()
+            << ", COLLECTION " << m->_collectionId << ", SIZE: " << size()
             << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
@@ -528,26 +450,22 @@ void DropCollectionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            RenameCollectionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-RenameCollectionMarker::RenameCollectionMarker (TRI_voc_tick_t databaseId,
-                                                TRI_voc_cid_t collectionId,
-                                                std::string const& name)
-  : Marker(TRI_WAL_MARKER_RENAME_COLLECTION, sizeof(collection_rename_marker_t) + alignedSize(name.size() + 1)) {
+RenameCollectionMarker::RenameCollectionMarker(TRI_voc_tick_t databaseId,
+                                               TRI_voc_cid_t collectionId,
+                                               std::string const& name)
+    : Marker(
+          TRI_WAL_MARKER_RENAME_COLLECTION,
+          sizeof(collection_rename_marker_t) + alignedSize(name.size() + 1)) {
+  collection_rename_marker_t* m =
+      reinterpret_cast<collection_rename_marker_t*>(begin());
 
-  collection_rename_marker_t* m = reinterpret_cast<collection_rename_marker_t*>(begin());
-
-  m->_databaseId   = databaseId;
+  m->_databaseId = databaseId;
   m->_collectionId = collectionId;
 
   storeSizedString(sizeof(collection_rename_marker_t), name);
@@ -561,22 +479,20 @@ RenameCollectionMarker::RenameCollectionMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-RenameCollectionMarker::~RenameCollectionMarker () {
-}
+RenameCollectionMarker::~RenameCollectionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void RenameCollectionMarker::dump () const {
-  collection_rename_marker_t* m = reinterpret_cast<collection_rename_marker_t*>(begin());
+void RenameCollectionMarker::dump() const {
+  collection_rename_marker_t* m =
+      reinterpret_cast<collection_rename_marker_t*>(begin());
 
   std::cout << "WAL RENAME COLLECTION MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", NAME " << name()
-            << ", SIZE: " << size()
-            << "\n";
+            << ", COLLECTION " << m->_collectionId << ", NAME " << name()
+            << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -584,26 +500,22 @@ void RenameCollectionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            ChangeCollectionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-ChangeCollectionMarker::ChangeCollectionMarker (TRI_voc_tick_t databaseId,
-                                                TRI_voc_cid_t collectionId,
-                                                std::string const& properties)
-  : Marker(TRI_WAL_MARKER_CHANGE_COLLECTION, sizeof(collection_change_marker_t) + alignedSize(properties.size() + 1)) {
+ChangeCollectionMarker::ChangeCollectionMarker(TRI_voc_tick_t databaseId,
+                                               TRI_voc_cid_t collectionId,
+                                               std::string const& properties)
+    : Marker(TRI_WAL_MARKER_CHANGE_COLLECTION,
+             sizeof(collection_change_marker_t) +
+                 alignedSize(properties.size() + 1)) {
+  collection_change_marker_t* m =
+      reinterpret_cast<collection_change_marker_t*>(begin());
 
-  collection_change_marker_t* m = reinterpret_cast<collection_change_marker_t*>(begin());
-
-  m->_databaseId   = databaseId;
+  m->_databaseId = databaseId;
   m->_collectionId = collectionId;
 
   storeSizedString(sizeof(collection_change_marker_t), properties);
@@ -617,22 +529,20 @@ ChangeCollectionMarker::ChangeCollectionMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-ChangeCollectionMarker::~ChangeCollectionMarker () {
-}
+ChangeCollectionMarker::~ChangeCollectionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void ChangeCollectionMarker::dump () const {
-  collection_change_marker_t* m = reinterpret_cast<collection_change_marker_t*>(begin());
+void ChangeCollectionMarker::dump() const {
+  collection_change_marker_t* m =
+      reinterpret_cast<collection_change_marker_t*>(begin());
 
   std::cout << "WAL CHANGE COLLECTION MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", PROPERTIES " << properties()
-            << ", SIZE: " << size()
-            << "\n";
+            << ", COLLECTION " << m->_collectionId << ", PROPERTIES "
+            << properties() << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -640,29 +550,24 @@ void ChangeCollectionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 CreateIndexMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CreateIndexMarker::CreateIndexMarker (TRI_voc_tick_t databaseId,
-                                      TRI_voc_cid_t collectionId,
-                                      TRI_idx_iid_t indexId,
-                                      std::string const& properties)
-  : Marker(TRI_WAL_MARKER_CREATE_INDEX, sizeof(index_create_marker_t) + alignedSize(properties.size() + 1)) {
-
+CreateIndexMarker::CreateIndexMarker(TRI_voc_tick_t databaseId,
+                                     TRI_voc_cid_t collectionId,
+                                     TRI_idx_iid_t indexId,
+                                     std::string const& properties)
+    : Marker(
+          TRI_WAL_MARKER_CREATE_INDEX,
+          sizeof(index_create_marker_t) + alignedSize(properties.size() + 1)) {
   index_create_marker_t* m = reinterpret_cast<index_create_marker_t*>(begin());
 
-  m->_databaseId   = databaseId;
+  m->_databaseId = databaseId;
   m->_collectionId = collectionId;
-  m->_indexId      = indexId;
+  m->_indexId = indexId;
 
   storeSizedString(sizeof(index_create_marker_t), properties);
 
@@ -675,23 +580,19 @@ CreateIndexMarker::CreateIndexMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CreateIndexMarker::~CreateIndexMarker () {
-}
+CreateIndexMarker::~CreateIndexMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void CreateIndexMarker::dump () const {
+void CreateIndexMarker::dump() const {
   index_create_marker_t* m = reinterpret_cast<index_create_marker_t*>(begin());
 
   std::cout << "WAL CREATE INDEX MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", INDEX " << m->_indexId
-            << ", PROPERTIES " << properties()
-            << ", SIZE: " << size()
-            << "\n";
+            << ", COLLECTION " << m->_collectionId << ", INDEX " << m->_indexId
+            << ", PROPERTIES " << properties() << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -699,28 +600,21 @@ void CreateIndexMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   DropIndexMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-DropIndexMarker::DropIndexMarker (TRI_voc_tick_t databaseId,
-                                  TRI_voc_cid_t collectionId,
-                                  TRI_idx_iid_t indexId)
-  : Marker(TRI_WAL_MARKER_DROP_INDEX, sizeof(index_drop_marker_t)) {
-
+DropIndexMarker::DropIndexMarker(TRI_voc_tick_t databaseId,
+                                 TRI_voc_cid_t collectionId,
+                                 TRI_idx_iid_t indexId)
+    : Marker(TRI_WAL_MARKER_DROP_INDEX, sizeof(index_drop_marker_t)) {
   index_drop_marker_t* m = reinterpret_cast<index_drop_marker_t*>(begin());
 
-  m->_databaseId   = databaseId;
+  m->_databaseId = databaseId;
   m->_collectionId = collectionId;
-  m->_indexId      = indexId;
+  m->_indexId = indexId;
 
 #ifdef DEBUG_WAL
   dump();
@@ -731,22 +625,19 @@ DropIndexMarker::DropIndexMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-DropIndexMarker::~DropIndexMarker () {
-}
+DropIndexMarker::~DropIndexMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void DropIndexMarker::dump () const {
+void DropIndexMarker::dump() const {
   index_drop_marker_t* m = reinterpret_cast<index_drop_marker_t*>(begin());
 
   std::cout << "WAL DROP INDEX MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", INDEX " << m->_indexId
-            << ", SIZE: " << size()
-            << "\n";
+            << ", COLLECTION " << m->_collectionId << ", INDEX " << m->_indexId
+            << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -754,25 +645,20 @@ void DropIndexMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            BeginTransactionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-BeginTransactionMarker::BeginTransactionMarker (TRI_voc_tick_t databaseId,
-                                                TRI_voc_tid_t transactionId)
-  : Marker(TRI_WAL_MARKER_BEGIN_TRANSACTION, sizeof(transaction_begin_marker_t)) {
+BeginTransactionMarker::BeginTransactionMarker(TRI_voc_tick_t databaseId,
+                                               TRI_voc_tid_t transactionId)
+    : Marker(TRI_WAL_MARKER_BEGIN_TRANSACTION,
+             sizeof(transaction_begin_marker_t)) {
+  transaction_begin_marker_t* m =
+      reinterpret_cast<transaction_begin_marker_t*>(begin());
 
-  transaction_begin_marker_t* m = reinterpret_cast<transaction_begin_marker_t*>(begin());
-
-  m->_databaseId    = databaseId;
+  m->_databaseId = databaseId;
   m->_transactionId = transactionId;
 
 #ifdef DEBUG_WAL
@@ -784,20 +670,19 @@ BeginTransactionMarker::BeginTransactionMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-BeginTransactionMarker::~BeginTransactionMarker () {
-}
+BeginTransactionMarker::~BeginTransactionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void BeginTransactionMarker::dump () const {
-  transaction_begin_marker_t* m = reinterpret_cast<transaction_begin_marker_t*>(begin());
+void BeginTransactionMarker::dump() const {
+  transaction_begin_marker_t* m =
+      reinterpret_cast<transaction_begin_marker_t*>(begin());
 
   std::cout << "WAL TRANSACTION BEGIN MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId
-            << ", SIZE: " << size()
+            << ", TRANSACTION " << m->_transactionId << ", SIZE: " << size()
             << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
@@ -806,25 +691,20 @@ void BeginTransactionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           CommitTransactionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CommitTransactionMarker::CommitTransactionMarker (TRI_voc_tick_t databaseId,
-                                                  TRI_voc_tid_t transactionId)
-  : Marker(TRI_WAL_MARKER_COMMIT_TRANSACTION, sizeof(transaction_commit_marker_t)) {
+CommitTransactionMarker::CommitTransactionMarker(TRI_voc_tick_t databaseId,
+                                                 TRI_voc_tid_t transactionId)
+    : Marker(TRI_WAL_MARKER_COMMIT_TRANSACTION,
+             sizeof(transaction_commit_marker_t)) {
+  transaction_commit_marker_t* m =
+      reinterpret_cast<transaction_commit_marker_t*>(begin());
 
-  transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(begin());
-
-  m->_databaseId    = databaseId;
+  m->_databaseId = databaseId;
   m->_transactionId = transactionId;
 
 #ifdef DEBUG_WAL
@@ -836,20 +716,19 @@ CommitTransactionMarker::CommitTransactionMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CommitTransactionMarker::~CommitTransactionMarker () {
-}
+CommitTransactionMarker::~CommitTransactionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void CommitTransactionMarker::dump () const {
-  transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(begin());
+void CommitTransactionMarker::dump() const {
+  transaction_commit_marker_t* m =
+      reinterpret_cast<transaction_commit_marker_t*>(begin());
 
   std::cout << "WAL TRANSACTION COMMIT MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId
-            << ", SIZE: " << size()
+            << ", TRANSACTION " << m->_transactionId << ", SIZE: " << size()
             << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
@@ -858,25 +737,20 @@ void CommitTransactionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            AbortTransactionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AbortTransactionMarker::AbortTransactionMarker (TRI_voc_tick_t databaseId,
-                                                TRI_voc_tid_t transactionId)
-  : Marker(TRI_WAL_MARKER_ABORT_TRANSACTION, sizeof(transaction_abort_marker_t)) {
+AbortTransactionMarker::AbortTransactionMarker(TRI_voc_tick_t databaseId,
+                                               TRI_voc_tid_t transactionId)
+    : Marker(TRI_WAL_MARKER_ABORT_TRANSACTION,
+             sizeof(transaction_abort_marker_t)) {
+  transaction_abort_marker_t* m =
+      reinterpret_cast<transaction_abort_marker_t*>(begin());
 
-  transaction_abort_marker_t* m = reinterpret_cast<transaction_abort_marker_t*>(begin());
-
-  m->_databaseId    = databaseId;
+  m->_databaseId = databaseId;
   m->_transactionId = transactionId;
 
 #ifdef DEBUG_WAL
@@ -888,20 +762,19 @@ AbortTransactionMarker::AbortTransactionMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AbortTransactionMarker::~AbortTransactionMarker () {
-}
+AbortTransactionMarker::~AbortTransactionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void AbortTransactionMarker::dump () const {
-  transaction_abort_marker_t* m = reinterpret_cast<transaction_abort_marker_t*>(begin());
+void AbortTransactionMarker::dump() const {
+  transaction_abort_marker_t* m =
+      reinterpret_cast<transaction_abort_marker_t*>(begin());
 
   std::cout << "WAL TRANSACTION ABORT MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId
-            << ", SIZE: " << size()
+            << ", TRANSACTION " << m->_transactionId << ", SIZE: " << size()
             << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
@@ -910,28 +783,23 @@ void AbortTransactionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      BeginRemoteTransactionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-BeginRemoteTransactionMarker::BeginRemoteTransactionMarker (TRI_voc_tick_t databaseId,
-                                                            TRI_voc_tid_t transactionId,
-                                                            TRI_voc_tid_t externalId)
-  : Marker(TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION, sizeof(transaction_remote_begin_marker_t)) {
+BeginRemoteTransactionMarker::BeginRemoteTransactionMarker(
+    TRI_voc_tick_t databaseId, TRI_voc_tid_t transactionId,
+    TRI_voc_tid_t externalId)
+    : Marker(TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION,
+             sizeof(transaction_remote_begin_marker_t)) {
+  transaction_remote_begin_marker_t* m =
+      reinterpret_cast<transaction_remote_begin_marker_t*>(begin());
 
-  transaction_remote_begin_marker_t* m = reinterpret_cast<transaction_remote_begin_marker_t*>(begin());
-
-  m->_databaseId    = databaseId;
+  m->_databaseId = databaseId;
   m->_transactionId = transactionId;
-  m->_externalId    = externalId;
+  m->_externalId = externalId;
 
 #ifdef DEBUG_WAL
   dump();
@@ -942,22 +810,20 @@ BeginRemoteTransactionMarker::BeginRemoteTransactionMarker (TRI_voc_tick_t datab
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-BeginRemoteTransactionMarker::~BeginRemoteTransactionMarker () {
-}
+BeginRemoteTransactionMarker::~BeginRemoteTransactionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void BeginRemoteTransactionMarker::dump () const {
-  transaction_remote_begin_marker_t* m = reinterpret_cast<transaction_remote_begin_marker_t*>(begin());
+void BeginRemoteTransactionMarker::dump() const {
+  transaction_remote_begin_marker_t* m =
+      reinterpret_cast<transaction_remote_begin_marker_t*>(begin());
 
   std::cout << "WAL REMOTE TRANSACTION BEGIN MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId
-            << ", EXTERNAL ID " << m->_externalId
-            << ", SIZE: " << size()
-            << "\n";
+            << ", TRANSACTION " << m->_transactionId << ", EXTERNAL ID "
+            << m->_externalId << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -965,28 +831,23 @@ void BeginRemoteTransactionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     CommitRemoteTransactionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CommitRemoteTransactionMarker::CommitRemoteTransactionMarker (TRI_voc_tick_t databaseId,
-                                                              TRI_voc_tid_t transactionId,
-                                                              TRI_voc_tid_t externalId)
-  : Marker(TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION, sizeof(transaction_remote_commit_marker_t)) {
+CommitRemoteTransactionMarker::CommitRemoteTransactionMarker(
+    TRI_voc_tick_t databaseId, TRI_voc_tid_t transactionId,
+    TRI_voc_tid_t externalId)
+    : Marker(TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION,
+             sizeof(transaction_remote_commit_marker_t)) {
+  transaction_remote_commit_marker_t* m =
+      reinterpret_cast<transaction_remote_commit_marker_t*>(begin());
 
-  transaction_remote_commit_marker_t* m = reinterpret_cast<transaction_remote_commit_marker_t*>(begin());
-
-  m->_databaseId    = databaseId;
+  m->_databaseId = databaseId;
   m->_transactionId = transactionId;
-  m->_externalId    = externalId;
+  m->_externalId = externalId;
 
 #ifdef DEBUG_WAL
   dump();
@@ -997,22 +858,20 @@ CommitRemoteTransactionMarker::CommitRemoteTransactionMarker (TRI_voc_tick_t dat
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CommitRemoteTransactionMarker::~CommitRemoteTransactionMarker () {
-}
+CommitRemoteTransactionMarker::~CommitRemoteTransactionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void CommitRemoteTransactionMarker::dump () const {
-  transaction_remote_commit_marker_t* m = reinterpret_cast<transaction_remote_commit_marker_t*>(begin());
+void CommitRemoteTransactionMarker::dump() const {
+  transaction_remote_commit_marker_t* m =
+      reinterpret_cast<transaction_remote_commit_marker_t*>(begin());
 
   std::cout << "WAL REMOTE_TRANSACTION COMMIT MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId
-            << ", EXTERNAL ID " << m->_externalId
-            << ", SIZE: " << size()
-            << "\n";
+            << ", TRANSACTION " << m->_transactionId << ", EXTERNAL ID "
+            << m->_externalId << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -1020,28 +879,23 @@ void CommitRemoteTransactionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      AbortRemoteTransactionMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AbortRemoteTransactionMarker::AbortRemoteTransactionMarker (TRI_voc_tick_t databaseId,
-                                                            TRI_voc_tid_t transactionId,
-                                                            TRI_voc_tid_t externalId)
-  : Marker(TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION, sizeof(transaction_remote_abort_marker_t)) {
+AbortRemoteTransactionMarker::AbortRemoteTransactionMarker(
+    TRI_voc_tick_t databaseId, TRI_voc_tid_t transactionId,
+    TRI_voc_tid_t externalId)
+    : Marker(TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION,
+             sizeof(transaction_remote_abort_marker_t)) {
+  transaction_remote_abort_marker_t* m =
+      reinterpret_cast<transaction_remote_abort_marker_t*>(begin());
 
-  transaction_remote_abort_marker_t* m = reinterpret_cast<transaction_remote_abort_marker_t*>(begin());
-
-  m->_databaseId    = databaseId;
+  m->_databaseId = databaseId;
   m->_transactionId = transactionId;
-  m->_externalId    = externalId;
+  m->_externalId = externalId;
 
 #ifdef DEBUG_WAL
   dump();
@@ -1052,22 +906,20 @@ AbortRemoteTransactionMarker::AbortRemoteTransactionMarker (TRI_voc_tick_t datab
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AbortRemoteTransactionMarker::~AbortRemoteTransactionMarker () {
-}
+AbortRemoteTransactionMarker::~AbortRemoteTransactionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void AbortRemoteTransactionMarker::dump () const {
-  transaction_remote_abort_marker_t* m = reinterpret_cast<transaction_remote_abort_marker_t*>(begin());
+void AbortRemoteTransactionMarker::dump() const {
+  transaction_remote_abort_marker_t* m =
+      reinterpret_cast<transaction_remote_abort_marker_t*>(begin());
 
   std::cout << "WAL REMOTE TRANSACTION ABORT MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId
-            << ", EXTERNAL ID " << m->_externalId
-            << ", SIZE: " << size()
-            << "\n";
+            << ", TRANSACTION " << m->_transactionId << ", EXTERNAL ID "
+            << m->_externalId << ", SIZE: " << size() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -1075,26 +927,21 @@ void AbortRemoteTransactionMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               VPackDocumentMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackDocumentMarker::VPackDocumentMarker (TRI_voc_tick_t databaseId,
-                                          TRI_voc_cid_t collectionId,
-                                          TRI_voc_tid_t transactionId,
-                                          VPackSlice const* slice) 
-  : Marker(TRI_WAL_MARKER_VPACK_DOCUMENT, sizeof(vpack_document_marker_t) + VPackSlice(*slice).byteSize()) {
+VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tick_t databaseId,
+                                         TRI_voc_cid_t collectionId,
+                                         TRI_voc_tid_t transactionId,
+                                         VPackSlice const* slice)
+    : Marker(TRI_WAL_MARKER_VPACK_DOCUMENT,
+             sizeof(vpack_document_marker_t) + VPackSlice(*slice).byteSize()) {
   auto* m = reinterpret_cast<vpack_document_marker_t*>(begin());
-  m->_databaseId    = databaseId;
-  m->_collectionId  = collectionId;
+  m->_databaseId = databaseId;
+  m->_collectionId = collectionId;
   m->_transactionId = transactionId;
 
   // store vpack
@@ -1105,29 +952,23 @@ VPackDocumentMarker::VPackDocumentMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackDocumentMarker::~VPackDocumentMarker () {
-}
+VPackDocumentMarker::~VPackDocumentMarker() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 VPackRemoveMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackRemoveMarker::VPackRemoveMarker (TRI_voc_tick_t databaseId,
-                                      TRI_voc_cid_t collectionId,
-                                      TRI_voc_tid_t transactionId,
-                                      VPackSlice const* slice) 
-  : Marker(TRI_WAL_MARKER_VPACK_REMOVE, sizeof(vpack_remove_marker_t) + VPackSlice(*slice).byteSize()) {
+VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tick_t databaseId,
+                                     TRI_voc_cid_t collectionId,
+                                     TRI_voc_tid_t transactionId,
+                                     VPackSlice const* slice)
+    : Marker(TRI_WAL_MARKER_VPACK_REMOVE,
+             sizeof(vpack_remove_marker_t) + VPackSlice(*slice).byteSize()) {
   auto* m = reinterpret_cast<vpack_remove_marker_t*>(begin());
-  m->_databaseId    = databaseId;
-  m->_collectionId  = collectionId;
+  m->_databaseId = databaseId;
+  m->_collectionId = collectionId;
   m->_transactionId = transactionId;
 
   // store vpack
@@ -1138,40 +979,35 @@ VPackRemoveMarker::VPackRemoveMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackRemoveMarker::~VPackRemoveMarker () {
-}
+VPackRemoveMarker::~VPackRemoveMarker() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    DocumentMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
-                                TRI_voc_cid_t collectionId,
-                                TRI_voc_rid_t revisionId,
-                                TRI_voc_tid_t transactionId,
-                                std::string const& key,
-                                size_t legendSize,
-                                TRI_shaped_json_t const* shapedJson)
-  : Marker(TRI_WAL_MARKER_DOCUMENT,
-    sizeof(document_marker_t) + alignedSize(key.size() + 1) + legendSize + shapedJson->_data.length) {
+DocumentMarker::DocumentMarker(TRI_voc_tick_t databaseId,
+                               TRI_voc_cid_t collectionId,
+                               TRI_voc_rid_t revisionId,
+                               TRI_voc_tid_t transactionId,
+                               std::string const& key, size_t legendSize,
+                               TRI_shaped_json_t const* shapedJson)
+    : Marker(TRI_WAL_MARKER_DOCUMENT,
+             sizeof(document_marker_t) + alignedSize(key.size() + 1) +
+                 legendSize + shapedJson->_data.length) {
   document_marker_t* m = reinterpret_cast<document_marker_t*>(begin());
-  m->_databaseId    = databaseId;
-  m->_collectionId  = collectionId;
-  m->_revisionId    = revisionId;
+  m->_databaseId = databaseId;
+  m->_collectionId = collectionId;
+  m->_revisionId = revisionId;
   m->_transactionId = transactionId;
-  m->_shape         = shapedJson->_sid;
+  m->_shape = shapedJson->_sid;
 
-  m->_offsetKey     = sizeof(document_marker_t); // start position of key
-  m->_offsetLegend  = static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
-  m->_offsetJson    = static_cast<uint32_t>(m->_offsetLegend + alignedSize(legendSize));
+  m->_offsetKey = sizeof(document_marker_t);  // start position of key
+  m->_offsetLegend =
+      static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
+  m->_offsetJson =
+      static_cast<uint32_t>(m->_offsetLegend + alignedSize(legendSize));
 
   storeSizedString(m->_offsetKey, key);
 
@@ -1180,13 +1016,14 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
     TRI_ASSERT(legendSize >= 8);
 
     char* p = static_cast<char*>(begin()) + m->_offsetLegend;
-    memset(p, 0, 8); // initialize initial bytes of legend with 0s
+    memset(p, 0, 8);  // initialize initial bytes of legend with 0s
   }
 
   // store shapedJson
   {
     char* p = static_cast<char*>(begin()) + m->_offsetJson;
-    memcpy(p, shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
+    memcpy(p, shapedJson->_data.data,
+           static_cast<size_t>(shapedJson->_data.length));
   }
 
 #ifdef DEBUG_WAL
@@ -1198,15 +1035,14 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-DocumentMarker::~DocumentMarker () {
-}
+DocumentMarker::~DocumentMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief store legend in marker
 ////////////////////////////////////////////////////////////////////////////////
 
-void DocumentMarker::storeLegend (triagens::basics::JsonLegend& legend) {
-  legend.dump((void*) this->legend());
+void DocumentMarker::storeLegend(triagens::basics::JsonLegend& legend) {
+  legend.dump((void*)this->legend());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1214,18 +1050,15 @@ void DocumentMarker::storeLegend (triagens::basics::JsonLegend& legend) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void DocumentMarker::dump () const {
+void DocumentMarker::dump() const {
   document_marker_t* m = reinterpret_cast<document_marker_t*>(begin());
 
   std::cout << "WAL DOCUMENT MARKER FOR DB " << m->_databaseId
             << ", COLLECTION " << m->_collectionId
-            << ", REV: " << m->_revisionId
-            << ", TRX: " << m->_transactionId
-            << ", KEY: " << key()
-            << ", OFFSETKEY: " << m->_offsetKey
+            << ", REV: " << m->_revisionId << ", TRX: " << m->_transactionId
+            << ", KEY: " << key() << ", OFFSETKEY: " << m->_offsetKey
             << ", OFFSETLEGEND: " << m->_offsetLegend
-            << ", OFFSETJSON: " << m->_offsetJson
-            << ", SIZE: " << size()
+            << ", OFFSETJSON: " << m->_offsetJson << ", SIZE: " << size()
             << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
@@ -1241,81 +1074,71 @@ void DocumentMarker::dump () const {
 /// @brief clone a marker from another marker
 ////////////////////////////////////////////////////////////////////////////////
 
-DocumentMarker* DocumentMarker::clone (TRI_df_marker_t const* other,
-                                       TRI_voc_tick_t databaseId,
-                                       TRI_voc_cid_t collectionId,
-                                       TRI_voc_rid_t revisionId,
-                                       TRI_voc_tid_t transactionId,
-                                       size_t legendSize,
-                                       TRI_shaped_json_t const* shapedJson) {
+DocumentMarker* DocumentMarker::clone(TRI_df_marker_t const* other,
+                                      TRI_voc_tick_t databaseId,
+                                      TRI_voc_cid_t collectionId,
+                                      TRI_voc_rid_t revisionId,
+                                      TRI_voc_tid_t transactionId,
+                                      size_t legendSize,
+                                      TRI_shaped_json_t const* shapedJson) {
   char const* base = reinterpret_cast<char const*>(other);
 
   if (other->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    TRI_doc_document_key_marker_t const* original = reinterpret_cast<TRI_doc_document_key_marker_t const*>(other);
+    TRI_doc_document_key_marker_t const* original =
+        reinterpret_cast<TRI_doc_document_key_marker_t const*>(other);
 
-    return new DocumentMarker(databaseId,
-                              collectionId,
-                              revisionId,
-                              transactionId,
-                              std::string(base + original->_offsetKey),
-                              legendSize,
-                              shapedJson);
-  }
-  else {
+    return new DocumentMarker(
+        databaseId, collectionId, revisionId, transactionId,
+        std::string(base + original->_offsetKey), legendSize, shapedJson);
+  } else {
     TRI_ASSERT(other->_type == TRI_WAL_MARKER_DOCUMENT);
 
-    document_marker_t const* original = reinterpret_cast<document_marker_t const*>(other);
+    document_marker_t const* original =
+        reinterpret_cast<document_marker_t const*>(other);
 
     TRI_ASSERT(original->_databaseId == databaseId);
     TRI_ASSERT(original->_collectionId == collectionId);
 
-    return new DocumentMarker(original->_databaseId,
-                              original->_collectionId,
-                              revisionId,
-                              transactionId,
+    return new DocumentMarker(original->_databaseId, original->_collectionId,
+                              revisionId, transactionId,
                               std::string(base + original->_offsetKey),
-                              legendSize,
-                              shapedJson);
+                              legendSize, shapedJson);
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        EdgeMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
-                        TRI_voc_cid_t collectionId,
-                        TRI_voc_rid_t revisionId,
-                        TRI_voc_tid_t transactionId,
-                        std::string const& key,
-                        TRI_document_edge_t const* edge,
-                        size_t legendSize,
-                        TRI_shaped_json_t const* shapedJson)
-  : Marker(TRI_WAL_MARKER_EDGE,
-    sizeof(edge_marker_t) + alignedSize(key.size() + 1) + alignedSize(strlen(edge->_fromKey) + 1) + alignedSize(strlen(edge->_toKey) + 1) + legendSize + shapedJson->_data.length) {
-
+EdgeMarker::EdgeMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                       TRI_voc_rid_t revisionId, TRI_voc_tid_t transactionId,
+                       std::string const& key, TRI_document_edge_t const* edge,
+                       size_t legendSize, TRI_shaped_json_t const* shapedJson)
+    : Marker(TRI_WAL_MARKER_EDGE, sizeof(edge_marker_t) +
+                                      alignedSize(key.size() + 1) +
+                                      alignedSize(strlen(edge->_fromKey) + 1) +
+                                      alignedSize(strlen(edge->_toKey) + 1) +
+                                      legendSize + shapedJson->_data.length) {
   edge_marker_t* m = reinterpret_cast<edge_marker_t*>(begin());
 
-  m->_databaseId    = databaseId;
-  m->_collectionId  = collectionId;
-  m->_revisionId    = revisionId;
+  m->_databaseId = databaseId;
+  m->_collectionId = collectionId;
+  m->_revisionId = revisionId;
   m->_transactionId = transactionId;
-  m->_shape         = shapedJson->_sid;
-  m->_offsetKey     = sizeof(edge_marker_t); // start position of key
-  m->_toCid         = edge->_toCid;
-  m->_fromCid       = edge->_fromCid;
-  m->_offsetToKey   = static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
-  m->_offsetFromKey = static_cast<uint16_t>(m->_offsetToKey + alignedSize(strlen(edge->_toKey) + 1));
-  m->_offsetLegend  = static_cast<uint16_t>(m->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 1));
-  m->_offsetJson    = static_cast<uint32_t>(m->_offsetLegend + alignedSize(legendSize));
+  m->_shape = shapedJson->_sid;
+  m->_offsetKey = sizeof(edge_marker_t);  // start position of key
+  m->_toCid = edge->_toCid;
+  m->_fromCid = edge->_fromCid;
+  m->_offsetToKey =
+      static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
+  m->_offsetFromKey = static_cast<uint16_t>(
+      m->_offsetToKey + alignedSize(strlen(edge->_toKey) + 1));
+  m->_offsetLegend = static_cast<uint16_t>(
+      m->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 1));
+  m->_offsetJson =
+      static_cast<uint32_t>(m->_offsetLegend + alignedSize(legendSize));
 
   // store keys
   storeSizedString(m->_offsetKey, key.c_str());
@@ -1326,13 +1149,14 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   {
     TRI_ASSERT(legendSize >= 8);
     char* p = static_cast<char*>(begin()) + m->_offsetLegend;
-    memset(p, 0, 8); // initialize initial bytes of legend with 0s
+    memset(p, 0, 8);  // initialize initial bytes of legend with 0s
   }
 
   // store shapedJson
   {
     char* p = static_cast<char*>(begin()) + m->_offsetJson;
-    memcpy(p, shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
+    memcpy(p, shapedJson->_data.data,
+           static_cast<size_t>(shapedJson->_data.length));
   }
 
 #ifdef DEBUG_WAL
@@ -1344,15 +1168,14 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-EdgeMarker::~EdgeMarker () {
-}
+EdgeMarker::~EdgeMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief store legend in marker
 ////////////////////////////////////////////////////////////////////////////////
 
-void EdgeMarker::storeLegend (triagens::basics::JsonLegend& legend) {
-  legend.dump((void*) this->legend());
+void EdgeMarker::storeLegend(triagens::basics::JsonLegend& legend) {
+  legend.dump((void*)this->legend());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1360,24 +1183,19 @@ void EdgeMarker::storeLegend (triagens::basics::JsonLegend& legend) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void EdgeMarker::dump () const {
+void EdgeMarker::dump() const {
   edge_marker_t* m = reinterpret_cast<edge_marker_t*>(begin());
 
-  std::cout << "WAL EDGE MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", REV: " << m->_revisionId
-            << ", TRX: " << m->_transactionId
-            << ", KEY: " << key()
-            << ", FROMCID " << m->_fromCid
-            << ", TOCID " << m->_toCid
-            << ", FROMKEY: " << fromKey()
-            << ", TOKEY: " << toKey()
+  std::cout << "WAL EDGE MARKER FOR DB " << m->_databaseId << ", COLLECTION "
+            << m->_collectionId << ", REV: " << m->_revisionId
+            << ", TRX: " << m->_transactionId << ", KEY: " << key()
+            << ", FROMCID " << m->_fromCid << ", TOCID " << m->_toCid
+            << ", FROMKEY: " << fromKey() << ", TOKEY: " << toKey()
             << ", OFFSETKEY: " << m->_offsetKey
             << ", OFFSETFROM: " << m->_offsetFromKey
             << ", OFFSETTO: " << m->_offsetToKey
             << ", OFFSETLEGEND: " << m->_offsetLegend
-            << ", OFFSETJSON: " << m->_offsetJson
-            << ", SIZE: " << size()
+            << ", OFFSETJSON: " << m->_offsetJson << ", SIZE: " << size()
             << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
@@ -1393,80 +1211,64 @@ void EdgeMarker::dump () const {
 /// @brief clone a marker from another marker
 ////////////////////////////////////////////////////////////////////////////////
 
-EdgeMarker* EdgeMarker::clone (TRI_df_marker_t const* other,
-                               TRI_voc_tick_t databaseId,
-                               TRI_voc_cid_t collectionId,
-                               TRI_voc_rid_t revisionId,
-                               TRI_voc_tid_t transactionId,
-                               size_t legendSize,
-                               TRI_shaped_json_t const* shapedJson) {
+EdgeMarker* EdgeMarker::clone(TRI_df_marker_t const* other,
+                              TRI_voc_tick_t databaseId,
+                              TRI_voc_cid_t collectionId,
+                              TRI_voc_rid_t revisionId,
+                              TRI_voc_tid_t transactionId, size_t legendSize,
+                              TRI_shaped_json_t const* shapedJson) {
   char const* base = reinterpret_cast<char const*>(other);
 
   if (other->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* original = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(other);
+    TRI_doc_edge_key_marker_t const* original =
+        reinterpret_cast<TRI_doc_edge_key_marker_t const*>(other);
 
     TRI_document_edge_t edge;
     edge._fromCid = original->_fromCid;
-    edge._toCid   = original->_toCid;
-    edge._toKey   = (TRI_voc_key_t) base + original->_offsetToKey;
-    edge._fromKey = (TRI_voc_key_t) base + original->_offsetFromKey;
+    edge._toCid = original->_toCid;
+    edge._toKey = (TRI_voc_key_t)base + original->_offsetToKey;
+    edge._fromKey = (TRI_voc_key_t)base + original->_offsetFromKey;
 
-    return new EdgeMarker(databaseId,
-                          collectionId,
-                          revisionId,
-                          transactionId,
-                          std::string(base + original->base._offsetKey),
-                          &edge,
-                          legendSize,
-                          shapedJson);
-  }
-  else {
+    return new EdgeMarker(databaseId, collectionId, revisionId, transactionId,
+                          std::string(base + original->base._offsetKey), &edge,
+                          legendSize, shapedJson);
+  } else {
     TRI_ASSERT(other->_type == TRI_WAL_MARKER_EDGE);
 
-    edge_marker_t const* original = reinterpret_cast<edge_marker_t const*>(other);
+    edge_marker_t const* original =
+        reinterpret_cast<edge_marker_t const*>(other);
 
     TRI_ASSERT(original->_databaseId == databaseId);
     TRI_ASSERT(original->_collectionId == collectionId);
 
     TRI_document_edge_t edge;
     edge._fromCid = original->_fromCid;
-    edge._toCid   = original->_toCid;
-    edge._toKey   = (TRI_voc_key_t) base + original->_offsetToKey;
-    edge._fromKey = (TRI_voc_key_t) base + original->_offsetFromKey;
+    edge._toCid = original->_toCid;
+    edge._toKey = (TRI_voc_key_t)base + original->_offsetToKey;
+    edge._fromKey = (TRI_voc_key_t)base + original->_offsetFromKey;
 
-    return new EdgeMarker(original->_databaseId,
-                          original->_collectionId,
-                          revisionId,
-                          transactionId,
-                          std::string(base + original->_offsetKey),
-                          &edge,
-                          legendSize,
-                          shapedJson);
+    return new EdgeMarker(original->_databaseId, original->_collectionId,
+                          revisionId, transactionId,
+                          std::string(base + original->_offsetKey), &edge,
+                          legendSize, shapedJson);
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      RemoveMarker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-RemoveMarker::RemoveMarker (TRI_voc_tick_t databaseId,
-                            TRI_voc_cid_t collectionId,
-                            TRI_voc_rid_t revisionId,
-                            TRI_voc_tid_t transactionId,
-                            std::string const& key)
-  : Marker(TRI_WAL_MARKER_REMOVE, sizeof(remove_marker_t) + alignedSize(key.size() + 1)) {
+RemoveMarker::RemoveMarker(TRI_voc_tick_t databaseId,
+                           TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+                           TRI_voc_tid_t transactionId, std::string const& key)
+    : Marker(TRI_WAL_MARKER_REMOVE,
+             sizeof(remove_marker_t) + alignedSize(key.size() + 1)) {
   remove_marker_t* m = reinterpret_cast<remove_marker_t*>(begin());
-  m->_databaseId    = databaseId;
-  m->_collectionId  = collectionId;
-  m->_revisionId    = revisionId;
+  m->_databaseId = databaseId;
+  m->_collectionId = collectionId;
+  m->_revisionId = revisionId;
   m->_transactionId = transactionId;
 
   storeSizedString(sizeof(remove_marker_t), key);
@@ -1480,23 +1282,19 @@ RemoveMarker::RemoveMarker (TRI_voc_tick_t databaseId,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-RemoveMarker::~RemoveMarker () {
-}
+RemoveMarker::~RemoveMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump marker
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-void RemoveMarker::dump () const {
+void RemoveMarker::dump() const {
   remove_marker_t* m = reinterpret_cast<remove_marker_t*>(begin());
 
-  std::cout << "WAL REMOVE MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", REV: " << m->_revisionId
-            << ", TRX: " << m->_transactionId
-            << ", KEY: " << key()
-            << "\n";
+  std::cout << "WAL REMOVE MARKER FOR DB " << m->_databaseId << ", COLLECTION "
+            << m->_collectionId << ", REV: " << m->_revisionId
+            << ", TRX: " << m->_transactionId << ", KEY: " << key() << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
   dumpBinary();
@@ -1504,11 +1302,4 @@ void RemoveMarker::dump () const {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

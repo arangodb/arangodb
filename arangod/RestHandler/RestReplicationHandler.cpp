@@ -1,4 +1,25 @@
 ////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+////////////////////////////////////////////////////////////////////////////////
 //
 /// @brief replication request handler
 ///
@@ -64,42 +85,31 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       initialize static variables
-// -----------------------------------------------------------------------------
 
 uint64_t const RestReplicationHandler::defaultChunkSize = 128 * 1024;
 
-uint64_t const RestReplicationHandler::maxChunkSize     = 128 * 1024 * 1024;
+uint64_t const RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestReplicationHandler::RestReplicationHandler (HttpRequest* request)
-  : RestVocbaseBaseHandler(request) {
-}
+RestReplicationHandler::RestReplicationHandler(HttpRequest* request)
+    : RestVocbaseBaseHandler(request) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestReplicationHandler::~RestReplicationHandler () {
-}
+RestReplicationHandler::~RestReplicationHandler() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               HttpHandler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestReplicationHandler::execute () {
+HttpHandler::status_t RestReplicationHandler::execute() {
   // extract the request type
   HttpRequest::HttpRequestType const type = _request->requestType();
 
@@ -115,8 +125,7 @@ HttpHandler::status_t RestReplicationHandler::execute () {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
-    }
-    else if (command == "logger-tick-ranges") {
+    } else if (command == "logger-tick-ranges") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
@@ -124,8 +133,7 @@ HttpHandler::status_t RestReplicationHandler::execute () {
         return status_t(HttpHandler::HANDLER_DONE);
       }
       handleCommandLoggerTickRanges();
-    }
-    else if (command == "logger-first-tick") {
+    } else if (command == "logger-first-tick") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
@@ -133,8 +141,7 @@ HttpHandler::status_t RestReplicationHandler::execute () {
         return status_t(HttpHandler::HANDLER_DONE);
       }
       handleCommandLoggerFirstTick();
-    }
-    else if (command == "logger-follow") {
+    } else if (command == "logger-follow") {
       if (type != HttpRequest::HTTP_REQUEST_GET &&
           type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
@@ -143,97 +150,80 @@ HttpHandler::status_t RestReplicationHandler::execute () {
         return status_t(HttpHandler::HANDLER_DONE);
       }
       handleCommandLoggerFollow();
-    }
-    else if (command == "determine-open-transactions") {
+    } else if (command == "determine-open-transactions") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       handleCommandDetermineOpenTransactions();
-    }
-    else if (command == "batch") {
-
+    } else if (command == "batch") {
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
-      }
-      else {
+      } else {
         handleCommandBatch();
       }
-    }
-    else if (command == "inventory") {
+    } else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
-      }
-      else {
+      } else {
         handleCommandInventory();
       }
-    }
-    else if (command == "keys") {
+    } else if (command == "keys") {
       if (type != HttpRequest::HTTP_REQUEST_GET &&
           type != HttpRequest::HTTP_REQUEST_POST &&
           type != HttpRequest::HTTP_REQUEST_PUT &&
           type != HttpRequest::HTTP_REQUEST_DELETE) {
         goto BAD_CALL;
       }
-      
+
       if (isCoordinatorError()) {
         return status_t(HttpHandler::HANDLER_DONE);
       }
 
       if (type == HttpRequest::HTTP_REQUEST_POST) {
         handleCommandCreateKeys();
-      }
-      else if (type == HttpRequest::HTTP_REQUEST_GET) {
+      } else if (type == HttpRequest::HTTP_REQUEST_GET) {
         handleCommandGetKeys();
-      }
-      else if (type == HttpRequest::HTTP_REQUEST_PUT) {
+      } else if (type == HttpRequest::HTTP_REQUEST_PUT) {
         handleCommandFetchKeys();
-      }
-      else if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+      } else if (type == HttpRequest::HTTP_REQUEST_DELETE) {
         handleCommandRemoveKeys();
       }
-    }
-    else if (command == "dump") {
+    } else if (command == "dump") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
 
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
-      }
-      else {
+      } else {
         handleCommandDump();
       }
-    }
-    else if (command == "restore-collection") {
+    } else if (command == "restore-collection") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
       handleCommandRestoreCollection();
-    }
-    else if (command == "restore-indexes") {
+    } else if (command == "restore-indexes") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
       handleCommandRestoreIndexes();
-    }
-    else if (command == "restore-data") {
+    } else if (command == "restore-data") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
       if (ServerState::instance()->isCoordinator()) {
         handleCommandRestoreDataCoordinator();
-      }
-      else {
+      } else {
         handleCommandRestoreData();
       }
-    }
-    else if (command == "sync") {
+    } else if (command == "sync") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
@@ -243,8 +233,7 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       }
 
       handleCommandSync();
-    }
-    else if (command == "make-slave") {
+    } else if (command == "make-slave") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
@@ -252,27 +241,23 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       if (isCoordinatorError()) {
         return status_t(HttpHandler::HANDLER_DONE);
       }
-    
+
       handleCommandMakeSlave();
-    }
-    else if (command == "server-id") {
+    } else if (command == "server-id") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       handleCommandServerId();
-    }
-    else if (command == "applier-config") {
+    } else if (command == "applier-config") {
       if (type == HttpRequest::HTTP_REQUEST_GET) {
         handleCommandApplierGetConfig();
-      }
-      else {
+      } else {
         if (type != HttpRequest::HTTP_REQUEST_PUT) {
           goto BAD_CALL;
         }
         handleCommandApplierSetConfig();
       }
-    }
-    else if (command == "applier-start") {
+    } else if (command == "applier-start") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
@@ -282,8 +267,7 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       }
 
       handleCommandApplierStart();
-    }
-    else if (command == "applier-stop") {
+    } else if (command == "applier-stop") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
@@ -293,33 +277,27 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       }
 
       handleCommandApplierStop();
-    }
-    else if (command == "applier-state") {
+    } else if (command == "applier-state") {
       if (type == HttpRequest::HTTP_REQUEST_DELETE) {
         handleCommandApplierDeleteState();
-      }
-      else {
+      } else {
         if (type != HttpRequest::HTTP_REQUEST_GET) {
           goto BAD_CALL;
         }
         handleCommandApplierGetState();
       }
-    }
-    else if (command == "clusterInventory") {
+    } else if (command == "clusterInventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-      if (! ServerState::instance()->isCoordinator()) {
+      if (!ServerState::instance()->isCoordinator()) {
         generateError(HttpResponse::FORBIDDEN,
                       TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
-      }
-      else {
+      } else {
         handleCommandClusterInventory();
       }
-    }
-    else {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+    } else {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid command");
     }
 
@@ -328,20 +306,16 @@ HttpHandler::status_t RestReplicationHandler::execute () {
 
 BAD_CALL:
   if (len != 1) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "expecting URL /_api/replication/<command>");
-  }
-  else {
-    generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  } else {
+    generateError(HttpResponse::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
   return status_t(HttpHandler::HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
@@ -349,8 +323,8 @@ BAD_CALL:
 /// because edges depend on vertices being there), then name
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestReplicationHandler::sortCollections (TRI_vocbase_col_t const* l,
-                                              TRI_vocbase_col_t const* r) {
+bool RestReplicationHandler::sortCollections(TRI_vocbase_col_t const* l,
+                                             TRI_vocbase_col_t const* r) {
   if (l->_type != r->_type) {
     return l->_type < r->_type;
   }
@@ -361,17 +335,17 @@ bool RestReplicationHandler::sortCollections (TRI_vocbase_col_t const* l,
 /// @brief filter a collection based on collection attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
-                                               void* data) {
-  if (collection->_type != (TRI_col_type_t) TRI_COL_TYPE_DOCUMENT &&
-      collection->_type != (TRI_col_type_t) TRI_COL_TYPE_EDGE) {
+bool RestReplicationHandler::filterCollection(TRI_vocbase_col_t* collection,
+                                              void* data) {
+  if (collection->_type != (TRI_col_type_t)TRI_COL_TYPE_DOCUMENT &&
+      collection->_type != (TRI_col_type_t)TRI_COL_TYPE_EDGE) {
     // invalid type
     return false;
   }
 
-  bool includeSystem = *((bool*) data);
+  bool includeSystem = *((bool*)data);
 
-  if (! includeSystem && collection->_name[0] == '_') {
+  if (!includeSystem && collection->_name[0] == '_') {
     // exclude all system collections
     return false;
   }
@@ -385,18 +359,14 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestReplicationHandler::isCoordinatorError () {
+bool RestReplicationHandler::isCoordinatorError() {
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
-    generateError(HttpResponse::NOT_IMPLEMENTED,
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
     return true;
   }
@@ -408,12 +378,12 @@ bool RestReplicationHandler::isCoordinatorError () {
 /// @brief insert the applier action into an action list
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::insertClient (TRI_voc_tick_t lastServedTick) {
+void RestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
   bool found;
   char const* value = _request->value("serverId", found);
 
   if (found) {
-    TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
+    TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
 
     if (serverId > 0) {
       _vocbase->updateReplicationClient(serverId, lastServedTick);
@@ -425,7 +395,7 @@ void RestReplicationHandler::insertClient (TRI_voc_tick_t lastServedTick) {
 /// @brief determine the chunk size
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t RestReplicationHandler::determineChunkSize () const {
+uint64_t RestReplicationHandler::determineChunkSize() const {
   // determine chunk size
   uint64_t chunkSize = defaultChunkSize;
 
@@ -449,7 +419,8 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 /// @startDocuBlock JSF_get_api_replication_logger_return_state
 /// @brief returns the state of the replication logger
 ///
-/// @RESTHEADER{GET /_api/replication/logger-state, Return replication logger state}
+/// @RESTHEADER{GET /_api/replication/logger-state, Return replication logger
+/// state}
 ///
 /// @RESTDESCRIPTION
 /// Returns the current state of the server's replication logger. The state will
@@ -468,8 +439,10 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///   - *lastLogTick*: the tick value of the latest tick the logger has logged.
 ///     This value can be used for incremental fetching of log data.
 ///
-///   - *totalEvents*: total number of events logged since the server was started.
-///     The value is not reset between multiple stops and re-starts of the logger.
+///   - *totalEvents*: total number of events logged since the server was
+///   started.
+///     The value is not reset between multiple stops and re-starts of the
+///     logger.
 ///
 ///   - *time*: the current date and time on the logger server
 ///
@@ -479,14 +452,18 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///
 ///   - *serverId*: the logger server's id
 ///
-/// - *clients*: returns the last fetch status by replication clients connected to
-///   the logger. Each client is returned as a JSON object with the following attributes:
+/// - *clients*: returns the last fetch status by replication clients connected
+/// to
+///   the logger. Each client is returned as a JSON object with the following
+///   attributes:
 ///
 ///   - *serverId*: server id of client
 ///
-///   - *lastServedTick*: last tick value served to this client via the *logger-follow* API
+///   - *lastServedTick*: last tick value served to this client via the
+///   *logger-follow* API
 ///
-///   - *time*: date and time when this client last called the *logger-follow* API
+///   - *time*: date and time when this client last called the *logger-follow*
+///   API
 ///
 /// @RESTRETURNCODES
 ///
@@ -517,12 +494,13 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLoggerState () {
+void RestReplicationHandler::handleCommandLoggerState() {
   try {
     VPackBuilder json;
-    json.add(VPackValue(VPackValueType::Object)); // Base
+    json.add(VPackValue(VPackValueType::Object));  // Base
 
-    triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
+    triagens::wal::LogfileManagerState const&& s =
+        triagens::wal::LogfileManager::instance()->state();
     std::string const lastTickString(StringUtils::itoa(s.lastTick));
 
     // "state" part
@@ -562,9 +540,9 @@ void RestReplicationHandler::handleCommandLoggerState () {
 
       json.close();
     }
-    json.close(); // clients
+    json.close();  // clients
 
-    json.close(); // base
+    json.close();  // base
 
     VPackSlice slice = json.slice();
     generateResult(slice);
@@ -577,18 +555,20 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// @startDocuBlock JSF_get_api_replication_logger_tick_ranges
 /// @brief returns the tick value ranges available in the logfiles
 ///
-/// @RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges available in the WAL logfiles}
+/// @RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges
+/// available in the WAL logfiles}
 ///
 /// @RESTDESCRIPTION
 /// Returns the currently available ranges of tick values for all currently
 /// available WAL logfiles. The tick values can be used to determine if certain
 /// data (identified by tick value) are still available for replication.
 ///
-/// The body of the response contains a JSON array. Each array member is an object
+/// The body of the response contains a JSON array. Each array member is an
+/// object
 /// that describes a single logfile. Each object has the following attributes:
 ///
 /// * *datafile*: name of the logfile
-/// 
+///
 /// * *status*: status of the datafile, in textual form (e.g. "sealed", "open")
 ///
 /// * *tickMin*: minimum tick value contained in logfile
@@ -625,7 +605,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLoggerTickRanges () {
+void RestReplicationHandler::handleCommandLoggerTickRanges() {
   auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
   try {
     VPackBuilder b;
@@ -638,10 +618,10 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
 
       char buffer[21];
       size_t len;
-      len = TRI_StringUInt64InPlace(it.tickMin, (char*) &buffer);
+      len = TRI_StringUInt64InPlace(it.tickMin, (char*)&buffer);
       b.add("tickMin", VPackValue(std::string(&buffer[0], len)));
 
-      len = TRI_StringUInt64InPlace(it.tickMax, (char*) &buffer);
+      len = TRI_StringUInt64InPlace(it.tickMax, (char*)&buffer);
       b.add("tickMax", VPackValue(std::string(&buffer[0], len)));
 
       b.close();
@@ -649,8 +629,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
 
     b.close();
     generateResult(b.slice());
-  }
-  catch (...) {
+  } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
@@ -660,7 +639,8 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
 /// @startDocuBlock JSF_get_api_replication_logger_first_tick
 /// @brief Return the first available tick value from the server
 ///
-/// @RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first available tick value}
+/// @RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first
+/// available tick value}
 ///
 /// @RESTDESCRIPTION
 /// Returns the first available tick value that can be served from the server's
@@ -669,8 +649,9 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
 /// for replication.
 ///
 /// The result is a JSON object containing the attribute *firstTick*. This
-/// attribute contains the minimum tick value available in the server's replication
-/// log. 
+/// attribute contains the minimum tick value available in the server's
+/// replication
+/// log.
 ///
 /// **Note**: this method is not supported on a coordinator in a cluster.
 ///
@@ -703,9 +684,9 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLoggerFirstTick () {
+void RestReplicationHandler::handleCommandLoggerFirstTick() {
   auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
-  
+
   try {
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
@@ -723,15 +704,13 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 
     if (tick == UINT64_MAX) {
       b.add("firstTick", VPackValue(VPackValueType::Null));
-    }
-    else {
+    } else {
       auto tickString = std::to_string(tick);
       b.add("firstTick", VPackValue(tickString));
     }
     b.close();
     generateResult(b.slice());
-  }
-  catch (...) {
+  } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
 }
@@ -819,7 +798,8 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 /// @startDocuBlock JSF_delete_batch_replication
 /// @brief handle a dump batch command
 ///
-/// @RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump batch}
+/// @RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump
+/// batch}
 ///
 /// **Note**: These calls are uninteresting to users.
 ///
@@ -849,7 +829,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandBatch () {
+void RestReplicationHandler::handleCommandBatch() {
   // extract the request type
   HttpRequest::HttpRequestType const type = _request->requestType();
   vector<string> const& suffix = _request->suffix();
@@ -859,12 +839,11 @@ void RestReplicationHandler::handleCommandBatch () {
 
   if (type == HttpRequest::HTTP_REQUEST_POST) {
     // create a new blocker
- 
+
     std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
 
     if (input == nullptr) {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid JSON");
       return;
     }
@@ -888,8 +867,7 @@ void RestReplicationHandler::handleCommandBatch () {
       b.close();
       VPackSlice s = b.slice();
       generateResult(s);
-    }
-    catch (...) {
+    } catch (...) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
     return;
@@ -897,13 +875,12 @@ void RestReplicationHandler::handleCommandBatch () {
 
   if (type == HttpRequest::HTTP_REQUEST_PUT && len >= 2) {
     // extend an existing blocker
-    TRI_voc_tick_t id = (TRI_voc_tick_t) StringUtils::uint64(suffix[1]);
+    TRI_voc_tick_t id = (TRI_voc_tick_t)StringUtils::uint64(suffix[1]);
 
     std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
 
     if (input == nullptr) {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid JSON");
       return;
     }
@@ -915,9 +892,8 @@ void RestReplicationHandler::handleCommandBatch () {
     int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      _response = createResponse(HttpResponse::NO_CONTENT);
-    }
-    else {
+      createResponse(HttpResponse::NO_CONTENT);
+    } else {
       generateError(HttpResponse::responseCode(res), res);
     }
     return;
@@ -925,29 +901,28 @@ void RestReplicationHandler::handleCommandBatch () {
 
   if (type == HttpRequest::HTTP_REQUEST_DELETE && len >= 2) {
     // delete an existing blocker
-    TRI_voc_tick_t id = (TRI_voc_tick_t) StringUtils::uint64(suffix[1]);
+    TRI_voc_tick_t id = (TRI_voc_tick_t)StringUtils::uint64(suffix[1]);
 
     int res = TRI_RemoveBlockerCompactorVocBase(_vocbase, id);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      _response = createResponse(HttpResponse::NO_CONTENT);
-    }
-    else {
+      createResponse(HttpResponse::NO_CONTENT);
+    } else {
       generateError(HttpResponse::responseCode(res), res);
     }
     return;
   }
 
   // we get here if anything above is invalid
-  generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief forward a command in the coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleTrampolineCoordinator () {
-
+void RestReplicationHandler::handleTrampolineCoordinator() {
   // First check the DBserver component of the body json:
   ServerID DBserver = _request->value("DBserver");
   if (DBserver.empty()) {
@@ -958,16 +933,15 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 
   string const& dbname = _request->databaseName();
 
-  auto headers = std::make_shared<std::map<std::string, std::string>>
-      (triagens::arango::getForwardableRequestHeaders(_request));
+  auto headers = std::make_shared<std::map<std::string, std::string>>(
+      triagens::arango::getForwardableRequestHeaders(_request));
   map<string, string> values = _request->values();
   string params;
   for (auto const& i : values) {
     if (i.first != "DBserver") {
       if (params.empty()) {
         params.push_back('?');
-      }
-      else {
+      } else {
         params.push_back('&');
       }
       params.append(StringUtils::urlEncode(i.first));
@@ -980,12 +954,11 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   ClusterComm* cc = ClusterComm::instance();
 
   // Send a synchronous request to that shard using ClusterComm:
-  auto res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
-      _request->requestType(),
-      "/_db/" + StringUtils::urlEncode(dbname) +
-      _request->requestPath() + params,
-      string(_request->body(),_request->bodySize()),
-      *headers, 300.0);
+  auto res = cc->syncRequest(
+      "", TRI_NewTickServer(), "server:" + DBserver, _request->requestType(),
+      "/_db/" + StringUtils::urlEncode(dbname) + _request->requestPath() +
+          params,
+      string(_request->body(), _request->bodySize()), *headers, 300.0);
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
@@ -1007,10 +980,10 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   }
 
   bool dummy;
-  _response = createResponse(static_cast<HttpResponse::HttpResponseCode>
-                             (res->result->getHttpReturnCode()));
-  _response->setContentType(res->result->getHeaderField("content-type",dummy));
-  _response->body().swap(& (res->result->getBody()));
+  createResponse(static_cast<HttpResponse::HttpResponseCode>(
+      res->result->getHttpReturnCode()));
+  _response->setContentType(res->result->getHeaderField("content-type", dummy));
+  _response->body().swap(&(res->result->getBody()));
 
   auto const& resultHeaders = res->result->getHeaderFields();
   for (auto const& it : resultHeaders) {
@@ -1046,33 +1019,43 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 /// state as the logger server.
 ///
 /// Clients can call this method repeatedly to incrementally fetch all changes
-/// from the logger server. In this case, they should provide the *from* value so
+/// from the logger server. In this case, they should provide the *from* value
+/// so
 /// they will only get returned the log events since their last fetch.
 ///
-/// When the *from* query parameter is not used, the logger server will return log
+/// When the *from* query parameter is not used, the logger server will return
+/// log
 /// entries starting at the beginning of its replication log. When the *from*
 /// parameter is used, the logger server will only return log entries which have
-/// higher tick values than the specified *from* value (note: the log entry with a
+/// higher tick values than the specified *from* value (note: the log entry with
+/// a
 /// tick value equal to *from* will be excluded). Use the *from* value when
 /// incrementally fetching log data.
 ///
-/// The *to* query parameter can be used to optionally restrict the upper bound of
-/// the result to a certain tick value. If used, the result will contain only log events
-/// with tick values up to (including) *to*. In incremental fetching, there is no
+/// The *to* query parameter can be used to optionally restrict the upper bound
+/// of
+/// the result to a certain tick value. If used, the result will contain only
+/// log events
+/// with tick values up to (including) *to*. In incremental fetching, there is
+/// no
 /// need to use the *to* parameter. It only makes sense in special situations,
 /// when only parts of the change log are required.
 ///
-/// The *chunkSize* query parameter can be used to control the size of the result.
+/// The *chunkSize* query parameter can be used to control the size of the
+/// result.
 /// It must be specified in bytes. The *chunkSize* value will only be honored
 /// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one log entry into the result and return it.
-/// Therefore, the *chunkSize* value will only be consulted after a log entry has
+/// Therefore, the *chunkSize* value will only be consulted after a log entry
+/// has
 /// been written into the result. If the result size is then bigger than
 /// *chunkSize*, the server will respond with as many log entries as there are
-/// in the response already. If the result size is still smaller than *chunkSize*,
+/// in the response already. If the result size is still smaller than
+/// *chunkSize*,
 /// the server will try to return more data if there's more data left to return.
 ///
-/// If *chunkSize* is not specified, some server-side default value will be used.
+/// If *chunkSize* is not specified, some server-side default value will be
+/// used.
 ///
 /// The *Content-Type* of the result is *application/x-arango-dump*. This is an
 /// easy-to-process format, with all log events going onto separate lines in the
@@ -1097,32 +1080,40 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 /// - *data*: the original document data
 ///
-/// A more detailed description of the individual replication event types and their
+/// A more detailed description of the individual replication event types and
+/// their
 /// data structures can be found in @ref RefManualReplicationEventTypes.
 ///
 /// The response will also contain the following HTTP headers:
 ///
-/// - *x-arango-replication-active*: whether or not the logger is active. Clients
+/// - *x-arango-replication-active*: whether or not the logger is active.
+/// Clients
 ///   can use this flag as an indication for their polling frequency. If the
-///   logger is not active and there are no more replication events available, it
+///   logger is not active and there are no more replication events available,
+///   it
 ///   might be sensible for a client to abort, or to go to sleep for a long time
 ///   and try again later to check whether the logger has been activated.
 ///
 /// - *x-arango-replication-lastincluded*: the tick value of the last included
 ///   value in the result. In incremental log fetching, this value can be used
-///   as the *from* value for the following request. **Note** that if the result is
-///   empty, the value will be *0*. This value should not be used as *from* value
+///   as the *from* value for the following request. **Note** that if the result
+///   is
+///   empty, the value will be *0*. This value should not be used as *from*
+///   value
 ///   by clients in the next request (otherwise the server would return the log
 ///   events from the start of the log again).
 ///
 /// - *x-arango-replication-lasttick*: the last tick value the logger server has
 ///   logged (not necessarily included in the result). By comparing the the last
-///   tick and last included tick values, clients have an approximate indication of
+///   tick and last included tick values, clients have an approximate indication
+///   of
 ///   how many events there are still left to fetch.
 ///
 /// - *x-arango-replication-checkmore*: whether or not there already exists more
-///   log data which the client could fetch immediately. If there is more log data
-///   available, the client could call *logger-follow* again with an adjusted *from*
+///   log data which the client could fetch immediately. If there is more log
+///   data
+///   available, the client could call *logger-follow* again with an adjusted
+///   *from*
 ///   value to fetch remaining log entries until there are no more.
 ///
 ///   If there isn't any more log data to fetch, the client might decide to go
@@ -1134,7 +1125,8 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 /// @RESTRETURNCODE{200}
 /// is returned if the request was executed successfully, and there are log
-/// events available for the requested range. The response body will not be empty
+/// events available for the requested range. The response body will not be
+/// empty
 /// in this case.
 ///
 /// @RESTRETURNCODE{204}
@@ -1180,7 +1172,8 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 ///     db._create("products");
 ///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
-///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
+///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" :
+///     5100 });
 ///     db.products.remove("p1");
 ///     db.products.update("p2", { "name" : "broken hovercraft" });
 ///     db.products.drop();
@@ -1204,13 +1197,15 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 ///     db._create("products");
 ///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
-///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
+///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" :
+///     5100 });
 ///     db.products.remove("p1");
 ///     db.products.update("p2", { "name" : "broken hovercraft" });
 ///     db.products.drop();
 ///
 ///     require("internal").wait(1);
-///     var url = "/_api/replication/logger-follow?from=" + lastTick + "&chunkSize=400";
+///     var url = "/_api/replication/logger-follow?from=" + lastTick +
+///     "&chunkSize=400";
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     assert(response.code === 200);
@@ -1220,9 +1215,10 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLoggerFollow () {
+void RestReplicationHandler::handleCommandLoggerFollow() {
   // determine start and end tick
-  triagens::wal::LogfileManagerState state = triagens::wal::LogfileManager::instance()->state();
+  triagens::wal::LogfileManagerState state =
+      triagens::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = state.lastDataTick;
   TRI_voc_tick_t firstRegularTick = 0;
@@ -1242,8 +1238,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
   }
 
   if (found && (tickStart > tickEnd || tickEnd == 0)) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
   }
@@ -1258,62 +1253,62 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
   // grab list of transactions from the body value
   std::unordered_set<TRI_voc_tid_t> transactionIds;
 
-  if (_request->requestType() == triagens::rest::HttpRequest::HTTP_REQUEST_PUT) {
+  if (_request->requestType() ==
+      triagens::rest::HttpRequest::HTTP_REQUEST_PUT) {
     value = _request->value("firstRegularTick", found);
     if (found) {
-      firstRegularTick = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+      firstRegularTick =
+          static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
     }
     VPackOptions options;
     options.checkAttributeUniqueness = true;
     std::shared_ptr<VPackBuilder> parsedRequest;
     try {
       parsedRequest = _request->toVelocyPack(&options);
-    }
-    catch (...) {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+    } catch (...) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid body value. expecting array");
       return;
     }
     VPackSlice const slice = parsedRequest->slice();
-    if (! slice.isArray()) {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+    if (!slice.isArray()) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid body value. expecting array");
       return;
     }
 
     for (auto const& id : VPackArrayIterator(slice)) {
       if (id.isString()) {
-        generateError(HttpResponse::BAD,
-                      TRI_ERROR_HTTP_BAD_PARAMETER,
+        generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       "invalid body value. expecting array of ids");
         return;
       }
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
-  
+
   int res = TRI_ERROR_NO_ERROR;
 
   try {
     // initialize the dump container
-    TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), includeSystem);
+    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(),
+                                includeSystem);
 
     // and dump
-    res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick, tickStart, tickEnd, false);
+    res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick,
+                                 tickStart, tickEnd, false);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      bool const checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state.lastDataTick);
+      bool const checkMore = (dump._lastFoundTick > 0 &&
+                              dump._lastFoundTick != state.lastDataTick);
 
       // generate the result
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        _response = createResponse(HttpResponse::NO_CONTENT);
-      }
-      else {
-        _response = createResponse(HttpResponse::OK);
+        createResponse(HttpResponse::NO_CONTENT);
+      } else {
+        createResponse(HttpResponse::OK);
       }
 
       _response->setContentType("application/x-arango-dump; charset=utf-8");
@@ -1332,9 +1327,8 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
                            StringUtils::itoa(state.lastTick));
 
       _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE,
-                           strlen(TRI_REPLICATION_HEADER_ACTIVE),
-                           "true");
-      
+                           strlen(TRI_REPLICATION_HEADER_ACTIVE), "true");
+
       _response->setHeader(TRI_REPLICATION_HEADER_FROMPRESENT,
                            strlen(TRI_REPLICATION_HEADER_FROMPRESENT),
                            dump._fromTickIncluded ? "true" : "false");
@@ -1349,11 +1343,9 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 
       insertClient(dump._lastFoundTick);
     }
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     res = ex.code();
-  }
-  catch (...) {
+  } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -1365,15 +1357,16 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the command that determines which transactions were open at
 /// a given tick value
-/// this is an internal method use by ArangoDB's replication that should not 
+/// this is an internal method use by ArangoDB's replication that should not
 /// be called by client drivers directly
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
+void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // determine start and end tick
-  triagens::wal::LogfileManagerState state = triagens::wal::LogfileManager::instance()->state();
+  triagens::wal::LogfileManagerState state =
+      triagens::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd   = state.lastDataTick;
+  TRI_voc_tick_t tickEnd = state.lastDataTick;
 
   bool found;
   char const* value;
@@ -1382,7 +1375,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
   if (found) {
     tickStart = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
-  
+
   // determine end tick for dump
   value = _request->value("to", found);
   if (found) {
@@ -1390,8 +1383,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
   }
 
   if (found && (tickStart > tickEnd || tickEnd == 0)) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
   }
@@ -1400,7 +1392,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
 
   try {
     // initialize the dump container
-    TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), false);
+    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(), false);
 
     // and dump
     res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
@@ -1410,16 +1402,19 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        _response = createResponse(HttpResponse::NO_CONTENT);
-      }
-      else {
-        _response = createResponse(HttpResponse::OK);
+        createResponse(HttpResponse::NO_CONTENT);
+      } else {
+        createResponse(HttpResponse::OK);
       }
 
       _response->setContentType("application/x-arango-dump; charset=utf-8");
-    
-      _response->setHeader(TRI_CHAR_LENGTH_PAIR(TRI_REPLICATION_HEADER_FROMPRESENT), dump._fromTickIncluded ? "true" : "false");
-      _response->setHeader(TRI_CHAR_LENGTH_PAIR(TRI_REPLICATION_HEADER_LASTTICK), StringUtils::itoa(dump._lastFoundTick));
+
+      _response->setHeader(
+          TRI_CHAR_LENGTH_PAIR(TRI_REPLICATION_HEADER_FROMPRESENT),
+          dump._fromTickIncluded ? "true" : "false");
+      _response->setHeader(
+          TRI_CHAR_LENGTH_PAIR(TRI_REPLICATION_HEADER_LASTTICK),
+          StringUtils::itoa(dump._lastFoundTick));
 
       if (length > 0) {
         // transfer ownership of the buffer contents
@@ -1429,11 +1424,9 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
         TRI_StealStringBuffer(dump._buffer);
       }
     }
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     res = ex.code();
-  }
-  catch (...) {
+  } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -1446,7 +1439,8 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
 /// @startDocuBlock JSF_put_api_replication_inventory
 /// @brief Returns an overview of collections and their indexes
 ///
-/// @RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes}
+/// @RESTHEADER{GET /_api/replication/inventory, Return inventory of collections
+/// and indexes}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1455,62 +1449,84 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
 ///
 /// @RESTDESCRIPTION
 /// Returns the array of collections and indexes available on the server. This
-/// array can be used by replication clients to initiate an initial sync with the
+/// array can be used by replication clients to initiate an initial sync with
+/// the
 /// server.
 ///
-/// The response will contain a JSON object with the *collection* and *state* and
+/// The response will contain a JSON object with the *collection* and *state*
+/// and
 /// *tick* attributes.
 ///
 /// *collections* is a array of collections with the following sub-attributes:
 ///
 /// - *parameters*: the collection properties
 ///
-/// - *indexes*: a array of the indexes of a the collection. Primary indexes and edges indexes
+/// - *indexes*: a array of the indexes of a the collection. Primary indexes and
+/// edges indexes
 ///    are not included in this array.
 ///
-/// The *state* attribute contains the current state of the replication logger. It
+/// The *state* attribute contains the current state of the replication logger.
+/// It
 /// contains the following sub-attributes:
 ///
-/// - *running*: whether or not the replication logger is currently active. Note:
+/// - *running*: whether or not the replication logger is currently active.
+/// Note:
 ///   since ArangoDB 2.2, the value will always be *true*
 ///
-/// - *lastLogTick*: the value of the last tick the replication logger has written
+/// - *lastLogTick*: the value of the last tick the replication logger has
+/// written
 ///
 /// - *time*: the current time on the server
 ///
-/// Replication clients should note the *lastLogTick* value returned. They can then
-/// fetch collections' data using the dump method up to the value of lastLogTick, and
+/// Replication clients should note the *lastLogTick* value returned. They can
+/// then
+/// fetch collections' data using the dump method up to the value of
+/// lastLogTick, and
 /// query the continuous replication log for log events after this tick value.
 ///
 /// To create a full copy of the collections on the server, a replication client
 /// can execute these steps:
 ///
-/// - call the */inventory* API method. This returns the *lastLogTick* value and the
+/// - call the */inventory* API method. This returns the *lastLogTick* value and
+/// the
 ///   array of collections and indexes from the server.
 ///
-/// - for each collection returned by */inventory*, create the collection locally and
-///   call */dump* to stream the collection data to the client, up to the value of
+/// - for each collection returned by */inventory*, create the collection
+/// locally and
+///   call */dump* to stream the collection data to the client, up to the value
+///   of
 ///   *lastLogTick*.
-///   After that, the client can create the indexes on the collections as they were
+///   After that, the client can create the indexes on the collections as they
+///   were
 ///   reported by */inventory*.
 ///
-/// If the clients wants to continuously stream replication log events from the logger
+/// If the clients wants to continuously stream replication log events from the
+/// logger
 /// server, the following additional steps need to be carried out:
 ///
-/// - the client should call */logger-follow* initially to fetch the first batch of
-///   replication events that were logged after the client's call to */inventory*.
+/// - the client should call */logger-follow* initially to fetch the first batch
+/// of
+///   replication events that were logged after the client's call to
+///   */inventory*.
 ///
-///   The call to */logger-follow* should use a *from* parameter with the value of the
-///   *lastLogTick* as reported by */inventory*. The call to */logger-follow* will return the
-///   *x-arango-replication-lastincluded* which will contain the last tick value included
+///   The call to */logger-follow* should use a *from* parameter with the value
+///   of the
+///   *lastLogTick* as reported by */inventory*. The call to */logger-follow*
+///   will return the
+///   *x-arango-replication-lastincluded* which will contain the last tick value
+///   included
 ///   in the response.
 ///
-/// - the client can then continuously call */logger-follow* to incrementally fetch new
+/// - the client can then continuously call */logger-follow* to incrementally
+/// fetch new
 ///   replication events that occurred after the last transfer.
 ///
-///   Calls should use a *from* parameter with the value of the *x-arango-replication-lastincluded*
-///   header of the previous response. If there are no more replication events, the
-///   response will be empty and clients can go to sleep for a while and try again
+///   Calls should use a *from* parameter with the value of the
+///   *x-arango-replication-lastincluded*
+///   header of the previous response. If there are no more replication events,
+///   the
+///   response will be empty and clients can go to sleep for a while and try
+///   again
 ///   later.
 ///
 /// **Note**: on a coordinator, this request must have the query parameter
@@ -1568,7 +1584,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandInventory () {
+void RestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
   // include system collections?
@@ -1583,7 +1599,9 @@ void RestReplicationHandler::handleCommandInventory () {
   // collections and indexes
   std::shared_ptr<VPackBuilder> collectionsBuilder;
   try {
-    collectionsBuilder = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, (void*) &includeSystem, true, RestReplicationHandler::sortCollections);
+    collectionsBuilder = TRI_InventoryCollectionsVocBase(
+        _vocbase, tick, &filterCollection, (void*)&includeSystem, true,
+        RestReplicationHandler::sortCollections);
     VPackSlice const collections = collectionsBuilder->slice();
 
     TRI_ASSERT(collections.isArray());
@@ -1597,22 +1615,22 @@ void RestReplicationHandler::handleCommandInventory () {
     // "state"
     builder.add("state", VPackValue(VPackValueType::Object));
 
-    triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
+    triagens::wal::LogfileManagerState const&& s =
+        triagens::wal::LogfileManager::instance()->state();
 
     builder.add("running", VPackValue(true));
     char* logTickString = TRI_StringUInt64(s.lastTick);
     builder.add("lastLogTick", VPackValue(logTickString));
     builder.add("totalEvents", VPackValue(s.numEvents));
     builder.add("time", VPackValue(s.timeString));
-    builder.close(); // state
+    builder.close();  // state
 
     std::string const tickString(std::to_string(tick));
     builder.add("tick", VPackValue(tickString));
-    builder.close(); // Toplevel
+    builder.close();  // Toplevel
 
     generateResult(builder.slice());
-  }
-  catch (std::bad_alloc& ) {
+  } catch (std::bad_alloc&) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
@@ -1622,7 +1640,8 @@ void RestReplicationHandler::handleCommandInventory () {
 /// @startDocuBlock JSF_get_api_replication_cluster_inventory
 /// @brief returs an overview of collections and indexes in a cluster
 ///
-/// @RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory of collections and indexes}
+/// @RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory
+/// of collections and indexes}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1633,7 +1652,8 @@ void RestReplicationHandler::handleCommandInventory () {
 /// Returns the array of collections and indexes available on the cluster.
 ///
 /// The response will be an array of JSON objects, one for each collection.
-/// Each collection containscontains exactly two keys "parameters" and "indexes". This
+/// Each collection containscontains exactly two keys "parameters" and
+/// "indexes". This
 /// information comes from Plan/Collections/{DB-Name}/* in the agency,
 /// just that the *indexes* attribute there is relocated to adjust it to
 /// the data format of arangodump.
@@ -1651,7 +1671,7 @@ void RestReplicationHandler::handleCommandInventory () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandClusterInventory () {
+void RestReplicationHandler::handleCommandClusterInventory() {
   string const& dbName = _request->databaseName();
   string value;
   bool found;
@@ -1670,22 +1690,19 @@ void RestReplicationHandler::handleCommandClusterInventory () {
     prefix.append(dbName);
 
     AgencyCommLocker locker("Plan", "READ");
-    if (! locker.successful()) {
+    if (!locker.successful()) {
       generateError(HttpResponse::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
-    }
-    else {
+    } else {
       result = _agency.getValues(prefix, false);
-      if (! result.successful()) {
+      if (!result.successful()) {
         generateError(HttpResponse::SERVER_ERROR,
                       TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-      }
-      else {
-        if (! result.parse(prefix + "/", false)) {
+      } else {
+        if (!result.parse(prefix + "/", false)) {
           generateError(HttpResponse::SERVER_ERROR,
                         TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-        }
-        else {
+        } else {
           VPackBuilder resultBuilder;
           {
             VPackObjectBuilder b1(&resultBuilder);
@@ -1694,11 +1711,13 @@ void RestReplicationHandler::handleCommandClusterInventory () {
               VPackArrayBuilder b2(&resultBuilder);
               for (auto const& it : result._values) {
                 // Only temporary until AgencyResult has _velocy
-                std::shared_ptr<VPackBuilder> parsedSubResult = JsonHelper::toVelocyPack(it.second._json);
+                std::shared_ptr<VPackBuilder> parsedSubResult =
+                    JsonHelper::toVelocyPack(it.second._json);
                 VPackSlice const subResultSlice = parsedSubResult->slice();
                 if (subResultSlice.isObject()) {
                   if (includeSystem ||
-                      ! triagens::basics::VelocyPackHelper::getBooleanValue(subResultSlice, "isSystem", true)) {
+                      !triagens::basics::VelocyPackHelper::getBooleanValue(
+                          subResultSlice, "isSystem", true)) {
                     VPackObjectBuilder b3(&resultBuilder);
                     resultBuilder.add("indexes", subResultSlice.get("indexes"));
                     resultBuilder.add("parameters", subResultSlice);
@@ -1716,23 +1735,20 @@ void RestReplicationHandler::handleCommandClusterInventory () {
       }
     }
   }
-
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from VelocyPack TODO: MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_cid_t RestReplicationHandler::getCid (VPackSlice const& slice) const {
-  if (! slice.isObject()) {
+TRI_voc_cid_t RestReplicationHandler::getCid(VPackSlice const& slice) const {
+  if (!slice.isObject()) {
     return 0;
   }
   VPackSlice const id = slice.get("cid");
   if (id.isString()) {
     return StringUtils::uint64(id.copyString());
-  }
-  else if (id.isNumber()) {
+  } else if (id.isNumber()) {
     return static_cast<TRI_voc_cid_t>(id.getNumericValue<uint64_t>());
   }
   return 0;
@@ -1742,18 +1758,19 @@ TRI_voc_cid_t RestReplicationHandler::getCid (VPackSlice const& slice) const {
 /// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::createCollection (VPackSlice const& slice,
-                                              TRI_vocbase_col_t** dst,
-                                              bool reuseId) {
+int RestReplicationHandler::createCollection(VPackSlice const& slice,
+                                             TRI_vocbase_col_t** dst,
+                                             bool reuseId) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
 
-  if (! slice.isObject()) {
+  if (!slice.isObject()) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  const string name = triagens::basics::VelocyPackHelper::getStringValue(slice, "name", "");
+  const string name =
+      triagens::basics::VelocyPackHelper::getStringValue(slice, "name", "");
 
   if (name.empty()) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -1769,7 +1786,9 @@ int RestReplicationHandler::createCollection (VPackSlice const& slice,
     }
   }
 
-  const TRI_col_type_e type = static_cast<TRI_col_type_e>(triagens::basics::VelocyPackHelper::getNumericValue<int>(slice, "type", (int) TRI_COL_TYPE_DOCUMENT));
+  const TRI_col_type_e type = static_cast<TRI_col_type_e>(
+      triagens::basics::VelocyPackHelper::getNumericValue<int>(
+          slice, "type", (int)TRI_COL_TYPE_DOCUMENT));
 
   TRI_vocbase_col_t* col = nullptr;
 
@@ -1777,53 +1796,58 @@ int RestReplicationHandler::createCollection (VPackSlice const& slice,
     col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
   }
 
-  if (col != nullptr &&
-      (TRI_col_type_t) col->_type == (TRI_col_type_t) type) {
+  if (col != nullptr && (TRI_col_type_t)col->_type == (TRI_col_type_t)type) {
     // collection already exists. TODO: compare attributes
     return TRI_ERROR_NO_ERROR;
   }
 
-  VocbaseCollectionInfo params (_vocbase,
-                                name.c_str(),
-                                slice);
+  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice);
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(params.doCompact() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "doCompact", true));
-  TRI_ASSERT(params.waitForSync() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "waitForSync", _vocbase->_settings.defaultWaitForSync));
-  TRI_ASSERT(params.isVolatile() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "isVolatile", false));
+  TRI_ASSERT(params.doCompact() ==
+             triagens::basics::VelocyPackHelper::getBooleanValue(
+                 slice, "doCompact", true));
+  TRI_ASSERT(params.waitForSync() ==
+             triagens::basics::VelocyPackHelper::getBooleanValue(
+                 slice, "waitForSync", _vocbase->_settings.defaultWaitForSync));
+  TRI_ASSERT(params.isVolatile() ==
+             triagens::basics::VelocyPackHelper::getBooleanValue(
+                 slice, "isVolatile", false));
   TRI_ASSERT(params.isSystem() == (name[0] == '_'));
-  TRI_ASSERT(params.indexBuckets() == triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS));
+  TRI_ASSERT(params.indexBuckets() ==
+             triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+                 slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS));
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");
   if (planIdSlice.isNumber()) {
-    planId = static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
-  }
-  else if (planIdSlice.isString()) {
+    planId =
+        static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
+  } else if (planIdSlice.isString()) {
     std::string tmp = planIdSlice.copyString();
-    planId = static_cast<TRI_voc_cid_t>(TRI_UInt64String2(tmp.c_str(), tmp.length()));
+    planId = static_cast<TRI_voc_cid_t>(
+        TRI_UInt64String2(tmp.c_str(), tmp.length()));
   }
-  
+
   if (planId > 0) {
     TRI_ASSERT(params.planId() == planId);
-  }
-  else {
+  } else {
     TRI_ASSERT(params.planId() == 0);
   }
 
   if (cid > 0) {
     // wait for "old" collection to be dropped
-    char* dirName = TRI_GetDirectoryCollection(_vocbase->_path,
-                                               name.c_str(),
-                                               type,
-                                               cid);
+    char* dirName =
+        TRI_GetDirectoryCollection(_vocbase->_path, name.c_str(), type, cid);
 
     if (dirName != nullptr) {
-      char* parameterName = TRI_Concatenate2File(dirName, TRI_VOC_PARAMETER_FILE);
+      char* parameterName =
+          TRI_Concatenate2File(dirName, TRI_VOC_PARAMETER_FILE);
 
       if (parameterName != nullptr) {
         int iterations = 0;
 
         // TODO: adjust sleep timer & maxiterations
-        while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) && iterations++ < 1200) {
+        while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) &&
+               iterations++ < 1200) {
           usleep(100 * 1000);
         }
 
@@ -1851,7 +1875,7 @@ int RestReplicationHandler::createCollection (VPackSlice const& slice,
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandRestoreCollection () {
+void RestReplicationHandler::handleCommandRestoreCollection() {
   std::shared_ptr<VPackBuilder> parsedRequest;
 
   VPackOptions options;
@@ -1859,10 +1883,8 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
 
   try {
     parsedRequest = _request->toVelocyPack(&options);
-  }
-  catch (...) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+  } catch (...) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
     return;
   }
@@ -1895,15 +1917,14 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(slice, overwrite, recycleIds,
                                               force, errorMsg);
-  }
-  else {
-    res = processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
+  } else {
+    res =
+        processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
-  }
-  else {
+  } else {
     try {
       VPackBuilder result;
       result.add(VPackValue(VPackValueType::Object));
@@ -1911,19 +1932,17 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
       result.close();
       VPackSlice s = result.slice();
       generateResult(s);
-    }
-    catch (...) {
+    } catch (...) {
       generateOOMError();
     }
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandRestoreIndexes () {
+void RestReplicationHandler::handleCommandRestoreIndexes() {
   std::shared_ptr<VPackBuilder> parsedRequest;
 
   VPackOptions options;
@@ -1931,10 +1950,8 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
 
   try {
     parsedRequest = _request->toVelocyPack(&options);
-  }
-  catch (...) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+  } catch (...) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
     return;
   }
@@ -1951,15 +1968,13 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
   int res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreIndexesCoordinator(slice, force, errorMsg);
-  }
-  else {
+  } else {
     res = processRestoreIndexes(slice, force, errorMsg);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
-  }
-  else {
+  } else {
     try {
       VPackBuilder result;
       result.openObject();
@@ -1967,8 +1982,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
       result.close();
       VPackSlice s = result.slice();
       generateResult(s);
-    }
-    catch (...) {
+    } catch (...) {
       generateOOMError();
     }
   }
@@ -1978,12 +1992,10 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreCollection (VPackSlice const& collection,
-                                                      bool dropExisting,
-                                                      bool reuseId,
-                                                      bool force,
-                                                      string& errorMsg) {
-  if (! collection.isObject()) {
+int RestReplicationHandler::processRestoreCollection(
+    VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
+    string& errorMsg) {
+  if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -1991,7 +2003,7 @@ int RestReplicationHandler::processRestoreCollection (VPackSlice const& collecti
 
   VPackSlice const parameters = collection.get("parameters");
 
-  if (! parameters.isObject()) {
+  if (!parameters.isObject()) {
     errorMsg = "collection parameters declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -1999,13 +2011,14 @@ int RestReplicationHandler::processRestoreCollection (VPackSlice const& collecti
 
   VPackSlice const indexes = collection.get("indexes");
 
-  if (! indexes.isArray()) {
+  if (!indexes.isArray()) {
     errorMsg = "collection indexes declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  const string name = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+  const string name = triagens::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
 
   if (name.empty()) {
     errorMsg = "collection name is missing";
@@ -2013,7 +2026,8 @@ int RestReplicationHandler::processRestoreCollection (VPackSlice const& collecti
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
+  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
@@ -2023,7 +2037,7 @@ int RestReplicationHandler::processRestoreCollection (VPackSlice const& collecti
   if (reuseId) {
     VPackSlice const idString = parameters.get("cid");
 
-    if (! idString.isString()) {
+    if (!idString.isString()) {
       errorMsg = "collection id is missing";
 
       return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2036,7 +2050,6 @@ int RestReplicationHandler::processRestoreCollection (VPackSlice const& collecti
     // first look up the collection by the cid
     col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
   }
-
 
   if (col == nullptr) {
     // not found, try name next
@@ -2052,7 +2065,8 @@ int RestReplicationHandler::processRestoreCollection (VPackSlice const& collecti
         // some collections must not be dropped
 
         // instead, truncate them
-        SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+        SingleCollectionWriteTransaction<UINT64_MAX> trx(
+            new StandaloneTransactionContext(), _vocbase, col->_cid);
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
@@ -2066,15 +2080,16 @@ int RestReplicationHandler::processRestoreCollection (VPackSlice const& collecti
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to drop collection '" + name + "': " + string(TRI_errno_string(res));
+        errorMsg = "unable to drop collection '" + name + "': " +
+                   string(TRI_errno_string(res));
 
         return res;
       }
-    }
-    else {
+    } else {
       int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
 
-      errorMsg = "unable to create collection '" + name + "': " + string(TRI_errno_string(res));
+      errorMsg = "unable to create collection '" + name + "': " +
+                 string(TRI_errno_string(res));
 
       return res;
     }
@@ -2096,14 +2111,11 @@ int RestReplicationHandler::processRestoreCollection (VPackSlice const& collecti
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreCollectionCoordinator (
-                 VPackSlice const& collection,
-                 bool dropExisting,
-                 bool reuseId,
-                 bool force,
-                 string& errorMsg) {
-
-  if (! collection.isObject()) {
+#include <iostream>
+int RestReplicationHandler::processRestoreCollectionCoordinator(
+    VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
+    std::string& errorMsg) {
+  if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2111,13 +2123,14 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   VPackSlice const parameters = collection.get("parameters");
 
-  if (! parameters.isObject()) {
+  if (!parameters.isObject()) {
     errorMsg = "collection parameters declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  string const name = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+  std::string const name = triagens::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
 
   if (name.empty()) {
     errorMsg = "collection name is missing";
@@ -2125,7 +2138,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
+  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
@@ -2137,7 +2151,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   // drop an existing collection if it exists
-  if (! col->empty()) {
+  if (!col->empty()) {
     if (dropExisting) {
       int res = ci->dropCollectionCoordinator(dbName, col->id_as_string(),
                                               errorMsg, 0.0);
@@ -2145,22 +2159,23 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
         // some collections must not be dropped
         res = truncateCollectionOnCoordinator(dbName, name);
         if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg = "unable to truncate collection (dropping is forbidden): "+
-                     name;
+          errorMsg =
+              "unable to truncate collection (dropping is forbidden): " + name;
           return res;
         }
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to drop collection '" + name + "': " + string(TRI_errno_string(res));
+        errorMsg = "unable to drop collection '" + name + "': " +
+                   string(TRI_errno_string(res));
 
         return res;
       }
-    }
-    else {
+    } else {
       int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
 
-      errorMsg = "unable to create collection '" + name + "': " + string(TRI_errno_string(res));
+      errorMsg = "unable to create collection '" + name + "': " +
+                 string(TRI_errno_string(res));
 
       return res;
     }
@@ -2174,13 +2189,52 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     numberOfShards = static_cast<uint64_t>(shards.length());
   }
   // We take one shard if "shards" was not given
-  
+
   try {
-    TRI_voc_tick_t new_id_tick = ci->uniqid(1);
+    TRI_voc_tick_t newIdTick = ci->uniqid(1);
     VPackBuilder toMerge;
-    std::string new_id = StringUtils::itoa(new_id_tick);
+    std::string&& newId = StringUtils::itoa(newIdTick);
     toMerge.openObject();
-    toMerge.add("id", VPackValue(new_id));
+    toMerge.add("id", VPackValue(newId));
+
+    // shard keys
+    VPackSlice const shardKeys = parameters.get("shardKeys");
+    if (!shardKeys.isObject()) {
+      // set default shard key
+      toMerge.add("shardKeys", VPackValue(VPackValueType::Array));
+      toMerge.add(VPackValue(std::string(TRI_VOC_ATTRIBUTE_KEY)));
+      toMerge.close();  // end of shardKeys
+    }
+
+    // shards
+    if (!shards.isObject()) {
+      // if no shards were given, create a random list of shards
+      auto dbServers = ci->getCurrentDBServers();
+
+      if (dbServers.empty()) {
+        errorMsg = "no database servers found in cluster";
+        return TRI_ERROR_INTERNAL;
+      }
+
+      std::random_shuffle(dbServers.begin(), dbServers.end());
+
+      uint64_t const id = ci->uniqid(1 + numberOfShards);
+      toMerge.add("shards", VPackValue(VPackValueType::Object));
+      for (uint64_t i = 0; i < numberOfShards; ++i) {
+        // determine responsible server
+        std::string serverId = dbServers[i % dbServers.size()];
+
+        // shard id
+        toMerge.add(
+            VPackValue(std::string("s" + StringUtils::itoa(id + 1 + i))));
+
+        // server ids
+        toMerge.add(VPackValue(VPackValueType::Array));
+        toMerge.add(VPackValue(dbServers[i % dbServers.size()]));
+        toMerge.close();  // server ids
+      }
+      toMerge.close();  // end of shards
+    }
 
     // Now put in the primary and an edge index if needed:
     toMerge.add("indexes", VPackValue(VPackValueType::Array));
@@ -2188,8 +2242,10 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     // create a dummy primary index
     {
       TRI_document_collection_t* doc = nullptr;
-      std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(doc));
-      std::shared_ptr<VPackBuilder> idxVPack = primaryIndex->toVelocyPack(false, true);
+      std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(
+          new triagens::arango::PrimaryIndex(doc));
+      std::shared_ptr<VPackBuilder> idxVPack =
+          primaryIndex->toVelocyPack(false, true);
       toMerge.add(idxVPack->slice());
     }
 
@@ -2197,35 +2253,38 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     TRI_col_type_e collectionType;
     if (type.isNumber()) {
       collectionType = static_cast<TRI_col_type_e>(type.getNumericValue<int>());
-    }
-    else {
+    } else {
       errorMsg = "collection type not given or wrong";
       return TRI_ERROR_HTTP_BAD_PARAMETER;
     }
 
     if (collectionType == TRI_COL_TYPE_EDGE) {
       // create a dummy edge index
-      std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(new_id_tick, nullptr));
-      std::shared_ptr<VPackBuilder> idxVPack = edgeIndex->toVelocyPack(false, true);
+      std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(
+          new triagens::arango::EdgeIndex(newIdTick, nullptr));
+      std::shared_ptr<VPackBuilder> idxVPack =
+          edgeIndex->toVelocyPack(false, true);
       toMerge.add(idxVPack->slice());
     }
 
-    toMerge.close(); // indexes
-    toMerge.close(); // TopLevel
+    toMerge.close();  // indexes
+    toMerge.close();  // TopLevel
     VPackSlice const sliceToMerge = toMerge.slice();
 
-    VPackBuilder mergedBuilder = VPackCollection::merge(parameters, sliceToMerge, false);
+    VPackBuilder mergedBuilder =
+        VPackCollection::merge(parameters, sliceToMerge, false);
     VPackSlice const merged = mergedBuilder.slice();
 
-    int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards,
+    std::cout << "GOT MERGED VALUE: " << merged.toJson() << "\n";
+    int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards,
                                               merged, errorMsg, 0.0);
     if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
+      errorMsg =
+          "unable to create collection: " + string(TRI_errno_string(res));
 
       return res;
     }
-  }
-  catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const&) {
     errorMsg = "out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -2237,10 +2296,10 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreIndexes (VPackSlice const& collection,
-                                                   bool force,
-                                                   string& errorMsg) {
-  if (! collection.isObject()) {
+int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
+                                                  bool force,
+                                                  string& errorMsg) {
+  if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2248,7 +2307,7 @@ int RestReplicationHandler::processRestoreIndexes (VPackSlice const& collection,
 
   VPackSlice const parameters = collection.get("parameters");
 
-  if (! parameters.isObject()) {
+  if (!parameters.isObject()) {
     errorMsg = "collection parameters declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2256,20 +2315,21 @@ int RestReplicationHandler::processRestoreIndexes (VPackSlice const& collection,
 
   VPackSlice const indexes = collection.get("indexes");
 
-  if (! indexes.isArray()) {
+  if (!indexes.isArray()) {
     errorMsg = "collection indexes declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
   VPackValueLength const n = indexes.length();
-  
+
   if (n == 0) {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
   }
 
-  string const name = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+  string const name = triagens::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
 
   if (name.empty()) {
     errorMsg = "collection name is missing";
@@ -2277,7 +2337,8 @@ int RestReplicationHandler::processRestoreIndexes (VPackSlice const& collection,
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
+  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
@@ -2290,12 +2351,14 @@ int RestReplicationHandler::processRestoreIndexes (VPackSlice const& collection,
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, document->_info.id());
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(
+        new StandaloneTransactionContext(), _vocbase, document->_info.id());
 
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
+      errorMsg =
+          "unable to start transaction: " + string(TRI_errno_string(res));
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -2304,13 +2367,13 @@ int RestReplicationHandler::processRestoreIndexes (VPackSlice const& collection,
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
-      res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document, idxDef, &idx);
+      res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document, idxDef,
+                                                      &idx);
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "could not create index: " + string(TRI_errno_string(res));
         break;
-      }
-      else {
+      } else {
         TRI_ASSERT(idx != nullptr);
 
         res = TRI_SaveIndex(document, idx, true);
@@ -2321,11 +2384,9 @@ int RestReplicationHandler::processRestoreIndexes (VPackSlice const& collection,
         }
       }
     }
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     errorMsg = "could not create index: " + string(TRI_errno_string(ex.code()));
-  }
-  catch (...) {
+  } catch (...) {
     errorMsg = "could not create index: unknown error";
   }
 
@@ -2336,19 +2397,16 @@ int RestReplicationHandler::processRestoreIndexes (VPackSlice const& collection,
 /// @brief restores the indexes of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreIndexesCoordinator (
-                 VPackSlice const& collection,
-                 bool force,
-                 string& errorMsg) {
-
-  if (! collection.isObject()) {
+int RestReplicationHandler::processRestoreIndexesCoordinator(
+    VPackSlice const& collection, bool force, string& errorMsg) {
+  if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
   VPackSlice const parameters = collection.get("parameters");
 
-  if (! parameters.isObject()) {
+  if (!parameters.isObject()) {
     errorMsg = "collection parameters declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2356,7 +2414,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 
   VPackSlice indexes = collection.get("indexes");
 
-  if (! indexes.isArray()) {
+  if (!indexes.isArray()) {
     errorMsg = "collection indexes declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2369,7 +2427,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string name = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+  std::string name = triagens::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
 
   if (name.empty()) {
     errorMsg = "collection name is missing";
@@ -2377,7 +2436,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
+  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
@@ -2396,8 +2456,9 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
     TRI_json_t* res_json = nullptr;
-    res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef,
-                     true, triagens::arango::Index::Compare, res_json, errorMsg, 3600.0);
+    res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
+                                     triagens::arango::Index::Compare, res_json,
+                                     errorMsg, 3600.0);
     if (res_json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, res_json);
     }
@@ -2414,25 +2475,25 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 /// @brief apply the data from a collection dump or the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
-                                                       CollectionNameResolver const& resolver,
-                                                       TRI_transaction_collection_t* trxCollection,
-                                                       TRI_replication_operation_e type,
-                                                       const TRI_voc_key_t key,
-                                                       const TRI_voc_rid_t rid,
-                                                       VPackSlice const& slice,
-                                                       std::string& errorMsg) {
-
-  if (type == REPLICATION_MARKER_DOCUMENT ||
-      type == REPLICATION_MARKER_EDGE) {
+int RestReplicationHandler::applyCollectionDumpMarker(
+    triagens::arango::Transaction* trx, CollectionNameResolver const& resolver,
+    TRI_transaction_collection_t* trxCollection,
+    TRI_replication_operation_e type, const TRI_voc_key_t key,
+    const TRI_voc_rid_t rid, VPackSlice const& slice, std::string& errorMsg) {
+  if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
-    TRI_ASSERT(! slice.isNone());
+    TRI_ASSERT(!slice.isNone());
     TRI_ASSERT(slice.isObject());
 
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx in trxCollection
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonVelocyPack(document->getShaper(), slice, true);  // PROTECTED by trx in trxCollection
+    TRI_document_collection_t* document =
+        trxCollection->_collection->_collection;
+    TRI_memory_zone_t* zone =
+        document->getShaper()
+            ->memoryZone();  // PROTECTED by trx in trxCollection
+    TRI_shaped_json_t* shaped =
+        TRI_ShapedJsonVelocyPack(document->getShaper(), slice,
+                                 true);  // PROTECTED by trx in trxCollection
 
     if (shaped == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -2441,7 +2502,8 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
     try {
       TRI_doc_mptr_copy_t mptr;
 
-      int res = TRI_ReadShapedJsonDocumentCollection(trx, trxCollection, key, &mptr, false);
+      int res = TRI_ReadShapedJsonDocumentCollection(trx, trxCollection, key,
+                                                     &mptr, false);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
@@ -2451,60 +2513,68 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
           if (document->_info.type() != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
             errorMsg = "expecting edge collection, got document collection";
-          }
-          else {
+          } else {
             res = TRI_ERROR_NO_ERROR;
 
-            string const from = triagens::basics::VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_FROM, "");
-            string const to   = triagens::basics::VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_TO, "");
-
+            string const from =
+                triagens::basics::VelocyPackHelper::getStringValue(
+                    slice, TRI_VOC_ATTRIBUTE_FROM, "");
+            string const to =
+                triagens::basics::VelocyPackHelper::getStringValue(
+                    slice, TRI_VOC_ATTRIBUTE_TO, "");
 
             // parse _from
             TRI_document_edge_t edge;
-            if (! DocumentHelper::parseDocumentId(resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
+            if (!DocumentHelper::parseDocumentId(
+                    resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
               res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-              errorMsg = std::string("handle bad or collection unknown '") + from.c_str() + "'";
+              errorMsg = std::string("handle bad or collection unknown '") +
+                         from.c_str() + "'";
             }
 
             // parse _to
-            if (! DocumentHelper::parseDocumentId(resolver, to.c_str(), edge._toCid, &edge._toKey)) {
+            if (!DocumentHelper::parseDocumentId(resolver, to.c_str(),
+                                                 edge._toCid, &edge._toKey)) {
               res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-              errorMsg = std::string("handle bad or collection unknown '") + to.c_str() + "'";
+              errorMsg = std::string("handle bad or collection unknown '") +
+                         to.c_str() + "'";
             }
 
             if (res == TRI_ERROR_NO_ERROR) {
-              res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &edge, false, false, true);
+              res = TRI_InsertShapedJsonDocumentCollection(
+                  trx, trxCollection, key, rid, nullptr, &mptr, shaped, &edge,
+                  false, false, true);
             }
           }
-        }
-        else {
+        } else {
           // document
           if (document->_info.type() != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
-            errorMsg = std::string(TRI_errno_string(res)) + ": expecting document collection, got edge collection";
-          }
-          else {
-            res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, false, false, true);
+            errorMsg = std::string(TRI_errno_string(res)) +
+                       ": expecting document collection, got edge collection";
+          } else {
+            res = TRI_InsertShapedJsonDocumentCollection(
+                trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr,
+                false, false, true);
           }
         }
-      }
-      else {
+      } else {
         // update
 
         // init the update policy
         TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
-        res = TRI_UpdateShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &policy, false, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(
+            trx, trxCollection, key, rid, nullptr, &mptr, shaped, &policy,
+            false, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
 
       return res;
-    }
-    catch (triagens::basics::Exception const& ex) {
+    } catch (triagens::basics::Exception const& ex) {
       TRI_FreeShapedJson(zone, shaped);
       return ex.code();
-    }
-    catch (...) {
+    } catch (...) {
       TRI_FreeShapedJson(zone, shaped);
       return TRI_ERROR_INTERNAL;
     }
@@ -2518,22 +2588,23 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
     int res = TRI_ERROR_INTERNAL;
 
     try {
-      res = TRI_RemoveShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &policy, false, false);
+      res = TRI_RemoveShapedJsonDocumentCollection(
+          trx, trxCollection, key, rid, nullptr, &policy, false, false);
 
-      if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      if (res != TRI_ERROR_NO_ERROR &&
+          res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error
         res = TRI_ERROR_NO_ERROR;
       }
-    }
-    catch (triagens::basics::Exception const& ex) {
+    } catch (triagens::basics::Exception const& ex) {
       res = ex.code();
-    }
-    catch (...) {
+    } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "document removal operation failed: " + string(TRI_errno_string(res));
+      errorMsg =
+          "document removal operation failed: " + string(TRI_errno_string(res));
     }
 
     return res;
@@ -2544,42 +2615,35 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
   return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
 }
 
-static int restoreDataParser (char const* ptr,
-                              char const* pos,
-                              std::string const& invalidMsg,
-                              bool useRevision,
-                              std::string& errorMsg,
-                              std::string& key,
-                              VPackBuilder& builder,
-                              VPackSlice& doc,
-                              TRI_voc_rid_t& rid,
-                              TRI_replication_operation_e& type) {
+static int restoreDataParser(char const* ptr, char const* pos,
+                             std::string const& invalidMsg, bool useRevision,
+                             std::string& errorMsg, std::string& key,
+                             VPackBuilder& builder, VPackSlice& doc,
+                             TRI_voc_rid_t& rid,
+                             TRI_replication_operation_e& type) {
   builder.clear();
 
   try {
     std::string line(ptr, pos);
     VPackParser parser(builder);
     parser.parse(line);
-  }
-  catch (VPackException const&) {
+  } catch (VPackException const&) {
     // Could not parse the given string
     errorMsg = invalidMsg;
 
     return TRI_ERROR_HTTP_CORRUPTED_JSON;
-  }
-  catch (std::exception const&) {
+  } catch (std::exception const&) {
     // Could not even build the string
     errorMsg = invalidMsg;
 
     return TRI_ERROR_HTTP_CORRUPTED_JSON;
-  }
-  catch (...) {
+  } catch (...) {
     return TRI_ERROR_HTTP_CORRUPTED_JSON;
   }
 
   VPackSlice const slice = builder.slice();
 
-  if (! slice.isObject()) {
+  if (!slice.isObject()) {
     errorMsg = invalidMsg;
 
     return TRI_ERROR_HTTP_CORRUPTED_JSON;
@@ -2588,7 +2652,7 @@ static int restoreDataParser (char const* ptr,
   type = REPLICATION_INVALID;
 
   for (auto const& pair : VPackObjectIterator(slice)) {
-    if (! pair.key.isString()) {
+    if (!pair.key.isString()) {
       errorMsg = invalidMsg;
 
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
@@ -2598,7 +2662,8 @@ static int restoreDataParser (char const* ptr,
 
     if (attributeName == "type") {
       if (pair.value.isNumber()) {
-        type = static_cast<TRI_replication_operation_e>(pair.value.getNumericValue<int>());
+        type = static_cast<TRI_replication_operation_e>(
+            pair.value.getNumericValue<int>());
       }
     }
 
@@ -2634,15 +2699,13 @@ static int restoreDataParser (char const* ptr,
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreDataBatch (triagens::arango::Transaction* trx,
-                                                     CollectionNameResolver const& resolver,
-                                                     TRI_transaction_collection_t* trxCollection,
-                                                     bool useRevision,
-                                                     bool force,
-                                                     std::string& errorMsg) {
+int RestReplicationHandler::processRestoreDataBatch(
+    triagens::arango::Transaction* trx, CollectionNameResolver const& resolver,
+    TRI_transaction_collection_t* trxCollection, bool useRevision, bool force,
+    std::string& errorMsg) {
   string const invalidMsg = "received invalid JSON data for collection " +
                             StringUtils::itoa(trxCollection->_cid);
-  
+
   VPackBuilder builder;
 
   char const* ptr = _request->body();
@@ -2653,9 +2716,8 @@ int RestReplicationHandler::processRestoreDataBatch (triagens::arango::Transacti
 
     if (pos == nullptr) {
       pos = end;
-    }
-    else {
-      *((char*) pos) = '\0';
+    } else {
+      *((char*)pos) = '\0';
     }
 
     if (pos - ptr > 1) {
@@ -2665,15 +2727,17 @@ int RestReplicationHandler::processRestoreDataBatch (triagens::arango::Transacti
       TRI_voc_rid_t rid;
       TRI_replication_operation_e type;
 
-      int res = restoreDataParser(ptr, pos, invalidMsg, useRevision,
-                                  errorMsg, key, builder, doc, rid, type);
+      int res = restoreDataParser(ptr, pos, invalidMsg, useRevision, errorMsg,
+                                  key, builder, doc, rid, type);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
 
-      res = applyCollectionDumpMarker(trx, resolver, trxCollection, type, (const TRI_voc_key_t) key.c_str(), rid, doc, errorMsg);
+      res = applyCollectionDumpMarker(trx, resolver, trxCollection, type,
+                                      (const TRI_voc_key_t)key.c_str(), rid,
+                                      doc, errorMsg);
 
-      if (res != TRI_ERROR_NO_ERROR && ! force) {
+      if (res != TRI_ERROR_NO_ERROR && !force) {
         return res;
       }
     }
@@ -2688,13 +2752,11 @@ int RestReplicationHandler::processRestoreDataBatch (triagens::arango::Transacti
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreData (CollectionNameResolver const& resolver,
-                                                TRI_voc_cid_t cid,
-                                                bool useRevision,
-                                                bool force,
-                                                std::string& errorMsg) {
-
-  SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, cid);
+int RestReplicationHandler::processRestoreData(
+    CollectionNameResolver const& resolver, TRI_voc_cid_t cid, bool useRevision,
+    bool force, std::string& errorMsg) {
+  SingleCollectionWriteTransaction<UINT64_MAX> trx(
+      new StandaloneTransactionContext(), _vocbase, cid);
 
   int res = trx.begin();
 
@@ -2709,13 +2771,13 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
   if (trxCollection == nullptr) {
     res = TRI_ERROR_INTERNAL;
     errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
-  }
-  else {
+  } else {
     // waitForSync disabled here. use for initial replication, too
     // TODO: sync at end of trx
     trxCollection->_waitForSync = false;
 
-    res = processRestoreDataBatch(&trx, resolver, trxCollection, useRevision, force, errorMsg);
+    res = processRestoreDataBatch(&trx, resolver, trxCollection, useRevision,
+                                  force, errorMsg);
   }
 
   res = trx.finish(res);
@@ -2727,12 +2789,11 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandRestoreData () {
+void RestReplicationHandler::handleCommandRestoreData() {
   char const* value = _request->value("collection");
 
   if (value == nullptr) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter, not given");
     return;
   }
@@ -2768,12 +2829,11 @@ void RestReplicationHandler::handleCommandRestoreData () {
   if (res != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {
       generateError(HttpResponse::responseCode(res), res);
+    } else {
+      generateError(HttpResponse::responseCode(res), res,
+                    std::string(TRI_errno_string(res)) + ": " + errorMsg);
     }
-    else {
-      generateError(HttpResponse::responseCode(res), res, std::string(TRI_errno_string(res)) + ": " + errorMsg);
-    }
-  }
-  else {
+  } else {
     try {
       VPackBuilder result;
       result.add(VPackValue(VPackValueType::Object));
@@ -2781,8 +2841,7 @@ void RestReplicationHandler::handleCommandRestoreData () {
       result.close();
       VPackSlice s = result.slice();
       generateResult(s);
-    }
-    catch (...) {
+    } catch (...) {
       generateOOMError();
     }
   }
@@ -2792,12 +2851,11 @@ void RestReplicationHandler::handleCommandRestoreData () {
 /// @brief restores the data of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
+void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
   char const* name = _request->value("collection");
 
   if (name == nullptr) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
@@ -2830,7 +2888,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     b.release();
   }
 
-  std::string const invalidMsg = std::string("received invalid JSON data for collection ") + name;
+  std::string const invalidMsg =
+      std::string("received invalid JSON data for collection ") + name;
   VPackBuilder builder;
 
   char const* ptr = _request->body();
@@ -2843,9 +2902,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
     if (pos == 0) {
       pos = end;
-    }
-    else {
-      *((char*) pos) = '\0';
+    } else {
+      *((char*)pos) = '\0';
     }
 
     if (pos - ptr > 1) {
@@ -2856,45 +2914,42 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       TRI_voc_rid_t rid;
       TRI_replication_operation_e type;
 
-      res = restoreDataParser(ptr, pos, invalidMsg, false,
-                                  errorMsg, key, builder, doc, rid, type);
+      res = restoreDataParser(ptr, pos, invalidMsg, false, errorMsg, key,
+                              builder, doc, rid, type);
       if (res != TRI_ERROR_NO_ERROR) {
         // We might need to clean up buffers
         break;
       }
 
-      if (! doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
+      if (!doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
-        std::unique_ptr<TRI_json_t> tmp(triagens::basics::VelocyPackHelper::velocyPackToJson(doc));
+        std::unique_ptr<TRI_json_t> tmp(
+            triagens::basics::VelocyPackHelper::velocyPackToJson(doc));
         res = ci->getResponsibleShard(col->id_as_string(), tmp.get(), true,
                                       responsibleShard, usesDefaultSharding);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg = "error during determining responsible shard";
           res = TRI_ERROR_INTERNAL;
           break;
-        }
-        else {
+        } else {
           auto it2 = shardTab.find(responsibleShard);
           if (it2 == shardTab.end()) {
             errorMsg = "cannot find responsible shard";
             res = TRI_ERROR_INTERNAL;
             break;
-          }
-          else {
-            bufs[it2->second]->appendText(ptr, pos-ptr);
+          } else {
+            bufs[it2->second]->appendText(ptr, pos - ptr);
             bufs[it2->second]->appendText("\n");
           }
         }
-      }
-      else if (type == REPLICATION_MARKER_REMOVE) {
+      } else if (type == REPLICATION_MARKER_REMOVE) {
         // A remove marker, this has to be appended to all!
         for (size_t j = 0; j < bufs.size(); j++) {
-          bufs[j]->appendText(ptr, pos-ptr);
+          bufs[j]->appendText(ptr, pos - ptr);
           bufs[j]->appendText("\n");
         }
-      }
-      else {
+      } else {
         // How very strange!
         errorMsg = invalidMsg;
 
@@ -2928,26 +2983,25 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       if (it == shardTab.end()) {
         errorMsg = "cannot find shard";
         res = TRI_ERROR_INTERNAL;
-      }
-      else {
+      } else {
         auto headers = std::make_unique<std::map<std::string, std::string>>();
         size_t j = it->second;
-        auto body = make_shared<std::string const>
-            (bufs[j]->c_str(), bufs[j]->length());
+        auto body =
+            make_shared<std::string const>(bufs[j]->c_str(), bufs[j]->length());
         cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                      "/_db/" + StringUtils::urlEncode(dbName) +
-                      "/_api/replication/restore-data?collection=" +
-                      p.first + forceopt, body,
-                      headers, nullptr, 300.0);
+                         triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                         "/_db/" + StringUtils::urlEncode(dbName) +
+                             "/_api/replication/restore-data?collection=" +
+                             p.first + forceopt,
+                         body, headers, nullptr, 300.0);
       }
     }
 
     // Now listen to the results:
     unsigned int count;
     unsigned int nrok = 0;
-    for (count = (int) (*shardIdsMap).size(); count > 0; count--) {
-      auto result = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    for (count = (int)(*shardIdsMap).size(); count > 0; count--) {
+      auto result = cc->wait("", coordTransactionID, 0, "", 0.0);
       if (result.status == CL_COMM_RECEIVED) {
         if (result.answer_code == triagens::rest::HttpResponse::OK ||
             result.answer_code == triagens::rest::HttpResponse::CREATED) {
@@ -2956,8 +3010,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
           std::shared_ptr<VPackBuilder> parsedAnswer;
           try {
             parsedAnswer = result.answer->toVelocyPack(&options);
-          }
-          catch (VPackException const& e) {
+          } catch (VPackException const& e) {
             // Only log this error and try the next doc
             LOG_DEBUG("failed to parse json object: '%s'", e.what());
             continue;
@@ -2969,31 +3022,27 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
             if (result.isBoolean()) {
               if (result.getBoolean()) {
                 nrok++;
-              }
-              else {
+              } else {
                 LOG_ERROR("some shard result not OK");
               }
-            }
-            else {
+            } else {
               VPackSlice const errorMessage = answer.get("errorMessage");
               if (errorMessage.isString()) {
                 errorMsg.append(errorMessage.copyString());
                 errorMsg.push_back(':');
               }
             }
-          }
-          else {
+          } else {
             LOG_ERROR("result body is no object");
           }
-        }
-        else if (result.answer_code == triagens::rest::HttpResponse::SERVER_ERROR) {
+        } else if (result.answer_code ==
+                   triagens::rest::HttpResponse::SERVER_ERROR) {
           VPackOptions options;
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
           try {
             parsedAnswer = result.answer->toVelocyPack(&options);
-          }
-          catch (VPackException const& e) {
+          } catch (VPackException const& e) {
             // Only log this error and try the next doc
             LOG_DEBUG("failed to parse json object: '%s'", e.what());
             continue;
@@ -3007,20 +3056,17 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
               errorMsg.push_back(':');
             }
           }
-        }
-        else {
+        } else {
           LOG_ERROR("Bad answer code from shard: %d", result.answer_code);
         }
-      }
-      else {
+      } else {
         LOG_ERROR("Bad status from DBServer: %d, msg: %s, shard: %s",
                   result.status, result.errorMessage.c_str(),
                   result.shardID.c_str());
         if (result.status >= CL_COMM_SENT) {
           if (result.result.get() == nullptr) {
             LOG_ERROR("result.result is nullptr");
-          }
-          else {
+          } else {
             auto msg = result.result->getResultTypeMessage();
             LOG_ERROR("Bad HTTP return code: %d, msg: %s",
                       result.result->getHttpReturnCode(), msg.c_str());
@@ -3053,8 +3099,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     result.add("result", VPackValue(true));
     result.close();
     generateResult(result.slice());
-  }
-  catch (...) {
+  } catch (...) {
     generateOOMError();
   }
 }
@@ -3063,12 +3108,11 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 /// @brief produce list of keys for a specific collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandCreateKeys () {
+void RestReplicationHandler::handleCommandCreateKeys() {
   char const* collection = _request->value("collection");
 
   if (collection == nullptr) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
@@ -3083,10 +3127,12 @@ void RestReplicationHandler::handleCommandCreateKeys () {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, collection);
+  TRI_vocbase_col_t* c =
+      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
   if (c == nullptr) {
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    generateError(HttpResponse::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
 
@@ -3097,8 +3143,8 @@ void RestReplicationHandler::handleCommandCreateKeys () {
 
     TRI_vocbase_col_t* col = guard.collection();
     TRI_ASSERT(col != nullptr);
-   
-    // turn off the compaction for the collection 
+
+    // turn off the compaction for the collection
     TRI_voc_tick_t id;
     res = TRI_InsertBlockerCompactorVocBase(_vocbase, 1200.0, &id);
 
@@ -3107,20 +3153,22 @@ void RestReplicationHandler::handleCommandCreateKeys () {
     }
 
     // initialize a container with the keys
-    auto keys = std::make_unique<CollectionKeys>(_vocbase, col->_name, id, 300.0);
-    
+    auto keys =
+        std::make_unique<CollectionKeys>(_vocbase, col->_name, id, 300.0);
+
     std::string const idString(std::to_string(keys->id()));
 
     keys->create(tickEnd);
     size_t const count = keys->count();
 
-    auto keysRepository = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
+    auto keysRepository =
+        static_cast<triagens::arango::CollectionKeysRepository*>(
+            _vocbase->_collectionKeys);
 
     try {
       keysRepository->store(keys.get());
       keys.release();
-    }
-    catch (...) {
+    } catch (...) {
       throw;
     }
 
@@ -3131,11 +3179,9 @@ void RestReplicationHandler::handleCommandCreateKeys () {
     result.close();
     VPackSlice s = result.slice();
     generateResult(s);
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     res = ex.code();
-  }
-  catch (...) {
+  } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -3148,16 +3194,15 @@ void RestReplicationHandler::handleCommandCreateKeys () {
 /// @brief returns all key ranges
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandGetKeys () {
+void RestReplicationHandler::handleCommandGetKeys() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/replication/keys/<keys-id>");
     return;
   }
-      
+
   static TRI_voc_tick_t const DefaultChunkSize = 5000;
   TRI_voc_tick_t chunkSize = DefaultChunkSize;
 
@@ -3169,33 +3214,36 @@ void RestReplicationHandler::handleCommandGetKeys () {
     chunkSize = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
     if (chunkSize < 100) {
       chunkSize = DefaultChunkSize;
-    }
-    else if (chunkSize > 20000) {
+    } else if (chunkSize > 20000) {
       chunkSize = 20000;
     }
   }
-  
+
   std::string const& id = suffix[1];
 
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto keysRepository = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
+    auto keysRepository =
+        static_cast<triagens::arango::CollectionKeysRepository*>(
+            _vocbase->_collectionKeys);
     TRI_ASSERT(keysRepository != nullptr);
- 
-    auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(triagens::basics::StringUtils::uint64(id));
-  
+
+    auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(
+        triagens::basics::StringUtils::uint64(id));
+
     auto collectionKeys = keysRepository->find(collectionKeysId);
 
     if (collectionKeys == nullptr) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND);
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
+                    TRI_ERROR_CURSOR_NOT_FOUND);
       return;
     }
 
-    try {  
+    try {
       VPackBuilder b;
       b.add(VPackValue(VPackValueType::Array));
-        
+
       TRI_voc_tick_t max = static_cast<TRI_voc_tick_t>(collectionKeys->count());
 
       for (TRI_voc_tick_t from = 0; from < max; from += chunkSize) {
@@ -3219,16 +3267,13 @@ void RestReplicationHandler::handleCommandGetKeys () {
       collectionKeys->release();
       VPackSlice s = b.slice();
       generateResult(s);
-    }
-    catch (...) {
+    } catch (...) {
       collectionKeys->release();
       throw;
     }
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     res = ex.code();
-  }
-  catch (...) {
+  } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -3241,16 +3286,15 @@ void RestReplicationHandler::handleCommandGetKeys () {
 /// @brief returns date for a key range
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandFetchKeys () {
+void RestReplicationHandler::handleCommandFetchKeys() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/replication/keys/<keys-id>");
     return;
   }
-      
+
   static TRI_voc_tick_t const DefaultChunkSize = 5000;
   TRI_voc_tick_t chunkSize = DefaultChunkSize;
 
@@ -3262,12 +3306,11 @@ void RestReplicationHandler::handleCommandFetchKeys () {
     chunkSize = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
     if (chunkSize < 100) {
       chunkSize = DefaultChunkSize;
-    }
-    else if (chunkSize > 20000) {
+    } else if (chunkSize > 20000) {
       chunkSize = 20000;
     }
   }
-  
+
   value = _request->value("chunk", found);
 
   size_t chunk = 0;
@@ -3281,13 +3324,10 @@ void RestReplicationHandler::handleCommandFetchKeys () {
   bool keys = true;
   if (strcmp(value, "keys") == 0) {
     keys = true;
-  }
-  else if (strcmp(value, "docs") == 0) {
+  } else if (strcmp(value, "docs") == 0) {
     keys = false;
-  }
-  else {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+  } else {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid 'type' value");
     return;
   }
@@ -3297,29 +3337,33 @@ void RestReplicationHandler::handleCommandFetchKeys () {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto keysRepository = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
+    auto keysRepository =
+        static_cast<triagens::arango::CollectionKeysRepository*>(
+            _vocbase->_collectionKeys);
     TRI_ASSERT(keysRepository != nullptr);
- 
-    auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(triagens::basics::StringUtils::uint64(id));
-  
+
+    auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(
+        triagens::basics::StringUtils::uint64(id));
+
     auto collectionKeys = keysRepository->find(collectionKeysId);
 
     if (collectionKeys == nullptr) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND);
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
+                    TRI_ERROR_CURSOR_NOT_FOUND);
       return;
     }
 
-    try {  
+    try {
       triagens::basics::Json json(triagens::basics::Json::Array, chunkSize);
-  
-      if (keys) {      
+
+      if (keys) {
         collectionKeys->dumpKeys(json, chunk, chunkSize);
-      }
-      else {
+      } else {
         bool success;
         VPackOptions options;
-        std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(&options, success);
-        if (! success) {
+        std::shared_ptr<VPackBuilder> parsedIds =
+            parseVelocyPackBody(&options, success);
+        if (!success) {
           collectionKeys->release();
           return;
         }
@@ -3329,16 +3373,13 @@ void RestReplicationHandler::handleCommandFetchKeys () {
       collectionKeys->release();
 
       generateResult(HttpResponse::OK, json.json());
-    }
-    catch (...) {
+    } catch (...) {
       collectionKeys->release();
       throw;
     }
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     res = ex.code();
-  }
-  catch (...) {
+  } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -3347,36 +3388,38 @@ void RestReplicationHandler::handleCommandFetchKeys () {
   }
 }
 
-void RestReplicationHandler::handleCommandRemoveKeys () {
+void RestReplicationHandler::handleCommandRemoveKeys() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/replication/keys/<keys-id>");
     return;
   }
-  
+
   std::string const& id = suffix[1];
 
-  auto keys = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
+  auto keys = static_cast<triagens::arango::CollectionKeysRepository*>(
+      _vocbase->_collectionKeys);
   TRI_ASSERT(keys != nullptr);
- 
-  auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(triagens::basics::StringUtils::uint64(id));
+
+  auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(
+      triagens::basics::StringUtils::uint64(id));
   bool found = keys->remove(collectionKeysId);
 
-  if (! found) {
+  if (!found) {
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
-  _response = createResponse(HttpResponse::ACCEPTED);
+  createResponse(HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-   
+
   triagens::basics::Json json(triagens::basics::Json::Object);
-  json.set("id", triagens::basics::Json(id)); // id as a string! 
-  json.set("error", triagens::basics::Json(false)); 
-  json.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
+  json.set("id", triagens::basics::Json(id));  // id as a string!
+  json.set("error", triagens::basics::Json(false));
+  json.set("code", triagens::basics::Json(
+                       static_cast<double>(_response->responseCode())));
 
   json.dump(_response->body());
 }
@@ -3408,7 +3451,8 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 /// Produce an error when dumped edges refer to now-unknown collections.
 ///
 /// @RESTQUERYPARAM{ticks,boolean,optional}
-/// Whether or not to include tick values in the dump. The default value is *true*.
+/// Whether or not to include tick values in the dump. The default value is
+/// *true*.
 ///
 /// @RESTQUERYPARAM{flush,boolean,optional}
 /// Whether or not to flush the WAL before dumping. The default value is *true*.
@@ -3416,26 +3460,33 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 /// @RESTDESCRIPTION
 /// Returns the data from the collection for the requested range.
 ///
-/// When the *from* query parameter is not used, collection events are returned from
-/// the beginning. When the *from* parameter is used, the result will only contain
-/// collection entries which have higher tick values than the specified *from* value
+/// When the *from* query parameter is not used, collection events are returned
+/// from
+/// the beginning. When the *from* parameter is used, the result will only
+/// contain
+/// collection entries which have higher tick values than the specified *from*
+/// value
 /// (note: the log entry with a tick value equal to *from* will be excluded).
 ///
-/// The *to* query parameter can be used to optionally restrict the upper bound of
+/// The *to* query parameter can be used to optionally restrict the upper bound
+/// of
 /// the result to a certain tick value. If used, the result will only contain
 /// collection entries with tick values up to (including) *to*.
 ///
-/// The *chunkSize* query parameter can be used to control the size of the result.
+/// The *chunkSize* query parameter can be used to control the size of the
+/// result.
 /// It must be specified in bytes. The *chunkSize* value will only be honored
 /// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one entry into the result and return it.
 /// Therefore, the *chunkSize* value will only be consulted after an entry has
 /// been written into the result. If the result size is then bigger than
 /// *chunkSize*, the server will respond with as many entries as there are
-/// in the response already. If the result size is still smaller than *chunkSize*,
+/// in the response already. If the result size is still smaller than
+/// *chunkSize*,
 /// the server will try to return more data if there's more data left to return.
 ///
-/// If *chunkSize* is not specified, some server-side default value will be used.
+/// If *chunkSize* is not specified, some server-side default value will be
+/// used.
 ///
 /// The *Content-Type* of the result is *application/x-arango-dump*. This is an
 /// easy-to-process format, with all entries going onto separate lines in the
@@ -3445,7 +3496,8 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 ///
 /// - *tick*: the operation's tick attribute
 ///
-/// - *key*: the key of the document/edge or the key used in the deletion operation
+/// - *key*: the key of the document/edge or the key used in the deletion
+/// operation
 ///
 /// - *rev*: the revision id of the document/edge or the deletion operation
 ///
@@ -3460,16 +3512,20 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 ///
 ///   - 2302: document/edge deletion
 ///
-/// **Note**: there will be no distinction between inserts and updates when calling this method.
+/// **Note**: there will be no distinction between inserts and updates when
+/// calling this method.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the request was executed successfully and data was returned. The header
-/// `x-arango-replication-lastincluded` is set to the tick of the last document returned.
+/// is returned if the request was executed successfully and data was returned.
+/// The header
+/// `x-arango-replication-lastincluded` is set to the tick of the last document
+/// returned.
 ///
 /// @RESTRETURNCODE{204}
-/// is returned if the request was executed successfully, but there was no content available.
+/// is returned if the request was executed successfully, but there was no
+/// content available.
 /// The header `x-arango-replication-lastincluded` is `0` in this case.
 ///
 /// @RESTRETURNCODE{400}
@@ -3523,24 +3579,23 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandDump () {
+void RestReplicationHandler::handleCommandDump() {
   char const* collection = _request->value("collection");
 
   if (collection == nullptr) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
 
   // determine start tick for dump
-  TRI_voc_tick_t tickStart    = 0;
-  TRI_voc_tick_t tickEnd      = static_cast<TRI_voc_tick_t>(UINT64_MAX);
-  bool flush                  = true; // flush WAL before dumping?
-  bool withTicks              = true;
+  TRI_voc_tick_t tickStart = 0;
+  TRI_voc_tick_t tickEnd = static_cast<TRI_voc_tick_t>(UINT64_MAX);
+  bool flush = true;  // flush WAL before dumping?
+  bool withTicks = true;
   bool translateCollectionIds = true;
-  bool failOnUnknown          = false;
-  uint64_t flushWait          = 0;
+  bool failOnUnknown = false;
+  uint64_t flushWait = 0;
 
   bool found;
   char const* value;
@@ -3551,14 +3606,14 @@ void RestReplicationHandler::handleCommandDump () {
   if (found) {
     flush = StringUtils::boolean(value);
   }
-  
+
   // fail on unknown collection names referenced in edges
   value = _request->value("failOnUnknown", found);
 
   if (found) {
     failOnUnknown = StringUtils::boolean(value);
   }
-  
+
   // determine flush WAL wait time value
   value = _request->value("flushWait", found);
 
@@ -3573,19 +3628,18 @@ void RestReplicationHandler::handleCommandDump () {
   value = _request->value("from", found);
 
   if (found) {
-    tickStart = (TRI_voc_tick_t) StringUtils::uint64(value);
+    tickStart = (TRI_voc_tick_t)StringUtils::uint64(value);
   }
 
   // determine end tick for dump
   value = _request->value("to", found);
 
   if (found) {
-    tickEnd = (TRI_voc_tick_t) StringUtils::uint64(value);
+    tickEnd = (TRI_voc_tick_t)StringUtils::uint64(value);
   }
 
   if (tickStart > tickEnd || tickEnd == 0) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
   }
@@ -3609,27 +3663,30 @@ void RestReplicationHandler::handleCommandDump () {
     translateCollectionIds = StringUtils::boolean(value);
   }
 
-  TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, collection);
+  TRI_vocbase_col_t* c =
+      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
   if (c == nullptr) {
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    generateError(HttpResponse::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
 
-  LOG_TRACE("requested collection dump for collection '%s', tickStart: %llu, tickEnd: %llu",
-            collection,
-            (unsigned long long) tickStart,
-            (unsigned long long) tickEnd);
+  LOG_TRACE(
+      "requested collection dump for collection '%s', tickStart: %llu, "
+      "tickEnd: %llu",
+      collection, (unsigned long long)tickStart, (unsigned long long)tickEnd);
 
   int res = TRI_ERROR_NO_ERROR;
 
   try {
     if (flush) {
       triagens::wal::LogfileManager::instance()->flush(true, true, false);
- 
-      // additionally wait for the collector 
+
+      // additionally wait for the collector
       if (flushWait > 0) {
-        triagens::wal::LogfileManager::instance()->waitForCollectorQueue(c->_cid, static_cast<double>(flushWait));
+        triagens::wal::LogfileManager::instance()->waitForCollectorQueue(
+            c->_cid, static_cast<double>(flushWait));
       }
     }
 
@@ -3639,9 +3696,12 @@ void RestReplicationHandler::handleCommandDump () {
     TRI_ASSERT(col != nullptr);
 
     // initialize the dump container
-    TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), includeSystem);
+    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(),
+                                includeSystem);
 
-    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks, translateCollectionIds, failOnUnknown);
+    res =
+        TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks,
+                                      translateCollectionIds, failOnUnknown);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -3651,18 +3711,18 @@ void RestReplicationHandler::handleCommandDump () {
     size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
     if (length == 0) {
-      _response = createResponse(HttpResponse::NO_CONTENT);
-    }
-    else {
-      _response = createResponse(HttpResponse::OK);
+      createResponse(HttpResponse::NO_CONTENT);
+    } else {
+      createResponse(HttpResponse::OK);
     }
 
     _response->setContentType("application/x-arango-dump; charset=utf-8");
 
     // set headers
-    _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE,
-                         strlen(TRI_REPLICATION_HEADER_CHECKMORE),
-                         ((dump._hasMore || dump._bufferFull) ? "true" : "false"));
+    _response->setHeader(
+        TRI_REPLICATION_HEADER_CHECKMORE,
+        strlen(TRI_REPLICATION_HEADER_CHECKMORE),
+        ((dump._hasMore || dump._bufferFull) ? "true" : "false"));
 
     _response->setHeader(TRI_REPLICATION_HEADER_LASTINCLUDED,
                          strlen(TRI_REPLICATION_HEADER_LASTINCLUDED),
@@ -3673,11 +3733,9 @@ void RestReplicationHandler::handleCommandDump () {
 
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     res = ex.code();
-  }
-  catch (...) {
+  } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -3690,7 +3748,8 @@ void RestReplicationHandler::handleCommandDump () {
 /// @startDocuBlock JSF_put_api_replication_makeSlave
 /// @brief Changes role to slave
 ///
-/// @RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another}
+/// @RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave
+/// of another}
 ///
 /// @RESTBODYPARAM{endpoint,string,required,string}
 /// the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
@@ -3713,7 +3772,7 @@ void RestReplicationHandler::handleCommandDump () {
 /// specified, the allowed values are *include* or *exclude*.
 ///
 /// @RESTBODYPARAM{restrictCollections,array,optional,string}
-/// an optional array of collections for use with *restrictType*. 
+/// an optional array of collections for use with *restrictType*.
 /// If *restrictType* is *include*, only the specified collections
 /// will be sychronised. If *restrictType* is *exclude*, all but the specified
 /// collections will be synchronized.
@@ -3744,15 +3803,18 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 /// @RESTBODYPARAM{autoResyncRetries,integer,optional,int64}
 /// number of resynchronization retries that will be performed in a row when
-/// automatic resynchronization is enabled and kicks in. Setting this to *0* will
+/// automatic resynchronization is enabled and kicks in. Setting this to *0*
+/// will
 /// effectively disable *autoResync*. Setting it to some other value will limit
-/// the number of retries that are performed. This helps preventing endless retries
+/// the number of retries that are performed. This helps preventing endless
+/// retries
 /// in case resynchronizations always fail.
 ///
 /// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the initial synchronization will
 /// wait for a response from the master when fetching initial collection data.
-/// This wait time can be used to control after what time the initial synchronization
+/// This wait time can be used to control after what time the initial
+/// synchronization
 /// will give up waiting for a response and fail. This value is relevant even
 /// for continuous replication when *autoResync* is set to *true* because this
 /// may re-start the initial synchronization when the master cannot provide
@@ -3765,45 +3827,50 @@ void RestReplicationHandler::handleCommandDump () {
 /// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{idleMinWaitTime,integer,optional,int64}
-/// the minimum wait time (in seconds) that the applier will intentionally idle 
-/// before fetching more log data from the master in case the master has 
+/// the minimum wait time (in seconds) that the applier will intentionally idle
+/// before fetching more log data from the master in case the master has
 /// already sent all its log data. This wait time can be used to control the
-/// frequency with which the replication applier sends HTTP log fetch requests 
+/// frequency with which the replication applier sends HTTP log fetch requests
 /// to the master in case there is no write activity on the master.
 /// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
-/// the maximum wait time (in seconds) that the applier will intentionally idle 
-/// before fetching more log data from the master in case the master has 
-/// already sent all its log data and there have been previous log fetch attempts
+/// the maximum wait time (in seconds) that the applier will intentionally idle
+/// before fetching more log data from the master in case the master has
+/// already sent all its log data and there have been previous log fetch
+/// attempts
 /// that resulted in no more log data. This wait time can be used to control the
-/// maximum frequency with which the replication applier sends HTTP log fetch 
+/// maximum frequency with which the replication applier sends HTTP log fetch
 /// requests to the master in case there is no write activity on the master for
-/// longer periods. This configuration value will only be used if the option 
+/// longer periods. This configuration value will only be used if the option
 /// *adaptivePolling* is set to *true*.
 /// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{requireFromPresent,boolean,optional,}
 /// if set to *true*, then the replication applier will check
 /// at start of its continuous replication if the start tick from the dump phase
-/// is still present on the master. If not, then there would be data loss. If 
+/// is still present on the master. If not, then there would be data loss. If
 /// *requireFromPresent* is *true*, the replication applier will abort with an
-/// appropriate error message. If set to *false*, then the replication applier will
+/// appropriate error message. If set to *false*, then the replication applier
+/// will
 /// still start, and ignore the data loss.
 ///
 /// @RESTBODYPARAM{verbose,boolean,optional,}
-/// if set to *true*, then a log line will be emitted for all operations 
-/// performed by the replication applier. This should be used for debugging replication
+/// if set to *true*, then a log line will be emitted for all operations
+/// performed by the replication applier. This should be used for debugging
+/// replication
 /// problems only.
 ///
 /// @RESTDESCRIPTION
-/// Starts a full data synchronization from a remote endpoint into the local ArangoDB
+/// Starts a full data synchronization from a remote endpoint into the local
+/// ArangoDB
 /// database and afterwards starts the continuous replication.
 /// The operation works on a per-database level.
 ///
 /// All local database data will be removed prior to the synchronization.
 ///
-/// In case of success, the body of the response is a JSON object with the following
+/// In case of success, the body of the response is a JSON object with the
+/// following
 /// attributes:
 ///
 /// - *state*: a JSON object with the following sub-attributes:
@@ -3817,7 +3884,8 @@ void RestReplicationHandler::handleCommandDump () {
 ///     replication log the applier has processed.
 ///
 ///     Regularly, the last applied and last processed tick values should be
-///     identical. For transactional operations, the replication applier will first
+///     identical. For transactional operations, the replication applier will
+///     first
 ///     process incoming log events before applying them, so the processed tick
 ///     value might be higher than the applied tick value. This will be the case
 ///     until the applier encounters the *transaction commit* log event for the
@@ -3828,18 +3896,22 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 ///   - *time*: the time on the applier server.
 ///
-///   - *totalRequests*: the total number of requests the applier has made to the
+///   - *totalRequests*: the total number of requests the applier has made to
+///   the
 ///     endpoint.
 ///
-///   - *totalFailedConnects*: the total number of failed connection attempts the
+///   - *totalFailedConnects*: the total number of failed connection attempts
+///   the
 ///     applier has made.
 ///
 ///   - *totalEvents*: the total number of log events the applier has processed.
 ///
-///   - *totalOperationsExcluded*: the total number of log events excluded because
+///   - *totalOperationsExcluded*: the total number of log events excluded
+///   because
 ///     of *restrictCollections*.
 ///
-///   - *progress*: a JSON object with details about the replication applier progress.
+///   - *progress*: a JSON object with details about the replication applier
+///   progress.
 ///     It contains the following sub-attributes if there is progress to report:
 ///
 ///     - *message*: a textual description of the progress
@@ -3848,8 +3920,10 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 ///     - *failedConnects*: the current number of failed connection attempts
 ///
-///   - *lastError*: a JSON object with details about the last error that happened on
-///     the applier. It contains the following sub-attributes if there was an error:
+///   - *lastError*: a JSON object with details about the last error that
+///   happened on
+///     the applier. It contains the following sub-attributes if there was an
+///     error:
 ///
 ///     - *errorNum*: a numerical error code
 ///
@@ -3868,7 +3942,8 @@ void RestReplicationHandler::handleCommandDump () {
 /// - *endpoint*: the endpoint the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
-/// - *database*: the name of the database the applier is connected to (if applier is
+/// - *database*: the name of the database the applier is connected to (if
+/// applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
 /// WARNING: calling this method will sychronize data from the collections found
@@ -3878,7 +3953,8 @@ void RestReplicationHandler::handleCommandDump () {
 /// Use with caution!
 ///
 /// Please also keep in mind that this command may take a long time to complete
-/// and return. This is because it will first do a full data synchronization with
+/// and return. This is because it will first do a full data synchronization
+/// with
 /// the master, which will take time roughly proportional to the amount of data.
 ///
 /// **Note**: this method is not supported on a coordinator in a cluster.
@@ -3903,59 +3979,101 @@ void RestReplicationHandler::handleCommandDump () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandMakeSlave () {
+void RestReplicationHandler::handleCommandMakeSlave() {
   bool success;
   VPackOptions options;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, success);
-  if (! success) {
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&options, success);
+  if (!success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
   VPackSlice const body = parsedBody->slice();
 
-  std::string const endpoint = VelocyPackHelper::getStringValue(body, "endpoint", "");
+  std::string const endpoint =
+      VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (endpoint.empty()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "<endpoint> must be a valid endpoint");
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "<endpoint> must be a valid endpoint");
     return;
   }
 
-  std::string const database = VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
-  std::string const username = VelocyPackHelper::getStringValue(body, "username", "");
-  std::string const password = VelocyPackHelper::getStringValue(body, "password", "");
-  std::string const restrictType = VelocyPackHelper::getStringValue(body, "restrictType", "");
+  std::string const database =
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+  std::string const username =
+      VelocyPackHelper::getStringValue(body, "username", "");
+  std::string const password =
+      VelocyPackHelper::getStringValue(body, "password", "");
+  std::string const restrictType =
+      VelocyPackHelper::getStringValue(body, "restrictType", "");
 
   // initialize some defaults to copy from
   TRI_replication_applier_configuration_t defaults;
   TRI_InitConfigurationReplicationApplier(&defaults);
-  
+
   // initialize target configuration
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
 
-  config._endpoint                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
-  config._database                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
-  config._username                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
-  config._password                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
-  config._includeSystem           = VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
-  config._requestTimeout          = VelocyPackHelper::getNumericValue<double>(body, "requestTimeout", defaults._requestTimeout);
-  config._connectTimeout          = VelocyPackHelper::getNumericValue<double>(body, "connectTimeout", defaults._connectTimeout);
-  config._ignoreErrors            = VelocyPackHelper::getNumericValue<uint64_t>(body, "ignoreErrors", defaults._ignoreErrors);
-  config._maxConnectRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "maxConnectRetries", defaults._maxConnectRetries);
-  config._sslProtocol             = VelocyPackHelper::getNumericValue<uint32_t>(body, "sslProtocol", defaults._sslProtocol);
-  config._chunkSize               = VelocyPackHelper::getNumericValue<uint64_t>(body, "chunkSize", defaults._chunkSize);
-  config._autoStart               = true;
-  config._adaptivePolling         = VelocyPackHelper::getBooleanValue(body, "adaptivePolling", defaults._adaptivePolling);
-  config._autoResync              = VelocyPackHelper::getBooleanValue(body, "autoResync", defaults._autoResync);
-  config._verbose                 = VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
-  config._requireFromPresent      = VelocyPackHelper::getBooleanValue(body, "requireFromPresent", defaults._requireFromPresent);
-  config._restrictType            = VelocyPackHelper::getStringValue(body, "restrictType", defaults._restrictType);
-  config._connectionRetryWaitTime = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  config._idleMinWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
-  config._autoResyncRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "autoResyncRetries", defaults._autoResyncRetries);
-  
+  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(),
+                                           endpoint.size());
+  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(),
+                                           database.size());
+  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(),
+                                           username.size());
+  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(),
+                                           password.size());
+  config._includeSystem =
+      VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
+  config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
+      body, "requestTimeout", defaults._requestTimeout);
+  config._connectTimeout = VelocyPackHelper::getNumericValue<double>(
+      body, "connectTimeout", defaults._connectTimeout);
+  config._ignoreErrors = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "ignoreErrors", defaults._ignoreErrors);
+  config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "maxConnectRetries", defaults._maxConnectRetries);
+  config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
+      body, "sslProtocol", defaults._sslProtocol);
+  config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "chunkSize", defaults._chunkSize);
+  config._autoStart = true;
+  config._adaptivePolling = VelocyPackHelper::getBooleanValue(
+      body, "adaptivePolling", defaults._adaptivePolling);
+  config._autoResync = VelocyPackHelper::getBooleanValue(body, "autoResync",
+                                                         defaults._autoResync);
+  config._verbose =
+      VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
+  config._requireFromPresent = VelocyPackHelper::getBooleanValue(
+      body, "requireFromPresent", defaults._requireFromPresent);
+  config._restrictType = VelocyPackHelper::getStringValue(
+      body, "restrictType", defaults._restrictType);
+  config._connectionRetryWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "connectionRetryWaitTime",
+          static_cast<double>(defaults._connectionRetryWaitTime) /
+              (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "initialSyncMaxWaitTime",
+          static_cast<double>(defaults._initialSyncMaxWaitTime) /
+              (1000.0 * 1000.0)));
+  config._idleMinWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "idleMinWaitTime",
+          static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "idleMaxWaitTime",
+          static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._autoResyncRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "autoResyncRetries", defaults._autoResyncRetries);
+
   VPackSlice const restriction = body.get("restrictCollections");
 
   if (restriction.isArray()) {
@@ -3971,35 +4089,35 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 
   // now the configuration is complete
 
-  
-  if ((restrictType.empty() && ! config._restrictCollections.empty()) ||
-      (! restrictType.empty() && config._restrictCollections.empty()) ||
-      (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
+  if ((restrictType.empty() && !config._restrictCollections.empty()) ||
+      (!restrictType.empty() && config._restrictCollections.empty()) ||
+      (!restrictType.empty() && restrictType != "include" &&
+       restrictType != "exclude")) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid value for <restrictCollections> or <restrictType>");
     return;
   }
 
-  // forget about any existing replication applier configuration  
+  // forget about any existing replication applier configuration
   int res = _vocbase->_replicationApplier->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
     return;
   }
-  
 
   // start initial synchronization
   TRI_voc_tick_t lastLogTick = 0;
   string errorMsg = "";
   {
-    InitialSyncer syncer(_vocbase, &config, config._restrictCollections, restrictType, false);
+    InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
+                         restrictType, false);
 
     res = TRI_ERROR_NO_ERROR;
 
     try {
       res = syncer.run(errorMsg, false);
-    }
-    catch (...) {
+    } catch (...) {
       errorMsg = "caught an exception";
       res = TRI_ERROR_INTERNAL;
     }
@@ -4011,15 +4129,15 @@ void RestReplicationHandler::handleCommandMakeSlave () {
     generateError(HttpResponse::responseCode(res), res, errorMsg);
     return;
   }
-  
+
   res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
     return;
   }
-    
-  res =_vocbase->_replicationApplier->start(lastLogTick, true);
+
+  res = _vocbase->_replicationApplier->start(lastLogTick, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
@@ -4027,10 +4145,10 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   }
 
   try {
-    std::shared_ptr<VPackBuilder> result = _vocbase->_replicationApplier->toVelocyPack();
+    std::shared_ptr<VPackBuilder> result =
+        _vocbase->_replicationApplier->toVelocyPack();
     generateResult(result->slice());
-  }
-  catch (...) {
+  } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
@@ -4040,7 +4158,8 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 /// @startDocuBlock JSF_put_api_replication_synchronize
 /// @brief start a replication
 ///
-/// @RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote endpoint}
+/// @RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote
+/// endpoint}
 ///
 /// @RESTBODYPARAM{endpoint,string,required,string}
 /// the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
@@ -4060,11 +4179,11 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 ///
 /// @RESTBODYPARAM{incremental,boolean,optional,}
 /// if set to *true*, then an incremental synchronization method will be used
-/// for synchronizing data in collections. This method is useful when 
+/// for synchronizing data in collections. This method is useful when
 /// collections already exist locally, and only the remaining differences need
 /// to be transferred from the remote endpoint. In this case, the incremental
-/// synchronization can be faster than a full synchronization. 
-/// The default value is *false*, meaning that the complete data from the remote 
+/// synchronization can be faster than a full synchronization.
+/// The default value is *false*, meaning that the complete data from the remote
 /// collection will be transferred.
 ///
 /// @RESTBODYPARAM{restrictType,string,optional,string}
@@ -4073,39 +4192,52 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 ///
 /// @RESTBODYPARAM{restrictCollections,array,optional,string}
 /// an optional array of collections for use with
-/// *restrictType*. If *restrictType* is *include*, only the specified collections
+/// *restrictType*. If *restrictType* is *include*, only the specified
+/// collections
 /// will be sychronised. If *restrictType* is *exclude*, all but the specified
 /// collections will be synchronized.
 ///
 /// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the initial synchronization will
 /// wait for a response from the master when fetching initial collection data.
-/// This wait time can be used to control after what time the initial synchronization
-/// will give up waiting for a response and fail. 
+/// This wait time can be used to control after what time the initial
+/// synchronization
+/// will give up waiting for a response and fail.
 /// This value will be ignored if set to *0*.
 ///
 /// @RESTDESCRIPTION
 /// Starts a full data synchronization from a remote endpoint into the local
 /// ArangoDB database.
 ///
-/// The *sync* method can be used by replication clients to connect an ArangoDB database
-/// to a remote endpoint, fetch the remote list of collections and indexes, and collection
-/// data. It will thus create a local backup of the state of data at the remote ArangoDB
+/// The *sync* method can be used by replication clients to connect an ArangoDB
+/// database
+/// to a remote endpoint, fetch the remote list of collections and indexes, and
+/// collection
+/// data. It will thus create a local backup of the state of data at the remote
+/// ArangoDB
 /// database. *sync* works on a per-database level.
 ///
-/// *sync* will first fetch the list of collections and indexes from the remote endpoint.
-/// It does so by calling the *inventory* API of the remote database. It will then purge
-/// data in the local ArangoDB database, and after start will transfer collection data
-/// from the remote database to the local ArangoDB database. It will extract data from the
-/// remote database by calling the remote database's *dump* API until all data are fetched.
+/// *sync* will first fetch the list of collections and indexes from the remote
+/// endpoint.
+/// It does so by calling the *inventory* API of the remote database. It will
+/// then purge
+/// data in the local ArangoDB database, and after start will transfer
+/// collection data
+/// from the remote database to the local ArangoDB database. It will extract
+/// data from the
+/// remote database by calling the remote database's *dump* API until all data
+/// are fetched.
 ///
-/// In case of success, the body of the response is a JSON object with the following
+/// In case of success, the body of the response is a JSON object with the
+/// following
 /// attributes:
 ///
-/// - *collections*: an array of collections that were transferred from the endpoint
+/// - *collections*: an array of collections that were transferred from the
+/// endpoint
 ///
 /// - *lastLogTick*: the last log tick on the endpoint at the time the transfer
-///   was started. Use this value as the *from* value when starting the continuous
+///   was started. Use this value as the *from* value when starting the
+///   continuous
 ///   synchronization later.
 ///
 /// WARNING: calling this method will sychronize data from the collections found
@@ -4135,29 +4267,38 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandSync () {
+void RestReplicationHandler::handleCommandSync() {
   bool success;
   VPackOptions options;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, success);
-  if (! success) {
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&options, success);
+  if (!success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
   VPackSlice const body = parsedBody->slice();
 
-  std::string const endpoint = VelocyPackHelper::getStringValue(body, "endpoint", "");
+  std::string const endpoint =
+      VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (endpoint.empty()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "<endpoint> must be a valid endpoint");
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "<endpoint> must be a valid endpoint");
     return;
   }
 
-  std::string const database = VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
-  std::string const username = VelocyPackHelper::getStringValue(body, "username", "");
-  std::string const password = VelocyPackHelper::getStringValue(body, "password", "");
-  bool const verbose       = VelocyPackHelper::getBooleanValue(body, "verbose", false);
-  bool const includeSystem = VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
-  bool const incremental   = VelocyPackHelper::getBooleanValue(body, "incremental", false);
+  std::string const database =
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+  std::string const username =
+      VelocyPackHelper::getStringValue(body, "username", "");
+  std::string const password =
+      VelocyPackHelper::getStringValue(body, "password", "");
+  bool const verbose =
+      VelocyPackHelper::getBooleanValue(body, "verbose", false);
+  bool const includeSystem =
+      VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
+  bool const incremental =
+      VelocyPackHelper::getBooleanValue(body, "incremental", false);
 
   std::unordered_map<string, bool> restrictCollections;
   VPackSlice const restriction = body.get("restrictCollections");
@@ -4165,38 +4306,46 @@ void RestReplicationHandler::handleCommandSync () {
   if (restriction.isArray()) {
     for (VPackSlice const& cname : VPackArrayIterator(restriction)) {
       if (cname.isString()) {
-        restrictCollections.insert(pair<string, bool>(cname.copyString(), true));
+        restrictCollections.insert(
+            pair<string, bool>(cname.copyString(), true));
       }
     }
   }
 
-  string restrictType = VelocyPackHelper::getStringValue(body, "restrictType", "");
+  string restrictType =
+      VelocyPackHelper::getStringValue(body, "restrictType", "");
 
-  if ((restrictType.empty() && ! restrictCollections.empty()) ||
-      (! restrictType.empty() && restrictCollections.empty()) ||
-      (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
+  if ((restrictType.empty() && !restrictCollections.empty()) ||
+      (!restrictType.empty() && restrictCollections.empty()) ||
+      (!restrictType.empty() && restrictType != "include" &&
+       restrictType != "exclude")) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid value for <restrictCollections> or <restrictType>");
     return;
   }
-  
+
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
-  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
-  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
-  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
-  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(),
+                                           endpoint.size());
+  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(),
+                                           database.size());
+  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(),
+                                           username.size());
+  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(),
+                                           password.size());
   config._includeSystem = includeSystem;
   config._verbose = verbose;
-      
-  InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType, verbose);
+
+  InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
+                       verbose);
 
   int res = TRI_ERROR_NO_ERROR;
   string errorMsg = "";
 
   try {
     res = syncer.run(errorMsg, incremental);
-  }
-  catch (...) {
+  } catch (...) {
     errorMsg = "caught an exception";
     res = TRI_ERROR_INTERNAL;
   }
@@ -4212,7 +4361,8 @@ void RestReplicationHandler::handleCommandSync () {
     result.add("collections", VPackValue(VPackValueType::Array));
 
     std::map<TRI_voc_cid_t, std::string>::const_iterator it;
-    std::map<TRI_voc_cid_t, std::string> const& c = syncer.getProcessedCollections();
+    std::map<TRI_voc_cid_t, std::string> const& c =
+        syncer.getProcessedCollections();
 
     for (it = c.begin(); it != c.end(); ++it) {
       std::string const cidString = StringUtils::itoa((*it).first);
@@ -4220,19 +4370,18 @@ void RestReplicationHandler::handleCommandSync () {
       result.add(VPackValue(VPackValueType::Object));
       result.add("id", VPackValue(cidString));
       result.add("name", VPackValue((*it).second));
-      result.close(); // one collection
+      result.close();  // one collection
     }
 
-    result.close(); // collections
+    result.close();  // collections
 
     char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
     result.add("lastLogTick", VPackValue(tickString));
 
-    result.close(); // base
+    result.close();  // base
     VPackSlice s = result.slice();
     generateResult(s);
-  }
-  catch (...) {
+  } catch (...) {
     generateOOMError();
   }
 }
@@ -4273,7 +4422,7 @@ void RestReplicationHandler::handleCommandSync () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandServerId () {
+void RestReplicationHandler::handleCommandServerId() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
@@ -4282,8 +4431,7 @@ void RestReplicationHandler::handleCommandServerId () {
     result.close();
     VPackSlice s = result.slice();
     generateResult(s);
-  }
-  catch (...) {
+  } catch (...) {
     generateOOMError();
   }
 }
@@ -4292,7 +4440,8 @@ void RestReplicationHandler::handleCommandServerId () {
 /// @startDocuBlock JSF_put_api_replication_applier
 /// @brief fetch the current replication configuration
 ///
-/// @RESTHEADER{GET /_api/replication/applier-config, Return configuration of replication applier}
+/// @RESTHEADER{GET /_api/replication/applier-config, Return configuration of
+/// replication applier}
 ///
 /// @RESTDESCRIPTION
 /// Returns the configuration of the replication applier.
@@ -4300,11 +4449,13 @@ void RestReplicationHandler::handleCommandServerId () {
 /// The body of the response is a JSON object with the configuration. The
 /// following attributes may be present in the configuration:
 ///
-/// - *endpoint*: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
+/// - *endpoint*: the logger server to connect to (e.g.
+/// "tcp://192.168.173.13:8529").
 ///
 /// - *database*: the name of the database to connect to (e.g. "_system").
 ///
-/// - *username*: an optional ArangoDB username to use when connecting to the endpoint.
+/// - *username*: an optional ArangoDB username to use when connecting to the
+/// endpoint.
 ///
 /// - *password*: the password to use when connecting to the endpoint.
 ///
@@ -4312,10 +4463,12 @@ void RestReplicationHandler::handleCommandServerId () {
 ///   will make in a row. If the applier cannot establish a connection to the
 ///   endpoint in this number of attempts, it will stop itself.
 ///
-/// - *connectTimeout*: the timeout (in seconds) when attempting to connect to the
+/// - *connectTimeout*: the timeout (in seconds) when attempting to connect to
+/// the
 ///   endpoint. This value is used for each connection attempt.
 ///
-/// - *requestTimeout*: the timeout (in seconds) for individual requests to the endpoint.
+/// - *requestTimeout*: the timeout (in seconds) for individual requests to the
+/// endpoint.
 ///
 /// - *chunkSize*: the requested maximum size for log transfer packets that
 ///   is used when the endpoint is contacted.
@@ -4326,65 +4479,87 @@ void RestReplicationHandler::handleCommandServerId () {
 /// - *adaptivePolling*: whether or not the replication applier will use
 ///   adaptive polling.
 ///
-/// - *includeSystem*: whether or not system collection operations will be applied
+/// - *includeSystem*: whether or not system collection operations will be
+/// applied
 ///
-/// - *autoResync*: whether or not the slave should perform a full automatic 
-///   resynchronization with the master in case the master cannot serve log data 
-///   requested by the slave, or when the replication is started and no tick value
+/// - *autoResync*: whether or not the slave should perform a full automatic
+///   resynchronization with the master in case the master cannot serve log data
+///   requested by the slave, or when the replication is started and no tick
+///   value
 ///   can be found.
 ///
-/// - *autoResyncRetries*: number of resynchronization retries that will be performed 
-///   in a row when automatic resynchronization is enabled and kicks in. Setting this 
-///   to *0* will effectively disable *autoResync*. Setting it to some other value 
-///   will limit the number of retries that are performed. This helps preventing endless 
+/// - *autoResyncRetries*: number of resynchronization retries that will be
+/// performed
+///   in a row when automatic resynchronization is enabled and kicks in. Setting
+///   this
+///   to *0* will effectively disable *autoResync*. Setting it to some other
+///   value
+///   will limit the number of retries that are performed. This helps preventing
+///   endless
 ///   retries in case resynchronizations always fail.
 ///
-/// - *initialSyncMaxWaitTime*: the maximum wait time (in seconds) that the initial 
-///   synchronization will wait for a response from the master when fetching initial 
+/// - *initialSyncMaxWaitTime*: the maximum wait time (in seconds) that the
+/// initial
+///   synchronization will wait for a response from the master when fetching
+///   initial
 ///   collection data.
-///   This wait time can be used to control after what time the initial synchronization
+///   This wait time can be used to control after what time the initial
+///   synchronization
 ///   will give up waiting for a response and fail. This value is relevant even
 ///   for continuous replication when *autoResync* is set to *true* because this
 ///   may re-start the initial synchronization when the master cannot provide
 ///   log data the slave requires.
 ///   This value will be ignored if set to *0*.
 ///
-/// - *connectionRetryWaitTime*: the time (in seconds) that the applier will 
-///   intentionally idle before it retries connecting to the master in case of 
+/// - *connectionRetryWaitTime*: the time (in seconds) that the applier will
+///   intentionally idle before it retries connecting to the master in case of
 ///   connection problems.
 ///   This value will be ignored if set to *0*.
 ///
-/// - *idleMinWaitTime*: the minimum wait time (in seconds) that the applier will 
-///   intentionally idle before fetching more log data from the master in case 
-///   the master has already sent all its log data. This wait time can be used 
-///   to control the frequency with which the replication applier sends HTTP log 
-///   fetch requests to the master in case there is no write activity on the master.
+/// - *idleMinWaitTime*: the minimum wait time (in seconds) that the applier
+/// will
+///   intentionally idle before fetching more log data from the master in case
+///   the master has already sent all its log data. This wait time can be used
+///   to control the frequency with which the replication applier sends HTTP log
+///   fetch requests to the master in case there is no write activity on the
+///   master.
 ///   This value will be ignored if set to *0*.
 ///
-/// - *idleMaxWaitTime*: the maximum wait time (in seconds) that the applier will 
-///   intentionally idle before fetching more log data from the master in case the 
-///   master has already sent all its log data and there have been previous log 
-///   fetch attempts that resulted in no more log data. This wait time can be used 
-///   to control the maximum frequency with which the replication applier sends HTTP 
-///   log fetch requests to the master in case there is no write activity on the 
-///   master for longer periods. This configuration value will only be used if the 
+/// - *idleMaxWaitTime*: the maximum wait time (in seconds) that the applier
+/// will
+///   intentionally idle before fetching more log data from the master in case
+///   the
+///   master has already sent all its log data and there have been previous log
+///   fetch attempts that resulted in no more log data. This wait time can be
+///   used
+///   to control the maximum frequency with which the replication applier sends
+///   HTTP
+///   log fetch requests to the master in case there is no write activity on the
+///   master for longer periods. This configuration value will only be used if
+///   the
 ///   option *adaptivePolling* is set to *true*.
 ///   This value will be ignored if set to *0*.
 ///
-/// - *requireFromPresent*: if set to *true*, then the replication applier will check
-///   at start whether the start tick from which it starts or resumes replication is
-///   still present on the master. If not, then there would be data loss. If 
+/// - *requireFromPresent*: if set to *true*, then the replication applier will
+/// check
+///   at start whether the start tick from which it starts or resumes
+///   replication is
+///   still present on the master. If not, then there would be data loss. If
 ///   *requireFromPresent* is *true*, the replication applier will abort with an
-///   appropriate error message. If set to *false*, then the replication applier will
+///   appropriate error message. If set to *false*, then the replication applier
+///   will
 ///   still start, and ignore the data loss.
 ///
-/// - *verbose*: if set to *true*, then a log line will be emitted for all operations 
-///   performed by the replication applier. This should be used for debugging replication
+/// - *verbose*: if set to *true*, then a log line will be emitted for all
+/// operations
+///   performed by the replication applier. This should be used for debugging
+///   replication
 ///   problems only.
 ///
 /// - *restrictType*: the configuration for *restrictCollections*
 ///
-/// - *restrictCollections*: the optional array of collections to include or exclude,
+/// - *restrictCollections*: the optional array of collections to include or
+/// exclude,
 ///   based on the setting of *restrictType*
 ///
 /// @RESTRETURNCODES
@@ -4410,7 +4585,7 @@ void RestReplicationHandler::handleCommandServerId () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierGetConfig () {
+void RestReplicationHandler::handleCommandApplierGetConfig() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   TRI_replication_applier_configuration_t config;
@@ -4418,13 +4593,13 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 
   {
     READ_LOCKER(_vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
+    TRI_CopyConfigurationReplicationApplier(
+        &_vocbase->_replicationApplier->_configuration, &config);
   }
   try {
     std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
     generateResult(configBuilder->slice());
-  }
-  catch (...) {
+  } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
 }
@@ -4433,13 +4608,16 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// @startDocuBlock JSF_put_api_replication_applier_adjust
 /// @brief set configuration values of an applier
 ///
-/// @RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier}
+/// @RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of
+/// replication applier}
 ///
 /// @RESTBODYPARAM{endpoint,string,required,string}
-/// the logger server to connect to (e.g. "tcp://192.168.173.13:8529"). The endpoint must be specified.
+/// the logger server to connect to (e.g. "tcp://192.168.173.13:8529"). The
+/// endpoint must be specified.
 ///
 /// @RESTBODYPARAM{database,string,required,string}
-/// the name of the database on the endpoint. If not specified, defaults to the current local database name.
+/// the name of the database on the endpoint. If not specified, defaults to the
+/// current local database name.
 ///
 /// @RESTBODYPARAM{username,string,optional,string}
 /// an optional ArangoDB username to use when connecting to the endpoint.
@@ -4485,21 +4663,25 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// whether or not system collection operations will be applied
 ///
 /// @RESTBODYPARAM{autoResync,boolean,optional,}
-/// whether or not the slave should perform a full automatic resynchronization 
-/// with the master in case the master cannot serve log data requested by the slave,
+/// whether or not the slave should perform a full automatic resynchronization
+/// with the master in case the master cannot serve log data requested by the
+/// slave,
 /// or when the replication is started and no tick value can be found.
 ///
 /// @RESTBODYPARAM{autoResyncRetries,integer,optional,int64}
 /// number of resynchronization retries that will be performed in a row when
-/// automatic resynchronization is enabled and kicks in. Setting this to *0* will
+/// automatic resynchronization is enabled and kicks in. Setting this to *0*
+/// will
 /// effectively disable *autoResync*. Setting it to some other value will limit
-/// the number of retries that are performed. This helps preventing endless retries
+/// the number of retries that are performed. This helps preventing endless
+/// retries
 /// in case resynchronizations always fail.
 ///
 /// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the initial synchronization will
 /// wait for a response from the master when fetching initial collection data.
-/// This wait time can be used to control after what time the initial synchronization
+/// This wait time can be used to control after what time the initial
+/// synchronization
 /// will give up waiting for a response and fail. This value is relevant even
 /// for continuous replication when *autoResync* is set to *true* because this
 /// may re-start the initial synchronization when the master cannot provide
@@ -4512,39 +4694,44 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{idleMinWaitTime,integer,optional,int64}
-/// the minimum wait time (in seconds) that the applier will intentionally idle 
-/// before fetching more log data from the master in case the master has 
+/// the minimum wait time (in seconds) that the applier will intentionally idle
+/// before fetching more log data from the master in case the master has
 /// already sent all its log data. This wait time can be used to control the
-/// frequency with which the replication applier sends HTTP log fetch requests 
+/// frequency with which the replication applier sends HTTP log fetch requests
 /// to the master in case there is no write activity on the master.
 /// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
-/// the maximum wait time (in seconds) that the applier will intentionally idle 
-/// before fetching more log data from the master in case the master has 
-/// already sent all its log data and there have been previous log fetch attempts
+/// the maximum wait time (in seconds) that the applier will intentionally idle
+/// before fetching more log data from the master in case the master has
+/// already sent all its log data and there have been previous log fetch
+/// attempts
 /// that resulted in no more log data. This wait time can be used to control the
-/// maximum frequency with which the replication applier sends HTTP log fetch 
+/// maximum frequency with which the replication applier sends HTTP log fetch
 /// requests to the master in case there is no write activity on the master for
-/// longer periods. This configuration value will only be used if the option 
+/// longer periods. This configuration value will only be used if the option
 /// *adaptivePolling* is set to *true*.
 /// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{requireFromPresent,boolean,required,}
 /// if set to *true*, then the replication applier will check
-/// at start whether the start tick from which it starts or resumes replication is
-/// still present on the master. If not, then there would be data loss. If 
+/// at start whether the start tick from which it starts or resumes replication
+/// is
+/// still present on the master. If not, then there would be data loss. If
 /// *requireFromPresent* is *true*, the replication applier will abort with an
-/// appropriate error message. If set to *false*, then the replication applier will
+/// appropriate error message. If set to *false*, then the replication applier
+/// will
 /// still start, and ignore the data loss.
 ///
 /// @RESTBODYPARAM{verbose,boolean,required,}
-/// if set to *true*, then a log line will be emitted for all operations 
-/// performed by the replication applier. This should be used for debugging replication
+/// if set to *true*, then a log line will be emitted for all operations
+/// performed by the replication applier. This should be used for debugging
+/// replication
 /// problems only.
 ///
 /// @RESTBODYPARAM{restrictType,string,required,string}
-/// the configuration for *restrictCollections*; Has to be either *include* or *exclude*
+/// the configuration for *restrictCollections*; Has to be either *include* or
+/// *exclude*
 ///
 /// @RESTBODYPARAM{restrictCollections,array,optional,string}
 /// the array of collections to include or exclude,
@@ -4556,7 +4743,8 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// will be saved immediately but only become active with the next start of the
 /// applier.
 ///
-/// In case of success, the body of the response is a JSON object with the updated
+/// In case of success, the body of the response is a JSON object with the
+/// updated
 /// configuration.
 ///
 /// @RESTRETURNCODES
@@ -4598,7 +4786,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierSetConfig () {
+void RestReplicationHandler::handleCommandApplierSetConfig() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   TRI_replication_applier_configuration_t config;
@@ -4606,9 +4794,10 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 
   bool success;
   VPackOptions options;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, success);
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&options, success);
 
-  if (! success) {
+  if (!success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -4616,24 +4805,29 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 
   {
     READ_LOCKER(_vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
+    TRI_CopyConfigurationReplicationApplier(
+        &_vocbase->_replicationApplier->_configuration, &config);
   }
 
-  const string endpoint = VelocyPackHelper::getStringValue(body, "endpoint", "");
+  const string endpoint =
+      VelocyPackHelper::getStringValue(body, "endpoint", "");
 
-  if (! endpoint.empty()) {
+  if (!endpoint.empty()) {
     if (config._endpoint != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
     }
-    config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+    config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
+                                             endpoint.c_str(), endpoint.size());
   }
 
-  std::string database = VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+  std::string database =
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
   if (config._database != nullptr) {
     // free old value
     TRI_FreeString(TRI_CORE_MEM_ZONE, config._database);
   }
-  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.length());
+  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(),
+                                           database.length());
 
   VPackSlice const username = body.get("username");
   if (username.isString()) {
@@ -4641,7 +4835,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
       TRI_FreeString(TRI_CORE_MEM_ZONE, config._username);
     }
     std::string tmp = username.copyString();
-    config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
+    config._username =
+        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
   }
 
   VPackSlice const password = body.get("password");
@@ -4650,39 +4845,74 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
       TRI_FreeString(TRI_CORE_MEM_ZONE, config._password);
     }
     std::string tmp = password.copyString();
-    config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
+    config._password =
+        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
   }
 
-  config._requestTimeout          = VelocyPackHelper::getNumericValue<double>(body, "requestTimeout", config._requestTimeout);
-  config._connectTimeout          = VelocyPackHelper::getNumericValue<double>(body, "connectTimeout", config._connectTimeout);
-  config._ignoreErrors            = VelocyPackHelper::getNumericValue<uint64_t>(body, "ignoreErrors", config._ignoreErrors);
-  config._maxConnectRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "maxConnectRetries", config._maxConnectRetries);
-  config._sslProtocol             = VelocyPackHelper::getNumericValue<uint32_t>(body, "sslProtocol", config._sslProtocol);
-  config._chunkSize               = VelocyPackHelper::getNumericValue<uint64_t>(body, "chunkSize", config._chunkSize);
-  config._autoStart               = VelocyPackHelper::getBooleanValue(body, "autoStart", config._autoStart);
-  config._adaptivePolling         = VelocyPackHelper::getBooleanValue(body, "adaptivePolling", config._adaptivePolling);
-  config._autoResync              = VelocyPackHelper::getBooleanValue(body, "autoResync", config._autoResync);
-  config._includeSystem           = VelocyPackHelper::getBooleanValue(body, "includeSystem", config._includeSystem);
-  config._verbose                 = VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
-  config._requireFromPresent      = VelocyPackHelper::getBooleanValue(body, "requireFromPresent", config._requireFromPresent);
-  config._restrictType            = VelocyPackHelper::getStringValue(body, "restrictType", config._restrictType);
-  config._connectionRetryWaitTime = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  config._idleMinWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
-  config._autoResyncRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "autoResyncRetries", config._autoResyncRetries);
+  config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
+      body, "requestTimeout", config._requestTimeout);
+  config._connectTimeout = VelocyPackHelper::getNumericValue<double>(
+      body, "connectTimeout", config._connectTimeout);
+  config._ignoreErrors = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "ignoreErrors", config._ignoreErrors);
+  config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "maxConnectRetries", config._maxConnectRetries);
+  config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
+      body, "sslProtocol", config._sslProtocol);
+  config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "chunkSize", config._chunkSize);
+  config._autoStart =
+      VelocyPackHelper::getBooleanValue(body, "autoStart", config._autoStart);
+  config._adaptivePolling = VelocyPackHelper::getBooleanValue(
+      body, "adaptivePolling", config._adaptivePolling);
+  config._autoResync =
+      VelocyPackHelper::getBooleanValue(body, "autoResync", config._autoResync);
+  config._includeSystem = VelocyPackHelper::getBooleanValue(
+      body, "includeSystem", config._includeSystem);
+  config._verbose =
+      VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
+  config._requireFromPresent = VelocyPackHelper::getBooleanValue(
+      body, "requireFromPresent", config._requireFromPresent);
+  config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType",
+                                                          config._restrictType);
+  config._connectionRetryWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "connectionRetryWaitTime",
+          static_cast<double>(config._connectionRetryWaitTime) /
+              (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "initialSyncMaxWaitTime",
+          static_cast<double>(config._initialSyncMaxWaitTime) /
+              (1000.0 * 1000.0)));
+  config._idleMinWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "idleMinWaitTime",
+          static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "idleMaxWaitTime",
+          static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._autoResyncRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "autoResyncRetries", config._autoResyncRetries);
 
   VPackSlice const restriction = body.get("restrictCollections");
   if (restriction.isArray()) {
     config._restrictCollections.clear();
     for (VPackSlice const& collection : VPackArrayIterator(restriction)) {
       if (collection.isString()) {
-        config._restrictCollections.emplace(std::make_pair(collection.copyString(), true));
+        config._restrictCollections.emplace(
+            std::make_pair(collection.copyString(), true));
       }
     }
   }
 
-  int res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
+  int res =
+      TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
@@ -4701,7 +4931,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{from,string,optional}
-/// The remote *lastLogTick* value from which to start applying. If not specified,
+/// The remote *lastLogTick* value from which to start applying. If not
+/// specified,
 /// the last saved tick from the previous applier run is used. If there is no
 /// previous applier state saved, the applier will start at the beginning of the
 /// logger server's log.
@@ -4757,7 +4988,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierStart () {
+void RestReplicationHandler::handleCommandApplierStart() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   bool found;
@@ -4766,7 +4997,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
   TRI_voc_tick_t initialTick = 0;
   if (found) {
     // query parameter "from" specified
-    initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
+    initialTick = (TRI_voc_tick_t)StringUtils::uint64(value);
   }
 
   int res = _vocbase->_replicationApplier->start(initialTick, found);
@@ -4775,8 +5006,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
         res == TRI_ERROR_REPLICATION_RUNNING) {
       generateError(HttpResponse::BAD, res);
-    }
-    else {
+    } else {
       generateError(HttpResponse::SERVER_ERROR, res);
     }
     return;
@@ -4830,7 +5060,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierStop () {
+void RestReplicationHandler::handleCommandApplierStop() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   int res = _vocbase->_replicationApplier->stop(true);
@@ -4847,7 +5077,8 @@ void RestReplicationHandler::handleCommandApplierStop () {
 /// @startDocuBlock JSF_get_api_replication_applier_state
 /// @brief output the current status of the replication
 ///
-/// @RESTHEADER{GET /_api/replication/applier-state, State of the replication applier}
+/// @RESTHEADER{GET /_api/replication/applier-state, State of the replication
+/// applier}
 ///
 /// @RESTDESCRIPTION
 /// Returns the state of the replication applier, regardless of whether the
@@ -4866,7 +5097,8 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///     replication log the applier has processed.
 ///
 ///     Regularly, the last applied and last processed tick values should be
-///     identical. For transactional operations, the replication applier will first
+///     identical. For transactional operations, the replication applier will
+///     first
 ///     process incoming log events before applying them, so the processed tick
 ///     value might be higher than the applied tick value. This will be the case
 ///     until the applier encounters the *transaction commit* log event for the
@@ -4877,18 +5109,22 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///
 ///   - *time*: the time on the applier server.
 ///
-///   - *totalRequests*: the total number of requests the applier has made to the
+///   - *totalRequests*: the total number of requests the applier has made to
+///   the
 ///     endpoint.
 ///
-///   - *totalFailedConnects*: the total number of failed connection attempts the
+///   - *totalFailedConnects*: the total number of failed connection attempts
+///   the
 ///     applier has made.
 ///
 ///   - *totalEvents*: the total number of log events the applier has processed.
 ///
-///   - *totalOperationsExcluded*: the total number of log events excluded because
+///   - *totalOperationsExcluded*: the total number of log events excluded
+///   because
 ///     of *restrictCollections*.
 ///
-///   - *progress*: a JSON object with details about the replication applier progress.
+///   - *progress*: a JSON object with details about the replication applier
+///   progress.
 ///     It contains the following sub-attributes if there is progress to report:
 ///
 ///     - *message*: a textual description of the progress
@@ -4897,8 +5133,10 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///
 ///     - *failedConnects*: the current number of failed connection attempts
 ///
-///   - *lastError*: a JSON object with details about the last error that happened on
-///     the applier. It contains the following sub-attributes if there was an error:
+///   - *lastError*: a JSON object with details about the last error that
+///   happened on
+///     the applier. It contains the following sub-attributes if there was an
+///     error:
 ///
 ///     - *errorNum*: a numerical error code
 ///
@@ -4917,7 +5155,8 @@ void RestReplicationHandler::handleCommandApplierStop () {
 /// - *endpoint*: the endpoint the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
-/// - *database*: the name of the database the applier is connected to (if applier is
+/// - *database*: the name of the database the applier is connected to (if
+/// applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
 /// @RESTRETURNCODES
@@ -4963,14 +5202,14 @@ void RestReplicationHandler::handleCommandApplierStop () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierGetState () {
+void RestReplicationHandler::handleCommandApplierGetState() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   try {
-    std::shared_ptr<VPackBuilder> result = _vocbase->_replicationApplier->toVelocyPack();
+    std::shared_ptr<VPackBuilder> result =
+        _vocbase->_replicationApplier->toVelocyPack();
     generateResult(result->slice());
-  }
-  catch (...) {
+  } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
@@ -4980,7 +5219,7 @@ void RestReplicationHandler::handleCommandApplierGetState () {
 /// @brief delete the state of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierDeleteState () {
+void RestReplicationHandler::handleCommandApplierDeleteState() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   int res = _vocbase->_replicationApplier->forget();
@@ -4993,11 +5232,4 @@ void RestReplicationHandler::handleCommandApplierDeleteState () {
   handleCommandApplierGetState();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

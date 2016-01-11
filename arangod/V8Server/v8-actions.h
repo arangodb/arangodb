@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 action functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__ACTIONS_H
-#define ARANGODB_V8SERVER_V8__ACTIONS_H 1
+#ifndef ARANGOD_V8_SERVER_V8_ACTIONS_H
+#define ARANGOD_V8_SERVER_V8_ACTIONS_H 1
 
 #include "Basics/Common.h"
 
@@ -36,36 +30,22 @@
 
 #include "VocBase/vocbase.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
-    class ApplicationV8;
-  }
+namespace arango {
+class ApplicationV8;
+}
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  module functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Isolate* isolate,
-                        v8::Handle<v8::Context> context,
-                        TRI_vocbase_t* vocbase,
-                        triagens::arango::ApplicationV8*);
+void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+                       TRI_vocbase_t* vocbase,
+                       triagens::arango::ApplicationV8*);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

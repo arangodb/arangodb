@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief request user
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,54 +19,34 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_REQUEST_USER_H
-#define ARANGODB_REST_REQUEST_USER_H 1
+#ifndef LIB_REST_REQUEST_USER_H
+#define LIB_REST_REQUEST_USER_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace rest {
+namespace rest {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class RequestUser
-// -----------------------------------------------------------------------------
 
-    class RequestUser {
+class RequestUser {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the request user
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  RequestUser();
+  virtual ~RequestUser();
 
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the request user
-////////////////////////////////////////////////////////////////////////////////
-
-        RequestUser ();
-        virtual ~RequestUser ();
-
-    private:
-
-        RequestUser (const RequestUser&);
-        RequestUser& operator= (const RequestUser&);
-
-    };
-
-  }
+ private:
+  RequestUser(const RequestUser&);
+  RequestUser& operator=(const RequestUser&);
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

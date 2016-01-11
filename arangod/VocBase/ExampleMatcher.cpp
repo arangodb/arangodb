@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Class to allow simple byExample matching of mptr.
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExampleMatcher.h"
@@ -45,7 +39,7 @@ using namespace triagens::basics;
 /// @brief cleans up shaped json values
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CleanupShapes (std::vector<TRI_shaped_json_t*>& values) {
+static void CleanupShapes(std::vector<TRI_shaped_json_t*>& values) {
   for (auto& it : values) {
     if (it != nullptr) {
       TRI_FreeShapedJson(TRI_UNKNOWN_MEM_ZONE, it);
@@ -58,7 +52,7 @@ static void CleanupShapes (std::vector<TRI_shaped_json_t*>& values) {
 /// @brief cleans up the example object
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExampleMatcher::cleanup () {
+void ExampleMatcher::cleanup() {
   // clean shaped json objects
   for (auto& def : definitions) {
     CleanupShapes(def._values);
@@ -66,17 +60,15 @@ void ExampleMatcher::cleanup () {
   definitions.clear();
 }
 
-void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
-                                            v8::Handle<v8::Object> const& example,
-                                            v8::Handle<v8::Array> const& names,
-                                            size_t& n,
-                                            std::string& errorMessage,
-                                            ExampleDefinition& def) {
+void ExampleMatcher::fillExampleDefinition(
+    v8::Isolate* isolate, v8::Handle<v8::Object> const& example,
+    v8::Handle<v8::Array> const& names, size_t& n, std::string& errorMessage,
+    ExampleDefinition& def) {
   TRI_IF_FAILURE("ExampleNoContextVocbase") {
     // intentionally fail
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   if (vocbase == nullptr) {
     // This should never be thrown as we are already in a transaction
@@ -86,8 +78,8 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
   def._pids.reserve(n);
   def._values.reserve(n);
 
-  for (size_t i = 0;  i < n;  ++i) {
-    v8::Handle<v8::Value> key = names->Get((uint32_t) i);
+  for (size_t i = 0; i < n; ++i) {
+    v8::Handle<v8::Value> key = names->Get((uint32_t)i);
     v8::Handle<v8::Value> val = example->Get(key);
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
     if (*keyStr != nullptr) {
@@ -100,41 +92,44 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
           string const key(p, keyStr.length());
           string keyVal = TRI_ObjectToString(val);
           if (TRI_VOC_ATTRIBUTE_KEY == key) {
-            def._internal.insert(make_pair(internalAttr::key, DocumentId(0, keyVal)));
-          } 
-          else if (TRI_VOC_ATTRIBUTE_REV == key) {
-            def._internal.insert(make_pair(internalAttr::rev, DocumentId(0, keyVal)));
-          } 
-          else {
+            def._internal.insert(
+                make_pair(internalAttr::key, DocumentId(0, keyVal)));
+          } else if (TRI_VOC_ATTRIBUTE_REV == key) {
+            def._internal.insert(
+                make_pair(internalAttr::rev, DocumentId(0, keyVal)));
+          } else {
             // We need a Collection Name Resolver here now!
             V8ResolverGuard resolverGuard(vocbase);
-            CollectionNameResolver const* resolver = resolverGuard.getResolver();
+            CollectionNameResolver const* resolver =
+                resolverGuard.getResolver();
             string colName = keyVal.substr(0, keyVal.find("/"));
             keyVal = keyVal.substr(keyVal.find("/") + 1, keyVal.length());
             if (TRI_VOC_ATTRIBUTE_ID == key) {
-              def._internal.insert(make_pair(internalAttr::id, DocumentId(resolver->getCollectionId(colName), keyVal)));
-            } 
-            else if (TRI_VOC_ATTRIBUTE_FROM == key) {
-              def._internal.insert(make_pair(internalAttr::from, DocumentId(resolver->getCollectionId(colName), keyVal)));
-            } 
-            else if (TRI_VOC_ATTRIBUTE_TO == key) {
-              def._internal.insert(make_pair(internalAttr::to, DocumentId(resolver->getCollectionId(colName), keyVal)));
-            } 
-            else {
+              def._internal.insert(make_pair(
+                  internalAttr::id,
+                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+            } else if (TRI_VOC_ATTRIBUTE_FROM == key) {
+              def._internal.insert(make_pair(
+                  internalAttr::from,
+                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+            } else if (TRI_VOC_ATTRIBUTE_TO == key) {
+              def._internal.insert(make_pair(
+                  internalAttr::to,
+                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+            } else {
               // no attribute path found. this means the result will be empty
               THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
             }
           }
-        } 
-        else {
+        } else {
           // no attribute path found. this means the result will be empty
           THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
-      } 
-      else {
+      } else {
         def._pids.push_back(pid);
 
-        std::unique_ptr<TRI_shaped_json_t> value(TRI_ShapedJsonV8Object(isolate, val, _shaper, false));
+        std::unique_ptr<TRI_shaped_json_t> value(
+            TRI_ShapedJsonV8Object(isolate, val, _shaper, false));
 
         if (value.get() == nullptr) {
           THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
@@ -142,18 +137,16 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
         def._values.push_back(value.get());
         value.release();
       }
-    }
-    else {
+    } else {
       errorMessage = "cannot convert attribute path to UTF8";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
   }
 }
 
-void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
-                                            CollectionNameResolver const* resolver,
-                                            ExampleDefinition& def) {
-
+void ExampleMatcher::fillExampleDefinition(
+    TRI_json_t const* example, CollectionNameResolver const* resolver,
+    ExampleDefinition& def) {
   if (TRI_IsStringJson(example)) {
     // Example is an _id value
     char const* _key = strchr(example->_value._string.data, '/');
@@ -161,18 +154,18 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
       _key += 1;
       def._internal.insert(make_pair(internalAttr::key, DocumentId(0, _key)));
       return;
-    } 
+    }
     THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
   }
   TRI_vector_t objects = example->_value._objects;
 
   // Trolololol std::vector in C... ;(
-  size_t n = TRI_LengthVector(&objects); 
+  size_t n = TRI_LengthVector(&objects);
 
   def._pids.reserve(n);
   def._values.reserve(n);
 
-  try { 
+  try {
     for (size_t i = 0; i < n; i += 2) {
       auto keyObj = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i));
       TRI_ASSERT(TRI_IsStringJson(keyObj));
@@ -183,44 +176,46 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
         // Internal attributes do have pid == 0.
         if (*keyStr == '_') {
           string const key(keyStr, keyObj->_value._string.length - 1);
-          auto jsonValue = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
-          if (! TRI_IsStringJson(jsonValue)) {
+          auto jsonValue =
+              static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
+          if (!TRI_IsStringJson(jsonValue)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
           }
           string keyVal(jsonValue->_value._string.data);
           if (TRI_VOC_ATTRIBUTE_KEY == key) {
-            def._internal.insert(make_pair(internalAttr::key, DocumentId(0, keyVal)));
-          } 
-          else if (TRI_VOC_ATTRIBUTE_REV == key) {
-            def._internal.insert(make_pair(internalAttr::rev, DocumentId(0, keyVal)));
-          } 
-          else {
+            def._internal.insert(
+                make_pair(internalAttr::key, DocumentId(0, keyVal)));
+          } else if (TRI_VOC_ATTRIBUTE_REV == key) {
+            def._internal.insert(
+                make_pair(internalAttr::rev, DocumentId(0, keyVal)));
+          } else {
             string colName = keyVal.substr(0, keyVal.find("/"));
             keyVal = keyVal.substr(keyVal.find("/") + 1, keyVal.length());
             if (TRI_VOC_ATTRIBUTE_ID == key) {
-              def._internal.insert(make_pair(internalAttr::id, DocumentId(resolver->getCollectionId(colName), keyVal)));
-            } 
-            else if (TRI_VOC_ATTRIBUTE_FROM == key) {
-              def._internal.insert(make_pair(internalAttr::from, DocumentId(resolver->getCollectionId(colName), keyVal)));
-            } 
-            else if (TRI_VOC_ATTRIBUTE_TO == key) {
-              def._internal.insert(make_pair(internalAttr::to, DocumentId(resolver->getCollectionId(colName), keyVal)));
-            } 
-            else {
+              def._internal.insert(make_pair(
+                  internalAttr::id,
+                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+            } else if (TRI_VOC_ATTRIBUTE_FROM == key) {
+              def._internal.insert(make_pair(
+                  internalAttr::from,
+                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+            } else if (TRI_VOC_ATTRIBUTE_TO == key) {
+              def._internal.insert(make_pair(
+                  internalAttr::to,
+                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+            } else {
               // no attribute path found. this means the result will be empty
               THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
             }
- 
           }
-        }
-        else {
+        } else {
           // no attribute path found. this means the result will be empty
           THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
-      }
-      else {
+      } else {
         def._pids.push_back(pid);
-        auto jsonValue = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
+        auto jsonValue =
+            static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
         auto value = TRI_ShapedJsonJson(_shaper, jsonValue, false);
 
         if (value == nullptr) {
@@ -230,8 +225,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
         def._values.push_back(value);
       }
     }
-  } 
-  catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const&) {
     ExampleMatcher::cleanup();
     throw;
   }
@@ -240,23 +234,21 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor using a v8::Object example
 ////////////////////////////////////////////////////////////////////////////////
- 
-ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
-                                v8::Handle<v8::Object> const example,
-                                VocShaper* shaper,
-                                std::string& errorMessage) 
-  : _shaper(shaper) {
 
+ExampleMatcher::ExampleMatcher(v8::Isolate* isolate,
+                               v8::Handle<v8::Object> const example,
+                               VocShaper* shaper, std::string& errorMessage)
+    : _shaper(shaper) {
   v8::Handle<v8::Array> names = example->GetOwnPropertyNames();
   size_t n = names->Length();
 
   ExampleDefinition def;
 
-  try { 
-    ExampleMatcher::fillExampleDefinition(isolate, example, names, n, errorMessage, def);
-    definitions.emplace_back(std::move(def)); 
-  } 
-  catch (...) {
+  try {
+    ExampleMatcher::fillExampleDefinition(isolate, example, names, n,
+                                          errorMessage, def);
+    definitions.emplace_back(std::move(def));
+  } catch (...) {
     CleanupShapes(def._values);
     ExampleMatcher::cleanup();
     throw;
@@ -266,17 +258,15 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor using an v8::Array of v8::Object examples
 ////////////////////////////////////////////////////////////////////////////////
- 
-ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
-                                v8::Handle<v8::Array> const examples,
-                                VocShaper* shaper,
-                                std::string& errorMessage) 
-  : _shaper(shaper) {
 
+ExampleMatcher::ExampleMatcher(v8::Isolate* isolate,
+                               v8::Handle<v8::Array> const examples,
+                               VocShaper* shaper, std::string& errorMessage)
+    : _shaper(shaper) {
   size_t exCount = examples->Length();
   for (size_t j = 0; j < exCount; ++j) {
-    auto tmp = examples->Get((uint32_t) j);
-    if (! tmp->IsObject() || tmp->IsArray()) {
+    auto tmp = examples->Get((uint32_t)j);
+    if (!tmp->IsObject() || tmp->IsArray()) {
       // Right now silently ignore this example
       continue;
     }
@@ -286,11 +276,11 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
 
     ExampleDefinition def;
 
-    try { 
-      ExampleMatcher::fillExampleDefinition(isolate, example, names, n, errorMessage, def);
-      definitions.emplace_back(std::move(def)); 
-    } 
-    catch (...) {
+    try {
+      ExampleMatcher::fillExampleDefinition(isolate, example, names, n,
+                                            errorMessage, def);
+      definitions.emplace_back(std::move(def));
+    } catch (...) {
       CleanupShapes(def._values);
       ExampleMatcher::cleanup();
       throw;
@@ -302,32 +292,28 @@ ExampleMatcher::ExampleMatcher (v8::Isolate* isolate,
 /// @brief Constructor using a TRI_json_t object
 ////////////////////////////////////////////////////////////////////////////////
 
-ExampleMatcher::ExampleMatcher (TRI_json_t const* example,
-                                VocShaper* shaper,
-                                CollectionNameResolver const* resolver) 
-  : _shaper(shaper) {
-
+ExampleMatcher::ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
+                               CollectionNameResolver const* resolver)
+    : _shaper(shaper) {
   if (TRI_IsObjectJson(example) || TRI_IsStringJson(example)) {
     ExampleDefinition def;
-    try { 
+    try {
       ExampleMatcher::fillExampleDefinition(example, resolver, def);
-    } 
-    catch (...) {
+    } catch (...) {
       CleanupShapes(def._values);
       ExampleMatcher::cleanup();
       throw;
     }
-    definitions.emplace_back(std::move(def)); 
-  }
-  else if (TRI_IsArrayJson(example)) {
+    definitions.emplace_back(std::move(def));
+  } else if (TRI_IsArrayJson(example)) {
     size_t size = TRI_LengthArrayJson(example);
     for (size_t i = 0; i < size; ++i) {
       ExampleDefinition def;
-      try { 
-        ExampleMatcher::fillExampleDefinition(TRI_LookupArrayJson(example, i), resolver, def);
-        definitions.emplace_back(std::move(def)); 
-      } 
-      catch (triagens::basics::Exception& e) {
+      try {
+        ExampleMatcher::fillExampleDefinition(TRI_LookupArrayJson(example, i),
+                                              resolver, def);
+        definitions.emplace_back(std::move(def));
+      } catch (triagens::basics::Exception& e) {
         if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
           CleanupShapes(def._values);
           ExampleMatcher::cleanup();
@@ -349,14 +335,15 @@ ExampleMatcher::ExampleMatcher (TRI_json_t const* example,
 /// @brief Checks if the given mptr matches the examples in this class
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) const {
+bool ExampleMatcher::matches(TRI_voc_cid_t cid,
+                             TRI_doc_mptr_t const* mptr) const {
   if (mptr == nullptr) {
     return false;
   }
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr->getDataPtr());
   for (auto const& def : definitions) {
-    if (! def._internal.empty()) {
+    if (!def._internal.empty()) {
       // Match _key
       auto it = def._internal.find(internalAttr::key);
       if (it != def._internal.end()) {
@@ -367,7 +354,8 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
       // Match _rev
       it = def._internal.find(internalAttr::rev);
       if (it != def._internal.end()) {
-        if (triagens::basics::StringUtils::uint64(it->second.key) != mptr->_rid) {
+        if (triagens::basics::StringUtils::uint64(it->second.key) !=
+            mptr->_rid) {
           goto nextExample;
         }
       }
@@ -387,7 +375,8 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
         if (it->second.cid != TRI_EXTRACT_MARKER_TO_CID(mptr)) {
           goto nextExample;
         }
-        if (strcmp(it->second.key.c_str(), TRI_EXTRACT_MARKER_TO_KEY(mptr)) != 0) {
+        if (strcmp(it->second.key.c_str(), TRI_EXTRACT_MARKER_TO_KEY(mptr)) !=
+            0) {
           goto nextExample;
         }
       }
@@ -397,7 +386,8 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
         if (it->second.cid != TRI_EXTRACT_MARKER_FROM_CID(mptr)) {
           goto nextExample;
         }
-        if (strcmp(it->second.key.c_str(), TRI_EXTRACT_MARKER_FROM_KEY(mptr)) != 0) {
+        if (strcmp(it->second.key.c_str(), TRI_EXTRACT_MARKER_FROM_KEY(mptr)) !=
+            0) {
           goto nextExample;
         }
       }
@@ -405,16 +395,13 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
     TRI_shaped_json_t result;
     TRI_shape_t const* shape;
 
-    for (size_t i = 0;  i < def._values.size();  ++i) {
+    for (size_t i = 0; i < def._values.size(); ++i) {
       TRI_shaped_json_t* example = def._values[i];
 
-      bool ok = _shaper->extractShapedJson(&document,
-                                           example->_sid,
-                                           def._pids[i],
-                                           &result,
-                                           &shape);
+      bool ok = _shaper->extractShapedJson(&document, example->_sid,
+                                           def._pids[i], &result, &shape);
 
-      if (! ok || shape == nullptr) {
+      if (!ok || shape == nullptr) {
         goto nextExample;
       }
 
@@ -428,7 +415,8 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
         goto nextExample;
       }
 
-      if (memcmp(result._data.data, example->_data.data, example->_data.length) != 0) {
+      if (memcmp(result._data.data, example->_data.data,
+                 example->_data.length) != 0) {
         // suppress excessive log spam
         // LOG_TRACE("data mismatch at path %lu", (unsigned long) pids[i]);
         goto nextExample;
@@ -436,7 +424,7 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
     }
     // If you get here this example matches. Successful hit.
     return true;
-    nextExample:
+  nextExample:
     // This Example does not match, try the next one. Goto requires a statement
     continue;
   }

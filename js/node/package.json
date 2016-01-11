@@ -13,6 +13,7 @@
     "jshint": "2.8.0",
     "lodash": "3.10.1",
     "marked": "0.3.5",
+    "media-typer": "0.3.0",
     "minimatch": "3.0.0",
     "mocha": "2.3.4",
     "qs": "5.2.0",

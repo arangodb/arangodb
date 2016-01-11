@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 line editor
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8LineEditor.h"
@@ -39,9 +34,6 @@ using namespace std;
 using namespace triagens;
 using namespace arangodb;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          static private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the active instance of the editor
@@ -49,9 +41,6 @@ using namespace arangodb;
 
 static std::atomic<V8LineEditor*> SINGLETON(nullptr);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signal handler for CTRL-C
@@ -59,12 +48,12 @@ static std::atomic<V8LineEditor*> SINGLETON(nullptr);
 
 #ifdef _WIN32
 
-static bool SignalHandler (DWORD eventType) {
+static bool SignalHandler(DWORD eventType) {
   switch (eventType) {
-    case CTRL_BREAK_EVENT: 
-    case CTRL_C_EVENT: 
-    case CTRL_CLOSE_EVENT: 
-    case CTRL_LOGOFF_EVENT: 
+    case CTRL_BREAK_EVENT:
+    case CTRL_C_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT: {
       // get the instance of the console
       auto instance = SINGLETON.load();
@@ -83,24 +72,21 @@ static bool SignalHandler (DWORD eventType) {
 
       return true;
     }
-    default: {
-      return true;
-    }
-  } 
+    default: { return true; }
+  }
 }
 
 #else
 
-static void SignalHandler (int signal) {
-
+static void SignalHandler(int signal) {
   // get the instance of the console
   auto instance = SINGLETON.load();
 
   if (instance != nullptr) {
     if (instance->isExecutingCommand()) {
       v8::Isolate* isolate = instance->isolate();
-  
-      if (! v8::V8::IsExecutionTerminating(isolate)) {
+
+      if (!v8::V8::IsExecutionTerminating(isolate)) {
         v8::V8::TerminateExecution(isolate);
       }
     }
@@ -111,355 +97,318 @@ static void SignalHandler (int signal) {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class V8Completer
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8Completer
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-  class V8Completer : public Completer {
+class V8Completer : public Completer {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  V8Completer() {}
 
-    public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  ~V8Completer() {}
 
-      V8Completer () {
-      }
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+  bool isComplete(std::string const& source, size_t lineno) override final {
+    int openParen = 0;
+    int openBrackets = 0;
+    int openBraces = 0;
+    int openStrings =
+        0;  // only used for template strings, which can be multi-line
+    int openComments = 0;
 
-      ~V8Completer () {
-      }
+    enum line_parse_state_e {
+      NORMAL,            // start
+      NORMAL_1,          // from NORMAL: seen a single /
+      DOUBLE_QUOTE,      // from NORMAL: seen a single "
+      DOUBLE_QUOTE_ESC,  // from DOUBLE_QUOTE: seen a backslash
+      SINGLE_QUOTE,      // from NORMAL: seen a single '
+      SINGLE_QUOTE_ESC,  // from SINGLE_QUOTE: seen a backslash
+      BACKTICK,          // from NORMAL: seen a single `
+      BACKTICK_ESC,      // from BACKTICK: seen a backslash
+      MULTI_COMMENT,     // from NORMAL_1: seen a *
+      MULTI_COMMENT_1,   // from MULTI_COMMENT, seen a *
+      SINGLE_COMMENT     // from NORMAL_1; seen a /
+    };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Completer methods
-// -----------------------------------------------------------------------------
+    char const* ptr = source.c_str();
+    char const* end = ptr + source.length();
+    line_parse_state_e state = NORMAL;
 
-    public: 
-    
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+    while (ptr < end) {
+      if (state == DOUBLE_QUOTE) {
+        if (*ptr == '\\') {
+          state = DOUBLE_QUOTE_ESC;
+        } else if (*ptr == '"') {
+          state = NORMAL;
+        }
 
-      bool isComplete (std::string const& source, size_t lineno) override final {
-        int openParen    = 0;
-        int openBrackets = 0;
-        int openBraces   = 0;
-        int openStrings  = 0;  // only used for template strings, which can be multi-line
-        int openComments = 0;
+        ++ptr;
+      } else if (state == DOUBLE_QUOTE_ESC) {
+        state = DOUBLE_QUOTE;
+        ptr++;
+      } else if (state == SINGLE_QUOTE) {
+        if (*ptr == '\\') {
+          state = SINGLE_QUOTE_ESC;
+        } else if (*ptr == '\'') {
+          state = NORMAL;
+        }
 
-        enum line_parse_state_e {
-          NORMAL,             // start
-          NORMAL_1,           // from NORMAL: seen a single /
-          DOUBLE_QUOTE,       // from NORMAL: seen a single "
-          DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
-          SINGLE_QUOTE,       // from NORMAL: seen a single '
-          SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
-          BACKTICK,           // from NORMAL: seen a single `
-          BACKTICK_ESC,       // from BACKTICK: seen a backslash
-          MULTI_COMMENT,      // from NORMAL_1: seen a *
-          MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
-          SINGLE_COMMENT      // from NORMAL_1; seen a /
-        };
+        ++ptr;
+      } else if (state == SINGLE_QUOTE_ESC) {
+        state = SINGLE_QUOTE;
+        ptr++;
+      } else if (state == BACKTICK) {
+        if (*ptr == '\\') {
+          state = BACKTICK_ESC;
+        } else if (*ptr == '`') {
+          state = NORMAL;
+          --openStrings;
+        }
 
-        char const* ptr = source.c_str();
-        char const* end = ptr + source.length();
-        line_parse_state_e state = NORMAL;
+        ++ptr;
+      } else if (state == BACKTICK_ESC) {
+        state = BACKTICK;
+        ptr++;
+      } else if (state == MULTI_COMMENT) {
+        if (*ptr == '*') {
+          state = MULTI_COMMENT_1;
+        }
 
-        while (ptr < end) {
-          if (state == DOUBLE_QUOTE) {
-            if (*ptr == '\\') {
-              state = DOUBLE_QUOTE_ESC;
-            }
-            else if (*ptr == '"') {
-              state = NORMAL;
-            }
+        ++ptr;
+      } else if (state == MULTI_COMMENT_1) {
+        if (*ptr == '/') {
+          state = NORMAL;
+          --openComments;
+        }
 
+        ++ptr;
+      } else if (state == SINGLE_COMMENT) {
+        ++ptr;
+
+        if (ptr == end || *ptr == '\n') {
+          state = NORMAL;
+          --openComments;
+        }
+      } else if (state == NORMAL_1) {
+        switch (*ptr) {
+          case '/':
+            state = SINGLE_COMMENT;
+            ++openComments;
             ++ptr;
-          }
-          else if (state == DOUBLE_QUOTE_ESC) {
+            break;
+
+          case '*':
+            state = MULTI_COMMENT;
+            ++openComments;
+            ++ptr;
+            break;
+
+          default:
+            state = NORMAL;  // try again, do not change ptr
+            break;
+        }
+      } else {
+        switch (*ptr) {
+          case '"':
             state = DOUBLE_QUOTE;
-            ptr++;
-          }
-          else if (state == SINGLE_QUOTE) {
-            if (*ptr == '\\') {
-              state = SINGLE_QUOTE_ESC;
-            }
-            else if (*ptr == '\'') {
-              state = NORMAL;
-            }
+            break;
 
-            ++ptr;
-          }
-          else if (state == SINGLE_QUOTE_ESC) {
+          case '\'':
             state = SINGLE_QUOTE;
-            ptr++;
-          }
-          else if (state == BACKTICK) {
-            if (*ptr == '\\') {
-              state = BACKTICK_ESC;
-            }
-            else if (*ptr == '`') {
-              state = NORMAL;
-              --openStrings;
-            }
+            break;
 
-            ++ptr;
-          }
-          else if (state == BACKTICK_ESC) {
+          case '`':
             state = BACKTICK;
-            ptr++;
-          }
-          else if (state == MULTI_COMMENT) {
-            if (*ptr == '*') {
-              state = MULTI_COMMENT_1;
-            }
+            ++openStrings;
+            break;
 
+          case '/':
+            state = NORMAL_1;
+            break;
+
+          case '(':
+            ++openParen;
+            break;
+
+          case ')':
+            --openParen;
+            break;
+
+          case '[':
+            ++openBrackets;
+            break;
+
+          case ']':
+            --openBrackets;
+            break;
+
+          case '{':
+            ++openBraces;
+            break;
+
+          case '}':
+            --openBraces;
+            break;
+
+          case '\\':
             ++ptr;
-          }
-          else if (state == MULTI_COMMENT_1) {
-            if (*ptr == '/') {
-              state = NORMAL;
-              --openComments;
-            }
-
-            ++ptr;
-          }
-          else if (state == SINGLE_COMMENT) {
-            ++ptr;
-
-            if (ptr == end || *ptr == '\n') {
-              state = NORMAL;
-              --openComments;
-            }
-          }
-          else if (state == NORMAL_1) {
-            switch (*ptr) {
-              case '/':
-                state = SINGLE_COMMENT;
-                ++openComments;
-                ++ptr;
-                break;
-
-              case '*':
-                state = MULTI_COMMENT;
-                ++openComments;
-                ++ptr;
-                break;
-
-              default:
-                state = NORMAL; // try again, do not change ptr
-                break;
-            }
-          }
-          else {
-            switch (*ptr) {
-              case '"':
-                state = DOUBLE_QUOTE;
-                break;
-
-              case '\'':
-                state = SINGLE_QUOTE;
-                break;
-
-              case '`':
-                state = BACKTICK;
-                ++openStrings;
-                break;
-
-              case '/':
-                state = NORMAL_1;
-                break;
-
-              case '(':
-                ++openParen;
-                break;
-
-              case ')':
-                --openParen;
-                break;
-
-              case '[':
-                ++openBrackets;
-                break;
-
-              case ']':
-                --openBrackets;
-                break;
-
-              case '{':
-                ++openBraces;
-                break;
-
-              case '}':
-                --openBraces;
-                break;
-
-              case '\\':
-                ++ptr;
-                break;
-            }
-
-            ++ptr;
-          }
+            break;
         }
 
-        return (openParen <= 0 && openBrackets <= 0 && openBraces <= 0 && openStrings <= 0 && openComments <= 0);
+        ++ptr;
+      }
+    }
+
+    return (openParen <= 0 && openBrackets <= 0 && openBraces <= 0 &&
+            openStrings <= 0 && openComments <= 0);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
+
+  vector<string> alternatives(char const* text) override final {
+    vector<string> result;
+
+    // locate global object or sub-object
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    v8::Handle<v8::Object> current = context->Global();
+    string path;
+    char* prefix;
+
+    if (*text != '\0') {
+      TRI_vector_string_t splitted = TRI_SplitString(text, '.');
+
+      if (1 < splitted._length) {
+        for (size_t i = 0; i < splitted._length - 1; ++i) {
+          v8::Handle<v8::String> name = TRI_V8_STRING(splitted._buffer[i]);
+
+          if (!current->Has(name)) {
+            TRI_DestroyVectorString(&splitted);
+            return result;
+          }
+
+          v8::Handle<v8::Value> val = current->Get(name);
+
+          if (!val->IsObject()) {
+            TRI_DestroyVectorString(&splitted);
+            return result;
+          }
+
+          current = val->ToObject();
+          path = path + splitted._buffer[i] + ".";
+        }
+
+        prefix = TRI_DuplicateString(splitted._buffer[splitted._length - 1]);
+      } else {
+        prefix = TRI_DuplicateString(text);
       }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+      TRI_DestroyVectorString(&splitted);
+    } else {
+      prefix = TRI_DuplicateString(text);
+    }
 
-      vector<string> alternatives (char const * text) override final {
-        vector<string> result;
+    v8::HandleScope scope(isolate);
 
-        // locate global object or sub-object
-        v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    // compute all possible completions
+    v8::Handle<v8::Array> properties;
+    v8::Handle<v8::String> cpl = TRI_V8_ASCII_STRING("_COMPLETIONS");
 
-        v8::Local<v8::Context> context = isolate->GetCurrentContext();
-        v8::Handle<v8::Object> current = context->Global();
-        string path;
-        char* prefix;
+    if (current->HasOwnProperty(cpl)) {
+      v8::Handle<v8::Value> funcVal = current->Get(cpl);
 
-        if (*text != '\0') {
-          TRI_vector_string_t splitted = TRI_SplitString(text, '.');
+      if (funcVal->IsFunction()) {
+        v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
+        v8::Handle<v8::Value> args;
 
-          if (1 < splitted._length) {
-            for (size_t i = 0;  i < splitted._length - 1;  ++i) {
-              v8::Handle<v8::String> name = TRI_V8_STRING(splitted._buffer[i]);
-
-              if (! current->Has(name)) {
-                TRI_DestroyVectorString(&splitted);
-                return result;
-              }
-
-              v8::Handle<v8::Value> val = current->Get(name);
-
-              if (! val->IsObject()) {
-                TRI_DestroyVectorString(&splitted);
-                return result;
-              }
-
-              current = val->ToObject();
-              path = path + splitted._buffer[i] + ".";
-            }
-
-            prefix = TRI_DuplicateString(splitted._buffer[splitted._length - 1]);
-          }
-          else {
-            prefix = TRI_DuplicateString(text);
-          }
-
-          TRI_DestroyVectorString(&splitted);
-        }
-        else {
-          prefix = TRI_DuplicateString(text);
-        }
-
-        v8::HandleScope scope(isolate);
-
-        // compute all possible completions
-        v8::Handle<v8::Array> properties;
-        v8::Handle<v8::String> cpl = TRI_V8_ASCII_STRING("_COMPLETIONS");
-
-        if (current->HasOwnProperty(cpl)) {
-          v8::Handle<v8::Value> funcVal = current->Get(cpl);
-
-          if (funcVal->IsFunction()) {
-            v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
-            v8::Handle<v8::Value> args;
-
-            try {
-              v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
-
-              if (cpls->IsArray()) {
-                properties = v8::Handle<v8::Array>::Cast(cpls);
-              }
-            }
-            catch (...) {
-              // silently ignore errors here
-            }
-          }
-        }
-        else {
-          properties = current->GetPropertyNames();
-        }
-
-        // locate
         try {
-          if (! properties.IsEmpty()) {
-            uint32_t const n = properties->Length();
-            result.reserve(static_cast<size_t>(n));
+          v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
 
-            for (uint32_t i = 0;  i < n;  ++i) {
-              v8::Handle<v8::Value> v = properties->Get(i);
+          if (cpls->IsArray()) {
+            properties = v8::Handle<v8::Array>::Cast(cpls);
+          }
+        } catch (...) {
+          // silently ignore errors here
+        }
+      }
+    } else {
+      properties = current->GetPropertyNames();
+    }
 
-              TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
-              char const* s = *str;
+    // locate
+    try {
+      if (!properties.IsEmpty()) {
+        uint32_t const n = properties->Length();
+        result.reserve(static_cast<size_t>(n));
 
-              if (s != nullptr && *s) {
-                string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
-                string name = path + s + suffix;
+        for (uint32_t i = 0; i < n; ++i) {
+          v8::Handle<v8::Value> v = properties->Get(i);
 
-                if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
-                  result.emplace_back(name);
-                }
-              }
+          TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
+          char const* s = *str;
+
+          if (s != nullptr && *s) {
+            string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+            string name = path + s + suffix;
+
+            if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
+              result.emplace_back(name);
             }
           }
         }
-        catch (...) {
-          // ignore errors in case of OOM
-        }
-
-        TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
-        return result;
       }
-  };
+    } catch (...) {
+      // ignore errors in case of OOM
+    }
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
+    return result;
+  }
+};
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class V8LineEditor
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8LineEditor::V8LineEditor (v8::Isolate* isolate,
-                            v8::Handle<v8::Context> context, 
-                            std::string const& history) 
-  : LineEditor(), 
-    _isolate(isolate),
-    _context(context),  
-    _executingCommand(false) {
-
+V8LineEditor::V8LineEditor(v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
+                           std::string const& history)
+    : LineEditor(),
+      _isolate(isolate),
+      _context(context),
+      _executingCommand(false) {
   // register global instance
   TRI_ASSERT(SINGLETON.load() == nullptr);
   SINGLETON.store(this);
 
   // create shell
   _shell = ShellBase::buildShell(history, new V8Completer());
-  
-  // handle control-c
+
+// handle control-c
 #ifdef _WIN32
-  int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE) SignalHandler, true);
+  int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE)SignalHandler, true);
 
   if (res == 0) {
     LOG_ERROR("unable to install signal handler");
@@ -483,13 +432,10 @@ V8LineEditor::V8LineEditor (v8::Isolate* isolate,
 /// @brief destroys the editor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8LineEditor::~V8LineEditor () {
-
+V8LineEditor::~V8LineEditor() {
   // unregister global instance
   TRI_ASSERT(SINGLETON.load() != nullptr);
   SINGLETON.store(nullptr);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

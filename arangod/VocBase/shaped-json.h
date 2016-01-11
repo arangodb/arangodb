@@ -1,12 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shaped JSON objects
-///
-/// @file
-/// Declaration for shaped JSON objects.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_SHAPED_JSON_H
-#define ARANGODB_VOC_BASE_SHAPED_JSON_H 1
+#ifndef ARANGOD_VOC_BASE_SHAPED_JSON_H
+#define ARANGOD_VOC_BASE_SHAPED_JSON_H 1
 
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
@@ -165,17 +158,11 @@
 /// @copydetails TRI_homogeneous_sized_list_shape_t
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_memory_zone_s;
 struct TRI_string_buffer_s;
 class VocShaper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of short strings
@@ -187,15 +174,9 @@ class VocShaper;
 /// @brief indicator for variable sized data
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SHAPE_SIZE_VARIABLE ((TRI_shape_size_t) -1)
+#define TRI_SHAPE_SIZE_VARIABLE ((TRI_shape_size_t)-1)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        JSON SHAPE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json storage type of a shape identifier
@@ -222,18 +203,17 @@ typedef uint64_t TRI_shape_size_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_SHAPE_ILLEGAL                = 0,
-  TRI_SHAPE_NULL                   = 1,
-  TRI_SHAPE_BOOLEAN                = 2,
-  TRI_SHAPE_NUMBER                 = 3,
-  TRI_SHAPE_SHORT_STRING           = 4,
-  TRI_SHAPE_LONG_STRING            = 5,
-  TRI_SHAPE_ARRAY                  = 6,
-  TRI_SHAPE_LIST                   = 7,
-  TRI_SHAPE_HOMOGENEOUS_LIST       = 8,
+  TRI_SHAPE_ILLEGAL = 0,
+  TRI_SHAPE_NULL = 1,
+  TRI_SHAPE_BOOLEAN = 2,
+  TRI_SHAPE_NUMBER = 3,
+  TRI_SHAPE_SHORT_STRING = 4,
+  TRI_SHAPE_LONG_STRING = 5,
+  TRI_SHAPE_ARRAY = 6,
+  TRI_SHAPE_LIST = 7,
+  TRI_SHAPE_HOMOGENEOUS_LIST = 8,
   TRI_SHAPE_HOMOGENEOUS_SIZED_LIST = 9
-}
-TRI_shape_type_e;
+} TRI_shape_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json storage type of a TRI_shape_type_e
@@ -276,27 +256,26 @@ typedef uint32_t TRI_shape_length_list_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shape_s {
-  TRI_shape_sid_t    _sid;
-  TRI_shape_type_t   _type;
-  TRI_shape_size_t   _size;     // total size of the shape
-  TRI_shape_size_t   _dataSize; // in case of fixed sized shaped or TRI_SHAPE_SIZE_VARIABLE
-}
-TRI_shape_t;
+  TRI_shape_sid_t _sid;
+  TRI_shape_type_t _type;
+  TRI_shape_size_t _size;  // total size of the shape
+  TRI_shape_size_t
+      _dataSize;  // in case of fixed sized shaped or TRI_SHAPE_SIZE_VARIABLE
+} TRI_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief entry/value structure
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shape_value_s {
-  TRI_shape_aid_t    _aid;         // attribute identifier
-  TRI_shape_sid_t    _sid;         // shape identifier of the attribute
-  TRI_shape_type_t   _type;        // type of the attribute
-  bool               _fixedSized;  // true of all element of this shape have the same size
-  TRI_shape_size_t   _size;        // size of the data block
+  TRI_shape_aid_t _aid;    // attribute identifier
+  TRI_shape_sid_t _sid;    // shape identifier of the attribute
+  TRI_shape_type_t _type;  // type of the attribute
+  bool _fixedSized;  // true of all element of this shape have the same size
+  TRI_shape_size_t _size;  // size of the data block
 
-  char*              _value;
-}
-TRI_shape_value_t;
+  char* _value;
+} TRI_shape_value_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape, null
@@ -330,10 +309,7 @@ TRI_shape_value_t;
 /// There is no corresponding shaped JSON object.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_null_shape_s {
-  TRI_shape_t base;
-}
-TRI_null_shape_t;
+typedef struct TRI_null_shape_s { TRI_shape_t base; } TRI_null_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape, boolean
@@ -375,10 +351,7 @@ TRI_null_shape_t;
 /// </table>
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_boolean_shape_s {
-  TRI_shape_t base;
-}
-TRI_boolean_shape_t;
+typedef struct TRI_boolean_shape_s { TRI_shape_t base; } TRI_boolean_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape, number
@@ -420,10 +393,7 @@ TRI_boolean_shape_t;
 /// </table>
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_number_shape_s {
-  TRI_shape_t base;
-}
-TRI_number_shape_t;
+typedef struct TRI_number_shape_s { TRI_shape_t base; } TRI_number_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape, short string
@@ -445,12 +415,14 @@ TRI_number_shape_t;
 ///   <tr>
 ///     <td>@c TRI_shape_size_t</td>
 ///     <td>_size</td>
-///     <td>total size of the shape, always sizeof(TRI_short_string_shape_t)</td>
+///     <td>total size of the shape, always
+///     sizeof(TRI_short_string_shape_t)</td>
 ///   </tr>
 ///   <tr>
 ///     <td>@c TRI_shape_size_t</td>
 ///     <td>_dataSize</td>
-///     <td>always sizeof(TRI_shape_length_short_string_t) + @c TRI_SHAPE_SHORT_STRING_CUT</td>
+///     <td>always sizeof(TRI_shape_length_short_string_t) + @c
+///     TRI_SHAPE_SHORT_STRING_CUT</td>
 ///   </tr>
 /// </table>
 ///
@@ -472,8 +444,7 @@ TRI_number_shape_t;
 
 typedef struct TRI_short_string_shape_s {
   TRI_shape_t base;
-}
-TRI_short_string_shape_t;
+} TRI_short_string_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape, long string
@@ -522,8 +493,7 @@ TRI_short_string_shape_t;
 
 typedef struct TRI_long_string_shape_s {
   TRI_shape_t base;
-}
-TRI_long_string_shape_t;
+} TRI_long_string_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape, array
@@ -557,7 +527,8 @@ TRI_long_string_shape_t;
 ///   <tr>
 ///     <td>@c TRI_shape_size_t</td>
 ///     <td>_dataSize</td>
-///     <td>eitder @c TRI_SHAPE_SIZE_VARIABLE or tde size of tde data for fixed sized arrays</td>
+///     <td>eitder @c TRI_SHAPE_SIZE_VARIABLE or tde size of tde data for fixed
+///     sized arrays</td>
 ///   </tr>
 ///   <tr>
 ///     <td>@c TRI_shape_size_t</td>
@@ -627,8 +598,7 @@ typedef struct TRI_array_shape_s {
   // TRI_shape_sid_t _sids[_fixedEntries + _variableEntries]
   // TRI_shape_aid_t _aids[_fixedEntries + _variableEntries]
   // TRI_shape_size_t _offsets[_fixedEntries + 1]
-}
-TRI_array_shape_t;
+} TRI_array_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape, in-homogeneous list
@@ -699,15 +669,13 @@ TRI_array_shape_t;
 /// the beginning of the shaped JSON.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_list_shape_s {
-  TRI_shape_t base;
-}
-TRI_list_shape_t;
+typedef struct TRI_list_shape_s { TRI_shape_t base; } TRI_list_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape, homogeneous list, in-homogeneous size
 ///
-/// A @c TRI_homogeneous_list_shape_t describes a homogeneous list value. That is
+/// A @c TRI_homogeneous_list_shape_t describes a homogeneous list value. That
+/// is
 /// to say, all list elements have the same shape, but possible different sizes.
 ///
 /// <table border>
@@ -776,8 +744,7 @@ typedef struct TRI_homogeneous_list_shape_s {
   TRI_shape_t base;
 
   TRI_shape_sid_t _sidEntry;
-}
-TRI_homogeneous_list_shape_t;
+} TRI_homogeneous_list_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape, homogeneous list, homogeneous size
@@ -853,8 +820,7 @@ typedef struct TRI_homogeneous_sized_list_shape_s {
 
   TRI_shape_sid_t _sidEntry;
   TRI_shape_size_t _sizeEntry;
-}
-TRI_homogeneous_sized_list_shape_t;
+} TRI_homogeneous_sized_list_shape_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shaped json
@@ -863,8 +829,7 @@ TRI_homogeneous_sized_list_shape_t;
 typedef struct TRI_shaped_json_s {
   TRI_shape_sid_t _sid;
   TRI_blob_t _data;
-}
-TRI_shaped_json_t;
+} TRI_shaped_json_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shaped json sub-object
@@ -877,20 +842,11 @@ typedef struct TRI_shaped_sub_s {
     struct {
       uint32_t _offset;
       uint32_t _length;
-    }
-    _position;
-  }
-  _value;
-}
-TRI_shaped_sub_t;
+    } _position;
+  } _value;
+} TRI_shaped_sub_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    ATTRIBUTE PATH
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json storage type of an attribute path
@@ -908,131 +864,110 @@ typedef struct TRI_shape_path_s {
   uint32_t _nameLength;  // include trailing '\0'
   // TRI_shape_aid_t _aids[];
   // char _name[];
-}
-TRI_shape_path_t;
+} TRI_shape_path_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyShapedJson (struct TRI_memory_zone_s*, TRI_shaped_json_t*);
+void TRI_DestroyShapedJson(struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShapedJson (struct TRI_memory_zone_s*,
-                         TRI_shaped_json_t*);
+void TRI_FreeShapedJson(struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a list of TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortShapeValues (TRI_shape_value_t* values,
-                          size_t n);
+void TRI_SortShapeValues(TRI_shape_value_t* values, size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VelocyPack object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonVelocyPack (VocShaper*,
-                                             VPackSlice const&,
-                                             bool);
+TRI_shaped_json_t* TRI_ShapedJsonVelocyPack(VocShaper*, VPackSlice const&,
+                                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a json object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonJson (VocShaper*,
-                                       TRI_json_t const*,
-                                       bool);
+TRI_shaped_json_t* TRI_ShapedJsonJson(VocShaper*, TRI_json_t const*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a shaped json object into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonShapedJson (VocShaper*,
-                                TRI_shaped_json_t const*);
+TRI_json_t* TRI_JsonShapedJson(VocShaper*, TRI_shaped_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json to a string buffer, without the outer braces
 /// this can only be used to stringify shapes of type array
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename T>
-bool TRI_StringifyArrayShapedJson (T*,
-                                   struct TRI_string_buffer_s*,
-                                   TRI_shaped_json_t const*,
-                                   bool);
+template <typename T>
+bool TRI_StringifyArrayShapedJson(T*, struct TRI_string_buffer_s*,
+                                  TRI_shaped_json_t const*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StringifyAugmentedShapedJson (VocShaper*,
-                                       struct TRI_string_buffer_s*,
-                                       TRI_shaped_json_t const*,
-                                       TRI_json_t const*);
+bool TRI_StringifyAugmentedShapedJson(VocShaper*, struct TRI_string_buffer_s*,
+                                      TRI_shaped_json_t const*,
+                                      TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the length of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_LengthListShapedJson (TRI_list_shape_t const*,
-                                 TRI_shaped_json_t const*);
+size_t TRI_LengthListShapedJson(TRI_list_shape_t const*,
+                                TRI_shaped_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the n.th element of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AtListShapedJson (TRI_list_shape_t const* shape,
-                           TRI_shaped_json_t const* json,
-                           size_t position,
-                           TRI_shaped_json_t* result);
+bool TRI_AtListShapedJson(TRI_list_shape_t const* shape,
+                          TRI_shaped_json_t const* json, size_t position,
+                          TRI_shaped_json_t* result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the length of a homogeneous list
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_LengthHomogeneousListShapedJson (TRI_homogeneous_list_shape_t const* shape,
-                                            TRI_shaped_json_t const* json);
+size_t TRI_LengthHomogeneousListShapedJson(
+    TRI_homogeneous_list_shape_t const* shape, TRI_shaped_json_t const* json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the n.th element of a homogeneous list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AtHomogeneousListShapedJson (TRI_homogeneous_list_shape_t const* shape,
-                                      TRI_shaped_json_t const* json,
-                                      size_t position,
-                                      TRI_shaped_json_t* result);
+bool TRI_AtHomogeneousListShapedJson(TRI_homogeneous_list_shape_t const* shape,
+                                     TRI_shaped_json_t const* json,
+                                     size_t position,
+                                     TRI_shaped_json_t* result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the length of a homogeneous sized list
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_LengthHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t const* shape,
-                                                 TRI_shaped_json_t const*);
+size_t TRI_LengthHomogeneousSizedListShapedJson(
+    TRI_homogeneous_sized_list_shape_t const* shape, TRI_shaped_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the n.th element of a homogeneous sized list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t const* shape,
-                                           TRI_shaped_json_t const*,
-                                           size_t position,
-                                           TRI_shaped_json_t*);
+bool TRI_AtHomogeneousSizedListShapedJson(
+    TRI_homogeneous_sized_list_shape_t const* shape, TRI_shaped_json_t const*,
+    size_t position, TRI_shaped_json_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a TRI_shape_t for debugging
@@ -1040,9 +975,7 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 
 #ifdef DEBUG_JSON_SHAPER
 
-void TRI_PrintShape (VocShaper*,
-                     TRI_shape_t const* shape,
-                     int indent);
+void TRI_PrintShape(VocShaper*, TRI_shape_t const* shape, int indent);
 
 #endif
 
@@ -1052,37 +985,33 @@ void TRI_PrintShape (VocShaper*,
 /// variables passed by reference
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StringValueShapedJson (TRI_shape_t const*,
-                                char const*,
-                                char**,
-                                size_t*);
+bool TRI_StringValueShapedJson(TRI_shape_t const*, char const*, char**,
+                               size_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over a shaped json array, using a callback function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IterateShapeDataArray (VocShaper*,
-                                TRI_shape_t const*,
-                                char const*,
-                                bool (*)(VocShaper*, TRI_shape_t const*, char const*, char const*, uint64_t, void*),
-                                void*);
+void TRI_IterateShapeDataArray(VocShaper*, TRI_shape_t const*, char const*,
+                               bool (*)(VocShaper*, TRI_shape_t const*,
+                                        char const*, char const*, uint64_t,
+                                        void*),
+                               void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over a shaped json list, using a callback function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IterateShapeDataList (VocShaper*,
-                               TRI_shape_t const*,
-                               char const*,
-                               bool (*)(VocShaper*, TRI_shape_t const*, char const*, uint64_t, void*),
-                               void*);
+void TRI_IterateShapeDataList(VocShaper*, TRI_shape_t const*, char const*,
+                              bool (*)(VocShaper*, TRI_shape_t const*,
+                                       char const*, uint64_t, void*),
+                              void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a list of TRI_shape_value_t for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintShapeValues (TRI_shape_value_t*,
-                           size_t);
+void TRI_PrintShapeValues(TRI_shape_value_t*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash and Equal comparison for a vector of TRI_shaped_json_t
@@ -1090,70 +1019,64 @@ void TRI_PrintShapeValues (TRI_shape_value_t*,
 
 namespace std {
 
-  template<> struct hash<std::vector<TRI_shaped_json_t>> {
-    size_t operator () (std::vector<TRI_shaped_json_t> const& x) const {
-      std::hash<TRI_shape_sid_t> sidHash;
-      size_t res = 0xdeadbeef;
-      for (auto& el : x) {
-        res ^= sidHash(el._sid);
-        if (el._data.data != nullptr) {
-          res ^= fasthash64(el._data.data, el._data.length, 0xdeadbeef);
-        }
+template <>
+struct hash<std::vector<TRI_shaped_json_t>> {
+  size_t operator()(std::vector<TRI_shaped_json_t> const& x) const {
+    std::hash<TRI_shape_sid_t> sidHash;
+    size_t res = 0xdeadbeef;
+    for (auto& el : x) {
+      res ^= sidHash(el._sid);
+      if (el._data.data != nullptr) {
+        res ^= fasthash64(el._data.data, el._data.length, 0xdeadbeef);
       }
-      return res;
     }
-  };
+    return res;
+  }
+};
 
-  template<> struct equal_to<std::vector<TRI_shaped_json_t>> {
-    bool operator () (std::vector<TRI_shaped_json_t> const& a,
-                      std::vector<TRI_shaped_json_t> const& b) const {
-      size_t size = a.size();
-      if (size != b.size()) {
+template <>
+struct equal_to<std::vector<TRI_shaped_json_t>> {
+  bool operator()(std::vector<TRI_shaped_json_t> const& a,
+                  std::vector<TRI_shaped_json_t> const& b) const {
+    size_t size = a.size();
+    if (size != b.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < size; ++i) {
+      if (a[i]._sid != b[i]._sid) {
         return false;
       }
-      for (size_t i = 0; i < size; ++i) {
+      if (a[i]._data.data == nullptr || b[i]._data.data == nullptr) {
         if (a[i]._sid != b[i]._sid) {
+          // this should be a TRI_SHAPE_SID_NULL value or TRI_SHAPE_SID_ILLEGAL
           return false;
         }
-        if (a[i]._data.data == nullptr || b[i]._data.data == nullptr) {
-          if (a[i]._sid != b[i]._sid) {
-            // this should be a TRI_SHAPE_SID_NULL value or TRI_SHAPE_SID_ILLEGAL
-            return false;
-          }
-          // We cannot short circuit here. Fast forward to next i
-          continue;
-        }
-        if (a[i]._data.length != b[i]._data.length) {
-          return false;
-        }
-        if (memcmp(a[i]._data.data, b[i]._data.data, a[i]._data.length) != 0) {
-          return false;
-        }
+        // We cannot short circuit here. Fast forward to next i
+        continue;
       }
-      return true;
+      if (a[i]._data.length != b[i]._data.length) {
+        return false;
+      }
+      if (memcmp(a[i]._data.data, b[i]._data.data, a[i]._data.length) != 0) {
+        return false;
+      }
     }
-  };
+    return true;
+  }
+};
 
-  template<>
-  class default_delete<TRI_shaped_json_t> {
-    public:
+template <>
+class default_delete<TRI_shaped_json_t> {
+ public:
+  void operator()(TRI_shaped_json_t* json) {
+    if (json != nullptr) {
+      TRI_FreeShapedJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+  }
+};
 
-      void operator() (TRI_shaped_json_t* json) {
-        if (json != nullptr) {
-          TRI_FreeShapedJson(TRI_UNKNOWN_MEM_ZONE, json);
-        }
-      }
-  };
-
-} //closes namespace std
+}  // closes namespace std
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

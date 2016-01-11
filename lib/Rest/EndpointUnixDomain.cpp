@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoint, Unix domain socket
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EndpointUnixDomain.h"
@@ -41,45 +35,37 @@ using namespace triagens::rest;
 
 #ifdef TRI_HAVE_LINUX_SOCKETS
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                EndpointUnixDomain
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a Unix socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointUnixDomain::EndpointUnixDomain (const Endpoint::EndpointType type,
-                                        const std::string& specification,
-                                        int listenBacklog,
-                                        const std::string& path) :
-    Endpoint(type, DOMAIN_UNIX, ENCRYPTION_NONE, specification, listenBacklog),
-    _path(path) {
-}
+EndpointUnixDomain::EndpointUnixDomain(const Endpoint::EndpointType type,
+                                       const std::string& specification,
+                                       int listenBacklog,
+                                       const std::string& path)
+    : Endpoint(type, DOMAIN_UNIX, ENCRYPTION_NONE, specification,
+               listenBacklog),
+      _path(path) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a Unix socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointUnixDomain::~EndpointUnixDomain () {
+EndpointUnixDomain::~EndpointUnixDomain() {
   if (_connected) {
     disconnect();
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeout) {
+TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
+                                         double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
@@ -95,10 +81,11 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     int error = 0;
     // delete previously existing socket file
     if (FileUtils::remove(_path, &error)) {
-      LOG_WARNING("deleted previously existing socket file '%s'", _path.c_str());
-    }
-    else {
-      LOG_ERROR("unable to delete previously existing socket file '%s'", _path.c_str());
+      LOG_WARNING("deleted previously existing socket file '%s'",
+                  _path.c_str());
+    } else {
+      LOG_ERROR("unable to delete previously existing socket file '%s'",
+                _path.c_str());
 
       return listenSocket;
     }
@@ -117,7 +104,8 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
   snprintf(address.sun_path, 100, "%s", _path.c_str());
 
   if (_type == ENDPOINT_SERVER) {
-    int result = TRI_bind(listenSocket, (struct sockaddr*) &address, SUN_LEN(&address));
+    int result =
+        TRI_bind(listenSocket, (struct sockaddr*)&address, SUN_LEN(&address));
     if (result != 0) {
       // bind error
       LOG_ERROR("bind() failed with %d (%s)", errno, strerror(errno));
@@ -127,7 +115,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     }
 
     // listen for new connection, executed for server endpoints only
-    LOG_TRACE("using backlog size %d", (int) _listenBacklog);
+    LOG_TRACE("using backlog size %d", (int)_listenBacklog);
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
@@ -144,7 +132,8 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     // set timeout
     setTimeout(listenSocket, connectTimeout);
 
-    if (TRI_connect(listenSocket, (const struct sockaddr*) &address, SUN_LEN(&address)) != 0) {
+    if (TRI_connect(listenSocket, (const struct sockaddr*)&address,
+                    SUN_LEN(&address)) != 0) {
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -171,7 +160,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
 /// @brief disconnect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-void EndpointUnixDomain::disconnect () {
+void EndpointUnixDomain::disconnect() {
   if (_connected) {
     TRI_ASSERT(TRI_isvalidsocket(_socket));
 
@@ -182,7 +171,7 @@ void EndpointUnixDomain::disconnect () {
 
     if (_type == ENDPOINT_SERVER) {
       int error = 0;
-      if (! FileUtils::remove(_path, &error)) {
+      if (!FileUtils::remove(_path, &error)) {
         LOG_TRACE("unable to remove socket file '%s'", _path.c_str());
       }
     }
@@ -193,17 +182,10 @@ void EndpointUnixDomain::disconnect () {
 /// @brief init an incoming connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointUnixDomain::initIncoming (TRI_socket_t incoming) {
+bool EndpointUnixDomain::initIncoming(TRI_socket_t incoming) {
   return setSocketFlags(incoming);
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

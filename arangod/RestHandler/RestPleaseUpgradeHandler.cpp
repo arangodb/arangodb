@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief please upgrade handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestPleaseUpgradeHandler.h"
@@ -33,36 +28,27 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestPleaseUpgradeHandler::RestPleaseUpgradeHandler (HttpRequest* request)
-  : HttpHandler(request) {
-}
+RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
+    : HttpHandler(request) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestPleaseUpgradeHandler::isDirect () const {
-  return true;
-}
+bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestPleaseUpgradeHandler::execute () {
-  _response = createResponse(HttpResponse::OK);
+HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
+  createResponse(HttpResponse::OK);
   _response->setContentType("text/plain; charset=utf-8");
 
   auto& buffer = _response->body();
@@ -83,14 +69,6 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestPleaseUpgradeHandler::handleError (const Exception&) {
-}
+void RestPleaseUpgradeHandler::handleError(const Exception&) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

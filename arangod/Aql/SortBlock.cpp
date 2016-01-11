@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AQL SortBlock
-///
-/// @file 
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/SortBlock.h"
@@ -37,16 +33,9 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class SortBlock
-// -----------------------------------------------------------------------------
-        
-SortBlock::SortBlock (ExecutionEngine* engine,
-                      SortNode const* en)
-  : ExecutionBlock(engine, en),
-    _sortRegisters(),
-    _stable(en->_stable) {
-  
+
+SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
+    : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable) {
   for (auto const& p : en->_elements) {
     auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
     TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
@@ -55,14 +44,11 @@ SortBlock::SortBlock (ExecutionEngine* engine,
   }
 }
 
-SortBlock::~SortBlock () {
-}
+SortBlock::~SortBlock() {}
 
-int SortBlock::initialize () {
-  return ExecutionBlock::initialize();
-}
+int SortBlock::initialize() { return ExecutionBlock::initialize(); }
 
-int SortBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -84,7 +70,7 @@ int SortBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void SortBlock::doSorting () {
+void SortBlock::doSorting() {
   // coords[i][j] is the <j>th row of the <i>th block
   std::vector<std::pair<size_t, size_t>> coords;
 
@@ -110,7 +96,8 @@ void SortBlock::doSorting () {
 
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.emplace_back(_buffer.front()->getDocumentCollection(_sortRegisters[i].first));
+    colls.emplace_back(
+        _buffer.front()->getDocumentCollection(_sortRegisters[i].first));
   }
 
   // comparison function
@@ -119,8 +106,7 @@ void SortBlock::doSorting () {
   // sort coords
   if (_stable) {
     std::stable_sort(coords.begin(), coords.end(), ourLessThan);
-  }
-  else {
+  } else {
     std::sort(coords.begin(), coords.end(), ourLessThan);
   }
 
@@ -144,20 +130,20 @@ void SortBlock::doSorting () {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         newbuffer.emplace_back(next);
-      }
-      catch (...) {
+      } catch (...) {
         delete next;
         throw;
       }
-      
+
       std::unordered_map<AqlValue, AqlValue> cache;
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
         for (RegisterId j = 0; j < nrregs; j++) {
-          auto a = _buffer[coords[count].first]->getValue(coords[count].second, j);
+          auto a =
+              _buffer[coords[count].first]->getValue(coords[count].second, j);
           // If we have already dealt with this value for the next
           // block, then we just put the same value again:
-          if (! a.isEmpty()) {
+          if (!a.isEmpty()) {
             auto it = cache.find(a);
 
             if (it != cache.end()) {
@@ -167,8 +153,7 @@ void SortBlock::doSorting () {
               // the AqlValue:
               _buffer[coords[count].first]->eraseValue(coords[count].second, j);
               next->setValue(i, j, b);
-            }
-            else {
+            } else {
               // We need to copy a, if it has already been stolen from
               // its original buffer, which we know by looking at the
               // valueCount there.
@@ -182,8 +167,7 @@ void SortBlock::doSorting () {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
                   }
                   cache.emplace(a, b);
-                }
-                catch (...) {
+                } catch (...) {
                   b.destroy();
                   throw;
                 }
@@ -193,8 +177,7 @@ void SortBlock::doSorting () {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
                   }
                   next->setValue(i, j, b);
-                }
-                catch (...) {
+                } catch (...) {
                   b.destroy();
                   cache.erase(a);
                   throw;
@@ -202,9 +185,9 @@ void SortBlock::doSorting () {
                 // It does not matter whether the following works or not,
                 // since the original block keeps its responsibility
                 // for a:
-                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-              }
-              else {
+                _buffer[coords[count].first]->eraseValue(coords[count].second,
+                                                         j);
+              } else {
                 // Here we are the first to want to inherit a, so we
                 // steal it:
                 _buffer[coords[count].first]->steal(a);
@@ -215,12 +198,12 @@ void SortBlock::doSorting () {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
                   }
                   next->setValue(i, j, a);
-                }
-                catch (...) {
+                } catch (...) {
                   a.destroy();
                   throw;
                 }
-                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                _buffer[coords[count].first]->eraseValue(coords[count].second,
+                                                         j);
                 // This might throw as well, however, the responsibility
                 // is already with the new block.
 
@@ -235,11 +218,11 @@ void SortBlock::doSorting () {
       }
       cache.clear();
       for (RegisterId j = 0; j < nrregs; j++) {
-        next->setDocumentCollection(j, _buffer.front()->getDocumentCollection(j));
+        next->setDocumentCollection(j,
+                                    _buffer.front()->getDocumentCollection(j));
       }
     }
-  }
-  catch (...) {
+  } catch (...) {
     for (auto& x : newbuffer) {
       delete x;
     }
@@ -252,30 +235,20 @@ void SortBlock::doSorting () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class SortBlock::OurLessThan
-// -----------------------------------------------------------------------------
 
-bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
-                                         std::pair<size_t, size_t> const& b) {
-
+bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
+                                        std::pair<size_t, size_t> const& b) {
   size_t i = 0;
   for (auto const& reg : _sortRegisters) {
-
     int cmp = AqlValue::Compare(
-      _trx,
-      _buffer[a.first]->getValueReference(a.second, reg.first),
-      _colls[i],
-      _buffer[b.first]->getValueReference(b.second, reg.first),
-      _colls[i],
-      true
-    );
-    
+        _trx, _buffer[a.first]->getValueReference(a.second, reg.first),
+        _colls[i], _buffer[b.first]->getValueReference(b.second, reg.first),
+        _colls[i], true);
+
     if (cmp < 0) {
       return reg.second;
-    } 
-    else if (cmp > 0) {
-      return ! reg.second;
+    } else if (cmp > 0) {
+      return !reg.second;
     }
     i++;
   }
@@ -283,7 +256,3 @@ bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
   return false;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

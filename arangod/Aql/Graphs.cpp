@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Class for arangodb's graph features. Wrapper around the graph informations
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,21 +19,17 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/JsonHelper.h"
 #include "Aql/Graphs.h"
+#include "Basics/JsonHelper.h"
+
 using namespace triagens::basics;
 using namespace triagens::aql;
 
 char const* Graph::_attrEdgeDefs = "edgeDefinitions";
 char const* Graph::_attrOrphans = "orphanCollections";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       Local utils
-// -----------------------------------------------------------------------------
 
 void Graph::insertVertexCollectionsFromJsonArray(triagens::basics::Json& arr) {
   for (size_t j = 0; j < arr.size(); ++j) {
@@ -48,40 +40,38 @@ void Graph::insertVertexCollectionsFromJsonArray(triagens::basics::Json& arr) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       Graph Class
-// -----------------------------------------------------------------------------
 
-std::unordered_set<std::string> const& Graph::vertexCollections () const {
+std::unordered_set<std::string> const& Graph::vertexCollections() const {
   return _vertexColls;
 }
 
-std::unordered_set<std::string> const& Graph::edgeCollections () const {
+std::unordered_set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
 }
 
-void Graph::addEdgeCollection (std::string name) {
+void Graph::addEdgeCollection(std::string const& name) {
   _edgeColls.insert(name);
 }
 
-void Graph::addVertexCollection (std::string name) {
+void Graph::addVertexCollection(std::string const& name) {
   _vertexColls.insert(name);
 }
 
-triagens::basics::Json Graph::toJson (TRI_memory_zone_t* z,
-                                      bool verbose) const {
+triagens::basics::Json Graph::toJson(TRI_memory_zone_t* z, bool verbose) const {
   triagens::basics::Json json(z, triagens::basics::Json::Object);
 
-  if (! _vertexColls.empty()) {
-    triagens::basics::Json vcn(z, triagens::basics::Json::Array, _vertexColls.size());
+  if (!_vertexColls.empty()) {
+    triagens::basics::Json vcn(z, triagens::basics::Json::Array,
+                               _vertexColls.size());
     for (auto const& cn : _vertexColls) {
       vcn.add(triagens::basics::Json(cn));
     }
     json("vertexCollectionNames", vcn);
   }
 
-  if (! _edgeColls.empty()) {
-    triagens::basics::Json ecn(z, triagens::basics::Json::Array, _edgeColls.size());
+  if (!_edgeColls.empty()) {
+    triagens::basics::Json ecn(z, triagens::basics::Json::Array,
+                               _edgeColls.size());
     for (auto const& cn : _edgeColls) {
       ecn.add(triagens::basics::Json(cn));
     }
@@ -91,10 +81,7 @@ triagens::basics::Json Graph::toJson (TRI_memory_zone_t* z,
   return json;
 }
 
-Graph::Graph(triagens::basics::Json j) : 
-  _vertexColls(),
-  _edgeColls()
-{
+Graph::Graph(triagens::basics::Json j) : _vertexColls(), _edgeColls() {
   auto jsonDef = j.get(_attrEdgeDefs);
 
   for (size_t i = 0; i < jsonDef.size(); ++i) {
@@ -114,4 +101,3 @@ Graph::Graph(triagens::basics::Json j) :
   auto orphans = j.get(_attrOrphans);
   insertVertexCollectionsFromJsonArray(orphans);
 }
-

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, query parser
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Parser.h"
@@ -33,25 +27,21 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the parser
 ////////////////////////////////////////////////////////////////////////////////
 
-Parser::Parser (Query* query) 
-  : _query(query),
-    _ast(query->ast()),
-    _scanner(nullptr),
-    _buffer(query->queryString()),
-    _remainingLength(query->queryLength()),
-    _offset(0),
-    _marker(nullptr),
-    _stack(),
-    _isModificationQuery(false) {
-  
+Parser::Parser(Query* query)
+    : _query(query),
+      _ast(query->ast()),
+      _scanner(nullptr),
+      _buffer(query->queryString()),
+      _remainingLength(query->queryLength()),
+      _offset(0),
+      _marker(nullptr),
+      _stack(),
+      _isModificationQuery(false) {
   _stack.reserve(4);
 }
 
@@ -59,24 +49,19 @@ Parser::Parser (Query* query)
 /// @brief destroy the parser
 ////////////////////////////////////////////////////////////////////////////////
 
-Parser::~Parser () {
-}
+Parser::~Parser() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set data for write queries
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Parser::configureWriteQuery (AstNode const* collectionNode,
-                                  AstNode* optionNode) {
-
+bool Parser::configureWriteQuery(AstNode const* collectionNode,
+                                 AstNode* optionNode) {
   // now track which collection is going to be modified
   _ast->addWriteCollection(collectionNode);
 
-  if (optionNode != nullptr && ! optionNode->isConstant()) {
+  if (optionNode != nullptr && !optionNode->isConstant()) {
     _query->registerError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
   }
 
@@ -90,7 +75,7 @@ bool Parser::configureWriteQuery (AstNode const* collectionNode,
 /// @brief parse the query
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Parser::parse (bool withDetails) {
+QueryResult Parser::parse(bool withDetails) {
   char const* q = queryString();
 
   if (q == nullptr || *q == '\0') {
@@ -100,7 +85,7 @@ QueryResult Parser::parse (bool withDetails) {
   // start main scope
   auto scopes = _ast->scopes();
   scopes->start(AQL_SCOPE_MAIN);
-  
+
   Aqllex_init(&_scanner);
   Aqlset_extra(this, _scanner);
 
@@ -112,12 +97,11 @@ QueryResult Parser::parse (bool withDetails) {
     }
 
     Aqllex_destroy(_scanner);
-  }
-  catch (...) {
+  } catch (...) {
     Aqllex_destroy(_scanner);
     throw;
   }
- 
+
   // end main scope
   scopes->endCurrent();
 
@@ -127,8 +111,8 @@ QueryResult Parser::parse (bool withDetails) {
 
   if (withDetails) {
     result.collectionNames = _query->collectionNames();
-    result.bindParameters  = _ast->bindParameters();
-    result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+    result.bindParameters = _ast->bindParameters();
+    result.json = _ast->toJson(TRI_UNKNOWN_MEM_ZONE, false);
   }
 
   return result;
@@ -138,16 +122,10 @@ QueryResult Parser::parse (bool withDetails) {
 /// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::registerParseError (int errorCode,
-                                 char const* format,
-                                 char const* data,
-                                 int line,
-                                 int column) {
+void Parser::registerParseError(int errorCode, char const* format,
+                                char const* data, int line, int column) {
   char buffer[512];
-  snprintf(buffer,
-           sizeof(buffer),
-           format,
-           data);
+  snprintf(buffer, sizeof(buffer), format, data);
 
   return registerParseError(errorCode, buffer, line, column);
 }
@@ -156,10 +134,8 @@ void Parser::registerParseError (int errorCode,
 /// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::registerParseError (int errorCode,
-                                 char const* data,
-                                 int line,
-                                 int column) {
+void Parser::registerParseError(int errorCode, char const* data, int line,
+                                int column) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   TRI_ASSERT(data != nullptr);
 
@@ -168,32 +144,23 @@ void Parser::registerParseError (int errorCode,
 
   // note: line numbers reported by bison/flex start at 1, columns start at 0
   std::stringstream errorMessage;
-  errorMessage
-    << data
-    << std::string(" near '")
-    << region 
-    << std::string("' at position ")
-    << line
-    << std::string(":")
-    << (column + 1);
-  
+  errorMessage << data << std::string(" near '") << region
+               << std::string("' at position ") << line << std::string(":")
+               << (column + 1);
+
   if (_query->verboseErrors()) {
-    errorMessage 
-      << std::endl
-      << _query->queryString()
-      << std::endl;
+    errorMessage << std::endl
+                 << _query->queryString() << std::endl;
 
     // create a neat pointer to the location of the error.
     size_t i;
-    for (i = 0; i + 1 < (size_t) column; i++) {
+    for (i = 0; i + 1 < (size_t)column; i++) {
       errorMessage << ' ';
     }
     if (i > 0) {
       errorMessage << '^';
     }
-    errorMessage << '^'
-                 << '^'
-                 << std::endl;
+    errorMessage << '^' << '^' << std::endl;
   }
 
   registerError(errorCode, errorMessage.str().c_str());
@@ -203,8 +170,7 @@ void Parser::registerParseError (int errorCode,
 /// @brief register a non-parse error
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::registerError (int errorCode,
-                            char const* data) {
+void Parser::registerError(int errorCode, char const* data) {
   _query->registerError(errorCode, data);
 }
 
@@ -212,10 +178,8 @@ void Parser::registerError (int errorCode,
 /// @brief register a warning
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::registerWarning (int errorCode,
-                              char const* data,
-                              int line,
-                              int column) {
+void Parser::registerWarning(int errorCode, char const* data, int line,
+                             int column) {
   // ignore line and column for now
   _query->registerWarning(errorCode, data);
 }
@@ -224,7 +188,7 @@ void Parser::registerWarning (int errorCode,
 /// @brief push an AstNode into the array element on top of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::pushArrayElement (AstNode* node) {
+void Parser::pushArrayElement(AstNode* node) {
   auto array = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
   array->addMember(node);
@@ -234,9 +198,8 @@ void Parser::pushArrayElement (AstNode* node) {
 /// @brief push an AstNode into the object element on top of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::pushObjectElement (char const* attributeName,
-                                size_t nameLength,
-                                AstNode* node) {
+void Parser::pushObjectElement(char const* attributeName, size_t nameLength,
+                               AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
   auto element = _ast->createNodeObjectElement(attributeName, nameLength, node);
@@ -247,8 +210,7 @@ void Parser::pushObjectElement (char const* attributeName,
 /// @brief push an AstNode into the object element on top of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::pushObjectElement (AstNode* attributeName,
-                                AstNode* node) {
+void Parser::pushObjectElement(AstNode* attributeName, AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
   auto element = _ast->createNodeCalculatedObjectElement(attributeName, node);
@@ -259,16 +221,14 @@ void Parser::pushObjectElement (AstNode* attributeName,
 /// @brief push a temporary value on the parser's stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::pushStack (void* value) {
-  _stack.emplace_back(value);
-}
+void Parser::pushStack(void* value) { _stack.emplace_back(value); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pop a temporary value from the parser's stack
 ////////////////////////////////////////////////////////////////////////////////
-        
-void* Parser::popStack () {
-  TRI_ASSERT(! _stack.empty());
+
+void* Parser::popStack() {
+  TRI_ASSERT(!_stack.empty());
 
   void* result = _stack.back();
   _stack.pop_back();
@@ -278,18 +238,11 @@ void* Parser::popStack () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief peek at a temporary value from the parser's stack
 ////////////////////////////////////////////////////////////////////////////////
-        
-void* Parser::peekStack () {
-  TRI_ASSERT(! _stack.empty());
+
+void* Parser::peekStack() {
+  TRI_ASSERT(!_stack.empty());
 
   return _stack.back();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

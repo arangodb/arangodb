@@ -39,6 +39,7 @@ endif ()
 add_executable(
     ${BIN_ARANGOB}
     ${ProductVersionFiles_arangob}
+    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
     ArangoShell/ArangoClient.cpp
     Benchmark/arangob.cpp
 )
@@ -89,6 +90,7 @@ endif ()
 add_executable(
     ${BIN_ARANGODUMP}
     ${ProductVersionFiles_arangodump}
+    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
     ArangoShell/ArangoClient.cpp
     V8Client/arangodump.cpp
 )
@@ -139,6 +141,7 @@ endif ()
 add_executable(
     ${BIN_ARANGOIMP}
     ${ProductVersionFiles_arangoimp}
+    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
     ArangoShell/ArangoClient.cpp
     V8Client/ImportHelper.cpp
     V8Client/arangoimp.cpp
@@ -189,6 +192,7 @@ endif ()
 add_executable(
     ${BIN_ARANGORESTORE}
     ${ProductVersionFiles_arangorestore}
+    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
     ArangoShell/ArangoClient.cpp
     V8Client/arangorestore.cpp
 )
@@ -238,6 +242,7 @@ endif ()
 add_executable(
     ${BIN_ARANGOSH}
     ${ProductVersionFiles_arangosh}
+    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
     ArangoShell/ArangoClient.cpp
     V8Client/ImportHelper.cpp
     V8Client/V8ClientConnection.cpp

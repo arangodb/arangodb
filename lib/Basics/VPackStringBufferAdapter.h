@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a string buffer wrapper to be used by VelocyPackDumper
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,33 +19,29 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "string-buffer.h"
+#include "Basics/StringBuffer.h"
+
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
-    class VPackStringBufferAdapter final : public VPackSink {
+class VPackStringBufferAdapter final : public VPackSink {
+ public:
+  explicit VPackStringBufferAdapter(TRI_string_buffer_t* buffer)
+      : _buffer(buffer) {}
 
-      public: 
-        explicit VPackStringBufferAdapter (TRI_string_buffer_t* buffer) 
-          : _buffer(buffer) {
-        }
+  void push_back(char c) override final;
+  void append(std::string const& p) override final;
+  void append(char const* p) override final;
+  void append(char const* p, uint64_t len) override final;
+  void reserve(uint64_t len) override final;
 
-        void push_back (char c) override final;
-        void append (std::string const& p) override final;
-        void append (char const* p) override final;
-        void append (char const* p, uint64_t len) override final;
-        void reserve (uint64_t len) override final;
-
-      private:
-        TRI_string_buffer_t* _buffer;
-
-    };
-
-  }
+ private:
+  TRI_string_buffer_t* _buffer;
+};
+}
 }

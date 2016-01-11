@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief storage for operations used for where statement
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,22 +19,14 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index-operator.h"
 #include "VocBase/VocShaper.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
-TRI_relation_index_operator_t::~TRI_relation_index_operator_t () {
+TRI_relation_index_operator_t::~TRI_relation_index_operator_t() {
   if (_parameters != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
   }
@@ -54,21 +42,18 @@ TRI_relation_index_operator_t::~TRI_relation_index_operator_t () {
   }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new index operator of the specified type
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e operatorType,
-                                               TRI_index_operator_t* leftOperand,
-                                               TRI_index_operator_t* rightOperand,
-                                               TRI_json_t* parameters,
-                                               VocShaper* shaper,
-                                               size_t numFields) {
+TRI_index_operator_t* TRI_CreateIndexOperator(
+    TRI_index_operator_type_e operatorType, TRI_index_operator_t* leftOperand,
+    TRI_index_operator_t* rightOperand, TRI_json_t* parameters,
+    VocShaper* shaper, size_t numFields) {
   switch (operatorType) {
     case TRI_AND_INDEX_OPERATOR: {
-      return new TRI_logical_index_operator_t(operatorType, shaper, leftOperand, rightOperand);
+      return new TRI_logical_index_operator_t(operatorType, shaper, leftOperand,
+                                              rightOperand);
     }
 
     case TRI_EQ_INDEX_OPERATOR:
@@ -77,20 +62,12 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e operato
     case TRI_NE_INDEX_OPERATOR:
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
-      return new TRI_relation_index_operator_t(operatorType, shaper, parameters, nullptr, numFields);
+      return new TRI_relation_index_operator_t(operatorType, shaper, parameters,
+                                               nullptr, numFields);
     }
 
-    default: {
-      return nullptr;
-    }
-  } // end of switch statement
+    default: { return nullptr; }
+  }  // end of switch statement
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

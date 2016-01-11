@@ -28,7 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore'),
+var _ = require('lodash'),
   createQuery = require('@arangodb/foxx/query').createQuery,
   arangodb = require('@arangodb'),
   db = arangodb.db;

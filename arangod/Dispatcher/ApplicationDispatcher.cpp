@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application server with dispatcher
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -42,9 +36,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private classes
-// -----------------------------------------------------------------------------
 
 namespace {
 
@@ -52,64 +43,52 @@ namespace {
 /// @brief produces a dispatcher status report
 ////////////////////////////////////////////////////////////////////////////////
 
-  class DispatcherReporterTask : public PeriodicTask {
-    public:
-      DispatcherReporterTask (Dispatcher* dispatcher, double reportInterval)
-        : Task("Dispatcher-Reporter"),
-          PeriodicTask("Dispatcher-Reporter", 0.0, reportInterval),
-          _dispatcher(dispatcher) {
-      }
+class DispatcherReporterTask : public PeriodicTask {
+ public:
+  DispatcherReporterTask(Dispatcher* dispatcher, double reportInterval)
+      : Task("Dispatcher-Reporter"),
+        PeriodicTask("Dispatcher-Reporter", 0.0, reportInterval),
+        _dispatcher(dispatcher) {}
 
-    public:
-      bool handlePeriod () {
-        _dispatcher->reportStatus();
-        return true;
-      }
+ public:
+  bool handlePeriod() {
+    _dispatcher->reportStatus();
+    return true;
+  }
 
-    public:
-      Dispatcher* _dispatcher;
-  };
+ public:
+  Dispatcher* _dispatcher;
+};
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       class ApplicationDispatcher
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationDispatcher::ApplicationDispatcher ()
-  : ApplicationFeature("dispatcher"),
-    _applicationScheduler(nullptr),
-    _dispatcher(nullptr),
-    _dispatcherReporterTask(nullptr),
-    _reportInterval(0.0),
-    _nrStandardThreads(0),
-    _nrAQLThreads(0) {
-}
+ApplicationDispatcher::ApplicationDispatcher()
+    : ApplicationFeature("dispatcher"),
+      _applicationScheduler(nullptr),
+      _dispatcher(nullptr),
+      _dispatcherReporterTask(nullptr),
+      _reportInterval(0.0),
+      _nrStandardThreads(0),
+      _nrAQLThreads(0) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationDispatcher::~ApplicationDispatcher () {
-  delete _dispatcher;
-}
+ApplicationDispatcher::~ApplicationDispatcher() { delete _dispatcher; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::setApplicationScheduler (ApplicationScheduler* scheduler) {
+void ApplicationDispatcher::setApplicationScheduler(
+    ApplicationScheduler* scheduler) {
   _applicationScheduler = scheduler;
 }
 
@@ -117,21 +96,20 @@ void ApplicationDispatcher::setApplicationScheduler (ApplicationScheduler* sched
 /// @brief returns the dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-Dispatcher* ApplicationDispatcher::dispatcher () const {
-  return _dispatcher;
-}
+Dispatcher* ApplicationDispatcher::dispatcher() const { return _dispatcher; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
-                                                size_t maxSize) {
+void ApplicationDispatcher::buildStandardQueue(size_t nrThreads,
+                                               size_t maxSize) {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
+    LOG_FATAL_AND_EXIT(
+        "no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOG_TRACE("setting up a standard queue with %d threads", (int) nrThreads);
+  LOG_TRACE("setting up a standard queue with %d threads", (int)nrThreads);
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addStandardQueue(nrThreads, maxSize);
@@ -143,17 +121,18 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
 /// @brief builds the dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildAQLQueue (size_t nrThreads,
-                                           size_t maxSize) {
+void ApplicationDispatcher::buildAQLQueue(size_t nrThreads, size_t maxSize) {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
+    LOG_FATAL_AND_EXIT(
+        "no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOG_TRACE("setting up the AQL standard queue with %d threads", (int) nrThreads);
+  LOG_TRACE("setting up the AQL standard queue with %d threads",
+            (int)nrThreads);
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addAQLQueue(nrThreads, maxSize);
-  
+
   _nrAQLThreads = nrThreads;
 }
 
@@ -161,14 +140,14 @@ void ApplicationDispatcher::buildAQLQueue (size_t nrThreads,
 /// @brief builds an additional dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildExtraQueue (size_t identifier,
-					     size_t nrThreads,
-					     size_t maxSize) {
+void ApplicationDispatcher::buildExtraQueue(size_t identifier, size_t nrThreads,
+                                            size_t maxSize) {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
+    LOG_FATAL_AND_EXIT(
+        "no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOG_TRACE("setting up a standard queue with %d threads", (int) nrThreads);
+  LOG_TRACE("setting up a standard queue with %d threads", (int)nrThreads);
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addExtraQueue(identifier, nrThreads, maxSize);
@@ -180,7 +159,7 @@ void ApplicationDispatcher::buildExtraQueue (size_t identifier,
 /// @brief returns the number of used threads
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t ApplicationDispatcher::numberOfThreads () {
+size_t ApplicationDispatcher::numberOfThreads() {
   return _nrStandardThreads /* + _nrAQLThreads */;
 }
 
@@ -188,31 +167,29 @@ size_t ApplicationDispatcher::numberOfThreads () {
 /// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::setProcessorAffinity (const vector<size_t>& cores) {
+void ApplicationDispatcher::setProcessorAffinity(const vector<size_t>& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
 #endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        ApplicationFeature methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::setupOptions (map<string, ProgramOptionsDescription>& options) {
-  options["Server Options:help-admin"]
-    ("dispatcher.report-interval", &_reportInterval, "dispatcher report interval")
-  ;
+void ApplicationDispatcher::setupOptions(
+    map<string, ProgramOptionsDescription>& options) {
+  options["Server Options:help-admin"]("dispatcher.report-interval",
+                                       &_reportInterval,
+                                       "dispatcher report interval");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationDispatcher::prepare () {
+bool ApplicationDispatcher::prepare() {
   if (_disabled) {
     return true;
   }
@@ -226,7 +203,7 @@ bool ApplicationDispatcher::prepare () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationDispatcher::start () {
+bool ApplicationDispatcher::start() {
   if (_disabled) {
     return true;
   }
@@ -240,15 +217,13 @@ bool ApplicationDispatcher::start () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationDispatcher::open () {
-  return true;
-}
+bool ApplicationDispatcher::open() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::close () {
+void ApplicationDispatcher::close() {
   if (_disabled) {
     return;
   }
@@ -262,7 +237,7 @@ void ApplicationDispatcher::close () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::stop () {
+void ApplicationDispatcher::stop() {
   if (_disabled) {
     return;
   }
@@ -278,15 +253,12 @@ void ApplicationDispatcher::stop () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildDispatcher (Scheduler* scheduler) {
+void ApplicationDispatcher::buildDispatcher(Scheduler* scheduler) {
   if (_dispatcher != nullptr) {
     LOG_FATAL_AND_EXIT("a dispatcher has already been created");
   }
@@ -298,23 +270,18 @@ void ApplicationDispatcher::buildDispatcher (Scheduler* scheduler) {
 /// @brief builds the dispatcher reporter
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildDispatcherReporter () {
+void ApplicationDispatcher::buildDispatcherReporter() {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher reporter");
+    LOG_FATAL_AND_EXIT(
+        "no dispatcher is known, cannot create dispatcher reporter");
   }
 
   if (0.0 < _reportInterval) {
-    _dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportInterval);
+    _dispatcherReporterTask =
+        new DispatcherReporterTask(_dispatcher, _reportInterval);
 
     _applicationScheduler->scheduler()->registerTask(_dispatcherReporterTask);
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

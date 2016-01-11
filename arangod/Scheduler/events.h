@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief input-output scheduler event handling
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,111 +20,89 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SCHEDULER_EVENTS_H
-#define ARANGODB_SCHEDULER_EVENTS_H 1
+#ifndef ARANGOD_SCHEDULER_EVENTS_H
+#define ARANGOD_SCHEDULER_EVENTS_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace rest {
+namespace rest {
 
-    struct Watcher;
+struct Watcher;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief event loop identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef uint32_t EventLoop;
+typedef uint32_t EventLoop;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief event handler identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef Watcher* EventToken;
+typedef Watcher* EventToken;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief event type identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef uint32_t EventType;
+typedef uint32_t EventType;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket read event
 ////////////////////////////////////////////////////////////////////////////////
 
-    uint32_t const EVENT_SOCKET_READ = 1;
+uint32_t const EVENT_SOCKET_READ = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket write event
 ////////////////////////////////////////////////////////////////////////////////
 
-    uint32_t const EVENT_SOCKET_WRITE = 2;
+uint32_t const EVENT_SOCKET_WRITE = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief asynchronous event
 ////////////////////////////////////////////////////////////////////////////////
 
-    uint32_t const EVENT_ASYNC = 4;
+uint32_t const EVENT_ASYNC = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timer event
 ////////////////////////////////////////////////////////////////////////////////
 
-    uint32_t const EVENT_TIMER = 8;
+uint32_t const EVENT_TIMER = 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief periodic event
 ////////////////////////////////////////////////////////////////////////////////
 
-    uint32_t const EVENT_PERIODIC = 16;
+uint32_t const EVENT_PERIODIC = 16;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signal event
 ////////////////////////////////////////////////////////////////////////////////
 
-    uint32_t const EVENT_SIGNAL = 32;
+uint32_t const EVENT_SIGNAL = 32;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief automatically select an io backend
 ////////////////////////////////////////////////////////////////////////////////
 
-    uint32_t const BACKEND_AUTO = 0;
-    
-// -----------------------------------------------------------------------------
-// --SECTION--                                                Watcher base class
-// -----------------------------------------------------------------------------
+uint32_t const BACKEND_AUTO = 0;
 
-    struct Watcher {
-      Watcher (EventType type) 
-        : type(type) {
 
-      }
+struct Watcher {
+  Watcher(EventType type) : type(type) {}
 
-      EventType const type;
-    };
-
-  }
+  EventType const type;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -212,8 +212,15 @@
           tempColor = "#7da817";
           p = "+";
         }
-        $("#" + a).html(self.history[self.server][a][0] + '<br/><span class="dashboard-figurePer" style="color: '
-          + tempColor +';">' + p + v + '%</span>');
+        if (self.history.hasOwnProperty(self.server) &&
+            self.history[self.server].hasOwnProperty(a)) {
+          $("#" + a).html(self.history[self.server][a][0] + '<br/><span class="dashboard-figurePer" style="color: '
+            + tempColor +';">' + p + v + '%</span>');
+        }
+        else {
+          $("#" + a).html('<br/><span class="dashboard-figurePer" style="color: '
+            + "#000" +';">' + "data not ready yet" + '</span>');
+        }
       });
     },
 
@@ -233,11 +240,71 @@
     },
 
     updateLineChart: function (figure, isDetailChart) {
+
       var g = isDetailChart ? this.detailGraph : this.graphs[figure],
       opts = {
         file: this.history[this.server][figure],
         dateWindow: this.updateDateWindow(g, isDetailChart)
       };
+
+      //round line chart values to 10th decimals
+      var pointer = 0, dates = [];
+      _.each(opts.file, function(value) {
+
+        var rounded = value[0].getSeconds() - (value[0].getSeconds() % 10); 
+        opts.file[pointer][0].setSeconds(rounded);
+        dates.push(opts.file[pointer][0]);
+
+        pointer++;
+      });
+      //get min/max dates of array
+      var maxDate = new Date(Math.max.apply(null, dates));
+      var minDate = new Date(Math.min.apply(null, dates));
+      var tmpDate = new Date(minDate.getTime()), missingDates = [];
+      var tmpDatesComplete = [];
+
+      while (tmpDate < maxDate) {
+        tmpDate = new Date(tmpDate.setSeconds(tmpDate.getSeconds() + 10));
+        tmpDatesComplete.push(tmpDate);
+      }
+
+      //iterate through all date ranges
+      _.each(tmpDatesComplete, function(date) {
+        var tmp = false;
+
+        //iterate through all available real date values
+        _.each(opts.file, function(availableDates) {
+          //if real date is inside date range
+          if (Math.floor(date.getTime()/1000) === Math.floor(availableDates[0].getTime()/1000)) {
+            tmp = true;
+          }
+        });
+
+        if (tmp === false) {
+          //a value is missing
+          if (date < new Date()) {
+            missingDates.push(date);
+          }
+        }
+      });
+
+      _.each(missingDates, function(date) {
+        if (figure === 'systemUserTime' ||
+            figure === 'requests' ||
+            figure === 'pageFaults' ||
+            figure === 'dataTransfer') {
+          opts.file.push([date, 0, 0]);
+        }
+        if (figure === 'totalTime') {
+          opts.file.push([date, 0, 0, 0]);
+        }
+      });
+
+      //sort for library
+      opts.file.sort(function(a,b){
+        return new Date(b[0]) - new Date(a[0]);
+      });
+
       g.updateOptions(opts);
     },
 
@@ -545,12 +612,26 @@
       );
     },
 
+    addEmptyDataLabels: function () {
+      if ($('.dataNotReadyYet').length === 0) {
+        $('#dataTransferDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
+        $('#totalTimeDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
+        $('.dashboard-bar-chart-title').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
+      }
+    },
+
+    removeEmptyDataLabels: function () {
+      $('.dataNotReadyYet').remove();
+    },
+
     prepareResidentSize: function (update) {
+
       var self = this;
 
       var dimensions = this.getCurrentSize('#residentSizeChartContainer');
 
       var current = self.history[self.server].residentSizeCurrent / 1024 / 1024;
+      
       var currentA = "";
 
       if (current < 1025) {
@@ -562,6 +643,15 @@
 
       var currentP = fmtNumber(self.history[self.server].residentSizePercent * 100, 2);
       var data = [fmtNumber(self.history[self.server].physicalMemory / 1024 / 1024 / 1024, 0) + " GB"];
+
+
+      if (self.history[self.server].residentSizeChart === undefined) {
+        this.addEmptyDataLabels();
+        return;
+      }
+      else {
+        this.removeEmptyDataLabels();
+      }
 
       nv.addGraph(function () {
         var chart = nv.models.multiBarHorizontalChart()
@@ -624,7 +714,6 @@
 
     prepareD3Charts: function (update) {
       var self = this;
-
       var barCharts = {
         totalTimeDistribution: [
           "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
@@ -638,10 +727,19 @@
       }
 
       _.each(Object.keys(barCharts), function (k) {
+
         var dimensions = self.getCurrentSize('#' + k
           + 'Container .dashboard-interior-chart');
 
         var selector = "#" + k + "Container svg";
+
+        if (self.history[self.server].residentSizeChart === undefined) {
+          self.addEmptyDataLabels();
+          return;
+        }
+        else {
+          self.removeEmptyDataLabels();
+        }
 
         nv.addGraph(function () {
           var tickMarks = [0, 0.25, 0.5, 0.75, 1];

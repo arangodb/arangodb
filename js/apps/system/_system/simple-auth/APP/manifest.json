@@ -5,6 +5,9 @@
   "version": "0.1",
   "license": "Apache License, Version 2.0",
   "isSystem": true,
+  "engines": {
+    "arangodb": "^2.8.0"
+  },
 
   "repository": {
     "type": "git",

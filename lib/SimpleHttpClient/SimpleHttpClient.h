@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple http client
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,12 +20,10 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#ifndef LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
+#define LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
 
 #include "Basics/Common.h"
 
@@ -38,444 +32,400 @@
 #include "Rest/HttpRequest.h"
 
 namespace triagens {
-  namespace httpclient {
+namespace httpclient {
 
-    class SimpleHttpResult;
-    class GeneralClientConnection;
+class SimpleHttpResult;
+class GeneralClientConnection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple http client
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SimpleHttpClient {
+class SimpleHttpClient {
+ private:
+  SimpleHttpClient(SimpleHttpClient const&);
+  SimpleHttpClient& operator=(SimpleHttpClient const&);
 
-    private:
-      SimpleHttpClient (SimpleHttpClient const&);
-      SimpleHttpClient& operator= (SimpleHttpClient const&);
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief state of the connection
+  ////////////////////////////////////////////////////////////////////////////////
 
-    public:
+  enum request_state {
+    IN_CONNECT,
+    IN_WRITE,
+    IN_READ_HEADER,
+    IN_READ_BODY,
+    IN_READ_CHUNKED_HEADER,
+    IN_READ_CHUNKED_BODY,
+    FINISHED,
+    DEAD
+  };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief state of the connection
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructs a new http client
+  ////////////////////////////////////////////////////////////////////////////////
 
-      enum request_state {
-        IN_CONNECT,
-        IN_WRITE,
-        IN_READ_HEADER,
-        IN_READ_BODY,
-        IN_READ_CHUNKED_HEADER,
-        IN_READ_CHUNKED_BODY,
-        FINISHED,
-        DEAD
-      };
+  SimpleHttpClient(GeneralClientConnection*, double, bool);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http client
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructs a http client
+  ////////////////////////////////////////////////////////////////////////////////
 
-      SimpleHttpClient (GeneralClientConnection*,
-                        double,
-                        bool);
+  ~SimpleHttpClient();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a http client
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidates the connection used by the client
+  /// this may be called from other objects that are responsible for managing
+  /// connections. after this method has been called, the client must not be
+  /// used for any further HTTP operations, but should be destroyed instantly.
+  ////////////////////////////////////////////////////////////////////////////////
 
-      ~SimpleHttpClient ();
+  void invalidateConnection() { _connection = nullptr; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidates the connection used by the client
-/// this may be called from other objects that are responsible for managing
-/// connections. after this method has been called, the client must not be
-/// used for any further HTTP operations, but should be destroyed instantly.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief close connection, go to state IN_CONNECT and clear the input
+  /// buffer. This is used to organise a retry of the connection.
+  ////////////////////////////////////////////////////////////////////////////////
 
-      void invalidateConnection () {
-        _connection = nullptr;
-      }
+  void close();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief close connection, go to state IN_CONNECT and clear the input 
-/// buffer. This is used to organise a retry of the connection.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief leave connection open on destruction
+  ////////////////////////////////////////////////////////////////////////////////
 
-      void close ();
+  void keepConnectionOnDestruction(bool b) { _keepConnectionOnDestruction = b; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief leave connection open on destruction
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief make an http request, creating a new HttpResult object
+  /// the caller has to delete the result object
+  /// this version does not allow specifying custom headers
+  /// if the request fails because of connection problems, the request will be
+  /// retried until it either succeeds (at least no connection problem) or there
+  /// have been _maxRetries retries
+  ////////////////////////////////////////////////////////////////////////////////
 
-      void keepConnectionOnDestruction (bool b) {
-        _keepConnectionOnDestruction = b;
-      }
-                                 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief make an http request, creating a new HttpResult object
-/// the caller has to delete the result object
-/// this version does not allow specifying custom headers
-/// if the request fails because of connection problems, the request will be
-/// retried until it either succeeds (at least no connection problem) or there
-/// have been _maxRetries retries
-////////////////////////////////////////////////////////////////////////////////
-
-      SimpleHttpResult* retryRequest (rest::HttpRequest::HttpRequestType,
-                                      std::string const&,
-                                      char const*,
-                                      size_t,
-                                      std::map<std::string, std::string> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief make an http request, creating a new HttpResult object
-/// the caller has to delete the result object
-/// this version does not allow specifying custom headers
-/// if the request fails because of connection problems, the request will be
-/// retried until it either succeeds (at least no connection problem) or there
-/// have been _maxRetries retries
-////////////////////////////////////////////////////////////////////////////////
-
-      SimpleHttpResult* retryRequest (rest::HttpRequest::HttpRequestType,
-                                      std::string const&,
-                                      char const*,
-                                      size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief make an http request, creating a new HttpResult object
-/// the caller has to delete the result object
-/// this version does not allow specifying custom headers
-////////////////////////////////////////////////////////////////////////////////
-
-      SimpleHttpResult* request (rest::HttpRequest::HttpRequestType,
-                                 std::string const&,
-                                 char const*,
-                                 size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief make an http request, actual worker function
-/// the caller has to delete the result object
-/// this version allows specifying custom headers
-////////////////////////////////////////////////////////////////////////////////
-
-      SimpleHttpResult* request (rest::HttpRequest::HttpRequestType,
-                                 std::string const&,
-                                 char const*,
-                                 size_t,
+  SimpleHttpResult* retryRequest(rest::HttpRequest::HttpRequestType,
+                                 std::string const&, char const*, size_t,
                                  std::map<std::string, std::string> const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets username and password
-///
-/// @param prefix                         prefix for sending username and password
-/// @param username                       username
-/// @param password                       password
-////////////////////////////////////////////////////////////////////////////////
-
-      void setUserNamePassword (std::string const& prefix,
-                                std::string const& username,
-                                std::string const& password);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allows rewriting locations
-////////////////////////////////////////////////////////////////////////////////
-
-      void setLocationRewriter (void* data,
-                                std::string (*func)(void*, std::string const&)) {
-        _locationRewriter.data = data;
-        _locationRewriter.func = func;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enable or disable keep-alive
-////////////////////////////////////////////////////////////////////////////////
-
-      void setKeepAlive (bool value) {
-        _keepAlive = value;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief expose ArangoDB via user-agent?
-////////////////////////////////////////////////////////////////////////////////
-
-      void setExposeArangoDB (bool value) {
-        _exposeArangoDB = value;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief advertise support for deflate?
-////////////////////////////////////////////////////////////////////////////////
-
-      void setSupportDeflate (bool value) {
-        _supportDeflate = value;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current error message
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string const& getErrorMessage () const {
-        return _errorMessage;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register and dump an error message
-////////////////////////////////////////////////////////////////////////////////
-
-      void setErrorMessage (std::string const& message,
-                            bool forceWarn = false) {
-        _errorMessage = message;
-
-        if (_warn || forceWarn) {
-          LOG_WARNING("%s", _errorMessage.c_str());
-        }
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register an error message
-////////////////////////////////////////////////////////////////////////////////
-
-      void setErrorMessage (const std::string& message,
-                            int error) {
-        if (error != TRI_ERROR_NO_ERROR) {
-          _errorMessage = message + ": " + strerror(error);
-        }
-        else {
-          setErrorMessage(message);
-        }
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether an error message is already there
-////////////////////////////////////////////////////////////////////////////////
-
-      bool haveErrorMessage () const { 
-        return _errorMessage.size() > 0;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the version from the server
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string getServerVersion ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract an error message from a response
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string getHttpErrorMessage (SimpleHttpResult*);
-
-    private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief make a http request, creating a new HttpResult object
-/// the caller has to delete the result object
-/// this version allows specifying custom headers
-////////////////////////////////////////////////////////////////////////////////
-
-      SimpleHttpResult* doRequest (rest::HttpRequest::HttpRequestType,
-                                   std::string const&,
-                                   char const*,
-                                   size_t,
-                                   std::map<std::string, std::string> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the connection
-////////////////////////////////////////////////////////////////////////////////
-
-      void handleConnect ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clearReadBuffer, clears the read buffer as well as the result
-////////////////////////////////////////////////////////////////////////////////
-
-      void clearReadBuffer ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rewrite a location URL
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string rewriteLocation (std::string const& location) {
-        if (_locationRewriter.func != nullptr) {
-          return _locationRewriter.func(_locationRewriter.data, location);
-        }
-
-        return location;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the result
-/// the caller has to delete the result object
-////////////////////////////////////////////////////////////////////////////////
-
-      SimpleHttpResult* getResult ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the request
-///
-/// @param method                         request method
-/// @param location                       request uri
-/// @param body                           request body
-/// @param bodyLength                     size of body
-/// @param headerFields                   list of header fields
-////////////////////////////////////////////////////////////////////////////////
-
-      void setRequest (rest::HttpRequest::HttpRequestType method,
-                       std::string const& location,
-                       char const* body,
-                       size_t bodyLength,
-                       std::map<std::string, std::string> const& headerFields);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process (a part of) the http header, the data is
-/// found in _readBuffer starting at _readBufferOffset until
-/// _readBuffer.length().
-////////////////////////////////////////////////////////////////////////////////
-
-      void processHeader ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process (a part of) the body, read the http body by content length
-/// Note that when this is called, the content length of the body has always
-/// been set, either by finding a value in the HTTP header or by reading
-/// from the network until nothing more is found. The data is found in
-/// _readBuffer starting at _readBufferOffset until _readBuffer.length().
-////////////////////////////////////////////////////////////////////////////////
-
-      void processBody ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the chunk size of the next chunk (i.e. the chunk header),
-/// this is called when processing the body of a chunked transfer. The
-/// data is found in _readBuffer at position _readBufferOffset until 
-/// _readBuffer.length().
-/// Note that this method and processChunkedBody() call each other when
-/// they complete, counting on the fact that in a single transfer the
-/// number of chunks found is not so large to run into deep recursion
-/// problems.
-////////////////////////////////////////////////////////////////////////////////
-
-      void processChunkedHeader ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the next chunk (i.e. the chunk body), this is called when
-/// processing the body of a chunked transfer. The data is found in 
-/// _readBuffer at position _readBufferOffset until _readBuffer.length().
-/// Note that this method and processChunkedHeader() call each other when
-/// they complete, counting on the fact that in a single transfer the
-/// number of chunks found is not so large to run into deep recursion
-/// problems.
-////////////////////////////////////////////////////////////////////////////////
-
-      void processChunkedBody ();
-
-    private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connection used (TCP or SSL connection)
-////////////////////////////////////////////////////////////////////////////////
-
-      GeneralClientConnection* _connection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write buffer
-////////////////////////////////////////////////////////////////////////////////
-
-      triagens::basics::StringBuffer _writeBuffer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read buffer
-////////////////////////////////////////////////////////////////////////////////
-
-      triagens::basics::StringBuffer _readBuffer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read buffer offset
-///
-/// _state == IN_READ_BODY:
-///     points to the beginning of the body
-///
-/// _state == IN_READ_HEADER:
-///     points to the beginning of the next header line
-///
-/// _state == FINISHED:
-///     points to the beginning of the next request
-///
-/// _state == IN_READ_CHUNKED_HEADER:
-///     points to the beginning of the next size line
-///
-/// _state == IN_READ_CHUNKED_BODY:
-///     points to the beginning of the next body
-////////////////////////////////////////////////////////////////////////////////
-
-      size_t _readBufferOffset;
-
-      double _requestTimeout;
-
-      request_state _state;
-
-      size_t _written;
-
-      std::string _errorMessage;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct for rewriting location URLs
-////////////////////////////////////////////////////////////////////////////////
-
-      struct {
-        void* data;
-        std::string (*func)(void*, const std::string&);
-      }
-      _locationRewriter;
-
-      uint32_t _nextChunkedSize;
-
-      rest::HttpRequest::HttpRequestType _method;
-
-      SimpleHttpResult* _result;
-
-      std::vector<std::pair<std::string, std::string> >_pathToBasicAuth;
-
-      size_t const _maxPacketSize;
-      
-    public:
-
-      size_t _maxRetries;
-
-      uint64_t _retryWaitTime;
-      
-      std::string _retryMessage;
-
-    private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flag whether or not we keep the connection on destruction
-////////////////////////////////////////////////////////////////////////////////
-
-      bool _keepConnectionOnDestruction;
-
-      bool _warn;
-
-      bool _keepAlive;
-
-      bool _exposeArangoDB;
-
-      bool _supportDeflate;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief empty map, used for headers
-////////////////////////////////////////////////////////////////////////////////
-
-      static std::map<std::string, std::string> const NoHeaders;
-
-    };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief make an http request, creating a new HttpResult object
+  /// the caller has to delete the result object
+  /// this version does not allow specifying custom headers
+  /// if the request fails because of connection problems, the request will be
+  /// retried until it either succeeds (at least no connection problem) or there
+  /// have been _maxRetries retries
+  ////////////////////////////////////////////////////////////////////////////////
+
+  SimpleHttpResult* retryRequest(rest::HttpRequest::HttpRequestType,
+                                 std::string const&, char const*, size_t);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief make an http request, creating a new HttpResult object
+  /// the caller has to delete the result object
+  /// this version does not allow specifying custom headers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  SimpleHttpResult* request(rest::HttpRequest::HttpRequestType,
+                            std::string const&, char const*, size_t);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief make an http request, actual worker function
+  /// the caller has to delete the result object
+  /// this version allows specifying custom headers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  SimpleHttpResult* request(rest::HttpRequest::HttpRequestType,
+                            std::string const&, char const*, size_t,
+                            std::map<std::string, std::string> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief sets username and password
+  ///
+  /// @param prefix                         prefix for sending username and
+  /// password
+  /// @param username                       username
+  /// @param password                       password
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setUserNamePassword(std::string const& prefix,
+                           std::string const& username,
+                           std::string const& password);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief allows rewriting locations
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setLocationRewriter(void* data,
+                           std::string (*func)(void*, std::string const&)) {
+    _locationRewriter.data = data;
+    _locationRewriter.func = func;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enable or disable keep-alive
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setKeepAlive(bool value) { _keepAlive = value; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief expose ArangoDB via user-agent?
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setExposeArangoDB(bool value) { _exposeArangoDB = value; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief advertise support for deflate?
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setSupportDeflate(bool value) { _supportDeflate = value; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the current error message
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::string const& getErrorMessage() const { return _errorMessage; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief register and dump an error message
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setErrorMessage(std::string const& message, bool forceWarn = false) {
+    _errorMessage = message;
+
+    if (_warn || forceWarn) {
+      LOG_WARNING("%s", _errorMessage.c_str());
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief register an error message
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setErrorMessage(const std::string& message, int error) {
+    if (error != TRI_ERROR_NO_ERROR) {
+      _errorMessage = message + ": " + strerror(error);
+    } else {
+      setErrorMessage(message);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks whether an error message is already there
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool haveErrorMessage() const { return _errorMessage.size() > 0; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fetch the version from the server
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::string getServerVersion();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract an error message from a response
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::string getHttpErrorMessage(SimpleHttpResult*);
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief make a http request, creating a new HttpResult object
+  /// the caller has to delete the result object
+  /// this version allows specifying custom headers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  SimpleHttpResult* doRequest(rest::HttpRequest::HttpRequestType,
+                              std::string const&, char const*, size_t,
+                              std::map<std::string, std::string> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize the connection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void handleConnect();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clearReadBuffer, clears the read buffer as well as the result
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void clearReadBuffer();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief rewrite a location URL
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::string rewriteLocation(std::string const& location) {
+    if (_locationRewriter.func != nullptr) {
+      return _locationRewriter.func(_locationRewriter.data, location);
+    }
+
+    return location;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the result
+  /// the caller has to delete the result object
+  ////////////////////////////////////////////////////////////////////////////////
+
+  SimpleHttpResult* getResult();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set the request
+  ///
+  /// @param method                         request method
+  /// @param location                       request uri
+  /// @param body                           request body
+  /// @param bodyLength                     size of body
+  /// @param headerFields                   list of header fields
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setRequest(rest::HttpRequest::HttpRequestType method,
+                  std::string const& location, char const* body,
+                  size_t bodyLength,
+                  std::map<std::string, std::string> const& headerFields);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief process (a part of) the http header, the data is
+  /// found in _readBuffer starting at _readBufferOffset until
+  /// _readBuffer.length().
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void processHeader();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief process (a part of) the body, read the http body by content length
+  /// Note that when this is called, the content length of the body has always
+  /// been set, either by finding a value in the HTTP header or by reading
+  /// from the network until nothing more is found. The data is found in
+  /// _readBuffer starting at _readBufferOffset until _readBuffer.length().
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void processBody();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief process the chunk size of the next chunk (i.e. the chunk header),
+  /// this is called when processing the body of a chunked transfer. The
+  /// data is found in _readBuffer at position _readBufferOffset until
+  /// _readBuffer.length().
+  /// Note that this method and processChunkedBody() call each other when
+  /// they complete, counting on the fact that in a single transfer the
+  /// number of chunks found is not so large to run into deep recursion
+  /// problems.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void processChunkedHeader();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief process the next chunk (i.e. the chunk body), this is called when
+  /// processing the body of a chunked transfer. The data is found in
+  /// _readBuffer at position _readBufferOffset until _readBuffer.length().
+  /// Note that this method and processChunkedHeader() call each other when
+  /// they complete, counting on the fact that in a single transfer the
+  /// number of chunks found is not so large to run into deep recursion
+  /// problems.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void processChunkedBody();
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief connection used (TCP or SSL connection)
+  ////////////////////////////////////////////////////////////////////////////////
+
+  GeneralClientConnection* _connection;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief write buffer
+  ////////////////////////////////////////////////////////////////////////////////
+
+  triagens::basics::StringBuffer _writeBuffer;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief read buffer
+  ////////////////////////////////////////////////////////////////////////////////
+
+  triagens::basics::StringBuffer _readBuffer;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief read buffer offset
+  ///
+  /// _state == IN_READ_BODY:
+  ///     points to the beginning of the body
+  ///
+  /// _state == IN_READ_HEADER:
+  ///     points to the beginning of the next header line
+  ///
+  /// _state == FINISHED:
+  ///     points to the beginning of the next request
+  ///
+  /// _state == IN_READ_CHUNKED_HEADER:
+  ///     points to the beginning of the next size line
+  ///
+  /// _state == IN_READ_CHUNKED_BODY:
+  ///     points to the beginning of the next body
+  ////////////////////////////////////////////////////////////////////////////////
+
+  size_t _readBufferOffset;
+
+  double _requestTimeout;
+
+  request_state _state;
+
+  size_t _written;
+
+  std::string _errorMessage;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief struct for rewriting location URLs
+  ////////////////////////////////////////////////////////////////////////////////
+
+  struct {
+    void* data;
+    std::string (*func)(void*, const std::string&);
+  } _locationRewriter;
+
+  uint32_t _nextChunkedSize;
+
+  rest::HttpRequest::HttpRequestType _method;
+
+  SimpleHttpResult* _result;
+
+  std::vector<std::pair<std::string, std::string>> _pathToBasicAuth;
+
+  size_t const _maxPacketSize;
+
+ public:
+  size_t _maxRetries;
+
+  uint64_t _retryWaitTime;
+
+  std::string _retryMessage;
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief flag whether or not we keep the connection on destruction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool _keepConnectionOnDestruction;
+
+  bool _warn;
+
+  bool _keepAlive;
+
+  bool _exposeArangoDB;
+
+  bool _supportDeflate;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief empty map, used for headers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static std::map<std::string, std::string> const NoHeaders;
+};
+}
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creator function
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,75 +19,58 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_HANDLER_CREATOR_H
-#define ARANGODB_ADMIN_REST_HANDLER_CREATOR_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_HANDLER_CREATOR_H
+#define ARANGOD_REST_HANDLER_REST_HANDLER_CREATOR_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace rest {
-    class HttpHandler;
-    class HttpRequest;
-  }
+namespace rest {
+class HttpHandler;
+class HttpRequest;
+}
 
-  namespace admin {
+namespace admin {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class RestHandlerCreator
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creator function
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename H>
-    class RestHandlerCreator : public H {
+template <typename H>
+class RestHandlerCreator : public H {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create with void pointer data
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create with void pointer data
-////////////////////////////////////////////////////////////////////////////////
-
-        static rest::HttpHandler* create (rest::HttpRequest* request, void* data) {
-          return new H(request, data);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create with data
-////////////////////////////////////////////////////////////////////////////////
-
-        template<typename D>
-        static rest::HttpHandler* createData (rest::HttpRequest* request, void* data) {
-          return new H(request, (D) data);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create without data
-////////////////////////////////////////////////////////////////////////////////
-
-        static rest::HttpHandler* createNoData (rest::HttpRequest* request, void*) {
-          return new H(request);
-        }
-    };
+  static rest::HttpHandler* create(rest::HttpRequest* request, void* data) {
+    return new H(request, data);
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create with data
+  ////////////////////////////////////////////////////////////////////////////////
+
+  template <typename D>
+  static rest::HttpHandler* createData(rest::HttpRequest* request, void* data) {
+    return new H(request, (D)data);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create without data
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static rest::HttpHandler* createNoData(rest::HttpRequest* request, void*) {
+    return new H(request);
+  }
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

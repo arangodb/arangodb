@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief memory region to be synched
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,59 +19,47 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_SYNC_REGION_H
-#define ARANGODB_WAL_SYNC_REGION_H 1
+#ifndef ARANGOD_WAL_SYNC_REGION_H
+#define ARANGOD_WAL_SYNC_REGION_H 1
 
 #include "Basics/Common.h"
 #include "Wal/Logfile.h"
 
 namespace triagens {
-  namespace wal {
-    class Slots;
+namespace wal {
+class Slots;
 
-    struct SyncRegion {
-      SyncRegion ()
-        : logfileId(0),
-          logfile(nullptr),
-          mem(nullptr),
-          size(0),
-          logfileStatus(Logfile::StatusType::UNKNOWN),
-          firstSlotIndex(0),
-          lastSlotIndex(0),
-          waitForSync(false),
-          checkMore(false),
-          canSeal(false) {
-      }
+struct SyncRegion {
+  SyncRegion()
+      : logfileId(0),
+        logfile(nullptr),
+        mem(nullptr),
+        size(0),
+        logfileStatus(Logfile::StatusType::UNKNOWN),
+        firstSlotIndex(0),
+        lastSlotIndex(0),
+        waitForSync(false),
+        checkMore(false),
+        canSeal(false) {}
 
-      ~SyncRegion () {
-      }
+  ~SyncRegion() {}
 
-      Logfile::IdType      logfileId;
-      Logfile*             logfile;
-      char*                mem;
-      uint32_t             size;
-      Logfile::StatusType  logfileStatus;
-      size_t               firstSlotIndex;
-      size_t               lastSlotIndex;
-      bool                 waitForSync;
-      bool                 checkMore;
-      bool                 canSeal;
-    };
-
-  }
+  Logfile::IdType logfileId;
+  Logfile* logfile;
+  char* mem;
+  uint32_t size;
+  Logfile::StatusType logfileStatus;
+  size_t firstSlotIndex;
+  size_t lastSlotIndex;
+  bool waitForSync;
+  bool checkMore;
+  bool canSeal;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief debug helper handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,70 +19,49 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_DEBUG_HELPER_HANDLER_H
-#define ARANGODB_REST_HNDLER_REST_DEBUG_HELPER_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_DEBUG_HELPER_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_DEBUG_HELPER_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
-  namespace admin {
+namespace admin {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class RestVersionHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestDebugHelperHandler : public RestBaseHandler {
+class RestDebugHelperHandler : public RestBaseHandler {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  explicit RestDebugHelperHandler(rest::HttpRequest*);
 
-      public:
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  bool isDirect() const override;
 
-        explicit RestDebugHelperHandler (rest::HttpRequest*);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the server version number
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDirect () const override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the server version number
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute () override;
-
-    };
-  }
+  status_t execute() override;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

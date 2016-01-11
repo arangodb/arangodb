@@ -30,7 +30,7 @@
 
 var qb = require('aqb');
 var util = require('util');
-var extend = require('underscore').extend;
+var extend = require('lodash').extend;
 var arangoConsole = require('console');
 var ErrorStackParser = require('error-stack-parser');
 var AssertionError = require('assert').AssertionError;

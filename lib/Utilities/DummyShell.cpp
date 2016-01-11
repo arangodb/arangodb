@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a trivial implementation of a console input (shell)
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DummyShell.h"
@@ -36,39 +31,27 @@ using namespace std;
 using namespace triagens;
 using namespace arangodb;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class DummyShell
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-DummyShell::DummyShell (std::string const& history, Completer* completer)
-  : ShellBase(history, completer) {
-}
+DummyShell::DummyShell(std::string const& history, Completer* completer)
+    : ShellBase(history, completer) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-DummyShell::~DummyShell () {
-  close();
-}
+DummyShell::~DummyShell() { close(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 ShellBase methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DummyShell::open (bool) {
+bool DummyShell::open(bool) {
   _state = STATE_OPENED;
   return true;
 }
@@ -77,7 +60,7 @@ bool DummyShell::open (bool) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DummyShell::close () {
+bool DummyShell::close() {
   _state = STATE_CLOSED;
   return true;
 }
@@ -86,22 +69,19 @@ bool DummyShell::close () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void DummyShell::addHistory (const string&) {
-}
+void DummyShell::addHistory(const string&) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DummyShell::writeHistory () {
-  return true;
-}
+bool DummyShell::writeHistory() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string DummyShell::getLine (const std::string& prompt, bool& eof) {
+string DummyShell::getLine(const std::string& prompt, bool& eof) {
   std::cout << prompt << flush;
 
   string line;
@@ -115,6 +95,4 @@ string DummyShell::getLine (const std::string& prompt, bool& eof) {
   return line;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

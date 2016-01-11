@@ -27,8 +27,8 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
+#include "Basics/StringBuffer.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

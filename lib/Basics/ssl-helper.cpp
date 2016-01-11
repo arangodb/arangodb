@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ssl helper functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
@@ -36,16 +30,13 @@
 using namespace triagens::basics;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-SSL_CTX* triagens::basics::sslContext (protocol_e protocol, string const& keyfile) {
-
+SSL_CTX* triagens::basics::sslContext(protocol_e protocol,
+                                      string const& keyfile) {
   // create our context
   SSL_METHOD SSL_CONST* meth = nullptr;
 
@@ -73,15 +64,17 @@ SSL_CTX* triagens::basics::sslContext (protocol_e protocol, string const& keyfil
   }
 
   SSL_CTX* sslctx = SSL_CTX_new(meth);
-            
+
   // load our keys and certificates
-  if (! SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
-    LOG_ERROR("cannot read certificate from '%s': %s", keyfile.c_str(), triagens::basics::lastSSLError().c_str());
+  if (!SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
+    LOG_ERROR("cannot read certificate from '%s': %s", keyfile.c_str(),
+              triagens::basics::lastSSLError().c_str());
     return nullptr;
   }
 
-  if (! SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
-    LOG_ERROR("cannot read key from '%s': %s", keyfile.c_str(), triagens::basics::lastSSLError().c_str());
+  if (!SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
+    LOG_ERROR("cannot read key from '%s': %s", keyfile.c_str(),
+              triagens::basics::lastSSLError().c_str());
     return nullptr;
   }
 
@@ -96,7 +89,7 @@ SSL_CTX* triagens::basics::sslContext (protocol_e protocol, string const& keyfil
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-string triagens::basics::protocolName (const protocol_e protocol) {
+string triagens::basics::protocolName(const protocol_e protocol) {
   switch (protocol) {
     case SSL_V2:
       return "SSLv2";
@@ -119,7 +112,7 @@ string triagens::basics::protocolName (const protocol_e protocol) {
 /// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
-string triagens::basics::lastSSLError () {
+string triagens::basics::lastSSLError() {
   char buf[122];
   memset(buf, 0, sizeof(buf));
 
@@ -129,11 +122,4 @@ string triagens::basics::lastSSLError () {
   return string(buf);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

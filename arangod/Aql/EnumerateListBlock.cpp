@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief EnumerateListBlock
-///
-/// @file 
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateListBlock.h"
@@ -36,19 +32,15 @@ using namespace triagens::aql;
 
 using Json = triagens::basics::Json;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class EnumerateListBlock
-// -----------------------------------------------------------------------------
-        
-EnumerateListBlock::EnumerateListBlock (ExecutionEngine* engine,
-                                        EnumerateListNode const* en)
-  : ExecutionBlock(engine, en),
-    _index(0),
-    _thisBlock(0),
-    _seen(0),
-    _collection(nullptr),
-    _inVarRegId(ExecutionNode::MaxRegisterId) {
 
+EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
+                                       EnumerateListNode const* en)
+    : ExecutionBlock(engine, en),
+      _index(0),
+      _thisBlock(0),
+      _seen(0),
+      _collection(nullptr),
+      _inVarRegId(ExecutionNode::MaxRegisterId) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
 
   if (it == en->getRegisterPlan()->varInfo.end()) {
@@ -59,18 +51,15 @@ EnumerateListBlock::EnumerateListBlock (ExecutionEngine* engine,
   TRI_ASSERT(_inVarRegId < ExecutionNode::MaxRegisterId);
 }
 
-EnumerateListBlock::~EnumerateListBlock () {
-}
+EnumerateListBlock::~EnumerateListBlock() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize, here we get the inVariable
 ////////////////////////////////////////////////////////////////////////////////
 
-int EnumerateListBlock::initialize () {
-  return ExecutionBlock::initialize();
-}
+int EnumerateListBlock::initialize() { return ExecutionBlock::initialize(); }
 
-int EnumerateListBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -78,15 +67,15 @@ int EnumerateListBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
 
   // handle local data (if any)
-  _index = 0;     // index in _inVariable for next run
-  _thisBlock = 0; // the current block in the _inVariable DOCVEC
-  _seen = 0;      // the sum of the sizes of the blocks in the _inVariable
+  _index = 0;      // index in _inVariable for next run
+  _thisBlock = 0;  // the current block in the _inVariable DOCVEC
+  _seen = 0;       // the sum of the sizes of the blocks in the _inVariable
   // DOCVEC that preceed _thisBlock
 
   return TRI_ERROR_NO_ERROR;
 }
 
-AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
+AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
   if (_done) {
     return nullptr;
   }
@@ -101,11 +90,11 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
 
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize, atMost);
-      if (! ExecutionBlock::getBlock(toFetch, toFetch)) {
+      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
         _done = true;
         return nullptr;
       }
-      _pos = 0;           // this is in the first block
+      _pos = 0;  // this is in the first block
     }
 
     // if we make it here, then _buffer.front() exists
@@ -113,14 +102,14 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
 
     // get the thing we are looping over
     AqlValue inVarReg = cur->getValueReference(_pos, _inVarRegId);
-    size_t sizeInVar = 0; // to shut up compiler
+    size_t sizeInVar = 0;  // to shut up compiler
 
     // get the size of the thing we are looping over
     _collection = nullptr;
 
     switch (inVarReg._type) {
       case AqlValue::JSON: {
-        if (! inVarReg._json->isArray()) {
+        if (!inVarReg._json->isArray()) {
           throwArrayExpectedException();
         }
         sizeInVar = inVarReg._json->size();
@@ -133,7 +122,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
       }
 
       case AqlValue::DOCVEC: {
-        if (_index == 0) { // this is a (maybe) new DOCVEC
+        if (_index == 0) {  // this is a (maybe) new DOCVEC
           _docVecSize = 0;
           // we require the total number of items
           for (size_t i = 0; i < inVarReg._vector->size(); i++) {
@@ -158,12 +147,13 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
 
     if (sizeInVar == 0) {
       res = nullptr;
-    }
-    else {
+    } else {
       size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
-      res.reset(new AqlItemBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(new AqlItemBlock(
+          toSend,
+          getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       inheritRegisters(cur, res.get(), _pos);
 
@@ -189,8 +179,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
           res->setValue(j, cur->getNrRegs(), a);
-        }
-        catch (...) {
+        } catch (...) {
           a.destroy();
           throw;
         }
@@ -208,15 +197,14 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
         _pos = 0;
       }
     }
-  }
-  while (res.get() == nullptr);
+  } while (res.get() == nullptr);
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
 }
 
-size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
+size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
   if (_done) {
     return 0;
   }
@@ -226,11 +214,11 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
   while (skipped < atLeast) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize, atMost);
-      if (! ExecutionBlock::getBlock(toFetch, toFetch)) {
+      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
         _done = true;
         return skipped;
       }
-      _pos = 0;           // this is in the first block
+      _pos = 0;  // this is in the first block
     }
 
     // if we make it here, then _buffer.front() exists
@@ -238,12 +226,12 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 
     // get the thing we are looping over
     AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
-    size_t sizeInVar = 0; // to shut up compiler
+    size_t sizeInVar = 0;  // to shut up compiler
 
     // get the size of the thing we are looping over
     switch (inVarReg._type) {
       case AqlValue::JSON: {
-        if (! inVarReg._json->isArray()) {
+        if (!inVarReg._json->isArray()) {
           throwArrayExpectedException();
         }
         sizeInVar = inVarReg._json->size();
@@ -256,9 +244,9 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
       }
 
       case AqlValue::DOCVEC: {
-        if (_index == 0) { // this is a (maybe) new DOCVEC
+        if (_index == 0) {  // this is a (maybe) new DOCVEC
           _docVecSize = 0;
-          // we require the total number of items 
+          // we require the total number of items
           for (size_t i = 0; i < inVarReg._vector->size(); i++) {
             _docVecSize += inVarReg._vector->at(i)->size();
           }
@@ -270,7 +258,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
         break;
       }
 
-      case AqlValue::SHAPED: 
+      case AqlValue::SHAPED:
       case AqlValue::EMPTY: {
         throwArrayExpectedException();
       }
@@ -280,8 +268,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
       // eat just enough of inVariable . . .
       _index += atMost;
       skipped = atMost;
-    }
-    else {
+    } else {
       // eat the whole of the current inVariable and proceed . . .
       skipped += (sizeInVar - _index);
       _index = 0;
@@ -299,7 +286,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 /// @brief create an AqlValue from the inVariable using the current _index
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue EnumerateListBlock::getAqlValue (AqlValue const& inVarReg) {
+AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg) {
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -309,12 +296,14 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue const& inVarReg) {
       // FIXME: is this correct? What if the copy works, but the
       // new throws? Is this then a leak? What if the new works
       // but the AqlValue temporary cannot be made?
-      return AqlValue(new Json(inVarReg._json->at(static_cast<int>(_index++)).copy()));
+      return AqlValue(
+          new Json(inVarReg._json->at(static_cast<int>(_index++)).copy()));
     }
     case AqlValue::RANGE: {
-      return AqlValue(new Json(static_cast<double>(inVarReg._range->at(_index++))));
+      return AqlValue(
+          new Json(static_cast<double>(inVarReg._range->at(_index++))));
     }
-    case AqlValue::DOCVEC: { // incoming doc vec has a single column
+    case AqlValue::DOCVEC: {  // incoming doc vec has a single column
       auto& block = inVarReg._vector->at(_thisBlock);
       AqlValue out = block->getValue(_index - _seen, 0).clone();
       if (++_index == block->size() + _seen) {
@@ -337,14 +326,11 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue const& inVarReg) {
   // cannot be reached. function call above will always throw an exception
   return AqlValue();
 }
-          
-void EnumerateListBlock::throwArrayExpectedException () {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_ARRAY_EXPECTED, 
-                                 TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-                                 std::string(" as operand to FOR loop"));
+
+void EnumerateListBlock::throwArrayExpectedException() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_ARRAY_EXPECTED,
+      TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
+          std::string(" as operand to FOR loop"));
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

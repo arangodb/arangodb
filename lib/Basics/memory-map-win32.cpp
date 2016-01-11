@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief memory mapped files in windows
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "memory-map.h"
@@ -39,11 +33,8 @@
 /// @brief flushes changes made in memory back to disk
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FlushMMFile (int fileDescriptor, 
-                     void* startingAddress, 
-                     size_t numOfBytesToFlush, 
-                     int flags) {
-
+int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
+                    size_t numOfBytesToFlush, int flags) {
   // ...........................................................................
   // Possible flags to send are (based upon the Ubuntu Linux ASM include files:
   // #define MS_ASYNC        1             /* sync memory asynchronously */
@@ -55,7 +46,6 @@ int TRI_FlushMMFile (int fileDescriptor,
   // FlushFileBuffers ensures file written to disk
   // ...........................................................................
 
-
   // ...........................................................................
   // Whenever we talk to the memory map functions, we require a file handle
   // rather than a file descriptor. However, we only store file descriptors for
@@ -65,7 +55,8 @@ int TRI_FlushMMFile (int fileDescriptor,
   HANDLE fileHandle;
   BOOL result;
 
-  if (fileDescriptor < 0) { // an invalid file descriptor of course means an invalid handle
+  if (fileDescriptor <
+      0) {  // an invalid file descriptor of course means an invalid handle
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -79,10 +70,9 @@ int TRI_FlushMMFile (int fileDescriptor,
   // An invalid file system handle was returned.
   // ...........................................................................
 
-  if (fileHandle == INVALID_HANDLE_VALUE ) {
+  if (fileHandle == INVALID_HANDLE_VALUE) {
     return TRI_ERROR_SYS_ERROR;
   }
-
 
   result = FlushViewOfFile(startingAddress, numOfBytesToFlush);
   if (result && ((flags & MS_SYNC) == MS_SYNC)) {
@@ -100,17 +90,11 @@ int TRI_FlushMMFile (int fileDescriptor,
 /// @brief maps a file on disk onto memory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFile (void* memoryAddress, 
-                size_t numOfBytesToInitialize, 
-                int memoryProtection,
-                int flags, 
-                int fileDescriptor, 
-                void** mmHandle, 
-                int64_t offset,  
-                void** result) {
-
+int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
+               int memoryProtection, int flags, int fileDescriptor,
+               void** mmHandle, int64_t offset, void** result) {
   DWORD objectProtection = PAGE_READONLY;
-  DWORD viewProtection   = FILE_MAP_READ;
+  DWORD viewProtection = FILE_MAP_READ;
   LARGE_INTEGER mmLength;
   HANDLE fileHandle;
 
@@ -133,7 +117,9 @@ int TRI_MMFile (void* memoryAddress,
     // .........................................................................
     fileHandle = INVALID_HANDLE_VALUE;
     if ((flags & MAP_ANONYMOUS) != MAP_ANONYMOUS) {
-      LOG_DEBUG("File descriptor is invalid however memory map flag is not anonymous");
+      LOG_DEBUG(
+          "File descriptor is invalid however memory map flag is not "
+          "anonymous");
       return TRI_ERROR_SYS_ERROR;
     }
   }
@@ -149,7 +135,7 @@ int TRI_MMFile (void* memoryAddress,
     // An invalid file system handle was returned.
     // ...........................................................................
 
-    if (fileHandle == INVALID_HANDLE_VALUE ) {
+    if (fileHandle == INVALID_HANDLE_VALUE) {
       LOG_DEBUG("File descriptor converted to an invalid handle");
       return TRI_ERROR_SYS_ERROR;
     }
@@ -165,63 +151,59 @@ int TRI_MMFile (void* memoryAddress,
   // so we assume no execution and only read access
   // ...........................................................................
 
-  //res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, &fd, &mmHandle, 0, &data);
-
+  // res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, &fd,
+  // &mmHandle, 0, &data);
 
   // ...........................................................................
   // If the fileHandle (or file descriptor) is set to NULL, then the are not
   // memory mapping a real file, rather the file resides in virtual memory
   // ...........................................................................
 
-
   if ((flags & PROT_READ) == PROT_READ) {
-
     if ((flags & PROT_EXEC) == PROT_EXEC) {
       if ((flags & PROT_WRITE) == PROT_WRITE) {
         objectProtection = PAGE_EXECUTE_READWRITE;
-        viewProtection   = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
-      }
-      else {
+        viewProtection = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
+      } else {
         objectProtection = PAGE_EXECUTE_READ;
-        viewProtection   = FILE_MAP_READ | FILE_MAP_EXECUTE;
+        viewProtection = FILE_MAP_READ | FILE_MAP_EXECUTE;
       }
     }
 
     else if ((flags & PROT_WRITE) == PROT_WRITE) {
-       objectProtection = PAGE_READWRITE;
-       viewProtection   = FILE_MAP_ALL_ACCESS;
+      objectProtection = PAGE_READWRITE;
+      viewProtection = FILE_MAP_ALL_ACCESS;
     }
 
     else {
       objectProtection = PAGE_READONLY;
     }
-  } // end of PROT_READ
+  }  // end of PROT_READ
 
   else if ((flags & PROT_EXEC) == PROT_EXEC) {
-
     if ((flags & PROT_WRITE) == PROT_WRITE) {
       objectProtection = PAGE_EXECUTE_READWRITE;
-      viewProtection   = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
-    }
-    else {
+      viewProtection = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
+    } else {
       objectProtection = PAGE_EXECUTE_READ;
-      viewProtection   = FILE_MAP_READ | FILE_MAP_EXECUTE;
+      viewProtection = FILE_MAP_READ | FILE_MAP_EXECUTE;
     }
 
-  } // end of PROT_EXEC
+  }  // end of PROT_EXEC
 
   else if ((flags & PROT_WRITE) == PROT_WRITE) {
     objectProtection = PAGE_READWRITE;
-    viewProtection   = FILE_MAP_ALL_ACCESS;
+    viewProtection = FILE_MAP_ALL_ACCESS;
   }
-
 
   // ...........................................................................
   // TODO: determine the correct memory protection and then uncomment
   // ...........................................................................
-  // *mmHandle = CreateFileMapping(fileHandle, NULL, objectProtection, mmLength.HighPart, mmLength.LowPart, NULL);
+  // *mmHandle = CreateFileMapping(fileHandle, NULL, objectProtection,
+  // mmLength.HighPart, mmLength.LowPart, NULL);
 
-  *mmHandle = CreateFileMapping(fileHandle, NULL, PAGE_READWRITE, mmLength.HighPart, mmLength.LowPart, NULL);
+  *mmHandle = CreateFileMapping(fileHandle, NULL, PAGE_READWRITE,
+                                mmLength.HighPart, mmLength.LowPart, NULL);
 
   // ...........................................................................
   // If we have failed for some reason return system error for now.
@@ -239,8 +221,10 @@ int TRI_MMFile (void* memoryAddress,
   // where this view is placed in memory.
   // ........................................................................
 
-  //TODO: fix the viewProtection above *result = MapViewOfFile(*mmHandle, viewProtection, 0, 0, 0);
-  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0, numOfBytesToInitialize);
+  // TODO: fix the viewProtection above *result = MapViewOfFile(*mmHandle,
+  // viewProtection, 0, 0, 0);
+  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0,
+                          numOfBytesToInitialize);
 
   // ........................................................................
   // The map view of file has failed.
@@ -250,12 +234,14 @@ int TRI_MMFile (void* memoryAddress,
     DWORD errorCode = GetLastError();
     CloseHandle(*mmHandle);
     // we have failure for some reason
-    // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD WINAPI GetLastError(void) );
+    // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD
+    // WINAPI GetLastError(void) );
     if (errorCode == ERROR_NOT_ENOUGH_MEMORY) {
-      LOG_DEBUG("MapViewOfFile failed with out of memory error %d", (int) errorCode);
+      LOG_DEBUG("MapViewOfFile failed with out of memory error %d",
+                (int)errorCode);
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    LOG_DEBUG("MapViewOfFile failed with error code = %d", (int) errorCode);
+    LOG_DEBUG("MapViewOfFile failed with error code = %d", (int)errorCode);
     return TRI_ERROR_SYS_ERROR;
   }
 
@@ -266,14 +252,12 @@ int TRI_MMFile (void* memoryAddress,
 /// @brief 'unmaps' or removes memory associated with a memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile (void* memoryAddress,
-                  size_t numOfBytesToUnMap, 
-                  int fileDescriptor, 
-                  void** mmHandle) {
+int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
+                 int fileDescriptor, void** mmHandle) {
   // UnmapViewOfFile: If the function succeeds, the return value is nonzero.
   bool ok = (UnmapViewOfFile(memoryAddress) != 0);
   ok = (CloseHandle(*mmHandle) && ok);
-  if (! ok) {
+  if (!ok) {
     return TRI_ERROR_SYS_ERROR;
   }
   return TRI_ERROR_NO_ERROR;
@@ -283,53 +267,46 @@ int TRI_UNMMFile (void* memoryAddress,
 /// @brief sets various protection levels with the memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ProtectMMFile (void* memoryAddress, 
-                       size_t numOfBytesToProtect, 
-                       int flags, 
-                       int fileDescriptor, 
-                       void** mmHandle) {
+int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
+                      int flags, int fileDescriptor, void** mmHandle) {
   DWORD objectProtection = PAGE_READONLY;
-  DWORD viewProtection   = FILE_MAP_READ;
+  DWORD viewProtection = FILE_MAP_READ;
 
   if ((flags & PROT_READ) == PROT_READ) {
-
     if ((flags & PROT_EXEC) == PROT_EXEC) {
       if ((flags & PROT_WRITE) == PROT_WRITE) {
         objectProtection = PAGE_EXECUTE_READWRITE;
-        viewProtection   = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
-      }
-      else {
+        viewProtection = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
+      } else {
         objectProtection = PAGE_EXECUTE_READ;
-        viewProtection   = FILE_MAP_READ | FILE_MAP_EXECUTE;
+        viewProtection = FILE_MAP_READ | FILE_MAP_EXECUTE;
       }
     }
 
     else if ((flags & PROT_WRITE) == PROT_WRITE) {
-       objectProtection = PAGE_READWRITE;
-       viewProtection   = FILE_MAP_ALL_ACCESS;
+      objectProtection = PAGE_READWRITE;
+      viewProtection = FILE_MAP_ALL_ACCESS;
     }
 
     else {
       objectProtection = PAGE_READONLY;
     }
-  } // end of PROT_READ
+  }  // end of PROT_READ
 
   else if ((flags & PROT_EXEC) == PROT_EXEC) {
-
     if ((flags & PROT_WRITE) == PROT_WRITE) {
       objectProtection = PAGE_EXECUTE_READWRITE;
-      viewProtection   = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
-    }
-    else {
+      viewProtection = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
+    } else {
       objectProtection = PAGE_EXECUTE_READ;
-      viewProtection   = FILE_MAP_READ | FILE_MAP_EXECUTE;
+      viewProtection = FILE_MAP_READ | FILE_MAP_EXECUTE;
     }
 
-  } // end of PROT_EXEC
+  }  // end of PROT_EXEC
 
   else if ((flags & PROT_WRITE) == PROT_WRITE) {
     objectProtection = PAGE_READWRITE;
-    viewProtection   = FILE_MAP_ALL_ACCESS;
+    viewProtection = FILE_MAP_ALL_ACCESS;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -339,19 +316,11 @@ int TRI_ProtectMMFile (void* memoryAddress,
 /// @brief gives hints about upcoming sequential memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFileAdvise (void*, size_t, int) {
+int TRI_MMFileAdvise(void*, size_t, int) {
   // Not on Windows
   return TRI_ERROR_NO_ERROR;
 }
 
-
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

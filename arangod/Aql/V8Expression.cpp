@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, V8 expression
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/V8Expression.h"
@@ -40,24 +34,18 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the v8 expression
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Expression::V8Expression (v8::Isolate* isolate,
-                            v8::Handle<v8::Function> func,
-                            v8::Handle<v8::Object> constantValues,
-                            bool isSimple)
-  : isolate(isolate),
-    _func(),
-    _constantValues(),
-    _numExecutions(0),
-    _isSimple(isSimple) {
-
+V8Expression::V8Expression(v8::Isolate* isolate, v8::Handle<v8::Function> func,
+                           v8::Handle<v8::Object> constantValues, bool isSimple)
+    : isolate(isolate),
+      _func(),
+      _constantValues(),
+      _numExecutions(0),
+      _isSimple(isSimple) {
   _func.Reset(isolate, func);
   _constantValues.Reset(isolate, constantValues);
 }
@@ -66,42 +54,37 @@ V8Expression::V8Expression (v8::Isolate* isolate,
 /// @brief destroy the v8 expression
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Expression::~V8Expression () {
+V8Expression::~V8Expression() {
   _constantValues.Reset();
   _func.Reset();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue V8Expression::execute (v8::Isolate* isolate,
-                                Query* query,
-                                triagens::arango::AqlTransaction* trx,
-                                AqlItemBlock const* argv,
-                                size_t startPos,
-                                std::vector<Variable const*> const& vars,
-                                std::vector<RegisterId> const& regs) {
+AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
+                               triagens::arango::AqlTransaction* trx,
+                               AqlItemBlock const* argv, size_t startPos,
+                               std::vector<Variable const*> const& vars,
+                               std::vector<RegisterId> const& regs) {
   size_t const n = vars.size();
-  TRI_ASSERT_EXPENSIVE(regs.size() == n); // assert same vector length
+  TRI_ASSERT_EXPENSIVE(regs.size() == n);  // assert same vector length
 
-  bool const hasRestrictions = ! _attributeRestrictions.empty();
+  bool const hasRestrictions = !_attributeRestrictions.empty();
 
   v8::Handle<v8::Object> values = v8::Object::New(isolate);
 
   for (size_t i = 0; i < n; ++i) {
     auto reg = regs[i];
 
-    auto const& value(argv->getValueReference(startPos, reg)); 
+    auto const& value(argv->getValueReference(startPos, reg));
 
     if (value.isEmpty()) {
       continue;
     }
-    
+
     auto document = argv->getDocumentCollection(reg);
     auto const& varname = vars[i]->name;
 
@@ -111,7 +94,9 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
 
       if (it != _attributeRestrictions.end()) {
         // build a partial object
-        values->ForceSet(TRI_V8_STD_STRING(varname), value.toV8Partial(isolate, trx, (*it).second, document));
+        values->ForceSet(
+            TRI_V8_STD_STRING(varname),
+            value.toV8Partial(isolate, trx, (*it).second, document));
         continue;
       }
     }
@@ -119,14 +104,14 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
     // fallthrough to building the complete object
 
     // build the regular object
-    values->ForceSet(TRI_V8_STD_STRING(varname), value.toV8(isolate, trx, document));
+    values->ForceSet(TRI_V8_STD_STRING(varname),
+                     value.toV8(isolate, trx, document));
   }
 
   TRI_ASSERT(query != nullptr);
 
-
   TRI_GET_GLOBALS();
-    
+
   v8::Handle<v8::Value> result;
 
   auto old = v8g->_query;
@@ -139,7 +124,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
     // note: constants are passed by reference so we can save re-creating them
     // on every invocation. this however means that these constants must not be
     // modified by the called function. there is a hash check in place below to
-    // verify that constants don't get modified by the called function. 
+    // verify that constants don't get modified by the called function.
     // note: user-defined AQL functions are always called without constants
     // because they are opaque to the optimizer and the assumption that they
     // won't modify their arguments is unsafe
@@ -147,22 +132,24 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
     // a hash function for hashing V8 object contents
-    auto hasher = [] (v8::Isolate* isolate,
-                      v8::Handle<v8::Value> const obj) -> uint64_t {
-      std::unique_ptr<TRI_json_t>json(TRI_ObjectToJson(isolate, obj));
+    auto hasher =
+        [](v8::Isolate* isolate, v8::Handle<v8::Value> const obj) -> uint64_t {
+          std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, obj));
 
-      if (json == nullptr) {
-        return 0;
-      }
+          if (json == nullptr) {
+            return 0;
+          }
 
-      return TRI_FastHashJson(json.get()); 
-    };
+          return TRI_FastHashJson(json.get());
+        };
 
     // hash the constant values that we pass into V8
     uint64_t const hash = hasher(isolate, constantValues);
 #endif
 
-    v8::Handle<v8::Value> args[] = { values, constantValues, v8::Boolean::New(isolate, _numExecutions++ == 0) };
+    v8::Handle<v8::Value> args[] = {
+        values, constantValues,
+        v8::Boolean::New(isolate, _numExecutions++ == 0)};
 
     // execute the function
     v8::TryCatch tryCatch;
@@ -171,16 +158,15 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
     result = func->Call(func, 3, args);
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-    // now that the V8 function call is finished, check that our 
+    // now that the V8 function call is finished, check that our
     // constants actually were not modified
     TRI_ASSERT(hasher(isolate, constantValues) == hash);
 #endif
 
     v8g->_query = old;
-  
+
     Executor::HandleV8Error(tryCatch, result);
-  }
-  catch (...) {
+  } catch (...) {
     v8g->_query = old;
     // bubble up exception
     throw;
@@ -192,13 +178,11 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   if (result->IsUndefined()) {
     // expression does not have any (defined) value. replace with null
     json.reset(TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
-  }
-  else {
+  } else {
     // expression had a result. convert it to JSON
-    if (_isSimple) { 
+    if (_isSimple) {
       json.reset(TRI_ObjectToJsonSimple(isolate, result));
-    }
-    else {
+    } else {
       json.reset(TRI_ObjectToJson(isolate, result));
     }
   }
@@ -212,11 +196,9 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   return AqlValue(j);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End

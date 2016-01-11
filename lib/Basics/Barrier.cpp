@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief barrier for synchronization
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Barrier.h"
@@ -32,43 +26,28 @@
 
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           Barrier
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a barrier for the specified number of waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-Barrier::Barrier (size_t size)
-  : _condition(),
-    _missing(size) {
- 
-}
+Barrier::Barrier(size_t size) : _condition(), _missing(size) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the barrier. this will call synchronize() to ensure all tasks
 /// are joined
 ////////////////////////////////////////////////////////////////////////////////
 
-Barrier::~Barrier () {
-  synchronize();
-}
+Barrier::~Barrier() { synchronize(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join a single task. reduces the number of waiting tasks and wakes
 /// up the barrier's synchronize() routine
 ////////////////////////////////////////////////////////////////////////////////
 
-void Barrier::join () {
+void Barrier::join() {
   {
     CONDITION_LOCKER(guard, _condition);
     TRI_ASSERT(_missing > 0);
@@ -82,7 +61,7 @@ void Barrier::join () {
 /// @brief wait for all tasks to join
 ////////////////////////////////////////////////////////////////////////////////
 
-void Barrier::synchronize () {
+void Barrier::synchronize() {
   while (true) {
     CONDITION_LOCKER(guard, _condition);
 
@@ -94,11 +73,4 @@ void Barrier::synchronize () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

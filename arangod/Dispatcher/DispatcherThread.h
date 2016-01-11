@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher thread
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,127 +20,95 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DISPATCHER_DISPATCHER_THREAD_H
-#define ARANGODB_DISPATCHER_DISPATCHER_THREAD_H 1
+#ifndef ARANGOD_DISPATCHER_DISPATCHER_THREAD_H
+#define ARANGOD_DISPATCHER_DISPATCHER_THREAD_H 1
 
 #include "Basics/Thread.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace rest {
-    class DispatcherQueue;
-    class Job;
-    class Scheduler;
+namespace rest {
+class DispatcherQueue;
+class Job;
+class Scheduler;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class Dispatcher
-// -----------------------------------------------------------------------------
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief job dispatcher thread
 /////////////////////////////////////////////////////////////////////////////
 
-    class DispatcherThread : public basics::Thread {
-      DispatcherThread (DispatcherThread const&) = delete;
-      DispatcherThread& operator= (DispatcherThread const&) = delete;
+class DispatcherThread : public basics::Thread {
+  DispatcherThread(DispatcherThread const&) = delete;
+  DispatcherThread& operator=(DispatcherThread const&) = delete;
 
-      friend class Dispatcher;
-      friend class DispatcherQueue;
+  friend class Dispatcher;
+  friend class DispatcherQueue;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            thread local variables
-// -----------------------------------------------------------------------------
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief a global, but thread-local place to hold the current dispatcher
+  /// thread. If we are not in a dispatcher thread this is set to nullptr.
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  static thread_local DispatcherThread* currentDispatcherThread;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a global, but thread-local place to hold the current dispatcher
-/// thread. If we are not in a dispatcher thread this is set to nullptr.
-////////////////////////////////////////////////////////////////////////////////
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructs a dispatcher thread
+  ////////////////////////////////////////////////////////////////////////////////
 
-        static thread_local DispatcherThread* currentDispatcherThread;
+  explicit DispatcherThread(DispatcherQueue*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  void run();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a dispatcher thread
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-        explicit DispatcherThread (DispatcherQueue*);
+  void addStatus(arangodb::velocypack::Builder* b);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief indicates that thread is doing a blocking operation
+  ////////////////////////////////////////////////////////////////////////////////
 
-      protected:
+  void block();
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief indicates that thread has resumed work
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void run ();
+  void unblock();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief do the real work
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  void handleJob(Job* job);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief indicates that thread is doing a blocking operation
-////////////////////////////////////////////////////////////////////////////////
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the dispatcher queue
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void block ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief indicates that thread has resumed work
-////////////////////////////////////////////////////////////////////////////////
-
-        void unblock ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief do the real work
-////////////////////////////////////////////////////////////////////////////////
-
-        void handleJob (Job* job);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-        DispatcherQueue* _queue;
-    };
-  }
+  DispatcherQueue* _queue;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

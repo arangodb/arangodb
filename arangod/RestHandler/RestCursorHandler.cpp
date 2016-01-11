@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cursor request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestCursorHandler.h"
@@ -46,34 +40,27 @@
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestCursorHandler::RestCursorHandler (HttpRequest* request,
-                                      std::pair<triagens::arango::ApplicationV8*, triagens::aql::QueryRegistry*>* pair) 
-  : RestVocbaseBaseHandler(request),
-    _applicationV8(pair->first),
-    _queryRegistry(pair->second),
-    _queryLock(),
-    _query(nullptr),
-    _queryKilled(false) {
+RestCursorHandler::RestCursorHandler(
+    HttpRequest* request, std::pair<triagens::arango::ApplicationV8*,
+                                    triagens::aql::QueryRegistry*>* pair)
+    : RestVocbaseBaseHandler(request),
+      _applicationV8(pair->first),
+      _queryRegistry(pair->second),
+      _queryLock(),
+      _query(nullptr),
+      _queryKilled(false) {}
 
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestCursorHandler::execute () {
+HttpHandler::status_t RestCursorHandler::execute() {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -91,8 +78,9 @@ HttpHandler::status_t RestCursorHandler::execute () {
     deleteCursor();
     return status_t(HANDLER_DONE);
   }
-   
-  generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED); 
+
+  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
 
@@ -100,35 +88,30 @@ HttpHandler::status_t RestCursorHandler::execute () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCursorHandler::cancel () {
-  return cancelQuery();
-}
+bool RestCursorHandler::cancel() { return cancelQuery(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes the query and returns the results/cursor
 /// this method is also used by derived classes
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::processQuery (VPackSlice const& slice) {
-  if (! slice.isObject()) {
+void RestCursorHandler::processQuery(VPackSlice const& slice) {
+  if (!slice.isObject()) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
   VPackSlice const querySlice = slice.get("query");
-  if (! querySlice.isString()) {
+  if (!querySlice.isString()) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
 
   VPackSlice const bindVars = slice.get("bindVars");
-  if (! bindVars.isNone()) {
-    if (! bindVars.isObject() &&
-        ! bindVars.isNull() ){
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting object for <bindVars>");
+  if (!bindVars.isNone()) {
+    if (!bindVars.isObject() && !bindVars.isNull()) {
+      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+                    "expecting object for <bindVars>");
       return;
     }
   }
@@ -138,18 +121,17 @@ void RestCursorHandler::processQuery (VPackSlice const& slice) {
   VPackValueLength l;
   char const* queryString = querySlice.getString(l);
 
-  triagens::aql::Query query(_applicationV8, 
-                             false, 
-                             _vocbase, 
-                             queryString,
-                             static_cast<size_t>(l),
-                             (! bindVars.isNone() ? triagens::basics::VelocyPackHelper::velocyPackToJson(bindVars) : nullptr),
-                             triagens::basics::VelocyPackHelper::velocyPackToJson(options),
-                             triagens::aql::PART_MAIN);
+  triagens::aql::Query query(
+      _applicationV8, false, _vocbase, queryString, static_cast<size_t>(l),
+      (!bindVars.isNone()
+           ? triagens::basics::VelocyPackHelper::velocyPackToJson(bindVars)
+           : nullptr),
+      triagens::basics::VelocyPackHelper::velocyPackToJson(options),
+      triagens::aql::PART_MAIN);
 
-  registerQuery(&query); 
+  registerQuery(&query);
   auto queryResult = query.execute(_queryRegistry);
-  unregisterQuery(); 
+  unregisterQuery();
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -161,80 +143,88 @@ void RestCursorHandler::processQuery (VPackSlice const& slice) {
   }
 
   TRI_ASSERT(TRI_IsArrayJson(queryResult.json));
- 
-  { 
-    _response = createResponse(HttpResponse::CREATED);
+
+  {
+    createResponse(HttpResponse::CREATED);
     _response->setContentType("application/json; charset=utf-8");
 
     triagens::basics::Json extra = buildExtra(queryResult);
 
-    size_t batchSize = triagens::basics::VelocyPackHelper::getNumericValue<size_t>(options, "batchSize", 1000);
+    size_t batchSize =
+        triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+            options, "batchSize", 1000);
     size_t const n = TRI_LengthArrayJson(queryResult.json);
 
     if (n <= batchSize) {
-      // result is smaller than batchSize and will be returned directly. no need to create a cursor
+      // result is smaller than batchSize and will be returned directly. no need
+      // to create a cursor
 
       triagens::basics::Json result(triagens::basics::Json::Object, 7);
-      result.set("result", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
+      result.set("result",
+                 triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json,
+                                        triagens::basics::Json::AUTOFREE));
       queryResult.json = nullptr;
 
       result.set("hasMore", triagens::basics::Json(false));
 
-      if (triagens::basics::VelocyPackHelper::getBooleanValue(options, "count", false)) {
+      if (triagens::basics::VelocyPackHelper::getBooleanValue(options, "count",
+                                                              false)) {
         result.set("count", triagens::basics::Json(static_cast<double>(n)));
       }
-    
+
       result.set("cached", triagens::basics::Json(queryResult.cached));
       if (queryResult.cached) {
-        result.set("extra", triagens::basics::Json(triagens::basics::Json::Object));
-      }
-      else {
+        result.set("extra",
+                   triagens::basics::Json(triagens::basics::Json::Object));
+      } else {
         result.set("extra", extra);
       }
       result.set("error", triagens::basics::Json(false));
-      result.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
+      result.set("code", triagens::basics::Json(
+                             static_cast<double>(_response->responseCode())));
 
       result.dump(_response->body());
       return;
     }
-      
+
     // result is bigger than batchSize, and a cursor will be created
-    auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
+    auto cursors = static_cast<triagens::arango::CursorRepository*>(
+        _vocbase->_cursorRepository);
     TRI_ASSERT(cursors != nullptr);
 
-    double ttl = triagens::basics::VelocyPackHelper::getNumericValue<double>(options, "ttl", 30);
-    bool count = triagens::basics::VelocyPackHelper::getBooleanValue(options, "count", false);
-    
+    double ttl = triagens::basics::VelocyPackHelper::getNumericValue<double>(
+        options, "ttl", 30);
+    bool count = triagens::basics::VelocyPackHelper::getBooleanValue(
+        options, "count", false);
+
     // steal the query JSON, cursor will take over the ownership
     auto j = queryResult.json;
-    triagens::arango::JsonCursor* cursor = cursors->createFromJson(j, batchSize, extra.steal(), ttl, count, queryResult.cached); 
+    triagens::arango::JsonCursor* cursor = cursors->createFromJson(
+        j, batchSize, extra.steal(), ttl, count, queryResult.cached);
     queryResult.json = nullptr;
 
     try {
       _response->body().appendChar('{');
       cursor->dump(_response->body());
       _response->body().appendText(",\"error\":false,\"code\":");
-      _response->body().appendInteger(static_cast<uint32_t>(_response->responseCode()));
+      _response->body().appendInteger(
+          static_cast<uint32_t>(_response->responseCode()));
       _response->body().appendChar('}');
 
       cursors->release(cursor);
-    }
-    catch (...) {
+    } catch (...) {
       cursors->release(cursor);
       throw;
     }
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::registerQuery (triagens::aql::Query* query) {
+void RestCursorHandler::registerQuery(triagens::aql::Query* query) {
   MUTEX_LOCKER(_queryLock);
 
   TRI_ASSERT(_query == nullptr);
@@ -245,7 +235,7 @@ void RestCursorHandler::registerQuery (triagens::aql::Query* query) {
 /// @brief unregister the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::unregisterQuery () {
+void RestCursorHandler::unregisterQuery() {
   MUTEX_LOCKER(_queryLock);
 
   _query = nullptr;
@@ -255,7 +245,7 @@ void RestCursorHandler::unregisterQuery () {
 /// @brief cancel the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCursorHandler::cancelQuery () {
+bool RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(_queryLock);
 
   if (_query != nullptr) {
@@ -271,7 +261,7 @@ bool RestCursorHandler::cancelQuery () {
 /// @brief whether or not the query was canceled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCursorHandler::wasCanceled () {
+bool RestCursorHandler::wasCanceled() {
   MUTEX_LOCKER(_queryLock);
   return _queryKilled;
 }
@@ -280,15 +270,14 @@ bool RestCursorHandler::wasCanceled () {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder RestCursorHandler::buildOptions (VPackSlice const& slice) const {
+VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
   VPackBuilder options;
   options.openObject();
 
   VPackSlice count = slice.get("count");
   if (count.isBool()) {
     options.add("count", count);
-  }
-  else {
+  } else {
     options.add("count", VPackValue(false));
   }
 
@@ -296,11 +285,11 @@ VPackBuilder RestCursorHandler::buildOptions (VPackSlice const& slice) const {
   if (batchSize.isNumber()) {
     if ((batchSize.isDouble() && batchSize.getDouble() == 0.0) ||
         (batchSize.isInteger() && batchSize.getUInt() == 0)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
     }
     options.add("batchSize", batchSize);
-  }
-  else {
+  } else {
     options.add("batchSize", VPackValue(1000));
   }
 
@@ -314,14 +303,12 @@ VPackBuilder RestCursorHandler::buildOptions (VPackSlice const& slice) const {
   VPackSlice opts = slice.get("options");
   if (opts.isObject()) {
     for (auto const& it : VPackObjectIterator(opts)) {
-      if (! it.key.isString() || it.value.isNone()) {
+      if (!it.key.isString() || it.value.isNone()) {
         continue;
       }
       std::string keyName = it.key.copyString();
 
-      if (keyName != "count" && 
-          keyName != "batchSize") { 
-
+      if (keyName != "count" && keyName != "batchSize") {
         if (keyName == "cache" && hasCache) {
           continue;
         }
@@ -333,8 +320,7 @@ VPackBuilder RestCursorHandler::buildOptions (VPackSlice const& slice) const {
   VPackSlice ttl = slice.get("ttl");
   if (ttl.isNumber()) {
     options.add("ttl", ttl);
-  }
-  else {
+  } else {
     options.add("ttl", VPackValue(30));
   }
   options.close();
@@ -344,27 +330,36 @@ VPackBuilder RestCursorHandler::buildOptions (VPackSlice const& slice) const {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the "extra" attribute values from the result.
-/// note that the "extra" object will take ownership from the result for 
+/// note that the "extra" object will take ownership from the result for
 /// several values
 ////////////////////////////////////////////////////////////////////////////////
-      
-triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult& queryResult) const {
+
+triagens::basics::Json RestCursorHandler::buildExtra(
+    triagens::aql::QueryResult& queryResult) const {
   // build "extra" attribute
-  triagens::basics::Json extra(triagens::basics::Json::Object); 
+  triagens::basics::Json extra(triagens::basics::Json::Object);
   VPackSlice stats = queryResult.stats.slice();
- 
-  if (! stats.isNone()) {
-    extra.set("stats", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, triagens::basics::VelocyPackHelper::velocyPackToJson(stats), triagens::basics::Json::AUTOFREE));
+
+  if (!stats.isNone()) {
+    extra.set("stats",
+              triagens::basics::Json(
+                  TRI_UNKNOWN_MEM_ZONE,
+                  triagens::basics::VelocyPackHelper::velocyPackToJson(stats),
+                  triagens::basics::Json::AUTOFREE));
   }
   if (queryResult.profile != nullptr) {
-    extra.set("profile", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.profile, triagens::basics::Json::AUTOFREE));
+    extra.set("profile",
+              triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.profile,
+                                     triagens::basics::Json::AUTOFREE));
     queryResult.profile = nullptr;
   }
   if (queryResult.warnings == nullptr) {
-    extra.set("warnings", triagens::basics::Json(triagens::basics::Json::Array));
-  }
-  else {
-    extra.set("warnings", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.warnings, triagens::basics::Json::AUTOFREE));
+    extra.set("warnings",
+              triagens::basics::Json(triagens::basics::Json::Array));
+  } else {
+    extra.set("warnings",
+              triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.warnings,
+                                     triagens::basics::Json::AUTOFREE));
     queryResult.warnings = nullptr;
   }
 
@@ -383,7 +378,8 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// contains the query string to be executed
 ///
 /// @RESTBODYPARAM{count,boolean,optional,}
-/// indicates whether the number of documents in the result set should be returned in
+/// indicates whether the number of documents in the result set should be
+/// returned in
 /// the "count" attribute of the result.
 /// Calculating the "count" attribute might in the future have a performance
 /// impact for some queries so this option is turned off by default, and "count"
@@ -392,7 +388,8 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// @RESTBODYPARAM{batchSize,integer,optional,int64}
 /// maximum number of result documents to be transferred from
 /// the server to the client in one roundtrip. If this attribute is
-/// not set, a server-controlled default value will be used. A *batchSize* value of
+/// not set, a server-controlled default value will be used. A *batchSize* value
+/// of
 /// *0* is disallowed.
 ///
 /// @RESTBODYPARAM{ttl,integer,optional,int64}
@@ -403,8 +400,10 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// @RESTBODYPARAM{cache,boolean,optional,}
 /// flag to determine whether the AQL query cache
-/// shall be used. If set to *false*, then any query cache lookup will be skipped
-/// for the query. If set to *true*, it will lead to the query cache being checked
+/// shall be used. If set to *false*, then any query cache lookup will be
+/// skipped
+/// for the query. If set to *true*, it will lead to the query cache being
+/// checked
 /// for the query if the query cache mode is either *on* or *demand*.
 ///
 /// @RESTBODYPARAM{bindVars,array,optional,object}
@@ -415,28 +414,39 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// @RESTSTRUCT{fullCount,JSF_post_api_cursor_opts,boolean,optional,}
 /// if set to *true* and the query contains a *LIMIT* clause, then the
-/// result will contain an extra attribute *extra* with a sub-attribute *fullCount*.
-/// This sub-attribute will contain the number of documents in the result before the
-/// last LIMIT in the query was applied. It can be used to count the number of documents that
+/// result will contain an extra attribute *extra* with a sub-attribute
+/// *fullCount*.
+/// This sub-attribute will contain the number of documents in the result before
+/// the
+/// last LIMIT in the query was applied. It can be used to count the number of
+/// documents that
 /// match certain filter criteria, but only return a subset of them, in one go.
-/// It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option
-/// will disable a few LIMIT optimizations and may lead to more documents being processed,
-/// and thus make queries run longer. Note that the *fullCount* sub-attribute will only
-/// be present in the result if the query has a LIMIT clause and the LIMIT clause is
+/// It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting
+/// the option
+/// will disable a few LIMIT optimizations and may lead to more documents being
+/// processed,
+/// and thus make queries run longer. Note that the *fullCount* sub-attribute
+/// will only
+/// be present in the result if the query has a LIMIT clause and the LIMIT
+/// clause is
 /// actually used in the query.
 ///
 /// @RESTSTRUCT{maxPlans,JSF_post_api_cursor_opts,integer,optional,int64}
-/// limits the maximum number of plans that are created by the AQL query optimizer.
+/// limits the maximum number of plans that are created by the AQL query
+/// optimizer.
 ///
 /// @RESTSTRUCT{optimizer.rules,JSF_post_api_cursor_opts,array,optional,string}
 /// a list of to-be-included or to-be-excluded optimizer rules
 /// can be put into this attribute, telling the optimizer to include or exclude
-/// specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
-/// with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
+/// specific rules. To disable a rule, prefix its name with a `-`, to enable a
+/// rule, prefix it
+/// with a `+`. There is also a pseudo-rule `all`, which will match all
+/// optimizer rules.
 ///
 /// @RESTSTRUCT{profile,JSF_post_api_cursor_opts,boolean,optional,}
 /// if set to *true*, then the additional query profiling information
-/// will be returned in the *extra.stats* return attribute if the query result is not
+/// will be returned in the *extra.stats* return attribute if the query result
+/// is not
 /// served from the query cache.
 ///
 /// @RESTDESCRIPTION
@@ -471,19 +481,22 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// @RESTREPLYBODY{extra,object,optional,}
 /// an optional JSON object with extra information about the query result
-/// contained in its *stats* sub-attribute. For data-modification queries, the 
-/// *extra.stats* sub-attribute will contain the number of modified documents and 
+/// contained in its *stats* sub-attribute. For data-modification queries, the
+/// *extra.stats* sub-attribute will contain the number of modified documents
+/// and
 /// the number of documents that could not be modified
 /// due to an error (if *ignoreErrors* query option is specified)
 ///
 /// @RESTREPLYBODY{cached,boolean,required,}
-/// a boolean flag indicating whether the query result was served 
+/// a boolean flag indicating whether the query result was served
 /// from the query cache or not. If the query result is served from the query
-/// cache, the *extra* return attribute will not contain any *stats* sub-attribute
+/// cache, the *extra* return attribute will not contain any *stats*
+/// sub-attribute
 /// and no *profile* sub-attribute.
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if the JSON representation is malformed or the query specification is
+/// is returned if the JSON representation is malformed or the query
+/// specification is
 /// missing from the request.
 ///
 /// If the JSON representation is malformed or the query specification is
@@ -504,8 +517,10 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// @RESTREPLYBODY{errorMessage,string,required,string}
 /// a descriptive error message
 ///
-/// If the query specification is complete, the server will process the query. If an
-/// error occurs during query processing, the server will respond with *HTTP 400*.
+/// If the query specification is complete, the server will process the query.
+/// If an
+/// error occurs during query processing, the server will respond with *HTTP
+/// 400*.
 /// Again, the body of the response will contain details about the error.
 ///
 /// A [list of query errors can be found here](../ErrorCodes/README.md).
@@ -516,7 +531,8 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// accessed in the query.
 ///
 /// @RESTRETURNCODE{405}
-/// The server will respond with *HTTP 405* if an unsupported HTTP method is used.
+/// The server will respond with *HTTP 405* if an unsupported HTTP method is
+/// used.
 ///
 /// @EXAMPLES
 ///
@@ -597,7 +613,8 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorOptimizerRules}
 ///     var url = "/_api/cursor";
 ///     var body = {
-///       query: "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a + b == 3 RETURN i",
+///       query: "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a + b == 3 RETURN
+///       i",
 ///       count: true,
 ///       options: {
 ///         maxPlans: 1,
@@ -693,7 +710,8 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Bad query - Execute a data-modification query that attempts to remove a non-existing
+/// Bad query - Execute a data-modification query that attempts to remove a
+/// non-existing
 /// document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteQueryFail}
@@ -719,42 +737,38 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::createCursor () {
+void RestCursorHandler::createCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/cursor");
     return;
   }
 
-  try { 
+  try {
     bool parseSuccess = true;
     VPackOptions options;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody =
+        parseVelocyPackBody(&options, parseSuccess);
 
-    if (! parseSuccess) {
+    if (!parseSuccess) {
       return;
     }
     VPackSlice body = parsedBody.get()->slice();
 
     processQuery(body);
-  }  
-  catch (triagens::basics::Exception const& ex) {
-    unregisterQuery(); 
+  } catch (triagens::basics::Exception const& ex) {
+    unregisterQuery();
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
-  }
-  catch (std::bad_alloc const&) {
-    unregisterQuery(); 
+  } catch (std::bad_alloc const&) {
+    unregisterQuery();
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-  }
-  catch (std::exception const& ex) {
-    unregisterQuery(); 
+  } catch (std::exception const& ex) {
+    unregisterQuery();
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  }
-  catch (...) {
-    unregisterQuery(); 
+  } catch (...) {
+    unregisterQuery();
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
@@ -763,7 +777,8 @@ void RestCursorHandler::createCursor () {
 /// @startDocuBlock JSF_post_api_cursor_identifier
 /// @brief return the next results from an existing cursor
 ///
-/// @RESTHEADER{PUT /_api/cursor/{cursor-identifier}, Read next batch from cursor}
+/// @RESTHEADER{PUT /_api/cursor/{cursor-identifier}, Read next batch from
+/// cursor}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -791,10 +806,12 @@ void RestCursorHandler::createCursor () {
 /// The server will respond with *HTTP 200* in case of success.
 ///
 /// @RESTRETURNCODE{400}
-/// If the cursor identifier is omitted, the server will respond with *HTTP 404*.
+/// If the cursor identifier is omitted, the server will respond with *HTTP
+/// 404*.
 ///
 /// @RESTRETURNCODE{404}
-/// If no cursor with the specified identifier can be found, the server will respond
+/// If no cursor with the specified identifier can be found, the server will
+/// respond
 /// with *HTTP 404*.
 ///
 /// @EXAMPLES
@@ -856,53 +873,54 @@ void RestCursorHandler::createCursor () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::modifyCursor () {
+void RestCursorHandler::modifyCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/cursor/<cursor-id>");
     return;
   }
-  
+
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = static_cast<triagens::arango::CursorRepository*>(
+      _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<triagens::arango::CursorId>(triagens::basics::StringUtils::uint64(id));
+  auto cursorId = static_cast<triagens::arango::CursorId>(
+      triagens::basics::StringUtils::uint64(id));
   bool busy;
   auto cursor = cursors->find(cursorId, busy);
 
   if (cursor == nullptr) {
     if (busy) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY);
-    }
-    else {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND);
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
+                    TRI_ERROR_CURSOR_BUSY);
+    } else {
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
+                    TRI_ERROR_CURSOR_NOT_FOUND);
     }
     return;
   }
 
   try {
-    _response = createResponse(HttpResponse::OK);
+    createResponse(HttpResponse::OK);
     _response->setContentType("application/json; charset=utf-8");
 
     _response->body().appendChar('{');
     cursor->dump(_response->body());
     _response->body().appendText(",\"error\":false,\"code\":");
-    _response->body().appendInteger(static_cast<uint32_t>(_response->responseCode()));
+    _response->body().appendInteger(
+        static_cast<uint32_t>(_response->responseCode()));
     _response->body().appendChar('}');
 
     cursors->release(cursor);
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     cursors->release(cursor);
 
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
-  }
-  catch (...) {
+  } catch (...) {
     cursors->release(cursor);
 
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
@@ -972,45 +990,40 @@ void RestCursorHandler::modifyCursor () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::deleteCursor () {
+void RestCursorHandler::deleteCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/cursor/<cursor-id>");
     return;
   }
-  
+
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = static_cast<triagens::arango::CursorRepository*>(
+      _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
- 
-  auto cursorId = static_cast<triagens::arango::CursorId>(triagens::basics::StringUtils::uint64(id));
+
+  auto cursorId = static_cast<triagens::arango::CursorId>(
+      triagens::basics::StringUtils::uint64(id));
   bool found = cursors->remove(cursorId);
 
-  if (! found) {
+  if (!found) {
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
-  _response = createResponse(HttpResponse::ACCEPTED);
+  createResponse(HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-   
+
   triagens::basics::Json json(triagens::basics::Json::Object);
-  json.set("id", triagens::basics::Json(id)); // id as a string! 
-  json.set("error", triagens::basics::Json(false)); 
-  json.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
+  json.set("id", triagens::basics::Json(id));  // id as a string!
+  json.set("error", triagens::basics::Json(false));
+  json.set("code", triagens::basics::Json(
+                       static_cast<double>(_response->responseCode())));
 
   json.dump(_response->body());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

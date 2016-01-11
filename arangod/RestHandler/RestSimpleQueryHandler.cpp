@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple query handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestSimpleQueryHandler.h"
@@ -41,49 +35,41 @@
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestSimpleQueryHandler::RestSimpleQueryHandler (HttpRequest* request,
-                                                std::pair<triagens::arango::ApplicationV8*, triagens::aql::QueryRegistry*>* pair) 
-  : RestCursorHandler(request, pair) {
+RestSimpleQueryHandler::RestSimpleQueryHandler(
+    HttpRequest* request, std::pair<triagens::arango::ApplicationV8*,
+                                    triagens::aql::QueryRegistry*>* pair)
+    : RestCursorHandler(request, pair) {}
 
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestSimpleQueryHandler::execute () {
+HttpHandler::status_t RestSimpleQueryHandler::execute() {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
   if (type == HttpRequest::HTTP_REQUEST_PUT) {
     char const* prefix = _request->requestPath();
 
-    if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH.c_str()) == 0) {
+    if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH.c_str()) ==
+        0) {
       // all query
       allDocuments();
       return status_t(HANDLER_DONE);
     }
   }
 
-  generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED); 
+  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_all
@@ -106,7 +92,8 @@ HttpHandler::status_t RestSimpleQueryHandler::execute () {
 /// - *limit*: The maximal amount of documents to return. The *skip*
 ///   is applied before the *limit* restriction. (optional)
 ///
-/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+/// Returns a cursor containing the result, see [Http
+/// Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -171,27 +158,30 @@ HttpHandler::status_t RestSimpleQueryHandler::execute () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleQueryHandler::allDocuments () {
-  try { 
+void RestSimpleQueryHandler::allDocuments() {
+  try {
     bool parseSuccess = true;
     VPackOptions options;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody =
+        parseVelocyPackBody(&options, parseSuccess);
 
-    if (! parseSuccess) {
+    if (!parseSuccess) {
       return;
     }
     VPackSlice body = parsedBody.get()->slice();
 
     VPackSlice const value = body.get("collection");
 
-    if (! value.isString()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
+    if (!value.isString()) {
+      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+                    "expecting string for <collection>");
       return;
     }
     std::string collectionName = value.copyString();
 
-    if (! collectionName.empty()) {
-      auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
+    if (!collectionName.empty()) {
+      auto const* col =
+          TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
 
       if (col != nullptr && collectionName.compare(col->_name) != 0) {
         // user has probably passed in a numeric collection id.
@@ -205,7 +195,7 @@ void RestSimpleQueryHandler::allDocuments () {
     bindVars.add("@collection", VPackValue(collectionName));
 
     std::string aql("FOR doc IN @@collection ");
-      
+
     VPackSlice const skip = body.get("skip");
     VPackSlice const limit = body.get("limit");
     if (skip.isNumber() || limit.isNumber()) {
@@ -213,15 +203,13 @@ void RestSimpleQueryHandler::allDocuments () {
 
       if (skip.isNumber()) {
         bindVars.add("skip", skip);
-      }
-      else {
+      } else {
         bindVars.add("skip", VPackValue(VPackValueType::Null));
       }
 
       if (limit.isNumber()) {
         bindVars.add("limit", limit);
-      }
-      else {
+      } else {
         bindVars.add("limit", VPackValue(VPackValueType::Null));
       }
     }
@@ -237,12 +225,12 @@ void RestSimpleQueryHandler::allDocuments () {
     // pass on standard options
     {
       VPackSlice ttl = body.get("ttl");
-      if (! ttl.isNone()) {
+      if (!ttl.isNone()) {
         data.add("ttl", ttl);
       }
 
       VPackSlice batchSize = body.get("batchSize");
-      if (! batchSize.isNone()) {
+      if (!batchSize.isNone()) {
         data.add("batchSize", batchSize);
       }
     }
@@ -251,26 +239,15 @@ void RestSimpleQueryHandler::allDocuments () {
     VPackSlice s = data.slice();
     // now run the actual query and handle the result
     processQuery(s);
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
-  }
-  catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const&) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-  }
-  catch (std::exception const& ex) {
+  } catch (std::exception const& ex) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  }
-  catch (...) {
+  } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

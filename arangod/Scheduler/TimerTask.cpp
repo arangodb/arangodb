@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tasks used to handle timer events
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TimerTask.h"
@@ -42,16 +36,10 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-TimerTask::TimerTask (std::string const& id,
-                      double seconds)
-  : Task(id, "TimerTask"),
-    _watcher(nullptr),
-    _seconds(seconds) {
-}
+TimerTask::TimerTask(std::string const& id, double seconds)
+    : Task(id, "TimerTask"), _watcher(nullptr), _seconds(seconds) {}
 
-TimerTask::~TimerTask () {
-  cleanup();
-}
+TimerTask::~TimerTask() { cleanup(); }
 
 // -----------------------------------------------------------------------------
 // Task methods
@@ -61,39 +49,40 @@ TimerTask::~TimerTask () {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void TimerTask::getDescription (TRI_json_t* json) const {
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "timed", strlen("timed")));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _seconds));
+void TimerTask::getDescription(TRI_json_t* json) const {
+  TRI_Insert3ObjectJson(
+      TRI_UNKNOWN_MEM_ZONE, json, "type",
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "timed", strlen("timed")));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "offset",
+                        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _seconds));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up task
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool TimerTask::setup(Scheduler* scheduler, EventLoop loop) {
   _scheduler = scheduler;
   _loop = loop;
 
   if (0.0 < _seconds) {
     _watcher = _scheduler->installTimerEvent(loop, this, _seconds);
     LOG_TRACE("armed TimerTask with %f seconds", _seconds);
-  }
-  else {
+  } else {
     _watcher = nullptr;
   }
 
   return true;
 }
 
-void TimerTask::cleanup () {
+void TimerTask::cleanup() {
   if (_scheduler != nullptr) {
     _scheduler->uninstallEvent(_watcher);
   }
   _watcher = nullptr;
 }
 
-bool TimerTask::handleEvent (EventToken token, 
-                             EventType revents) {
+bool TimerTask::handleEvent(EventToken token, EventType revents) {
   bool result = true;
 
   if (token == _watcher) {
@@ -106,11 +95,4 @@ bool TimerTask::handleEvent (EventToken token,
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Condition Locker
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConditionLocker.h"
@@ -36,9 +30,6 @@
 
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the condition variable
@@ -49,9 +40,12 @@ using namespace triagens::basics;
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line)
-  : _conditionVariable(conditionVariable), _file(file), _line(line), _time(0.0) {
-
+ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable,
+                                 char const* file, int line)
+    : _conditionVariable(conditionVariable),
+      _file(file),
+      _line(line),
+      _time(0.0) {
   double t = TRI_microtime();
   _conditionVariable->lock();
   _time = TRI_microtime() - t;
@@ -59,9 +53,8 @@ ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable, char con
 
 #else
 
-ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable)
-  : _conditionVariable(conditionVariable) {
-
+ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable)
+    : _conditionVariable(conditionVariable) {
   _conditionVariable->lock();
 }
 
@@ -71,33 +64,28 @@ ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable)
 /// @brief unlocks the condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-ConditionLocker::~ConditionLocker () {
+ConditionLocker::~ConditionLocker() {
   _conditionVariable->unlock();
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
     LOG_WARNING("ConditionLocker %s:%d took %f s", _file, _line, _time);
   }
-#endif  
+#endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for an event to occur
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConditionLocker::wait () {
-  _conditionVariable->wait();
-}
+void ConditionLocker::wait() { _conditionVariable->wait(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for an event to occur, with a timeout in microseconds
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ConditionLocker::wait (uint64_t delay) {
+bool ConditionLocker::wait(uint64_t delay) {
   return _conditionVariable->wait(delay);
 }
 
@@ -105,39 +93,24 @@ bool ConditionLocker::wait (uint64_t delay) {
 /// @brief broadcasts an event
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConditionLocker::broadcast () {
-  _conditionVariable->broadcast();
-}
+void ConditionLocker::broadcast() { _conditionVariable->broadcast(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signals an event
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConditionLocker::signal () {
-  _conditionVariable->signal();
-}
+void ConditionLocker::signal() { _conditionVariable->signal(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the variable (handle with care, no exception allowed)
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConditionLocker::unlock () {
-  _conditionVariable->unlock();
-}
+void ConditionLocker::unlock() { _conditionVariable->unlock(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief relock the variable after unlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConditionLocker::lock () {
-  _conditionVariable->lock();
-}
+void ConditionLocker::lock() { _conditionVariable->lock(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

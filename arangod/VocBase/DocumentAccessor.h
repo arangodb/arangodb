@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read-accesses internals of a document
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_DOCUMENT_ACCESSOR_H
-#define ARANGODB_VOC_BASE_DOCUMENT_ACCESSOR_H 1
+#ifndef ARANGOD_VOC_BASE_DOCUMENT_ACCESSOR_H
+#define ARANGOD_VOC_BASE_DOCUMENT_ACCESSOR_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -46,95 +40,75 @@
 struct TRI_doc_mptr_t;
 
 namespace triagens {
-  namespace arango {
-    class CollectionNameResolver;
-  }
+namespace arango {
+class CollectionNameResolver;
+}
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  DocumentAccessor
-// -----------------------------------------------------------------------------
 
 class DocumentAccessor {
+ public:
+  
+  DocumentAccessor(DocumentAccessor const&);
+  DocumentAccessor& operator=(DocumentAccessor const&);
 
-  public:
+  DocumentAccessor(triagens::arango::CollectionNameResolver const* resolver,
+                   TRI_document_collection_t* document,
+                   TRI_doc_mptr_t const* mptr);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  explicit DocumentAccessor(TRI_json_t const* json);
+  explicit DocumentAccessor(VPackSlice const& slice);
 
-    DocumentAccessor (DocumentAccessor const&);
-    DocumentAccessor& operator= (DocumentAccessor const&);
+  ~DocumentAccessor();
 
-    DocumentAccessor (triagens::arango::CollectionNameResolver const* resolver,
-                      TRI_document_collection_t* document,
-                      TRI_doc_mptr_t const* mptr);
+  
+ public:
+  bool hasKey(std::string const& attribute) const;
 
-    explicit DocumentAccessor (TRI_json_t const* json);
-    explicit DocumentAccessor (VPackSlice const& slice);
+  bool isObject() const;
 
-    ~DocumentAccessor ();
+  bool isArray() const;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  size_t length() const;
 
-  public:
+  DocumentAccessor& get(char const* name, size_t nameLength);
 
-    bool hasKey (std::string const& attribute) const;
+  DocumentAccessor& get(std::string const& name);
 
-    bool isObject () const;
+  DocumentAccessor& at(int64_t index);
 
-    bool isArray () const;
+  triagens::basics::Json toJson();
 
-    size_t length () const;
+  
+ private:
+  void setToNull();
 
-    DocumentAccessor& get (char const* name, size_t nameLength);
+  void lookupJsonAttribute(char const* name, size_t nameLength);
 
-    DocumentAccessor& get (std::string const& name);
-    
-    DocumentAccessor& at (int64_t index);
-    
-    triagens::basics::Json toJson (); 
+  void lookupDocumentAttribute(char const* name, size_t nameLength);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  
+ private:
+  triagens::arango::CollectionNameResolver const* _resolver;
 
-  private:
+  TRI_document_collection_t* _document;
 
-    void setToNull ();
+  TRI_doc_mptr_t const* _mptr;
 
-    void lookupJsonAttribute (char const* name, size_t nameLength);
+  std::unique_ptr<TRI_json_t> _json;  // the JSON that we own
 
-    void lookupDocumentAttribute (char const* name, size_t nameLength);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-  private:
-    
-    triagens::arango::CollectionNameResolver const* _resolver;
-
-    TRI_document_collection_t* _document;
-    
-    TRI_doc_mptr_t const* _mptr;
-
-    std::unique_ptr<TRI_json_t> _json; // the JSON that we own
-
-    TRI_json_t const* _current; // the JSON that we point to
-
+  TRI_json_t const* _current;  // the JSON that we point to
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the key from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline std::string TRI_EXTRACT_MARKER_KEY (triagens::arango::Transaction* trx,
-                                                  TRI_df_marker_t const* marker) {
+static inline std::string TRI_EXTRACT_MARKER_KEY(
+    triagens::arango::Transaction* trx, TRI_df_marker_t const* marker) {
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    auto b = reinterpret_cast<char const*>(marker) + sizeof(triagens::wal::vpack_document_marker_t);
+    auto b = reinterpret_cast<char const*>(marker) +
+             sizeof(triagens::wal::vpack_document_marker_t);
     VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
     return slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
   }
@@ -151,19 +125,21 @@ static inline std::string TRI_EXTRACT_MARKER_KEY (triagens::arango::Transaction*
 /// @brief extracts the key from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline std::string TRI_EXTRACT_MARKER_KEY (triagens::arango::Transaction* trx,
-                                                  TRI_doc_mptr_t const* mptr) {
-  return TRI_EXTRACT_MARKER_KEY(trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
+static inline std::string TRI_EXTRACT_MARKER_KEY(
+    triagens::arango::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+  return TRI_EXTRACT_MARKER_KEY(
+      trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the revision id from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID (triagens::arango::Transaction* trx,
-                                                    TRI_df_marker_t const* marker) {
+static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
+    triagens::arango::Transaction* trx, TRI_df_marker_t const* marker) {
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    auto b = reinterpret_cast<char const*>(marker) + sizeof(triagens::wal::vpack_document_marker_t);
+    auto b = reinterpret_cast<char const*>(marker) +
+             sizeof(triagens::wal::vpack_document_marker_t);
     VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
     VPackSlice value = slice.get(TRI_VOC_ATTRIBUTE_REV);
     return arangodb::velocypack::readUInt64(value.start() + 1);
@@ -181,22 +157,24 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID (triagens::arango::Transactio
 /// @brief extracts the revision id from a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID (triagens::arango::Transaction* trx,
-                                                    TRI_doc_mptr_t const* mptr) {
-  return TRI_EXTRACT_MARKER_RID(trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
+static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
+    triagens::arango::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+  return TRI_EXTRACT_MARKER_RID(
+      trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares the key from a master pointer to the given key
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_MATCHES_MARKER_KEY (triagens::arango::Transaction* trx,
-                                           TRI_doc_mptr_t const* mptr,
-                                           char const* key) {
+static inline bool TRI_MATCHES_MARKER_KEY(triagens::arango::Transaction* trx,
+                                          TRI_doc_mptr_t const* mptr,
+                                          char const* key) {
   auto marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
 
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    auto b = reinterpret_cast<char const*>(marker) + sizeof(triagens::wal::vpack_document_marker_t);
+    auto b = reinterpret_cast<char const*>(marker) +
+             sizeof(triagens::wal::vpack_document_marker_t);
     VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
     VPackValueLength len;
     char const* p = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(len);
@@ -217,19 +195,22 @@ static inline bool TRI_MATCHES_MARKER_KEY (triagens::arango::Transaction* trx,
 /// @brief compares the key from a master pointer to the given key
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_MATCHES_MARKER_KEY (triagens::arango::Transaction* trx,
-                                           TRI_doc_mptr_t const* left,
-                                           TRI_doc_mptr_t const* right) {
+static inline bool TRI_MATCHES_MARKER_KEY(triagens::arango::Transaction* trx,
+                                          TRI_doc_mptr_t const* left,
+                                          TRI_doc_mptr_t const* right) {
   auto lm = static_cast<TRI_df_marker_t const*>(left->getDataPtr());
   auto rm = static_cast<TRI_df_marker_t const*>(right->getDataPtr());
 
-  if (lm->_type == TRI_WAL_MARKER_VPACK_DOCUMENT && rm->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    auto lb = reinterpret_cast<char const*>(lm) + sizeof(triagens::wal::vpack_document_marker_t);
+  if (lm->_type == TRI_WAL_MARKER_VPACK_DOCUMENT &&
+      rm->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+    auto lb = reinterpret_cast<char const*>(lm) +
+              sizeof(triagens::wal::vpack_document_marker_t);
     VPackSlice ls(reinterpret_cast<uint8_t const*>(lb), trx->vpackOptions());
     VPackValueLength llen;
     char const* p = ls.get(TRI_VOC_ATTRIBUTE_KEY).getString(llen);
 
-    auto rb = reinterpret_cast<char const*>(rm) + sizeof(triagens::wal::vpack_document_marker_t);
+    auto rb = reinterpret_cast<char const*>(rm) +
+              sizeof(triagens::wal::vpack_document_marker_t);
     VPackSlice rs(reinterpret_cast<uint8_t const*>(rb), trx->vpackOptions());
     VPackValueLength rlen;
     char const* q = rs.get(TRI_VOC_ATTRIBUTE_KEY).getString(rlen);
@@ -249,11 +230,4 @@ static inline bool TRI_MATCHES_MARKER_KEY (triagens::arango::Transaction* trx,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

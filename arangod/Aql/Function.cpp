@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, built-in AQL function
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Function.h"
@@ -32,36 +26,29 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the function
 ////////////////////////////////////////////////////////////////////////////////
-      
-Function::Function (std::string const& externalName,
-                    std::string const& internalName,
-                    std::string const& arguments,
-                    bool isCacheable,
-                    bool isDeterministic,
-                    bool canThrow,
-                    bool canRunOnDBServer,
-                    bool canPassArgumentsByReference,
-                    FunctionImplementation implementation,
-                    ExecutionCondition condition)
-  : internalName(internalName),
-    externalName(externalName),
-    arguments(arguments),
-    isCacheable(isCacheable),
-    isDeterministic(isDeterministic),
-    canThrow(canThrow),
-    canRunOnDBServer(canRunOnDBServer),
-    canPassArgumentsByReference(canPassArgumentsByReference),
-    implementation(implementation),
-    condition(condition),
-    conversions() {
 
+Function::Function(std::string const& externalName,
+                   std::string const& internalName,
+                   std::string const& arguments, bool isCacheable,
+                   bool isDeterministic, bool canThrow, bool canRunOnDBServer,
+                   bool canPassArgumentsByReference,
+                   FunctionImplementation implementation,
+                   ExecutionCondition condition)
+    : internalName(internalName),
+      externalName(externalName),
+      arguments(arguments),
+      isCacheable(isCacheable),
+      isDeterministic(isDeterministic),
+      canThrow(canThrow),
+      canRunOnDBServer(canRunOnDBServer),
+      canPassArgumentsByReference(canPassArgumentsByReference),
+      implementation(implementation),
+      condition(condition),
+      conversions() {
   initializeArguments();
 
   // condition must only be set if we also have an implementation
@@ -73,19 +60,15 @@ Function::Function (std::string const& externalName,
 /// @brief destroy the function
 ////////////////////////////////////////////////////////////////////////////////
 
-Function::~Function () {
-}
+Function::~Function() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse the argument list and set the minimum and maximum number of
 /// arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-void Function::initializeArguments () {
+void Function::initializeArguments() {
   minRequiredArguments = 0;
   maxRequiredArguments = 0;
 
@@ -93,7 +76,7 @@ void Function::initializeArguments () {
 
   // setup some parsing state
   bool inOptional = false;
-  bool foundArg   = false;
+  bool foundArg = false;
 
   char const* p = arguments.c_str();
   while (true) {
@@ -103,7 +86,7 @@ void Function::initializeArguments () {
       case '\0':
         // end of argument list
         if (foundArg) {
-          if (! inOptional) {
+          if (!inOptional) {
             ++minRequiredArguments;
           }
           ++maxRequiredArguments;
@@ -113,7 +96,7 @@ void Function::initializeArguments () {
       case '|':
         // beginning of optional arguments
         ++position;
-        TRI_ASSERT(! inOptional);
+        TRI_ASSERT(!inOptional);
         if (foundArg) {
           ++minRequiredArguments;
           ++maxRequiredArguments;
@@ -127,7 +110,7 @@ void Function::initializeArguments () {
         ++position;
         TRI_ASSERT(foundArg);
 
-        if (! inOptional) {
+        if (!inOptional) {
           ++minRequiredArguments;
         }
         ++maxRequiredArguments;
@@ -142,13 +125,12 @@ void Function::initializeArguments () {
 
       case 'h':
         // we found a collection parameter
-        
+
         // set the conversion info for the position
         if (conversions.size() <= position) {
           // we don't yet have another parameter at this position
           conversions.emplace_back(CONVERSION_REQUIRED);
-        }
-        else if (conversions[position] == CONVERSION_NONE) {
+        } else if (conversions[position] == CONVERSION_NONE) {
           // we already had a parameter at this position
           conversions[position] = CONVERSION_OPTIONAL;
         }
@@ -162,8 +144,7 @@ void Function::initializeArguments () {
         if (conversions.size() <= position) {
           // we don't yet have another parameter at this position
           conversions.emplace_back(CONVERSION_NONE);
-        }
-        else if (conversions[position] == CONVERSION_REQUIRED) {
+        } else if (conversions[position] == CONVERSION_REQUIRED) {
           // we already had a parameter at this position
           conversions[position] = CONVERSION_OPTIONAL;
         }
@@ -173,11 +154,4 @@ void Function::initializeArguments () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

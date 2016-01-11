@@ -33,7 +33,7 @@
 var Foxx = require("@arangodb/foxx");
 var publicController = new Foxx.Controller(applicationContext);
 var controller = new Foxx.Controller(applicationContext);
-var underscore = require("underscore");
+var underscore = require("lodash");
 var cluster = require("@arangodb/cluster");
 var joi = require("joi");
 var util = require("util");

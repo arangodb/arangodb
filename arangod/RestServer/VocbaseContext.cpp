@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase context
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
@@ -43,9 +37,6 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid lock
@@ -58,35 +49,32 @@ static triagens::basics::Mutex SidLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-// turn off warnings about too long type name for debug symbols blabla in MSVC only...
+// turn off warnings about too long type name for debug symbols blabla in MSVC
+// only...
 #pragma warning(disable : 4503)
 #endif
 
-typedef std::unordered_map<std::string, std::pair<std::string, double>> DatabaseSessionsType;
+typedef std::unordered_map<std::string, std::pair<std::string, double>>
+    DatabaseSessionsType;
 
 static std::unordered_map<std::string, DatabaseSessionsType> SidCache;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               static initializers
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time-to-live for aardvark server sessions
 ////////////////////////////////////////////////////////////////////////////////
 
-double VocbaseContext::ServerSessionTtl = 60.0 * 60.0 * 2; // 2 hours session timeout
+double VocbaseContext::ServerSessionTtl =
+    60.0 * 60.0 * 2;  // 2 hours session timeout
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a sid
 ////////////////////////////////////////////////////////////////////////////////
 
-void VocbaseContext::createSid (std::string const& database,
-                                std::string const& sid, 
-                                std::string const& username) {
+void VocbaseContext::createSid(std::string const& database,
+                               std::string const& sid,
+                               std::string const& username) {
   MUTEX_LOCKER(SidLock);
 
   // find entries for database first
@@ -105,20 +93,20 @@ void VocbaseContext::createSid (std::string const& database,
 /// @brief clears all sid entries for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-void VocbaseContext::clearSid (std::string const& database) {
+void VocbaseContext::clearSid(std::string const& database) {
   MUTEX_LOCKER(SidLock);
-  
-  SidCache.erase(database); 
+
+  SidCache.erase(database);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears a sid
 ////////////////////////////////////////////////////////////////////////////////
 
-void VocbaseContext::clearSid (std::string const& database,
-                               std::string const& sid) {
+void VocbaseContext::clearSid(std::string const& database,
+                              std::string const& sid) {
   MUTEX_LOCKER(SidLock);
-  
+
   auto it = SidCache.find(database);
 
   if (it == SidCache.end()) {
@@ -133,8 +121,8 @@ void VocbaseContext::clearSid (std::string const& database,
 /// @brief gets the last access time
 ////////////////////////////////////////////////////////////////////////////////
 
-double VocbaseContext::accessSid (std::string const& database,
-                                  std::string const& sid) {
+double VocbaseContext::accessSid(std::string const& database,
+                                 std::string const& sid) {
   MUTEX_LOCKER(SidLock);
 
   auto it = SidCache.find(database);
@@ -154,25 +142,15 @@ double VocbaseContext::accessSid (std::string const& database,
   return (*it2).second.second;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class VocbaseContext
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-VocbaseContext::VocbaseContext (HttpRequest* request,
-                                TRI_server_t* server,
-                                TRI_vocbase_t* vocbase) :
-  RequestContext(request),
-  _server(server),
-  _vocbase(vocbase) {
-
+VocbaseContext::VocbaseContext(HttpRequest* request, TRI_server_t* server,
+                               TRI_vocbase_t* vocbase)
+    : RequestContext(request), _server(server), _vocbase(vocbase) {
   TRI_ASSERT(_server != nullptr);
   TRI_ASSERT(_vocbase != nullptr);
 }
@@ -181,19 +159,14 @@ VocbaseContext::VocbaseContext (HttpRequest* request,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-VocbaseContext::~VocbaseContext () {
-  TRI_ReleaseVocBase(_vocbase);
-}
+VocbaseContext::~VocbaseContext() { TRI_ReleaseVocBase(_vocbase); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use special cluster authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VocbaseContext::useClusterAuthentication () const {
+bool VocbaseContext::useClusterAuthentication() const {
   auto role = ServerState::instance()->getRole();
 
   if (ServerState::instance()->isDBServer(role)) {
@@ -215,7 +188,7 @@ bool VocbaseContext::useClusterAuthentication () const {
 /// @brief return authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-const char* VocbaseContext::getRealm () const {
+const char* VocbaseContext::getRealm() const {
   if (_vocbase == nullptr) {
     return nullptr;
   }
@@ -227,10 +200,10 @@ const char* VocbaseContext::getRealm () const {
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
+HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  if (! _vocbase->_settings.requireAuthentication) {
+  if (!_vocbase->_settings.requireAuthentication) {
     // no authentication required at all
     return HttpResponse::OK;
   }
@@ -241,7 +214,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   ConnectionInfo const& ci = _request->connectionInfo();
 
   if (ci.endpointType == Endpoint::DOMAIN_UNIX &&
-      ! _vocbase->_settings.requireAuthenticationUnixSockets) {
+      !_vocbase->_settings.requireAuthenticationUnixSockets) {
     // no authentication required for unix socket domain connections
     return HttpResponse::OK;
   }
@@ -263,7 +236,9 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     }
   }
 
-  if (TRI_IsPrefixString(path, "/_open/") || TRI_IsPrefixString(path, "/_admin/aardvark/") || TRI_EqualString(path, "/")) {
+  if (TRI_IsPrefixString(path, "/_open/") ||
+      TRI_IsPrefixString(path, "/_admin/aardvark/") ||
+      TRI_EqualString(path, "/")) {
     return HttpResponse::OK;
   }
 
@@ -285,7 +260,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     MUTEX_LOCKER(SidLock);
 
     auto it = SidCache.find(_vocbase->_name);
-    
+
     if (it != SidCache.end()) {
       auto& sids = (*it).second;
       auto it2 = sids.find(sid);
@@ -313,7 +288,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
   char const* auth = _request->header("authorization", found);
 
-  if (! found || ! TRI_CaseEqualString2(auth, "basic ", 6)) {
+  if (!found || !TRI_CaseEqualString2(auth, "basic ", 6)) {
     return HttpResponse::UNAUTHORIZED;
   }
 
@@ -335,7 +310,9 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG_TRACE("invalid authentication data found, cannot extract username/password");
+      LOG_TRACE(
+          "invalid authentication data found, cannot extract "
+          "username/password");
 
       return HttpResponse::BAD;
     }
@@ -363,17 +340,20 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG_TRACE("invalid authentication data found, cannot extract username/password");
+      LOG_TRACE(
+          "invalid authentication data found, cannot extract "
+          "username/password");
       return HttpResponse::BAD;
     }
 
     username = up.substr(0, n);
 
     LOG_TRACE("checking authentication for user '%s'", username.c_str());
-    bool res = TRI_CheckAuthenticationAuthInfo(
-                 _vocbase, auth, username.c_str(), up.substr(n + 1).c_str(), &mustChange);
+    bool res =
+        TRI_CheckAuthenticationAuthInfo(_vocbase, auth, username.c_str(),
+                                        up.substr(n + 1).c_str(), &mustChange);
 
-    if (! res) {
+    if (!res) {
       return HttpResponse::UNAUTHORIZED;
     }
   }
@@ -382,9 +362,9 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   _request->setUser(username);
 
   if (mustChange) {
-    if ((_request->requestType() == HttpRequest::HTTP_REQUEST_PUT
-         || _request->requestType() == HttpRequest::HTTP_REQUEST_PATCH)
-        && TRI_EqualString2(_request->requestPath(), "/_api/user/", 11)) {
+    if ((_request->requestType() == HttpRequest::HTTP_REQUEST_PUT ||
+         _request->requestType() == HttpRequest::HTTP_REQUEST_PATCH) &&
+        TRI_EqualString2(_request->requestPath(), "/_api/user/", 11)) {
       return HttpResponse::OK;
     }
 
@@ -394,11 +374,4 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   return HttpResponse::OK;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

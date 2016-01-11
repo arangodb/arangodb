@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief map the environment to javascript
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// heavily inspired by
-/// https://github.com/joyent/node/blob/master/src/node.cc
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
@@ -36,12 +30,12 @@
 #include <crt_externs.h>
 #define environ (*_NSGetEnviron())
 #elif !defined(_MSC_VER)
-extern char **environ;
+extern char** environ;
 #endif
 #endif
 
-static void EnvGetter (v8::Local<v8::String> property,
-                       const v8::PropertyCallbackInfo<v8::Value>& args) {
+static void EnvGetter(v8::Local<v8::String> property,
+                      const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
@@ -54,8 +48,7 @@ static void EnvGetter (v8::Local<v8::String> property,
   v8::String::Value key(property);
   WCHAR buffer[32767];  // The maximum size allowed for environment variables.
   DWORD result = GetEnvironmentVariableW(reinterpret_cast<const WCHAR*>(*key),
-                                         buffer,
-                                         sizeof(buffer));
+                                         buffer, sizeof(buffer));
 
   // ERROR_ENVVAR_NOT_FOUND is possibly returned.
   // If result >= sizeof buffer the buffer was too small. That should never
@@ -71,9 +64,9 @@ static void EnvGetter (v8::Local<v8::String> property,
   TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(property));
 }
 
-static void EnvSetter (v8::Local<v8::String> property,
-                       v8::Local<v8::Value> value,
-                       const v8::PropertyCallbackInfo<v8::Value>& args) {
+static void EnvSetter(v8::Local<v8::String> property,
+                      v8::Local<v8::Value> value,
+                      const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
@@ -93,9 +86,8 @@ static void EnvSetter (v8::Local<v8::String> property,
   TRI_V8_RETURN(value);
 }
 
-
-static void EnvQuery (v8::Local<v8::String> property,
-                      const v8::PropertyCallbackInfo<v8::Integer>& args) {
+static void EnvQuery(v8::Local<v8::String> property,
+                     const v8::PropertyCallbackInfo<v8::Integer>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t rc = -1;  // Not found unless proven otherwise.
@@ -125,8 +117,8 @@ static void EnvQuery (v8::Local<v8::String> property,
   }
 }
 
-static void EnvDeleter (v8::Local<v8::String> property,
-                        const v8::PropertyCallbackInfo<v8::Boolean>& args) {
+static void EnvDeleter(v8::Local<v8::String> property,
+                       const v8::PropertyCallbackInfo<v8::Boolean>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
@@ -152,7 +144,7 @@ static void EnvDeleter (v8::Local<v8::String> property,
   TRI_V8_RETURN_FALSE();
 }
 
-static void EnvEnumerator (const v8::PropertyCallbackInfo<v8::Array>& args) {
+static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
@@ -172,28 +164,26 @@ static void EnvEnumerator (const v8::PropertyCallbackInfo<v8::Array>& args) {
   }
 #else  // _WIN32
   WCHAR* environment = GetEnvironmentStringsW();
-  if (environment == nullptr)
-    return;  // This should not happen.
+  if (environment == nullptr) return;  // This should not happen.
   v8::Local<v8::Array> envarr = v8::Array::New(isolate);
   WCHAR* p = environment;
   int i = 0;
   while (*p != 0) {
-    WCHAR *s;
+    WCHAR* s;
     if (*p == L'=') {
       // If the key starts with '=' it is a hidden environment variable.
       p += wcslen(p) + 1;
       continue;
-    } 
-    else {
+    } else {
       s = wcschr(p, L'=');
     }
-    if (! s) {
+    if (!s) {
       s = p + wcslen(p);
     }
     const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(p);
     const size_t two_byte_buffer_len = s - p;
     auto value = TRI_V8_STRING_UTF16(two_byte_buffer, (int)two_byte_buffer_len);
-    
+
     envarr->Set(i, value);
     p = s + wcslen(s) + 1;
     i++;
@@ -204,18 +194,13 @@ static void EnvEnumerator (const v8::PropertyCallbackInfo<v8::Array>& args) {
   TRI_V8_RETURN(envarr);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             module initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Env (v8::Isolate* isolate,
-                    v8::Handle<v8::Context> context,
-                    std::string const& startupPath,
-                    std::string const& modules) {
+void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+                   std::string const& startupPath, std::string const& modules) {
   v8::HandleScope scope(isolate);
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
 
@@ -228,21 +213,11 @@ void TRI_InitV8Env (v8::Isolate* isolate,
   rt = ft->InstanceTemplate();
   // rt->SetInternalFieldCount(3);
 
-  rt->SetNamedPropertyHandler(EnvGetter,
-                              EnvSetter,
-                              EnvQuery,
-                              EnvDeleter,
-                              EnvEnumerator,
-                              v8::Object::New(isolate));
+  rt->SetNamedPropertyHandler(EnvGetter, EnvSetter, EnvQuery, EnvDeleter,
+                              EnvEnumerator, v8::Object::New(isolate));
   v8g->EnvTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("ENV"), ft->GetFunction());
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("ENV"),
+                               ft->GetFunction());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

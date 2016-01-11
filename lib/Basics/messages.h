@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief common messages shared by all binaries
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,16 +20,11 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_MESSAGES_H
-#define ARANGODB_BASICS_C_MESSAGES_H 1
+#ifndef LIB_BASICS_MESSAGES_H
+#define LIB_BASICS_MESSAGES_H 1
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bye bye message
@@ -60,30 +51,14 @@
 #define TRI_BYE_MESSAGE_SV "Adjö!"
 #define TRI_BYE_MESSAGE_PT "Até Breve!"
 
-#define TRI_BYE_MESSAGE \
-  TRI_BYE_MESSAGE_CH " " \
-  TRI_BYE_MESSAGE_CZ " " \
-  TRI_BYE_MESSAGE_DE " " \
-  TRI_BYE_MESSAGE_EN " " \
-  TRI_BYE_MESSAGE_EO " " \
-  TRI_BYE_MESSAGE_ES " " \
-  TRI_BYE_MESSAGE_FR "\n" \
-  TRI_BYE_MESSAGE_IL " " \
-  TRI_BYE_MESSAGE_IT " " \
-  TRI_BYE_MESSAGE_NL " " \
-  TRI_BYE_MESSAGE_SV " " \
-  TRI_BYE_MESSAGE_GR " " \
-  TRI_BYE_MESSAGE_JP " " \
-  TRI_BYE_MESSAGE_RU " " \
-  TRI_BYE_MESSAGE_PT
+#define TRI_BYE_MESSAGE                                                     \
+  TRI_BYE_MESSAGE_CH                                                        \
+      " " TRI_BYE_MESSAGE_CZ " " TRI_BYE_MESSAGE_DE " " TRI_BYE_MESSAGE_EN  \
+      " " TRI_BYE_MESSAGE_EO " " TRI_BYE_MESSAGE_ES " " TRI_BYE_MESSAGE_FR  \
+      "\n" TRI_BYE_MESSAGE_IL " " TRI_BYE_MESSAGE_IT " " TRI_BYE_MESSAGE_NL \
+      " " TRI_BYE_MESSAGE_SV " " TRI_BYE_MESSAGE_GR " " TRI_BYE_MESSAGE_JP  \
+      " " TRI_BYE_MESSAGE_RU " " TRI_BYE_MESSAGE_PT
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

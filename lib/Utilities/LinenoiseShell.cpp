@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief console input using linenoise
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LinenoiseShell.h"
@@ -39,9 +33,6 @@ extern "C" {
 using namespace std;
 using namespace arangodb;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief active completer
@@ -53,8 +44,8 @@ static Completer* COMPLETER = nullptr;
 /// @brief completer generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LinenoiseCompletionGenerator (char const* text, 
-                                          linenoiseCompletions* lc) {
+static void LinenoiseCompletionGenerator(char const* text,
+                                         linenoiseCompletions* lc) {
   if (COMPLETER) {
     std::vector<string> alternatives = COMPLETER->alternatives(text);
     ShellBase::sortAlternatives(alternatives);
@@ -65,21 +56,14 @@ static void LinenoiseCompletionGenerator (char const* text,
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class LinenoiseShell
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LinenoiseShell::LinenoiseShell (std::string const& history, 
-                                Completer* completer)
-  : ShellBase(history, completer) {
+LinenoiseShell::LinenoiseShell(std::string const& history, Completer* completer)
+    : ShellBase(history, completer) {
   COMPLETER = completer;
   linenoiseSetCompletionCallback(LinenoiseCompletionGenerator);
   linenoiseInstallWindowChangeHandler();
@@ -89,19 +73,14 @@ LinenoiseShell::LinenoiseShell (std::string const& history,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LinenoiseShell::~LinenoiseShell() {
-  COMPLETER = nullptr;
-}
+LinenoiseShell::~LinenoiseShell() { COMPLETER = nullptr; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::open (bool) {
+bool LinenoiseShell::open(bool) {
   linenoiseHistoryLoad(_historyFilename.c_str());
   _state = STATE_OPENED;
   return true;
@@ -111,7 +90,7 @@ bool LinenoiseShell::open (bool) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::close () {
+bool LinenoiseShell::close() {
   // avoid duplicate saving of history
   if (_state != STATE_OPENED) {
     return true;
@@ -127,7 +106,7 @@ bool LinenoiseShell::close () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void LinenoiseShell::addHistory (std::string const& str) {
+void LinenoiseShell::addHistory(std::string const& str) {
   if (str.empty()) {
     return;
   }
@@ -139,7 +118,7 @@ void LinenoiseShell::addHistory (std::string const& str) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::writeHistory () {
+bool LinenoiseShell::writeHistory() {
   linenoiseHistorySave(_historyFilename.c_str());
 
   return true;
@@ -149,7 +128,7 @@ bool LinenoiseShell::writeHistory () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string LinenoiseShell::getLine (std::string const& prompt, bool& eof) {
+std::string LinenoiseShell::getLine(std::string const& prompt, bool& eof) {
   char* line = linenoise(prompt.c_str());
 
   if (line != nullptr) {
@@ -163,6 +142,4 @@ std::string LinenoiseShell::getLine (std::string const& prompt, bool& eof) {
   return "";
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

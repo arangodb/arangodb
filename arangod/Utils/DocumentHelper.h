@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document utility functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_DOCUMENT_HELPER_H
-#define ARANGODB_UTILS_DOCUMENT_HELPER_H 1
+#ifndef ARANGOD_UTILS_DOCUMENT_HELPER_H
+#define ARANGOD_UTILS_DOCUMENT_HELPER_H 1
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -37,73 +31,49 @@
 struct TRI_json_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class DocumentHelper
-// -----------------------------------------------------------------------------
 
-    class DocumentHelper {
+class DocumentHelper {
+  
+ private:
+  DocumentHelper() = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  ~DocumentHelper() = delete;
 
-      private:
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief assemble a document id from a string and a string
+  ////////////////////////////////////////////////////////////////////////////////
 
-        DocumentHelper () = delete;
+  static std::string assembleDocumentId(std::string const&,
+                                        std::string const& key,
+                                        bool urlEncode = false);
 
-        ~DocumentHelper () = delete;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief assemble a document id from a string and a char* key
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
+  static std::string assembleDocumentId(std::string const&, const TRI_voc_key_t,
+                                        bool urlEncode = false);
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the collection id and document key from an id
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a string
-////////////////////////////////////////////////////////////////////////////////
+  static bool parseDocumentId(triagens::arango::CollectionNameResolver const&,
+                              char const*, TRI_voc_cid_t&, char**);
 
-        static std::string assembleDocumentId (std::string const&,
-                                               std::string const& key,
-                                               bool urlEncode = false);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the "_key" attribute from a JSON object
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a char* key
-////////////////////////////////////////////////////////////////////////////////
-
-        static std::string assembleDocumentId (std::string const&,
-                                               const TRI_voc_key_t,
-                                               bool urlEncode = false);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id and document key from an id
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool parseDocumentId (triagens::arango::CollectionNameResolver const&,
-                                     char const*,
-                                     TRI_voc_cid_t&,
-                                     char**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the "_key" attribute from a JSON object
-////////////////////////////////////////////////////////////////////////////////
-
-        static int getKey (struct TRI_json_t const*,
-                           TRI_voc_key_t*);
-
-    };
-  }
+  static int getKey(struct TRI_json_t const*, TRI_voc_key_t*);
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

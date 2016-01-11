@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief console thread
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConsoleThread.h"
@@ -47,13 +42,7 @@ using namespace triagens::arango;
 using namespace arangodb;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class ConsoleThread
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           static public variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the line editor object for use in debugging
@@ -67,25 +56,21 @@ V8LineEditor* ConsoleThread::serverConsole = nullptr;
 
 Mutex ConsoleThread::serverConsoleMutex;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a console thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
-                              ApplicationV8* applicationV8,
-                              TRI_vocbase_t* vocbase)
-  : Thread("console"),
-    _applicationServer(applicationServer),
-    _applicationV8(applicationV8),
-    _context(nullptr),
-    _vocbase(vocbase),
-    _done(0),
-    _userAborted(false) {
-
+ConsoleThread::ConsoleThread(ApplicationServer* applicationServer,
+                             ApplicationV8* applicationV8,
+                             TRI_vocbase_t* vocbase)
+    : Thread("console"),
+      _applicationServer(applicationServer),
+      _applicationV8(applicationV8),
+      _context(nullptr),
+      _vocbase(vocbase),
+      _done(0),
+      _userAborted(false) {
   allowAsynchronousCancelation();
 }
 
@@ -93,18 +78,14 @@ ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
 /// @brief destroys a console thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ConsoleThread::~ConsoleThread () {
-}
+ConsoleThread::~ConsoleThread() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConsoleThread::run () {
+void ConsoleThread::run() {
   usleep(100 * 1000);
 
   // enter V8 context
@@ -113,10 +94,8 @@ void ConsoleThread::run () {
   // work
   try {
     inner();
-  }
-  catch (const char*) {
-  }
-  catch (...) {
+  } catch (const char*) {
+  } catch (...) {
     _applicationV8->exitContext(_context);
     _done = true;
     _applicationServer->beginShutdown();
@@ -130,20 +109,18 @@ void ConsoleThread::run () {
   _applicationServer->beginShutdown();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inner thread loop - this handles all the user inputs
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConsoleThread::inner () {
+void ConsoleThread::inner() {
   v8::Isolate* isolate = _context->isolate;
   v8::HandleScope globalScope(isolate);
 
   // run the shell
-  std::cout << "arangod console (" << rest::Version::getVerboseVersionString() << ")" << std::endl;
+  std::cout << "arangod console (" << rest::Version::getVerboseVersionString()
+            << ")" << std::endl;
   std::cout << "Copyright (c) ArangoDB GmbH" << std::endl;
 
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
@@ -179,18 +156,17 @@ start_pretty_print();
 })();
 )SCRIPT";
 
-    TRI_ExecuteJavaScriptString(isolate,
-                                localContext,
+    TRI_ExecuteJavaScriptString(isolate, localContext,
                                 TRI_V8_ASCII_STRING(startupScript),
-                                TRI_V8_ASCII_STRING("(startup)"),
-                                false);
+                                TRI_V8_ASCII_STRING("(startup)"), false);
 
 #ifndef _WIN32
-    // allow SIGINT in this particular thread... otherwise we cannot CTRL-C the console
+    // allow SIGINT in this particular thread... otherwise we cannot CTRL-C the
+    // console
     sigset_t set;
     sigemptyset(&set);
     sigaddset(&set, SIGINT);
- 
+
     if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
       LOG_ERROR("unable to install signal handler");
     }
@@ -205,7 +181,7 @@ start_pretty_print();
       serverConsole = &console;
     }
 
-    while (! _userAborted) {
+    while (!_userAborted) {
       if (nrCommands >= gcInterval) {
         TRI_RunGarbageCollectionV8(isolate, 0.5);
         nrCommands = 0;
@@ -239,17 +215,16 @@ start_pretty_print();
         v8::HandleScope scope(isolate);
 
         console.setExecutingCommand(true);
-        TRI_ExecuteJavaScriptString(isolate, localContext, TRI_V8_STRING(input.c_str()), name, true);
+        TRI_ExecuteJavaScriptString(isolate, localContext,
+                                    TRI_V8_STRING(input.c_str()), name, true);
         console.setExecutingCommand(false);
 
         if (_userAborted) {
           std::cout << "command aborted" << std::endl;
-        }
-        else if (tryCatch.HasCaught()) {
-          if (! tryCatch.CanContinue() || tryCatch.HasTerminated()) {
-           std::cout << "command aborted" << std::endl;
-          }
-          else {
+        } else if (tryCatch.HasCaught()) {
+          if (!tryCatch.CanContinue() || tryCatch.HasTerminated()) {
+            std::cout << "command aborted" << std::endl;
+          } else {
             std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
           }
         }
@@ -260,13 +235,10 @@ start_pretty_print();
       MUTEX_LOCKER(serverConsoleMutex);
       serverConsole = nullptr;
     }
-
   }
 
   localContext->Exit();
   throw "user aborted";
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief SortNode
-///
-/// @file arangod/Aql/ExecutionNode.cpp
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SortNode.h"
@@ -35,36 +31,29 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               methods of SortNode
-// -----------------------------------------------------------------------------
 
-SortNode::SortNode (ExecutionPlan* plan,
-                    triagens::basics::Json const& base,
-                    SortElementVector const& elements,
-                    bool stable)
-  : ExecutionNode(plan, base),
-    _elements(elements),
-    _stable(stable) {
-}
+SortNode::SortNode(ExecutionPlan* plan, triagens::basics::Json const& base,
+                   SortElementVector const& elements, bool stable)
+    : ExecutionNode(plan, base), _elements(elements), _stable(stable) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for SortNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void SortNode::toJsonHelper (triagens::basics::Json& nodes,
-                             TRI_memory_zone_t* zone,
-                             bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void SortNode::toJsonHelper(triagens::basics::Json& nodes,
+                            TRI_memory_zone_t* zone, bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
-  triagens::basics::Json values(triagens::basics::Json::Array, _elements.size());
+  triagens::basics::Json values(triagens::basics::Json::Array,
+                                _elements.size());
   for (auto it = _elements.begin(); it != _elements.end(); ++it) {
     triagens::basics::Json element(triagens::basics::Json::Object);
-    element("inVariable", (*it).first->toJson())
-      ("ascending", triagens::basics::Json((*it).second));
+    element("inVariable", (*it).first->toJson())(
+        "ascending", triagens::basics::Json((*it).second));
     values(element);
   }
   json("elements", values);
@@ -75,25 +64,23 @@ void SortNode::toJsonHelper (triagens::basics::Json& nodes,
 }
 
 class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
-
-public:
+ public:
   size_t _foundCalcNodes;
   SortElementVector _elms;
   std::vector<std::pair<ExecutionNode*, bool>> _myVars;
 
-  explicit SortNodeFindMyExpressions (SortNode* me)
-    : _foundCalcNodes(0),
-      _elms(me->getElements()) {
+  explicit SortNodeFindMyExpressions(SortNode* me)
+      : _foundCalcNodes(0), _elms(me->getElements()) {
     _myVars.resize(_elms.size());
   }
 
-  bool before (ExecutionNode* en) override final {
+  bool before(ExecutionNode* en) override final {
     auto vars = en->getVariablesSetHere();
     for (auto const& v : vars) {
       for (size_t n = 0; n < _elms.size(); n++) {
         if (_elms[n].first->id == v->id) {
           _myVars[n] = std::make_pair(en, _elms[n].second);
-          _foundCalcNodes ++;
+          _foundCalcNodes++;
           break;
         }
       }
@@ -102,12 +89,13 @@ public:
   }
 };
 
-std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs () {
+std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs() {
   SortNodeFindMyExpressions findExp(this);
   _dependencies[0]->walk(&findExp);
   if (findExp._foundCalcNodes < _elements.size()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "SortNode wasn't able to locate all its CalculationNodes");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "SortNode wasn't able to locate all its CalculationNodes");
   }
   return findExp._myVars;
 }
@@ -119,13 +107,13 @@ std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs () {
 /// simplification, and false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SortNode::simplify (ExecutionPlan* plan) {
+bool SortNode::simplify(ExecutionPlan* plan) {
   for (auto it = _elements.begin(); it != _elements.end(); /* no hoisting */) {
     auto variable = (*it).first;
-    
+
     TRI_ASSERT(variable != nullptr);
     auto setter = _plan->getVarSetBy(variable->id);
-    
+
     if (setter != nullptr) {
       if (setter->getType() == ExecutionNode::CALCULATION) {
         // variable introduced by a calculation
@@ -146,11 +134,11 @@ bool SortNode::simplify (ExecutionPlan* plan) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all sort information 
+/// @brief returns all sort information
 ////////////////////////////////////////////////////////////////////////////////
 
-SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
-                                              triagens::basics::StringBuffer* buffer) const {
+SortInformation SortNode::getSortInformation(
+    ExecutionPlan* plan, triagens::basics::StringBuffer* buffer) const {
   SortInformation result;
 
   auto elements = getElements();
@@ -158,13 +146,13 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
     auto variable = (*it).first;
     TRI_ASSERT(variable != nullptr);
     auto setter = _plan->getVarSetBy(variable->id);
-     
+
     if (setter == nullptr) {
       result.isValid = false;
       break;
     }
-      
-    if (! result.canThrow && setter->canThrow()) {
+
+    if (!result.canThrow && setter->canThrow()) {
       result.canThrow = true;
     }
 
@@ -172,25 +160,26 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
       // variable introduced by a calculation
       auto expression = static_cast<CalculationNode*>(setter)->expression();
 
-      if (! expression->isDeterministic()) {
+      if (!expression->isDeterministic()) {
         result.isDeterministic = false;
       }
 
-      if (! expression->isAttributeAccess() &&
-          ! expression->isReference() &&
-          ! expression->isConstant()) {
+      if (!expression->isAttributeAccess() && !expression->isReference() &&
+          !expression->isConstant()) {
         result.isComplex = true;
         break;
       }
 
       expression->stringify(buffer);
-      result.criteria.emplace_back(std::make_tuple(setter, buffer->c_str(), (*it).second));
+      result.criteria.emplace_back(
+          std::make_tuple(setter, buffer->c_str(), (*it).second));
       buffer->reset();
-    }
-    else {
-      // use variable only. note that we cannot use the variable's name as it is not
+    } else {
+      // use variable only. note that we cannot use the variable's name as it is
+      // not
       // necessarily unique in one query (yes, COLLECT, you are to blame!)
-      result.criteria.emplace_back(std::make_tuple(setter, std::to_string(variable->id), (*it).second));
+      result.criteria.emplace_back(
+          std::make_tuple(setter, std::to_string(variable->id), (*it).second));
     }
   }
 
@@ -200,17 +189,12 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
-        
-double SortNode::estimateCost (size_t& nrItems) const {
+
+double SortNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
   if (nrItems <= 3.0) {
     return depCost + nrItems;
   }
   return depCost + nrItems * log(nrItems);
 }
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
 

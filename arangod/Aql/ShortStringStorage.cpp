@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, short string storage
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortStringStorage.h"
@@ -32,30 +26,20 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               static initializers
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of a "short" string
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 size_t const ShortStringStorage::MaxStringLength = 127;
-      
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a short string storage instance
 ////////////////////////////////////////////////////////////////////////////////
 
-ShortStringStorage::ShortStringStorage (size_t blockSize) 
-  : _blocks(),
-    _blockSize(blockSize),
-    _current(nullptr),
-    _end(nullptr) {
-
+ShortStringStorage::ShortStringStorage(size_t blockSize)
+    : _blocks(), _blockSize(blockSize), _current(nullptr), _end(nullptr) {
   TRI_ASSERT(blockSize >= 64);
 }
 
@@ -63,29 +47,25 @@ ShortStringStorage::ShortStringStorage (size_t blockSize)
 /// @brief destroy a short string storage instance
 ////////////////////////////////////////////////////////////////////////////////
 
-ShortStringStorage::~ShortStringStorage () {
+ShortStringStorage::~ShortStringStorage() {
   for (auto& it : _blocks) {
     delete[] it;
-  }      
+  }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a short string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* ShortStringStorage::registerString (char const* p,
-                                          size_t length) {
+char* ShortStringStorage::registerString(char const* p, size_t length) {
   TRI_ASSERT_EXPENSIVE(length <= MaxStringLength);
 
   if (_current == nullptr || (_current + length + 1 > _end)) {
     allocateBlock();
   }
 
-  TRI_ASSERT_EXPENSIVE(! _blocks.empty());
+  TRI_ASSERT_EXPENSIVE(!_blocks.empty());
   TRI_ASSERT_EXPENSIVE(_current != nullptr);
   TRI_ASSERT_EXPENSIVE(_end != nullptr);
   TRI_ASSERT_EXPENSIVE(_current + length + 1 <= _end);
@@ -98,33 +78,22 @@ char* ShortStringStorage::registerString (char const* p,
   return position;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate a new block of memory
 ////////////////////////////////////////////////////////////////////////////////
 
-void ShortStringStorage::allocateBlock () {
+void ShortStringStorage::allocateBlock() {
   char* buffer = new char[_blockSize];
 
   try {
     _blocks.emplace_back(buffer);
     _current = buffer;
-    _end     = _current + _blockSize;
-  }
-  catch (...) {
+    _end = _current + _blockSize;
+  } catch (...) {
     delete[] buffer;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

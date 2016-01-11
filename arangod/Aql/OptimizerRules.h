@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rules for the query optimizer
-///
-/// @file 
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,31 +16,27 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_AQL_OPTIMIZER_RULES_H
-#define ARANGOD_AQL_OPTIMIZER_RULES 1
+#define ARANGOD_AQL_OPTIMIZER_RULES_H 1
 
 #include "Basics/Common.h"
 #include "Aql/Optimizer.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           rules for the optimizer
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a SORT operation for IN right-hand side operands
 ////////////////////////////////////////////////////////////////////////////////
 
-    void sortInValuesRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void sortInValuesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove redundant sorts
@@ -51,7 +44,8 @@ namespace triagens {
 /// - sorts that are covered by earlier sorts will be removed
 ////////////////////////////////////////////////////////////////////////////////
 
-    void removeRedundantSortsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeRedundantSortsRule(Optimizer*, ExecutionPlan*,
+                              Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
@@ -60,64 +54,67 @@ namespace triagens {
 /// - filters that are always false will be replaced by a NoResults node
 ////////////////////////////////////////////////////////////////////////////////
 
-    void removeUnnecessaryFiltersRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeUnnecessaryFiltersRule(Optimizer*, ExecutionPlan*,
+                                  Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove INTO of a COLLECT if not used
 ////////////////////////////////////////////////////////////////////////////////
-    
-    void removeCollectIntoRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+void removeCollectIntoRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief propagate constant attributes in FILTERs
 ////////////////////////////////////////////////////////////////////////////////
-    
-    void propagateConstantAttributesRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+void propagateConstantAttributesRule(Optimizer*, ExecutionPlan*,
+                                     Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove SORT RAND() if appropriate
 ////////////////////////////////////////////////////////////////////////////////
-    
-    void removeSortRandRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+void removeSortRandRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move calculations up in the plan
 /// this rule modifies the plan in place
-/// it aims to move up calculations as far up in the plan as possible, to 
+/// it aims to move up calculations as far up in the plan as possible, to
 /// avoid redundant calculations in inner loops
 ////////////////////////////////////////////////////////////////////////////////
 
-    void moveCalculationsUpRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void moveCalculationsUpRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move calculations down in the plan
 /// this rule modifies the plan in place
-/// it aims to move down calculations as far down in the plan as possible, 
-/// beyond FILTER and LIMIT statements 
+/// it aims to move down calculations as far down in the plan as possible,
+/// beyond FILTER and LIMIT statements
 ////////////////////////////////////////////////////////////////////////////////
 
-    void moveCalculationsDownRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void moveCalculationsDownRule(Optimizer*, ExecutionPlan*,
+                              Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fuse multiple calculations into a single one
 /// this rule modifies the plan in place
 ////////////////////////////////////////////////////////////////////////////////
 
-    void fuseCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void fuseCalculationsRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the "right" type of AggregateNode and 
-/// add a sort node for each COLLECT (may be removed later) 
+/// @brief determine the "right" type of AggregateNode and
+/// add a sort node for each COLLECT (may be removed later)
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)
 ////////////////////////////////////////////////////////////////////////////////
- 
-    void specializeCollectRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*); 
+
+void specializeCollectRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief split and-combined filters and break them into smaller parts
 ////////////////////////////////////////////////////////////////////////////////
 
-    void splitFiltersRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void splitFiltersRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move filters up in the plan
@@ -127,106 +124,115 @@ namespace triagens {
 /// filters are not pushed beyond limits
 ////////////////////////////////////////////////////////////////////////////////
 
-    void moveFiltersUpRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void moveFiltersUpRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove redundant CalculationNodes
 ////////////////////////////////////////////////////////////////////////////////
 
-    void removeRedundantCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeRedundantCalculationsRule(Optimizer*, ExecutionPlan*,
+                                     Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove CalculationNodes and SubqueryNodes that are never needed
 ////////////////////////////////////////////////////////////////////////////////
 
-    void removeUnnecessaryCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeUnnecessaryCalculationsRule(Optimizer*, ExecutionPlan*,
+                                       Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief useIndex, try to use an index for filtering
 ////////////////////////////////////////////////////////////////////////////////
 
-    void useIndexesRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void useIndexesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to use the index for sorting
 ////////////////////////////////////////////////////////////////////////////////
 
-    void useIndexForSortRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void useIndexForSortRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to remove filters which are covered by indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-    void removeFiltersCoveredByIndexRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeFiltersCoveredByIndexRule(Optimizer*, ExecutionPlan*,
+                                     Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 ////////////////////////////////////////////////////////////////////////////////
 
-    void interchangeAdjacentEnumerationsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void interchangeAdjacentEnumerationsRule(Optimizer*, ExecutionPlan*,
+                                         Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
 ////////////////////////////////////////////////////////////////////////////////
 
-    void scatterInClusterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void scatterInClusterRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief distribute operations in cluster - send each incoming row to every
-/// remote client precisely once. This happens in queries like: 
+/// remote client precisely once. This happens in queries like:
 ///
 ///   FOR x IN coll1 [SOME FILTER/CALCULATION STATEMENTS] REMOVE f(x) in coll2
-/// 
-/// where coll2 is sharded by _key, but not if it is sharded by anything else. 
-/// The collections coll1 and coll2 do not have to be distinct for this. 
+///
+/// where coll2 is sharded by _key, but not if it is sharded by anything else.
+/// The collections coll1 and coll2 do not have to be distinct for this.
 ////////////////////////////////////////////////////////////////////////////////
-    
-    void distributeInClusterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
-    void distributeFilternCalcToClusterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void distributeInClusterRule(Optimizer*, ExecutionPlan*,
+                             Optimizer::Rule const*);
 
-    void distributeSortToClusterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void distributeFilternCalcToClusterRule(Optimizer*, ExecutionPlan*,
+                                        Optimizer::Rule const*);
+
+void distributeSortToClusterRule(Optimizer*, ExecutionPlan*,
+                                 Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to get rid of a RemoteNode->ScatterNode combination which has
 /// only a SingletonNode and possibly some CalculationNodes as dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-    void removeUnnecessaryRemoteScatterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeUnnecessaryRemoteScatterRule(Optimizer*, ExecutionPlan*,
+                                        Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this rule removes Remote-Gather-Scatter/Distribute-Remote nodes from
-/// plans arising from queries of the form: 
-/// 
+/// plans arising from queries of the form:
+///
 ///   FOR x IN coll [SOME FILTER/CALCULATION STATEMENTS] REMOVE x IN coll
-/// 
-/// when coll is any collection sharded by any attributes, and 
+///
+/// when coll is any collection sharded by any attributes, and
 ///
 ///   FOR x IN coll [SOME FILTER/CALCULATION STATEMENTS] REMOVE x._key IN coll
 ///
 /// when the coll is sharded by _key.
-/// 
+///
 /// This rule dues not work for queries like:
-/// 
+///
 ///    FOR x IN coll [SOME FILTER/CALCULATION STATEMENTS] REMOVE y IN coll
 ///
-/// [different variable names], or 
+/// [different variable names], or
 ///
 ///   FOR x IN coll1 [SOME FILTER/CALCULATION STATEMENTS] REMOVE x in coll2
-///  
-///  when coll1 and coll2 are not the same, or 
+///
+///  when coll1 and coll2 are not the same, or
 ///
 ///   FOR x IN coll [SOME FILTER/CALCULATION STATEMENTS] REMOVE f(x) in coll
-/// 
+///
 ///  where f is some function.
-/// 
+///
 ////////////////////////////////////////////////////////////////////////////////
 
-    void undistributeRemoveAfterEnumCollRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void undistributeRemoveAfterEnumCollRule(Optimizer*, ExecutionPlan*,
+                                         Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this rule replaces expressions of the type: 
+/// @brief this rule replaces expressions of the type:
 ///   x.val == 1 || x.val == 2 || x.val == 3
 //  with
 //    x.val IN [1,2,3]
@@ -234,37 +240,35 @@ namespace triagens {
 //  same (single) attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-    void replaceOrWithInRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
-    
-    void removeRedundantOrRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void replaceOrWithInRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+void removeRedundantOrRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove $OLD and $NEW variables from data-modification statements
 /// if not required
 ////////////////////////////////////////////////////////////////////////////////
 
-    void removeDataModificationOutVariablesRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeDataModificationOutVariablesRule(Optimizer*, ExecutionPlan*,
+                                            Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief patch UPDATE statement on single collection that iterates over the
 /// entire collection to operate in batches
 ////////////////////////////////////////////////////////////////////////////////
 
-    void patchUpdateStatementsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
-    
+void patchUpdateStatementsRule(Optimizer*, ExecutionPlan*,
+                               Optimizer::Rule const*);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merges filter nodes into graph traversal nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-    void mergeFilterIntoTraversalRule (Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule);
+void mergeFilterIntoTraversalRule(Optimizer* opt, ExecutionPlan* plan,
+                                  Optimizer::Rule const* rule);
 
-  }  // namespace aql
+}  // namespace aql
 }  // namespace triagens
 
 #endif
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
 

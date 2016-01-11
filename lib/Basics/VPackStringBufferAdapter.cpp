@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a string buffer wrapper to be used by VelocyPackDumper
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,41 +19,41 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VPackStringBufferAdapter.h"
 #include "Basics/Exceptions.h"
 
-void triagens::basics::VPackStringBufferAdapter::push_back (char c) {
+void triagens::basics::VPackStringBufferAdapter::push_back(char c) {
   int res = TRI_AppendCharStringBuffer(_buffer, c);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
 
-void triagens::basics::VPackStringBufferAdapter::append (std::string const& p) {
+void triagens::basics::VPackStringBufferAdapter::append(std::string const& p) {
   int res = TRI_AppendString2StringBuffer(_buffer, p.c_str(), p.size());
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
 
-void triagens::basics::VPackStringBufferAdapter::append (char const* p) {
+void triagens::basics::VPackStringBufferAdapter::append(char const* p) {
   int res = TRI_AppendString2StringBuffer(_buffer, p, strlen(p));
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
 
-void triagens::basics::VPackStringBufferAdapter::append (char const* p, uint64_t len) {
+void triagens::basics::VPackStringBufferAdapter::append(char const* p,
+                                                        uint64_t len) {
   int res = TRI_AppendString2StringBuffer(_buffer, p, static_cast<size_t>(len));
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
 
-void triagens::basics::VPackStringBufferAdapter::reserve (uint64_t len) {
+void triagens::basics::VPackStringBufferAdapter::reserve(uint64_t len) {
   int res = TRI_ReserveStringBuffer(_buffer, static_cast<size_t>(len));
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);

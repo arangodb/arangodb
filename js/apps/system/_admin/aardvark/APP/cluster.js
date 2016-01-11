@@ -38,7 +38,7 @@
     cluster = require("@arangodb/cluster"),
     load = require("internal").download,
     db = require("internal").db,
-    _ = require("underscore");
+    _ = require("lodash");
 
   controller.activateSessions({
     autoCreateSession: false,

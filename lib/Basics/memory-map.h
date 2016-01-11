@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief memory mapped files
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_MEMORY__MAP_H
-#define ARANGODB_BASICS_C_MEMORY__MAP_H 1
+#ifndef LIB_BASICS_MEMORY_MAP_H
+#define LIB_BASICS_MEMORY_MAP_H 1
 
 #include "Basics/Common.h"
 
@@ -58,64 +52,42 @@
 #include "Basics/memory-map-win32.h"
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MEMORY MAPPING
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes changes made in memory back to disk
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FlushMMFile (int fileDescriptor,
-                     void* startingAddress,
-                     size_t numOfBytesToFlush,
-                     int flags);
+int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
+                    size_t numOfBytesToFlush, int flags);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maps a file on disk onto memory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFile (void* memoryAddress,
-                size_t numOfBytesToInitialize,
-                int memoryProtection,
-                int flags,
-                int fileDescriptor,
-                void** mmHandle,
-                int64_t offset,
-                void** result);
+int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
+               int memoryProtection, int flags, int fileDescriptor,
+               void** mmHandle, int64_t offset, void** result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 'unmaps' or removes memory associated with a memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile (void* memoryAddress,
-                  size_t numOfBytesToUnMap,
-                  int fileDescriptor,
-                  void** mmHandle);
+int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
+                 int fileDescriptor, void** mmHandle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets various protection levels with the memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ProtectMMFile (void* memoryAddress,
-                       size_t numOfBytesToProtect,
-                       int flags,
-                       int fileDescriptor,
-                       void** mmHandle);
+int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
+                      int flags, int fileDescriptor, void** mmHandle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gives hints about upcoming memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice);
+int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

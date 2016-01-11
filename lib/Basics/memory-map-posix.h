@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief memory mapped files in posix
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_MEMORY__MAP__POSIX_H
-#define ARANGODB_BASICS_C_MEMORY__MAP__POSIX_H 1
+#ifndef LIB_BASICS_MEMORY_MAP_POSIX_H
+#define LIB_BASICS_MEMORY_MAP_POSIX_H 1
 
 #include "Basics/Common.h"
 
@@ -55,25 +49,18 @@
 
 #ifdef __linux__
 #define TRI_MADVISE_SEQUENTIAL MADV_SEQUENTIAL
-#define TRI_MADVISE_RANDOM     MADV_RANDOM
-#define TRI_MADVISE_WILLNEED   MADV_WILLNEED
-#define TRI_MADVISE_DONTNEED   MADV_DONTNEED
+#define TRI_MADVISE_RANDOM MADV_RANDOM
+#define TRI_MADVISE_WILLNEED MADV_WILLNEED
+#define TRI_MADVISE_DONTNEED MADV_DONTNEED
 #else
 #define TRI_MADVISE_SEQUENTIAL 0
-#define TRI_MADVISE_RANDOM     0
-#define TRI_MADVISE_WILLNEED   0
-#define TRI_MADVISE_DONTNEED   0
+#define TRI_MADVISE_RANDOM 0
+#define TRI_MADVISE_WILLNEED 0
+#define TRI_MADVISE_DONTNEED 0
 #endif
 
 #endif
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

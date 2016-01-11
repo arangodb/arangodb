@@ -10,7 +10,7 @@ uninstalled.
 More specific instructions are displayed when the program is invoked.
 OPTIONS
 OPTION "--server.database <string>"
-database name to use when connection (default: "_system") ENDOPTION
+database name to use when connecting (default: "_system") ENDOPTION
 OPTION "--server.username <string>"
 username to use when connecting (default "root") ENDOPTION
 OPTION "--server.password <string>"

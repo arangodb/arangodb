@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief full text search
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,26 +19,18 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_FULLTEXT_INDEX_FULLTEXT__INDEX_H
-#define ARANGODB_FULLTEXT_INDEX_FULLTEXT__INDEX_H 1
+#ifndef ARANGOD_FULLTEXT_INDEX_FULLTEXT_INDEX_H
+#define ARANGOD_FULLTEXT_INDEX_FULLTEXT_INDEX_H 1
 
 #include "fulltext-common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          forwards
-// -----------------------------------------------------------------------------
 
 struct TRI_fulltext_query_s;
 struct TRI_fulltext_result_s;
 struct TRI_fulltext_wordlist_s;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of an indexed word in characters
@@ -57,70 +45,57 @@ struct TRI_fulltext_wordlist_s;
 
 #define TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT 2
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type for index statistics
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_fulltext_stats_s {
-  size_t    _memoryTotal;
+  size_t _memoryTotal;
 #if TRI_FULLTEXT_DEBUG
-  size_t    _memoryOwn;
-  size_t    _memoryBase;
-  size_t    _memoryNodes;
-  size_t    _memoryFollowers;
-  size_t    _memoryDocuments;
-  uint32_t  _numNodes;
+  size_t _memoryOwn;
+  size_t _memoryBase;
+  size_t _memoryNodes;
+  size_t _memoryFollowers;
+  size_t _memoryDocuments;
+  uint32_t _numNodes;
 #endif
-  size_t    _memoryHandles;
-  uint32_t  _numDocuments;
-  uint32_t  _numDeleted;
-  double    _handleDeletionGrade;
-  bool      _shouldCompact;
-}
-TRI_fulltext_stats_t;
+  size_t _memoryHandles;
+  uint32_t _numDocuments;
+  uint32_t _numDeleted;
+  double _handleDeletionGrade;
+  bool _shouldCompact;
+} TRI_fulltext_stats_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fts_index_t* TRI_CreateFtsIndex (uint32_t, uint32_t, uint32_t);
+TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t, uint32_t, uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeFtsIndex (TRI_fts_index_t*);
+void TRI_FreeFtsIndex(TRI_fts_index_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             document addition / removal functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DeleteDocumentFulltextIndex (TRI_fts_index_t* const,
-                                      const TRI_fulltext_doc_t);
+void TRI_DeleteDocumentFulltextIndex(TRI_fts_index_t* const,
+                                     const TRI_fulltext_doc_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a list of words to the index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const,
-                                   const TRI_fulltext_doc_t,
-                                   struct TRI_fulltext_wordlist_s*);
+bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const,
+                                  const TRI_fulltext_doc_t,
+                                  struct TRI_fulltext_wordlist_s*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   query functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)
@@ -147,19 +122,16 @@ struct TRI_fulltext_result_s* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* cons
 /// note: this will free the query
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_fulltext_result_s* TRI_QueryFulltextIndex (TRI_fts_index_t* const,
-                                                      struct TRI_fulltext_query_s*);
+struct TRI_fulltext_result_s* TRI_QueryFulltextIndex(
+    TRI_fts_index_t* const, struct TRI_fulltext_query_s*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump index tree
 ////////////////////////////////////////////////////////////////////////////////
 
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpTreeFtsIndex (const TRI_fts_index_t* const);
+void TRI_DumpTreeFtsIndex(const TRI_fts_index_t* const);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,34 +139,27 @@ void TRI_DumpTreeFtsIndex (const TRI_fts_index_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpStatsFtsIndex (const TRI_fts_index_t* const);
+void TRI_DumpStatsFtsIndex(const TRI_fts_index_t* const);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return stats about the index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_stats_t TRI_StatsFulltextIndex (const TRI_fts_index_t* const);
+TRI_fulltext_stats_t TRI_StatsFulltextIndex(const TRI_fts_index_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the total memory used by the index
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_MemoryFulltextIndex (const TRI_fts_index_t* const);
+size_t TRI_MemoryFulltextIndex(const TRI_fts_index_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compact the fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CompactFulltextIndex (TRI_fts_index_t* const);
+bool TRI_CompactFulltextIndex(TRI_fts_index_t* const);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

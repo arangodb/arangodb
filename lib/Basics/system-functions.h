@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,27 +19,22 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_SYSTEM__FUNCTIONS_H
-#define ARANGODB_BASICS_C_SYSTEM__FUNCTIONS_H 1
+#ifndef LIB_BASICS_SYSTEM_FUNCTIONS_H
+#define LIB_BASICS_SYSTEM_FUNCTIONS_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief memrchr
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_MISSING_MEMRCHR
-void * memrchr (const void *block, int c, size_t size);
+void* memrchr(const void* block, int c, size_t size);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +42,7 @@ void * memrchr (const void *block, int c, size_t size);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_WIN32_GETTIMEOFDAY
-int gettimeofday (struct timeval* tv, void* tz);
+int gettimeofday(struct timeval* tv, void* tz);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,40 +50,33 @@ int gettimeofday (struct timeval* tv, void* tz);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRI_HAVE_GETLINE
-ssize_t getline (char**, size_t*, FILE*);
+ssize_t getline(char**, size_t*, FILE*);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief safe localtime
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_localtime (time_t, struct tm*);
+void TRI_localtime(time_t, struct tm*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief safe gmtime
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_gmtime (time_t, struct tm*);
+void TRI_gmtime(time_t, struct tm*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief seconds with microsecond resolution
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_microtime (void);
+double TRI_microtime(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of processors or 0
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_numberProcessors (void);
+size_t TRI_numberProcessors(void);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

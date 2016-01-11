@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for Aql transactions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_AQL_TRANSACTION_H
-#define ARANGODB_UTILS_AQL_TRANSACTION_H 1
+#ifndef ARANGOD_UTILS_AQL_TRANSACTION_H
+#define ARANGOD_UTILS_AQL_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 
@@ -42,187 +36,171 @@
 #include <v8.h>
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class AqlTransaction : public Transaction {
+class AqlTransaction : public Transaction {
+  
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the transaction and add all collections from the query
+  /// context
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class AqlTransaction
-// -----------------------------------------------------------------------------
+  AqlTransaction(
+      TransactionContext* transactionContext, TRI_vocbase_t* vocbase,
+      std::map<std::string, triagens::aql::Collection*> const* collections,
+      bool isMainTransaction)
+      : Transaction(transactionContext, vocbase, 0),
+        _collections(*collections) {
+    if (!isMainTransaction) {
+      this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);
+    } else {
+      this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+    }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction and add all collections from the query
-/// context
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlTransaction (TransactionContext* transactionContext,
-                        TRI_vocbase_t* vocbase,
-                        std::map<std::string, triagens::aql::Collection*> const* collections,
-                        bool isMainTransaction)
-          : Transaction(transactionContext, vocbase, 0),
-            _collections(*collections) {
-
-          if (! isMainTransaction) {
-            this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);
-          }
-          else {
-            this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
-          }
-
-          for (auto it : *collections) {
-            if (processCollection(it.second) != TRI_ERROR_NO_ERROR) {
-              break;
-            }
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ~AqlTransaction () {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a list of collections to the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int addCollectionList (std::map<std::string, triagens::aql::Collection*>* collections) {
-          int ret = TRI_ERROR_NO_ERROR;
-          for (auto it : *collections) {
-            ret = processCollection(it.second);
-            if (ret != TRI_ERROR_NO_ERROR) {
-              break;
-            }
-          }
-          return ret;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a collection to the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int processCollection (triagens::aql::Collection* collection) {
-          if (ServerState::instance()->isCoordinator()) {
-            return processCollectionCoordinator(collection);
-          }
-          return processCollectionNormal(collection);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a coordinator collection to the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int processCollectionCoordinator (triagens::aql::Collection* collection) {
-          TRI_voc_cid_t cid = this->resolver()->getCollectionIdCluster(collection->getName());
-
-          return this->addCollection(cid, collection->getName().c_str(), collection->accessType);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a regular collection to the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int processCollectionNormal (triagens::aql::Collection* collection) {
-          TRI_vocbase_col_t const* col = this->resolver()->getCollectionStruct(collection->getName());
-          TRI_voc_cid_t cid = 0;
-
-          if (col != nullptr) {
-            cid = col->_cid;
-          }
-
-          int res = this->addCollection(cid, collection->getName().c_str(), collection->accessType);
-
-          if (res == TRI_ERROR_NO_ERROR &&
-              col != nullptr) {
-            collection->setCollection(const_cast<TRI_vocbase_col_t*>(col));
-          }
-
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ditch
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::arango::DocumentDitch* ditch (TRI_voc_cid_t cid) {
-          TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
-          TRI_ASSERT(trxColl != nullptr);
-          return trxColl->_ditch;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief documentCollection
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_document_collection_t* documentCollection (TRI_voc_cid_t cid) {
-          TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
-          TRI_ASSERT(trxColl != nullptr);
-          return trxColl->_collection->_collection;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone, used to make daughter transactions for parts of a distributed
-/// AQL query running on the coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::arango::AqlTransaction* clone () const {
-          return new triagens::arango::AqlTransaction(
-                           new triagens::arango::StandaloneTransactionContext(),
-                           this->_vocbase, 
-                           &_collections, false);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lockCollections, this is needed in a corner case in AQL: we need
-/// to lock all shards in a controlled way when we set up a distributed
-/// execution engine. To this end, we prevent the standard mechanism to
-/// lock collections on the DBservers when we instantiate the query. Then,
-/// in a second round, we need to lock the shards in exactly the right
-/// order via an HTTP call. This method is used to implement that HTTP action.
-////////////////////////////////////////////////////////////////////////////////
-
-        int lockCollections () {
-          auto trx = getInternals();
-
-          for (size_t i = 0; i < trx->_collections._length; i++) { 
-            auto trxCollection = static_cast<TRI_transaction_collection_t*>
-                           (TRI_AtVectorPointer(&trx->_collections, i));
-            int res = TRI_LockCollectionTransaction(trxCollection, 
-                                         trxCollection->_accessType, 0);
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
-          }
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief keep a copy of the collections, this is needed for the clone 
-/// operation
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        std::map<std::string, triagens::aql::Collection*> _collections;
-    };
-
+    for (auto it : *collections) {
+      if (processCollection(it.second) != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+    }
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief end the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ~AqlTransaction() {}
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a list of collections to the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int addCollectionList(
+      std::map<std::string, triagens::aql::Collection*>* collections) {
+    int ret = TRI_ERROR_NO_ERROR;
+    for (auto it : *collections) {
+      ret = processCollection(it.second);
+      if (ret != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+    }
+    return ret;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a collection to the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int processCollection(triagens::aql::Collection* collection) {
+    if (ServerState::instance()->isCoordinator()) {
+      return processCollectionCoordinator(collection);
+    }
+    return processCollectionNormal(collection);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a coordinator collection to the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int processCollectionCoordinator(triagens::aql::Collection* collection) {
+    TRI_voc_cid_t cid =
+        this->resolver()->getCollectionIdCluster(collection->getName());
+
+    return this->addCollection(cid, collection->getName().c_str(),
+                               collection->accessType);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a regular collection to the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int processCollectionNormal(triagens::aql::Collection* collection) {
+    TRI_vocbase_col_t const* col =
+        this->resolver()->getCollectionStruct(collection->getName());
+    TRI_voc_cid_t cid = 0;
+
+    if (col != nullptr) {
+      cid = col->_cid;
+    }
+
+    int res = this->addCollection(cid, collection->getName().c_str(),
+                                  collection->accessType);
+
+    if (res == TRI_ERROR_NO_ERROR && col != nullptr) {
+      collection->setCollection(const_cast<TRI_vocbase_col_t*>(col));
+    }
+
+    return res;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief ditch
+  ////////////////////////////////////////////////////////////////////////////////
+
+  triagens::arango::DocumentDitch* ditch(TRI_voc_cid_t cid) {
+    TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
+    TRI_ASSERT(trxColl != nullptr);
+    return trxColl->_ditch;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief documentCollection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_document_collection_t* documentCollection(TRI_voc_cid_t cid) {
+    TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
+    TRI_ASSERT(trxColl != nullptr);
+    return trxColl->_collection->_collection;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone, used to make daughter transactions for parts of a
+  /// distributed
+  /// AQL query running on the coordinator
+  ////////////////////////////////////////////////////////////////////////////////
+
+  triagens::arango::AqlTransaction* clone() const {
+    return new triagens::arango::AqlTransaction(
+        new triagens::arango::StandaloneTransactionContext(), this->_vocbase,
+        &_collections, false);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lockCollections, this is needed in a corner case in AQL: we need
+  /// to lock all shards in a controlled way when we set up a distributed
+  /// execution engine. To this end, we prevent the standard mechanism to
+  /// lock collections on the DBservers when we instantiate the query. Then,
+  /// in a second round, we need to lock the shards in exactly the right
+  /// order via an HTTP call. This method is used to implement that HTTP action.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int lockCollections() {
+    auto trx = getInternals();
+
+    for (size_t i = 0; i < trx->_collections._length; i++) {
+      auto trxCollection = static_cast<TRI_transaction_collection_t*>(
+          TRI_AtVectorPointer(&trx->_collections, i));
+      int res = TRI_LockCollectionTransaction(trxCollection,
+                                              trxCollection->_accessType, 0);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief keep a copy of the collections, this is needed for the clone
+  /// operation
+  ////////////////////////////////////////////////////////////////////////////////
+
+ private:
+  std::map<std::string, triagens::aql::Collection*> _collections;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

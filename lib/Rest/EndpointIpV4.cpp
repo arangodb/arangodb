@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoint, ipv4-based
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EndpointIpV4.h"
@@ -34,40 +28,24 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      EndpointIpV4
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV4::EndpointIpV4 (const Endpoint::EndpointType type,
-                            const Endpoint::EncryptionType encryption,
-                            const std::string& specification,
-                            int listenBacklog,
-                            bool reuseAddress,
-                            const std::string& host,
-                            const uint16_t port)
-  : EndpointIp(type, DOMAIN_IPV4, encryption, specification, listenBacklog, reuseAddress, host, port) {
-}
+EndpointIpV4::EndpointIpV4(const Endpoint::EndpointType type,
+                           const Endpoint::EncryptionType encryption,
+                           const std::string& specification, int listenBacklog,
+                           bool reuseAddress, const std::string& host,
+                           const uint16_t port)
+    : EndpointIp(type, DOMAIN_IPV4, encryption, specification, listenBacklog,
+                 reuseAddress, host, port) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV4::~EndpointIpV4 () {
-}
+EndpointIpV4::~EndpointIpV4() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

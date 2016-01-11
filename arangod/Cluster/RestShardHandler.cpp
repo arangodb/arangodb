@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shard control request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestShardHandler.h"
@@ -41,40 +35,31 @@ using namespace std;
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request,
-                                    Dispatcher* data)
-  : RestBaseHandler(request),
-    _dispatcher(data) {
+RestShardHandler::RestShardHandler(triagens::rest::HttpRequest* request,
+                                   Dispatcher* data)
+    : RestBaseHandler(request), _dispatcher(data) {
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestShardHandler::isDirect () const {
-  return true;
-}
+bool RestShardHandler::isDirect() const { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
-  // Deactivated to allow for asynchronous cluster internal communication 
-  // between two DBservers. 30.7.2014 Max.
+triagens::rest::HttpHandler::status_t RestShardHandler::execute() {
+// Deactivated to allow for asynchronous cluster internal communication
+// between two DBservers. 30.7.2014 Max.
 #if 0
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_COORDINATOR) {
@@ -88,34 +73,25 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
   bool found;
   char const* _coordinator = _request->header("x-arango-coordinator", found);
 
-  if (! found) {
+  if (!found) {
     generateError(triagens::rest::HttpResponse::BAD,
-                  (int) triagens::rest::HttpResponse::BAD,
+                  (int)triagens::rest::HttpResponse::BAD,
                   "header 'X-Arango-Coordinator' is missing");
     return status_t(HANDLER_DONE);
   }
 
   string coordinatorHeader = _coordinator;
-  string result = ClusterComm::instance()->processAnswer(coordinatorHeader,
-                                                         stealRequest());
+  string result =
+      ClusterComm::instance()->processAnswer(coordinatorHeader, stealRequest());
 
   if (result == "") {
-    _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
-  }
-  else {
+    createResponse(triagens::rest::HttpResponse::ACCEPTED);
+  } else {
     generateError(triagens::rest::HttpResponse::BAD,
-                  (int) triagens::rest::HttpResponse::BAD,
-                  result.c_str());
+                  (int)triagens::rest::HttpResponse::BAD, result.c_str());
   }
 
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

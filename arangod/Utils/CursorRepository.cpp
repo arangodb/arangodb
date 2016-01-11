@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief list of cursors present in database
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utils/CursorRepository.h"
@@ -37,25 +31,16 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  CursorRepository
-// -----------------------------------------------------------------------------
 
 size_t const CursorRepository::MaxCollectCount = 32;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor repository
 ////////////////////////////////////////////////////////////////////////////////
 
-CursorRepository::CursorRepository (TRI_vocbase_t* vocbase) 
-  : _vocbase(vocbase),
-    _lock(),
-    _cursors() {
-
+CursorRepository::CursorRepository(TRI_vocbase_t* vocbase)
+    : _vocbase(vocbase), _lock(), _cursors() {
   _cursors.reserve(64);
 }
 
@@ -63,25 +48,23 @@ CursorRepository::CursorRepository (TRI_vocbase_t* vocbase)
 /// @brief destroy a cursor repository
 ////////////////////////////////////////////////////////////////////////////////
 
-CursorRepository::~CursorRepository () {
+CursorRepository::~CursorRepository() {
   try {
     garbageCollect(true);
-  }
-  catch (...) {
+  } catch (...) {
   }
 
   // wait until all used cursors have vanished
   int tries = 0;
 
   while (true) {
-    if (! containsUsedCursor()) {
+    if (!containsUsedCursor()) {
       break;
     }
 
     if (tries == 0) {
       LOG_INFO("waiting for used cursors to become unused");
-    }
-    else if (tries == 120) {
+    } else if (tries == 120) {
       LOG_WARNING("giving up waiting for unused cursors");
     }
 
@@ -100,32 +83,26 @@ CursorRepository::~CursorRepository () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cursor and stores it in the registry
 /// the cursor will be returned with the usage flag set to true. it must be
-/// returned later using release() 
+/// returned later using release()
 /// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-JsonCursor* CursorRepository::createFromJson (TRI_json_t* json,
-                                              size_t batchSize,
-                                              TRI_json_t* extra,
-                                              double ttl,
-                                              bool count,
-                                              bool cached) {
+JsonCursor* CursorRepository::createFromJson(TRI_json_t* json, size_t batchSize,
+                                             TRI_json_t* extra, double ttl,
+                                             bool count, bool cached) {
   TRI_ASSERT(json != nullptr);
 
   CursorId const id = TRI_NewTickServer();
   triagens::arango::JsonCursor* cursor = nullptr;
 
   try {
-    cursor = new triagens::arango::JsonCursor(_vocbase, id, json, batchSize, extra, ttl, count, cached);
-  }
-  catch (...) {
+    cursor = new triagens::arango::JsonCursor(_vocbase, id, json, batchSize,
+                                              extra, ttl, count, cached);
+  } catch (...) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     if (extra != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
@@ -139,8 +116,7 @@ JsonCursor* CursorRepository::createFromJson (TRI_json_t* json,
     MUTEX_LOCKER(_lock);
     _cursors.emplace(std::make_pair(id, cursor));
     return cursor;
-  }
-  catch (...) {
+  } catch (...) {
     delete cursor;
     throw;
   }
@@ -150,14 +126,14 @@ JsonCursor* CursorRepository::createFromJson (TRI_json_t* json,
 /// @brief creates a cursor and stores it in the registry
 ////////////////////////////////////////////////////////////////////////////////
 
-ExportCursor* CursorRepository::createFromExport (triagens::arango::CollectionExport* ex,
-                                                  size_t batchSize,
-                                                  double ttl,
-                                                  bool count) {
+ExportCursor* CursorRepository::createFromExport(
+    triagens::arango::CollectionExport* ex, size_t batchSize, double ttl,
+    bool count) {
   TRI_ASSERT(ex != nullptr);
 
   CursorId const id = TRI_NewTickServer();
-  triagens::arango::ExportCursor* cursor = new triagens::arango::ExportCursor(_vocbase, id, ex, batchSize, ttl, count);
+  triagens::arango::ExportCursor* cursor = new triagens::arango::ExportCursor(
+      _vocbase, id, ex, batchSize, ttl, count);
 
   cursor->use();
 
@@ -165,8 +141,7 @@ ExportCursor* CursorRepository::createFromExport (triagens::arango::CollectionEx
     MUTEX_LOCKER(_lock);
     _cursors.emplace(std::make_pair(id, cursor));
     return cursor;
-  }
-  catch (...) {
+  } catch (...) {
     delete cursor;
     throw;
   }
@@ -176,9 +151,9 @@ ExportCursor* CursorRepository::createFromExport (triagens::arango::CollectionEx
 /// @brief remove a cursor by id
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CursorRepository::remove (CursorId id) {
+bool CursorRepository::remove(CursorId id) {
   triagens::arango::Cursor* cursor = nullptr;
-  
+
   {
     MUTEX_LOCKER(_lock);
 
@@ -194,7 +169,7 @@ bool CursorRepository::remove (CursorId id) {
       // already deleted
       return false;
     }
-   
+
     if (cursor->isUsed()) {
       // cursor is in use by someone else. now mark as deleted
       cursor->deleted();
@@ -213,12 +188,11 @@ bool CursorRepository::remove (CursorId id) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find an existing cursor by id
-/// if found, the cursor will be returned with the usage flag set to true. 
-/// it must be returned later using release() 
+/// if found, the cursor will be returned with the usage flag set to true.
+/// it must be returned later using release()
 ////////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::find (CursorId id,
-                                bool& busy) {
+Cursor* CursorRepository::find(CursorId id, bool& busy) {
   triagens::arango::Cursor* cursor = nullptr;
   busy = false;
 
@@ -233,7 +207,7 @@ Cursor* CursorRepository::find (CursorId id,
 
     cursor = (*it).second;
 
-    if (cursor->isDeleted()) { 
+    if (cursor->isDeleted()) {
       // already deleted
       return nullptr;
     }
@@ -253,14 +227,14 @@ Cursor* CursorRepository::find (CursorId id,
 /// @brief return a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-void CursorRepository::release (Cursor* cursor) {
+void CursorRepository::release(Cursor* cursor) {
   {
     MUTEX_LOCKER(_lock);
-  
+
     TRI_ASSERT(cursor->isUsed());
     cursor->release();
 
-    if (! cursor->isDeleted()) {
+    if (!cursor->isDeleted()) {
       return;
     }
 
@@ -276,9 +250,9 @@ void CursorRepository::release (Cursor* cursor) {
 /// @brief whether or not the repository contains a used cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CursorRepository::containsUsedCursor () {
+bool CursorRepository::containsUsedCursor() {
   MUTEX_LOCKER(_lock);
-    
+
   for (auto it : _cursors) {
     if (it.second->isUsed()) {
       return true;
@@ -292,7 +266,7 @@ bool CursorRepository::containsUsedCursor () {
 /// @brief run a garbage collection on the cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CursorRepository::garbageCollect (bool force) {
+bool CursorRepository::garbageCollect(bool force) {
   std::vector<triagens::arango::Cursor*> found;
   found.reserve(MaxCollectCount);
 
@@ -308,28 +282,25 @@ bool CursorRepository::garbageCollect (bool force) {
         // must not destroy used cursors
         ++it;
         continue;
-      } 
-   
+      }
+
       if (force || cursor->expires() < now) {
         cursor->deleted();
-      }  
+      }
 
       if (cursor->isDeleted()) {
         try {
           found.emplace_back(cursor);
           it = _cursors.erase(it);
-        }
-        catch (...) {
+        } catch (...) {
           // stop iteration
           break;
         }
 
-        if (! force &&
-            found.size() >= MaxCollectCount) {
+        if (!force && found.size() >= MaxCollectCount) {
           break;
         }
-      }
-      else {
+      } else {
         ++it;
       }
     }
@@ -340,14 +311,7 @@ bool CursorRepository::garbageCollect (bool force) {
     delete it;
   }
 
-  return (! found.empty());
+  return (!found.empty());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

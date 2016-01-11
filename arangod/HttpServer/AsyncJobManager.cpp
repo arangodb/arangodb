@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief job manager
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2004-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AsyncJobManager.h"
@@ -39,156 +33,112 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class AsyncCallbackContext
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AsyncCallbackContext
 ////////////////////////////////////////////////////////////////////////////////
 
 class triagens::rest::AsyncCallbackContext {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  explicit AsyncCallbackContext(string const& coordHeader)
+      : _coordHeader(coordHeader), _response(nullptr) {}
 
-  public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-    explicit AsyncCallbackContext (string const& coordHeader)
-      : _coordHeader(coordHeader),
-        _response(nullptr) {
+  ~AsyncCallbackContext() {
+    if (_response != nullptr) {
+      delete _response;
     }
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief gets the coordinator header
+  ////////////////////////////////////////////////////////////////////////////////
 
-    ~AsyncCallbackContext () {
-      if (_response != nullptr) {
-        delete _response;
-      }
-    }
+  string& getCoordinatorHeader() { return _coordHeader; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief coordinator header
+  ////////////////////////////////////////////////////////////////////////////////
 
-  public:
+  string _coordHeader;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the coordinator header
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief http response
+  ////////////////////////////////////////////////////////////////////////////////
 
-    string& getCoordinatorHeader () {
-      return _coordHeader;
-    }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-  private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief coordinator header
-////////////////////////////////////////////////////////////////////////////////
-
-    string _coordHeader;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief http response
-////////////////////////////////////////////////////////////////////////////////
-
-    HttpResponse* _response;
+  HttpResponse* _response;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class AsyncJobResult
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for an unspecified job result
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobResult::AsyncJobResult ()
-  : _jobId(0),
-    _response(nullptr),
-    _stamp(0.0),
-    _status(JOB_UNDEFINED),
-    _ctx(nullptr) {
-}
+AsyncJobResult::AsyncJobResult()
+    : _jobId(0),
+      _response(nullptr),
+      _stamp(0.0),
+      _status(JOB_UNDEFINED),
+      _ctx(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for a specific job result
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobResult::AsyncJobResult (IdType jobId,
-                                HttpResponse* response,
-                                double stamp,
-                                Status status,
-                                AsyncCallbackContext* ctx)
-  : _jobId(jobId),
-    _response(response),
-    _stamp(stamp),
-    _status(status),
-    _ctx(ctx) {
-}
+AsyncJobResult::AsyncJobResult(IdType jobId, HttpResponse* response,
+                               double stamp, Status status,
+                               AsyncCallbackContext* ctx)
+    : _jobId(jobId),
+      _response(response),
+      _stamp(stamp),
+      _status(status),
+      _ctx(ctx) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobResult::~AsyncJobResult () {
-}
+AsyncJobResult::~AsyncJobResult() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class AsyncJobManager
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobManager::AsyncJobManager (generate_fptr idFunc, callback_fptr callback)
-  : _lock(),
-    _jobs(),
-    generate(idFunc),
-    callback(callback) {
-}
+AsyncJobManager::AsyncJobManager(callback_fptr callback)
+    : _lock(), _jobs(), callback(callback) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobManager::~AsyncJobManager () {
+AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
   deleteJobResults();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the result of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* AsyncJobManager::getJobResult (AsyncJobResult::IdType jobId,
-                                             AsyncJobResult::Status& status,
-                                             bool removeFromList) {
+HttpResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
+                                            AsyncJobResult::Status& status,
+                                            bool removeFromList) {
   WRITE_LOCKER(_lock);
 
   auto it = _jobs.find(jobId);
@@ -205,7 +155,7 @@ HttpResponse* AsyncJobManager::getJobResult (AsyncJobResult::IdType jobId,
     return nullptr;
   }
 
-  if (! removeFromList) {
+  if (!removeFromList) {
     return nullptr;
   }
 
@@ -218,7 +168,7 @@ HttpResponse* AsyncJobManager::getJobResult (AsyncJobResult::IdType jobId,
 /// @brief deletes the result of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AsyncJobManager::deleteJobResult (AsyncJobResult::IdType jobId) {
+bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
   WRITE_LOCKER(_lock);
 
   auto it = _jobs.find(jobId);
@@ -242,7 +192,7 @@ bool AsyncJobManager::deleteJobResult (AsyncJobResult::IdType jobId) {
 /// @brief deletes all results
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::deleteJobResults () {
+void AsyncJobManager::deleteJobResults() {
   WRITE_LOCKER(_lock);
 
   auto it = _jobs.begin();
@@ -264,7 +214,7 @@ void AsyncJobManager::deleteJobResults () {
 /// @brief deletes expired results
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::deleteExpiredJobResults (double stamp) {
+void AsyncJobManager::deleteExpiredJobResults(double stamp) {
   WRITE_LOCKER(_lock);
 
   auto it = _jobs.begin();
@@ -280,8 +230,7 @@ void AsyncJobManager::deleteExpiredJobResults (double stamp) {
       }
 
       _jobs.erase(it++);
-    }
-    else {
+    } else {
       ++it;
     }
   }
@@ -291,7 +240,7 @@ void AsyncJobManager::deleteExpiredJobResults (double stamp) {
 /// @brief returns the list of pending jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-const vector<AsyncJobResult::IdType> AsyncJobManager::pending (size_t maxCount) {
+const vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCount) {
   return byStatus(AsyncJobResult::JOB_PENDING, maxCount);
 }
 
@@ -299,7 +248,7 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::pending (size_t maxCount) 
 /// @brief returns the list of done jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-const vector<AsyncJobResult::IdType> AsyncJobManager::done (size_t maxCount) {
+const vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
   return byStatus(AsyncJobResult::JOB_DONE, maxCount);
 }
 
@@ -307,8 +256,8 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::done (size_t maxCount) {
 /// @brief returns the list of jobs by status
 ////////////////////////////////////////////////////////////////////////////////
 
-const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus (AsyncJobResult::Status status,
-                                                                size_t maxCount) {
+const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
+    AsyncJobResult::Status status, size_t maxCount) {
   vector<AsyncJobResult::IdType> jobs;
 
   {
@@ -339,70 +288,39 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus (AsyncJobResult::
 /// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::initAsyncJob (HttpServerJob* job, uint64_t* jobId) {
-  if (jobId == nullptr) {
-    return;
-  }
-
-  TRI_ASSERT(job != nullptr);
-
-  *jobId = generate();
-  job->setId(*jobId);
-
+void AsyncJobManager::initAsyncJob(HttpServerJob* job, char const* hdr) {
   AsyncCallbackContext* ctx = nullptr;
 
-  bool found;
-  char const* hdr = job->handler()->getRequest()->header("x-arango-coordinator", found);
-
-  if (found) {
+  if (hdr != nullptr) {
     LOG_DEBUG("Found header X-Arango-Coordinator in async request");
     ctx = new AsyncCallbackContext(string(hdr));
   }
 
-  AsyncJobResult ajr(*jobId,
-                     nullptr,
-                     TRI_microtime(),
-                     AsyncJobResult::JOB_PENDING,
-                     ctx);
+  AsyncJobResult ajr(job->jobId(), nullptr, TRI_microtime(),
+                     AsyncJobResult::JOB_PENDING, ctx);
 
   WRITE_LOCKER(_lock);
 
-  _jobs.emplace(*jobId, ajr);
+  _jobs.emplace(job->jobId(), ajr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finishes the execution of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::finishAsyncJob (HttpServerJob* job) {
-  TRI_ASSERT(job != nullptr);
-
-  HttpHandler* handler = job->handler();
-  TRI_ASSERT(handler != nullptr);
-
-  AsyncJobResult::IdType jobId = job->id();
-
-  if (jobId == 0) {
-    return;
-  }
-
+void AsyncJobManager::finishAsyncJob(AsyncJobResult::IdType jobId,
+                                     HttpResponse* response) {
   double const now = TRI_microtime();
   AsyncCallbackContext* ctx = nullptr;
-  HttpResponse* response    = nullptr;
 
   {
     WRITE_LOCKER(_lock);
     auto it = _jobs.find(jobId);
 
     if (it == _jobs.end()) {
-      // job is already deleted.
-      // do nothing here. the dispatcher will throw away the handler,
-      // which will also dispose the response
+      delete response;
       return;
-    }
-    else {
-      response = handler->stealResponse();
-
+    } else {
       (*it).second._response = response;
       (*it).second._status = AsyncJobResult::JOB_DONE;
       (*it).second._stamp = now;
@@ -416,8 +334,6 @@ void AsyncJobManager::finishAsyncJob (HttpServerJob* job) {
       }
     }
   }
-
-  // If we got here, then we have stolen the pointer to the response
 
   // If there is a callback context, the job is no longer in the
   // list of "done" jobs, so we have to free the response and the
@@ -433,11 +349,4 @@ void AsyncJobManager::finishAsyncJob (HttpServerJob* job) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

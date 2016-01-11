@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief batch request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,140 +19,108 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_BATCH_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_BATCH_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_BATCH_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_BATCH_HANDLER_H 1
 
 #include "Basics/Common.h"
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class RestBatchHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container for complete multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct MultipartMessage {
-      MultipartMessage (const char* boundary,
-                        const size_t boundaryLength,
-                        const char* messageStart,
-                        const char* messageEnd)
+struct MultipartMessage {
+  MultipartMessage(const char* boundary, const size_t boundaryLength,
+                   const char* messageStart, const char* messageEnd)
       : boundary(boundary),
         boundaryLength(boundaryLength),
         messageStart(messageStart),
-        messageEnd(messageEnd) {
-      };
+        messageEnd(messageEnd){};
 
-      const char* boundary;
-      const size_t boundaryLength;
-      const char* messageStart;
-      const char* messageEnd;
-    };
+  const char* boundary;
+  const size_t boundaryLength;
+  const char* messageStart;
+  const char* messageEnd;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container for search data within multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct SearchHelper {
-      MultipartMessage* message;
-      char* searchStart;
-      char* foundStart;
-      size_t foundLength;
-      char* contentId;
-      size_t contentIdLength;
-      bool containsMore;
-    };
+struct SearchHelper {
+  MultipartMessage* message;
+  char* searchStart;
+  char* foundStart;
+  size_t foundLength;
+  char* contentId;
+  size_t contentIdLength;
+  bool containsMore;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestBatchHandler : public RestVocbaseBaseHandler {
+class RestBatchHandler : public RestVocbaseBaseHandler {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  explicit RestBatchHandler(rest::HttpRequest*);
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  ~RestBatchHandler();
 
-        explicit RestBatchHandler (rest::HttpRequest*);
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+  HttpHandler::status_t execute();
 
-        ~RestBatchHandler ();
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the boundary from the body of a multipart message
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               HttpHandler methods
-// -----------------------------------------------------------------------------
+  bool getBoundaryBody(std::string*);
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the boundary from the HTTP header of a multipart message
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+  bool getBoundaryHeader(std::string*);
 
-        HttpHandler::status_t execute ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the boundary of a multipart message
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  bool getBoundary(std::string*);
 
-      private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the next part from a multipart message
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the boundary from the body of a multipart message
-////////////////////////////////////////////////////////////////////////////////
-
-        bool getBoundaryBody (std::string*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the boundary from the HTTP header of a multipart message
-////////////////////////////////////////////////////////////////////////////////
-
-        bool getBoundaryHeader (std::string*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the boundary of a multipart message
-////////////////////////////////////////////////////////////////////////////////
-
-        bool getBoundary (std::string*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the next part from a multipart message
-////////////////////////////////////////////////////////////////////////////////
-
-        bool extractPart (SearchHelper*);
-
-     };
-  }
+  bool extractPart(SearchHelper*);
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

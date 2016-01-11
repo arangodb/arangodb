@@ -1,12 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper class to isolate data protection
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2015 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,17 +19,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DATA_PROTECTOR_H
-#define ARANGODB_BASICS_DATA_PROTECTOR_H 1
+#ifndef LIB_BASICS_DATA_PROTECTOR_H
+#define LIB_BASICS_DATA_PROTECTOR_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief DataProtector, a template class to manage a single atomic
@@ -60,127 +54,114 @@ namespace triagens {
 ///     prot.scan();         // This will block until no thread is reading
 ///                          // the old value any more.
 ///     delete oldp;         // guaranteed to be safe
-///   This can be a slow operation and only one thread should perform it 
+///   This can be a slow operation and only one thread should perform it
 ///   at a time. Use a mutex to ensure this.
 ///   Please note:
 ///     - The value of p *can* change under the feet of the reading threads,
 ///       which is why you need to use the pSeen variable. However, you know
 ///       that as long as unused is in scope, pSeen remains valid.
 ///     - The DataProtector instances needs 64*Nr bytes of memory.
-///     - DataProtector.cpp needs to contain an explicit template 
+///     - DataProtector.cpp needs to contain an explicit template
 ///       instantiation for all values of Nr used in the executable.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define DATA_PROTECTOR_MULTIPLICITY 64
 
-    // TODO: Make this a template again once everybody has gcc >= 4.9.2
-    // template<int Nr>
-    class DataProtector {
-        struct TRI_ALIGNAS(64) Entry {  // 64 is the size of a cache line,
-             // it is important that different list entries lie in different
-             // cache lines.
-          std::atomic<int> _count;
-        };
+// TODO: Make this a template again once everybody has gcc >= 4.9.2
+// template<int Nr>
+class DataProtector {
+  struct TRI_ALIGNAS(64) Entry {  // 64 is the size of a cache line,
+    // it is important that different list entries lie in different
+    // cache lines.
+    std::atomic<int> _count;
+  };
 
-        Entry* _list;
+  Entry* _list;
 
-        static std::atomic<int> _last;
+  static std::atomic<int> _last;
 
-        static thread_local int _mySlot;
+  static thread_local int _mySlot;
 
-      public:
+ public:
+  // A class to automatically unuse the DataProtector:
+  class UnUser {
+    DataProtector* _prot;
+    int _id;
 
-        // A class to automatically unuse the DataProtector:
-        class UnUser {
-            DataProtector* _prot;
-            int _id;
+   public:
+    UnUser(DataProtector* p, int i) : _prot(p), _id(i) {}
 
-          public:
-            UnUser (DataProtector* p, int i) 
-              : _prot(p), 
-                _id(i) {
-            }
+    ~UnUser() {
+      if (_prot != nullptr) {
+        _prot->unUse(_id);
+      }
+    }
 
-            ~UnUser () {
-              if (_prot != nullptr) {
-                _prot->unUse(_id);
-              }
-            }
+    // A move constructor
+    UnUser(UnUser&& that) : _prot(that._prot), _id(that._id) {
+      // Note that return value optimization will usually avoid
+      // this move constructor completely. However, it has to be
+      // present for the program to compile.
+      that._prot = nullptr;
+    }
 
-            // A move constructor
-            UnUser (UnUser&& that) 
-              : _prot(that._prot), 
-                _id(that._id) {
-              // Note that return value optimization will usually avoid
-              // this move constructor completely. However, it has to be
-              // present for the program to compile.
-              that._prot = nullptr;
-            }
+    // Explicitly delete the others:
+    UnUser(UnUser const& that) = delete;
+    UnUser& operator=(UnUser const& that) = delete;
+    UnUser& operator=(UnUser&& that) = delete;
+    UnUser() = delete;
+  };
 
-            // Explicitly delete the others:
-            UnUser (UnUser const& that) = delete;
-            UnUser& operator= (UnUser const& that) = delete;
-            UnUser& operator= (UnUser&& that) = delete;
-            UnUser () = delete;
-        };
+  DataProtector() : _list(nullptr) {
+    _list = new Entry[DATA_PROTECTOR_MULTIPLICITY];
+    // Just to be sure:
+    for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
+      _list[i]._count = 0;
+    }
+  }
 
-        DataProtector () : _list(nullptr) {
-          _list = new Entry[DATA_PROTECTOR_MULTIPLICITY];
-          // Just to be sure:
-          for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
-            _list[i]._count = 0;
-          }
-        }
+  ~DataProtector() { delete[] _list; }
 
-        ~DataProtector () {
-          delete[] _list;
-        }
+  UnUser use() {
+    int id = getMyId();
+    _list[id]._count++;       // this is implicitly using memory_order_seq_cst
+    return UnUser(this, id);  // return value optimization!
+  }
 
-        UnUser use () {
-          int id = getMyId();
-          _list[id]._count++;   // this is implicitly using memory_order_seq_cst
-          return UnUser(this, id);  // return value optimization!
-        }
+  void scan() {
+    for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
+      while (_list[i]._count > 0) {
+        // let other threads do some work while we're waiting
+        usleep(250);
+      }
+    }
+  }
 
-        void scan () {
-          for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
-            while (_list[i]._count > 0) {
-              // let other threads do some work while we're waiting
-              usleep(250);
-            }
-          }
-        }
+ private:
+  void unUse(int id) {
+    _list[id]._count--;  // this is implicitly using memory_order_seq_cst
+  }
 
-      private:
+  int getMyId() {
+    int id = _mySlot;
+    if (id >= 0) {
+      return id;
+    }
+    while (true) {
+      int newId = _last + 1;
+      if (newId >= DATA_PROTECTOR_MULTIPLICITY) {
+        newId = 0;
+      }
+      if (_last.compare_exchange_strong(id, newId)) {
+        _mySlot = newId;
+        return newId;
+      }
+    }
+  }
+};
 
-        void unUse (int id) {
-          _list[id]._count--;   // this is implicitly using memory_order_seq_cst
-        }
-
-        int getMyId () {
-          int id = _mySlot;
-          if (id >= 0) {
-            return id;
-          }
-          while (true) {
-            int newId = _last + 1;
-            if (newId >= DATA_PROTECTOR_MULTIPLICITY) {
-              newId = 0;
-            }
-            if (_last.compare_exchange_strong(id, newId)) {
-              _mySlot = newId;
-              return newId;
-            }
-          }
-        }
-    };
-
-  }  // namespace triagens::basics
-}   // namespace triagens
+}  // namespace triagens::basics
+}  // namespace triagens
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

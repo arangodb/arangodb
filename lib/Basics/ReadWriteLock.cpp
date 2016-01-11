@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Read-Write Lock
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,25 +20,18 @@
 ///
 /// @author Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReadWriteLock.h"
 
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadWriteLock::ReadWriteLock ()
-  : _rwlock(),
-    _writeLocked(false) {
+ReadWriteLock::ReadWriteLock() : _rwlock(), _writeLocked(false) {
   TRI_InitReadWriteLock(&_rwlock);
 
 #ifdef TRI_READ_WRITE_LOCK_COUNTER
@@ -57,7 +46,7 @@ ReadWriteLock::ReadWriteLock ()
 /// @brief deletes read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadWriteLock::~ReadWriteLock () {
+ReadWriteLock::~ReadWriteLock() {
   TRI_DestroyReadWriteLock(&_rwlock);
 
 #ifdef TRI_READ_WRITE_LOCK_COUNTER
@@ -65,9 +54,6 @@ ReadWriteLock::~ReadWriteLock () {
 #endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check for read locked
@@ -75,9 +61,7 @@ ReadWriteLock::~ReadWriteLock () {
 
 #ifdef TRI_READ_WRITE_LOCK_COUNTER
 
-bool ReadWriteLock::isReadLocked () const {
-  return _readLockedCounter > 0;
-}
+bool ReadWriteLock::isReadLocked() const { return _readLockedCounter > 0; }
 
 #endif
 
@@ -85,7 +69,7 @@ bool ReadWriteLock::isReadLocked () const {
 /// @brief locks for reading
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReadWriteLock::readLock () {
+void ReadWriteLock::readLock() {
   TRI_ReadLockReadWriteLock(&_rwlock);
 
 #ifdef TRI_READ_WRITE_LOCK_COUNTER
@@ -101,8 +85,8 @@ void ReadWriteLock::readLock () {
 /// @brief tries to lock for reading
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ReadWriteLock::tryReadLock () {
-  if (! TRI_TryReadLockReadWriteLock(&_rwlock)) {
+bool ReadWriteLock::tryReadLock() {
+  if (!TRI_TryReadLockReadWriteLock(&_rwlock)) {
     return false;
   }
 
@@ -122,9 +106,7 @@ bool ReadWriteLock::tryReadLock () {
 
 #ifdef TRI_READ_WRITE_LOCK_COUNTER
 
-bool ReadWriteLock::isWriteLocked () const {
-  return _writeLockedCounter > 0;
-}
+bool ReadWriteLock::isWriteLocked() const { return _writeLockedCounter > 0; }
 
 #endif
 
@@ -132,7 +114,7 @@ bool ReadWriteLock::isWriteLocked () const {
 /// @brief locks for writing
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReadWriteLock::writeLock () {
+void ReadWriteLock::writeLock() {
   TRI_WriteLockReadWriteLock(&_rwlock);
 
   _writeLocked = true;
@@ -150,8 +132,8 @@ void ReadWriteLock::writeLock () {
 /// @brief tries to lock for writing
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ReadWriteLock::tryWriteLock () {
-  if (! TRI_TryWriteLockReadWriteLock(&_rwlock)) {
+bool ReadWriteLock::tryWriteLock() {
+  if (!TRI_TryWriteLockReadWriteLock(&_rwlock)) {
     return false;
   }
 
@@ -171,15 +153,14 @@ bool ReadWriteLock::tryWriteLock () {
 /// @brief releases the read-lock or write-lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReadWriteLock::unlock () {
+void ReadWriteLock::unlock() {
 #ifdef TRI_READ_WRITE_LOCK_COUNTER
 
   TRI_LockMutex(&_mutex);
 
   if (_writeLocked) {
     _writeLockedCounter--;
-  }
-  else {
+  } else {
     _readLockedCounter--;
   }
 
@@ -190,17 +171,9 @@ void ReadWriteLock::unlock () {
   if (_writeLocked) {
     _writeLocked = false;
     TRI_WriteUnlockReadWriteLock(&_rwlock);
-  }
-  else {
+  } else {
     TRI_ReadUnlockReadWriteLock(&_rwlock);
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

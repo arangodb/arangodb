@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief SpinLock
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,60 +20,36 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SpinLock.h"
 
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a spinlock
 ////////////////////////////////////////////////////////////////////////////////
 
-SpinLock::SpinLock ()
-  : _lock() {
-  TRI_InitSpin(&_lock);
-}
+SpinLock::SpinLock() : _lock() { TRI_InitSpin(&_lock); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-SpinLock::~SpinLock () {
-  TRI_DestroySpin(&_lock);
-}
+SpinLock::~SpinLock() { TRI_DestroySpin(&_lock); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief acquires the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void SpinLock::lock () {
-  TRI_LockSpin(&_lock);
-}
+void SpinLock::lock() { TRI_LockSpin(&_lock); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void SpinLock::unlock () {
-  TRI_UnlockSpin(&_lock);
-}
+void SpinLock::unlock() { TRI_UnlockSpin(&_lock); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

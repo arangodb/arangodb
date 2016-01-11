@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,15 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief memrchr
@@ -39,15 +30,13 @@
 
 #ifdef TRI_MISSING_MEMRCHR
 
-void * memrchr(const void *block, int c, size_t size) {
-  const unsigned char *p = static_cast<const unsigned char*>(block);
+void* memrchr(const void* block, int c, size_t size) {
+  const unsigned char* p = static_cast<const unsigned char*>(block);
 
-  if (size)
-    {
-      for (p += size - 1; size; p--, size--)
-        if (*p == c)
-          return (void *)p;
-    }
+  if (size) {
+    for (p += size - 1; size; p--, size--)
+      if (*p == c) return (void*)p;
+  }
   return NULL;
 }
 
@@ -59,16 +48,16 @@ void * memrchr(const void *block, int c, size_t size) {
 
 #ifdef TRI_HAVE_WIN32_GETTIMEOFDAY
 
-int gettimeofday (struct timeval* tv, void* tz) {
+int gettimeofday(struct timeval* tv, void* tz) {
   union {
-      int64_t ns100; // since 1.1.1601 in 100ns units
-      FILETIME ft;
+    int64_t ns100;  // since 1.1.1601 in 100ns units
+    FILETIME ft;
   } now;
 
   GetSystemTimeAsFileTime(&now.ft);
 
-  tv->tv_usec = (long) ((now.ns100 / 10LL) % 1000000LL);
-  tv->tv_sec  = (long) ((now.ns100 - 116444736000000000LL) / 10000000LL);
+  tv->tv_usec = (long)((now.ns100 / 10LL) % 1000000LL);
+  tv->tv_sec = (long)((now.ns100 - 116444736000000000LL) / 10000000LL);
 
   return 0;
 }
@@ -83,7 +72,7 @@ int gettimeofday (struct timeval* tv, void* tz) {
 
 static int const line_size = 256;
 
-ssize_t getline (char** lineptr, size_t* n, FILE* stream) {
+ssize_t getline(char** lineptr, size_t* n, FILE* stream) {
   size_t indx = 0;
   int c;
 
@@ -94,7 +83,7 @@ ssize_t getline (char** lineptr, size_t* n, FILE* stream) {
 
   // allocate the line the first time
   if (*lineptr == NULL) {
-    *lineptr = (char*) TRI_SystemAllocate(line_size, false);
+    *lineptr = (char*)TRI_SystemAllocate(line_size, false);
 
     if (*lineptr == NULL) {
       return -1;
@@ -107,10 +96,9 @@ ssize_t getline (char** lineptr, size_t* n, FILE* stream) {
   memset(*lineptr, '\0', *n);
 
   while ((c = getc(stream)) != EOF) {
-
     // check if more memory is needed
     if (indx >= *n) {
-      *lineptr = (char*) realloc(*lineptr, *n + line_size);
+      *lineptr = (char*)realloc(*lineptr, *n + line_size);
 
       if (*lineptr == NULL) {
         return -1;
@@ -130,7 +118,7 @@ ssize_t getline (char** lineptr, size_t* n, FILE* stream) {
     }
   }
 
-  return (c == EOF) ? -1 : (ssize_t) indx;
+  return (c == EOF) ? -1 : (ssize_t)indx;
 }
 
 #endif
@@ -139,7 +127,7 @@ ssize_t getline (char** lineptr, size_t* n, FILE* stream) {
 /// @brief safe localtime
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_localtime (time_t tt, struct tm* tb) {
+void TRI_localtime(time_t tt, struct tm* tb) {
 #ifdef TRI_HAVE_LOCALTIME_R
 
   localtime_r(&tt, tb);
@@ -168,7 +156,7 @@ void TRI_localtime (time_t tt, struct tm* tb) {
 /// @brief safe gmtime
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_gmtime (time_t tt, struct tm* tb) {
+void TRI_gmtime(time_t tt, struct tm* tb) {
 #ifdef TRI_HAVE_GMTIME_R
 
   gmtime_r(&tt, tb);
@@ -197,7 +185,7 @@ void TRI_gmtime (time_t tt, struct tm* tb) {
 /// @brief seconds with microsecond resolution
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_microtime () {
+double TRI_microtime() {
   struct timeval t;
 
   gettimeofday(&t, 0);
@@ -209,11 +197,10 @@ double TRI_microtime () {
 /// @brief number of processors or 0
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_numberProcessors () {
-
+size_t TRI_numberProcessors() {
 #ifdef TRI_SC_NPROCESSORS_ONLN
 
-  auto n = sysconf (_SC_NPROCESSORS_ONLN);
+  auto n = sysconf(_SC_NPROCESSORS_ONLN);
 
   if (n < 0) {
     n = 0;
@@ -226,14 +213,6 @@ size_t TRI_numberProcessors () {
   return 0;
 
 #endif
-
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

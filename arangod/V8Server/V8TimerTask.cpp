@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief timed V8 task
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8TimerTask.h"
@@ -39,35 +34,29 @@ using namespace std;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8TimerTask::V8TimerTask (string const& id,
-                          string const& name,
-                          TRI_vocbase_t* vocbase,
-                          ApplicationV8* v8Dealer,
-                          Scheduler* scheduler,
-                          Dispatcher* dispatcher,
-                          double offset,
-                          string const& command,
-                          TRI_json_t* parameters,
-                          bool allowUseDatabase)
-  : Task(id, name),
-    TimerTask(id, (offset <= 0.0 ? 0.00001 : offset)), // offset must be (at least slightly) greater than zero, otherwise
-                                                       // the timertask will not execute the task at all
-    _vocbase(vocbase),
-    _v8Dealer(v8Dealer),
-    _dispatcher(dispatcher),
-    _command(command),
-    _parameters(parameters),
-    _created(TRI_microtime()),
-    _allowUseDatabase(allowUseDatabase) {
-
+V8TimerTask::V8TimerTask(string const& id, string const& name,
+                         TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
+                         Scheduler* scheduler, Dispatcher* dispatcher,
+                         double offset, string const& command,
+                         TRI_json_t* parameters, bool allowUseDatabase)
+    : Task(id, name),
+      TimerTask(id, (offset <= 0.0 ? 0.00001 : offset)),  // offset must be (at
+                                                          // least slightly)
+                                                          // greater than zero,
+                                                          // otherwise
+      // the timertask will not execute the task at all
+      _vocbase(vocbase),
+      _v8Dealer(v8Dealer),
+      _dispatcher(dispatcher),
+      _command(command),
+      _parameters(parameters),
+      _created(TRI_microtime()),
+      _allowUseDatabase(allowUseDatabase) {
   TRI_ASSERT(vocbase != nullptr);
 
   // increase reference counter for the database used
@@ -78,7 +67,7 @@ V8TimerTask::V8TimerTask (string const& id,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8TimerTask::~V8TimerTask () {
+V8TimerTask::~V8TimerTask() {
   // decrease reference counter for the database used
   TRI_ReleaseVocBase(_vocbase);
 
@@ -87,24 +76,23 @@ V8TimerTask::~V8TimerTask () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 TimerTask methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8TimerTask::getDescription (TRI_json_t* json) const {
+void V8TimerTask::getDescription(TRI_json_t* json) const {
   TimerTask::getDescription(json);
 
   TRI_json_t* created = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _created);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "created", created);
 
-  TRI_json_t* cmd = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, _command.c_str(), _command.size());
+  TRI_json_t* cmd = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                             _command.c_str(), _command.size());
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "command", cmd);
 
-  TRI_json_t* db = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, _vocbase->_name, strlen(_vocbase->_name));
+  TRI_json_t* db = TRI_CreateStringCopyJson(
+      TRI_UNKNOWN_MEM_ZONE, _vocbase->_name, strlen(_vocbase->_name));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "database", db);
 }
 
@@ -112,18 +100,12 @@ void V8TimerTask::getDescription (TRI_json_t* json) const {
 /// @brief handles the timer event
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8TimerTask::handleTimeout () {
-  V8Job* job = new V8Job(
-    _vocbase,
-    _v8Dealer,
-    "(function (params) { " + _command + " } )(params);",
-    _parameters,
-    _allowUseDatabase);
+bool V8TimerTask::handleTimeout() {
+  std::unique_ptr<Job> job(new V8Job(
+      _vocbase, _v8Dealer, "(function (params) { " + _command + " } )(params);",
+      _parameters, _allowUseDatabase));
 
-  if (_dispatcher->addJob(job) != TRI_ERROR_NO_ERROR) {
-    // just in case the dispatcher cannot accept the job (e.g. when shutting down)
-    delete job;
-  }
+  _dispatcher->addJob(job);
 
   // note: this will destroy the task (i.e. ourselves!!)
   _scheduler->destroyTask(this);
@@ -131,11 +113,4 @@ bool V8TimerTask::handleTimeout () {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

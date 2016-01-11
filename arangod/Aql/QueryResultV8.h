@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, query results
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_RESULTV8_H
-#define ARANGODB_AQL_QUERY_RESULTV8_H 1
+#ifndef ARANGOD_AQL_QUERY_RESULT_V8_H
+#define ARANGOD_AQL_QUERY_RESULT_V8_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
@@ -36,49 +30,28 @@
 #include <v8.h>
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                struct QueryResult
-// -----------------------------------------------------------------------------
 
-    struct QueryResultV8 : public QueryResult {
-      QueryResultV8& operator= (QueryResultV8 const& other) = delete;
-            
-      QueryResultV8 (QueryResultV8&& other) 
-        : QueryResult ( (QueryResult&&) other),
-          result(other.result) {
-      }
-      
-      QueryResultV8 (QueryResult&& other) 
-        : QueryResult((QueryResult&&)other),
-          result() {
-      }
-      
-      QueryResultV8 (int code,
-                     std::string const& details) 
-        : QueryResult(code, details),
-          result() {
-      }
+struct QueryResultV8 : public QueryResult {
+  QueryResultV8& operator=(QueryResultV8 const& other) = delete;
 
-      explicit QueryResultV8 (int code)
-        : QueryResult(code, ""),
-          result() {
-      }
+  QueryResultV8(QueryResultV8&& other)
+      : QueryResult((QueryResult && )other), result(other.result) {}
 
-      v8::Handle<v8::Array> result;
-    };
+  QueryResultV8(QueryResult&& other)
+      : QueryResult((QueryResult && )other), result() {}
 
-  }
+  QueryResultV8(int code, std::string const& details)
+      : QueryResult(code, details), result() {}
+
+  explicit QueryResultV8(int code) : QueryResult(code, ""), result() {}
+
+  v8::Handle<v8::Array> result;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

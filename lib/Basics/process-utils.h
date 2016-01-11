@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection of process functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,19 +19,14 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_PROCESS__UTILS_H
-#define ARANGODB_BASICS_C_PROCESS__UTILS_H 1
+#ifndef LIB_BASICS_PROCESS_UTILS_H
+#define LIB_BASICS_PROCESS_UTILS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/threads.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalid process id
@@ -47,9 +38,6 @@
 #define TRI_INVALID_PROCESS_ID (-1)
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief physical memory
@@ -67,11 +55,10 @@ typedef struct TRI_process_info_s {
   uint64_t _userTime;
   uint64_t _systemTime;
   int64_t _numberThreads;
-  int64_t _residentSize; // resident set size in number of bytes
+  int64_t _residentSize;  // resident set size in number of bytes
   uint64_t _virtualSize;
   uint64_t _scClkTck;
-}
-TRI_process_info_t;
+} TRI_process_info_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of an external process
@@ -86,8 +73,7 @@ typedef enum {
   TRI_EXT_TERMINATED = 5,   // process has terminated normally
   TRI_EXT_ABORTED = 6,      // process has terminated abnormally
   TRI_EXT_STOPPED = 7,      // process has been stopped
-}
-TRI_external_status_e;
+} TRI_external_status_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief identifier of an external process
@@ -98,15 +84,13 @@ typedef struct TRI_external_id_s {
   TRI_pid_t _pid;
   int _readPipe;
   int _writePipe;
-} 
-TRI_external_id_t;
+} TRI_external_id_t;
 #else
 typedef struct TRI_external_id_s {
- DWORD _pid;
- HANDLE _readPipe;
- HANDLE _writePipe;
-} 
-TRI_external_id_t;
+  DWORD _pid;
+  HANDLE _readPipe;
+  HANDLE _writePipe;
+} TRI_external_id_t;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,8 +115,7 @@ typedef struct TRI_external_s {
 
   TRI_external_status_e _status;
   int64_t _exitStatus;
-}
-TRI_external_t;
+} TRI_external_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process status
@@ -142,89 +125,69 @@ typedef struct TRI_external_status_s {
   TRI_external_status_e _status;
   int64_t _exitStatus;
   std::string _errorMessage;
-}
-TRI_external_status_t;
+} TRI_external_status_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_GETRUSAGE
-uint64_t TRI_MicrosecondsTv (struct timeval* tv);
+uint64_t TRI_MicrosecondsTv(struct timeval* tv);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the current process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_process_info_t TRI_ProcessInfoSelf (void);
+TRI_process_info_t TRI_ProcessInfoSelf(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid);
+TRI_process_info_t TRI_ProcessInfo(TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process name
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetProcessTitle (char const* title);
+void TRI_SetProcessTitle(char const* title);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateExternalProcess (char const* executable,
-                                char const** arguments,
-                                size_t n,
-                                bool usePipes,
-                                TRI_external_id_t* pid);
+void TRI_CreateExternalProcess(char const* executable, char const** arguments,
+                               size_t n, bool usePipes, TRI_external_id_t* pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
-                                                bool wait);
+TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
+                                               bool wait);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_KillExternalProcess (TRI_external_id_t pid);
+bool TRI_KillExternalProcess(TRI_external_id_t pid);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            MODULE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            modules initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the process components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeProcess (int argc, char* argv[]);
+void TRI_InitializeProcess(int argc, char* argv[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut downs the process components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownProcess (void);
+void TRI_ShutdownProcess(void);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

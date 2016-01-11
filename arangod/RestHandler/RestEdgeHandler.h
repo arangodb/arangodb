@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edge request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,88 +19,61 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_EDGE_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_EDGE_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_EDGE_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_EDGE_HANDLER_H 1
 
 #include "Basics/Common.h"
 
 #include "RestHandler/RestDocumentHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   RestEdgeHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestEdgeHandler : public RestDocumentHandler {
+class RestEdgeHandler : public RestDocumentHandler {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  explicit RestEdgeHandler(rest::HttpRequest*);
 
-      public:
+  
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get collection type
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-        explicit RestEdgeHandler (rest::HttpRequest*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get collection type
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_col_type_e getCollectionType () const override final {
-          return TRI_COL_TYPE_EDGE;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-    private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an edge
-////////////////////////////////////////////////////////////////////////////////
-
-      bool createDocument () override final;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document (an edge), coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-      bool createDocumentCoordinator (std::string const& collname,
-                                      bool waitForSync,
-                                      VPackSlice const& document,
-                                      char const* from,
-                                      char const* to);
-    };
+  TRI_col_type_e getCollectionType() const override final {
+    return TRI_COL_TYPE_EDGE;
   }
+
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates an edge
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool createDocument() override final;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a document (an edge), coordinator case in a cluster
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool createDocumentCoordinator(std::string const& collname, bool waitForSync,
+                                 VPackSlice const& document, char const* from,
+                                 char const* to);
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

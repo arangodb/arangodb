@@ -32,7 +32,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
 var db = require("@arangodb").db;
-var _ = require("underscore");
+var _ = require("lodash");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

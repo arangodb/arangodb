@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief implementation of the base class
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellBase.h"
@@ -42,32 +36,24 @@ using namespace std;
 using namespace arangodb;
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class ShellBase
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a shell
 ////////////////////////////////////////////////////////////////////////////////
 
-ShellBase* ShellBase::buildShell (std::string const& history,
-                                  Completer* completer) {
-
-  // no keyboard input. use low-level shell without fancy color codes 
+ShellBase* ShellBase::buildShell(std::string const& history,
+                                 Completer* completer) {
+  // no keyboard input. use low-level shell without fancy color codes
   // and with proper pipe handling
 
-  if (! isatty(STDIN_FILENO)) {
+  if (!isatty(STDIN_FILENO)) {
     return new DummyShell(history, completer);
-  }
-  else {
+  } else {
 #if defined(TRI_HAVE_LINENOISE)
     return new LinenoiseShell(history, completer);
 #else
-    return new DummyShell(history, completer); // last resort!
+    return new DummyShell(history, completer);  // last resort!
 #endif
   }
 }
@@ -76,29 +62,24 @@ ShellBase* ShellBase::buildShell (std::string const& history,
 /// @brief sort the alternatives results vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void ShellBase::sortAlternatives (vector<string>& completions) {
+void ShellBase::sortAlternatives(vector<string>& completions) {
   std::sort(completions.begin(), completions.end(),
-    [](std::string const& l, std::string const& r) -> bool {
-      int res = strcasecmp(l.c_str(), r.c_str());
-      return (res < 0);
-    }
-  );
+            [](std::string const& l, std::string const& r) -> bool {
+              int res = strcasecmp(l.c_str(), r.c_str());
+              return (res < 0);
+            });
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ShellBase::ShellBase (string const& history, Completer* completer)
-  : _current(),
-    _historyFilename(),
-    _state(STATE_NONE),
-    _completer(completer) {
-
+ShellBase::ShellBase(string const& history, Completer* completer)
+    : _current(),
+      _historyFilename(),
+      _state(STATE_NONE),
+      _completer(completer) {
   // construct the complete history path
   string path;
   char* p = TRI_HomeDirectory();
@@ -107,7 +88,7 @@ ShellBase::ShellBase (string const& history, Completer* completer)
     path.append(p);
     TRI_Free(TRI_CORE_MEM_ZONE, p);
 
-    if (! path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+    if (!path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
       path.push_back(TRI_DIR_SEPARATOR_CHAR);
     }
   }
@@ -121,33 +102,23 @@ ShellBase::ShellBase (string const& history, Completer* completer)
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ShellBase::~ShellBase () {
-  delete _completer;
-}
+ShellBase::~ShellBase() { delete _completer; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a signal
 ////////////////////////////////////////////////////////////////////////////////
 
-void ShellBase::signal () {
+void ShellBase::signal() {
   // do nothing special
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shell prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-string ShellBase::prompt (const string& prompt,
-                          const string& plain,
-                          bool& eof) {
+string ShellBase::prompt(const string& prompt, const string& plain, bool& eof) {
   size_t lineno = 0;
   string dotdot = "...> ";
   string p = prompt;
@@ -157,13 +128,11 @@ string ShellBase::prompt (const string& prompt,
   eof = false;
 
   while (true) {
-
     // calling concrete implementation of the shell
     line = getLine(p, eof);
     p = dotdot;
 
     if (eof) {
-
       // give up, if the user pressed control-D on the top-most level
       if (_current.empty()) {
         return "";
@@ -184,8 +153,7 @@ string ShellBase::prompt (const string& prompt,
 
     if (StringUtils::isPrefix(line, plain)) {
       pos = line.find('>');
-    }
-    else if (StringUtils::isPrefix(line, "...")) {
+    } else if (StringUtils::isPrefix(line, "...")) {
       pos = line.find('>');
     }
 
@@ -194,8 +162,7 @@ string ShellBase::prompt (const string& prompt,
 
       if (pos != string::npos) {
         line = line.substr(pos);
-      }
-      else {
+      } else {
         line.clear();
       }
     }
@@ -218,6 +185,4 @@ string ShellBase::prompt (const string& prompt,
   return line;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

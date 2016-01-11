@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief thread pool worker thread
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,98 +19,67 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_WORKER_THREAD_H
-#define ARANGODB_BASICS_WORKER_THREAD_H 1
+#ifndef LIB_BASICS_WORKER_THREAD_H
+#define LIB_BASICS_WORKER_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
 
 namespace triagens {
-  namespace basics {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      WorkerThread
-// -----------------------------------------------------------------------------
-
-    class WorkerThread : public triagens::basics::Thread {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-
-      public:
-
-        WorkerThread (WorkerThread const&) = delete;
-        WorkerThread operator= (WorkerThread const&) = delete;
-
-        WorkerThread (ThreadPool* pool)
-          : Thread(pool->name()),
-            _pool(pool),
-            _status(0) {
-        }
-
-        ~WorkerThread () {
-        }
+namespace basics {
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the worker thread
-////////////////////////////////////////////////////////////////////////////////
+class WorkerThread : public triagens::basics::Thread {
+  
+ public:
+  WorkerThread(WorkerThread const&) = delete;
+  WorkerThread operator=(WorkerThread const&) = delete;
 
-        void waitForDone () {
-          int expected = 0;
-          _status.compare_exchange_strong(expected, 1, std::memory_order_relaxed);
+  WorkerThread(ThreadPool* pool)
+      : Thread(pool->name()), _pool(pool), _status(0) {}
 
-          while (_status != 2) {
-            usleep(5000);
-          }
-        }
+  ~WorkerThread() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief stops the worker thread
+  ////////////////////////////////////////////////////////////////////////////////
 
-      protected:
+  void waitForDone() {
+    int expected = 0;
+    _status.compare_exchange_strong(expected, 1, std::memory_order_relaxed);
 
-        void run () {
-          while (_status == 0) {
-            std::function<void()> task;
-
-            if (! _pool->dequeue(task)) {
-              break;
-            }
-            
-            task();
-          }
-
-          _status = 2;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        ThreadPool* _pool;
-
-        std::atomic<int> _status;
-    };
-
+    while (_status != 2) {
+      usleep(5000);
+    }
   }
+
+  
+ protected:
+  void run() {
+    while (_status == 0) {
+      std::function<void()> task;
+
+      if (!_pool->dequeue(task)) {
+        break;
+      }
+
+      task();
+    }
+
+    _status = 2;
+  }
+
+  
+ private:
+  ThreadPool* _pool;
+
+  std::atomic<int> _status;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

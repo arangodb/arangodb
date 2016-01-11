@@ -671,6 +671,7 @@ ArangoCollection.prototype.removeByExample = function (example,
   if (limit === 0) {
     return 0;
   }
+
   if (typeof waitForSync === "object") {
     if (typeof limit !== "undefined") {
       throw "too many parameters";
@@ -681,6 +682,7 @@ ArangoCollection.prototype.removeByExample = function (example,
     waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
+
   var i;
   var cluster = require("@arangodb/cluster");
 
@@ -717,7 +719,6 @@ ArangoCollection.prototype.removeByExample = function (example,
     var results = cluster.wait(coord, shards);
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
-
       deleted += (body.deleted || 0);
     }
 
@@ -766,7 +767,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     var tmp_options = waitForSync === null ? {} : waitForSync;
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-        waitForSync = tmp_options.waitForSync;
+    waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
 
@@ -806,7 +807,6 @@ ArangoCollection.prototype.replaceByExample = function (example,
     var results = cluster.wait(coord, shards), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
-
       replaced += (body.replaced || 0);
     }
 
@@ -826,11 +826,11 @@ ArangoCollection.prototype.replaceByExample = function (example,
 /// @param example the json object for finding documents which matches this
 ///        example
 /// @param newValue the json object which replaces the matched documents
-/// @param keepNull (optional) true or a json object which
+/// @param keepNull (optional) true or a JSON object which
 ///        contains the options
 /// @param waitForSync (optional) a boolean value
 /// @param limit (optional) an integer value, the max number of to deleting docs
-/// @throws "too many parameters" when keepNull is  a json object and limit
+/// @throws "too many parameters" when keepNull is a JSON object and limit
 ///        was given
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -852,6 +852,8 @@ ArangoCollection.prototype.updateByExample = function (example,
     throw err1;
   }
 
+  var mergeObjects = true;
+
   if (typeof keepNull === "object") {
     if (typeof waitForSync !== "undefined") {
       throw "too many parameters";
@@ -860,9 +862,12 @@ ArangoCollection.prototype.updateByExample = function (example,
 
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-        keepNull = tmp_options.keepNull;
+    keepNull = tmp_options.keepNull;
     waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
+    if (tmp_options.hasOwnProperty("mergeObjects")) {
+      mergeObjects = tmp_options.mergeObjects || false;
+    }
   }
 
   var cluster = require("@arangodb/cluster");
@@ -892,6 +897,7 @@ ArangoCollection.prototype.updateByExample = function (example,
                                        newValue: newValue,
                                        waitForSync: waitForSync,
                                        keepNull: keepNull,
+                                       mergeObjects: mergeObjects,
                                        limit: limit || undefined
                                      }),
                                      { },
@@ -902,15 +908,13 @@ ArangoCollection.prototype.updateByExample = function (example,
     var results = cluster.wait(coord, shards), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
-
       updated += (body.updated || 0);
     }
-
     return updated;
   }
 
   var query = buildExampleQuery(this, example, limit);
-  var opts = { waitForSync : waitForSync, keepNull: keepNull };
+  var opts = { waitForSync : waitForSync, keepNull: keepNull, mergeObjects: mergeObjects };
   query.query += " UPDATE doc WITH @newValue IN @@collection OPTIONS " + JSON.stringify(opts);
   query.bindVars.newValue = newValue;
 

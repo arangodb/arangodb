@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scheduler thread
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,14 +20,16 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SchedulerThread.h"
+
 #include "Basics/logging.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/SpinLocker.h"
+#include "velocypack/Value.h"
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -49,24 +47,23 @@ using namespace triagens::rest;
 #define SCHEDULER_LOCKER(a) MUTEX_LOCKER(a)
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool defaultLoop)
-  : Thread("scheduler"),
-    _scheduler(scheduler),
-    _defaultLoop(defaultLoop),
-    _loop(loop),
-    _stopping(0),
-    _stopped(0),
-    _open(0),
-    _hasWork(false) {
-
+SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
+                                 bool defaultLoop)
+    : Thread("scheduler"),
+      _scheduler(scheduler),
+      _defaultLoop(defaultLoop),
+      _loop(loop),
+      _stopping(false),
+      _stopped(false),
+      _open(false),
+      _hasWork(false),
+      _numberTasks(0),
+      _taskData(100) {
   // allow cancelation
   allowAsynchronousCancelation();
 }
@@ -75,27 +72,21 @@ SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool def
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-SchedulerThread::~SchedulerThread () {
-}
+SchedulerThread::~SchedulerThread() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the scheduler thread is up and running
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SchedulerThread::isStarted () {
-  return true;
-}
+bool SchedulerThread::isStarted() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the scheduler thread for business
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SchedulerThread::open () {
-  _open = 1;
+bool SchedulerThread::open() {
+  _open = true;
   return true;
 }
 
@@ -103,10 +94,11 @@ bool SchedulerThread::open () {
 /// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::beginShutdown () {
-  LOG_TRACE("beginning shutdown sequence of scheduler thread (%llu)", (unsigned long long) threadId());
+void SchedulerThread::beginShutdown() {
+  LOG_TRACE("beginning shutdown sequence of scheduler thread (%llu)",
+            (unsigned long long)threadId());
 
-  _stopping = 1;
+  _stopping = true;
   _scheduler->wakeupLoop(_loop);
 }
 
@@ -114,9 +106,9 @@ void SchedulerThread::beginShutdown () {
 /// @brief registers a task
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
+bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
   // thread has already been stopped
-  if (_stopped) {
+  if (_stopped.load()) {
     // do nothing
     return false;
   }
@@ -128,7 +120,9 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
   if (threadId() == currentThreadId()) {
     bool ok = setupTask(task, scheduler, _loop);
 
-    if (! ok) {
+    if (ok) {
+      ++_numberTasks;
+    } else {
       LOG_WARNING("In SchedulerThread::registerTask setupTask has failed");
       cleanupTask(task);
       deleteTask(task);
@@ -155,15 +149,16 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
 /// @brief unregisters a task
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::unregisterTask (Task* task) {
+void SchedulerThread::unregisterTask(Task* task) {
   // thread has already been stopped
-  if (_stopped) {
+  if (_stopped.load()) {
     // do nothing
   }
 
   // same thread, in this case it does not matter if we are inside the loop
   else if (threadId() == currentThreadId()) {
     cleanupTask(task);
+    --_numberTasks;
   }
 
   // different thread, be careful - we have to stop the event loop
@@ -184,9 +179,9 @@ void SchedulerThread::unregisterTask (Task* task) {
 /// @brief unregisters a task
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::destroyTask (Task* task) {
+void SchedulerThread::destroyTask(Task* task) {
   // thread has already been stopped
-  if (_stopped) {
+  if (_stopped.load()) {
     deleteTask(task);
   }
 
@@ -194,6 +189,7 @@ void SchedulerThread::destroyTask (Task* task) {
   else if (threadId() == currentThreadId()) {
     cleanupTask(task);
     deleteTask(task);
+    --_numberTasks;
   }
 
   // different thread, be careful - we have to stop the event loop
@@ -210,16 +206,22 @@ void SchedulerThread::destroyTask (Task* task) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sends data to a task
+////////////////////////////////////////////////////////////////////////////////
+
+void SchedulerThread::signalTask(std::unique_ptr<TaskData>& data) {
+  _taskData.push(data.release());
+  _scheduler->wakeupLoop(_loop);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::run () {
-  LOG_TRACE("scheduler thread started (%llu)", (unsigned long long) threadId());
+void SchedulerThread::run() {
+  LOG_TRACE("scheduler thread started (%llu)", (unsigned long long)threadId());
 
   if (_defaultLoop) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -229,17 +231,30 @@ void SchedulerThread::run () {
 #endif
   }
 
-  while (_stopping == 0 && _open == 0) {
+  while (!_stopping.load() && !_open.load()) {
     usleep(1000);
   }
 
-  while (_stopping == 0) {
+  while (!_stopping.load()) {
+    // handle the returned data
+    TaskData* data;
+
+    while (_taskData.pop(data)) {
+      Task* task = _scheduler->lookupTaskById(data->_taskId);
+
+      if (task != nullptr) {
+        task->signalTask(data);
+      }
+
+      delete data;
+    }
+
+    // handle the events
     try {
       _scheduler->eventLoop(_loop);
-    }
-    catch (...) {
+    } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
-      if (_stopping != 0) {
+      if (_stopping.load()) {
         LOG_WARNING("caught cancelation exception during work");
         throw;
       }
@@ -249,16 +264,16 @@ void SchedulerThread::run () {
     }
 
 #if defined(DEBUG_SCHEDULER_THREAD)
-    LOG_TRACE("left scheduler loop %d", (int) threadId());
+    LOG_TRACE("left scheduler loop %d", (int)threadId());
 #endif
 
     while (true) {
       Work w;
 
       {
-        SCHEDULER_LOCKER(_queueLock);
+        SCHEDULER_LOCKER(_queueLock);  // TODO(fc) XXX goto boost lockfree
 
-        if (! _hasWork || _queue.empty()) {
+        if (!_hasWork.load() || _queue.empty()) {
           break;
         }
 
@@ -270,22 +285,27 @@ void SchedulerThread::run () {
       switch (w.work) {
         case CLEANUP: {
           cleanupTask(w.task);
+          --_numberTasks;
           break;
         }
 
         case SETUP: {
           bool ok = setupTask(w.task, w.scheduler, _loop);
 
-          if (! ok) {
+          if (ok) {
+            ++_numberTasks;
+          } else {
             cleanupTask(w.task);
             deleteTask(w.task);
           }
+
           break;
         }
 
         case DESTROY: {
           cleanupTask(w.task);
           deleteTask(w.task);
+          --_numberTasks;
           break;
         }
 
@@ -297,9 +317,18 @@ void SchedulerThread::run () {
     }
   }
 
-  LOG_TRACE("scheduler thread stopped (%llu)", (unsigned long long) threadId());
+  LOG_TRACE("scheduler thread stopped (%llu)", (unsigned long long)threadId());
 
-  _stopped = 1;
+  _stopped = true;
+
+  // pop all undeliviered task data
+  {
+    TaskData* data;
+
+    while (_taskData.pop(data)) {
+      delete data;
+    }
+  }
 
   // pop all elements from the queue and delete them
   while (true) {
@@ -311,7 +340,7 @@ void SchedulerThread::run () {
       if (_queue.empty()) {
         break;
       }
-    
+
       w = _queue.front();
       _queue.pop_front();
     }
@@ -328,18 +357,23 @@ void SchedulerThread::run () {
         deleteTask(w.task);
         break;
 
-      case INVALID: 
+      case INVALID:
         LOG_ERROR("logic error. got invalid Work item");
         break;
     }
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
+void SchedulerThread::addStatus(VPackBuilder* b) {
+  Thread::addStatus(b);
+  b->add("stopping", VPackValue(_stopping.load()));
+  b->add("open", VPackValue(_open.load()));
+  b->add("stopped", VPackValue(_stopped.load()));
+  b->add("numberTasks", VPackValue(_numberTasks.load()));
+}
+
+

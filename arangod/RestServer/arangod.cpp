@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
@@ -44,9 +38,6 @@ using namespace triagens;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -54,24 +45,21 @@ using namespace triagens::arango;
 
 AnyServer* ArangoInstance = nullptr;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hooks for OS-Specific functions
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-extern void TRI_GlobalEntryFunction ();
-extern void TRI_GlobalExitFunction (int, void*);
-extern bool TRI_ParseMoreArgs (int argc, char* argv[]);
-extern void TRI_StartService (int argc, char* argv[]);
+extern void TRI_GlobalEntryFunction();
+extern void TRI_GlobalExitFunction(int, void*);
+extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
+extern void TRI_StartService(int argc, char* argv[]);
 #else
-void TRI_GlobalEntryFunction ()                        { }
-void TRI_GlobalExitFunction (int exitCode, void* data) { }
-bool TRI_ParseMoreArgs (int argc, char* argv[])        { return false; }
-void TRI_StartService (int argc, char* argv[])         { }
+void TRI_GlobalEntryFunction() {}
+void TRI_GlobalExitFunction(int exitCode, void* data) {}
+bool TRI_ParseMoreArgs(int argc, char* argv[]) { return false; }
+void TRI_StartService(int argc, char* argv[]) {}
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +67,7 @@ void TRI_StartService (int argc, char* argv[])         { }
 ///        and rethrow signal for coredumps.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AbortHandler (int signum) {
+static void AbortHandler(int signum) {
   TRI_PrintBacktrace();
 #ifdef _WIN32
   exit(255 + signum);
@@ -89,15 +77,12 @@ static void AbortHandler (int signum) {
 #endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an application server
 ////////////////////////////////////////////////////////////////////////////////
 
-int main (int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
   int res = EXIT_SUCCESS;
 
   // Note: NEVER start threads or create global objects in here. The server
@@ -114,11 +99,10 @@ int main (int argc, char* argv[]) {
   // initialize sub-systems
   TRI_GlobalEntryFunction();
   TRIAGENS_REST_INITIALIZE(argc, argv);
-      
+
   if (startAsService) {
     TRI_StartService(argc, argv);
-  }
-  else {
+  } else {
     ArangoInstance = new ArangoServer(argc, argv);
     res = ArangoInstance->start();
   }
@@ -126,18 +110,17 @@ int main (int argc, char* argv[]) {
   if (ArangoInstance != nullptr) {
     try {
       delete ArangoInstance;
-    }
-    catch (...) {
+    } catch (...) {
       // caught an error during shutdown
       res = EXIT_FAILURE;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       std::cerr << "Caught an exception during shutdown";
-#endif      
+#endif
     }
     ArangoInstance = nullptr;
   }
-  
+
   // shutdown sub-systems
   TRIAGENS_REST_SHUTDOWN;
   TRI_GlobalExitFunction(res, nullptr);
@@ -145,11 +128,4 @@ int main (int argc, char* argv[]) {
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

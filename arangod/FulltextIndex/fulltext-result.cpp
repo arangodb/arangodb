@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief full text search, result list handling
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,32 +19,29 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "fulltext-result.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_result_t* TRI_CreateResultFulltextIndex (const uint32_t size) {
-  TRI_fulltext_result_t* result = static_cast<TRI_fulltext_result_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_result_t), false));
+TRI_fulltext_result_t* TRI_CreateResultFulltextIndex(const uint32_t size) {
+  TRI_fulltext_result_t* result = static_cast<TRI_fulltext_result_t*>(
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_result_t), false));
 
   if (result == nullptr) {
     return nullptr;
   }
 
-  result->_documents    = nullptr;
+  result->_documents = nullptr;
   result->_numDocuments = 0;
 
   if (size > 0) {
-    result->_documents = static_cast<TRI_fulltext_doc_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * size, false));
+    result->_documents = static_cast<TRI_fulltext_doc_t*>(TRI_Allocate(
+        TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * size, false));
 
     if (result->_documents == nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
@@ -63,7 +56,7 @@ TRI_fulltext_result_t* TRI_CreateResultFulltextIndex (const uint32_t size) {
 /// @brief destroy a result
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyResultFulltextIndex (TRI_fulltext_result_t* result) {
+void TRI_DestroyResultFulltextIndex(TRI_fulltext_result_t* result) {
   if (result->_documents != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, result->_documents);
   }
@@ -73,16 +66,9 @@ void TRI_DestroyResultFulltextIndex (TRI_fulltext_result_t* result) {
 /// @brief free a result
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeResultFulltextIndex (TRI_fulltext_result_t* result) {
+void TRI_FreeResultFulltextIndex(TRI_fulltext_result_t* result) {
   TRI_DestroyResultFulltextIndex(result);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

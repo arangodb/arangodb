@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, bind parameters
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_BIND_PARAMETERS_H
-#define ARANGODB_AQL_QUERY_BIND_PARAMETERS_H 1
+#ifndef ARANGOD_AQL_BIND_PARAMETERS_H
+#define ARANGOD_AQL_BIND_PARAMETERS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
@@ -37,123 +31,93 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-    typedef std::unordered_map<std::string, std::pair<TRI_json_t const*, bool>> BindParametersType;
+typedef std::unordered_map<std::string, std::pair<TRI_json_t const*, bool>>
+    BindParametersType;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class BindParameters
-// -----------------------------------------------------------------------------
 
-    class BindParameters {
+class BindParameters {
+  
+ public:
+  BindParameters(BindParameters const&) = delete;
+  BindParameters& operator=(BindParameters const&) = delete;
+  BindParameters() = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the parameters
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  explicit BindParameters(TRI_json_t*);
 
-        BindParameters (BindParameters const&) = delete;
-        BindParameters& operator= (BindParameters const&) = delete;
-        BindParameters () = delete;
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the parameters
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroy the parameters
+  ////////////////////////////////////////////////////////////////////////////////
 
-        explicit BindParameters (TRI_json_t*);
+  ~BindParameters();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the parameters
-////////////////////////////////////////////////////////////////////////////////
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return all parameters
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ~BindParameters ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all parameters
-////////////////////////////////////////////////////////////////////////////////
-
-        BindParametersType const& operator() () {
-          process();
-          return _parameters;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a hash value for the bind parameters
-////////////////////////////////////////////////////////////////////////////////
-
-        uint64_t hash () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief strip collection name prefixes from the parameters
-/// the values must be a VelocyPack array
-////////////////////////////////////////////////////////////////////////////////
-
-        static VPackBuilder StripCollectionNames (VPackSlice const&, 
-                                                  char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief strip collection name prefixes from the parameters
-/// the values must be a JSON array. the array is modified in place
-////////////////////////////////////////////////////////////////////////////////
-
-        static void StripCollectionNames (TRI_json_t*, 
-                                          char const*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the parameters
-////////////////////////////////////////////////////////////////////////////////
-
-        void process ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the parameter json
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_json_t*  _json;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pointer to collection parameters
-////////////////////////////////////////////////////////////////////////////////
-
-        BindParametersType _parameters;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal state
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _processed;
-
-    };
-
+  BindParametersType const& operator()() {
+    process();
+    return _parameters;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create a hash value for the bind parameters
+  ////////////////////////////////////////////////////////////////////////////////
+
+  uint64_t hash() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief strip collection name prefixes from the parameters
+  /// the values must be a VelocyPack array
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static VPackBuilder StripCollectionNames(VPackSlice const&, char const*);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief strip collection name prefixes from the parameters
+  /// the values must be a JSON array. the array is modified in place
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static void StripCollectionNames(TRI_json_t*, char const*);
+
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief process the parameters
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void process();
+
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the parameter json
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_json_t* _json;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief pointer to collection parameters
+  ////////////////////////////////////////////////////////////////////////////////
+
+  BindParametersType _parameters;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief internal state
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool _processed;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

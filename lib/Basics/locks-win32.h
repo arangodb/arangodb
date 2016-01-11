@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mutexes, locks and condition variables in win32
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,34 +19,28 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_LOCKS__WIN32_H
-#define ARANGODB_BASICS_C_LOCKS__WIN32_H 1
+#ifndef LIB_BASICS_LOCKS_WIN32_H
+#define LIB_BASICS_LOCKS_WIN32_H 1
 
 #include "Basics/Common.h"
 
 #ifdef TRI_HAVE_WIN32_THREADS
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex type
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_mutex_s {
-  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
+// as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   HANDLE _mutex;
 #else
   SRWLOCK _mutex;
 #endif
-}
-TRI_mutex_t;
+} TRI_mutex_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief spin-lock type
@@ -84,28 +74,19 @@ typedef struct TRI_read_write_lock_s {
 #else
   SRWLOCK _lock;
 #endif
-}
-TRI_read_write_lock_t;
+} TRI_read_write_lock_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_condition_s {
-  CRITICAL_SECTION   _lockWaiters;
+  CRITICAL_SECTION _lockWaiters;
   CONDITION_VARIABLE _conditionVariable;
-}
-TRI_condition_t;
+} TRI_condition_t;
 
 #endif
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

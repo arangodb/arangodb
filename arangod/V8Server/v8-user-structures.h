@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 user data structures
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__USER_STRUCTURES_H
-#define ARANGODB_V8SERVER_V8__USER_STRUCTURES_H 1
+#ifndef ARANGOD_V8_SERVER_V8_USER_STRUCTURES_H
+#define ARANGOD_V8_SERVER_V8_USER_STRUCTURES_H 1
 
 #include "Basics/Common.h"
 
@@ -36,35 +30,25 @@
 
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the user structures for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateUserStructuresVocBase (TRI_vocbase_t*);
+void TRI_CreateUserStructuresVocBase(TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the user structures for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeUserStructuresVocBase (TRI_vocbase_t*);
+void TRI_FreeUserStructuresVocBase(TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the user structures functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8UserStructures (v8::Isolate* isolate, v8::Handle<v8::Context>);
+void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

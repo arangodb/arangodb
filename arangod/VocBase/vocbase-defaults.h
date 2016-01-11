@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase database defaults
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_VOCBASE__DEFAULTS_H
-#define ARANGODB_VOC_BASE_VOCBASE__DEFAULTS_H 1
+#ifndef ARANGOD_VOC_BASE_VOCBASE_DEFAULTS_H
+#define ARANGOD_VOC_BASE_VOCBASE_DEFAULTS_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
@@ -39,40 +33,27 @@
 
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default settings
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_vocbase_defaults_t {
-  TRI_voc_size_t    defaultMaximalSize;
-  bool              defaultWaitForSync;
-  bool              requireAuthentication;
-  bool              requireAuthenticationUnixSockets;
-  bool              authenticateSystemOnly;
-  bool              forceSyncProperties;
+  TRI_voc_size_t defaultMaximalSize;
+  bool defaultWaitForSync;
+  bool requireAuthentication;
+  bool requireAuthenticationUnixSockets;
+  bool authenticateSystemOnly;
+  bool forceSyncProperties;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  
+  void toVelocyPack(VPackBuilder&) const;
 
-  void toVelocyPack (VPackBuilder&) const;
-
-  std::shared_ptr<VPackBuilder> toVelocyPack () const;
+  std::shared_ptr<VPackBuilder> toVelocyPack() const;
 
   void applyToVocBase(TRI_vocbase_t*) const;
 };
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

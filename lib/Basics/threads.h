@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief threads
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_THREADS_H
-#define ARANGODB_BASICS_C_THREADS_H 1
+#ifndef LIB_BASICS_THREADS_H
+#define LIB_BASICS_THREADS_H 1
 
 #include "Basics/Common.h"
 
@@ -48,91 +42,76 @@
 #include "Basics/threads-win32.h"
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            THREAD
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitThread (TRI_thread_t*);
+void TRI_InitThread(TRI_thread_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current process identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_pid_t TRI_CurrentProcessId (void);
+TRI_pid_t TRI_CurrentProcessId(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current thread process identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_tpid_t TRI_CurrentThreadProcessId (void);
+TRI_tpid_t TRI_CurrentThreadProcessId(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current thread identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_tid_t TRI_CurrentThreadId (void);
+TRI_tid_t TRI_CurrentThreadId(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread (TRI_thread_t*, TRI_tid_t*, char const*, void (*starter)(void*), void* data);
+bool TRI_StartThread(TRI_thread_t*, TRI_tid_t*, char const*,
+                     void (*starter)(void*), void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief trys to stops a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StopThread (TRI_thread_t*) TRI_WARN_UNUSED_RESULT;
+int TRI_StopThread(TRI_thread_t*) TRI_WARN_UNUSED_RESULT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief detachs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DetachThread (TRI_thread_t*) TRI_WARN_UNUSED_RESULT;
+int TRI_DetachThread(TRI_thread_t*) TRI_WARN_UNUSED_RESULT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for a thread to finish
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThread (TRI_thread_t*) TRI_WARN_UNUSED_RESULT;
+int TRI_JoinThread(TRI_thread_t*) TRI_WARN_UNUSED_RESULT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we are the thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsSelfThread (TRI_thread_t* thread);
+bool TRI_IsSelfThread(TRI_thread_t* thread);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allow cancelation
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AllowCancelation (void);
+void TRI_AllowCancelation(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetProcessorAffinity (TRI_thread_t*, size_t core);
+void TRI_SetProcessorAffinity(TRI_thread_t*, size_t core);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

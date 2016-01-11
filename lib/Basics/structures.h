@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,20 +19,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_STRUCTURES_H
-#define ARANGODB_BASICS_C_STRUCTURES_H 1
+#ifndef LIB_BASICS_STRUCTURES_H
+#define LIB_BASICS_STRUCTURES_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    basic typedefs
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of date-time entries (seconds since 1970-01-01)
@@ -56,13 +47,7 @@ typedef int32_t TRI_date_t;
 
 typedef int32_t TRI_seconds_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              BLOB
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global blob type
@@ -74,42 +59,29 @@ typedef int32_t TRI_seconds_t;
 typedef struct TRI_blob_s {
   char* data;
   uint32_t length;
-}
-TRI_blob_t;
+} TRI_blob_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destorys the data of blob, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyBlob (TRI_memory_zone_t*, TRI_blob_t*);
+void TRI_DestroyBlob(TRI_memory_zone_t*, TRI_blob_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a blob into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyToBlob (TRI_memory_zone_t*, TRI_blob_t* dst, TRI_blob_t const* src);
+int TRI_CopyToBlob(TRI_memory_zone_t*, TRI_blob_t* dst, TRI_blob_t const* src);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assigns a blob value by reference into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src);
+int TRI_AssignToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
+                     TRI_blob_t const* src);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

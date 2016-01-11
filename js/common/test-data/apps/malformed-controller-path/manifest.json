@@ -1,6 +1,9 @@
 {
   "name": "malformed-controller-path",
   "version": "0.0.0",
+  "engines": {
+    "arangodb": "^2.8.0"
+  },
   "controllers": {
     "/": "/illegal/file/name/"
   }

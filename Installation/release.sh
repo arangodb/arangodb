@@ -35,7 +35,15 @@ cat configure.ac \
 
 mv configure.ac.tmp configure.ac
 
-./configure --enable-maintainer-mode CPPFLAGS=-I/usr/local/include LDFLAGS=-L/usr/local/lib
+if [ `uname` == "Darwin" ];  then
+  ./configure \
+    --enable-maintainer-mode \
+    CPPFLAGS="-I/usr/local/include -I/usr/local/opt/openssl/include" \
+    LDFLAGS="-L/usr/local/opt/openssl/lib -L/usr/local/Cellar/boost/1.58.0/lib"
+else
+  ./configure --enable-maintainer-mode
+fi
+
 make built-sources
 make add-maintainer
 make add-automagic
@@ -44,13 +52,22 @@ make
 make examples
 make swagger
 
+(
+  cd js/apps/system/_admin/aardvark/APP
+  npm install --only=dev
+  npm run grunt
+)
+
 git add -f Documentation/Examples/*.generated
 
 cd Documentation/Books; make
 
 case "$TAG" in
   *-alpha*|*-beta*|devel)
-    git rm -f EXPERIMENTAL
+    ;;
+
+  *)
+    if test -f EXPERIMENTAL; then git rm -f EXPERIMENTAL; fi
     ;;
 esac
 

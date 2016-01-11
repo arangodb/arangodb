@@ -32,7 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
-var _ = require("underscore");
+var _ = require("lodash");
 
 var createCollection = function (properties) {
   'use strict';
@@ -60,6 +60,7 @@ var createCollection = function (properties) {
 
 function ClusterCrudSimpleSuite () {
   'use strict';
+
   var queryToArray = function (q, n, cb) {
     var result = q.toArray();
     assertEqual(n, result.length);
@@ -85,6 +86,7 @@ function ClusterCrudSimpleSuite () {
   };
 
   var checkQuery = function (q, n, cb) {
+    q = _.toPlainObject(q); // Clone inherited methods too
     var qc = _.clone(q);
     queryToArray(qc, n, cb);
     qc = _.clone(q);

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection export result container
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utils/CollectionExport.h"
@@ -39,34 +33,27 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class CollectionExport
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
-CollectionExport::CollectionExport (TRI_vocbase_t* vocbase,
-                                    std::string const& name,
-                                    Restrictions const& restrictions)
-  : _guard(nullptr),
-    _document(nullptr),
-    _ditch(nullptr),
-    _name(name),
-    _resolver(vocbase),
-    _restrictions(restrictions),
-    _documents(nullptr) {
-
+CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
+                                   std::string const& name,
+                                   Restrictions const& restrictions)
+    : _guard(nullptr),
+      _document(nullptr),
+      _ditch(nullptr),
+      _name(name),
+      _resolver(vocbase),
+      _restrictions(restrictions),
+      _documents(nullptr) {
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
   _guard = new triagens::arango::CollectionGuard(vocbase, _name.c_str(), false);
-  
+
   _document = _guard->collection()->_collection;
   TRI_ASSERT(_document != nullptr);
 }
 
-CollectionExport::~CollectionExport () {
+CollectionExport::~CollectionExport() {
   delete _documents;
 
   if (_ditch != nullptr) {
@@ -75,21 +62,18 @@ CollectionExport::~CollectionExport () {
 
   delete _guard;
 }
-        
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
-void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
+
+void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   // try to acquire the exclusive lock on the compaction
-  while (! TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
+  while (!TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
     // didn't get it. try again...
     usleep(5000);
   }
- 
-  // create a ditch under the compaction lock 
+
+  // create a ditch under the compaction lock
   _ditch = _document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
-  
+
   // release the lock
   TRI_UnlockCompactorVocBase(_document->_vocbase);
 
@@ -98,11 +82,10 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-
   TRI_ASSERT(_documents == nullptr);
   _documents = new std::vector<void const*>();
- 
-  { 
+
+  {
     static const uint64_t SleepTime = 10000;
 
     uint64_t tries = 0;
@@ -117,7 +100,8 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
   }
 
   {
-    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _document->_vocbase, _name);
+    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
+                                            _document->_vocbase, _name);
 
     int res = trx.begin();
 
@@ -128,13 +112,12 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
     size_t maxDocuments = idx->size();
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
-    }
-    else {
+    } else {
       limit = maxDocuments;
     }
     _documents->reserve(maxDocuments);
 
-    if (maxDocuments > 0) { 
+    if (maxDocuments > 0) {
       triagens::basics::BucketPosition position;
       uint64_t total = 0;
       while (limit > 0) {
@@ -146,7 +129,7 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
 
         void const* marker = ptr->getDataPtr();
 
-        if (! TRI_IsWalDataMarkerDatafile(marker)) {
+        if (!TRI_IsWalDataMarkerDatafile(marker)) {
           _documents->emplace_back(marker);
           --limit;
         }
@@ -157,11 +140,4 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Class for arangodb's graph features. Wrapper around the graph informations
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,24 +19,18 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPHS_LOOKUP_H
-#define ARANGODB_GRAPHS_LOOKUP_H 1
+#ifndef ARANGOD_VOC_BASE_GRAPHS_H
+#define ARANGOD_VOC_BASE_GRAPHS_H 1
 
 #include "VocBase/vocbase.h"
 
 namespace triagens {
-  namespace aql {
-    class Graph;
-  }
-  namespace arango {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                Factory for graphs
-// -----------------------------------------------------------------------------
+namespace aql {
+class Graph;
+}
+namespace arango {
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,17 +39,15 @@ namespace triagens {
 ///  The caller has to take care for the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-    triagens::aql::Graph* lookupGraphByName (TRI_vocbase_t*, std::string const&);
+triagens::aql::Graph* lookupGraphByName(TRI_vocbase_t*, std::string const&);
 
-  } // namespace arango
-} // namespace triagens
+}  // namespace arango
+}  // namespace triagens
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"

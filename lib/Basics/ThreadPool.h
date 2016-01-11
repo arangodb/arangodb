@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generic thread pool
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREAD_POOL_H
-#define ARANGODB_BASICS_THREAD_POOL_H 1
+#ifndef LIB_BASICS_THREAD_POOL_H
+#define LIB_BASICS_THREAD_POOL_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
@@ -39,99 +33,71 @@
 #include <deque>
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
-    class WorkerThread;
+class WorkerThread;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        ThreadPool
-// -----------------------------------------------------------------------------
 
-    class ThreadPool {
+class ThreadPool {
+  
+ public:
+  ThreadPool(ThreadPool const&) = delete;
+  ThreadPool& operator=(ThreadPool const&) = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  ThreadPool(size_t, std::string const&);
 
-      public:
+  ~ThreadPool();
 
-        ThreadPool (ThreadPool const&) = delete;
-        ThreadPool& operator= (ThreadPool const&) = delete;
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the number of threads in the pool
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ThreadPool (size_t,
-                    std::string const&);
+  size_t numThreads() const { return _threads.size(); }
 
-        ~ThreadPool ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the name of the pool
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  char const* name() const { return _name.c_str(); }
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief dequeue a task
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of threads in the pool
-////////////////////////////////////////////////////////////////////////////////
+  bool dequeue(std::function<void()>&);
 
-        size_t numThreads () const {
-          return _threads.size();
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enqueue a task
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the name of the pool
-////////////////////////////////////////////////////////////////////////////////
+  template <typename T>
+  void enqueue(T task) {
+    {
+      CONDITION_LOCKER(guard, _condition);
+      _tasks.emplace_back(std::function<void()>(task));
+    }
 
-        char const* name () const {
-          return _name.c_str();
-        }
+    _condition.signal();
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dequeue a task
-////////////////////////////////////////////////////////////////////////////////
+  
+ private:
+  triagens::basics::ConditionVariable _condition;
 
-        bool dequeue (std::function<void()>&);
+  std::vector<triagens::basics::WorkerThread*> _threads;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enqueue a task
-////////////////////////////////////////////////////////////////////////////////
+  std::deque<std::function<void()>> _tasks;
 
-        template<typename T>
-        void enqueue (T task) {
-          { 
-            CONDITION_LOCKER(guard, _condition);
-            _tasks.emplace_back(std::function<void()>(task));
-          }
+  std::string _name;
 
-          _condition.signal();
-        }
+  std::atomic<bool> _stopping;
+};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        triagens::basics::ConditionVariable _condition;
-
-        std::vector<triagens::basics::WorkerThread*> _threads;
-
-        std::deque<std::function<void()>> _tasks;
-
-        std::string _name;
-
-        std::atomic<bool> _stopping;
-    };  
-
-  }   // namespace triagens::basics
-}   // namespace triagens
+}  // namespace triagens::basics
+}  // namespace triagens
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

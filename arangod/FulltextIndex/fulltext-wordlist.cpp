@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief full text search, wordlists
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,15 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "fulltext-wordlist.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a wordlist
@@ -40,16 +31,18 @@
 /// freed when the wordlist is freed
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
-                                                          size_t numWords) {
-  TRI_fulltext_wordlist_t* wordlist = static_cast<TRI_fulltext_wordlist_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_wordlist_t), false));
+TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex(char** words,
+                                                         size_t numWords) {
+  TRI_fulltext_wordlist_t* wordlist =
+      static_cast<TRI_fulltext_wordlist_t*>(TRI_Allocate(
+          TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_wordlist_t), false));
 
   if (wordlist == nullptr) {
     return nullptr;
   }
 
-  wordlist->_words    = words;
-  wordlist->_numWords = (uint32_t) numWords;
+  wordlist->_words = words;
+  wordlist->_numWords = (uint32_t)numWords;
 
   return wordlist;
 }
@@ -58,7 +51,7 @@ TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
 /// @brief destroy a wordlist
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
+void TRI_DestroyWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
   for (uint32_t i = 0; i < wordlist->_numWords; ++i) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_words[i]);
   }
@@ -70,36 +63,26 @@ void TRI_DestroyWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
 /// @brief free a wordlist
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
+void TRI_FreeWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
   TRI_DestroyWordlistFulltextIndex(wordlist);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort a wordlist in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
+void TRI_SortWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
   if (wordlist->_numWords <= 1) {
     // do not sort in this case
     return;
   }
 
-  auto compareSort = [] (char const* l, char const* r) {
-    return (strcmp(l, r) < 0);
-  };
-  std::sort(wordlist->_words, wordlist->_words + wordlist->_numWords, compareSort);
+  auto compareSort =
+      [](char const* l, char const* r) { return (strcmp(l, r) < 0); };
+  std::sort(wordlist->_words, wordlist->_words + wordlist->_numWords,
+            compareSort);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8-replication Replication functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,23 +19,18 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__REPLICATION_H
-#define ARANGODB_V8SERVER_V8__REPLICATION_H
-
+#ifndef ARANGOD_V8_SERVER_V8_REPLICATION_H
+#define ARANGOD_V8_SERVER_V8_REPLICATION_H 1
 #include "Basics/Common.h"
 #include "v8-vocbase.h"
 #include "VocBase/server.h"
 
-void TRI_InitV8Replication (v8::Isolate* isolate,
-                            v8::Handle<v8::Context> context,
-                            TRI_server_t* server,
-                            TRI_vocbase_t* vocbase,
-                            triagens::arango::JSLoader* loader,
-                            size_t threadNumber,
-                            TRI_v8_global_t* v8g);
+void TRI_InitV8Replication(v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
+                           TRI_server_t* server, TRI_vocbase_t* vocbase,
+                           triagens::arango::JSLoader* loader,
+                           size_t threadNumber, TRI_v8_global_t* v8g);
 
 #endif

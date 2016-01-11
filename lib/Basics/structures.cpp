@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,25 +19,17 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              BLOB
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the data of blob, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
+void TRI_DestroyBlob(TRI_memory_zone_t* zone, TRI_blob_t* blob) {
   if (blob != nullptr) {
     if (blob->data != nullptr) {
       TRI_Free(zone, blob->data);
@@ -49,22 +37,19 @@ void TRI_DestroyBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a blob into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src) {
+int TRI_CopyToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
+                   TRI_blob_t const* src) {
   dst->length = src->length;
 
   if (src->length == 0 || src->data == nullptr) {
     dst->length = 0;
     dst->data = nullptr;
-  }
-  else {
+  } else {
     dst->data = static_cast<char*>(TRI_Allocate(zone, dst->length, false));
 
     if (dst->data == nullptr) {
@@ -81,14 +66,14 @@ int TRI_CopyToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* 
 /// @brief assigns a blob value by reference into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src) {
+int TRI_AssignToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
+                     TRI_blob_t const* src) {
   dst->length = src->length;
 
   if (src->length == 0 || src->data == nullptr) {
     dst->length = 0;
     dst->data = nullptr;
-  }
-  else {
+  } else {
     dst->length = src->length;
     dst->data = src->data;
   }
@@ -96,11 +81,4 @@ int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

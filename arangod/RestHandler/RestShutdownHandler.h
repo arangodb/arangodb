@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H
-#define ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_SHUTDOWN_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_SHUTDOWN_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "ApplicationServer/ApplicationServer.h"
@@ -35,70 +30,47 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
-  namespace admin {
+namespace admin {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class RestShutdownHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestShutdownHandler : public RestBaseHandler {
+class RestShutdownHandler : public RestBaseHandler {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  RestShutdownHandler(rest::HttpRequest*, void* applicationServer);
 
-      public:
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  bool isDirect() const override;
 
-        RestShutdownHandler (rest::HttpRequest*, void* applicationServer);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initiates the shutdown process
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
+  status_t execute() override;
 
-      public:
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief application server
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDirect () const override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initiates the shutdown process
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute () override;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief application server
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::rest::ApplicationServer* _applicationServer;
-    };
-  }
+  triagens::rest::ApplicationServer* _applicationServer;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

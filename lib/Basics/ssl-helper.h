@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ssl helper functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,37 +19,32 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SSL__HELPER_H
-#define ARANGODB_BASICS_SSL__HELPER_H 1
+#ifndef LIB_BASICS_SSL_HELPER_H
+#define LIB_BASICS_SSL_HELPER_H 1
 
 #include "Basics/Common.h"
 
 #include <openssl/ssl.h>
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SSL protocol methods
 ////////////////////////////////////////////////////////////////////////////////
 
-        enum protocol_e {
-          SSL_UNKNOWN = 0,
-          SSL_V2      = 1,
-          SSL_V23     = 2,
-          SSL_V3      = 3,
-          TLS_V1      = 4,
+enum protocol_e {
+  SSL_UNKNOWN = 0,
+  SSL_V2 = 1,
+  SSL_V23 = 2,
+  SSL_V3 = 3,
+  TLS_V1 = 4,
 
-          SSL_LAST
-        };
+  SSL_LAST
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SSL_CONST
@@ -65,37 +56,27 @@ namespace triagens {
 #define SSL_CONST const
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-    SSL_CTX* sslContext (protocol_e, std::string const& keyfile);
+SSL_CTX* sslContext(protocol_e, std::string const& keyfile);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::string protocolName (const protocol_e protocol);
+std::string protocolName(const protocol_e protocol);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::string lastSSLError ();
-  }
+std::string lastSSLError();
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

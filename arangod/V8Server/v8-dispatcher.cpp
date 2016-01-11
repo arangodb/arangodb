@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 dispatcher functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-dispatcher.h"
@@ -48,9 +44,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer
@@ -70,36 +63,35 @@ static Scheduler* GlobalScheduler = nullptr;
 
 static Dispatcher* GlobalDispatcher = nullptr;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to compile the command
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool TryCompile (v8::Isolate* isolate,
-                        std::string const& command) {
+static bool TryCompile(v8::Isolate* isolate, std::string const& command) {
   v8::HandleScope scope(isolate);
 
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
   auto current = isolate->GetCurrentContext()->Global();
-  auto ctor = v8::Local<v8::Function>::Cast(current->Get(TRI_V8_ASCII_STRING("Function")));
+  auto ctor = v8::Local<v8::Function>::Cast(
+      current->Get(TRI_V8_ASCII_STRING("Function")));
 
-  // Invoke Function constructor to create function with the given body and no arguments
-  v8::Handle<v8::Value> args[2] = { TRI_V8_ASCII_STRING("params"), TRI_V8_STD_STRING(command) };
+  // Invoke Function constructor to create function with the given body and no
+  // arguments
+  v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING("params"),
+                                   TRI_V8_STD_STRING(command)};
   v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
   v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
-  return (! action.IsEmpty());
+  return (!action.IsEmpty());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a task id from an argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static string GetTaskId (v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
+static string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   if (arg->IsObject()) {
     // extract "id" from object
     v8::Handle<v8::Object> obj = arg.As<v8::Object>();
@@ -111,15 +103,12 @@ static string GetTaskId (v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   return TRI_ObjectToString(arg);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      JS functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a task
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RegisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -127,7 +116,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
-  if (args.Length() != 1 || ! args[0]->IsObject()) {
+  if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
 
@@ -139,8 +128,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("id"))) {
     // user-specified id
     id = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("id")));
-  }
-  else {
+  } else {
     // auto-generated id
     uint64_t tick = TRI_NewTickServer();
     id = StringUtils::itoa(tick);
@@ -151,11 +139,10 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("name"))) {
     name = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("name")));
-  }
-  else {
+  } else {
     name = "user-defined task";
   }
-  
+
   bool isSystem = false;
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("isSystem"))) {
@@ -176,25 +163,27 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
     period = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING("period")));
 
     if (period <= 0.0) {
-      TRI_V8_THROW_EXCEPTION_PARAMETER("task period must be specified and positive");
+      TRI_V8_THROW_EXCEPTION_PARAMETER(
+          "task period must be specified and positive");
     }
   }
 
   // extract the command
-  if (! obj->HasOwnProperty(TRI_V8_ASCII_STRING("command"))) {
+  if (!obj->HasOwnProperty(TRI_V8_ASCII_STRING("command"))) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("command must be specified");
   }
 
   std::string command;
   if (obj->Get(TRI_V8_ASCII_STRING("command"))->IsFunction()) {
     // need to add ( and ) around function because call would otherwise break
-    command = "(" + TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command"))) + ")(params)";
-  }
-  else {
+    command = "(" +
+              TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command"))) +
+              ")(params)";
+  } else {
     command = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command")));
   }
 
-  if (! TryCompile(isolate, command)) {
+  if (!TryCompile(isolate, command)) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot compile command");
   }
 
@@ -202,7 +191,8 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::unique_ptr<TRI_json_t> parameters;
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("params"))) {
-    parameters.reset(TRI_ObjectToJson(isolate, obj->Get(TRI_V8_ASCII_STRING("params"))));
+    parameters.reset(
+        TRI_ObjectToJson(isolate, obj->Get(TRI_V8_ASCII_STRING("params"))));
   }
 
   TRI_GET_GLOBALS();
@@ -211,37 +201,20 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   if (period > 0.0) {
     // create a new periodic task
-    task = new V8PeriodicTask(
-        id,
-        name,
-        static_cast<TRI_vocbase_t*>(v8g->_vocbase),
-        GlobalV8Dealer,
-        GlobalScheduler,
-        GlobalDispatcher,
-        offset,
-        period,
-        command,
-        parameters.get(),
-        isSystem);
-  }
-  else {
+    task =
+        new V8PeriodicTask(id, name, static_cast<TRI_vocbase_t*>(v8g->_vocbase),
+                           GlobalV8Dealer, GlobalScheduler, GlobalDispatcher,
+                           offset, period, command, parameters.get(), isSystem);
+  } else {
     // create a run-once timer task
-    task = new V8TimerTask(
-        id,
-        name,
-        static_cast<TRI_vocbase_t*>(v8g->_vocbase),
-        GlobalV8Dealer,
-        GlobalScheduler,
-        GlobalDispatcher,
-        offset,
-        command,
-        parameters.get(),
-        isSystem);
+    task = new V8TimerTask(id, name, static_cast<TRI_vocbase_t*>(v8g->_vocbase),
+                           GlobalV8Dealer, GlobalScheduler, GlobalDispatcher,
+                           offset, command, parameters.get(), isSystem);
   }
 
   // task not owns the parameters
   parameters.release();
-  
+
   // get the JSON representation of the task
   std::unique_ptr<TRI_json_t> json(task->toJson());
 
@@ -249,8 +222,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
     if (period > 0.0) {
       V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
       delete t;
-    }
-    else {
+    } else {
       V8TimerTask* t = dynamic_cast<V8TimerTask*>(task);
       delete t;
     }
@@ -266,8 +238,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
     if (period > 0.0) {
       V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
       delete t;
-    }
-    else {
+    } else {
       V8TimerTask* t = dynamic_cast<V8TimerTask*>(task);
       delete t;
     }
@@ -287,7 +258,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @FUN{internal.unregisterTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_UnregisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_UnregisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -317,7 +288,7 @@ static void JS_UnregisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) 
 /// @FUN{internal.getTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_GetTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_GetTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -335,8 +306,7 @@ static void JS_GetTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // get a single task
     string const id = GetTaskId(isolate, args[0]);
     json.reset(GlobalScheduler->getUserTask(id));
-  }
-  else {
+  } else {
     // get all tasks
     json.reset(GlobalScheduler->getUserTasks());
   }
@@ -351,20 +321,16 @@ static void JS_GetTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 dispatcher function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Dispatcher (v8::Isolate* isolate,
-                           v8::Handle<v8::Context> context,
-                           TRI_vocbase_t* vocbase,
-                           ApplicationScheduler* scheduler,
-                           ApplicationDispatcher* dispatcher,
-                           ApplicationV8* applicationV8) {
+void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+                          TRI_vocbase_t* vocbase,
+                          ApplicationScheduler* scheduler,
+                          ApplicationDispatcher* dispatcher,
+                          ApplicationV8* applicationV8) {
   v8::HandleScope scope(isolate);
 
   GlobalV8Dealer = applicationV8;
@@ -378,20 +344,17 @@ void TRI_InitV8Dispatcher (v8::Isolate* isolate,
   GlobalDispatcher = dispatcher->dispatcher();
 
   if (GlobalScheduler != nullptr && GlobalDispatcher != nullptr) {
-    TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_REGISTER_TASK"), JS_RegisterTask);
-    TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_UNREGISTER_TASK"), JS_UnregisterTask);
-    TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
-  }
-  else {
+    TRI_AddGlobalFunctionVocbase(isolate, context,
+                                 TRI_V8_ASCII_STRING("SYS_REGISTER_TASK"),
+                                 JS_RegisterTask);
+    TRI_AddGlobalFunctionVocbase(isolate, context,
+                                 TRI_V8_ASCII_STRING("SYS_UNREGISTER_TASK"),
+                                 JS_UnregisterTask);
+    TRI_AddGlobalFunctionVocbase(
+        isolate, context, TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
+  } else {
     LOG_ERROR("cannot initialize tasks, scheduler or dispatcher unknown");
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

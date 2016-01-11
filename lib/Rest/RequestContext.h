@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief request context
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_REQUEST_CONTEXT_H
-#define ARANGODB_REST_REQUEST_CONTEXT_H 1
+#ifndef LIB_REST_REQUEST_CONTEXT_H
+#define LIB_REST_REQUEST_CONTEXT_H 1
 
 #include "Basics/Common.h"
 #include "Rest/RequestUser.h"
@@ -36,88 +30,57 @@
 #include "Rest/HttpResponse.h"
 
 namespace triagens {
-  namespace rest {
+namespace rest {
 
-    class HttpRequest;
+class HttpRequest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class RequestContext
-// -----------------------------------------------------------------------------
 
-    class RequestContext {
+class RequestContext {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the request context
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  RequestContext(HttpRequest* request) : _request(request) {}
 
-      public:
+  virtual ~RequestContext() {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the request context
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  RequestContext(const RequestContext&);
+  RequestContext& operator=(const RequestContext&);
 
-        RequestContext (HttpRequest* request) :
-          _request(request) {
-        }
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get request user
+  ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~RequestContext () {
-        }
+  virtual RequestUser* getRequestUser() { return nullptr; }
 
-    private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return authentication realm
+  ////////////////////////////////////////////////////////////////////////////////
 
-        RequestContext (const RequestContext&);
-        RequestContext& operator= (const RequestContext&);
+  virtual char const* getRealm() const = 0;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief authenticate user
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  virtual HttpResponse::HttpResponseCode authenticate() = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get request user
-////////////////////////////////////////////////////////////////////////////////
+  
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the request of the context
+  ////////////////////////////////////////////////////////////////////////////////
 
-        virtual RequestUser* getRequestUser () {
-          return nullptr;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return authentication realm
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual char const* getRealm () const = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief authenticate user
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual HttpResponse::HttpResponseCode authenticate () = 0;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the request of the context
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpRequest* _request;
-
-    };
-
-  }
+  HttpRequest* _request;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

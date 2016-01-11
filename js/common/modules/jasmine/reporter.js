@@ -5,7 +5,7 @@
 //  documentation: Group and example names
 
 var Reporter,
-  _ = require('underscore'),
+  _ = require('lodash'),
   internal = require('internal'),
   inspect = internal.inspect,
   failureColor = internal.COLORS.COLOR_RED,

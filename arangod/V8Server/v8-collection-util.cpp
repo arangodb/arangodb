@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8-vocbase bridge
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-collection.h"
@@ -48,7 +42,7 @@ static int const SLOT_COLLECTION = 2;
 /// @brief free a coordinator collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void FreeCoordinatorCollection (TRI_vocbase_col_t* collection) {
+void FreeCoordinatorCollection(TRI_vocbase_col_t* collection) {
   TRI_DestroyReadWriteLock(&collection->_lock);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
@@ -57,30 +51,32 @@ void FreeCoordinatorCollection (TRI_vocbase_col_t* collection) {
 /// @brief releases a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReleaseCollection (TRI_vocbase_col_t const* collection) {
-  TRI_ReleaseCollectionVocBase(collection->_vocbase, const_cast<TRI_vocbase_col_t*>(collection));
+void ReleaseCollection(TRI_vocbase_col_t const* collection) {
+  TRI_ReleaseCollectionVocBase(collection->_vocbase,
+                               const_cast<TRI_vocbase_col_t*>(collection));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a collection info into a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
-                                          CollectionInfo const& ci) {
-  TRI_vocbase_col_t* c = static_cast<TRI_vocbase_col_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false));
+TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
+                                         CollectionInfo const& ci) {
+  TRI_vocbase_col_t* c = static_cast<TRI_vocbase_col_t*>(
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false));
 
   if (c == nullptr) {
     return nullptr;
   }
 
   c->_internalVersion = 0;
-  c->_isLocal         = false;
-  c->_vocbase         = vocbase;
-  c->_type            = ci.type();
-  c->_cid             = ci.id();
-  c->_planId          = ci.id();
-  c->_status          = ci.status();
-  c->_collection      = nullptr;
+  c->_isLocal = false;
+  c->_vocbase = vocbase;
+  c->_type = ci.type();
+  c->_cid = ci.id();
+  c->_planId = ci.id();
+  c->_status = ci.status();
+  c->_collection = nullptr;
 
   std::string const name = ci.name();
 
@@ -91,7 +87,7 @@ TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
   memset(c->_dbName, 0, TRI_COL_NAME_LENGTH + 1);
   memcpy(c->_dbName, vocbase->_name, strlen(vocbase->_name));
 
-  c->_canDrop   = true;
+  c->_canDrop = true;
   c->_canUnload = true;
   c->_canRename = true;
 
@@ -100,7 +96,7 @@ TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
     if (TRI_EqualString(c->_name, TRI_COL_NAME_USERS) ||
         TRI_IsPrefixString(c->_name, TRI_COL_NAME_STATISTICS)) {
       // these collections cannot be dropped or renamed
-      c->_canDrop   = false;
+      c->_canDrop = false;
       c->_canRename = false;
     }
   }
@@ -114,9 +110,9 @@ TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
 /// @brief check if a name belongs to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EqualCollection (CollectionNameResolver const* resolver,
-                      string const& collectionName,
-                      TRI_vocbase_col_t const* collection) {
+bool EqualCollection(CollectionNameResolver const* resolver,
+                     string const& collectionName,
+                     TRI_vocbase_col_t const* collection) {
   if (collectionName == StringUtils::itoa(collection->_cid)) {
     return true;
   }
@@ -126,7 +122,8 @@ bool EqualCollection (CollectionNameResolver const* resolver,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    if (collectionName == resolver->getCollectionNameCluster(collection->_cid)) {
+    if (collectionName ==
+        resolver->getCollectionNameCluster(collection->_cid)) {
       return true;
     }
     return false;
@@ -143,22 +140,24 @@ bool EqualCollection (CollectionNameResolver const* resolver,
 /// @brief create a v8 collection id value from the internal collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> V8CollectionId (v8::Isolate* isolate, TRI_voc_cid_t cid) {
+static inline v8::Handle<v8::Value> V8CollectionId(v8::Isolate* isolate,
+                                                   TRI_voc_cid_t cid) {
   char buffer[21];
-  size_t len = TRI_StringUInt64InPlace((uint64_t) cid, (char*) &buffer);
+  size_t len = TRI_StringUInt64InPlace((uint64_t)cid, (char*)&buffer);
 
-  return TRI_V8_PAIR_STRING((const char*) buffer, (int) len);
+  return TRI_V8_PAIR_STRING((const char*)buffer, (int)len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakCollectionCallback (const v8::WeakCallbackData<v8::External, v8::Persistent<v8::External>>& data) {
-  auto isolate      = data.GetIsolate();
-  auto persistent   = data.GetParameter();
+static void WeakCollectionCallback(const v8::WeakCallbackData<
+    v8::External, v8::Persistent<v8::External>>& data) {
+  auto isolate = data.GetIsolate();
+  auto persistent = data.GetParameter();
   auto myCollection = v8::Local<v8::External>::New(isolate, *persistent);
-  auto collection   = static_cast<TRI_vocbase_col_t*>(myCollection->Value());
+  auto collection = static_cast<TRI_vocbase_col_t*>(myCollection->Value());
   TRI_GET_GLOBALS();
 
   v8g->decreaseActiveExternals();
@@ -166,12 +165,12 @@ static void WeakCollectionCallback (const v8::WeakCallbackData<v8::External, v8:
   // decrease the reference-counter for the database
   TRI_ReleaseVocBase(collection->_vocbase);
 
-  // find the persistent handle
+// find the persistent handle
 #if TRI_ENABLE_MAINTAINER_MODE
   auto const& it = v8g->JSCollections.find(collection);
   TRI_ASSERT(it != v8g->JSCollections.end())
 #endif
-  if (! collection->_isLocal) {
+  if (!collection->_isLocal) {
     FreeCoordinatorCollection(collection);
   }
   // dispose and clear the persistent handle
@@ -183,19 +182,22 @@ static void WeakCollectionCallback (const v8::WeakCallbackData<v8::External, v8:
 /// @brief wraps a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> WrapCollection (v8::Isolate* isolate,
-                                       TRI_vocbase_col_t const* collection) {
+v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
+                                      TRI_vocbase_col_t const* collection) {
   v8::EscapableHandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
   v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
 
-  if (! result.IsEmpty()) {
-    TRI_vocbase_col_t* nonconstCollection = const_cast<TRI_vocbase_col_t*>(collection);
+  if (!result.IsEmpty()) {
+    TRI_vocbase_col_t* nonconstCollection =
+        const_cast<TRI_vocbase_col_t*>(collection);
 
-    result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE));
-    result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nonconstCollection));
+    result->SetInternalField(SLOT_CLASS_TYPE,
+                             v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE));
+    result->SetInternalField(SLOT_CLASS,
+                             v8::External::New(isolate, nonconstCollection));
 
     auto const& it = v8g->JSCollections.find(nonconstCollection);
 
@@ -207,22 +209,25 @@ v8::Handle<v8::Object> WrapCollection (v8::Isolate* isolate,
       result->SetInternalField(SLOT_COLLECTION, externalCollection);
 
       v8g->JSCollections[nonconstCollection].Reset(isolate, externalCollection);
-      v8g->JSCollections[nonconstCollection].SetWeak(&v8g->JSCollections[nonconstCollection],  WeakCollectionCallback);
+      v8g->JSCollections[nonconstCollection].SetWeak(
+          &v8g->JSCollections[nonconstCollection], WeakCollectionCallback);
       v8g->increaseActiveExternals();
-    }
-    else {
+    } else {
       auto myCollection = v8::Local<v8::External>::New(isolate, it->second);
-      
+
       result->SetInternalField(SLOT_COLLECTION, myCollection);
     }
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
     TRI_GET_GLOBAL_STRING(VersionKeyHidden);
-    result->ForceSet(_IdKey, V8CollectionId(isolate, collection->_cid), v8::ReadOnly);
+    result->ForceSet(_IdKey, V8CollectionId(isolate, collection->_cid),
+                     v8::ReadOnly);
     result->Set(_DbNameKey, TRI_V8_STRING(collection->_dbName));
-    result->ForceSet(VersionKeyHidden, v8::Integer::NewFromUnsigned(isolate, collection->_internalVersion), v8::DontEnum);
+    result->ForceSet(
+        VersionKeyHidden,
+        v8::Integer::NewFromUnsigned(isolate, collection->_internalVersion),
+        v8::DontEnum);
   }
 
   return scope.Escape<v8::Object>(result);
 }
-

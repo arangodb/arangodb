@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mutexes, locks and condition variables
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,50 +19,30 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_LOCKS_H
-#define ARANGODB_BASICS_C_LOCKS_H 1
+#ifndef LIB_BASICS_LOCKS_H
+#define LIB_BASICS_LOCKS_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     PUBLIC MACROS
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     POSIX THREADS
-// -----------------------------------------------------------------------------
 
 #ifdef TRI_HAVE_POSIX_THREADS
 #include "Basics/locks-posix.h"
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   WINDOWS THREADS
-// -----------------------------------------------------------------------------
 
 #ifdef TRI_HAVE_WIN32_THREADS
 #include "Basics/locks-win32.h"
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     MAC OS X SPIN
-// -----------------------------------------------------------------------------
 
 #ifdef TRI_HAVE_MACOS_SPIN
 #include "Basics/locks-macos.h"
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             MUTEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a new mutex
@@ -81,37 +57,28 @@
 /// implements mutual exclusion. For details see www.wikipedia.org.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitMutex (TRI_mutex_t*);
+int TRI_InitMutex(TRI_mutex_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DestroyMutex (TRI_mutex_t*);
+int TRI_DestroyMutex(TRI_mutex_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LockMutex (TRI_mutex_t*);
+void TRI_LockMutex(TRI_mutex_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockMutex (TRI_mutex_t*);
+void TRI_UnlockMutex(TRI_mutex_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              SPIN
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a new spin-lock
@@ -120,7 +87,7 @@ void TRI_UnlockMutex (TRI_mutex_t*);
 #ifdef TRI_FAKE_SPIN_LOCKS
 #define TRI_InitSpin TRI_InitMutex
 #else
-void TRI_InitSpin (TRI_spin_t* spin);
+void TRI_InitSpin(TRI_spin_t* spin);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,12 +97,9 @@ void TRI_InitSpin (TRI_spin_t* spin);
 #ifdef TRI_FAKE_SPIN_LOCKS
 #define TRI_DestroySpin TRI_DestroyMutex
 #else
-void TRI_DestroySpin (TRI_spin_t* spin);
+void TRI_DestroySpin(TRI_spin_t* spin);
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks spin-lock
@@ -144,7 +108,7 @@ void TRI_DestroySpin (TRI_spin_t* spin);
 #ifdef TRI_FAKE_SPIN_LOCKS
 #define TRI_LockSpin TRI_LockMutex
 #else
-void TRI_LockSpin (TRI_spin_t* spin);
+void TRI_LockSpin(TRI_spin_t* spin);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,16 +118,10 @@ void TRI_LockSpin (TRI_spin_t* spin);
 #ifdef TRI_FAKE_SPIN_LOCKS
 #define TRI_UnlockSpin TRI_UnlockMutex
 #else
-void TRI_UnlockSpin (TRI_spin_t* spin);
+void TRI_UnlockSpin(TRI_spin_t* spin);
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   READ-WRITE LOCK
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a new read-write lock
@@ -184,77 +142,65 @@ void TRI_UnlockSpin (TRI_spin_t* spin);
 /// and then only if the access patterns for the shared data are suitable.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock);
+void TRI_InitReadWriteLock(TRI_read_write_lock_t* lock);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroyes a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock);
+void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock);
+bool TRI_TryReadLockReadWriteLock(TRI_read_write_lock_t* lock);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock);
+void TRI_ReadLockReadWriteLock(TRI_read_write_lock_t* lock);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock);
+void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to write lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock);
+bool TRI_TryWriteLockReadWriteLock(TRI_read_write_lock_t* lock);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write locks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock);
+void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock);
+void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                CONDITION VARIABLE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a new condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitCondition (TRI_condition_t* cond);
+void TRI_InitCondition(TRI_condition_t* cond);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyCondition (TRI_condition_t* cond);
+void TRI_DestroyCondition(TRI_condition_t* cond);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signals a condition variable
@@ -262,7 +208,7 @@ void TRI_DestroyCondition (TRI_condition_t* cond);
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SignalCondition (TRI_condition_t* cond);
+void TRI_SignalCondition(TRI_condition_t* cond);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief broad casts a condition variable
@@ -270,7 +216,7 @@ void TRI_SignalCondition (TRI_condition_t* cond);
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_BroadcastCondition (TRI_condition_t* cond);
+void TRI_BroadcastCondition(TRI_condition_t* cond);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for a signal on a condition variable
@@ -278,7 +224,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond);
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WaitCondition (TRI_condition_t* cond);
+void TRI_WaitCondition(TRI_condition_t* cond);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for a signal with a timeout in micro-seconds
@@ -286,27 +232,20 @@ void TRI_WaitCondition (TRI_condition_t* cond);
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay);
+bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the mutex of a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LockCondition (TRI_condition_t* cond);
+void TRI_LockCondition(TRI_condition_t* cond);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the mutex of a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockCondition (TRI_condition_t* cond);
+void TRI_UnlockCondition(TRI_condition_t* cond);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,9 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_SHAPED_JSON_TRANSFORMER_H
-#define ARANGODB_UTILS_SHAPED_JSON_TRANSFORMER_H 1
+#ifndef ARANGOD_UTILS_SHAPED_JSON_TRANSFORMER_H
+#define ARANGOD_UTILS_SHAPED_JSON_TRANSFORMER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -40,32 +36,19 @@ class VocShaper;
 ///        This json object contains all internal attributes.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json TRI_ExpandShapedJson (
-  VocShaper* shaper,
-  triagens::arango::CollectionNameResolver const* resolver,
-  TRI_voc_cid_t const& cid,
-  TRI_df_marker_t const* marker
-);
+triagens::basics::Json TRI_ExpandShapedJson(
+    VocShaper* shaper, triagens::arango::CollectionNameResolver const* resolver,
+    TRI_voc_cid_t const& cid, TRI_df_marker_t const* marker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms a given doc_mptr into a JSON object.
 ///        This json object contains all internal attributes.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json TRI_ExpandShapedJson (
-  VocShaper* shaper,
-  triagens::arango::CollectionNameResolver const* resolver,
-  TRI_voc_cid_t const& cid,
-  TRI_doc_mptr_t const* mptr
-);
+triagens::basics::Json TRI_ExpandShapedJson(
+    VocShaper* shaper, triagens::arango::CollectionNameResolver const* resolver,
+    TRI_voc_cid_t const& cid, TRI_doc_mptr_t const* mptr);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

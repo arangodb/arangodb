@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, Index
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Index.h"
@@ -35,15 +31,12 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  methods of Index
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the index
 ////////////////////////////////////////////////////////////////////////////////
-       
-Index::~Index () {
+
+Index::~Index() {
   if (ownsInternals) {
     TRI_ASSERT(internals != nullptr);
     delete internals;
@@ -53,20 +46,20 @@ Index::~Index () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the index internals
 ////////////////////////////////////////////////////////////////////////////////
-      
-triagens::arango::Index* Index::getInternals () const {
+
+triagens::arango::Index* Index::getInternals() const {
   if (internals == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "accessing undefined index internals");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "accessing undefined index internals");
   }
-  return internals; 
+  return internals;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the index internals
 ////////////////////////////////////////////////////////////////////////////////
-      
-void Index::setInternals (triagens::arango::Index* idx, 
-                          bool owns) {
+
+void Index::setInternals(triagens::arango::Index* idx, bool owns) {
   TRI_ASSERT(internals == nullptr);
   internals = idx;
   ownsInternals = owns;
@@ -76,45 +69,46 @@ void Index::setInternals (triagens::arango::Index* idx,
 /// @brief check whether or not the index supports the filter condition
 /// and calculate the filter costs and number of items
 ////////////////////////////////////////////////////////////////////////////////
-      
-bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
-                                     triagens::aql::Variable const* reference,
-                                     size_t itemsInIndex,
-                                     size_t& estimatedItems,
-                                     double& estimatedCost) const {
-  if (! hasInternals() ) {
+
+bool Index::supportsFilterCondition(triagens::aql::AstNode const* node,
+                                    triagens::aql::Variable const* reference,
+                                    size_t itemsInIndex, size_t& estimatedItems,
+                                    double& estimatedCost) const {
+  if (!hasInternals()) {
     return false;
   }
-  return getInternals()->supportsFilterCondition(node, reference, itemsInIndex, estimatedItems, estimatedCost);
+  return getInternals()->supportsFilterCondition(node, reference, itemsInIndex,
+                                                 estimatedItems, estimatedCost);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether or not the index supports the sort condition
 /// and calculate the sort costs
 ////////////////////////////////////////////////////////////////////////////////
-      
-bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
-                                   triagens::aql::Variable const* reference,
-                                   size_t itemsInIndex,
-                                   double& estimatedCost) const {
-  if (! hasInternals() ) {
+
+bool Index::supportsSortCondition(
+    triagens::aql::SortCondition const* sortCondition,
+    triagens::aql::Variable const* reference, size_t itemsInIndex,
+    double& estimatedCost) const {
+  if (!hasInternals()) {
     return false;
   }
-  return getInternals()->supportsSortCondition(sortCondition, reference, itemsInIndex, estimatedCost);
+  return getInternals()->supportsSortCondition(sortCondition, reference,
+                                               itemsInIndex, estimatedCost);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an iterator for the index
 ////////////////////////////////////////////////////////////////////////////////
-      
-triagens::arango::IndexIterator* Index::getIterator (triagens::arango::Transaction* trx,
-                                                     triagens::arango::IndexIteratorContext* context, 
-                                                     triagens::aql::Ast* ast,
-                                                     triagens::aql::AstNode const* condition,
-                                                     triagens::aql::Variable const* reference,
-                                                     bool reverse) const {
+
+triagens::arango::IndexIterator* Index::getIterator(
+    triagens::arango::Transaction* trx,
+    triagens::arango::IndexIteratorContext* context, triagens::aql::Ast* ast,
+    triagens::aql::AstNode const* condition,
+    triagens::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(hasInternals());
-  return getInternals()->iteratorForCondition(trx, context, ast, condition, reference, reverse);
+  return getInternals()->iteratorForCondition(trx, context, ast, condition,
+                                              reference, reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,8 +117,9 @@ triagens::arango::IndexIterator* Index::getIterator (triagens::arango::Transacti
 /// handle
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode* node,
-                                                    triagens::aql::Variable const* reference) const {
+triagens::aql::AstNode* Index::specializeCondition(
+    triagens::aql::AstNode* node,
+    triagens::aql::Variable const* reference) const {
   TRI_ASSERT(hasInternals());
   return getInternals()->specializeCondition(node, reference);
 }
@@ -132,9 +127,9 @@ triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode* node
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the index to an output stream
 ////////////////////////////////////////////////////////////////////////////////
-     
-std::ostream& operator<< (std::ostream& stream,
-                          triagens::aql::Index const* index) {
+
+std::ostream& operator<<(std::ostream& stream,
+                         triagens::aql::Index const* index) {
   stream << index->getInternals()->context();
   return stream;
 }
@@ -143,14 +138,9 @@ std::ostream& operator<< (std::ostream& stream,
 /// @brief append the index to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator<< (std::ostream& stream,
-                          triagens::aql::Index const& index) {
+std::ostream& operator<<(std::ostream& stream,
+                         triagens::aql::Index const& index) {
   stream << index.getInternals()->context();
   return stream;
 }
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
 

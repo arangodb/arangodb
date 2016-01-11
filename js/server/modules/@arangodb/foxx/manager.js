@@ -35,7 +35,7 @@
 // --SECTION--                                                           imports
 // -----------------------------------------------------------------------------
 
-const _ = require('underscore');
+const _ = require('lodash');
 const fs = require('fs');
 const joi = require('joi');
 const util = require('util');
@@ -267,7 +267,7 @@ function refillCaches(dbname) {
 
   while (cursor.hasNext()) {
     var config = cursor.next();
-    var app = new FoxxService(_.clone(config));
+    var app = new FoxxService(_.extend({}, config));
     var mount = app.mount;
     cache[mount] = app;
     routes.push(mount);

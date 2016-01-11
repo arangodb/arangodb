@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple arango importer
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
@@ -54,9 +48,6 @@ using namespace triagens::httpclient;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -136,38 +127,39 @@ static std::string OnDuplicateAction = "error";
 
 static bool Progress = true;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ParseProgramOptions (int argc, char* argv[]) {
+static void ParseProgramOptions(int argc, char* argv[]) {
   ProgramOptionsDescription deprecatedOptions("DEPRECATED options");
 
-  deprecatedOptions
-    ("max-upload-size", &ChunkSize, "size for individual data batches (in bytes)")
-  ;
+  deprecatedOptions("max-upload-size", &ChunkSize,
+                    "size for individual data batches (in bytes)");
 
   ProgramOptionsDescription description("STANDARD options");
 
-  description
-    ("file", &FileName, "file name (\"-\" for STDIN)")
-    ("backslash-escape", &UseBackslash, "use backslash as the escape character for quotes, used for csv")
-    ("batch-size", &ChunkSize, "size for individual data batches (in bytes)")
-    ("collection", &CollectionName, "collection name")
-    ("create-collection", &CreateCollection, "create collection if it does not yet exist")
-    ("create-collection-type", &CreateCollectionType, "type of collection if collection is created ('document' or 'edge')")
-    ("type", &TypeImport, "type of file (\"csv\", \"tsv\", or \"json\")")
-    ("overwrite", &Overwrite, "overwrite collection if it exist (WARNING: this will remove any data from the collection)")
-    ("quote", &Quote, "quote character(s), used for csv")
-    ("separator", &Separator, "field separator, used for csv")
-    ("progress", &Progress, "show progress")
-    ("on-duplicate", &OnDuplicateAction, "action to perform when a unique key constraint violation occurs. Possible values: 'error', 'update', 'replace', 'ignore')")
-    (deprecatedOptions, true)
-  ;
+  description("file", &FileName, "file name (\"-\" for STDIN)")(
+      "backslash-escape", &UseBackslash,
+      "use backslash as the escape character for quotes, used for csv")(
+      "batch-size", &ChunkSize, "size for individual data batches (in bytes)")(
+      "collection", &CollectionName, "collection name")(
+      "create-collection", &CreateCollection,
+      "create collection if it does not yet exist")(
+      "create-collection-type", &CreateCollectionType,
+      "type of collection if collection is created ('document' or 'edge')")(
+      "type", &TypeImport, "type of file (\"csv\", \"tsv\", or \"json\")")(
+      "overwrite", &Overwrite,
+      "overwrite collection if it exist (WARNING: this will remove any data "
+      "from the collection)")("quote", &Quote,
+                              "quote character(s), used for csv")(
+      "separator", &Separator, "field separator, used for csv")(
+      "progress", &Progress,
+      "show progress")("on-duplicate", &OnDuplicateAction,
+                       "action to perform when a unique key constraint "
+                       "violation occurs. Possible values: 'error', 'update', "
+                       "'replace', 'ignore')")(deprecatedOptions, true);
 
   BaseClient.setupGeneral(description);
   BaseClient.setupServer(description);
@@ -176,23 +168,22 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description.arguments(&arguments);
 
   ProgramOptions options;
-  BaseClient.parse(options, description, "--file <file> --type <type> --collection <collection>", argc, argv, "arangoimp.conf");
+  BaseClient.parse(options, description,
+                   "--file <file> --type <type> --collection <collection>",
+                   argc, argv, "arangoimp.conf");
 
   if (FileName == "" && arguments.size() > 0) {
     FileName = arguments[0];
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LocalEntryFunction ();
-static void LocalExitFunction (int, void*);
+static void LocalEntryFunction();
+static void LocalExitFunction(int, void*);
 
 #ifdef _WIN32
 
@@ -200,7 +191,7 @@ static void LocalExitFunction (int, void*);
 // Call this function to do various initializations for windows only
 // .............................................................................
 
-static void LocalEntryFunction () {
+static void LocalEntryFunction() {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -209,7 +200,7 @@ static void LocalEntryFunction () {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  //res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+  // res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
 
@@ -217,7 +208,8 @@ static void LocalEntryFunction () {
     _exit(1);
   }
 
-  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
+                          (const char*)(&maxOpenFiles));
   if (res != 0) {
     _exit(1);
   }
@@ -230,7 +222,7 @@ static void LocalEntryFunction () {
   TRI_Application_Exit_SetExit(LocalExitFunction);
 }
 
-static void LocalExitFunction (int exitCode, void* data) {
+static void LocalExitFunction(int exitCode, void* data) {
   int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
@@ -241,11 +233,9 @@ static void LocalExitFunction (int exitCode, void* data) {
 }
 #else
 
-static void LocalEntryFunction () {
-}
+static void LocalEntryFunction() {}
 
-static void LocalExitFunction (int exitCode, void* data) {
-}
+static void LocalExitFunction(int exitCode, void* data) {}
 
 #endif
 
@@ -253,7 +243,7 @@ static void LocalExitFunction (int exitCode, void* data) {
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
-static string RewriteLocation (void* data, const std::string& location) {
+static string RewriteLocation(void* data, const std::string& location) {
   if (location.substr(0, 5) == "/_db/") {
     // location already contains /_db/
     return location;
@@ -261,8 +251,7 @@ static string RewriteLocation (void* data, const std::string& location) {
 
   if (location[0] == '/') {
     return "/_db/" + BaseClient.databaseName() + location;
-  }
-  else {
+  } else {
     return "/_db/" + BaseClient.databaseName() + "/" + location;
   }
 }
@@ -271,7 +260,7 @@ static string RewriteLocation (void* data, const std::string& location) {
 /// @brief main
 ////////////////////////////////////////////////////////////////////////////////
 
-int main (int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
   int ret = EXIT_SUCCESS;
 
   LocalEntryFunction();
@@ -296,46 +285,51 @@ int main (int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == nullptr) {
-    cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
+    cerr << "invalid value for --server.endpoint ('"
+         << BaseClient.endpointString() << "')" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
-  // create a connection 
-  { 
+  // create a connection
+  {
     std::unique_ptr<triagens::httpclient::GeneralClientConnection> connection;
-    
-    connection.reset(GeneralClientConnection::factory(BaseClient.endpointServer(),
-                                                      BaseClient.requestTimeout(),
-                                                      BaseClient.connectTimeout(),
-                                                      ArangoClient::DEFAULT_RETRIES,
-                                                      BaseClient.sslProtocol()));
-    
+
+    connection.reset(GeneralClientConnection::factory(
+        BaseClient.endpointServer(), BaseClient.requestTimeout(),
+        BaseClient.connectTimeout(), ArangoClient::DEFAULT_RETRIES,
+        BaseClient.sslProtocol()));
+
     if (connection == nullptr) {
       cerr << "out of memory" << endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
-    // simple http client is only valid inside this scope 
-    { 
-      SimpleHttpClient client(connection.get(), BaseClient.requestTimeout(), false);
-      
+    // simple http client is only valid inside this scope
+    {
+      SimpleHttpClient client(connection.get(), BaseClient.requestTimeout(),
+                              false);
+
       client.setLocationRewriter(nullptr, &RewriteLocation);
-      client.setUserNamePassword("/", BaseClient.username(), BaseClient.password());
-  
+      client.setUserNamePassword("/", BaseClient.username(),
+                                 BaseClient.password());
+
       // must stay here in order to establish the connection
       std::string const versionString = client.getServerVersion();
 
-      if (! connection->isConnected()) {
+      if (!connection->isConnected()) {
         cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
-            << "', database: '" << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
+             << "', database: '" << BaseClient.databaseName()
+             << "', username: '" << BaseClient.username() << "'" << endl;
         cerr << "Error message: '" << client.getErrorMessage() << "'" << endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
       // successfully connected
-      cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-          << "', version " << client.getServerVersion() << ", database: '"
-          << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
+      cout << "Connected to ArangoDB '"
+           << BaseClient.endpointServer()->getSpecification() << "', version "
+           << client.getServerVersion() << ", database: '"
+           << BaseClient.databaseName() << "', username: '"
+           << BaseClient.username() << "'" << endl;
 
       cout << "----------------------------------------" << endl;
       cout << "database:         " << BaseClient.databaseName() << endl;
@@ -360,7 +354,8 @@ int main (int argc, char* argv[]) {
         ih.setCreateCollection(true);
       }
 
-      if (CreateCollectionType == "document" || CreateCollectionType == "edge") {
+      if (CreateCollectionType == "document" ||
+          CreateCollectionType == "edge") {
         ih.setCreateCollectionType(CreateCollectionType);
       }
 
@@ -370,8 +365,7 @@ int main (int argc, char* argv[]) {
       // quote
       if (Quote.length() <= 1) {
         ih.setQuote(Quote);
-      }
-      else {
+      } else {
         cerr << "Wrong length of quote character." << endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
@@ -379,8 +373,7 @@ int main (int argc, char* argv[]) {
       // separator
       if (Separator.length() == 1) {
         ih.setSeparator(Separator);
-      }
-      else {
+      } else {
         cerr << "Separator must be exactly one character." << endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
@@ -397,15 +390,16 @@ int main (int argc, char* argv[]) {
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
-      if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {
-        if (! FileUtils::exists(FileName)) {
-          cerr << "Cannot open file '" << FileName << "'. File not found." << endl;
-        }
-        else if (FileUtils::isDirectory(FileName)) {
-          cerr << "Specified file '" << FileName << "' is a directory. Please use a regular file." << endl;
-        }
-        else {
-          cerr << "Cannot open '" << FileName << "'. Invalid file type." << endl;
+      if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
+        if (!FileUtils::exists(FileName)) {
+          cerr << "Cannot open file '" << FileName << "'. File not found."
+               << endl;
+        } else if (FileUtils::isDirectory(FileName)) {
+          cerr << "Specified file '" << FileName
+               << "' is a directory. Please use a regular file." << endl;
+        } else {
+          cerr << "Cannot open '" << FileName << "'. Invalid file type."
+               << endl;
         }
 
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
@@ -416,11 +410,10 @@ int main (int argc, char* argv[]) {
         ih.setProgress(true);
       }
 
-      if (OnDuplicateAction != "error" &&
-          OnDuplicateAction != "update" &&
-          OnDuplicateAction != "replace" &&
-          OnDuplicateAction != "ignore") {
-        cerr << "Invalid value for '--on-duplicate'. Possible values: 'error', 'update', 'replace', 'ignore'." << endl;
+      if (OnDuplicateAction != "error" && OnDuplicateAction != "update" &&
+          OnDuplicateAction != "replace" && OnDuplicateAction != "ignore") {
+        cerr << "Invalid value for '--on-duplicate'. Possible values: 'error', "
+                "'update', 'replace', 'ignore'." << endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
@@ -432,14 +425,16 @@ int main (int argc, char* argv[]) {
         // import type
         if (TypeImport == "csv") {
           cout << "Starting CSV import..." << endl;
-          ok = ih.importDelimited(CollectionName, FileName, triagens::v8client::ImportHelper::CSV);
+          ok = ih.importDelimited(CollectionName, FileName,
+                                  triagens::v8client::ImportHelper::CSV);
         }
 
         else if (TypeImport == "tsv") {
           cout << "Starting TSV import..." << endl;
           ih.setQuote("");
           ih.setSeparator("\\t");
-          ok = ih.importDelimited(CollectionName, FileName, triagens::v8client::ImportHelper::TSV);
+          ok = ih.importDelimited(CollectionName, FileName,
+                                  triagens::v8client::ImportHelper::TSV);
         }
 
         else if (TypeImport == "json") {
@@ -465,19 +460,15 @@ int main (int argc, char* argv[]) {
             cout << "lines read:       " << ih.getReadLines() << endl;
           }
 
-        }
-        else {
+        } else {
           cerr << "error message:    " << ih.getErrorMessage() << endl;
         }
-      }
-      catch (std::exception const& ex) {
+      } catch (std::exception const& ex) {
         cerr << "Caught exception " << ex.what() << " during import" << endl;
-      }
-      catch (...) {
+      } catch (...) {
         cerr << "Got an unknown exception during import" << endl;
       }
     }
-
   }
 
   TRIAGENS_REST_SHUTDOWN;
@@ -487,11 +478,4 @@ int main (int argc, char* argv[]) {
   return ret;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

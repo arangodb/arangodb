@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief base class for input-output tasks from sockets
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SocketTask.h"
@@ -41,33 +35,28 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
 
-SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
-  : Task("SocketTask"),
-    _keepAliveWatcher(nullptr),
-    _readWatcher(nullptr),
-    _writeWatcher(nullptr),
-    _asyncWatcher(nullptr),
-    _commSocket(socket),
-    _keepAliveTimeout(keepAliveTimeout),
-    _writeBuffer(nullptr),
-    _writeBufferStatistics(nullptr),
-    _writeLength(0),
-    _readBuffer(nullptr),
-    _clientClosed(false),
-    _tid(0) {
-
+SocketTask::SocketTask(TRI_socket_t socket, double keepAliveTimeout)
+    : Task("SocketTask"),
+      _keepAliveWatcher(nullptr),
+      _readWatcher(nullptr),
+      _writeWatcher(nullptr),
+      _commSocket(socket),
+      _keepAliveTimeout(keepAliveTimeout),
+      _writeBuffer(nullptr),
+      _writeBufferStatistics(nullptr),
+      _writeLength(0),
+      _readBuffer(nullptr),
+      _clientClosed(false),
+      _tid(0) {
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
   ConnectionStatisticsAgent::acquire();
-  ConnectionStatisticsAgentSetStart(this);
+  connectionStatisticsAgentSetStart();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +65,7 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
 /// This method will close the underlying socket.
 ////////////////////////////////////////////////////////////////////////////////
 
-SocketTask::~SocketTask () {
+SocketTask::~SocketTask() {
   if (TRI_isvalidsocket(_commSocket)) {
     TRI_CLOSE_SOCKET(_commSocket);
     TRI_invalidatesocket(&_commSocket);
@@ -90,33 +79,27 @@ SocketTask::~SocketTask () {
 
   delete _readBuffer;
 
-  ConnectionStatisticsAgentSetEnd(this);
+  connectionStatisticsAgentSetEnd();
   ConnectionStatisticsAgent::release();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void SocketTask::setKeepAliveTimeout (double timeout) {
+void SocketTask::setKeepAliveTimeout(double timeout) {
   if (_keepAliveWatcher != nullptr && timeout > 0.0) {
     _scheduler->rearmTimer(_keepAliveWatcher, timeout);
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         protected virtual methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills the read buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::fillReadBuffer () {
+bool SocketTask::fillReadBuffer() {
   // reserve some memory for reading
   if (_readBuffer->reserve(READ_BLOCK_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
     // out of memory
@@ -147,7 +130,8 @@ bool SocketTask::fillReadBuffer () {
   }
 
   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {
-    LOG_DEBUG("read from socket failed with %d: %s", (int) myerrno, strerror(myerrno));
+    LOG_DEBUG("read from socket failed with %d: %s", (int)myerrno,
+              strerror(myerrno));
 
     return false;
   }
@@ -155,11 +139,13 @@ bool SocketTask::fillReadBuffer () {
   TRI_ASSERT(myerrno == EWOULDBLOCK || myerrno == EAGAIN);
 
   // from man(2) read:
-  // The  file  descriptor  fd  refers  to  a socket and has been marked nonblocking (O_NONBLOCK), 
+  // The  file  descriptor  fd  refers  to  a socket and has been marked
+  // nonblocking (O_NONBLOCK),
   // and the read would block.  POSIX.1-2001 allows
-  // either error to be returned for this case, and does not require these constants to have the same value, 
+  // either error to be returned for this case, and does not require these
+  // constants to have the same value,
   // so a  portable  application  should check for both possibilities.
-  LOG_TRACE("read would block with %d: %s", (int) myerrno, strerror(myerrno));
+  LOG_TRACE("read would block with %d: %s", (int)myerrno, strerror(myerrno));
 
   return true;
 }
@@ -168,7 +154,7 @@ bool SocketTask::fillReadBuffer () {
 /// @brief handles a write
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::handleWrite () {
+bool SocketTask::handleWrite() {
   size_t len = 0;
 
   if (nullptr != _writeBuffer) {
@@ -179,7 +165,8 @@ bool SocketTask::handleWrite () {
   int nr = 0;
 
   if (0 < len) {
-    nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + _writeLength, (int) len, 0);
+    nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + _writeLength,
+                          (int)len, 0);
 
     if (nr < 0) {
       int myerrno = errno;
@@ -190,11 +177,12 @@ bool SocketTask::handleWrite () {
       }
 
       if (myerrno != EWOULDBLOCK || myerrno != EAGAIN) {
-        LOG_DEBUG("writing to socket failed with %d: %s", (int) myerrno, strerror(myerrno));
+        LOG_DEBUG("writing to socket failed with %d: %s", (int)myerrno,
+                  strerror(myerrno));
 
         return false;
       }
-  
+
       TRI_ASSERT(myerrno == EWOULDBLOCK || myerrno == EAGAIN);
       nr = 0;
     }
@@ -216,8 +204,7 @@ bool SocketTask::handleWrite () {
 
     // rearm timer for keep-alive timeout
     setKeepAliveTimeout(_keepAliveTimeout);
-  }
-  else {
+  } else {
     _writeLength += nr;
   }
 
@@ -228,24 +215,20 @@ bool SocketTask::handleWrite () {
   // we might have a new write buffer or none at all
   if (_writeBuffer == nullptr) {
     _scheduler->stopSocketEvents(_writeWatcher);
-  }
-  else {
+  } else {
     _scheduler->startSocketEvents(_writeWatcher);
   }
 
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets an active write buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void SocketTask::setWriteBuffer (StringBuffer* buffer,
-                                 TRI_request_statistics_t* statistics) {
+void SocketTask::setWriteBuffer(StringBuffer* buffer,
+                                TRI_request_statistics_t* statistics) {
   TRI_ASSERT(buffer != nullptr);
 
   _writeBufferStatistics = statistics;
@@ -261,8 +244,7 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
     delete buffer;
 
     completedWriteBuffer();
-  }
-  else {
+  } else {
     if (_writeBuffer != nullptr) {
       delete _writeBuffer;
     }
@@ -279,8 +261,7 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
 
   if (_writeBuffer == nullptr) {
     _scheduler->stopSocketEvents(_writeWatcher);
-  }
-  else {
+  } else {
     _scheduler->startSocketEvents(_writeWatcher);
   }
 }
@@ -289,19 +270,14 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
 /// @brief checks for presence of an active write buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::hasWriteBuffer () const {
-  return _writeBuffer != nullptr;
-}
+bool SocketTask::hasWriteBuffer() const { return _writeBuffer != nullptr; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      Task methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
 #ifdef _WIN32
   // ..........................................................................
   // The problem we have here is that this opening of the fs handle may fail.
@@ -309,8 +285,10 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   // ..........................................................................
   LOG_TRACE("attempting to convert socket handle to socket descriptor");
 
-  if (! TRI_isvalidsocket(_commSocket)) {
-    LOG_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
+  if (!TRI_isvalidsocket(_commSocket)) {
+    LOG_ERROR(
+        "In SocketTask::setup could not convert socket handle to socket "
+        "descriptor -- invalid socket handle");
     return false;
   }
 
@@ -320,15 +298,19 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   // never use _open_osfhandle for sockets.
   // Therefore, we do the following, although it has the potential to
   // lose the higher bits of the socket handle:
-  int res = (int) _commSocket.fileHandle;
+  int res = (int)_commSocket.fileHandle;
 
   if (res == -1) {
-    LOG_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
+    LOG_ERROR(
+        "In SocketTask::setup could not convert socket handle to socket "
+        "descriptor -- _open_osfhandle(...) failed");
     res = TRI_CLOSE_SOCKET(_commSocket);
 
     if (res != 0) {
       res = WSAGetLastError();
-      LOG_ERROR("In SocketTask::setup closesocket(...) failed with error code: %d", (int) res);
+      LOG_ERROR(
+          "In SocketTask::setup closesocket(...) failed with error code: %d",
+          (int)res);
     }
 
     TRI_invalidatesocket(&_commSocket);
@@ -342,9 +324,10 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   _scheduler = scheduler;
   _loop = loop;
 
-  _asyncWatcher = _scheduler->installAsyncEvent(loop, this);
-  _readWatcher  = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
-  _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
+  _readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this,
+                                                _commSocket);
+  _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this,
+                                                 _commSocket);
 
   // install timer for keep-alive timeout with some high default value
   _keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
@@ -361,12 +344,8 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 /// @brief cleans up the task by unregistering all watchers
 ////////////////////////////////////////////////////////////////////////////////
 
-void SocketTask::cleanup () {
+void SocketTask::cleanup() {
   if (_scheduler != nullptr) {
-    if (_asyncWatcher != nullptr) {
-      _scheduler->uninstallEvent(_asyncWatcher);
-    }
-
     if (_keepAliveWatcher != nullptr) {
       _scheduler->uninstallEvent(_keepAliveWatcher);
     }
@@ -380,18 +359,16 @@ void SocketTask::cleanup () {
     }
   }
 
-  _asyncWatcher     = nullptr;
   _keepAliveWatcher = nullptr;
-  _readWatcher      = nullptr;
-  _writeWatcher     = nullptr;
+  _readWatcher = nullptr;
+  _writeWatcher = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::handleEvent (EventToken token, 
-                              EventType revents) {
+bool SocketTask::handleEvent(EventToken token, EventType revents) {
   bool result = true;
 
   if (token == _keepAliveWatcher && (revents & EVENT_TIMER)) {
@@ -414,7 +391,7 @@ bool SocketTask::handleEvent (EventToken token,
     result = handleRead();
   }
 
-  if (result && ! _clientClosed && token == _writeWatcher) {
+  if (result && !_clientClosed && token == _writeWatcher) {
     if (revents & EVENT_SOCKET_WRITE) {
       result = handleWrite();
     }
@@ -423,8 +400,7 @@ bool SocketTask::handleEvent (EventToken token,
   if (result) {
     if (_writeBuffer == nullptr) {
       _scheduler->stopSocketEvents(_writeWatcher);
-    }
-    else {
+    } else {
       _scheduler->startSocketEvents(_writeWatcher);
     }
   }
@@ -432,11 +408,4 @@ bool SocketTask::handleEvent (EventToken token,
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

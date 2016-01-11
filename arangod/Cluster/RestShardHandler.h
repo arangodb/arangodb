@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shard request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,87 +19,60 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_REST_SHARD_HANDLER_H
-#define ARANGODB_CLUSTER_REST_SHARD_HANDLER_H 1
+#ifndef ARANGOD_CLUSTER_REST_SHARD_HANDLER_H
+#define ARANGOD_CLUSTER_REST_SHARD_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
-  namespace rest {
-    class Dispatcher;
-  }
+namespace rest {
+class Dispatcher;
+}
 
-  namespace arango {
+namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class RestShardHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shard control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestShardHandler : public admin::RestBaseHandler {
+class RestShardHandler : public admin::RestBaseHandler {
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  RestShardHandler(rest::HttpRequest* request, rest::Dispatcher*);
 
-      public:
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  bool isDirect() const override;
 
-        RestShardHandler (rest::HttpRequest* request,
-                          rest::Dispatcher*);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes the handler
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
+  status_t execute() override;
 
-      public:
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief dispatcher
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDirect () const override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the handler
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute () override;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-        rest::Dispatcher* TRI_UNUSED _dispatcher;
-
-    };
-  }
+  rest::Dispatcher* TRI_UNUSED _dispatcher;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

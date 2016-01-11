@@ -34,7 +34,7 @@ var TRAVERSAL = require("@arangodb/graph/traversal");
 var ArangoError = require("@arangodb").ArangoError;
 var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("@arangodb/cluster").isCoordinator();
-var underscore = require("underscore");
+var underscore = require("lodash");
 var graphModule = require("@arangodb/general-graph");
 
 // -----------------------------------------------------------------------------

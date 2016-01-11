@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief full text search, handles
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,32 +19,24 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "fulltext-handles.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief at what percentage of deleted documents should the handle list be
 /// cleaned?
 ////////////////////////////////////////////////////////////////////////////////
 
-#define CLEANUP_THRESHOLD  0.25
+#define CLEANUP_THRESHOLD 0.25
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a handle slot
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeSlot (TRI_fulltext_handle_slot_t* slot) {
+static void FreeSlot(TRI_fulltext_handle_slot_t* slot) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot->_documents);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot->_deleted);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
@@ -58,22 +46,25 @@ static void FreeSlot (TRI_fulltext_handle_slot_t* slot) {
 /// @brief allocate a slot on demand
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
-                          uint32_t slotNumber) {
+static bool AllocateSlot(TRI_fulltext_handles_t* const handles,
+                         uint32_t slotNumber) {
   TRI_ASSERT(handles->_slots != nullptr);
 
   if (handles->_slots[slotNumber] != nullptr) {
     return true;
   }
 
-  auto slot = static_cast<TRI_fulltext_handle_slot_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false));
+  auto slot = static_cast<TRI_fulltext_handle_slot_t*>(TRI_Allocate(
+      TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false));
 
   if (slot == nullptr) {
     return false;
   }
 
   // allocate and clear
-  slot->_documents = static_cast<TRI_fulltext_doc_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * handles->_slotSize, true));
+  slot->_documents = static_cast<TRI_fulltext_doc_t*>(
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
+                   sizeof(TRI_fulltext_doc_t) * handles->_slotSize, true));
 
   if (slot->_documents == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
@@ -81,7 +72,8 @@ static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
   }
 
   // allocate and clear deleted flags
-  slot->_deleted = static_cast<uint8_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint8_t) * handles->_slotSize, true));
+  slot->_deleted = static_cast<uint8_t*>(TRI_Allocate(
+      TRI_UNKNOWN_MEM_ZONE, sizeof(uint8_t) * handles->_slotSize, true));
 
   if (slot->_deleted == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot->_documents);
@@ -90,9 +82,9 @@ static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
   }
 
   // set initial statistics
-  slot->_min        = UINT32_MAX; // yes, this is intentional
-  slot->_max        = 0;
-  slot->_numUsed    = 0;
+  slot->_min = UINT32_MAX;  // yes, this is intentional
+  slot->_max = 0;
+  slot->_numUsed = 0;
   slot->_numDeleted = 0;
 
   if (slotNumber == 0) {
@@ -109,8 +101,8 @@ static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
 /// @brief allocate or grow the slot list on demand
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool AllocateSlotList (TRI_fulltext_handles_t* const handles,
-                              uint32_t targetNumber) {
+static bool AllocateSlotList(TRI_fulltext_handles_t* const handles,
+                             uint32_t targetNumber) {
   if (targetNumber == 0) {
     // error!
     return false;
@@ -121,7 +113,10 @@ static bool AllocateSlotList (TRI_fulltext_handles_t* const handles,
     return true;
   }
 
-  TRI_fulltext_handle_slot_t** slots = static_cast<TRI_fulltext_handle_slot_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t*) * targetNumber, true));
+  TRI_fulltext_handle_slot_t** slots =
+      static_cast<TRI_fulltext_handle_slot_t**>(TRI_Allocate(
+          TRI_UNKNOWN_MEM_ZONE,
+          sizeof(TRI_fulltext_handle_slot_t*) * targetNumber, true));
 
   if (slots == nullptr) {
     // out of memory
@@ -132,7 +127,8 @@ static bool AllocateSlotList (TRI_fulltext_handles_t* const handles,
 
   if (currentNumber > 0) {
     // copy old slot pointers
-    memcpy(slots, handles->_slots, sizeof(TRI_fulltext_handle_slot_t*) * currentNumber);
+    memcpy(slots, handles->_slots,
+           sizeof(TRI_fulltext_handle_slot_t*) * currentNumber);
   }
 
   if (handles->_slots != nullptr) {
@@ -143,34 +139,34 @@ static bool AllocateSlotList (TRI_fulltext_handles_t* const handles,
   // new slot is empty
   slots[targetNumber - 1] = nullptr;
 
-  handles->_slots    = slots;
+  handles->_slots = slots;
   handles->_numSlots = targetNumber;
 
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a handles instance
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex (const uint32_t slotSize) {
-  TRI_fulltext_handles_t* handles = static_cast<TRI_fulltext_handles_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false));
+TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex(
+    const uint32_t slotSize) {
+  TRI_fulltext_handles_t* handles =
+      static_cast<TRI_fulltext_handles_t*>(TRI_Allocate(
+          TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false));
 
   if (handles == nullptr) {
     return nullptr;
   }
 
   handles->_numDeleted = 0;
-  handles->_next       = 1;
+  handles->_next = 1;
 
-  handles->_slotSize   = slotSize;
-  handles->_numSlots   = 0;
-  handles->_slots      = nullptr;
-  handles->_map        = nullptr;
+  handles->_slotSize = slotSize;
+  handles->_numSlots = 0;
+  handles->_slots = nullptr;
+  handles->_map = nullptr;
 
   return handles;
 }
@@ -179,8 +175,7 @@ TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex (const uint32_t slotSize)
 /// @brief free a handles instance
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeHandlesFulltextIndex (TRI_fulltext_handles_t* handles) {
-
+void TRI_FreeHandlesFulltextIndex(TRI_fulltext_handles_t* handles) {
   if (handles->_slots != nullptr) {
     uint32_t i;
 
@@ -200,15 +195,13 @@ void TRI_FreeHandlesFulltextIndex (TRI_fulltext_handles_t* handles) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, handles);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get number of documents (including deleted)
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_NumHandlesHandleFulltextIndex (TRI_fulltext_handles_t* const handles) {
+uint32_t TRI_NumHandlesHandleFulltextIndex(
+    TRI_fulltext_handles_t* const handles) {
   return (handles->_next - 1);
 }
 
@@ -216,7 +209,8 @@ uint32_t TRI_NumHandlesHandleFulltextIndex (TRI_fulltext_handles_t* const handle
 /// @brief get number of deleted documents
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_NumDeletedHandleFulltextIndex (TRI_fulltext_handles_t* const handles) {
+uint32_t TRI_NumDeletedHandleFulltextIndex(
+    TRI_fulltext_handles_t* const handles) {
   return handles->_numDeleted;
 }
 
@@ -224,15 +218,17 @@ uint32_t TRI_NumDeletedHandleFulltextIndex (TRI_fulltext_handles_t* const handle
 /// @brief get handle list deletion grade
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_DeletionGradeHandleFulltextIndex (TRI_fulltext_handles_t* const handles) {
-  return ((double) handles->_numDeleted / (double) handles->_next);
+double TRI_DeletionGradeHandleFulltextIndex(
+    TRI_fulltext_handles_t* const handles) {
+  return ((double)handles->_numDeleted / (double)handles->_next);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the handle list should be compacted
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ShouldCompactHandleFulltextIndex (TRI_fulltext_handles_t* const handles) {
+bool TRI_ShouldCompactHandleFulltextIndex(
+    TRI_fulltext_handles_t* const handles) {
   return (TRI_DeletionGradeHandleFulltextIndex(handles) > CLEANUP_THRESHOLD);
 }
 
@@ -241,12 +237,15 @@ bool TRI_ShouldCompactHandleFulltextIndex (TRI_fulltext_handles_t* const handles
 /// and leaves the old one untouched
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex (TRI_fulltext_handles_t* const original) {
+TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex(
+    TRI_fulltext_handles_t* const original) {
   TRI_fulltext_handles_t* clone;
   uint32_t originalHandle, targetHandle;
   uint32_t i;
 
-  TRI_fulltext_handle_t* map = static_cast<TRI_fulltext_handle_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_t) * original->_next, false));
+  TRI_fulltext_handle_t* map = static_cast<TRI_fulltext_handle_t*>(
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
+                   sizeof(TRI_fulltext_handle_t) * original->_next, false));
 
   if (map == nullptr) {
     return nullptr;
@@ -260,7 +259,7 @@ TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex (TRI_fulltext_handles_t* 
   }
 
   originalHandle = 1;
-  targetHandle   = 1;
+  targetHandle = 1;
 
   for (i = 0; i < original->_numSlots; ++i) {
     TRI_fulltext_handle_slot_t* originalSlot;
@@ -268,9 +267,8 @@ TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex (TRI_fulltext_handles_t* 
     uint32_t j;
 
     if (i == 0) {
-      start =1;
-    }
-    else {
+      start = 1;
+    } else {
       start = 0;
     }
 
@@ -279,9 +277,9 @@ TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex (TRI_fulltext_handles_t* 
       if (originalSlot->_deleted[j] == 1) {
         // printf("- setting map at #%lu to 0\n", (unsigned long) j);
         map[originalHandle++] = 0;
-      }
-      else {
-        // printf("- setting map at #%lu to %lu\n", (unsigned long) j, (unsigned long) targetHandle);
+      } else {
+        // printf("- setting map at #%lu to %lu\n", (unsigned long) j, (unsigned
+        // long) targetHandle);
         map[originalHandle++] = targetHandle++;
         TRI_InsertHandleFulltextIndex(clone, originalSlot->_documents[j]);
       }
@@ -297,8 +295,8 @@ TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex (TRI_fulltext_handles_t* 
 /// @brief insert a document and return a handle for it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex (TRI_fulltext_handles_t* const handles,
-                                                     const TRI_fulltext_doc_t document) {
+TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex(
+    TRI_fulltext_handles_t* const handles, const TRI_fulltext_doc_t document) {
   TRI_fulltext_handle_t handle;
   TRI_fulltext_handle_slot_t* slot;
   uint32_t slotNumber;
@@ -315,17 +313,17 @@ TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex (TRI_fulltext_handles_t* con
     return 0;
   }
 
-  slotNumber   = handle / handles->_slotSize;
+  slotNumber = handle / handles->_slotSize;
   slotPosition = handle % handles->_slotSize;
 
-  if (! AllocateSlotList(handles, slotNumber + 1)) {
+  if (!AllocateSlotList(handles, slotNumber + 1)) {
     // out of memory
     return 0;
   }
 
   TRI_ASSERT(handles->_slots != nullptr);
 
-  if (! AllocateSlot(handles, slotNumber)) {
+  if (!AllocateSlot(handles, slotNumber)) {
     // out of memory
     return 0;
   }
@@ -353,8 +351,8 @@ TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex (TRI_fulltext_handles_t* con
 /// @brief mark a document as deleted in the handle list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DeleteDocumentHandleFulltextIndex (TRI_fulltext_handles_t* const handles,
-                                            const TRI_fulltext_doc_t document) {
+bool TRI_DeleteDocumentHandleFulltextIndex(
+    TRI_fulltext_handles_t* const handles, const TRI_fulltext_doc_t document) {
   uint32_t i;
 
   if (document == 0) {
@@ -369,14 +367,15 @@ bool TRI_DeleteDocumentHandleFulltextIndex (TRI_fulltext_handles_t* const handle
     slot = handles->_slots[i];
     lastPosition = slot->_numUsed;
 
-    if (slot->_min > document || slot->_max < document || lastPosition <= slot->_numDeleted) {
+    if (slot->_min > document || slot->_max < document ||
+        lastPosition <= slot->_numDeleted) {
       continue;
     }
 
     // we're in a relevant slot. now check its documents
     for (j = 0; j < lastPosition; ++j) {
       if (slot->_documents[j] == document) {
-        slot->_deleted[j]   = 1;
+        slot->_deleted[j] = 1;
         slot->_documents[j] = 0;
         slot->_numDeleted++;
         handles->_numDeleted++;
@@ -393,8 +392,9 @@ bool TRI_DeleteDocumentHandleFulltextIndex (TRI_fulltext_handles_t* const handle
 /// @brief get the document id for a handle
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_doc_t TRI_GetDocumentFulltextIndex (const TRI_fulltext_handles_t* const handles,
-                                                 const TRI_fulltext_handle_t handle) {
+TRI_fulltext_doc_t TRI_GetDocumentFulltextIndex(
+    const TRI_fulltext_handles_t* const handles,
+    const TRI_fulltext_handle_t handle) {
   TRI_fulltext_handle_slot_t* slot;
   uint32_t slotNumber;
   uint32_t slotPosition;
@@ -422,7 +422,7 @@ TRI_fulltext_doc_t TRI_GetDocumentFulltextIndex (const TRI_fulltext_handles_t* c
 ////////////////////////////////////////////////////////////////////////////////
 
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpHandleFulltextIndex (TRI_fulltext_handles_t* const handles) {
+void TRI_DumpHandleFulltextIndex(TRI_fulltext_handles_t* const handles) {
   uint32_t i;
 
   for (i = 0; i < handles->_numSlots; ++i) {
@@ -431,17 +431,14 @@ void TRI_DumpHandleFulltextIndex (TRI_fulltext_handles_t* const handles) {
 
     slot = handles->_slots[i];
 
-    printf("- slot %lu (%lu used, %lu deleted)\n",
-           (unsigned long) i,
-           (unsigned long) slot->_numUsed,
-           (unsigned long) slot->_numDeleted);
+    printf("- slot %lu (%lu used, %lu deleted)\n", (unsigned long)i,
+           (unsigned long)slot->_numUsed, (unsigned long)slot->_numDeleted);
 
     // we're in a relevant slot. now check its documents
     for (j = 0; j < slot->_numUsed; ++j) {
       printf("  - #%lu  %d  %llu\n",
-             (unsigned long) (i * handles->_slotSize + j),
-             (int) slot->_deleted[j],
-             (unsigned long long) slot->_documents[j]);
+             (unsigned long)(i * handles->_slotSize + j),
+             (int)slot->_deleted[j], (unsigned long long)slot->_documents[j]);
     }
     printf("\n");
   }
@@ -452,7 +449,8 @@ void TRI_DumpHandleFulltextIndex (TRI_fulltext_handles_t* const handles) {
 /// @brief return the memory usage for the handles
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_MemoryHandleFulltextIndex (const TRI_fulltext_handles_t* const handles) {
+size_t TRI_MemoryHandleFulltextIndex(
+    const TRI_fulltext_handles_t* const handles) {
   size_t memory;
   size_t perSlot;
   uint32_t numSlots;
@@ -462,18 +460,11 @@ size_t TRI_MemoryHandleFulltextIndex (const TRI_fulltext_handles_t* const handle
   perSlot = (sizeof(TRI_fulltext_doc_t) + sizeof(uint8_t)) * handles->_slotSize;
 
   // slots list
-  memory =  sizeof(TRI_fulltext_handle_slot_t*) * numSlots;
+  memory = sizeof(TRI_fulltext_handle_slot_t*) * numSlots;
   // slot memory
   memory += (sizeof(TRI_fulltext_handle_slot_t) + perSlot) * numSlots;
 
   return memory;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

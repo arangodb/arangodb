@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, short string storage
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,111 +19,78 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_SHORT_STRING_STORAGE_H
-#define ARANGODB_AQL_SHORT_STRING_STORAGE_H 1
+#ifndef ARANGOD_AQL_SHORT_STRING_STORAGE_H
+#define ARANGOD_AQL_SHORT_STRING_STORAGE_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class ShortStringStorage
-// -----------------------------------------------------------------------------
 
-    class ShortStringStorage {
+class ShortStringStorage {
+  
+ public:
+  ShortStringStorage(ShortStringStorage const&) = delete;
+  ShortStringStorage& operator=(ShortStringStorage const&) = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
- 
-      public:
+  explicit ShortStringStorage(size_t);
 
-        ShortStringStorage (ShortStringStorage const&) = delete;
-        ShortStringStorage& operator= (ShortStringStorage const&) = delete;
-     
-        explicit ShortStringStorage (size_t);
-        
-        ~ShortStringStorage ();
+  ~ShortStringStorage();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief register a short string
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a short string
-////////////////////////////////////////////////////////////////////////////////
- 
-        char* registerString (char const*, 
-                              size_t);
+  char* registerString(char const*, size_t);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief allocate a new block of memory
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allocate a new block of memory
-////////////////////////////////////////////////////////////////////////////////
+  void allocateBlock();
 
-        void allocateBlock ();
+  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum length of strings in short string storage
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
+  static size_t const MaxStringLength;
 
-      public:
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief already allocated string blocks
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum length of strings in short string storage
-////////////////////////////////////////////////////////////////////////////////
+  std::vector<char*> _blocks;
 
-        static size_t const MaxStringLength;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief size of each block
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  size_t const _blockSize;
 
-      private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief offset into current block
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief already allocated string blocks
-////////////////////////////////////////////////////////////////////////////////
+  char* _current;
 
-        std::vector<char*> _blocks;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief end of current block
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief size of each block
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t const _blockSize;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief offset into current block
-////////////////////////////////////////////////////////////////////////////////
-
-        char* _current;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end of current block
-////////////////////////////////////////////////////////////////////////////////
-
-        char* _end;
-    };
-
-  }
+  char* _end;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief action request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestActionHandler.h"
@@ -38,47 +32,38 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestActionHandler::RestActionHandler (HttpRequest* request,
-                                      action_options_t* data)
-  : RestVocbaseBaseHandler(request),
-    _action(nullptr),
-    _dataLock(),
-    _data(nullptr) {
-
+RestActionHandler::RestActionHandler(HttpRequest* request,
+                                     action_options_t* data)
+    : RestVocbaseBaseHandler(request),
+      _action(nullptr),
+      _dataLock(),
+      _data(nullptr) {
   _action = TRI_LookupActionVocBase(request);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestActionHandler::isDirect () const {
-  return _action == nullptr;
-}
+bool RestActionHandler::isDirect() const { return _action == nullptr; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestActionHandler::execute () {
+HttpHandler::status_t RestActionHandler::execute() {
   TRI_action_result_t result;
 
   // check the request path
   if (_request->databaseName() == "_system") {
     if (TRI_IsPrefixString(_request->requestPath(), "/_admin/aardvark")) {
-      RequestStatisticsAgentSetIgnore(this);
+      requestStatisticsAgentSetIgnore();
     }
   }
 
@@ -89,7 +74,6 @@ HttpHandler::status_t RestActionHandler::execute () {
 
   // execute
   else {
-
     // extract the sub-request type
     HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -114,61 +98,40 @@ HttpHandler::status_t RestActionHandler::execute () {
   }
 
   // handler has finished, generate result
-  if (result.isValid) {
-    if (result.requeue) {
-      status_t status(HANDLER_REQUEUE);
-      status.sleep = result.sleep;
-
-      return status;
-    }
-    else {
-      return status_t(HANDLER_DONE);
-    }
-  }
-  else {
-    return status_t(HANDLER_FAILED);
-  }
+  return status_t(result.isValid ? HANDLER_DONE : HANDLER_FAILED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestActionHandler::cancel () {
-  return _action->cancel(&_dataLock, &_data);
-}
+bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_result_t RestActionHandler::executeAction () {
-  TRI_action_result_t result = _action->execute(_vocbase, _request, &_dataLock, &_data);
+TRI_action_result_t RestActionHandler::executeAction() {
+  TRI_action_result_t result =
+      _action->execute(_vocbase, _request, &_dataLock, &_data);
 
   if (result.isValid) {
     _response = result.response;
-  }
-  else if (result.canceled) {
+    result.response = nullptr;
+  } else if (result.canceled) {
     result.isValid = true;
     generateCanceled();
-  }
-  else {
+  } else {
     result.isValid = true;
     generateNotImplemented(_action->_url);
   }
-  
+
+  if (result.response != nullptr) {
+    delete result.response;
+  }
+
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

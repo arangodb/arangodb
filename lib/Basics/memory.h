@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief basic memory management
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,20 +19,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_MEMORY_H
-#define ARANGODB_BASICS_C_MEMORY_H 1
+#ifndef LIB_BASICS_MEMORY_H
+#define LIB_BASICS_MEMORY_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief memory zone id
@@ -49,15 +40,11 @@ typedef uint32_t TRI_memory_zone_id_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_memory_zone_s {
-  TRI_memory_zone_id_t  _zid;
-  bool                  _failed;
-  bool                  _failable;
-}
-TRI_memory_zone_t;
+  TRI_memory_zone_id_t _zid;
+  bool _failed;
+  bool _failable;
+} TRI_memory_zone_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief core memory zone, allocation will never fail
@@ -70,8 +57,8 @@ extern TRI_memory_zone_t* TRI_CORE_MEM_ZONE;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-#define TRI_UNKNOWN_MEM_ZONE TRI_UnknownMemZoneZ(__FILE__,__LINE__)
-TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line);
+#define TRI_UNKNOWN_MEM_ZONE TRI_UnknownMemZoneZ(__FILE__, __LINE__)
+TRI_memory_zone_t* TRI_UnknownMemZoneZ(char const* file, int line);
 #else
 extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
 #endif
@@ -80,7 +67,7 @@ extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
 /// @brief returns the memory zone for a zone id
 ////////////////////////////////////////////////////////////////////////////////
 
-inline TRI_memory_zone_t* TRI_MemoryZone (TRI_memory_zone_id_t zid) {
+inline TRI_memory_zone_t* TRI_MemoryZone(TRI_memory_zone_id_t zid) {
   if (zid == 0) {
     return TRI_CORE_MEM_ZONE;
   }
@@ -91,16 +78,13 @@ inline TRI_memory_zone_t* TRI_MemoryZone (TRI_memory_zone_id_t zid) {
 /// @brief returns the memory zone id for a zone
 ////////////////////////////////////////////////////////////////////////////////
 
-inline TRI_memory_zone_id_t TRI_MemoryZoneId (TRI_memory_zone_t const* zone) {
+inline TRI_memory_zone_id_t TRI_MemoryZoneId(TRI_memory_zone_t const* zone) {
   if (zone == TRI_CORE_MEM_ZONE) {
     return TRI_CORE_MEM_ZONE->_zid;
   }
   return TRI_UNKNOWN_MEM_ZONE->_zid;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system memory allocation
@@ -113,10 +97,11 @@ inline TRI_memory_zone_id_t TRI_MemoryZoneId (TRI_memory_zone_t const* zone) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-#define TRI_SystemAllocate(a,b) TRI_SystemAllocateZ((a),(b),__FILE__,__LINE__)
-void* TRI_SystemAllocateZ (uint64_t, bool, char const*, int);
+#define TRI_SystemAllocate(a, b) \
+  TRI_SystemAllocateZ((a), (b), __FILE__, __LINE__)
+void* TRI_SystemAllocateZ(uint64_t, bool, char const*, int);
 #else
-void* TRI_SystemAllocate (uint64_t, bool);
+void* TRI_SystemAllocate(uint64_t, bool);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,10 +109,10 @@ void* TRI_SystemAllocate (uint64_t, bool);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-#define TRI_Allocate(a,b,c) TRI_AllocateZ((a),(b),(c),__FILE__,__LINE__)
-void* TRI_AllocateZ (TRI_memory_zone_t*, uint64_t, bool, char const*, int);
+#define TRI_Allocate(a, b, c) TRI_AllocateZ((a), (b), (c), __FILE__, __LINE__)
+void* TRI_AllocateZ(TRI_memory_zone_t*, uint64_t, bool, char const*, int);
 #else
-void* TRI_Allocate (TRI_memory_zone_t*, uint64_t, bool);
+void* TRI_Allocate(TRI_memory_zone_t*, uint64_t, bool);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,10 +120,11 @@ void* TRI_Allocate (TRI_memory_zone_t*, uint64_t, bool);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-#define TRI_Reallocate(a,b,c) TRI_ReallocateZ((a),(b),(c),__FILE__,__LINE__)
-void* TRI_ReallocateZ (TRI_memory_zone_t*, void*, uint64_t, char const*, int);
+#define TRI_Reallocate(a, b, c) \
+  TRI_ReallocateZ((a), (b), (c), __FILE__, __LINE__)
+void* TRI_ReallocateZ(TRI_memory_zone_t*, void*, uint64_t, char const*, int);
 #else
-void* TRI_Reallocate (TRI_memory_zone_t*, void*, uint64_t);
+void* TRI_Reallocate(TRI_memory_zone_t*, void*, uint64_t);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,10 +132,10 @@ void* TRI_Reallocate (TRI_memory_zone_t*, void*, uint64_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-#define TRI_Free(a,b) TRI_FreeZ((a),(b),__FILE__,__LINE__)
-void TRI_FreeZ (TRI_memory_zone_t*, void*, char const*, int);
+#define TRI_Free(a, b) TRI_FreeZ((a), (b), __FILE__, __LINE__)
+void TRI_FreeZ(TRI_memory_zone_t*, void*, char const*, int);
 #else
-void TRI_Free (TRI_memory_zone_t*, void*);
+void TRI_Free(TRI_memory_zone_t*, void*);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,10 +148,10 @@ void TRI_Free (TRI_memory_zone_t*, void*);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-#define TRI_SystemFree(a) TRI_SystemFreeZ((a),__FILE__,__LINE__)
-void TRI_SystemFreeZ (void*, char const*, int);
+#define TRI_SystemFree(a) TRI_SystemFreeZ((a), __FILE__, __LINE__)
+void TRI_SystemFreeZ(void*, char const*, int);
 #else
-void TRI_SystemFree (void*);
+void TRI_SystemFree(void*);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +163,7 @@ void TRI_SystemFree (void*);
 /// - http://lists.gnu.org/archive/html/bug-gnulib/2011-03/msg00243.html
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_WrappedReallocate (void*, long);
+void* TRI_WrappedReallocate(void*, long);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief align a pointer to 64 bytes by adding up to 63 bytes, this is
@@ -186,29 +172,22 @@ void* TRI_WrappedReallocate (void*, long);
 /// not the aligned one!
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void* TRI_Align64 (void* p) {
-  return (void*) ( ((uintptr_t) p + 63) & (~((uintptr_t) 63)) );
+static inline void* TRI_Align64(void* p) {
+  return (void*)(((uintptr_t)p + 63) & (~((uintptr_t)63)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeMemory (void);
+void TRI_InitializeMemory(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut down memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownMemory (void);
+void TRI_ShutdownMemory(void);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

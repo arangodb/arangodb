@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allow to register AQL Queries in a central place in memory
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_AQL_QUERY_REGISTRY_H
@@ -34,122 +30,98 @@
 #include "Aql/types.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           the QueryRegistry class
-// -----------------------------------------------------------------------------
 
-    class QueryRegistry {
+class QueryRegistry {
+ public:
+  
+  QueryRegistry() {}
 
-      public:
+  ~QueryRegistry();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          constructors/destructors
-// -----------------------------------------------------------------------------
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
+  /// and the id <id> into the registry. It is in error if there is already
+  /// a query for this <vocbase> and <id> combination and an exception will
+  /// be thrown in that case. The time to live <ttl> is in seconds and the
+  /// query will be deleted if it is not opened for that amount of time.
+  ////////////////////////////////////////////////////////////////////////////////
 
-        QueryRegistry () {
-        }
+  void insert(QueryId id, Query* query, double ttl = 3600.0);
 
-        ~QueryRegistry ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief open, find a query in the registry, if none is found, a nullptr
+  /// is returned, otherwise, ownership of the query is transferred to the
+  /// caller, however, the registry retains the entry and will open will
+  /// succeed only once. If an already open query with the given id is
+  /// found, an exception is thrown.
+  /// An open query can directly be destroyed by the destroy method.
+  /// Note that an open query will not expire, so users should please
+  /// protect against leaks. If an already open query is found, an exception
+  /// is thrown.
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  Query* open(TRI_vocbase_t* vocbase, QueryId id);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert, this inserts the query <query> for the vocbase <vocbase> 
-/// and the id <id> into the registry. It is in error if there is already
-/// a query for this <vocbase> and <id> combination and an exception will
-/// be thrown in that case. The time to live <ttl> is in seconds and the
-/// query will be deleted if it is not opened for that amount of time.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief close, return a query to the registry, if the query is not found,
+  /// an exception is thrown. If the ttl is negative (the default is), the
+  /// original ttl is taken again.
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void insert (QueryId id,
-                     Query* query,
-                     double ttl = 3600.0);
+  void close(TRI_vocbase_t* vocbase, QueryId id, double ttl = -1.0);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief open, find a query in the registry, if none is found, a nullptr
-/// is returned, otherwise, ownership of the query is transferred to the
-/// caller, however, the registry retains the entry and will open will
-/// succeed only once. If an already open query with the given id is
-/// found, an exception is thrown.
-/// An open query can directly be destroyed by the destroy method.
-/// Note that an open query will not expire, so users should please
-/// protect against leaks. If an already open query is found, an exception
-/// is thrown.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroy, this removes the entry from the registry and calls
+  /// delete on the Query*. It is allowed to call this regardless of whether
+  /// the query is open or closed. No check is performed that this call comes
+  /// from the same thread that has opened it!
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Query* open (TRI_vocbase_t* vocbase, QueryId id);
+  void destroy(std::string const& vocbase, QueryId id, int errorCode);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief close, return a query to the registry, if the query is not found,
-/// an exception is thrown. If the ttl is negative (the default is), the 
-/// original ttl is taken again.
-////////////////////////////////////////////////////////////////////////////////
-        
-        void close (TRI_vocbase_t* vocbase, QueryId id, double ttl = -1.0);
+  void destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy, this removes the entry from the registry and calls
-/// delete on the Query*. It is allowed to call this regardless of whether
-/// the query is open or closed. No check is performed that this call comes
-/// from the same thread that has opened it!
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief expireQueries, this deletes all expired queries from the registry
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void destroy (std::string const& vocbase, QueryId id, int errorCode);
-        
-        void destroy (TRI_vocbase_t* vocbase, QueryId id, int errorCode);
+  void expireQueries();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief expireQueries, this deletes all expired queries from the registry
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief a struct for all information regarding one query in the registry
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void expireQueries ();
+  struct QueryInfo {
+    TRI_vocbase_t* _vocbase;  // the vocbase
+    QueryId _id;              // id of the query
+    Query* _query;            // the actual query pointer
+    bool _isOpen;             // flag indicating whether or not the query
+                              // is in use
+    double _timeToLive;       // in seconds
+    double _expires;          // UNIX UTC timestamp of expiration
+  };
 
-      private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _queries, the actual map of maps for the registry
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private members
-// -----------------------------------------------------------------------------
+  std::unordered_map<std::string, std::unordered_map<QueryId, QueryInfo*>>
+      _queries;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a struct for all information regarding one query in the registry
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _lock, the read/write lock for access
+  ////////////////////////////////////////////////////////////////////////////////
 
-        struct QueryInfo {
-          TRI_vocbase_t* _vocbase;   // the vocbase
-          QueryId _id;               // id of the query
-          Query* _query;             // the actual query pointer
-          bool _isOpen;              // flag indicating whether or not the query
-                                     // is in use
-          double _timeToLive;        // in seconds
-          double _expires;           // UNIX UTC timestamp of expiration
-        };
+  basics::ReadWriteLock _lock;
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _queries, the actual map of maps for the registry
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_map<std::string, std::unordered_map<QueryId, QueryInfo*>> _queries;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _lock, the read/write lock for access
-////////////////////////////////////////////////////////////////////////////////
-
-        basics::ReadWriteLock _lock;
-
-    };
-
-  }   // namespace triagens::aql
-}   // namespace triagens
+}  // namespace triagens::aql
+}  // namespace triagens
 
 #endif
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
-
 

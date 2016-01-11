@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query cache request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestQueryCacheHandler.h"
@@ -38,45 +32,41 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestQueryCacheHandler::RestQueryCacheHandler (HttpRequest* request)
-  : RestVocbaseBaseHandler(request) {
-}
+RestQueryCacheHandler::RestQueryCacheHandler(HttpRequest* request)
+    : RestVocbaseBaseHandler(request) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestQueryCacheHandler::isDirect () const {
-  return false;
-}
+bool RestQueryCacheHandler::isDirect() const { return false; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestQueryCacheHandler::execute () {
-
+HttpHandler::status_t RestQueryCacheHandler::execute() {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: clearCache(); break;
-    case HttpRequest::HTTP_REQUEST_GET:    readProperties(); break;
-    case HttpRequest::HTTP_REQUEST_PUT:    replaceProperties(); break;
+    case HttpRequest::HTTP_REQUEST_DELETE:
+      clearCache();
+      break;
+    case HttpRequest::HTTP_REQUEST_GET:
+      readProperties();
+      break;
+    case HttpRequest::HTTP_REQUEST_PUT:
+      replaceProperties();
+      break;
 
-    case HttpRequest::HTTP_REQUEST_POST:   
+    case HttpRequest::HTTP_REQUEST_POST:
     case HttpRequest::HTTP_REQUEST_HEAD:
     case HttpRequest::HTTP_REQUEST_PATCH:
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
@@ -90,15 +80,13 @@ HttpHandler::status_t RestQueryCacheHandler::execute () {
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock DeleteApiQueryCache
 /// @brief clears the AQL query cache
 ///
-/// @RESTHEADER{DELETE /_api/query-cache, Clears any results in the AQL query cache}
+/// @RESTHEADER{DELETE /_api/query-cache, Clears any results in the AQL query
+/// cache}
 ///
 /// @RESTDESCRIPTION
 /// clears the query cache
@@ -113,7 +101,7 @@ HttpHandler::status_t RestQueryCacheHandler::execute () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestQueryCacheHandler::clearCache () {
+bool RestQueryCacheHandler::clearCache() {
   auto queryCache = triagens::aql::QueryCache::instance();
   queryCache->invalidate();
   try {
@@ -124,8 +112,7 @@ bool RestQueryCacheHandler::clearCache () {
     result.close();
     VPackSlice slice = result.slice();
     generateResult(slice);
-  }
-  catch (...) {
+  } catch (...) {
     // Ignore the error
   }
   return true;
@@ -135,16 +122,19 @@ bool RestQueryCacheHandler::clearCache () {
 /// @startDocuBlock GetApiQueryCacheProperties
 /// @brief returns the global configuration for the AQL query cache
 ///
-/// @RESTHEADER{GET /_api/query-cache/properties, Returns the global properties for the AQL query cache}
+/// @RESTHEADER{GET /_api/query-cache/properties, Returns the global properties
+/// for the AQL query cache}
 ///
 /// @RESTDESCRIPTION
 /// Returns the global AQL query cache configuration. The configuration is a
 /// JSON object with the following properties:
-/// 
-/// - *mode*: the mode the AQL query cache operates in. The mode is one of the following
+///
+/// - *mode*: the mode the AQL query cache operates in. The mode is one of the
+/// following
 ///   values: *off*, *on* or *demand*.
 ///
-/// - *maxResults*: the maximum number of query results that will be stored per database-specific
+/// - *maxResults*: the maximum number of query results that will be stored per
+/// database-specific
 ///   cache.
 ///
 /// @RESTRETURNCODES
@@ -158,22 +148,20 @@ bool RestQueryCacheHandler::clearCache () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestQueryCacheHandler::readProperties () {
+bool RestQueryCacheHandler::readProperties() {
   try {
     auto queryCache = triagens::aql::QueryCache::instance();
 
     VPackBuilder result = queryCache->properties();
     VPackSlice slice = result.slice();
     generateResult(slice);
-  }
-  catch (Exception const& err) {
+  } catch (Exception const& err) {
     handleError(err);
-  }
-  catch (std::exception const& ex) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+  } catch (std::exception const& ex) {
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
+                                    __LINE__);
     handleError(err);
-  }
-  catch (...) {
+  } catch (...) {
     triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -185,7 +173,8 @@ bool RestQueryCacheHandler::readProperties () {
 /// @startDocuBlock PutApiQueryCacheProperties
 /// @brief changes the configuration for the AQL query cache
 ///
-/// @RESTHEADER{PUT /_api/query-cache/properties, Globally adjusts the AQL query result cache properties}
+/// @RESTHEADER{PUT /_api/query-cache/properties, Globally adjusts the AQL query
+/// result cache properties}
 ///
 /// @RESTDESCRIPTION
 /// After the properties have been changed, the current set of properties will
@@ -194,14 +183,17 @@ bool RestQueryCacheHandler::readProperties () {
 /// Note: changing the properties may invalidate all results in the cache.
 /// The global properties for AQL query cache.
 /// The properties need to be passed in the attribute *properties* in the body
-/// of the HTTP request. *properties* needs to be a JSON object with the following
+/// of the HTTP request. *properties* needs to be a JSON object with the
+/// following
 /// properties:
-/// 
+///
 /// @RESTBODYPARAM{mode,string,required,string}
-///  the mode the AQL query cache should operate in. Possible values are *off*, *on* or *demand*.
+///  the mode the AQL query cache should operate in. Possible values are *off*,
+///  *on* or *demand*.
 ///
 /// @RESTBODYPARAM{maxResults,integer,required,int64}
-/// the maximum number of query results that will be stored per database-specific cache.
+/// the maximum number of query results that will be stored per
+/// database-specific cache.
 ///
 ///
 /// @RESTRETURNCODES
@@ -215,28 +207,27 @@ bool RestQueryCacheHandler::readProperties () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestQueryCacheHandler::replaceProperties () {
+bool RestQueryCacheHandler::replaceProperties() {
   auto const& suffix = _request->suffix();
 
   if (suffix.size() != 1 || suffix[0] != "properties") {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");
     return true;
   }
   bool validBody = true;
   VPackOptions options;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, validBody);
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&options, validBody);
 
-  if (! validBody) {
+  if (!validBody) {
     // error message generated in parseJsonBody
     return true;
   }
   VPackSlice body = parsedBody.get()->slice();
 
-  if (! body.isObject()) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+  if (!body.isObject()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON-Object body");
     return true;
   }
@@ -261,15 +252,13 @@ bool RestQueryCacheHandler::replaceProperties () {
     queryCache->setProperties(cacheProperties);
 
     return readProperties();
-  }
-  catch (Exception const& err) {
+  } catch (Exception const& err) {
     handleError(err);
-  }
-  catch (std::exception const& ex) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+  } catch (std::exception const& ex) {
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
+                                    __LINE__);
     handleError(err);
-  }
-  catch (...) {
+  } catch (...) {
     triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -277,11 +266,4 @@ bool RestQueryCacheHandler::replaceProperties () {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

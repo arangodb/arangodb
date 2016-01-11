@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Condition finder, used to build up the Condition object
-///
-/// @file 
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/JsonHelper.h"
@@ -34,11 +30,11 @@
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
 
-static bool checkPathVariableAccessFeasible (CalculationNode const* cn,
-                                             TraversalNode* tn,
-                                             Variable const* var,
-                                             bool& conditionIsImpossible,
-                                             Ast* ast) {
+static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
+                                            TraversalNode* tn,
+                                            Variable const* var,
+                                            bool& conditionIsImpossible,
+                                            Ast* ast) {
   auto node = cn->expression()->node();
 
   if (node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_OR) ||
@@ -57,11 +53,14 @@ static bool checkPathVariableAccessFeasible (CalculationNode const* cn,
     bool isEdgeAccess = false;
 
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      isEdgeAccess   = strcmp(onePath[len - 2]->getStringValue(),    "edges") == 0;
+      isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
 
-      if (!isEdgeAccess && strcmp(onePath[len - 2]->getStringValue(), "vertices") != 0) {
-        /* We can't catch all cases in which this error would occur, so we don't throw here.
-           std::string message("TRAVERSAL: path only knows 'edges' and 'vertices', not ");
+      if (!isEdgeAccess &&
+          strcmp(onePath[len - 2]->getStringValue(), "vertices") != 0) {
+        /* We can't catch all cases in which this error would occur, so we don't
+           throw here.
+           std::string message("TRAVERSAL: path only knows 'edges' and
+           'vertices', not ");
            message += onePath[len - 2]->getStringValue();
            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, message);
         */
@@ -77,14 +76,13 @@ static bool checkPathVariableAccessFeasible (CalculationNode const* cn,
           (indexAccessNode->value.value._int < 0)) {
         return false;
       }
-      conditionIsImpossible = ! tn->isInRange(indexAccessNode->value.value._int, isEdgeAccess);
-    }
-    else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
-             (onePath[len - 4]->type == NODE_TYPE_EXPANSION)){
+      conditionIsImpossible =
+          !tn->isInRange(indexAccessNode->value.value._int, isEdgeAccess);
+    } else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
+               (onePath[len - 4]->type == NODE_TYPE_EXPANSION)) {
       // we now need to check for p.edges[*] which becomes a fancy structure
       return false;
-    }
-    else {
+    } else {
       return false;
     }
   }
@@ -94,10 +92,8 @@ static bool checkPathVariableAccessFeasible (CalculationNode const* cn,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool extractSimplePathAccesses (AstNode const* node,
-                                       TraversalNode* tn,
-                                       Ast* ast) {
-
+static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
+                                      Ast* ast) {
   std::vector<AstNode const*> currentPath;
   std::vector<std::vector<AstNode const*>> paths;
   std::vector<std::vector<AstNode const*>> clonePath;
@@ -110,7 +106,7 @@ static bool extractSimplePathAccesses (AstNode const* node,
     size_t attrAccessTo = 0;
 
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      isEdgeAccess   = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
+      isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
     }
     // we now need to check for p.edges[n] whether n is >= 0
     if (onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) {
@@ -126,12 +122,12 @@ static bool extractSimplePathAccesses (AstNode const* node,
         accessNodeBranch = oneNode;
       }
 
-      if ((oneNode->type == NODE_TYPE_OPERATOR_BINARY_EQ)  ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NE ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LT ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LE ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GT ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE )
+      if ((oneNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NE) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LT) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LE) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GT) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE)
           //  || As long as we need to twist the access, this is impossible:
           // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
           // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN))
@@ -148,12 +144,11 @@ static bool extractSimplePathAccesses (AstNode const* node,
       if (compareNode->getMember(0) == accessNodeBranch) {
         pathAccessNode = accessNodeBranch;
         filterByNode = compareNode->getMember(1);
-      }
-      else {
-        flipOperator = (compareNode->type == NODE_TYPE_OPERATOR_BINARY_LT ) ||
-          (compareNode->type == NODE_TYPE_OPERATOR_BINARY_LE ) ||
-          (compareNode->type == NODE_TYPE_OPERATOR_BINARY_GT ) ||
-          (compareNode->type == NODE_TYPE_OPERATOR_BINARY_GE );
+      } else {
+        flipOperator = (compareNode->type == NODE_TYPE_OPERATOR_BINARY_LT) ||
+                       (compareNode->type == NODE_TYPE_OPERATOR_BINARY_LE) ||
+                       (compareNode->type == NODE_TYPE_OPERATOR_BINARY_GT) ||
+                       (compareNode->type == NODE_TYPE_OPERATOR_BINARY_GE);
 
         pathAccessNode = accessNodeBranch;
         filterByNode = compareNode->getMember(0);
@@ -162,18 +157,20 @@ static bool extractSimplePathAccesses (AstNode const* node,
       if (accessNodeBranch->isSimple() && filterByNode->isDeterministic()) {
         currentPath.clear();
         clonePath.clear();
-        filterByNode->findVariableAccess(currentPath, clonePath, tn->pathOutVariable());
-        if (! clonePath.empty()) {
+        filterByNode->findVariableAccess(currentPath, clonePath,
+                                         tn->pathOutVariable());
+        if (!clonePath.empty()) {
           // Path variable access on the RHS? can't do that.
           continue;
         }
 
         AstNode* newNode = pathAccessNode->clone(ast);
 
-        // since we just copied one path, we should only find one. 
+        // since we just copied one path, we should only find one.
         currentPath.clear();
         clonePath.clear();
-        newNode->findVariableAccess(currentPath, clonePath, tn->pathOutVariable());
+        newNode->findVariableAccess(currentPath, clonePath,
+                                    tn->pathOutVariable());
         if (clonePath.size() != 1) {
           continue;
         }
@@ -182,42 +179,37 @@ static bool extractSimplePathAccesses (AstNode const* node,
           continue;
         }
 
-        AstNode* firstRefNode = (AstNode*) clonePath[0][len - 4];
+        AstNode* firstRefNode = (AstNode*)clonePath[0][len - 4];
         TRI_ASSERT(firstRefNode->type == NODE_TYPE_ATTRIBUTE_ACCESS);
 
-        // replace the path variable access by a variable access to edge/vertex (then current to the iteration)
-        auto varRefNode = new AstNode(NODE_TYPE_REFERENCE); 
+        // replace the path variable access by a variable access to edge/vertex
+        // (then current to the iteration)
+        auto varRefNode = new AstNode(NODE_TYPE_REFERENCE);
         try {
           ast->query()->addNode(varRefNode);
-        }
-        catch (...) {
+        } catch (...) {
           // prevent leak
           delete varRefNode;
           throw;
         }
-        varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable() : tn->vertexOutVariable());
+        varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable()
+                                         : tn->vertexOutVariable());
         firstRefNode->changeMember(0, varRefNode);
 
         auto expressionOperator = compareNode->type;
         if (flipOperator) {
-          if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LT ) {
+          if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LT) {
             expressionOperator = NODE_TYPE_OPERATOR_BINARY_GT;
-          }
-          else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LE ) {
+          } else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LE) {
             expressionOperator = NODE_TYPE_OPERATOR_BINARY_GE;
-          }
-          else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GT ) { 
+          } else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GT) {
             expressionOperator = NODE_TYPE_OPERATOR_BINARY_LT;
-          }
-          else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GE ) {
+          } else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GE) {
             expressionOperator = NODE_TYPE_OPERATOR_BINARY_LE;
           }
         }
-        tn->storeSimpleExpression(isEdgeAccess,
-                                  attrAccessTo,
-                                  expressionOperator,
-                                  newNode,
-                                  filterByNode);
+        tn->storeSimpleExpression(isEdgeAccess, attrAccessTo,
+                                  expressionOperator, newNode, filterByNode);
       }
     }
   }
@@ -225,8 +217,8 @@ static bool extractSimplePathAccesses (AstNode const* node,
   return true;
 }
 
-bool TraversalConditionFinder::before (ExecutionNode* en) {
-  if (! _variableDefinitions.empty() && en->canThrow()) {
+bool TraversalConditionFinder::before(ExecutionNode* en) {
+  if (!_variableDefinitions.empty() && en->canThrow()) {
     // we already found a FILTER and
     // something that can throw is not safe to optimize
     _filters.clear();
@@ -263,18 +255,19 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
       return true;
 
     case EN::FILTER: {
-       std::vector<Variable const*>&& invars = en->getVariablesUsedHere();
-       TRI_ASSERT(invars.size() == 1);
-       // register which variable is used in a FILTER
-       _filters.emplace(invars[0]->id, en);
-       break;
-     }
+      std::vector<Variable const*>&& invars = en->getVariablesUsedHere();
+      TRI_ASSERT(invars.size() == 1);
+      // register which variable is used in a FILTER
+      _filters.emplace(invars[0]->id, en);
+      break;
+    }
 
     case EN::CALCULATION: {
       auto outvars = en->getVariablesSetHere();
       TRI_ASSERT(outvars.size() == 1);
 
-      _variableDefinitions.emplace(outvars[0]->id, static_cast<CalculationNode const*>(en));
+      _variableDefinitions.emplace(outvars[0]->id,
+                                   static_cast<CalculationNode const*>(en));
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -282,7 +275,7 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
     }
 
     case EN::TRAVERSAL: {
-      auto node = static_cast<TraversalNode *>(en);
+      auto node = static_cast<TraversalNode*>(en);
 
       auto condition = std::make_unique<Condition>(_plan->getAst());
 
@@ -301,13 +294,15 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
             // now we know, this filter is used for our traversal node.
             auto cn = it.second;
 
-            // check whether variables that are not in scope of the condition are used:
+            // check whether variables that are not in scope of the condition
+            // are used:
             varsUsedByCondition.clear();
-            Ast::getReferencedVariables(cn->expression()->node(), varsUsedByCondition); 
+            Ast::getReferencedVariables(cn->expression()->node(),
+                                        varsUsedByCondition);
             bool unknownVariableFound = false;
-            for (auto const& conditionVar: varsUsedByCondition) {
+            for (auto const& conditionVar : varsUsedByCondition) {
               bool found = false;
-              for (auto const& traversalKnownVar : varsValidInTraversal ) {
+              for (auto const& traversalKnownVar : varsValidInTraversal) {
                 if (conditionVar->id == traversalKnownVar->id) {
                   found = true;
                   break;
@@ -322,30 +317,32 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
               continue;
             }
 
-            for (auto const& conditionVar: varsUsedByCondition) {
+            for (auto const& conditionVar : varsUsedByCondition) {
               // check whether conditionVar is one of those we emit
               int variableType = node->checkIsOutVariable(conditionVar->id);
               if (variableType >= 0) {
                 if ((variableType == 2) &&
-                    checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible, _plan->getAst())) {
-                    condition->andCombine(it.second->expression()->node()->clone(_plan->getAst()));
-                    foundCondition = true;
-                  }
-                if (conditionIsImpossible)
-                  break;
+                    checkPathVariableAccessFeasible(cn, node, conditionVar,
+                                                    conditionIsImpossible,
+                                                    _plan->getAst())) {
+                  condition->andCombine(
+                      it.second->expression()->node()->clone(_plan->getAst()));
+                  foundCondition = true;
+                }
+                if (conditionIsImpossible) break;
               }
             }
           }
         }
-        if (conditionIsImpossible)
-          break;
+        if (conditionIsImpossible) break;
       }
 
       if (!conditionIsImpossible) {
         conditionIsImpossible = !node->isRangeValid();
       }
 
-      // TODO: we can't execute if we condition->normalize(_plan); in generateCodeNode
+      // TODO: we can't execute if we condition->normalize(_plan); in
+      // generateCodeNode
       if (!conditionIsImpossible) {
         // right now we're not clever enough to find impossible conditions...
         conditionIsImpossible = (foundCondition && condition->isEmpty());
@@ -377,12 +374,7 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
   return false;
 }
 
-bool TraversalConditionFinder::enterSubquery (ExecutionNode*, ExecutionNode*) {
+bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
 

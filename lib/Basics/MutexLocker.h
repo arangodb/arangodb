@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Mutex Locker
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,19 +20,14 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MUTEX_LOCKER_H
-#define ARANGODB_BASICS_MUTEX_LOCKER_H 1
+#ifndef LIB_BASICS_MUTEX_LOCKER_H
+#define LIB_BASICS_MUTEX_LOCKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
@@ -45,13 +36,14 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define MUTEX_LOCKER_VAR_A(a) _mutex_lock_variable_ ## a
+#define MUTEX_LOCKER_VAR_A(a) _mutex_lock_variable_##a
 #define MUTEX_LOCKER_VAR_B(a) MUTEX_LOCKER_VAR_A(a)
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-#define MUTEX_LOCKER(b) \
-  triagens::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+#define MUTEX_LOCKER(b)                                                    \
+  triagens::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b, __FILE__, \
+                                                             __LINE__)
 
 #else
 
@@ -60,12 +52,9 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class MutexLocker
-// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex locker
@@ -74,16 +63,12 @@ namespace triagens {
 /// when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
-    class MutexLocker {
-        MutexLocker (MutexLocker const&);
-        MutexLocker& operator= (MutexLocker const&);
+class MutexLocker {
+  MutexLocker(MutexLocker const&);
+  MutexLocker& operator=(MutexLocker const&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-      public:
-
+  
+ public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
 ///
@@ -92,65 +77,53 @@ namespace triagens {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-        MutexLocker (Mutex* mutex, char const* file, int line);
+  MutexLocker(Mutex* mutex, char const* file, int line);
 
 #else
 
-        explicit
-        MutexLocker (Mutex* mutex);
+  explicit MutexLocker(Mutex* mutex);
 
-#endif        
+#endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief releases the lock
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief releases the lock
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ~MutexLocker ();
+  ~MutexLocker();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the mutex
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the mutex
-////////////////////////////////////////////////////////////////////////////////
-
-        Mutex* _mutex;
+  Mutex* _mutex;
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief file
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief file
+  ////////////////////////////////////////////////////////////////////////////////
 
-        char const* _file;
+  char const* _file;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line number
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief line number
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int _line;
+  int _line;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock time
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lock time
+  ////////////////////////////////////////////////////////////////////////////////
 
-        double _time;
+  double _time;
 
-#endif        
-    };
-  }
+#endif
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

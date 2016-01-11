@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document utility functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentHelper.h"
@@ -36,23 +30,17 @@
 using namespace triagens::arango;
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class DocumentHelper
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string DocumentHelper::assembleDocumentId (std::string const& collectionName,
-                                                std::string const& key,
-                                                bool urlEncode) {
+std::string DocumentHelper::assembleDocumentId(
+    std::string const& collectionName, std::string const& key, bool urlEncode) {
   if (urlEncode) {
-    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::urlEncode(key);
+    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +
+           StringUtils::urlEncode(key);
   }
   return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
 }
@@ -61,15 +49,16 @@ std::string DocumentHelper::assembleDocumentId (std::string const& collectionNam
 /// @brief assemble a document id from a string and a char* key
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string DocumentHelper::assembleDocumentId (std::string const& collectionName,
-                                                const TRI_voc_key_t key,
-                                                bool urlEncode) {
+std::string DocumentHelper::assembleDocumentId(
+    std::string const& collectionName, const TRI_voc_key_t key,
+    bool urlEncode) {
   if (key == nullptr) {
     return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + "_unknown";
   }
-  
+
   if (urlEncode) {
-    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::urlEncode(key);
+    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +
+           StringUtils::urlEncode(key);
   }
 
   return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
@@ -79,11 +68,9 @@ std::string DocumentHelper::assembleDocumentId (std::string const& collectionNam
 /// @brief extract the collection id and document key from an id
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
-                                      char const* input,
-                                      TRI_voc_cid_t& cid,
-                                      char** key) {
-
+bool DocumentHelper::parseDocumentId(CollectionNameResolver const& resolver,
+                                     char const* input, TRI_voc_cid_t& cid,
+                                     char** key) {
   if (input == nullptr) {
     return false;
   }
@@ -95,7 +82,7 @@ bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
   }
 
   cid = resolver.getCollectionIdCluster(std::string(input, pos - input));
-  *key = (char*) (pos + 1);
+  *key = (char*)(pos + 1);
 
   if (cid == 0 || **key == '\0') {
     // unknown collection or empty key
@@ -109,12 +96,11 @@ bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
 /// @brief extract the "_key" attribute from a JSON object
 ////////////////////////////////////////////////////////////////////////////////
 
-int DocumentHelper::getKey (TRI_json_t const* json,
-                            TRI_voc_key_t* key) {
+int DocumentHelper::getKey(TRI_json_t const* json, TRI_voc_key_t* key) {
   *key = 0;
 
   // check type of json
-  if (! TRI_IsObjectJson(json)) {
+  if (!TRI_IsObjectJson(json)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -125,7 +111,7 @@ int DocumentHelper::getKey (TRI_json_t const* json,
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (! TRI_IsStringJson(k)) {
+  if (!TRI_IsStringJson(k)) {
     // _key is there but not a string
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
@@ -136,11 +122,4 @@ int DocumentHelper::getKey (TRI_json_t const* json,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

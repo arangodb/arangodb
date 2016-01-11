@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, types
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,46 +19,36 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_TYPES_H
-#define ARANGODB_AQL_TYPES_H 1
+#ifndef ARANGOD_AQL_TYPES_H
+#define ARANGOD_AQL_TYPES_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type for variable ids
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef uint32_t VariableId; 
+typedef uint32_t VariableId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type for register numbers/ids
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef unsigned int RegisterId;
+typedef unsigned int RegisterId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a query id
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef uint64_t QueryId;
-
-  }
+typedef uint64_t QueryId;
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

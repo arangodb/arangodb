@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief threads in posix
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "threads.h"
@@ -38,34 +32,24 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            THREAD
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief data block for thread starter
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct thread_data_s {
-  void (*starter) (void*);
+  void (*starter)(void*);
   void* _data;
   char* _name;
-}
-thread_data_t;
+} thread_data_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starter function for thread
 ////////////////////////////////////////////////////////////////////////////////
 
-static void* ThreadStarter (void* data) {
+static void* ThreadStarter(void* data) {
   sigset_t all;
   sigfillset(&all);
   pthread_sigmask(SIG_SETMASK, &all, 0);
@@ -79,9 +63,8 @@ static void* ThreadStarter (void* data) {
 #endif
 
   try {
-    d->starter(d->_data); 
-  }
-  catch (...) {
+    d->starter(d->_data);
+  } catch (...) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, d->_name);
     TRI_Free(TRI_CORE_MEM_ZONE, d);
     throw;
@@ -93,35 +76,27 @@ static void* ThreadStarter (void* data) {
   return nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitThread (TRI_thread_t* thread) {
+void TRI_InitThread(TRI_thread_t* thread) {
   memset(thread, 0, sizeof(TRI_thread_t));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current process identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_pid_t TRI_CurrentProcessId () {
-  return getpid();
-}
+TRI_pid_t TRI_CurrentProcessId() { return getpid(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current thread process identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_tpid_t TRI_CurrentThreadProcessId () {
+TRI_tpid_t TRI_CurrentThreadProcessId() {
 #ifdef TRI_HAVE_GETTID
   return gettid();
 #else
@@ -133,20 +108,16 @@ TRI_tpid_t TRI_CurrentThreadProcessId () {
 /// @brief returns the current thread identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_tid_t TRI_CurrentThreadId () {
-  return pthread_self();
-}
+TRI_tid_t TRI_CurrentThreadId() { return pthread_self(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread (TRI_thread_t* thread,
-                      TRI_tid_t* threadId,
-                      char const* name,
-                      void (*starter)(void*),
-                      void* data) {
-  thread_data_t* d = static_cast<thread_data_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false));
+bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
+                     char const* name, void (*starter)(void*), void* data) {
+  thread_data_t* d = static_cast<thread_data_t*>(
+      TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false));
 
   d->starter = starter;
   d->_data = data;
@@ -163,7 +134,7 @@ bool TRI_StartThread (TRI_thread_t* thread,
   }
 
   if (threadId != nullptr) {
-    *threadId = (TRI_tid_t) *thread;
+    *threadId = (TRI_tid_t)*thread;
   }
 
   return true;
@@ -173,31 +144,25 @@ bool TRI_StartThread (TRI_thread_t* thread,
 /// @brief trys to stops a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StopThread (TRI_thread_t* thread) {
-  return pthread_cancel(*thread);
-}
+int TRI_StopThread(TRI_thread_t* thread) { return pthread_cancel(*thread); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief detaches a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DetachThread (TRI_thread_t* thread) {
-  return pthread_detach(*thread);
-}
+int TRI_DetachThread(TRI_thread_t* thread) { return pthread_detach(*thread); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for a thread to finish
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThread (TRI_thread_t* thread) {
-  return pthread_join(*thread, 0);
-}
+int TRI_JoinThread(TRI_thread_t* thread) { return pthread_join(*thread, 0); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we are the thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsSelfThread (TRI_thread_t* thread) {
+bool TRI_IsSelfThread(TRI_thread_t* thread) {
   return pthread_self() == *thread;
 }
 
@@ -205,7 +170,7 @@ bool TRI_IsSelfThread (TRI_thread_t* thread) {
 /// @brief allow cancelation
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AllowCancelation () {
+void TRI_AllowCancelation() {
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
 }
 
@@ -213,18 +178,18 @@ void TRI_AllowCancelation () {
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetProcessorAffinity (TRI_thread_t* thread, size_t core) {
+void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
 
   cpu_set_t cpuset;
-  
+
   CPU_ZERO(&cpuset);
   CPU_SET(core, &cpuset);
 
   int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
 
   if (s != 0) {
-    LOG_ERROR("cannot set affinity to core %d: %s", (int) core, strerror(errno));
+    LOG_ERROR("cannot set affinity to core %d: %s", (int)core, strerror(errno));
   }
 
 #endif
@@ -232,11 +197,4 @@ void TRI_SetProcessorAffinity (TRI_thread_t* thread, size_t core) {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

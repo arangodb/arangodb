@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief communication with agency node(s)
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/AgencyComm.h"
@@ -45,62 +39,46 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    AgencyEndpoint
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an agency endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyEndpoint::AgencyEndpoint (triagens::rest::Endpoint* endpoint,
-                                triagens::httpclient::GeneralClientConnection* connection)
-  : _endpoint(endpoint),
-    _connection(connection),
-    _busy(false) {
-
-}
+AgencyEndpoint::AgencyEndpoint(
+    triagens::rest::Endpoint* endpoint,
+    triagens::httpclient::GeneralClientConnection* connection)
+    : _endpoint(endpoint), _connection(connection), _busy(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an agency endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyEndpoint::~AgencyEndpoint () {
+AgencyEndpoint::~AgencyEndpoint() {
   delete _connection;
   delete _endpoint;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  AgencyCommResult
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a communication result
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult::AgencyCommResult ()
-  : _location(),
-    _message(),
-    _body(),
-    _values(),
-    _index(0),
-    _statusCode(0),
-    _connected(false) {
-}
+AgencyCommResult::AgencyCommResult()
+    : _location(),
+      _message(),
+      _body(),
+      _values(),
+      _index(0),
+      _statusCode(0),
+      _connected(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a communication result
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult::~AgencyCommResult () {
+AgencyCommResult::~AgencyCommResult() {
   // free all JSON data
   std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
 
@@ -112,36 +90,30 @@ AgencyCommResult::~AgencyCommResult () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the connected flag from the result
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyCommResult::connected () const {
-  return _connected;
-}
+bool AgencyCommResult::connected() const { return _connected; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the http code from the result
 ////////////////////////////////////////////////////////////////////////////////
 
-int AgencyCommResult::httpCode () const {
-  return _statusCode;
-}
+int AgencyCommResult::httpCode() const { return _statusCode; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the error code from the result
 ////////////////////////////////////////////////////////////////////////////////
 
-int AgencyCommResult::errorCode () const {
+int AgencyCommResult::errorCode() const {
   int result = 0;
 
-  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str()));
+  std::unique_ptr<TRI_json_t> json(
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str()));
 
-  if (! TRI_IsObjectJson(json.get())) {
+  if (!TRI_IsObjectJson(json.get())) {
     return result;
   }
 
@@ -149,7 +121,7 @@ int AgencyCommResult::errorCode () const {
   TRI_json_t const* errorCode = TRI_LookupObjectJson(json.get(), "errorCode");
 
   if (TRI_IsNumberJson(errorCode)) {
-    result = (int) errorCode->_value._number;
+    result = (int)errorCode->_value._number;
   }
 
   return result;
@@ -160,25 +132,26 @@ int AgencyCommResult::errorCode () const {
 /// if there is no error, an empty string will be returned
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyCommResult::errorMessage () const {
+std::string AgencyCommResult::errorMessage() const {
   std::string result;
 
-  if (! _message.empty()) {
+  if (!_message.empty()) {
     // return stored message first if set
     return _message;
   }
 
-  if (! _connected) {
+  if (!_connected) {
     return std::string("unable to connect to agency");
   }
 
-  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str()));
+  std::unique_ptr<TRI_json_t> json(
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str()));
 
   if (json == nullptr) {
     return std::string("Out of memory");
   }
 
-  if (! TRI_IsObjectJson(json.get())) {
+  if (!TRI_IsObjectJson(json.get())) {
     return result;
   }
 
@@ -186,7 +159,8 @@ std::string AgencyCommResult::errorMessage () const {
   TRI_json_t const* message = TRI_LookupObjectJson(json.get(), "message");
 
   if (TRI_IsStringJson(message)) {
-    result = std::string(message->_value._string.data, message->_value._string.length - 1);
+    result = std::string(message->_value._string.data,
+                         message->_value._string.length - 1);
   }
 
   return result;
@@ -197,7 +171,7 @@ std::string AgencyCommResult::errorMessage () const {
 /// if there is no error, an empty string will be returned
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyCommResult::errorDetails () const {
+std::string AgencyCommResult::errorDetails() const {
   const std::string errorMessage = this->errorMessage();
 
   if (errorMessage.empty()) {
@@ -211,7 +185,7 @@ std::string AgencyCommResult::errorDetails () const {
 /// @brief flush the internal result buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void AgencyCommResult::clear () {
+void AgencyCommResult::clear() {
   // free existing values if any
   std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
 
@@ -224,10 +198,10 @@ void AgencyCommResult::clear () {
 
   _values.clear();
 
-  _location   = "";
-  _message    = "";
-  _body       = "";
-  _index      = 0;
+  _location = "";
+  _message = "";
+  _body = "";
+  _index = 0;
   _statusCode = 0;
 }
 
@@ -237,33 +211,32 @@ void AgencyCommResult::clear () {
 /// stripKeyPrefix is decoded, as is the _globalPrefix
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
-                                      std::string const& stripKeyPrefix,
-                                      bool withDirs) {
-  if (! TRI_IsObjectJson(node)) {
+bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
+                                     std::string const& stripKeyPrefix,
+                                     bool withDirs) {
+  if (!TRI_IsObjectJson(node)) {
     return true;
   }
 
   // get "key" attribute
   TRI_json_t const* key = TRI_LookupObjectJson(node, "key");
 
-  if (! TRI_IsStringJson(key)) {
+  if (!TRI_IsStringJson(key)) {
     return false;
   }
 
-  std::string keydecoded
-    = std::move(AgencyComm::decodeKey(std::string(key->_value._string.data,
-                                                  key->_value._string.length - 1)));
+  std::string keydecoded = std::move(AgencyComm::decodeKey(
+      std::string(key->_value._string.data, key->_value._string.length - 1)));
 
   // make sure we don't strip more bytes than the key is long
-  const size_t offset = AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
+  const size_t offset =
+      AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
   const size_t length = keydecoded.size();
 
   std::string prefix;
   if (offset >= length) {
     prefix = "";
-  }
-  else {
+  } else {
     prefix = keydecoded.substr(offset);
   }
 
@@ -276,7 +249,7 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
       AgencyCommResultEntry entry;
 
       entry._index = 0;
-      entry._json  = 0;
+      entry._json = 0;
       entry._isDir = true;
       _values.emplace(prefix, entry);
     }
@@ -284,7 +257,7 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
     // is a directory, so there may be a "nodes" attribute
     TRI_json_t const* nodes = TRI_LookupObjectJson(node, "nodes");
 
-    if (! TRI_IsArrayJson(nodes)) {
+    if (!TRI_IsArrayJson(nodes)) {
       // if directory is empty...
       return true;
     }
@@ -292,26 +265,27 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
     const size_t n = TRI_LengthVector(&nodes->_value._objects);
 
     for (size_t i = 0; i < n; ++i) {
-      if (! parseJsonNode((TRI_json_t const*) TRI_AtVector(&nodes->_value._objects, i),
-                           stripKeyPrefix,
-                           withDirs)) {
+      if (!parseJsonNode(
+              (TRI_json_t const*)TRI_AtVector(&nodes->_value._objects, i),
+              stripKeyPrefix, withDirs)) {
         return false;
       }
     }
-  }
-  else {
+  } else {
     // not a directory
 
     // get "value" attribute
     TRI_json_t const* value = TRI_LookupObjectJson(node, "value");
 
     if (TRI_IsStringJson(value)) {
-      if (! prefix.empty()) {
+      if (!prefix.empty()) {
         AgencyCommResultEntry entry;
 
         // get "modifiedIndex"
-        entry._index = triagens::basics::JsonHelper::stringUInt64(node, "modifiedIndex");
-        entry._json  = triagens::basics::JsonHelper::fromString(value->_value._string.data, value->_value._string.length - 1);
+        entry._index =
+            triagens::basics::JsonHelper::stringUInt64(node, "modifiedIndex");
+        entry._json = triagens::basics::JsonHelper::fromString(
+            value->_value._string.data, value->_value._string.length - 1);
         entry._isDir = false;
 
         _values.emplace(prefix, entry);
@@ -327,11 +301,10 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
 /// note that stripKeyPrefix is a decoded, normal key!
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyCommResult::parse (std::string const& stripKeyPrefix,
-                              bool withDirs) {
+bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
-  if (! TRI_IsObjectJson(json)) {
+  if (!TRI_IsObjectJson(json)) {
     if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -347,13 +320,7 @@ bool AgencyCommResult::parse (std::string const& stripKeyPrefix,
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        AgencyComm
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  static variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the static global URL prefix
@@ -384,36 +351,25 @@ std::list<AgencyEndpoint*> AgencyComm::_globalEndpoints;
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
-  15.0,    // connectTimeout
-  120.0,   // requestTimeout
-  120.0,   // lockTimeout
-  10       // numRetries
+    15.0,   // connectTimeout
+    120.0,  // requestTimeout
+    120.0,  // lockTimeout
+    10      // numRetries
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  AgencyCommLocker
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an agency comm locker
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommLocker::AgencyCommLocker (std::string const& key,
-                                    std::string const& type,
-                                    double ttl)
-  : _key(key),
-    _type(type),
-    _json(nullptr),
-    _version(0),
-    _isLocked(false) {
-
+AgencyCommLocker::AgencyCommLocker(std::string const& key,
+                                   std::string const& type, double ttl)
+    : _key(key), _type(type), _json(nullptr), _version(0), _isLocked(false) {
   AgencyComm comm;
 
-  _json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, type.c_str(), type.size());
+  _json =
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, type.c_str(), type.size());
 
   if (_json == nullptr) {
     return;
@@ -429,7 +385,7 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
 /// @brief destroys an agency comm locker
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommLocker::~AgencyCommLocker () {
+AgencyCommLocker::~AgencyCommLocker() {
   unlock();
 
   if (_json != nullptr) {
@@ -437,15 +393,12 @@ AgencyCommLocker::~AgencyCommLocker () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void AgencyCommLocker::unlock () {
+void AgencyCommLocker::unlock() {
   if (_isLocked) {
     AgencyComm comm;
 
@@ -456,22 +409,19 @@ void AgencyCommLocker::unlock () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a lock version from the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyCommLocker::fetchVersion (AgencyComm& comm) {
+bool AgencyCommLocker::fetchVersion(AgencyComm& comm) {
   if (_type != "WRITE") {
     return true;
   }
 
   AgencyCommResult result = comm.getValues(_key + "/Version", false);
-  if (! result.successful()) {
-    if (result.httpCode() != (int) triagens::rest::HttpResponse::NOT_FOUND) {
+  if (!result.successful()) {
+    if (result.httpCode() != (int)triagens::rest::HttpResponse::NOT_FOUND) {
       return false;
     }
 
@@ -479,7 +429,8 @@ bool AgencyCommLocker::fetchVersion (AgencyComm& comm) {
   }
 
   result.parse("", false);
-  std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it =
+      result._values.begin();
 
   if (it == result._values.end()) {
     return false;
@@ -493,49 +444,45 @@ bool AgencyCommLocker::fetchVersion (AgencyComm& comm) {
 /// @brief update a lock version in the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyCommLocker::updateVersion (AgencyComm& comm) {
+bool AgencyCommLocker::updateVersion(AgencyComm& comm) {
   if (_type != "WRITE") {
     return true;
   }
 
   if (_version == 0) {
-    TRI_json_t* json = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1);
+    TRI_json_t* json =
+        triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1);
 
     if (json == nullptr) {
       return false;
     }
 
     // no Version key found, now set it
-    AgencyCommResult result = comm.casValue(_key + "/Version",
-                                            json,
-                                            false,
-                                            0.0,
-                                            0.0);
+    AgencyCommResult result =
+        comm.casValue(_key + "/Version", json, false, 0.0, 0.0);
 
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     return result.successful();
-  }
-  else {
+  } else {
     // Version key found, now update it
-    TRI_json_t* oldJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, _version);
+    TRI_json_t* oldJson = triagens::basics::JsonHelper::uint64String(
+        TRI_UNKNOWN_MEM_ZONE, _version);
 
     if (oldJson == nullptr) {
       return false;
     }
 
-    TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, _version + 1);
+    TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(
+        TRI_UNKNOWN_MEM_ZONE, _version + 1);
 
     if (newJson == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
       return false;
     }
 
-    AgencyCommResult result = comm.casValue(_key + "/Version",
-                                            oldJson,
-                                            newJson,
-                                            0.0,
-                                            0.0);
+    AgencyCommResult result =
+        comm.casValue(_key + "/Version", oldJson, newJson, 0.0, 0.0);
 
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
@@ -544,40 +491,29 @@ bool AgencyCommLocker::updateVersion (AgencyComm& comm) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        AgencyComm
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an agency communication object
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyComm::AgencyComm (bool addNewEndpoints)
-  : _addNewEndpoints(addNewEndpoints) {
-}
+AgencyComm::AgencyComm(bool addNewEndpoints)
+    : _addNewEndpoints(addNewEndpoints) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an agency communication object
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyComm::~AgencyComm () {
-}
+AgencyComm::~AgencyComm() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up all connections
 ////////////////////////////////////////////////////////////////////////////////
 
-void AgencyComm::cleanup () {
+void AgencyComm::cleanup() {
   AgencyComm::disconnect();
-  
+
   while (true) {
     {
       bool busyFound = false;
@@ -592,13 +528,12 @@ void AgencyComm::cleanup () {
         if (agencyEndpoint->_busy) {
           busyFound = true;
           ++it;
-        }
-        else {
+        } else {
           it = _globalEndpoints.erase(it);
           delete agencyEndpoint;
         }
       }
-      if (! busyFound) {
+      if (!busyFound) {
         break;
       }
     }
@@ -610,7 +545,7 @@ void AgencyComm::cleanup () {
 /// @brief tries to establish a communication channel
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::tryConnect () {
+bool AgencyComm::tryConnect() {
   {
     WRITE_LOCKER(AgencyComm::_globalLock);
     if (_globalEndpoints.size() == 0) {
@@ -630,8 +565,9 @@ bool AgencyComm::tryConnect () {
         return true;
       }
 
-      agencyEndpoint->_endpoint->connect(_globalConnectionOptions._connectTimeout,
-                                         _globalConnectionOptions._requestTimeout);
+      agencyEndpoint->_endpoint->connect(
+          _globalConnectionOptions._connectTimeout,
+          _globalConnectionOptions._requestTimeout);
 
       if (agencyEndpoint->_endpoint->isConnected()) {
         return true;
@@ -649,7 +585,7 @@ bool AgencyComm::tryConnect () {
 /// @brief disconnects all communication channels
 ////////////////////////////////////////////////////////////////////////////////
 
-void AgencyComm::disconnect () {
+void AgencyComm::disconnect() {
   WRITE_LOCKER(AgencyComm::_globalLock);
 
   std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
@@ -672,9 +608,10 @@ void AgencyComm::disconnect () {
 /// @brief adds an endpoint to the endpoints list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
-                              bool toFront) {
-  LOG_TRACE("adding global agency-endpoint '%s'", endpointSpecification.c_str());
+bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
+                             bool toFront) {
+  LOG_TRACE("adding global agency-endpoint '%s'",
+            endpointSpecification.c_str());
 
   {
     WRITE_LOCKER(AgencyComm::_globalLock);
@@ -687,7 +624,8 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
 
       TRI_ASSERT(agencyEndpoint != nullptr);
 
-      if (agencyEndpoint->_endpoint->getSpecification() == endpointSpecification) {
+      if (agencyEndpoint->_endpoint->getSpecification() ==
+          endpointSpecification) {
         // a duplicate. just ignore
         return false;
       }
@@ -695,9 +633,11 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
       ++it;
     }
 
-    // didn't find the endpoint in our list of endpoints, so now create a new one
+    // didn't find the endpoint in our list of endpoints, so now create a new
+    // one
     for (size_t i = 0; i < NumConnections; ++i) {
-      AgencyEndpoint* agencyEndpoint = createAgencyEndpoint(endpointSpecification);
+      AgencyEndpoint* agencyEndpoint =
+          createAgencyEndpoint(endpointSpecification);
 
       if (agencyEndpoint == nullptr) {
         return false;
@@ -705,8 +645,7 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
 
       if (toFront) {
         AgencyComm::_globalEndpoints.push_front(agencyEndpoint);
-      }
-      else {
+      } else {
         AgencyComm::_globalEndpoints.push_back(agencyEndpoint);
       }
     }
@@ -719,7 +658,7 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
 /// @brief checks if an endpoint is present
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::hasEndpoint (std::string const& endpointSpecification) {
+bool AgencyComm::hasEndpoint(std::string const& endpointSpecification) {
   {
     READ_LOCKER(AgencyComm::_globalLock);
 
@@ -729,7 +668,8 @@ bool AgencyComm::hasEndpoint (std::string const& endpointSpecification) {
     while (it != _globalEndpoints.end()) {
       AgencyEndpoint const* agencyEndpoint = (*it);
 
-      if (agencyEndpoint->_endpoint->getSpecification() == endpointSpecification) {
+      if (agencyEndpoint->_endpoint->getSpecification() ==
+          endpointSpecification) {
         return true;
       }
 
@@ -745,14 +685,15 @@ bool AgencyComm::hasEndpoint (std::string const& endpointSpecification) {
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<std::string> AgencyComm::getEndpoints () {
+const std::vector<std::string> AgencyComm::getEndpoints() {
   std::vector<std::string> result;
 
   {
     // iterate over the list of endpoints
     READ_LOCKER(AgencyComm::_globalLock);
 
-    std::list<AgencyEndpoint*>::const_iterator it = AgencyComm::_globalEndpoints.begin();
+    std::list<AgencyEndpoint*>::const_iterator it =
+        AgencyComm::_globalEndpoints.begin();
 
     while (it != AgencyComm::_globalEndpoints.end()) {
       AgencyEndpoint const* agencyEndpoint = (*it);
@@ -771,17 +712,18 @@ const std::vector<std::string> AgencyComm::getEndpoints () {
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string AgencyComm::getEndpointsString () {
+const std::string AgencyComm::getEndpointsString() {
   std::string result;
 
   {
     // iterate over the list of endpoints
     READ_LOCKER(AgencyComm::_globalLock);
 
-    std::list<AgencyEndpoint*>::const_iterator it = AgencyComm::_globalEndpoints.begin();
+    std::list<AgencyEndpoint*>::const_iterator it =
+        AgencyComm::_globalEndpoints.begin();
 
     while (it != AgencyComm::_globalEndpoints.end()) {
-      if (! result.empty()) {
+      if (!result.empty()) {
         result += ", ";
       }
 
@@ -801,7 +743,7 @@ const std::string AgencyComm::getEndpointsString () {
 /// @brief sets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::setPrefix (std::string const& prefix) {
+bool AgencyComm::setPrefix(std::string const& prefix) {
   // agency prefix must not be changed
   _globalPrefix = prefix;
 
@@ -825,15 +767,13 @@ bool AgencyComm::setPrefix (std::string const& prefix) {
 /// @brief gets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::prefix () {
-  return _globalPrefix;
-}
+std::string AgencyComm::prefix() { return _globalPrefix; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::generateStamp () {
+std::string AgencyComm::generateStamp() {
   time_t tt = time(0);
   struct tm tb;
   char buffer[21];
@@ -845,16 +785,15 @@ std::string AgencyComm::generateStamp () {
   return std::string(buffer, len);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            private static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new agency endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpecification) {
-  std::unique_ptr<triagens::rest::Endpoint> endpoint(triagens::rest::Endpoint::clientFactory(endpointSpecification));
+AgencyEndpoint* AgencyComm::createAgencyEndpoint(
+    std::string const& endpointSpecification) {
+  std::unique_ptr<triagens::rest::Endpoint> endpoint(
+      triagens::rest::Endpoint::clientFactory(endpointSpecification));
 
   if (endpoint == nullptr) {
     // could not create endpoint...
@@ -862,12 +801,10 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
   }
 
   std::unique_ptr<triagens::httpclient::GeneralClientConnection> connection(
-    triagens::httpclient::GeneralClientConnection::factory(endpoint.get(),
-                                                           _globalConnectionOptions._requestTimeout,
-                                                           _globalConnectionOptions._connectTimeout,
-                                                           _globalConnectionOptions._connectRetries,
-                                                           0)
-  );
+      triagens::httpclient::GeneralClientConnection::factory(
+          endpoint.get(), _globalConnectionOptions._requestTimeout,
+          _globalConnectionOptions._connectTimeout,
+          _globalConnectionOptions._connectRetries, 0));
 
   if (connection == nullptr) {
     return nullptr;
@@ -880,29 +817,35 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
   return ep;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends the current server state to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::sendServerState (double ttl) {
+AgencyCommResult AgencyComm::sendServerState(double ttl) {
   // construct JSON value { "status": "...", "time": "..." }
-  std::unique_ptr<TRI_json_t> json(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 2));
+  std::unique_ptr<TRI_json_t> json(
+      TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 2));
 
   if (json == nullptr) {
     return AgencyCommResult();
   }
 
-  std::string const status = ServerState::stateToString(ServerState::instance()->getState());
+  std::string const status =
+      ServerState::stateToString(ServerState::instance()->getState());
   std::string const stamp = std::move(AgencyComm::generateStamp());
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "status", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(), status.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, stamp.c_str(), stamp.size()));
+  TRI_Insert3ObjectJson(
+      TRI_UNKNOWN_MEM_ZONE, json.get(), "status",
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(),
+                               status.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "time",
+                        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                                 stamp.c_str(), stamp.size()));
 
-  AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), json.get(), ttl));
+  AgencyCommResult result(
+      setValue("Sync/ServerStates/" + ServerState::instance()->getId(),
+               json.get(), ttl));
 
   return result;
 }
@@ -911,15 +854,12 @@ AgencyCommResult AgencyComm::sendServerState (double ttl) {
 /// @brief gets the backend version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::getVersion () {
+std::string AgencyComm::getVersion() {
   AgencyCommResult result;
 
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                   _globalConnectionOptions._requestTimeout,
-                   result,
-                   "version",
-                   "",
-                   false);
+                   _globalConnectionOptions._requestTimeout, result, "version",
+                   "", false);
 
   if (result.successful()) {
     return result._body;
@@ -932,28 +872,25 @@ std::string AgencyComm::getVersion () {
 /// @brief update a version number in the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::increaseVersion (std::string const& key) {
+bool AgencyComm::increaseVersion(std::string const& key) {
   // fetch existing version number
   AgencyCommResult result = getValues(key, false);
 
-  if (! result.successful()) {
-    if (result.httpCode() != (int) triagens::rest::HttpResponse::NOT_FOUND) {
+  if (!result.successful()) {
+    if (result.httpCode() != (int)triagens::rest::HttpResponse::NOT_FOUND) {
       return false;
     }
 
     // no version key found, now set it
-    std::unique_ptr<TRI_json_t> json(triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1));
+    std::unique_ptr<TRI_json_t> json(
+        triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1));
 
     if (json == nullptr) {
       return false;
     }
 
     result.clear();
-    result = casValue(key,
-                      json.get(),
-                      false,
-                      0.0,
-                      0.0);
+    result = casValue(key, json.get(), false, 0.0, 0.0);
 
     return result.successful();
   }
@@ -966,16 +903,21 @@ bool AgencyComm::increaseVersion (std::string const& key) {
     return false;
   }
 
-  uint64_t version = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+  uint64_t version =
+      triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
   // version key found, now update it
-  std::unique_ptr<TRI_json_t> oldJson(triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, version));
+  std::unique_ptr<TRI_json_t> oldJson(
+      triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
+                                                 version));
 
   if (oldJson == nullptr) {
     return false;
   }
 
-  std::unique_ptr<TRI_json_t> newJson(triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, version + 1));
+  std::unique_ptr<TRI_json_t> newJson(
+      triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
+                                                 version + 1));
 
   if (newJson == nullptr) {
     return false;
@@ -983,11 +925,7 @@ bool AgencyComm::increaseVersion (std::string const& key) {
 
   result.clear();
 
-  result = casValue(key,
-                    oldJson.get(),
-                    newJson.get(),
-                    0.0,
-                    0.0);
+  result = casValue(key, oldJson.get(), newJson.get(), 0.0, 0.0);
 
   return result.successful();
 }
@@ -996,33 +934,30 @@ bool AgencyComm::increaseVersion (std::string const& key) {
 /// @brief update a version number in the agency, retry until it works
 ////////////////////////////////////////////////////////////////////////////////
 
-void AgencyComm::increaseVersionRepeated (std::string const& key) {
+void AgencyComm::increaseVersionRepeated(std::string const& key) {
   bool ok = false;
-  while (! ok) {
+  while (!ok) {
     ok = increaseVersion(key);
     if (ok) {
       return;
     }
     uint32_t val = 300 + TRI_UInt32Random() % 400;
-    LOG_INFO("Could not increase %s in agency, retrying in %dms!",
-             key.c_str(), val);
+    LOG_INFO("Could not increase %s in agency, retrying in %dms!", key.c_str(),
+             val);
     usleep(val * 1000);
   }
 }
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::createDirectory (std::string const& key) {
+AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
   AgencyCommResult result;
 
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                   _globalConnectionOptions._requestTimeout,
-                   result,
-                   buildUrl(key) + "?dir=true",
-                   "",
-                   false);
+                   _globalConnectionOptions._requestTimeout, result,
+                   buildUrl(key) + "?dir=true", "", false);
 
   return result;
 }
@@ -1031,16 +966,15 @@ AgencyCommResult AgencyComm::createDirectory (std::string const& key) {
 /// @brief sets a value in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::setValue (std::string const& key,
-                                       TRI_json_t const* json,
-                                       double ttl) {
+AgencyCommResult AgencyComm::setValue(std::string const& key,
+                                      TRI_json_t const* json, double ttl) {
   AgencyCommResult result;
 
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                   _globalConnectionOptions._requestTimeout,
-                   result,
+                   _globalConnectionOptions._requestTimeout, result,
                    buildUrl(key) + ttlParam(ttl, true),
-                   "value=" + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(json)),
+                   "value=" + triagens::basics::StringUtils::urlEncode(
+                                  triagens::basics::JsonHelper::toString(json)),
                    false);
 
   return result;
@@ -1050,14 +984,14 @@ AgencyCommResult AgencyComm::setValue (std::string const& key,
 /// @brief sets a value in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::setValue (std::string const& key,
-                                       arangodb::velocypack::Slice const json,
-                                       double ttl) {
+AgencyCommResult AgencyComm::setValue(std::string const& key,
+                                      arangodb::velocypack::Slice const json,
+                                      double ttl) {
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-      _globalConnectionOptions._requestTimeout,
-      result,
+  sendWithFailover(
+      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      _globalConnectionOptions._requestTimeout, result,
       buildUrl(key) + ttlParam(ttl, true),
       "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
       false);
@@ -1069,16 +1003,13 @@ AgencyCommResult AgencyComm::setValue (std::string const& key,
 /// @brief checks if a key exists
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::exists (std::string const& key) {
+bool AgencyComm::exists(std::string const& key) {
   std::string url(buildUrl(key));
 
   AgencyCommResult result;
 
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                   _globalConnectionOptions._requestTimeout,
-                   result,
-                   url,
-                   "",
+                   _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
   return result.successful();
@@ -1088,8 +1019,7 @@ bool AgencyComm::exists (std::string const& key) {
 /// @brief gets one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::getValues (std::string const& key,
-                                        bool recursive) {
+AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
   std::string url(buildUrl(key));
   if (recursive) {
     url += "?recursive=true";
@@ -1098,10 +1028,7 @@ AgencyCommResult AgencyComm::getValues (std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                   _globalConnectionOptions._requestTimeout,
-                   result,
-                   url,
-                   "",
+                   _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
   return result;
@@ -1111,15 +1038,14 @@ AgencyCommResult AgencyComm::getValues (std::string const& key,
 /// @brief removes one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::removeValues (std::string const& key,
-                                           bool recursive) {
+AgencyCommResult AgencyComm::removeValues(std::string const& key,
+                                          bool recursive) {
   std::string url;
 
   if (key.empty() && recursive) {
     // delete everything, recursive
     url = buildUrl();
-  }
-  else {
+  } else {
     url = buildUrl(key);
   }
 
@@ -1130,10 +1056,7 @@ AgencyCommResult AgencyComm::removeValues (std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_DELETE,
-                   _globalConnectionOptions._requestTimeout,
-                   result,
-                   url,
-                   "",
+                   _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
   return result;
@@ -1144,20 +1067,19 @@ AgencyCommResult AgencyComm::removeValues (std::string const& key,
 /// the CAS condition is whether or not a previous value existed for the key
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::casValue (std::string const& key,
-                                       TRI_json_t const* json,
-                                       bool prevExist,
-                                       double ttl,
-                                       double timeout) {
+AgencyCommResult AgencyComm::casValue(std::string const& key,
+                                      TRI_json_t const* json, bool prevExist,
+                                      double ttl, double timeout) {
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                   timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
-                   result,
-                   buildUrl(key) + "?prevExist="
-                     + (prevExist ? "true" : "false") + ttlParam(ttl, false),
-                   "value=" + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(json)),
-                   false);
+  sendWithFailover(
+      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
+      result, buildUrl(key) + "?prevExist=" + (prevExist ? "true" : "false") +
+                  ttlParam(ttl, false),
+      "value=" + triagens::basics::StringUtils::urlEncode(
+                     triagens::basics::JsonHelper::toString(json)),
+      false);
 
   return result;
 }
@@ -1168,20 +1090,19 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
 /// velocypack variant
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::casValue (std::string const& key,
-                                       arangodb::velocypack::Slice const json,
-                                       bool prevExist,
-                                       double ttl,
-                                       double timeout) {
+AgencyCommResult AgencyComm::casValue(std::string const& key,
+                                      arangodb::velocypack::Slice const json,
+                                      bool prevExist, double ttl,
+                                      double timeout) {
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                   timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
-                   result,
-                   buildUrl(key) + "?prevExist="
-                     + (prevExist ? "true" : "false") + ttlParam(ttl, false),
-                   "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
-                   false);
+  sendWithFailover(
+      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
+      result, buildUrl(key) + "?prevExist=" + (prevExist ? "true" : "false") +
+                  ttlParam(ttl, false),
+      "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
+      false);
 
   return result;
 }
@@ -1192,21 +1113,22 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
 /// identical to `oldValue`
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::casValue (std::string const& key,
-                                       TRI_json_t const* oldJson,
-                                       TRI_json_t const* newJson,
-                                       double ttl,
-                                       double timeout) {
+AgencyCommResult AgencyComm::casValue(std::string const& key,
+                                      TRI_json_t const* oldJson,
+                                      TRI_json_t const* newJson, double ttl,
+                                      double timeout) {
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                   timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
-                   result,
-                   buildUrl(key) + "?prevValue="
-                     + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(oldJson))
-                     + ttlParam(ttl, false),
-                   "value=" + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(newJson)),
-                   false);
+  sendWithFailover(
+      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
+      result, buildUrl(key) + "?prevValue=" +
+                  triagens::basics::StringUtils::urlEncode(
+                      triagens::basics::JsonHelper::toString(oldJson)) +
+                  ttlParam(ttl, false),
+      "value=" + triagens::basics::StringUtils::urlEncode(
+                     triagens::basics::JsonHelper::toString(newJson)),
+      false);
 
   return result;
 }
@@ -1215,11 +1137,9 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
 /// @brief blocks on a change of a single value in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::watchValue (std::string const& key,
-                                         uint64_t waitIndex,
-                                         double timeout,
-                                         bool recursive) {
-
+AgencyCommResult AgencyComm::watchValue(std::string const& key,
+                                        uint64_t waitIndex, double timeout,
+                                        bool recursive) {
   std::string url(buildUrl(key) + "?wait=true");
 
   if (waitIndex > 0) {
@@ -1232,12 +1152,10 @@ AgencyCommResult AgencyComm::watchValue (std::string const& key,
 
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                   timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
-                   result,
-                   url,
-                   "",
-                   true);
+  sendWithFailover(
+      triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+      timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
+      result, url, "", true);
 
   return result;
 }
@@ -1246,10 +1164,9 @@ AgencyCommResult AgencyComm::watchValue (std::string const& key,
 /// @brief acquire a read lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::lockRead (std::string const& key,
-                           double ttl,
-                           double timeout) {
-  std::unique_ptr<TRI_json_t> json(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ")));
+bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
+  std::unique_ptr<TRI_json_t> json(
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ")));
 
   if (json == nullptr) {
     return false;
@@ -1262,10 +1179,9 @@ bool AgencyComm::lockRead (std::string const& key,
 /// @brief acquire a write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::lockWrite (std::string const& key,
-                            double ttl,
-                            double timeout) {
-  std::unique_ptr<TRI_json_t> json(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE")));
+bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
+  std::unique_ptr<TRI_json_t> json(
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE")));
 
   if (json == nullptr) {
     return false;
@@ -1278,9 +1194,9 @@ bool AgencyComm::lockWrite (std::string const& key,
 /// @brief release a read lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::unlockRead (std::string const& key,
-                             double timeout) {
-  std::unique_ptr<TRI_json_t> json(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ")));
+bool AgencyComm::unlockRead(std::string const& key, double timeout) {
+  std::unique_ptr<TRI_json_t> json(
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ")));
 
   if (json == nullptr) {
     return false;
@@ -1293,9 +1209,9 @@ bool AgencyComm::unlockRead (std::string const& key,
 /// @brief release a write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::unlockWrite (std::string const& key,
-                              double timeout) {
-  std::unique_ptr<TRI_json_t> json(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE")));
+bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
+  std::unique_ptr<TRI_json_t> json(
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE")));
 
   if (json == nullptr) {
     return false;
@@ -1308,9 +1224,8 @@ bool AgencyComm::unlockWrite (std::string const& key,
 /// @brief get unique id
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::uniqid (std::string const& key,
-                                     uint64_t count,
-                                     double timeout) {
+AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
+                                    double timeout) {
   static const int maxTries = 10;
   int tries = 0;
 
@@ -1320,8 +1235,9 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
     result.clear();
     result = getValues(key, false);
 
-    if (result.httpCode() == (int) triagens::rest::HttpResponse::NOT_FOUND) {
-      std::unique_ptr<TRI_json_t> json(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
+    if (result.httpCode() == (int)triagens::rest::HttpResponse::NOT_FOUND) {
+      std::unique_ptr<TRI_json_t> json(
+          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
 
       if (json != nullptr) {
         // create the key on the fly
@@ -1332,7 +1248,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
       }
     }
 
-    if (! result.successful()) {
+    if (!result.successful()) {
       return result;
     }
 
@@ -1340,24 +1256,28 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
 
     std::unique_ptr<TRI_json_t> oldJson;
 
-    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+    std::map<std::string, AgencyCommResultEntry>::iterator it =
+        result._values.begin();
 
     if (it != result._values.end()) {
       // steal the json
       oldJson.reset((*it).second._json);
       (*it).second._json = nullptr;
-    }
-    else {
-      oldJson.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
+    } else {
+      oldJson.reset(
+          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
     }
 
     if (oldJson == nullptr) {
       return AgencyCommResult();
     }
 
-    uint64_t const oldValue = triagens::basics::JsonHelper::stringUInt64(oldJson.get()) + count;
+    uint64_t const oldValue =
+        triagens::basics::JsonHelper::stringUInt64(oldJson.get()) + count;
     uint64_t const newValue = oldValue + count;
-    std::unique_ptr<TRI_json_t> newJson(triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, newValue));
+    std::unique_ptr<TRI_json_t> newJson(
+        triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
+                                                   newValue));
 
     if (newJson == nullptr) {
       return AgencyCommResult();
@@ -1375,31 +1295,26 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a ttl query parameter
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::ttlParam (double ttl,
-                                  bool isFirst) {
-  if ((int) ttl <= 0) {
+std::string AgencyComm::ttlParam(double ttl, bool isFirst) {
+  if ((int)ttl <= 0) {
     return "";
   }
 
-  return (isFirst ? "?ttl=" : "&ttl=") + triagens::basics::StringUtils::itoa((int) ttl);
+  return (isFirst ? "?ttl=" : "&ttl=") +
+         triagens::basics::StringUtils::itoa((int)ttl);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief acquires a lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::lock (std::string const& key,
-                       double ttl,
-                       double timeout,
-                       TRI_json_t const* json) {
+bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
+                      TRI_json_t const* json) {
   if (ttl == 0.0) {
     ttl = _globalConnectionOptions._lockTimeout;
   }
@@ -1410,29 +1325,22 @@ bool AgencyComm::lock (std::string const& key,
 
   unsigned long sleepTime = InitialSleepTime;
   double const end = TRI_microtime() + timeout;
-    
-  std::unique_ptr<TRI_json_t> oldJson(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED")));
+
+  std::unique_ptr<TRI_json_t> oldJson(TRI_CreateStringCopyJson(
+      TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED")));
 
   if (oldJson == nullptr) {
     return false;
   }
 
-
   while (true) {
-    AgencyCommResult result = casValue(key + "/Lock",
-                                       oldJson.get(),
-                                       json,
-                                       ttl,
-                                       timeout);
+    AgencyCommResult result =
+        casValue(key + "/Lock", oldJson.get(), json, ttl, timeout);
 
-    if (! result.successful() &&
-        result.httpCode() == (int) triagens::rest::HttpResponse::NOT_FOUND) {
+    if (!result.successful() &&
+        result.httpCode() == (int)triagens::rest::HttpResponse::NOT_FOUND) {
       // key does not yet exist. create it now
-      result = casValue(key + "/Lock",
-                        json,
-                        false,
-                        ttl,
-                        timeout);
+      result = casValue(key + "/Lock", json, false, ttl, timeout);
     }
 
     if (result.successful()) {
@@ -1458,9 +1366,8 @@ bool AgencyComm::lock (std::string const& key,
 /// @brief releases a lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::unlock (std::string const& key,
-                         TRI_json_t const* json,
-                         double timeout) {
+bool AgencyComm::unlock(std::string const& key, TRI_json_t const* json,
+                        double timeout) {
   if (timeout == 0.0) {
     timeout = _globalConnectionOptions._lockTimeout;
   }
@@ -1468,18 +1375,16 @@ bool AgencyComm::unlock (std::string const& key,
   unsigned long sleepTime = InitialSleepTime;
   double const end = TRI_microtime() + timeout;
 
-  std::unique_ptr<TRI_json_t> newJson(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED")));
+  std::unique_ptr<TRI_json_t> newJson(TRI_CreateStringCopyJson(
+      TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED")));
 
   if (newJson == nullptr) {
     return false;
   }
 
   while (true) {
-    AgencyCommResult result = casValue(key + "/Lock",
-                                       json,
-                                       newJson.get(),
-                                       0.0,
-                                       timeout);
+    AgencyCommResult result =
+        casValue(key + "/Lock", json, newJson.get(), 0.0, timeout);
 
     if (result.successful()) {
       return true;
@@ -1504,7 +1409,7 @@ bool AgencyComm::unlock (std::string const& key,
 /// @brief pop an endpoint from the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
+AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
   unsigned long sleepTime = InitialSleepTime;
 
   while (1) {
@@ -1519,15 +1424,14 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
 
         TRI_ASSERT(agencyEndpoint != nullptr);
 
-        if (! endpoint.empty() &&
+        if (!endpoint.empty() &&
             agencyEndpoint->_endpoint->getSpecification() != endpoint) {
           // we're looking for a different endpoint
           ++it;
           continue;
         }
 
-
-        if (! agencyEndpoint->_busy) {
+        if (!agencyEndpoint->_busy) {
           agencyEndpoint->_busy = true;
 
           if (AgencyComm::_globalEndpoints.size() > 1) {
@@ -1564,8 +1468,8 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
 /// @brief reinsert an endpoint into the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
-                                  bool wasWorking) {
+void AgencyComm::requeueEndpoint(AgencyEndpoint* agencyEndpoint,
+                                 bool wasWorking) {
   WRITE_LOCKER(AgencyComm::_globalLock);
   size_t const numEndpoints TRI_UNUSED = _globalEndpoints.size();
 
@@ -1592,29 +1496,29 @@ void AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
 /// @brief construct a URL
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::buildUrl (std::string const& relativePart) const {
-  return AgencyComm::AGENCY_URL_PREFIX + std::move(encodeKey(_globalPrefix + relativePart));
+std::string AgencyComm::buildUrl(std::string const& relativePart) const {
+  return AgencyComm::AGENCY_URL_PREFIX +
+         std::move(encodeKey(_globalPrefix + relativePart));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a URL, without a key
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::buildUrl () const {
-  return AgencyComm::AGENCY_URL_PREFIX
-         + std::move(encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1)));
+std::string AgencyComm::buildUrl() const {
+  return AgencyComm::AGENCY_URL_PREFIX +
+         std::move(
+             encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends an HTTP request to the agency, handling failover
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType method,
-                                   const double timeout,
-                                   AgencyCommResult& result,
-                                   std::string const& url,
-                                   std::string const& body,
-                                   bool isWatch) {
+bool AgencyComm::sendWithFailover(
+    triagens::rest::HttpRequest::HttpRequestType method, const double timeout,
+    AgencyCommResult& result, std::string const& url, std::string const& body,
+    bool isWatch) {
   size_t numEndpoints;
 
   {
@@ -1638,15 +1542,9 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
     TRI_ASSERT(agencyEndpoint != nullptr);
 
     try {
-      send(agencyEndpoint->_connection,
-           method,
-           timeout,
-           result,
-           realUrl,
-           body);
-    }
-    catch (...) {
-      result._connected  = false;
+      send(agencyEndpoint->_connection, method, timeout, result, realUrl, body);
+    } catch (...) {
+      result._connected = false;
       result._statusCode = 0;
       result._message = "could not send request to agency";
 
@@ -1656,7 +1554,8 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
       return false;
     }
 
-    if (result._statusCode == (int) triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
+    if (result._statusCode ==
+        (int)triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
       // in this case we have to pick it up and use the new location returned
 
@@ -1664,18 +1563,16 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
       requeueEndpoint(agencyEndpoint, false);
 
       // a 307 does not count as a success
-      TRI_ASSERT(! result.successful());
+      TRI_ASSERT(!result.successful());
 
       std::string endpoint;
 
       // transform location into an endpoint
       if (result.location().substr(0, 7) == "http://") {
         endpoint = "tcp://" + result.location().substr(7);
-      }
-      else if (result.location().substr(0, 8) == "https://") {
+      } else if (result.location().substr(0, 8) == "https://") {
         endpoint = "ssl://" + result.location().substr(8);
-      }
-      else {
+      } else {
         // invalid endpoint, return an error
         return false;
       }
@@ -1690,13 +1587,12 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
       realUrl = endpoint.substr(delim);
       endpoint = endpoint.substr(0, delim);
 
-      if (! AgencyComm::hasEndpoint(endpoint)) {
+      if (!AgencyComm::hasEndpoint(endpoint)) {
         // redirection to an unknown endpoint
         if (_addNewEndpoints) {
           AgencyComm::addEndpoint(endpoint, true);
 
           LOG_INFO("adding agency-endpoint '%s'", endpoint.c_str());
-
 
           // re-check the new endpoint
           if (AgencyComm::hasEndpoint(endpoint)) {
@@ -1705,8 +1601,9 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
           }
         }
 
-        LOG_ERROR("found redirection to unknown endpoint '%s'. Will not follow!",
-                  endpoint.c_str());
+        LOG_ERROR(
+            "found redirection to unknown endpoint '%s'. Will not follow!",
+            endpoint.c_str());
 
         // this is an error
         return false;
@@ -1723,9 +1620,9 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
     // we can stop iterating over endpoints if the operation succeeded,
     // if a watch timed out or
     // if the reason for failure was a client-side error
-    bool const canAbort = result.successful() ||
-                          (isWatch && result._statusCode == 0) ||
-                          (result._statusCode >= 400 && result._statusCode <= 499);
+    bool const canAbort =
+        result.successful() || (isWatch && result._statusCode == 0) ||
+        (result._statusCode >= 400 && result._statusCode <= 499);
 
     requeueEndpoint(agencyEndpoint, canAbort);
 
@@ -1745,13 +1642,10 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
 /// @brief sends data to the URL
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection,
-                       triagens::rest::HttpRequest::HttpRequestType method,
-                       double timeout,
-                       AgencyCommResult& result,
-                       std::string const& url,
-                       std::string const& body) {
-
+bool AgencyComm::send(triagens::httpclient::GeneralClientConnection* connection,
+                      triagens::rest::HttpRequest::HttpRequestType method,
+                      double timeout, AgencyCommResult& result,
+                      std::string const& url, std::string const& body) {
   TRI_ASSERT(connection != nullptr);
 
   if (method == triagens::rest::HttpRequest::HTTP_REQUEST_GET ||
@@ -1760,20 +1654,17 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     TRI_ASSERT(body.empty());
   }
 
-  TRI_ASSERT(! url.empty());
+  TRI_ASSERT(!url.empty());
 
-  result._connected  = false;
+  result._connected = false;
   result._statusCode = 0;
 
   LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s",
             triagens::rest::HttpRequest::translateMethod(method).c_str(),
-            connection->getEndpoint()->getSpecification().c_str(),
-            url.c_str(),
+            connection->getEndpoint()->getSpecification().c_str(), url.c_str(),
             body.c_str());
 
-  triagens::httpclient::SimpleHttpClient client(connection,
-                                                timeout,
-                                                false);
+  triagens::httpclient::SimpleHttpClient client(connection, timeout, false);
 
   client.keepConnectionOnDestruction(true);
 
@@ -1787,12 +1678,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 
   // send the actual request
   std::unique_ptr<triagens::httpclient::SimpleHttpResult> response(
-    client.request(method,
-                   url,
-                   body.c_str(),
-                   body.size(),
-                   headers
-  ));
+      client.request(method, url, body.c_str(), body.size(), headers));
 
   if (response == nullptr) {
     connection->disconnect();
@@ -1802,7 +1688,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     return false;
   }
 
-  if (! response->isComplete()) {
+  if (!response->isComplete()) {
     connection->disconnect();
     result._message = "sending request to agency failed";
     LOG_TRACE("sending request to agency failed");
@@ -1810,9 +1696,10 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     return false;
   }
 
-  result._connected  = true;
+  result._connected = true;
 
-  if (response->getHttpReturnCode() == (int) triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
+  if (response->getHttpReturnCode() ==
+      (int)triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
     // temporary redirect. now save location header
 
     bool found = false;
@@ -1820,7 +1707,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 
     LOG_TRACE("redirecting to location: '%s'", result._location.c_str());
 
-    if (! found) {
+    if (!found) {
       // a 307 without a location header does not make any sense
       connection->disconnect();
       result._message = "invalid agency response (header missing)";
@@ -1829,22 +1716,21 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
     }
   }
 
-  result._message    = response->getHttpReturnMessage();
+  result._message = response->getHttpReturnMessage();
   basics::StringBuffer& sb = response->getBody();
-  result._body       = std::string(sb.c_str(), sb.length());
-  result._index      = 0;
+  result._body = std::string(sb.c_str(), sb.length());
+  result._index = 0;
   result._statusCode = response->getHttpReturnCode();
 
   bool found = false;
   std::string lastIndex = response->getHeaderField("x-etcd-index", found);
   if (found) {
-    result._index    = triagens::basics::StringUtils::uint64(lastIndex);
+    result._index = triagens::basics::StringUtils::uint64(lastIndex);
   }
 
-  LOG_TRACE("request to agency returned status code %d, message: '%s', body: '%s'",
-            result._statusCode,
-            result._message.c_str(),
-            result._body.c_str());
+  LOG_TRACE(
+      "request to agency returned status code %d, message: '%s', body: '%s'",
+      result._statusCode, result._message.c_str(), result._body.c_str());
 
   if (result.successful()) {
     return true;
@@ -1858,19 +1744,17 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 /// @brief encode a key for etcd
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::encodeKey (std::string const& s) {
+std::string AgencyComm::encodeKey(std::string const& s) {
   std::string::const_iterator i;
   std::string res;
   for (i = s.begin(); i != s.end(); ++i) {
     if (*i == '_') {
       res.push_back('@');
       res.push_back('U');
-    }
-    else if (*i == '@') {
+    } else if (*i == '@') {
       res.push_back('@');
       res.push_back('@');
-    }
-    else {
+    } else {
       res.push_back(*i);
     }
   }
@@ -1881,7 +1765,7 @@ std::string AgencyComm::encodeKey (std::string const& s) {
 /// @brief decode a key for etcd
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::decodeKey (std::string const& s) {
+std::string AgencyComm::decodeKey(std::string const& s) {
   std::string::const_iterator i;
   std::string res;
   for (i = s.begin(); i != s.end(); ++i) {
@@ -1889,23 +1773,14 @@ std::string AgencyComm::decodeKey (std::string const& s) {
       ++i;
       if (*i == 'U') {
         res.push_back('_');
-      }
-      else {
+      } else {
         res.push_back('@');
       }
-    }
-    else {
+    } else {
       res.push_back(*i);
     }
   }
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

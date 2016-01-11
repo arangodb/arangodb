@@ -125,7 +125,16 @@ function wrap (str, width) {
 /* print query string */  
 function printQuery (query) {
   'use strict';
-  stringBuilder.appendLine(section("Query string:"));
+  // restrict max length of printed query to avoid endless printing for
+  // very long query strings
+  var maxLength = 4096;
+  if (query.length > maxLength) {
+    stringBuilder.appendLine(section("Query string (truncated):"));
+    query = query.substr(0, maxLength / 2) + " ... " + query.substr(query.length - maxLength / 2);
+  }
+  else {
+    stringBuilder.appendLine(section("Query string:"));
+  }
   stringBuilder.appendLine(" " + value(wrap(query, 100).replace(/\n+/g, "\n ", query)));
   stringBuilder.appendLine(); 
 }
@@ -260,8 +269,7 @@ function printIndexes (indexes) {
   }
 }
 
-
-/* print indexes used */
+/* print traversal info */
 function printTraversalDetails (traversals) {
   'use strict';
   if (traversals.length === 0) {
@@ -407,7 +415,8 @@ function processQuery (query, explain) {
     indexes = [ ],
     traversalDetails = [],
     modificationFlags,
-    isConst = true;
+    isConst = true,
+    currentNode = null;
 
   var variableName = function (node) {
     try {
@@ -426,8 +435,26 @@ function processQuery (query, explain) {
     return variable(node.name); 
   };
 
+  var addHint = function () { };
+  // uncomment this to show "style" hints
+  // var addHint = function (dst, currentNode, msg) {
+  //   dst.push({ code: "Hint", message: "Node #" + currentNode + ": " + msg });
+  // };
+
   var buildExpression = function (node) {
     isConst = isConst && ([ "value", "object", "object element", "array" ].indexOf(node.type) !== -1);
+        
+    if (node.type !== "attribute access" &&
+        node.hasOwnProperty("subNodes")) {
+      for (var i = 0; i < node.subNodes.length; ++i) {
+        if (node.subNodes[i].type === "reference" &&
+            collectionVariables.hasOwnProperty(node.subNodes[i].id)) {
+          addHint(explain.warnings, currentNode, "reference to collection document variable '" + 
+                  node.subNodes[i].name + "' used in potentially non-working way");
+          break;
+        }
+      }
+    }
 
     switch (node.type) {
       case "reference": 
@@ -452,6 +479,7 @@ function processQuery (query, explain) {
         }
         return variableName(node);
       case "collection": 
+        addHint(explain.warnings, currentNode, "using all documents from collection '" + node.name + "' in expression");
         return collection(node.name) + "   " + annotation("/* all collection documents */");
       case "value":
         return value(JSON.stringify(node.value));
@@ -486,6 +514,21 @@ function processQuery (query, explain) {
       case "array limit":
         return buildExpression(node.subNodes[0]) + ", " + buildExpression(node.subNodes[1]);
       case "attribute access":
+        if (node.subNodes[0].type === "reference" && 
+            collectionVariables.hasOwnProperty(node.subNodes[0].id)) {
+          // top-level attribute access
+          var collectionName = collectionVariables[node.subNodes[0].id], 
+              collectionObject = db._collection(collectionName);
+          if (collectionObject !== null) {
+            var isEdgeCollection = (collectionObject.type() === 3), 
+                isSystem = (node.name[0] === '_');
+            
+            if ((isSystem && [ "_key", "_id", "_rev"].concat(isEdgeCollection ? [ "_from", "_to" ] : [ ]).indexOf(node.name) === -1) ||
+                (! isSystem && isEdgeCollection && [ "from", "to" ].indexOf(node.name) !== -1)) {
+              addHint(explain.warnings, currentNode, "reference to potentially non-existing attribute '" + node.name + "'");
+            }
+          }
+        }
         return buildExpression(node.subNodes[0]) + "." + attribute(node.name);
       case "indexed access":
         return buildExpression(node.subNodes[0]) + "[" + buildExpression(node.subNodes[1]) + "]";
@@ -809,6 +852,7 @@ function processQuery (query, explain) {
 
   var preHandle = function (node) {
     usedVariables = { };
+    currentNode = node.id;
     isConst = true;
     if (node.type === "SubqueryNode") {
       subqueries.push(level);

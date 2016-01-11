@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief basic memory management
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
@@ -34,9 +28,6 @@
 #include <unistd.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief threshold for producing malloc warnings
@@ -60,7 +51,7 @@
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
 #define ZONE_DEBUG_LOCATION " in %s:%d"
-#define ZONE_DEBUG_PARAMS ,file, line
+#define ZONE_DEBUG_PARAMS , file, line
 
 #else
 
@@ -74,7 +65,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define BuiltInMalloc(n) malloc(n)
-#define BuiltInRealloc(ptr,n) realloc(ptr, n)
+#define BuiltInRealloc(ptr, n) realloc(ptr, n)
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 #define MALLOC_WRAPPER(zone, n) FailMalloc(zone, n)
@@ -84,9 +75,6 @@
 #define REALLOC_WRAPPER(zone, ptr, n) BuiltInRealloc(ptr, n)
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief core memory zone, allocation will never fail
@@ -117,14 +105,11 @@ static int CoreInitialized = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static size_t FailMinSize      = 0;
-static double FailProbability  = 0.0;
-static double FailStartStamp   = 0.0;
+static size_t FailMinSize = 0;
+static double FailProbability = 0.0;
+static double FailStartStamp = 0.0;
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the size of the memory that is requested
@@ -132,15 +117,11 @@ static double FailStartStamp   = 0.0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-static void CheckSize (uint64_t n, 
-                       char const* file, 
-                       int line) {
+static void CheckSize(uint64_t n, char const* file, int line) {
   // warn in the case of big malloc operations
   if (n >= MALLOC_WARNING_THRESHOLD) {
-    fprintf(stderr,
-            "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
-            (unsigned long long) n
-            ZONE_DEBUG_PARAMS);
+    fprintf(stderr, "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
+            (unsigned long long)n ZONE_DEBUG_PARAMS);
   }
 }
 #endif
@@ -150,7 +131,7 @@ static void CheckSize (uint64_t n,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static double CurrentTimeStamp (void) {
+static double CurrentTimeStamp(void) {
   struct timeval tv;
 
   gettimeofday(&tv, 0);
@@ -164,7 +145,7 @@ static double CurrentTimeStamp (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static bool ShouldFail (size_t n) {
+static bool ShouldFail(size_t n) {
   if (FailMinSize > 0 && FailMinSize > n) {
     return false;
   }
@@ -172,7 +153,7 @@ static bool ShouldFail (size_t n) {
   if (FailProbability == 0.0) {
     return false;
   }
-  
+
   if (FailStartStamp > 0.0 && CurrentTimeStamp() < FailStartStamp) {
     return false;
   }
@@ -180,7 +161,7 @@ static bool ShouldFail (size_t n) {
   if (FailProbability < 1.0 && FailProbability * RAND_MAX < rand()) {
     return false;
   }
- 
+
   return true;
 }
 #endif
@@ -190,10 +171,9 @@ static bool ShouldFail (size_t n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static char* FailMalloc (TRI_memory_zone_t* zone, 
-                         size_t n) {
+static char* FailMalloc(TRI_memory_zone_t* zone, size_t n) {
   // we can fail, so let's check whether we should fail intentionally...
-  if (zone->_failable && ShouldFail(n)) { 
+  if (zone->_failable && ShouldFail(n)) {
     // intentionally return NULL
     errno = ENOMEM;
     return nullptr;
@@ -208,11 +188,9 @@ static char* FailMalloc (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static char* FailRealloc (TRI_memory_zone_t* zone, 
-                          void* old,
-                          size_t n) {
+static char* FailRealloc(TRI_memory_zone_t* zone, void* old, size_t n) {
   // we can fail, so let's check whether we should fail intentionally...
-  if (zone->_failable && ShouldFail(n)) { 
+  if (zone->_failable && ShouldFail(n)) {
     // intentionally return NULL
     errno = ENOMEM;
     return nullptr;
@@ -227,10 +205,10 @@ static char* FailRealloc (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static void InitFailMalloc (void) { 
+static void InitFailMalloc(void) {
   char* value;
 
-  // get failure probability 
+  // get failure probability
   value = getenv("ARANGO_FAILMALLOC_PROBABILITY");
 
   if (value != nullptr) {
@@ -249,23 +227,20 @@ static void InitFailMalloc (void) {
       FailStartStamp = CurrentTimeStamp() + v;
     }
   }
- 
-  // get minimum size for failures 
+
+  // get minimum size for failures
   value = getenv("ARANGO_FAILMALLOC_MINSIZE");
 
   if (value != nullptr) {
     unsigned long long v = strtoull(value, nullptr, 10);
     if (v > 0) {
-      FailMinSize = (size_t) v;
+      FailMinSize = (size_t)v;
     }
   }
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief core memory zone, allocation will never fail
@@ -281,16 +256,13 @@ TRI_memory_zone_t* TRI_CORE_MEM_ZONE = &TriCoreMemZone;
 TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the unknown memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
+TRI_memory_zone_t* TRI_UnknownMemZoneZ(char const* file, int line) {
   return &TriUnknownMemZone;
 }
 #endif
@@ -300,9 +272,9 @@ TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-void* TRI_SystemAllocateZ (uint64_t n, bool set, char const* file, int line) {
+void* TRI_SystemAllocateZ(uint64_t n, bool set, char const* file, int line) {
 #else
-void* TRI_SystemAllocate (uint64_t n, bool set) {
+void* TRI_SystemAllocate(uint64_t n, bool set) {
 #endif
   char* m;
 
@@ -310,11 +282,11 @@ void* TRI_SystemAllocate (uint64_t n, bool set) {
   CheckSize(n, file, line);
 #endif
 
-  m = static_cast<char*>(BuiltInMalloc((size_t) n));
+  m = static_cast<char*>(BuiltInMalloc((size_t)n));
 
   if (m != nullptr) {
     if (set) {
-      memset(m, 0, (size_t) n);
+      memset(m, 0, (size_t)n);
     }
   }
 
@@ -326,14 +298,15 @@ void* TRI_SystemAllocate (uint64_t n, bool set) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-void* TRI_AllocateZ (TRI_memory_zone_t* zone, uint64_t n, bool set, char const* file, int line) {
+void* TRI_AllocateZ(TRI_memory_zone_t* zone, uint64_t n, bool set,
+                    char const* file, int line) {
 #else
-void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
+void* TRI_Allocate(TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #endif
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   CheckSize(n, file, line);
 #endif
-  char* m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t) n));
+  char* m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t)n));
 
   if (m == nullptr) {
     if (zone->_failable) {
@@ -343,21 +316,20 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 
     if (CoreReserve == nullptr) {
       fprintf(stderr,
-              "FATAL: failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!\n",
-              (unsigned long long) n,
-              (int) zone->_zid
-              ZONE_DEBUG_PARAMS);
+              "FATAL: failed to allocate %llu bytes for memory zone "
+              "%d" ZONE_DEBUG_LOCATION ", giving up!\n",
+              (unsigned long long)n, (int)zone->_zid ZONE_DEBUG_PARAMS);
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
     free(CoreReserve);
     CoreReserve = nullptr;
 
-    fprintf(stderr,
-            "failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!\n",
-            (unsigned long long) n,
-            (int) zone->_zid
-            ZONE_DEBUG_PARAMS);
+    fprintf(
+        stderr,
+        "failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION
+        ", retrying!\n",
+        (unsigned long long)n, (int)zone->_zid ZONE_DEBUG_PARAMS);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     return TRI_AllocateZ(zone, n, set, file, line);
@@ -367,12 +339,12 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   }
 
   if (set) {
-    memset(m, 0, (size_t) n);
+    memset(m, 0, (size_t)n);
   }
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   else {
     // prefill with 0xA5 (magic value, same as Valgrind will use)
-    memset(m, 0xA5, (size_t) n);
+    memset(m, 0xA5, (size_t)n);
   }
 #endif
 
@@ -384,9 +356,10 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-void* TRI_ReallocateZ (TRI_memory_zone_t* zone, void* m, uint64_t n, char const* file, int line) {
+void* TRI_ReallocateZ(TRI_memory_zone_t* zone, void* m, uint64_t n,
+                      char const* file, int line) {
 #else
-void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
+void* TRI_Reallocate(TRI_memory_zone_t* zone, void* m, uint64_t n) {
 #endif
 
   if (m == nullptr) {
@@ -397,13 +370,13 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 #endif
   }
 
-  char* p = (char*) m;
+  char* p = (char*)m;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   CheckSize(n, file, line);
 #endif
 
-  p = static_cast<char*>(REALLOC_WRAPPER(zone, p, (size_t) n));
+  p = static_cast<char*>(REALLOC_WRAPPER(zone, p, (size_t)n));
 
   if (p == nullptr) {
     if (zone->_failable) {
@@ -413,10 +386,9 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
     if (CoreReserve == nullptr) {
       fprintf(stderr,
-              "FATAL: failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!\n",
-              (unsigned long long) n,
-              zone->_zid
-              ZONE_DEBUG_PARAMS);
+              "FATAL: failed to re-allocate %llu bytes for memory zone "
+              "%d" ZONE_DEBUG_LOCATION ", giving up!\n",
+              (unsigned long long)n, zone->_zid ZONE_DEBUG_PARAMS);
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
@@ -424,10 +396,9 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
     CoreReserve = nullptr;
 
     fprintf(stderr,
-            "failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!\n",
-            (unsigned long long) n,
-            (int) zone->_zid
-            ZONE_DEBUG_PARAMS);
+            "failed to re-allocate %llu bytes for memory zone "
+            "%d" ZONE_DEBUG_LOCATION ", retrying!\n",
+            (unsigned long long)n, (int)zone->_zid ZONE_DEBUG_PARAMS);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     return TRI_ReallocateZ(zone, m, n, file, line);
@@ -444,18 +415,16 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-void TRI_FreeZ (TRI_memory_zone_t* zone, void* m, char const* file, int line) {
+void TRI_FreeZ(TRI_memory_zone_t* zone, void* m, char const* file, int line) {
 #else
-void TRI_Free (TRI_memory_zone_t* zone, void* m) {
+void TRI_Free(TRI_memory_zone_t* zone, void* m) {
 #endif
 
-  char* p = (char*) m;
+  char* p = (char*)m;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (p == nullptr) {
-    fprintf(stderr,
-            "freeing nil ptr " ZONE_DEBUG_LOCATION
-            ZONE_DEBUG_PARAMS);
+    fprintf(stderr, "freeing nil ptr " ZONE_DEBUG_LOCATION ZONE_DEBUG_PARAMS);
     // crash intentionally
     TRI_ASSERT(false);
   }
@@ -472,17 +441,14 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-void TRI_SystemFreeZ (void* p, char const* file, int line) {
+void TRI_SystemFreeZ(void* p, char const* file, int line) {
 #else
-void TRI_SystemFree (void* p) {
+void TRI_SystemFree(void* p) {
 #endif
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (p == nullptr) {
-    fprintf(stderr,
-            "freeing nil ptr in %s:%d\n",
-            file,
-            line);
+    fprintf(stderr, "freeing nil ptr in %s:%d\n", file, line);
   }
 #endif
   free(p);
@@ -497,42 +463,42 @@ void TRI_SystemFree (void* p) {
 /// - http://lists.gnu.org/archive/html/bug-gnulib/2011-03/msg00243.html
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_WrappedReallocate (void* ptr, long size) {
+void* TRI_WrappedReallocate(void* ptr, long size) {
   if (ptr == nullptr && size == 0) {
     return nullptr;
   }
 
-  return BuiltInRealloc(ptr, (size_t) size);
+  return BuiltInRealloc(ptr, (size_t)size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeMemory () {
+void TRI_InitializeMemory() {
   if (CoreInitialized == 0) {
     static size_t const ReserveSize = 1024 * 1024 * 10;
 
-    TriCoreMemZone._zid      = 0;
-    TriCoreMemZone._failed   = false;
+    TriCoreMemZone._zid = 0;
+    TriCoreMemZone._failed = false;
     TriCoreMemZone._failable = false;
 
-    TriUnknownMemZone._zid      = 1;
-    TriUnknownMemZone._failed   = false;
+    TriUnknownMemZone._zid = 1;
+    TriUnknownMemZone._failed = false;
     TriUnknownMemZone._failable = true;
 
-#ifdef TRI_ENABLE_FAILURE_TESTS 
-    InitFailMalloc(); 
+#ifdef TRI_ENABLE_FAILURE_TESTS
+    InitFailMalloc();
 #endif
 
     CoreReserve = BuiltInMalloc(ReserveSize);
 
     if (CoreReserve == nullptr) {
       fprintf(stderr,
-              "FATAL: cannot allocate initial core reserve of size %llu, giving up!\n",
-              (unsigned long long) ReserveSize);
-    }
-    else {
+              "FATAL: cannot allocate initial core reserve of size %llu, "
+              "giving up!\n",
+              (unsigned long long)ReserveSize);
+    } else {
       CoreInitialized = 1;
     }
   }
@@ -542,18 +508,11 @@ void TRI_InitializeMemory () {
 /// @brief shutdown memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownMemory () {
+void TRI_ShutdownMemory() {
   if (CoreInitialized == 1) {
     free(CoreReserve);
     CoreInitialized = 0;
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

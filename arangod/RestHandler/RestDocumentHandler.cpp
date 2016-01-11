@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,15 +19,13 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDocumentHandler.h"
 
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -47,38 +41,43 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestDocumentHandler::RestDocumentHandler (HttpRequest* request)
-  : RestVocbaseBaseHandler(request) {
-}
+RestDocumentHandler::RestDocumentHandler(HttpRequest* request)
+    : RestVocbaseBaseHandler(request) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestDocumentHandler::execute () {
+HttpHandler::status_t RestDocumentHandler::execute() {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: deleteDocument(); break;
-    case HttpRequest::HTTP_REQUEST_GET:    readDocument(); break;
-    case HttpRequest::HTTP_REQUEST_HEAD:   checkDocument(); break;
-    case HttpRequest::HTTP_REQUEST_POST:   createDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PUT:    replaceDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PATCH:  updateDocument(); break;
+    case HttpRequest::HTTP_REQUEST_DELETE:
+      deleteDocument();
+      break;
+    case HttpRequest::HTTP_REQUEST_GET:
+      readDocument();
+      break;
+    case HttpRequest::HTTP_REQUEST_HEAD:
+      checkDocument();
+      break;
+    case HttpRequest::HTTP_REQUEST_POST:
+      createDocument();
+      break;
+    case HttpRequest::HTTP_REQUEST_PUT:
+      replaceDocument();
+      break;
+    case HttpRequest::HTTP_REQUEST_PATCH:
+      updateDocument();
+      break;
 
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
     default: {
@@ -91,9 +90,6 @@ HttpHandler::status_t RestDocumentHandler::execute () {
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock REST_DOCUMENT_CREATE
@@ -114,7 +110,8 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
 ///
-/// **Note**: this flag is not supported in a cluster. Using it will result in an
+/// **Note**: this flag is not supported in a cluster. Using it will result in
+/// an
 /// error.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
@@ -143,7 +140,8 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 /// Optionally, the query parameter *waitForSync* can be used to force
 /// synchronization of the document creation operation to disk even in case that
 /// the *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* query parameter can be used to force synchronization of just
+/// the *waitForSync* query parameter can be used to force synchronization of
+/// just
 /// this specific operations. To use this, set the *waitForSync* parameter to
 /// *true*. If the *waitForSync* parameter is not specified or set to *false*,
 /// then the collection's default *waitForSync* behavior is applied. The
@@ -276,16 +274,16 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock 
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::createDocument () {
+bool RestDocumentHandler::createDocument() {
   vector<string> const& suffix = _request->suffix();
 
-  if (! suffix.empty()) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
+  if (!suffix.empty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                  "superfluous suffix, expecting " + DOCUMENT_PATH +
+                      "?collection=<identifier>");
     return false;
   }
 
@@ -293,10 +291,11 @@ bool RestDocumentHandler::createDocument () {
   bool found;
   char const* collection = _request->value("collection", found);
 
-  if (! found || *collection == '\0') {
+  if (!found || *collection == '\0') {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
+                  "'collection' is missing, expecting " + DOCUMENT_PATH +
+                      "?collection=<identifier>");
     return false;
   }
 
@@ -305,15 +304,17 @@ bool RestDocumentHandler::createDocument () {
   bool parseSuccess = true;
   VPackOptions options;
   options.checkAttributeUniqueness = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
-  if (! parseSuccess) {
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&options, parseSuccess);
+  if (!parseSuccess) {
     return false;
   }
 
   VPackSlice body = parsedBody->slice();
 
-  if (! body.isObject()) {
-    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  if (!body.isObject()) {
+    generateTransactionError(collection,
+                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 
@@ -321,12 +322,13 @@ bool RestDocumentHandler::createDocument () {
     return createDocumentCoordinator(collection, waitForSync, body);
   }
 
-  if (! checkCreateCollection(collection, getCollectionType())) {
+  if (!checkCreateCollection(collection, getCollectionType())) {
     return false;
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, collection);
+  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -340,7 +342,8 @@ bool RestDocumentHandler::createDocument () {
   }
 
   if (trx.documentCollection()->_info.type() != TRI_COL_TYPE_DOCUMENT) {
-    // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT collection
+    // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT
+    // collection
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
@@ -369,19 +372,19 @@ bool RestDocumentHandler::createDocument () {
 /// @brief creates a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
-                                                     bool waitForSync,
-                                                     VPackSlice const& document) {
+bool RestDocumentHandler::createDocumentCoordinator(
+    char const* collection, bool waitForSync, VPackSlice const& document) {
   string const& dbname = _request->databaseName();
   string const collname(collection);
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  map<string, string> headers =
+      triagens::arango::getForwardableRequestHeaders(_request);
   map<string, string> resultHeaders;
   string resultBody;
 
   int res = triagens::arango::createDocumentOnCoordinator(
-            dbname, collname, waitForSync, document, headers,
-            responseCode, resultHeaders, resultBody);
+      dbname, collname, waitForSync, document, headers, responseCode,
+      resultHeaders, resultBody);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
@@ -390,7 +393,7 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
 
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
@@ -402,7 +405,7 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
 /// Either readSingleDocument or readAllDocuments.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::readDocument () {
+bool RestDocumentHandler::readDocument() {
   const size_t len = _request->suffix().size();
 
   switch (len) {
@@ -410,8 +413,7 @@ bool RestDocumentHandler::readDocument () {
       return readAllDocuments();
 
     case 1:
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
+      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                     "expecting GET /_api/document/<document-handle>");
       return false;
 
@@ -419,9 +421,9 @@ bool RestDocumentHandler::readDocument () {
       return readSingleDocument(true);
 
     default:
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "expecting GET /_api/document/<document-handle> or GET /_api/document?collection=<collection-name>");
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                    "expecting GET /_api/document/<document-handle> or GET "
+                    "/_api/document?collection=<collection-name>");
       return false;
   }
 }
@@ -525,7 +527,7 @@ bool RestDocumentHandler::readDocument () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::readSingleDocument (bool generateBody) {
+bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   vector<string> const& suffix = _request->suffix();
 
   // split the document reference
@@ -534,18 +536,18 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   // check for an etag
   bool isValidRevision;
-  TRI_voc_rid_t const ifNoneRid = extractRevision("if-none-match", 0, isValidRevision);
-  if (! isValidRevision) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+  TRI_voc_rid_t const ifNoneRid =
+      extractRevision("if-none-match", 0, isValidRevision);
+  if (!isValidRevision) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
 
-  TRI_voc_rid_t const ifRid = extractRevision("if-match", "rev", isValidRevision);
-  if (! isValidRevision) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+  TRI_voc_rid_t const ifRid =
+      extractRevision("if-match", "rev", isValidRevision);
+  if (!isValidRevision) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
@@ -555,7 +557,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection);
 
   // .............................................................................
   // inside read transaction
@@ -591,12 +594,12 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   TRI_ASSERT(trx.hasDitch());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str());
+    generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str());
     return false;
   }
 
-  if (mptr.getDataPtr() == nullptr) {   // PROTECTED by trx here
-    generateDocumentNotFound(trx, cid, (TRI_voc_key_t) key.c_str());
+  if (mptr.getDataPtr() == nullptr) {  // PROTECTED by trx here
+    generateDocumentNotFound(trx, cid, (TRI_voc_key_t)key.c_str());
     return false;
   }
 
@@ -606,24 +609,19 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
       generateDocument(trx, cid, mptr, shaper, generateBody);
-    }
-    else {
+    } else {
       generatePreconditionFailed(trx, cid, mptr, rid);
     }
-  }
-  else if (ifNoneRid == rid) {
+  } else if (ifNoneRid == rid) {
     if (ifRid == 0 || ifRid == rid) {
       generateNotModified(rid);
-    }
-    else {
+    } else {
       generatePreconditionFailed(trx, cid, mptr, rid);
     }
-  }
-  else {
+  } else {
     if (ifRid == 0 || ifRid == rid) {
       generateDocument(trx, cid, mptr, shaper, generateBody);
-    }
-    else {
+    } else {
       generatePreconditionFailed(trx, cid, mptr, rid);
     }
   }
@@ -635,15 +633,14 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::getDocumentCoordinator (
-                              string const& collname,
-                              string const& key,
-                              bool generateBody) {
+bool RestDocumentHandler::getDocumentCoordinator(string const& collname,
+                                                 string const& key,
+                                                 bool generateBody) {
   string const& dbname = _request->databaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  std::unique_ptr<std::map<std::string, std::string>> headers
-      (new std::map<std::string, std::string>
-           (triagens::arango::getForwardableRequestHeaders(_request)));
+  std::unique_ptr<std::map<std::string, std::string>> headers(
+      new std::map<std::string, std::string>(
+          triagens::arango::getForwardableRequestHeaders(_request)));
   map<string, string> resultHeaders;
   string resultBody;
 
@@ -655,8 +652,8 @@ bool RestDocumentHandler::getDocumentCoordinator (
   }
 
   int error = triagens::arango::getDocumentOnCoordinator(
-            dbname, collname, key, rev, headers, generateBody,
-            responseCode, resultHeaders, resultBody);
+      dbname, collname, key, rev, headers, generateBody, responseCode,
+      resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);
@@ -664,14 +661,14 @@ bool RestDocumentHandler::getDocumentCoordinator (
   }
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
-  
-  if (! generateBody) {
+
+  if (!generateBody) {
     // a head request...
-    _response->headResponse((size_t) StringUtils::uint64(resultHeaders["content-length"]));
-  }
-  else {
+    _response->headResponse(
+        (size_t)StringUtils::uint64(resultHeaders["content-length"]));
+  } else {
     _response->body().appendText(resultBody.c_str(), resultBody.size());
   }
   return responseCode >= triagens::rest::HttpResponse::BAD;
@@ -696,7 +693,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 /// - *path*: returns an array of document URI paths. This is the default.
 ///
 /// @RESTDESCRIPTION
-/// Returns an array of all keys, ids, or URI paths for all documents in the 
+/// Returns an array of all keys, ids, or URI paths for all documents in the
 /// collection identified by *collection*. The type of the result array is
 /// determined by the *type* attribute.
 ///
@@ -769,7 +766,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::readAllDocuments () {
+bool RestDocumentHandler::readAllDocuments() {
   bool found;
   std::string collection = _request->value("collection", found);
   std::string returnType = _request->value("type", found);
@@ -783,7 +780,8 @@ bool RestDocumentHandler::readAllDocuments () {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection);
 
   std::vector<std::string> ids;
 
@@ -819,17 +817,16 @@ bool RestDocumentHandler::readAllDocuments () {
 
   if (returnType == "key") {
     prefix = "";
-  }
-  else if (returnType == "id") {
+  } else if (returnType == "id") {
     prefix = trx.resolver()->getCollectionName(cid) + "/";
-  }
-  else {
+  } else {
     // default return type: paths to documents
     if (type == TRI_COL_TYPE_EDGE) {
-      prefix = "/_db/" + _request->databaseName() + EDGE_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
-    }
-    else {
-      prefix = "/_db/" + _request->databaseName() + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
+      prefix = "/_db/" + _request->databaseName() + EDGE_PATH + '/' +
+               trx.resolver()->getCollectionName(cid) + '/';
+    } else {
+      prefix = "/_db/" + _request->databaseName() + DOCUMENT_PATH + '/' +
+               trx.resolver()->getCollectionName(cid) + '/';
     }
   }
 
@@ -850,9 +847,8 @@ bool RestDocumentHandler::readAllDocuments () {
     VPackSlice s = result.slice();
     // and generate a response
     generateResult(s);
-  }
-  catch (...) {
-    // Ignore the error 
+  } catch (...) {
+    // Ignore the error
   }
   return true;
 }
@@ -861,8 +857,8 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::getAllDocumentsCoordinator (string const& collname,
-                                                      string const& returnType) {
+bool RestDocumentHandler::getAllDocumentsCoordinator(string const& collname,
+                                                     string const& returnType) {
   string const& dbname = _request->databaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
@@ -870,14 +866,14 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (string const& collname,
   string resultBody;
 
   int error = triagens::arango::getAllDocumentsOnCoordinator(
-            dbname, collname, returnType, responseCode, contentType, resultBody);
+      dbname, collname, returnType, responseCode, contentType, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);
     return false;
   }
   // Return the response we got:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   _response->setContentType(contentType);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
@@ -953,12 +949,11 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (string const& collname,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::checkDocument () {
+bool RestDocumentHandler::checkDocument() {
   vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting URI /_api/document/<document-handle>");
     return false;
   }
@@ -1000,7 +995,8 @@ bool RestDocumentHandler::checkDocument () {
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
-/// Completely updates (i.e. replaces) the document identified by *document-handle*.
+/// Completely updates (i.e. replaces) the document identified by
+/// *document-handle*.
 /// If the document exists and can be updated, then a *HTTP 201* is returned
 /// and the "ETag" header field contains the new revision of the document.
 ///
@@ -1024,8 +1020,9 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the updated document, *_key* contains the key which 
-/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// *document-handle* of the updated document, *_key* contains the key which
+/// uniquely identifies a document in a given collection, and the attribute
+/// *_rev*
 /// contains the new document revision.
 ///
 /// If the document does not exist, then a *HTTP 404* is returned and the
@@ -1033,7 +1030,8 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// There are two ways for specifying the targeted document revision id for
 /// conditional replacements (i.e. replacements that will only be executed if
-/// the revision id found in the database matches the document revision id specified
+/// the revision id found in the database matches the document revision id
+/// specified
 /// in the request):
 /// - specifying the target revision in the *rev* URL query parameter
 /// - specifying the target revision in the *if-match* HTTP header
@@ -1042,26 +1040,31 @@ bool RestDocumentHandler::checkDocument () {
 /// Specifying a target revision is optional, however, if done, only one of the
 /// described mechanisms must be used (either the *rev* query parameter or the
 /// *if-match* HTTP header).
-/// Regardless which mechanism is used, the parameter needs to contain the target
+/// Regardless which mechanism is used, the parameter needs to contain the
+/// target
 /// document revision id as returned in the *_rev* attribute of a document or
 /// by an HTTP *etag* header.
 ///
-/// For example, to conditionally replace a document based on a specific revision
+/// For example, to conditionally replace a document based on a specific
+/// revision
 /// id, you can use the following request:
 ///
 ///
 /// `PUT /_api/document/document-handle?rev=etag`
 ///
 ///
-/// If a target revision id is provided in the request (e.g. via the *etag* value
+/// If a target revision id is provided in the request (e.g. via the *etag*
+/// value
 /// in the *rev* URL query parameter above), ArangoDB will check that
 /// the revision id of the document found in the database is equal to the target
-/// revision id provided in the request. If there is a mismatch between the revision
+/// revision id provided in the request. If there is a mismatch between the
+/// revision
 /// id, then by default a *HTTP 412* conflict is returned and no replacement is
 /// performed.
 ///
 ///
-/// The conditional update behavior can be overridden with the *policy* URL query parameter:
+/// The conditional update behavior can be overridden with the *policy* URL
+/// query parameter:
 ///
 ///
 /// `PUT /_api/document/document-handle?policy=policy`
@@ -1072,7 +1075,8 @@ bool RestDocumentHandler::checkDocument () {
 /// revision id specified in the request.
 ///
 /// If *policy* is set to *last*, then the replacement will succeed, even if the
-/// revision id found in the database does not match the target revision id specified
+/// revision id found in the database does not match the target revision id
+/// specified
 /// in the request. You can use the *last* *policy* to force replacements.
 ///
 /// @RESTRETURNCODES
@@ -1149,7 +1153,8 @@ bool RestDocumentHandler::checkDocument () {
 ///     var url = "/_api/document/" + document._id;
 ///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
 ///
-///     var response = logCurlRequest('PUT', url, '{"other":"content"}', headers);
+///     var response = logCurlRequest('PUT', url, '{"other":"content"}',
+///     headers);
 ///
 ///     assert(response.code === 412);
 ///
@@ -1194,12 +1199,10 @@ bool RestDocumentHandler::checkDocument () {
 ///     logJsonResponse(response);
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock  
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::replaceDocument () {
-  return modifyDocument(false);
-}
+bool RestDocumentHandler::replaceDocument() { return modifyDocument(false); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock REST_DOCUMENT_UPDATE
@@ -1270,8 +1273,9 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the updated document, *_key* contains the key which 
-/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// *document-handle* of the updated document, *_key* contains the key which
+/// uniquely identifies a document in a given collection, and the attribute
+/// *_rev*
 /// contains the new document revision.
 ///
 /// If the document does not exist, then a *HTTP 404* is returned and the
@@ -1323,13 +1327,15 @@ bool RestDocumentHandler::replaceDocument () {
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
-///     var response2 = logCurlRequest("PATCH", url, { "numbers": { "one": 1, "two": 2, "three": 3, "empty": null } });
+///     var response2 = logCurlRequest("PATCH", url, { "numbers": { "one": 1,
+///     "two": 2, "three": 3, "empty": null } });
 ///     assert(response2.code === 202);
 ///     logJsonResponse(response2);
 ///     var response3 = logCurlRequest("GET", url);
 ///     assert(response3.code === 200);
 ///     logJsonResponse(response3);
-///     var response4 = logCurlRequest("PATCH", url + "?keepNull=false", { "hello": null, "numbers": { "four": 4 } });
+///     var response4 = logCurlRequest("PATCH", url + "?keepNull=false", {
+///     "hello": null, "numbers": { "four": 4 } });
 ///     assert(response4.code === 202);
 ///     logJsonResponse(response4);
 ///     var response5 = logCurlRequest("GET", url);
@@ -1345,21 +1351,24 @@ bool RestDocumentHandler::replaceDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 ///
-///     var document = db.products.save({"inhabitants":{"china":1366980000,"india":1263590000,"usa":319220000}});
+///     var document =
+///     db.products.save({"inhabitants":{"china":1366980000,"india":1263590000,"usa":319220000}});
 ///     var url = "/_api/document/" + document._id;
 ///
 ///     var response = logCurlRequest("GET", url);
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 ///
-///     var response = logCurlRequest("PATCH", url + "?mergeObjects=true", { "inhabitants": {"indonesia":252164800,"brazil":203553000 }});
+///     var response = logCurlRequest("PATCH", url + "?mergeObjects=true", {
+///     "inhabitants": {"indonesia":252164800,"brazil":203553000 }});
 ///     assert(response.code === 202);
 ///
 ///     var response2 = logCurlRequest("GET", url);
 ///     assert(response2.code === 200);
 ///     logJsonResponse(response2);
 ///
-///     var response3 = logCurlRequest("PATCH", url + "?mergeObjects=false", { "inhabitants": { "pakistan":188346000 }});
+///     var response3 = logCurlRequest("PATCH", url + "?mergeObjects=false", {
+///     "inhabitants": { "pakistan":188346000 }});
 ///     assert(response3.code === 202);
 ///     logJsonResponse(response3);
 ///
@@ -1371,15 +1380,13 @@ bool RestDocumentHandler::replaceDocument () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::updateDocument () {
-  return modifyDocument(true);
-}
+bool RestDocumentHandler::updateDocument() { return modifyDocument(true); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for replaceDocument and updateDocument
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::modifyDocument (bool isPatch) {
+bool RestDocumentHandler::modifyDocument(bool isPatch) {
   vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
@@ -1387,9 +1394,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(" /_api/document/<document-handle>");
 
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  msg);
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return false;
   }
 
@@ -1399,24 +1404,26 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   bool parseSuccess = true;
   VPackOptions options;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
-  if (! parseSuccess) {
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&options, parseSuccess);
+  if (!parseSuccess) {
     return false;
   }
 
   VPackSlice body = parsedBody->slice();
 
-  if (! body.isObject()) {
-    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  if (!body.isObject()) {
+    generateTransactionError(collection,
+                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 
   // extract the revision
   bool isValidRevision;
-  TRI_voc_rid_t const revision = extractRevision("if-match", "rev", isValidRevision);
-  if (! isValidRevision) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+  TRI_voc_rid_t const revision =
+      extractRevision("if-match", "rev", isValidRevision);
+  if (!isValidRevision) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
@@ -1433,7 +1440,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_doc_mptr_copy_t mptr;
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, collection);
+  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1472,21 +1480,19 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     bool mergeObjects;
     bool found;
     char const* valueStr = _request->value("keepNull", found);
-    if (! found || StringUtils::boolean(valueStr)) {
+    if (!found || StringUtils::boolean(valueStr)) {
       // default: null values are saved as Null
       nullMeansRemove = false;
-    }
-    else {
+    } else {
       // delete null attributes
       nullMeansRemove = true;
     }
 
     valueStr = _request->value("mergeObjects", found);
-    if (! found || StringUtils::boolean(valueStr)) {
+    if (!found || StringUtils::boolean(valueStr)) {
       // the default is true
       mergeObjects = true;
-    }
-    else {
+    } else {
       mergeObjects = false;
     }
 
@@ -1501,18 +1507,22 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     res = trx.read(&oldDocument, key);
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
-      generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
+      generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
+                               rid);
       return false;
     }
 
     if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
       trx.abort();
-      generateTransactionError(collectionName, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
+      generateTransactionError(collectionName,
+                               TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                               (TRI_voc_key_t)key.c_str(), rid);
       return false;
     }
 
     TRI_shaped_json_t shapedJson;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
+    TRI_EXTRACT_SHAPED_JSON_MARKER(
+        shapedJson, oldDocument.getDataPtr());  // PROTECTED by trx here
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
     if (old == nullptr) {
@@ -1521,20 +1531,25 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-    std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
+    std::unique_ptr<TRI_json_t> json(
+        triagens::basics::VelocyPackHelper::velocyPackToJson(body));
     if (ServerState::instance()->isDBServer()) {
       // compare attributes in shardKeys
-      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(), true)) {
+      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(),
+                           true)) {
         TRI_FreeJson(shaper->memoryZone(), old);
 
         trx.abort();
-        generateTransactionError(collectionName, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+        generateTransactionError(
+            collectionName,
+            TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
 
         return false;
       }
     }
 
-    TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json.get(), nullMeansRemove, mergeObjects);
+    TRI_json_t* patchedJson = TRI_MergeJson(
+        TRI_UNKNOWN_MEM_ZONE, old, json.get(), nullMeansRemove, mergeObjects);
     TRI_FreeJson(shaper->memoryZone(), old);
 
     if (patchedJson == nullptr) {
@@ -1544,12 +1559,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-
     // do not acquire an extra lock
-    res = trx.updateDocument(key, &mptr, patchedJson, policy, waitForSync, revision, &rid);
+    res = trx.updateDocument(key, &mptr, patchedJson, policy, waitForSync,
+                             revision, &rid);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
-  }
-  else {
+  } else {
     // replacing an existing document, using a lock
 
     if (ServerState::instance()->isDBServer()) {
@@ -1563,26 +1577,34 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       res = trx.read(&oldDocument, key);
       if (res != TRI_ERROR_NO_ERROR) {
         trx.abort();
-        generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
+        generateTransactionError(collectionName, res,
+                                 (TRI_voc_key_t)key.c_str(), rid);
         return false;
       }
 
       if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
         trx.abort();
-        generateTransactionError(collectionName, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
+        generateTransactionError(collectionName,
+                                 TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                 (TRI_voc_key_t)key.c_str(), rid);
         return false;
       }
 
       TRI_shaped_json_t shapedJson;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
+      TRI_EXTRACT_SHAPED_JSON_MARKER(
+          shapedJson, oldDocument.getDataPtr());  // PROTECTED by trx here
       TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
-      std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
-      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(), false)) {
+      std::unique_ptr<TRI_json_t> json(
+          triagens::basics::VelocyPackHelper::velocyPackToJson(body));
+      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(),
+                           false)) {
         TRI_FreeJson(shaper->memoryZone(), old);
 
         trx.abort();
-        generateTransactionError(collectionName, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+        generateTransactionError(
+            collectionName,
+            TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
 
         return false;
       }
@@ -1592,8 +1614,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       }
     }
 
-    std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
-    res = trx.updateDocument(key, &mptr, json.get(), policy, waitForSync, revision, &rid);
+    std::unique_ptr<TRI_json_t> json(
+        triagens::basics::VelocyPackHelper::velocyPackToJson(body));
+    res = trx.updateDocument(key, &mptr, json.get(), policy, waitForSync,
+                             revision, &rid);
   }
 
   res = trx.finish(res);
@@ -1603,7 +1627,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
+    generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
+                             rid);
 
     return false;
   }
@@ -1617,24 +1642,20 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// @brief modifies a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::modifyDocumentCoordinator (
-                              string const& collname,
-                              string const& key,
-                              TRI_voc_rid_t const rev,
-                              TRI_doc_update_policy_e policy,
-                              bool waitForSync,
-                              bool isPatch,
-                              VPackSlice const& document) {
+bool RestDocumentHandler::modifyDocumentCoordinator(
+    string const& collname, string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
+    VPackSlice const& document) {
   string const& dbname = _request->databaseName();
-  std::unique_ptr<std::map<std::string, std::string>> headers
-      (new std::map<std::string, std::string>
-         (triagens::arango::getForwardableRequestHeaders(_request)));
+  std::unique_ptr<std::map<std::string, std::string>> headers(
+      new std::map<std::string, std::string>(
+          triagens::arango::getForwardableRequestHeaders(_request)));
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> resultHeaders;
   string resultBody;
 
   bool keepNull = true;
-  if (! strcmp(_request->value("keepNull"), "false")) {
+  if (!strcmp(_request->value("keepNull"), "false")) {
     keepNull = false;
   }
   bool mergeObjects = true;
@@ -1643,8 +1664,8 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
   }
 
   int error = triagens::arango::modifyDocumentOnCoordinator(
-            dbname, collname, key, rev, policy, waitForSync, isPatch,
-            keepNull, mergeObjects, document, headers, responseCode, resultHeaders, resultBody);
+      dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
+      mergeObjects, document, headers, responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);
@@ -1653,7 +1674,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
@@ -1693,8 +1714,9 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the removed document, *_key* contains the key which 
-/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// *document-handle* of the removed document, *_key* contains the key which
+/// uniquely identifies a document in a given collection, and the attribute
+/// *_rev*
 /// contains the new document revision.
 ///
 /// If the *waitForSync* parameter is not specified or set to
@@ -1784,12 +1806,11 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::deleteDocument () {
+bool RestDocumentHandler::deleteDocument() {
   vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/document/<document-handle>");
     return false;
   }
@@ -1800,10 +1821,10 @@ bool RestDocumentHandler::deleteDocument () {
 
   // extract the revision
   bool isValidRevision;
-  TRI_voc_rid_t const revision = extractRevision("if-match", "rev", isValidRevision);
-  if (! isValidRevision) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+  TRI_voc_rid_t const revision =
+      extractRevision("if-match", "rev", isValidRevision);
+  if (!isValidRevision) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
@@ -1813,8 +1834,7 @@ bool RestDocumentHandler::deleteDocument () {
   bool const waitForSync = extractWaitForSync();
 
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "policy must be 'error' or 'last'");
     return false;
   }
@@ -1824,7 +1844,8 @@ bool RestDocumentHandler::deleteDocument () {
                                      waitForSync);
   }
 
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, collection);
+  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1849,8 +1870,7 @@ bool RestDocumentHandler::deleteDocument () {
 
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
-  }
-  else {
+  } else {
     trx.abort();
   }
 
@@ -1859,11 +1879,12 @@ bool RestDocumentHandler::deleteDocument () {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
+    generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
+                             rid);
     return false;
   }
 
-  generateDeleted(trx, cid, (TRI_voc_key_t) key.c_str(), rid);
+  generateDeleted(trx, cid, (TRI_voc_key_t)key.c_str(), rid);
 
   return true;
 }
@@ -1872,23 +1893,20 @@ bool RestDocumentHandler::deleteDocument () {
 /// @brief deletes a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::deleteDocumentCoordinator (
-                              string const& collname,
-                              string const& key,
-                              TRI_voc_rid_t const rev,
-                              TRI_doc_update_policy_e policy,
-                              bool waitForSync) {
+bool RestDocumentHandler::deleteDocumentCoordinator(
+    string const& collname, string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync) {
   string const& dbname = _request->databaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  std::unique_ptr<std::map<std::string, std::string>> headers 
-      (new std::map<std::string, std::string>
-           (triagens::arango::getForwardableRequestHeaders(_request)));
+  std::unique_ptr<std::map<std::string, std::string>> headers(
+      new std::map<std::string, std::string>(
+          triagens::arango::getForwardableRequestHeaders(_request)));
   map<string, string> resultHeaders;
   string resultBody;
 
   int error = triagens::arango::deleteDocumentOnCoordinator(
-            dbname, collname, key, rev, policy, waitForSync, headers,
-            responseCode, resultHeaders, resultBody);
+      dbname, collname, key, rev, policy, waitForSync, headers, responseCode,
+      resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);
@@ -1896,17 +1914,10 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
   }
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

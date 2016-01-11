@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple document batch request handler
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestSimpleHandler.h"
@@ -46,69 +40,67 @@
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestSimpleHandler::RestSimpleHandler (HttpRequest* request,
-                                      std::pair<triagens::arango::ApplicationV8*, triagens::aql::QueryRegistry*>* pair) 
-  : RestVocbaseBaseHandler(request),
-    _applicationV8(pair->first),
-    _queryRegistry(pair->second),
-    _queryLock(),
-    _query(nullptr),
-    _queryKilled(false) {
+RestSimpleHandler::RestSimpleHandler(
+    HttpRequest* request, std::pair<triagens::arango::ApplicationV8*,
+                                    triagens::aql::QueryRegistry*>* pair)
+    : RestVocbaseBaseHandler(request),
+      _applicationV8(pair->first),
+      _queryRegistry(pair->second),
+      _queryLock(),
+      _query(nullptr),
+      _queryKilled(false) {}
 
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestSimpleHandler::execute () {
+HttpHandler::status_t RestSimpleHandler::execute() {
   // extract the request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
   if (type == HttpRequest::HTTP_REQUEST_PUT) {
     bool parsingSuccess = true;
     VPackOptions options;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parsingSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody =
+        parseVelocyPackBody(&options, parsingSuccess);
 
-    if (! parsingSuccess) {
+    if (!parsingSuccess) {
       return status_t(HANDLER_DONE);
     }
 
     VPackSlice body = parsedBody.get()->slice();
 
-    if (! body.isObject()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting JSON object body");
+    if (!body.isObject()) {
+      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+                    "expecting JSON object body");
       return status_t(HANDLER_DONE);
     }
-    
+
     char const* prefix = _request->requestPath();
 
-    if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH.c_str()) == 0) {
+    if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH.c_str()) ==
+        0) {
       removeByKeys(body);
-    }
-    else if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH.c_str()) == 0) {
+    } else if (strcmp(prefix,
+                      RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH.c_str()) ==
+               0) {
       lookupByKeys(body);
-    }
-    else {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "unsupported value for <operation>");
+    } else {
+      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+                    "unsupported value for <operation>");
     }
 
     return status_t(HANDLER_DONE);
   }
 
-  generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED); 
+  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
 
@@ -116,19 +108,14 @@ HttpHandler::status_t RestSimpleHandler::execute () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestSimpleHandler::cancel () {
-  return cancelQuery();
-}
+bool RestSimpleHandler::cancel() { return cancelQuery(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::registerQuery (triagens::aql::Query* query) {
+void RestSimpleHandler::registerQuery(triagens::aql::Query* query) {
   MUTEX_LOCKER(_queryLock);
 
   TRI_ASSERT(_query == nullptr);
@@ -139,7 +126,7 @@ void RestSimpleHandler::registerQuery (triagens::aql::Query* query) {
 /// @brief unregister the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::unregisterQuery () {
+void RestSimpleHandler::unregisterQuery() {
   MUTEX_LOCKER(_queryLock);
 
   _query = nullptr;
@@ -149,7 +136,7 @@ void RestSimpleHandler::unregisterQuery () {
 /// @brief cancel the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestSimpleHandler::cancelQuery () {
+bool RestSimpleHandler::cancelQuery() {
   MUTEX_LOCKER(_queryLock);
 
   if (_query != nullptr) {
@@ -165,7 +152,7 @@ bool RestSimpleHandler::cancelQuery () {
 /// @brief whether or not the query was canceled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestSimpleHandler::wasCanceled () {
+bool RestSimpleHandler::wasCanceled() {
   MUTEX_LOCKER(_queryLock);
   return _queryKilled;
 }
@@ -194,19 +181,21 @@ bool RestSimpleHandler::wasCanceled () {
 /// Looks up the documents in the specified collection using the array of keys
 /// provided, and removes all documents from the collection whose keys are
 /// contained in the *keys* array. Keys for which no document can be found in
-/// the underlying collection are ignored, and no exception will be thrown for 
+/// the underlying collection are ignored, and no exception will be thrown for
 /// them.
 ///
-/// The body of the response contains a JSON object with information how many 
+/// The body of the response contains a JSON object with information how many
 /// documents were removed (and how many were not). The *removed* attribute will
-/// contain the number of actually removed documents. The *ignored* attribute 
-/// will contain the number of keys in the request for which no matching document
+/// contain the number of actually removed documents. The *ignored* attribute
+/// will contain the number of keys in the request for which no matching
+/// document
 /// could be found.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the operation was carried out successfully. The number of removed
+/// is returned if the operation was carried out successfully. The number of
+/// removed
 /// documents may still be 0 in this case if none of the specified document keys
 /// were found in the collection.
 ///
@@ -215,7 +204,8 @@ bool RestSimpleHandler::wasCanceled () {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{405}
-/// is returned if the operation was called with a different HTTP METHOD than PUT.
+/// is returned if the operation was called with a different HTTP METHOD than
+/// PUT.
 ///
 /// @EXAMPLES
 ///
@@ -261,22 +251,24 @@ bool RestSimpleHandler::wasCanceled () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
+void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
-  try { 
+  try {
     std::string collectionName;
     {
       VPackSlice const value = slice.get("collection");
 
-      if (! value.isString()) {
-        generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
+      if (!value.isString()) {
+        generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+                      "expecting string for <collection>");
         return;
       }
-    
+
       collectionName = value.copyString();
 
-      if (! collectionName.empty()) {
-        auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
+      if (!collectionName.empty()) {
+        auto const* col =
+            TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
 
         if (col != nullptr && collectionName.compare(col->_name) != 0) {
           // user has probably passed in a numeric collection id.
@@ -288,11 +280,12 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
 
     VPackSlice const keys = slice.get("keys");
 
-    if (! keys.isArray()) { 
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting array for <keys>");
+    if (!keys.isArray()) {
+      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+                    "expecting array for <keys>");
       return;
     }
-    
+
     bool waitForSync = false;
     {
       VPackSlice const value = slice.get("options");
@@ -311,22 +304,20 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
     bindVars.close();
     VPackSlice varsSlice = bindVars.slice();
 
-    std::string aql("FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: true, waitForSync: ");
+    std::string aql(
+        "FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: "
+        "true, waitForSync: ");
     aql.append(waitForSync ? "true" : "false");
     aql.append(" }");
-   
-    triagens::aql::Query query(_applicationV8, 
-                               false, 
-                               _vocbase, 
-                               aql.c_str(),
-                               aql.size(),
-                               triagens::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
-                               nullptr,
-                               triagens::aql::PART_MAIN);
- 
-    registerQuery(&query); 
+
+    triagens::aql::Query query(
+        _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
+        triagens::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
+        nullptr, triagens::aql::PART_MAIN);
+
+    registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
-    unregisterQuery(); 
+    unregisterQuery();
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -337,15 +328,15 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
     }
 
-    { 
-      _response = createResponse(HttpResponse::OK);
+    {
+      createResponse(HttpResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
       size_t ignored = 0;
       size_t removed = 0;
       VPackSlice stats = queryResult.stats.slice();
 
-      if (! stats.isNone()) {
+      if (!stats.isNone()) {
         TRI_ASSERT(stats.isObject());
         VPackSlice found = stats.get("writesIgnored");
         if (found.isNumber()) {
@@ -367,17 +358,16 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
       result.close();
       VPackSlice s = result.slice();
 
-      triagens::basics::VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-      VPackDumper dumper(&buffer); 
+      triagens::basics::VPackStringBufferAdapter buffer(
+          _response->body().stringBuffer());
+      VPackDumper dumper(&buffer);
       dumper.dump(s);
     }
-  }  
-  catch (triagens::basics::Exception const& ex) {
-    unregisterQuery(); 
+  } catch (triagens::basics::Exception const& ex) {
+    unregisterQuery();
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
-  }
-  catch (...) {
-    unregisterQuery(); 
+  } catch (...) {
+    unregisterQuery();
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
@@ -397,25 +387,29 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
 /// @RESTDESCRIPTION
 /// Looks up the documents in the specified collection using the array of keys
 /// provided. All documents for which a matching key was specified in the *keys*
-/// array and that exist in the collection will be returned. 
-/// Keys for which no document can be found in the underlying collection are ignored, 
+/// array and that exist in the collection will be returned.
+/// Keys for which no document can be found in the underlying collection are
+/// ignored,
 /// and no exception will be thrown for them.
 ///
-/// The body of the response contains a JSON object with a *documents* attribute. The
-/// *documents* attribute is an array containing the matching documents. The order in
+/// The body of the response contains a JSON object with a *documents*
+/// attribute. The
+/// *documents* attribute is an array containing the matching documents. The
+/// order in
 /// which matching documents are present in the result array is unspecified.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the operation was carried out successfully. 
+/// is returned if the operation was carried out successfully.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection was not found.
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{405}
-/// is returned if the operation was called with a different HTTP METHOD than PUT.
+/// is returned if the operation was called with a different HTTP METHOD than
+/// PUT.
 ///
 /// @EXAMPLES
 ///
@@ -465,19 +459,21 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
+void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   try {
     std::string collectionName;
-    { 
+    {
       VPackSlice const value = slice.get("collection");
-      if (! value.isString()) {
-        generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
+      if (!value.isString()) {
+        generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+                      "expecting string for <collection>");
         return;
       }
       collectionName = value.copyString();
 
-      if (! collectionName.empty()) {
-        auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
+      if (!collectionName.empty()) {
+        auto const* col =
+            TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
 
         if (col != nullptr && collectionName.compare(col->_name) != 0) {
           // user has probably passed in a numeric collection id.
@@ -489,35 +485,35 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
 
     VPackSlice const keys = slice.get("keys");
 
-    if (! keys.isArray()) { 
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting array for <keys>");
+    if (!keys.isArray()) {
+      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+                    "expecting array for <keys>");
       return;
     }
 
     VPackBuilder bindVars;
     bindVars.add(VPackValue(VPackValueType::Object));
     bindVars.add("@collection", VPackValue(collectionName));
-    VPackBuilder strippedBuilder = triagens::aql::BindParameters::StripCollectionNames(keys, collectionName.c_str());
+    VPackBuilder strippedBuilder =
+        triagens::aql::BindParameters::StripCollectionNames(
+            keys, collectionName.c_str());
     VPackSlice stripped = strippedBuilder.slice();
 
     bindVars.add("keys", stripped);
     bindVars.close();
     VPackSlice varsSlice = bindVars.slice();
 
-    std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
-    
-    triagens::aql::Query query(_applicationV8, 
-                               false, 
-                               _vocbase, 
-                               aql.c_str(),
-                               aql.size(),
-                               triagens::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
-                               nullptr,
-                               triagens::aql::PART_MAIN);
- 
-    registerQuery(&query); 
+    std::string const aql(
+        "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
+
+    triagens::aql::Query query(
+        _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
+        triagens::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
+        nullptr, triagens::aql::PART_MAIN);
+
+    registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
-    unregisterQuery(); 
+    unregisterQuery();
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -527,14 +523,14 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
 
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
     }
-      
-    size_t resultSize = 10; 
+
+    size_t resultSize = 10;
     if (TRI_IsArrayJson(queryResult.json)) {
       resultSize = TRI_LengthArrayJson(queryResult.json);
     }
 
-    { 
-      _response = createResponse(HttpResponse::OK);
+    {
+      createResponse(HttpResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
       triagens::basics::Json result(triagens::basics::Json::Object, 3);
@@ -546,29 +542,30 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
         // Should not be documented
         VPackSlice const postFilter = slice.get("filter");
         if (postFilter.isArray()) {
-          std::vector<triagens::arango::traverser::TraverserExpression*> expressions;
-          triagens::basics::ScopeGuard guard{
-            []() -> void { },
-            [&expressions]() -> void {
-              for (auto& e : expressions) {
-                delete e;
-              }
-            }
-          };
+          std::vector<triagens::arango::traverser::TraverserExpression*>
+              expressions;
+          triagens::basics::ScopeGuard guard{[]() -> void {},
+                                             [&expressions]() -> void {
+                                               for (auto& e : expressions) {
+                                                 delete e;
+                                               }
+                                             }};
 
           VPackValueLength length = postFilter.length();
-          
+
           expressions.reserve(length);
 
           for (auto const& it : VPackArrayIterator(postFilter)) {
             if (it.isObject()) {
-              auto expression = std::make_unique<traverser::TraverserExpression>(it);
+              auto expression =
+                  std::make_unique<traverser::TraverserExpression>(it);
               expressions.emplace_back(expression.get());
               expression.release();
             }
           }
-          
-          triagens::basics::Json filteredDocuments(triagens::basics::Json::Array, n);
+
+          triagens::basics::Json filteredDocuments(
+              triagens::basics::Json::Array, n);
           triagens::basics::Json filteredIds(triagens::basics::Json::Array);
 
           for (size_t i = 0; i < n; ++i) {
@@ -576,14 +573,15 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
             if (tmp != nullptr) {
               bool add = true;
               for (auto& e : expressions) {
-                if (! e->isEdgeAccess && ! e->matchesCheck(tmp)) {
+                if (!e->isEdgeAccess && !e->matchesCheck(tmp)) {
                   add = false;
                   try {
-                    std::string _id = triagens::basics::JsonHelper::checkAndGetStringValue(tmp, "_id");
+                    std::string _id =
+                        triagens::basics::JsonHelper::checkAndGetStringValue(
+                            tmp, "_id");
                     triagens::basics::Json tmp(_id);
                     filteredIds.add(tmp.steal());
-                  }
-                  catch (...) {
+                  } catch (...) {
                     // This should never occur.
                   }
                   break;
@@ -594,22 +592,25 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
               }
             }
           }
-          
+
           result.set("documents", filteredDocuments);
           result.set("filtered", filteredIds);
-        }
-        else {
-          result.set("documents", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
+        } else {
+          result.set("documents", triagens::basics::Json(
+                                      TRI_UNKNOWN_MEM_ZONE, queryResult.json,
+                                      triagens::basics::Json::AUTOFREE));
           queryResult.json = nullptr;
         }
-      }
-      else {
-        result.set("documents", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
+      } else {
+        result.set("documents", triagens::basics::Json(
+                                    TRI_UNKNOWN_MEM_ZONE, queryResult.json,
+                                    triagens::basics::Json::AUTOFREE));
         queryResult.json = nullptr;
       }
-      
+
       result.set("error", triagens::basics::Json(false));
-      result.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
+      result.set("code", triagens::basics::Json(
+                             static_cast<double>(_response->responseCode())));
 
       // reserve 48 bytes per result document by default
       int res = _response->body().reserve(48 * resultSize);
@@ -617,29 +618,19 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
-       
+
       result.dump(_response->body());
     }
-  }  
-  catch (triagens::basics::Exception const& ex) {
-    unregisterQuery(); 
+  } catch (triagens::basics::Exception const& ex) {
+    unregisterQuery();
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
-  }
-  catch (std::exception const& ex) {
-    unregisterQuery(); 
+  } catch (std::exception const& ex) {
+    unregisterQuery();
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  }
-  catch (...) {
-    unregisterQuery(); 
+  } catch (...) {
+    unregisterQuery();
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

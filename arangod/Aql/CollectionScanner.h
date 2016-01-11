@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, collection scanners
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_COLLECTION_SCANNER_H
-#define ARANGODB_AQL_COLLECTION_SCANNER_H 1
+#ifndef ARANGOD_AQL_COLLECTION_SCANNER_H
+#define ARANGOD_AQL_COLLECTION_SCANNER_H 1
 
 #include "Basics/Common.h"
 #include "Utils/AqlTransaction.h"
@@ -37,101 +31,67 @@
 #include "VocBase/vocbase.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          struct CollectionScanner
-// -----------------------------------------------------------------------------
 
-    struct CollectionScanner {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+struct CollectionScanner {
   
-      CollectionScanner (triagens::arango::AqlTransaction*,
-                         TRI_transaction_collection_t*); 
+  CollectionScanner(triagens::arango::AqlTransaction*,
+                    TRI_transaction_collection_t*);
+
+  virtual ~CollectionScanner();
+
   
-      virtual ~CollectionScanner ();
+  virtual int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) = 0;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  virtual void reset() = 0;
 
-      virtual int scan (std::vector<TRI_doc_mptr_copy_t>&, size_t) = 0;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief forwards the cursor n elements. Does not read the data.
+  ///        Will at most forward to the last element.
+  ///        In the second parameter we add how many elements are
+  ///        really skipped
+  ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void reset () = 0;
+  virtual int forward(size_t, size_t&) = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief forwards the cursor n elements. Does not read the data.
-///        Will at most forward to the last element.
-///        In the second parameter we add how many elements are
-///        really skipped
-////////////////////////////////////////////////////////////////////////////////
+  triagens::arango::AqlTransaction* trx;
+  TRI_transaction_collection_t* trxCollection;
+  uint64_t totalCount;
+  triagens::basics::BucketPosition position;
+};
 
-      virtual int forward (size_t, size_t&) = 0;
- 
-      triagens::arango::AqlTransaction* trx;
-      TRI_transaction_collection_t* trxCollection;
-      uint64_t totalCount;
-      triagens::basics::BucketPosition position;
-    };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    struct RandomCollectionScanner
-// -----------------------------------------------------------------------------
-
-    struct RandomCollectionScanner final : public CollectionScanner {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+struct RandomCollectionScanner final : public CollectionScanner {
   
-      RandomCollectionScanner (triagens::arango::AqlTransaction*,
-                               TRI_transaction_collection_t*);
+  RandomCollectionScanner(triagens::arango::AqlTransaction*,
+                          TRI_transaction_collection_t*);
 
-      int scan (std::vector<TRI_doc_mptr_copy_t>&,
-                size_t) override;
+  int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) override;
 
-      void reset () override;
+  void reset() override;
 
-      int forward (size_t, size_t&) override;
+  int forward(size_t, size_t&) override;
 
-      triagens::basics::BucketPosition initialPosition;
-      uint64_t step;
-    };
+  triagens::basics::BucketPosition initialPosition;
+  uint64_t step;
+};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    struct LinearCollectionScanner
-// -----------------------------------------------------------------------------
 
-    struct LinearCollectionScanner final : public CollectionScanner {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+struct LinearCollectionScanner final : public CollectionScanner {
   
-      LinearCollectionScanner (triagens::arango::AqlTransaction*,
-                               TRI_transaction_collection_t*); 
+  LinearCollectionScanner(triagens::arango::AqlTransaction*,
+                          TRI_transaction_collection_t*);
 
-      int scan (std::vector<TRI_doc_mptr_copy_t>&,
-                size_t) override;
-      
-      void reset () override;
+  int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) override;
 
-      int forward (size_t, size_t&) override;
-    };
+  void reset() override;
 
-  }
+  int forward(size_t, size_t&) override;
+};
+}
 }
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

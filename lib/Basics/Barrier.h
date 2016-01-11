@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief barrier for synchronization
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,126 +19,85 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_BARRIER_H
-#define ARANGODB_BASICS_BARRIER_H 1
+#ifndef LIB_BASICS_BARRIER_H
+#define LIB_BASICS_BARRIER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           Barrier
-// -----------------------------------------------------------------------------
 
-    class Barrier {
+class Barrier {
+  
+ public:
+  Barrier(Barrier const&) = delete;
+  Barrier& operator=(Barrier const&) = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  explicit Barrier(size_t);
 
-      public:
+  ~Barrier();
 
-        Barrier (Barrier const&) = delete;
-        Barrier& operator= (Barrier const&) = delete;
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief join a single task. reduces the number of waiting tasks and wakes
+  /// up the barrier's synchronize() routine
+  ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Barrier (size_t);
+  void join();
 
-        ~Barrier ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief wait for all tasks to join
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  void synchronize();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief join a single task. reduces the number of waiting tasks and wakes
-/// up the barrier's synchronize() routine
-////////////////////////////////////////////////////////////////////////////////
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief condition variable
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void join ();
+  triagens::basics::ConditionVariable _condition;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for all tasks to join
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief number of non-joined tasks
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void synchronize ();
+  size_t _missing;
+};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
-      private:
+class BarrierTask {
+  
+ public:
+  BarrierTask() = delete;
+  BarrierTask(BarrierTask const&) = delete;
+  BarrierTask& operator=(BarrierTask const&) = delete;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief condition variable
-////////////////////////////////////////////////////////////////////////////////
+  explicit BarrierTask(Barrier* barrier) : _barrier(barrier) {}
 
-        triagens::basics::ConditionVariable _condition;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor. joins the underlying barrier
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of non-joined tasks
-////////////////////////////////////////////////////////////////////////////////
+  ~BarrierTask() { _barrier->join(); }
 
-        size_t _missing;
-    }; 
-    
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       BarrierTask
-// -----------------------------------------------------------------------------
-    
-    class BarrierTask {
+  
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the underlying barrier
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  Barrier* _barrier;
+};
 
-      public:
-        
-        BarrierTask () = delete; 
-        BarrierTask (BarrierTask const&) = delete;
-        BarrierTask& operator= (BarrierTask const&) = delete;
-
-        explicit BarrierTask (Barrier* barrier) 
-          : _barrier(barrier) {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor. joins the underlying barrier
-////////////////////////////////////////////////////////////////////////////////
-
-        ~BarrierTask () {
-          _barrier->join();
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the underlying barrier
-////////////////////////////////////////////////////////////////////////////////
-
-        Barrier* _barrier;
-
-    };
-
-  }   // namespace triagens::basics
-}   // namespace triagens
+}  // namespace triagens::basics
+}  // namespace triagens
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

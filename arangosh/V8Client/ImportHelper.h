@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief import helper
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,12 +20,10 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8CLIENT_IMPORT_HELPER_H
-#define ARANGODB_V8CLIENT_IMPORT_HELPER_H 1
+#ifndef ARANGOSH_V8_CLIENT_IMPORT_HELPER_H
+#define ARANGOSH_V8_CLIENT_IMPORT_HELPER_H 1
 
 #include "Basics/Common.h"
 
@@ -41,10 +35,10 @@
 #endif
 
 namespace triagens {
-  namespace httpclient {
-    class SimpleHttpClient;
-    class SimpleHttpResult;
-  }
+namespace httpclient {
+class SimpleHttpClient;
+class SimpleHttpResult;
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,232 +46,200 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
-  namespace v8client {
+namespace v8client {
 
-    class ImportHelper {
-    public:
+class ImportHelper {
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief type of delimited import
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of delimited import
-////////////////////////////////////////////////////////////////////////////////
+  enum DelimitedImportType { CSV = 0, TSV };
 
-      enum DelimitedImportType {
-        CSV = 0,
-        TSV
-      };
+ private:
+  ImportHelper(ImportHelper const&) = delete;
+  ImportHelper& operator=(ImportHelper const&) = delete;
 
-    private:
-      ImportHelper (ImportHelper const&) = delete;
-      ImportHelper& operator= (ImportHelper const&) = delete;
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-    public:
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  ImportHelper(httpclient::SimpleHttpClient* client, uint64_t maxUploadSize);
 
-      ImportHelper (httpclient::SimpleHttpClient* client, uint64_t maxUploadSize);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+  ~ImportHelper();
 
-      ~ImportHelper ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief imports a delimited file
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief imports a delimited file
-////////////////////////////////////////////////////////////////////////////////
+  bool importDelimited(std::string const& collectionName,
+                       std::string const& fileName,
+                       DelimitedImportType typeImport);
 
-      bool importDelimited (std::string const& collectionName,
-                            std::string const& fileName,
-                            DelimitedImportType typeImport);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief imports a file with JSON objects
+  /// each line must contain a complete JSON object
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief imports a file with JSON objects
-/// each line must contain a complete JSON object
-////////////////////////////////////////////////////////////////////////////////
+  bool importJson(std::string const& collectionName,
+                  std::string const& fileName);
 
-      bool importJson (std::string const& collectionName, std::string const& fileName);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the action to carry out on duplicate _key
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the action to carry out on duplicate _key
-////////////////////////////////////////////////////////////////////////////////
-
-      void setOnDuplicateAction (std::string const& action) {
-        _onDuplicateAction = action;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the quote character
-///
-/// this is a string because the quote might also be empty if not used
-////////////////////////////////////////////////////////////////////////////////
-
-      void setQuote (std::string quote) {
-        _quote = quote;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not backslashes can be used for escaping quotes
-////////////////////////////////////////////////////////////////////////////////
-
-      void useBackslash (bool value) {
-        _useBackslash = value;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the separator
-////////////////////////////////////////////////////////////////////////////////
-
-      void setSeparator (std::string separator) {
-        _separator = separator;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the createCollection flag
-///
-/// @param bool value                create the collection if it does not exist
-////////////////////////////////////////////////////////////////////////////////
-
-      void setCreateCollection (bool value) {
-        _createCollection = value;
-      }
-
-      void setCreateCollectionType (std::string const& value) {
-        _createCollectionType = value;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not to overwrite existing data in the collection
-////////////////////////////////////////////////////////////////////////////////
-
-      void setOverwrite (bool value) {
-        _overwrite = value;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the progress indicator
-////////////////////////////////////////////////////////////////////////////////
-
-      void setProgress (bool value) {
-        _progress = value;
-      }
-    
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of lines read (meaningful for CSV only)
-////////////////////////////////////////////////////////////////////////////////
-
-      size_t getReadLines () {
-        return _numberLines;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of documents imported
-////////////////////////////////////////////////////////////////////////////////
-
-      size_t getNumberCreated () {
-        return _numberCreated;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of errors
-////////////////////////////////////////////////////////////////////////////////
-
-      size_t getNumberErrors () {
-        return _numberErrors;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of updated documents
-////////////////////////////////////////////////////////////////////////////////
-
-      size_t getNumberUpdated () {
-        return _numberUpdated;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of ignored documents
-////////////////////////////////////////////////////////////////////////////////
-
-      size_t getNumberIgnored () {
-        return _numberIgnored;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the row counter
-////////////////////////////////////////////////////////////////////////////////
-
-      void incRowsRead () {
-        ++_rowsRead;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the error message
-///
-/// @return string       get the error message
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string getErrorMessage () {
-        return _errorMessage;
-      }
-
-    private:
-      static void ProcessCsvBegin (TRI_csv_parser_t*, size_t);
-      static void ProcessCsvAdd (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
-      static void ProcessCsvEnd (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
-
-      void reportProgress (int64_t, int64_t, double&);
-
-      std::string getCollectionUrlPart ();
-      void beginLine (size_t row);
-      void addField (char const*, size_t, size_t row, size_t column, bool escaped);
-      void addLastField (char const*, size_t, size_t row, size_t column, bool escaped);
-
-      void sendCsvBuffer ();
-      void sendJsonBuffer (char const* str, size_t len, bool isObject);
-      void handleResult (httpclient::SimpleHttpResult* result);
-
-    private:
-      httpclient::SimpleHttpClient* _client;
-      uint64_t _maxUploadSize;
-
-      std::string _separator;
-      std::string _quote;
-      std::string _createCollectionType;
-      bool _useBackslash;
-      bool _createCollection;
-      bool _overwrite;
-      bool _progress;
-      bool _firstChunk;
-
-      size_t _numberLines;
-      size_t _numberCreated;
-      size_t _numberErrors;
-      size_t _numberUpdated;
-      size_t _numberIgnored;
-
-      size_t _rowsRead;
-      size_t _rowOffset;
-
-      std::string _onDuplicateAction;
-      std::string _collectionName;
-      triagens::basics::StringBuffer _lineBuffer;
-      triagens::basics::StringBuffer _outputBuffer;
-      std::string _firstLine;
-
-      bool _hasError;
-      std::string _errorMessage;
-
-      static const double ProgressStep;
-    };
+  void setOnDuplicateAction(std::string const& action) {
+    _onDuplicateAction = action;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the quote character
+  ///
+  /// this is a string because the quote might also be empty if not used
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setQuote(std::string quote) { _quote = quote; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not backslashes can be used for escaping quotes
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void useBackslash(bool value) { _useBackslash = value; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the separator
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setSeparator(std::string separator) { _separator = separator; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the createCollection flag
+  ///
+  /// @param bool value                create the collection if it does not
+  /// exist
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setCreateCollection(bool value) { _createCollection = value; }
+
+  void setCreateCollectionType(std::string const& value) {
+    _createCollectionType = value;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not to overwrite existing data in the collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setOverwrite(bool value) { _overwrite = value; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set the progress indicator
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setProgress(bool value) { _progress = value; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the number of lines read (meaningful for CSV only)
+  ////////////////////////////////////////////////////////////////////////////////
+
+  size_t getReadLines() { return _numberLines; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the number of documents imported
+  ////////////////////////////////////////////////////////////////////////////////
+
+  size_t getNumberCreated() { return _numberCreated; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the number of errors
+  ////////////////////////////////////////////////////////////////////////////////
+
+  size_t getNumberErrors() { return _numberErrors; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the number of updated documents
+  ////////////////////////////////////////////////////////////////////////////////
+
+  size_t getNumberUpdated() { return _numberUpdated; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the number of ignored documents
+  ////////////////////////////////////////////////////////////////////////////////
+
+  size_t getNumberIgnored() { return _numberIgnored; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief increase the row counter
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void incRowsRead() { ++_rowsRead; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the error message
+  ///
+  /// @return string       get the error message
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::string getErrorMessage() { return _errorMessage; }
+
+ private:
+  static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
+  static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t,
+                            size_t, bool);
+  static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t,
+                            size_t, bool);
+
+  void reportProgress(int64_t, int64_t, double&);
+
+  std::string getCollectionUrlPart();
+  void beginLine(size_t row);
+  void addField(char const*, size_t, size_t row, size_t column, bool escaped);
+  void addLastField(char const*, size_t, size_t row, size_t column,
+                    bool escaped);
+
+  void sendCsvBuffer();
+  void sendJsonBuffer(char const* str, size_t len, bool isObject);
+  void handleResult(httpclient::SimpleHttpResult* result);
+
+ private:
+  httpclient::SimpleHttpClient* _client;
+  uint64_t _maxUploadSize;
+
+  std::string _separator;
+  std::string _quote;
+  std::string _createCollectionType;
+  bool _useBackslash;
+  bool _createCollection;
+  bool _overwrite;
+  bool _progress;
+  bool _firstChunk;
+
+  size_t _numberLines;
+  size_t _numberCreated;
+  size_t _numberErrors;
+  size_t _numberUpdated;
+  size_t _numberIgnored;
+
+  size_t _rowsRead;
+  size_t _rowOffset;
+
+  std::string _onDuplicateAction;
+  std::string _collectionName;
+  triagens::basics::StringBuffer _lineBuffer;
+  triagens::basics::StringBuffer _outputBuffer;
+  std::string _firstLine;
+
+  bool _hasError;
+  std::string _errorMessage;
+
+  static const double ProgressStep;
+};
+}
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

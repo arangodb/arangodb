@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Mutex Locker
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MutexLocker.h"
@@ -36,9 +30,6 @@
 
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
@@ -48,9 +39,8 @@ using namespace triagens::basics;
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)
-  : _mutex(mutex), _file(file), _line(line), _time(0.0) {
-  
+MutexLocker::MutexLocker(Mutex* mutex, char const* file, int line)
+    : _mutex(mutex), _file(file), _line(line), _time(0.0) {
   double t = TRI_microtime();
   _mutex->lock();
   _time = TRI_microtime() - t;
@@ -58,11 +48,7 @@ MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)
 
 #else
 
-MutexLocker::MutexLocker (Mutex* mutex)
-  : _mutex(mutex) {
-  
-  _mutex->lock();
-}
+MutexLocker::MutexLocker(Mutex* mutex) : _mutex(mutex) { _mutex->lock(); }
 
 #endif
 
@@ -70,21 +56,14 @@ MutexLocker::MutexLocker (Mutex* mutex)
 /// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-MutexLocker::~MutexLocker () {
+MutexLocker::~MutexLocker() {
   _mutex->unlock();
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
     LOG_WARNING("MutexLocker %s:%d took %f s", _file, _line, _time);
   }
-#endif  
+#endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief velocypack helper functions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/VelocyPackHelper.h"
@@ -31,21 +27,14 @@
 
 using VelocyPackHelper = triagens::basics::VelocyPackHelper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class VelocyPackHelper
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default if it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VelocyPackHelper::getBooleanValue (VPackSlice const& slice,
-                                        char const* name,
-                                        bool defaultValue) {
+bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
+                                       char const* name, bool defaultValue) {
   VPackSlice const& sub = slice.get(name);
 
   if (sub.isBoolean()) {
@@ -57,38 +46,39 @@ bool VelocyPackHelper::getBooleanValue (VPackSlice const& slice,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or throws if <name> does not exist
-/// or it is not a string 
+/// or it is not a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string VelocyPackHelper::checkAndGetStringValue (VPackSlice const& slice,
-                                                      char const* name) {
+std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
+                                                     char const* name) {
   TRI_ASSERT(slice.isObject());
   VPackSlice const sub = slice.get(name);
-  if (! sub.isString()) {
-    std::string msg = "The attribute '" + std::string(name)  
-      + "' was not found or is not a string.";
+  if (!sub.isString()) {
+    std::string msg = "The attribute '" + std::string(name) +
+                      "' was not found or is not a string.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
   return sub.copyString();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a string sub-element, or the default value if it does not exist
-/// or it is not a string 
+/// @brief returns a string sub-element, or the default value if it does not
+/// exist
+/// or it is not a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string VelocyPackHelper::getStringValue (VPackSlice const& slice,
+std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
                                              char const* name,
                                              std::string const& defaultValue) {
   TRI_ASSERT(slice.isObject());
   VPackSlice const sub = slice.get(name);
-  if (! sub.isString()) {
+  if (!sub.isString()) {
     return defaultValue;
   }
   return sub.copyString();
 }
 
-TRI_json_t* VelocyPackHelper::velocyPackToJson (VPackSlice const& slice) {
+TRI_json_t* VelocyPackHelper::velocyPackToJson(VPackSlice const& slice) {
   return JsonHelper::fromString(slice.toJson());
 }
 
@@ -96,18 +86,19 @@ TRI_json_t* VelocyPackHelper::velocyPackToJson (VPackSlice const& slice) {
 /// @brief parses a json file to VelocyPack
 //////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile (std::string const& path) {
+std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
+    std::string const& path) {
   size_t length;
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), &length);
   if (content != nullptr) {
     // The Parser might THROW
     std::shared_ptr<VPackBuilder> b;
     try {
-      auto b = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content), length);
+      auto b = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content),
+                                     length);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, content);
       return b;
-    }
-    catch (...) {
+    } catch (...) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, content);
       throw;
     }
@@ -115,11 +106,4 @@ std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile (std::string 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

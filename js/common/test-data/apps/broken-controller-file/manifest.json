@@ -1,6 +1,9 @@
 {
   "name": "broken-controller-file",
   "version": "0.0.0",
+  "engines": {
+    "arangodb": "^2.8.0"
+  },
   "controllers": {
     "/": "broken-controller.js"
   }

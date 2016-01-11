@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8-vocbase bridge
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,17 +19,14 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__CURSOR_H
-#define ARANGODB_V8SERVER_V8__CURSOR_H 1
+#ifndef ARANGOD_V8_SERVER_V8_VOCCURSOR_H
+#define ARANGOD_V8_SERVER_V8_VOCCURSOR_H 1
 
 #include "Basics/Common.h"
 #include "v8-vocbase.h"
 
-extern void TRI_InitV8cursor (v8::Handle<v8::Context>,
-                              TRI_v8_global_t*);
+extern void TRI_InitV8cursor(v8::Handle<v8::Context>, TRI_v8_global_t*);
 
 #endif
