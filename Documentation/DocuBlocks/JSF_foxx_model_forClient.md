@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_forClient
-///
-/// `FoxxModel#forClient()`
-///
-/// Return a copy of the model which you can send to the client.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`FoxxModel#forClient()`
+
+Return a copy of the model which you can send to the client.
+

@@ -1,13 +1,12 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_repository_count
-/// `FoxxRepository#count()`
-///
-/// Returns the number of entries in this collection.
-///
-/// @EXAMPLES
-///
-/// ```javascript
-/// repository.count();
-/// ```
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+`FoxxRepository#count()`
+
+Returns the number of entries in this collection.
+
+@EXAMPLES
+
+```javascript
+repository.count();
+```
+

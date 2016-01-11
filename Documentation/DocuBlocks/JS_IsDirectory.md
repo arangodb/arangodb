@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JS_IsDirectory
-/// @brief tests if path is a directory
-/// `fs.isDirectory(path)`
-///
-/// Returns true if the *path* points to a directory.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+@brief tests if path is a directory
+`fs.isDirectory(path)`
+
+Returns true if the *path* points to a directory.
+

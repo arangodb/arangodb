@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultPermanentRedirect
-///
-/// `actions.resultPermanentRedirect(req, res, options, headers)`
-///
-/// The function generates a redirect response.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`actions.resultPermanentRedirect(req, res, options, headers)`
+
+The function generates a redirect response.
+

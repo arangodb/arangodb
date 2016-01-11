@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultUnsupported
-///
-/// `actions.resultUnsupported(req, res, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`actions.resultUnsupported(req, res, headers)`
+
+The function generates an error response.
+
