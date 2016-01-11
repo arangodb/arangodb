@@ -115,40 +115,146 @@ people.remove(person);
 
 !SUBSECTION Extend
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_extend
+
+
+
+`FoxxModel#extend(instanceProperties, classProperties)`
+
+Extend the Model prototype to add or overwrite methods.
+The first object contains the properties to be defined on the instance,
+the second object those to be defined on the prototype.
+
 
 !SUBSECTION Initialize
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_initializer
+
+
+
+`new FoxxModel(data)`
+
+If you initialize a model, you can give it initial *data* as an object.
+
+@EXAMPLES
+
+```js
+instance = new Model({
+  a: 1
+});
+```
+
 
 !SUBSECTION Get
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_get
+
+
+
+`FoxxModel#get(name)`
+
+Get the value of an attribute
+
+@EXAMPLES
+
+```js
+instance = new Model({
+  a: 1
+});
+
+instance.get("a");
+```
+
 
 !SUBSECTION Set
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_set
+
+
+
+`FoxxModel#set(name, value)`
+
+Set the value of an attribute or multiple attributes at once
+
+@EXAMPLES
+
+```js
+instance = new Model({
+  a: 1
+});
+
+instance.set("a", 2);
+instance.set({
+  b: 2
+});
+```
+
 
 !SUBSECTION Has
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_has
+
+
+
+`FoxxModel#has(name)`
+
+Returns true if the attribute is set to a non-null or non-undefined value.
+
+@EXAMPLES
+
+```js
+instance = new Model({
+  a: 1
+});
+
+instance.has("a"); //=> true
+instance.has("b"); //=> false
+```
+
 
 !SUBSECTION isValid
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_isvalid
+
+
+
+`model.isValid`
+
+The *isValid* flag indicates whether the model's state is currently valid.
+If the model does not have a schema, it will always be considered valid.
+
 
 !SUBSECTION Errors
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_errors
+
+
+
+`model.errors`
+
+The *errors* property maps the names of any invalid attributes to their
+corresponding validation error.
+
 
 !SUBSECTION Attributes
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_attributes
+
+
+
+`model.attributes`
+
+The *attributes* property is the internal hash containing the model's state.
+
 
 !SUBSECTION forDB
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_forDB
+
+
+
+`FoxxModel#forDB()`
+
+Return a copy of the model which can be saved into ArangoDB
+
 
 !SUBSECTION forClient
 <!-- js/server/modules/@arangodb/foxx/model.js -->
-@startDocuBlock JSF_foxx_model_forClient
+
+
+
+`FoxxModel#forClient()`
+
+Return a copy of the model which you can send to the client.
+
