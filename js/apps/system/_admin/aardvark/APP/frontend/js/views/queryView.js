@@ -1006,9 +1006,6 @@
         self.timer.start();
         this.execPending = false;
 
-        var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
-        $('.queryExecutionTime').text(time);
-
         var warningsFunc = function(data) {
           var warnings = "";
           if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
@@ -1027,6 +1024,10 @@
           warningsFunc(data);
           self.switchTab("result-switch");
           window.progressView.hide();
+
+          var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
+          $('.queryExecutionTime').text(time);
+
           self.deselect(outputEditor);
           $('#downloadQueryResult').show();
 
