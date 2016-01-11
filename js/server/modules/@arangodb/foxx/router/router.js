@@ -140,20 +140,6 @@ module.exports = class Router extends SwaggerContext {
     const root = new Map();
     this._tree = root;
 
-    // middleware always implicitly ends in a wildcard
-    // child routers always explicitly end in wildcards
-    // routes may explicitly end in a wildcard
-    // static names have precedence over params
-    // params have precedence over wildcards
-    // middleware is executed in order of precedence
-    // implicit 404 in middleware does not fail the routing
-    // router.all ONLY affects routes of THAT router (and its children)
-    // * router.all does NOT affect routes of sibling routers *
-
-    // should child routers have precedence over routes?
-    // ideally they should respect each others precedence
-    // and be treated equally
-
     for (let middleware of this._middleware) {
       let node = root;
       for (let token of middleware._pathTokens) {
@@ -186,13 +172,6 @@ module.exports = class Router extends SwaggerContext {
     }
   }
 
-  * _traverse(suffix) {
-    let result = [{router: this, path: [], suffix: suffix}];
-    for (let route of traverse(this._tree, result, suffix, [])) {
-      yield route;
-    }
-  }
-
   _dispatch(rawReq, rawRes, context) {
     let route = resolve(this, rawReq);
 
@@ -200,58 +179,69 @@ module.exports = class Router extends SwaggerContext {
       return false;
     }
 
-    let pathParams = {};
-    let queryParams = _.clone(rawReq.queryParams);
-
     const req = new SyntheticRequest(rawReq, context);
     const res = new SyntheticResponse(rawRes);
 
-    function next(err) {
-      if (err) {
-        throw err;
-      }
-
-      const item = route.shift();
-
-      if (item.router) {
-        pathParams = _.extend(pathParams, item.pathParams);
-        queryParams = _.extend(queryParams, item.queryParams);
-        req.body = item.requestBody || req.body;
-        next();
-        return;
-      }
-
-      let tempPathParams = req.pathParams;
-      let tempQueryParams = req.queryParams;
-      let tempRequestBody = req.body;
-      let tempSuffix = req.suffix;
-      let tempPath = req.path;
-
-      req.suffix = item.suffix.join('/');
-      req.path = '/' + item.path.join('/');
-      req.body = item.requestBody || req.body;
-
-      if (item.endpoint) {
-        req.pathParams = _.extend(pathParams, item.pathParams);
-        req.queryParams = _.extend(queryParams, item.queryParams);
-        item.endpoint._handler(req, res);
-      } else if (item.middleware) {
-        req.pathParams = _.extend(_.clone(pathParams), item.pathParams);
-        req.queryParams = _.extend(_.clone(queryParams), item.queryParams);
-        item.middleware._handler(req, res, next);
-      }
-
-      req.suffix = tempSuffix;
-      req.path = tempPath;
-      req.pathParams = tempPathParams;
-      req.queryParams = tempQueryParams;
-      req.body = tempRequestBody;
-    }
-
-    next();
+    dispatch(route, req, res);
     return true;
   }
+
+  * _traverse(suffix) {
+    let result = [{router: this, path: [], suffix: suffix}];
+    for (let route of traverse(this._tree, result, suffix, [])) {
+      yield route;
+    }
+  }
 };
+
+function dispatch(route, req, res) {
+  let pathParams = {};
+  let queryParams = _.clone(req.queryParams);
+
+  function next(err) {
+    if (err) {
+      throw err;
+    }
+
+    const item = route.shift();
+
+    if (item.router) {
+      pathParams = _.extend(pathParams, item.pathParams);
+      queryParams = _.extend(queryParams, item.queryParams);
+      req.body = item.requestBody || req.body;
+      next();
+      return;
+    }
+
+    let tempPathParams = req.pathParams;
+    let tempQueryParams = req.queryParams;
+    let tempRequestBody = req.body;
+    let tempSuffix = req.suffix;
+    let tempPath = req.path;
+
+    req.suffix = item.suffix.join('/');
+    req.path = '/' + item.path.join('/');
+    req.body = item.requestBody || req.body;
+
+    if (item.endpoint) {
+      req.pathParams = _.extend(pathParams, item.pathParams);
+      req.queryParams = _.extend(queryParams, item.queryParams);
+      item.endpoint._handler(req, res);
+    } else if (item.middleware) {
+      req.pathParams = _.extend(_.clone(pathParams), item.pathParams);
+      req.queryParams = _.extend(_.clone(queryParams), item.queryParams);
+      item.middleware._handler(req, res, next);
+    }
+
+    req.suffix = tempSuffix;
+    req.path = tempPath;
+    req.pathParams = tempPathParams;
+    req.queryParams = tempQueryParams;
+    req.body = tempRequestBody;
+  }
+
+  next();
+}
 
 function applyPathParams(route) {
   for (const item of route) {
