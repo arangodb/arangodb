@@ -309,6 +309,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
   std::unique_ptr<TRI_json_t> json(TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename.c_str(), nullptr));
 
   if (! TRI_IsObjectJson(json.get())) {
+    LOG_WARNING("error loading ENDPOINTS file '%s'", filename.c_str());
     return false;
   }
 
