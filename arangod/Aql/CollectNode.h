@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_COLLECT_NODE_H 1
 
 #include "Basics/Common.h"
+#include "Aql/Aggregator.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
@@ -39,7 +40,6 @@ class ExecutionBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class CollectNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,13 +52,11 @@ class CollectNode : public ExecutionNode {
   friend class SortedCollectBlock;
 
  public:
-
- public:
   CollectNode(
       ExecutionPlan* plan, size_t id, CollectOptions const& options,
       std::vector<std::pair<Variable const*, Variable const*>> const&
-          collectVariables,
-      std::vector<std::pair<Variable const*, Variable const*>> const&
+          groupVariables,
+      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const&
           aggregateVariables,
       Variable const* expressionVariable, Variable const* outVariable,
       std::vector<Variable const*> const& keepVariables,
@@ -66,7 +64,7 @@ class CollectNode : public ExecutionNode {
       bool count, bool isDistinctCommand)
       : ExecutionNode(plan, id),
         _options(options),
-        _groupVariables(collectVariables),
+        _groupVariables(groupVariables),
         _aggregateVariables(aggregateVariables),
         _expressionVariable(expressionVariable),
         _outVariable(outVariable),
@@ -86,9 +84,11 @@ class CollectNode : public ExecutionNode {
       std::unordered_map<VariableId, std::string const> const& variableMap,
       std::vector<std::pair<Variable const*, Variable const*>> const&
           collectVariables,
-      std::vector<std::pair<Variable const*, Variable const*>> const&
+      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const&
           aggregateVariables,
       bool count, bool isDistinctCommand);
+
+  ~CollectNode();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -251,6 +251,9 @@ class CollectNode : public ExecutionNode {
     for (auto const& p : _groupVariables) {
       v.emplace_back(p.first);
     }
+    for (auto const& p : _aggregateVariables) {
+      v.emplace_back(p.first);
+    }
     if (_outVariable != nullptr) {
       v.emplace_back(_outVariable);
     }
@@ -275,7 +278,7 @@ class CollectNode : public ExecutionNode {
   /// @brief input/output variables for the aggregation (out, in)
   //////////////////////////////////////////////////////////////////////////////
   
-  std::vector<std::pair<Variable const*, Variable const*>> _aggregateVariables;
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> _aggregateVariables;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input expression variable (might be null)

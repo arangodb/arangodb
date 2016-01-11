@@ -30,6 +30,8 @@
 #include "Aql/Range.h"
 #include "Aql/types.h"
 
+#include <iostream>
+
 struct TRI_document_collection_t;
 
 namespace triagens {
@@ -92,6 +94,9 @@ class AqlItemBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
+    if (_data.capacity() <= index * _nrRegs + varNr) {
+      std::cout << "CAPACITY: " << _data.capacity() << ", INDEX: " << index << ", NRREGS: " << _nrRegs << ", VARNR: " << varNr << "\n";
+    }
     TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }

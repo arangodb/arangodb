@@ -8,6 +8,7 @@
 
 %{
 #include "Aql/AstNode.h"
+#include "Aql/CollectNode.h"
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
 #include "Basics/conversions.h"
@@ -463,14 +464,16 @@ collect_statement:
             }
             else {
               auto f = static_cast<triagens::aql::Function*>(func->getData());
-              if (f->externalName != "MIN" && f->externalName != "MAX" && f->externalName != "LENGTH") {
-                // aggregate expression must be a call to MIN|MAX|LENGTH
+              if (! Aggregator::isSupported(f->externalName)) {
+                // aggregate expression must be a call to MIN|MAX|LENGTH...
                 isValid = false;
               }
             }
 
             if (! isValid) {
-              parser->registerParseError(TRI_ERROR_QUERY_PARSE, "aggregate expression must be a function call", yylloc.first_line, yylloc.first_column);
+              parser->registerParseError(TRI_ERROR_QUERY_PARSE, 
+                "aggregate expression must be a function call that uses a supported aggregate expression", 
+                yylloc.first_line, yylloc.first_column);
             }
 
             auto v = static_cast<Variable*>(member->getMember(0)->getData());

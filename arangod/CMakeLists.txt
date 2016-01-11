@@ -60,6 +60,7 @@ add_executable(
     Actions/RestActionHandler.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
+    Aql/Aggregator.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlItemBlockManager.cpp
     Aql/AqlValue.cpp
