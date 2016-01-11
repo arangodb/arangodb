@@ -58,10 +58,8 @@
           if (latestModel.get('type') === 'error') {
             time = false;
           }
-          else {
-            $.noty.clearQueue();
-            $.noty.closeAll();
-          }
+          $.noty.clearQueue();
+          $.noty.closeAll();
 
           noty({
             theme: 'relax',
