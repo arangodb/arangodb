@@ -2895,7 +2895,8 @@ div .tile, div .bigtile {
   margin-left: 6px;
   margin-right: 6px;
   position: relative;
-  text-align: center; }
+  text-align: center;
+  z-index: 1; }
   div .tile:hover, div .bigtile:hover {
     cursor: pointer; }
   div .tile .warning-icons, div .bigtile .warning-icons {
@@ -3002,7 +3003,8 @@ div .tile, div .bigtile {
       padding-bottom: 2px;
       padding-left: 3px;
       padding-right: 3px;
-      padding-top: 2px; }
+      padding-top: 2px;
+      z-index: 2; }
       div .tile .iconSet span:hover, div .bigtile .iconSet span:hover {
         background-color: #8aa051;
         color: #fff; }
@@ -5973,6 +5975,12 @@ div.headerBar {
   position: absolute;
   right: 9px;
   top: 6px; }
+
+.dataNotReadyYet {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 100;
+  text-align: center; }
 
 .dashboard-sub-bar {
   background-color: #686766;

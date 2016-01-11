@@ -34,13 +34,7 @@ const exports = {};
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Module "internal"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoError
@@ -76,26 +70,6 @@ exports.ArangoError.prototype.toString = function() {
   return '[ArangoError ' + errorNum + ': ' + errorMessage + ']';
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief SleepAndRequeue
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SleepAndRequeue) {
-  exports.SleepAndRequeue = global.SleepAndRequeue;
-  delete global.SleepAndRequeue;
-
-  exports.SleepAndRequeue.prototype._PRINT = function (context) {
-    context.output += this.toString();
-  };
-
-  exports.SleepAndRequeue.prototype.toString = function() {
-    return '[SleepAndRequeue sleep: ' + this.sleep + ']';
-};
-
-}
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief threadNumber
@@ -237,9 +211,6 @@ if (exports.startupPath === '') {
   exports.startupPath = '.';
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configureEndpoint
@@ -738,9 +709,6 @@ if (global.SYS_IS_IP) {
   delete global.SYS_IS_IP;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unitTests
@@ -758,9 +726,6 @@ exports.setUnitTestsResult = function (value) {
   global.SYS_UNIT_TESTS_RESULT = value;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     Commandline argument handling
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief structured to flat commandline arguments
@@ -899,13 +864,7 @@ exports.parseArgv = function (argv, startOffset) {
   return ret;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          PRINTING
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         public printing variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief COLORS
@@ -936,9 +895,6 @@ exports.COLORS.COLOR_FALSE = exports.COLORS.COLOR_BRIGHT;
 exports.COLORS.COLOR_NULL = exports.COLORS.COLOR_BRIGHT;
 exports.COLORS.COLOR_UNDEFINED = exports.COLORS.COLOR_BRIGHT;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        private printing variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quote cache
@@ -982,9 +938,6 @@ if (global.PRETTY_PRINT) {
   delete global.PRETTY_PRINT;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        private printing functions
-// -----------------------------------------------------------------------------
 
 var printRecursive;
 
@@ -1512,9 +1465,6 @@ function printShell () {
   output('\n');
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         public printing functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flatten
@@ -1801,9 +1751,6 @@ exports.stopColorPrint = function (silent) {
   useColor = false;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          public utility functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief env
@@ -1823,9 +1770,6 @@ if (typeof SYS_OPTIONS !== 'undefined') {
   delete global.SYS_OPTIONS;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         global printing functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print
@@ -1936,14 +1880,7 @@ return exports;
 
 }()));
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
 
 /*jshint maxlen: 240 */
 /*global require */
@@ -2268,13 +2205,7 @@ global.DEFINE_MODULE('console', (function () {
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  Module "console"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 var exports = {};
 var internal = require('internal');
@@ -2299,9 +2230,6 @@ catch (e) {
   timers = {};
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal logging
@@ -2367,9 +2295,6 @@ function prepareArgs (args) {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assert
@@ -2674,14 +2599,7 @@ exports.warnLines = function () {
 return exports;
 }()));
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
 
 /*jshint -W051:true */
 /*eslint-disable */
@@ -2716,9 +2634,6 @@ return exports;
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Module "internal"
-// -----------------------------------------------------------------------------
 
 var exports = require('internal');
 
@@ -2735,9 +2650,6 @@ if (global.SYS_ARANGO) {
   delete global.SYS_ARANGO;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write-ahead log functionality
@@ -2965,9 +2877,6 @@ exports.appendJsonResponse = function (appender, syntaxAppender) {
   };
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log function
@@ -3011,14 +2920,7 @@ catch (e) {
 
 }());
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
 
 /*eslint no-extend-native:0 */
 /*eslint-disable */
@@ -3055,13 +2957,7 @@ catch (e) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    monkey-patches
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shallow copies properties
@@ -3089,16 +2985,9 @@ Object.defineProperty(Object.prototype, 'propertyKeys', {
   }
 });
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
 }());
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
 
 module.define("@arangodb/aql/queries", function(exports, module) {
 'use strict';
@@ -3133,9 +3022,6 @@ module.define("@arangodb/aql/queries", function(exports, module) {
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 module "@arangodb/aql/queries"
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the slow query log
@@ -3215,14 +3101,6 @@ exports.kill = function (id) {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
-// End:
 
 });
 
@@ -3260,9 +3138,6 @@ module.define("@arangodb/arango-collection", function(exports, module) {
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add options from arguments to index specification
@@ -3295,13 +3170,7 @@ function addIndexOptions (body, parameters) {
   return body;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ArangoCollection
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -3338,9 +3207,6 @@ require("@arangodb/arango-collection-common");
 
 var ArangoError = require("@arangodb").ArangoError;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the waitForSync parameter to a URL
@@ -3498,9 +3364,6 @@ ArangoCollection.prototype._help = function () {
   internal.print(helpArangoCollection);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the name of a collection
@@ -3762,9 +3625,6 @@ ArangoCollection.prototype.refresh = function () {
   this._type = requestResult.type;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   index functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets all indexes
@@ -3987,9 +3847,6 @@ ArangoCollection.prototype.ensureIndex = function (data) {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                document functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the number of documents
@@ -4645,14 +4502,7 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
   };
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:
 });
 
 module.define("@arangodb/arango-database", function(exports, module) {
@@ -4689,13 +4539,7 @@ module.define("@arangodb/arango-database", function(exports, module) {
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    ArangoDatabase
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -4721,9 +4565,6 @@ ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 var ArangoError = require("@arangodb").ArangoError;
 var ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index id regex
@@ -4892,9 +4733,6 @@ ArangoDatabase.prototype.toString = function () {
   return "[object ArangoDatabase \"" + this._name() + "\"]";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              collection functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all collections from the database
@@ -5194,9 +5032,6 @@ ArangoDatabase.prototype._version = function () {
   return requestResult.version;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                document functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a single document from the collection, identified by its id
@@ -5451,9 +5286,6 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   query functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief factory method to create a new statement
@@ -5500,9 +5332,6 @@ ArangoDatabase.prototype._explain = function (query, bindVars, options) {
   require("@arangodb/aql/explainer").explain(query);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                database functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
@@ -5604,9 +5433,6 @@ ArangoDatabase.prototype._useDatabase = function (name) {
   return true;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         endpoints
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lists all endpoints
@@ -5624,9 +5450,6 @@ ArangoDatabase.prototype._listEndpoints = function () {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      transactions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a transaction
@@ -5677,14 +5500,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
   return requestResult.result;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:
 });
 
 module.define("@arangodb/arango-query-cursor", function(exports, module) {
@@ -5722,13 +5538,7 @@ module.define("@arangodb/arango-query-cursor", function(exports, module) {
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 ArangoQueryCursor
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -5759,9 +5569,6 @@ function ArangoQueryCursor (database, data) {
 
 exports.ArangoQueryCursor = ArangoQueryCursor;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the cursor
@@ -5866,9 +5673,6 @@ ArangoQueryCursor.prototype._help = function () {
   internal.print(helpArangoQueryCursor);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether there are more results available in the cursor
@@ -5974,14 +5778,7 @@ ArangoQueryCursor.prototype._baseurl = function () {
          "/_api/cursor/" + encodeURIComponent(this.data.id);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint\\)"
-// End:
 });
 
 module.define("@arangodb/arango-statement", function(exports, module) {
@@ -6021,13 +5818,7 @@ var arangosh = require("@arangodb/arangosh");
 var ArangoStatement = require("@arangodb/arango-statement-common").ArangoStatement;
 var ArangoQueryCursor = require("@arangodb/arango-query-cursor").ArangoQueryCursor;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   ArangoStatement
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the statement
@@ -6071,9 +5862,6 @@ ArangoStatement.prototype._help = function () {
   internal.print(helpArangoStatement);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a query and return the results
@@ -6134,7 +5922,8 @@ ArangoStatement.prototype.explain = function (options) {
     return {
       plan: requestResult.plan,
       warnings: requestResult.warnings,
-      stats: requestResult.stats
+      stats: requestResult.stats,
+      cacheable: requestResult.cacheable
     };
   }
 };
@@ -6175,20 +5964,10 @@ ArangoStatement.prototype.execute = function () {
   return new ArangoQueryCursor(this._database, requestResult);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.ArangoStatement = ArangoStatement;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:
 });
 
 module.define("@arangodb/arangosh", function(exports, module) {
@@ -6224,13 +6003,7 @@ module.define("@arangodb/arangosh", function(exports, module) {
 
 var internal = require("internal");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Module "arangosh"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a formatted type string for object
@@ -6305,9 +6078,6 @@ exports.checkRequestResult = function (requestResult) {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general help
@@ -6362,14 +6132,7 @@ exports.helpExtended = exports.createHelpHeadline("More help") +
   '                                        and without colors          ' + "\n" +
   ' > clear()                              clear screen                ' ;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:
 });
 
 module.define("@arangodb/graph-blueprint", function(exports, module) {
@@ -6413,9 +6176,6 @@ var arangodb = require("@arangodb"),
   GraphAPI = require ("@arangodb/api/graph").GraphAPI;
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a property of an edge
@@ -6435,13 +6195,7 @@ Edge.prototype.setProperty = function (name, value) {
   return name;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Vertex
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inbound and outbound edges
@@ -6524,9 +6278,6 @@ Vertex.prototype.setProperty = function (name, value) {
   return name;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new graph object
@@ -6567,9 +6318,6 @@ Graph.prototype.initialize = function (name, vertices, edges) {
   return this;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all graphs
@@ -6719,9 +6467,6 @@ Graph.prototype.removeEdge = function (edge) {
   edge._properties = undefined;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.Edge = Edge;
 exports.Graph = Graph;
@@ -6730,14 +6475,7 @@ exports.GraphArray = GraphArray;
 
 require("@arangodb/graph/algorithms-common");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 });
 
 module.define("@arangodb/index", function(exports, module) {
@@ -6777,9 +6515,6 @@ Object.keys(common).forEach(function (key) {
   exports[key] = common[key];
 });
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isServer
@@ -6862,9 +6597,7 @@ exports.plainServerVersion = function() {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+
 });
 
 module.define("@arangodb/replication", function(exports, module) {
@@ -6900,13 +6633,7 @@ module.define("@arangodb/replication", function(exports, module) {
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 module "@arangodb/replication"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 var logger  = { };
 var applier = { };
@@ -7028,9 +6755,6 @@ applier.properties = function (config) {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   other functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint
@@ -7114,9 +6838,6 @@ var serverId = function () {
   return requestResult.serverId;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    module exports
-// -----------------------------------------------------------------------------
 
 exports.logger          = logger;
 exports.applier         = applier;
@@ -7125,14 +6846,6 @@ exports.syncCollection  = syncCollection;
 exports.getSyncResult   = getSyncResult;
 exports.serverId        = serverId;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
-// End:
 
 });
 
@@ -7184,13 +6897,7 @@ var SimpleQueryRange = sq.SimpleQueryRange;
 var SimpleQueryWithin = sq.SimpleQueryWithin;
 var SimpleQueryWithinRectangle = sq.SimpleQueryWithinRectangle;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  SIMPLE QUERY ALL
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an all query
@@ -7231,13 +6938,7 @@ SimpleQueryAll.prototype.execute = function (batchSize) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  QUERY BY EXAMPLE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query-by-example
@@ -7294,13 +6995,7 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                QUERY BY CONDITION
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query-by-condition
@@ -7354,13 +7049,7 @@ SimpleQueryByCondition.prototype.execute = function (batchSize) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       RANGE QUERY
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a range query
@@ -7405,13 +7094,7 @@ SimpleQueryRange.prototype.execute = function (batchSize) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 SIMPLE QUERY NEAR
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a near query
@@ -7462,13 +7145,7 @@ SimpleQueryNear.prototype.execute = function (batchSize) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               SIMPLE QUERY WITHIN
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a within query
@@ -7520,13 +7197,7 @@ SimpleQueryWithin.prototype.execute = function (batchSize) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      SIMPLE QUERY WITHINRECTANGLE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a withinRectangle query
@@ -7579,13 +7250,7 @@ SimpleQueryWithinRectangle.prototype.execute = function (batchSize) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             SIMPLE QUERY FULLTEXT
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a fulltext query
@@ -7632,9 +7297,6 @@ SimpleQueryFulltext.prototype.execute = function (batchSize) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
@@ -7648,14 +7310,7 @@ exports.SimpleQueryRange = SimpleQueryRange;
 exports.SimpleQueryWithin = SimpleQueryWithin;
 exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 });
 
 module.define("@arangodb/tutorial", function(exports, module) {
@@ -7688,9 +7343,6 @@ module.define("@arangodb/tutorial", function(exports, module) {
 /// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    module "@arangodb/tutorial"
-// -----------------------------------------------------------------------------
 
 var index = 0;
 var next = "Type 'tutorial' again to get to the next chapter.";
@@ -7821,9 +7473,6 @@ var lessons = [
   }
 ];
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print tutorial contents
@@ -7856,14 +7505,7 @@ exports._PRINT = function (context) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
 });
 
 module.define("@arangodb/aql/explainer", function(exports, module) {
@@ -7994,7 +7636,16 @@ function wrap (str, width) {
 /* print query string */  
 function printQuery (query) {
   'use strict';
-  stringBuilder.appendLine(section("Query string:"));
+  // restrict max length of printed query to avoid endless printing for
+  // very long query strings
+  var maxLength = 4096;
+  if (query.length > maxLength) {
+    stringBuilder.appendLine(section("Query string (truncated):"));
+    query = query.substr(0, maxLength / 2) + " ... " + query.substr(query.length - maxLength / 2);
+  }
+  else {
+    stringBuilder.appendLine(section("Query string:"));
+  }
   stringBuilder.appendLine(" " + value(wrap(query, 100).replace(/\n+/g, "\n ", query)));
   stringBuilder.appendLine(); 
 }
@@ -8129,8 +7780,7 @@ function printIndexes (indexes) {
   }
 }
 
-
-/* print indexes used */
+/* print traversal info */
 function printTraversalDetails (traversals) {
   'use strict';
   if (traversals.length === 0) {
@@ -8276,7 +7926,8 @@ function processQuery (query, explain) {
     indexes = [ ],
     traversalDetails = [],
     modificationFlags,
-    isConst = true;
+    isConst = true,
+    currentNode = null;
 
   var variableName = function (node) {
     try {
@@ -8295,8 +7946,26 @@ function processQuery (query, explain) {
     return variable(node.name); 
   };
 
+  var addHint = function () { };
+  // uncomment this to show "style" hints
+  // var addHint = function (dst, currentNode, msg) {
+  //   dst.push({ code: "Hint", message: "Node #" + currentNode + ": " + msg });
+  // };
+
   var buildExpression = function (node) {
     isConst = isConst && ([ "value", "object", "object element", "array" ].indexOf(node.type) !== -1);
+        
+    if (node.type !== "attribute access" &&
+        node.hasOwnProperty("subNodes")) {
+      for (var i = 0; i < node.subNodes.length; ++i) {
+        if (node.subNodes[i].type === "reference" &&
+            collectionVariables.hasOwnProperty(node.subNodes[i].id)) {
+          addHint(explain.warnings, currentNode, "reference to collection document variable '" + 
+                  node.subNodes[i].name + "' used in potentially non-working way");
+          break;
+        }
+      }
+    }
 
     switch (node.type) {
       case "reference": 
@@ -8321,6 +7990,7 @@ function processQuery (query, explain) {
         }
         return variableName(node);
       case "collection": 
+        addHint(explain.warnings, currentNode, "using all documents from collection '" + node.name + "' in expression");
         return collection(node.name) + "   " + annotation("/* all collection documents */");
       case "value":
         return value(JSON.stringify(node.value));
@@ -8355,6 +8025,21 @@ function processQuery (query, explain) {
       case "array limit":
         return buildExpression(node.subNodes[0]) + ", " + buildExpression(node.subNodes[1]);
       case "attribute access":
+        if (node.subNodes[0].type === "reference" && 
+            collectionVariables.hasOwnProperty(node.subNodes[0].id)) {
+          // top-level attribute access
+          var collectionName = collectionVariables[node.subNodes[0].id], 
+              collectionObject = db._collection(collectionName);
+          if (collectionObject !== null) {
+            var isEdgeCollection = (collectionObject.type() === 3), 
+                isSystem = (node.name[0] === '_');
+            
+            if ((isSystem && [ "_key", "_id", "_rev"].concat(isEdgeCollection ? [ "_from", "_to" ] : [ ]).indexOf(node.name) === -1) ||
+                (! isSystem && isEdgeCollection && [ "from", "to" ].indexOf(node.name) !== -1)) {
+              addHint(explain.warnings, currentNode, "reference to potentially non-existing attribute '" + node.name + "'");
+            }
+          }
+        }
         return buildExpression(node.subNodes[0]) + "." + attribute(node.name);
       case "indexed access":
         return buildExpression(node.subNodes[0]) + "[" + buildExpression(node.subNodes[1]) + "]";
@@ -8619,7 +8304,7 @@ function processQuery (query, explain) {
         return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");
       case "FilterNode":
         return keyword("FILTER") + " " + variableName(node.inVariable);
-      case "AggregateNode":
+      case "AggregateNode": /* old-style COLLECT node */
         return keyword("COLLECT") + " " + node.aggregates.map(function(node) {
           return variableName(node.outVariable) + " = " + variableName(node.inVariable);
         }).join(", ") + 
@@ -8627,6 +8312,14 @@ function processQuery (query, explain) {
                  (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
                  (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
                  "   " + annotation("/* " + node.aggregationOptions.method + "*/");
+      case "CollectNode":
+        return keyword("COLLECT") + " " + node.groups.map(function(node) {
+          return variableName(node.outVariable) + " = " + variableName(node.inVariable);
+        }).join(", ") + 
+                 (node.count ? " " + keyword("WITH COUNT") : "") + 
+                 (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
+                 (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
+                 "   " + annotation("/* " + node.collectOptions.method + "*/");
       case "SortNode":
         return keyword("SORT") + " " + node.elements.map(function(node) {
           return variableName(node.inVariable) + " " + keyword(node.ascending ? "ASC" : "DESC"); 
@@ -8678,6 +8371,7 @@ function processQuery (query, explain) {
 
   var preHandle = function (node) {
     usedVariables = { };
+    currentNode = node.id;
     isConst = true;
     if (node.type === "SubqueryNode") {
       subqueries.push(level);
@@ -8852,13 +8546,7 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ArangoError = arangodb.ArangoError;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                               module "@arangodb/aql/functions"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the _aqlfunctions collection
@@ -8965,27 +8653,9 @@ var stringifyFunction = function (code, name) {
   throw err;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock aqlFunctionsUnregister
-/// @brief delete an existing AQL user function
-/// `aqlfunctions.unregister(name)`
-///
-/// Unregisters an existing AQL user function, identified by the fully qualified
-/// function name.
-///
-/// Trying to unregister a function that does not exist will result in an
-/// exception.
-///
-/// @EXAMPLES
-///
-/// ```js
-///   require("@arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock aqlFunctionsUnregister
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunction = function (name) {
@@ -9016,23 +8686,7 @@ var unregisterFunction = function (name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock aqlFunctionsUnregisterGroup
-/// @brief delete a group of AQL user functions
-/// `aqlfunctions.unregisterGroup(prefix)`
-///
-/// Unregisters a group of AQL user function, identified by a common function
-/// group prefix.
-///
-/// This will return the number of functions unregistered.
-///
-/// @EXAMPLES
-///
-/// ```js
-///   require("@arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
-///
-///   require("@arangodb/aql/functions").unregisterGroup("myfunctions");
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock aqlFunctionsUnregisterGroup
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunctionsGroup = function (group) {
@@ -9061,42 +8715,7 @@ var unregisterFunctionsGroup = function (group) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock aqlFunctionsRegister
-/// @brief register an AQL user function
-/// `aqlfunctions.register(name, code, isDeterministic)`
-///
-/// Registers an AQL user function, identified by a fully qualified function
-/// name. The function code in *code* must be specified as a JavaScript
-/// function or a string representation of a JavaScript function.
-/// If the function code in *code* is passed as a string, it is required that
-/// the string evaluates to a JavaScript function definition.
-///
-/// If a function identified by *name* already exists, the previous function
-/// definition will be updated. Please also make sure that the function code
-/// does not violate the [Conventions](../AqlExtending/Conventions.md) for AQL 
-/// functions.
-///
-/// The *isDeterministic* attribute can be used to specify whether the
-/// function results are fully deterministic (i.e. depend solely on the input
-/// and are the same for repeated calls with the same input values). It is not
-/// used at the moment but may be used for optimizations later.
-///
-/// The registered function is stored in the selected database's system 
-/// collection *_aqlfunctions*.
-///
-/// The function returns *true* when it updates/replaces an existing AQL 
-/// function of the same name, and *false* otherwise. It will throw an exception
-/// when it detects syntactially invalid function code.
-///
-/// @EXAMPLES
-///
-/// ```js
-///   require("@arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit",
-///   function (celsius) {
-///     return celsius * 1.8 + 32;
-///   });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock aqlFunctionsRegister
 ////////////////////////////////////////////////////////////////////////////////
 
 var registerFunction = function (name, code, isDeterministic) {
@@ -9170,38 +8789,7 @@ var registerFunction = function (name, code, isDeterministic) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock aqlFunctionsToArray
-/// @brief list all AQL user functions
-/// `aqlfunctions.toArray()`
-///
-/// Returns all previously registered AQL user functions, with their fully
-/// qualified names and function code.
-///
-/// The result may optionally be restricted to a specified group of functions
-/// by specifying a group prefix:
-///
-/// `aqlfunctions.toArray(prefix)`
-///
-/// @EXAMPLES
-///
-/// To list all available user functions:
-///
-/// ```js
-///   require("@arangodb/aql/functions").toArray();
-/// ```
-///
-/// To list all available user functions in the *myfunctions* namespace:
-///
-/// ```js
-///   require("@arangodb/aql/functions").toArray("myfunctions");
-/// ```
-///
-/// To list all available user functions in the *myfunctions::temperature* namespace:
-///
-/// ```js
-///   require("@arangodb/aql/functions").toArray("myfunctions::temperature");
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock aqlFunctionsToArray
 ////////////////////////////////////////////////////////////////////////////////
 
 var toArrayFunctions = function (group) {
@@ -9216,23 +8804,12 @@ var toArrayFunctions = function (group) {
   return result;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    module exports
-// -----------------------------------------------------------------------------
 
 exports.unregister      = unregisterFunction;
 exports.unregisterGroup = unregisterFunctionsGroup;
 exports.register        = registerFunction;
 exports.toArray         = toArrayFunctions;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
-// End:
 
 });
 
@@ -9286,13 +8863,7 @@ var SimpleQueryWithin = simple.SimpleQueryWithin;
 var SimpleQueryWithinRectangle = simple.SimpleQueryWithinRectangle;
 var SimpleQueryFulltext = simple.SimpleQueryFulltext;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ArangoCollection
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is corrupted
@@ -9349,9 +8920,6 @@ ArangoCollection.TYPE_DOCUMENT = 2;
 
 ArangoCollection.TYPE_EDGE = 3;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a collection
@@ -9398,48 +8966,9 @@ ArangoCollection.prototype.toString = function () {
   return "[ArangoCollection: " + this._id + "]";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs an all query for a collection
-/// @startDocuBlock collectionAll
-/// `collection.all()`
-///
-/// Fetches all documents from a collection and returns a cursor. You can use
-/// *toArray*, *next*, or *hasNext* to access the result. The result
-/// can be limited using the *skip* and *limit* operator.
-///
-/// @EXAMPLES
-///
-/// Use *toArray* to get all documents at once:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{001_collectionAll}
-/// ~ db._create("five");
-///   db.five.save({ name : "one" });
-///   db.five.save({ name : "two" });
-///   db.five.save({ name : "three" });
-///   db.five.save({ name : "four" });
-///   db.five.save({ name : "five" });
-///   db.five.all().toArray();
-/// ~ db._drop("five");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Use *limit* to restrict the documents:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{002_collectionAllNext}
-/// ~ db._create("five");
-///   db.five.save({ name : "one" });
-///   db.five.save({ name : "two" });
-///   db.five.save({ name : "three" });
-///   db.five.save({ name : "four" });
-///   db.five.save({ name : "five" });
-///   db.five.all().limit(2).toArray();
-/// ~ db._drop("five");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionAll
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.all = function () {
@@ -9447,79 +8976,7 @@ ArangoCollection.prototype.all = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example for a collection
-/// @startDocuBlock collectionByExample
-/// `collection.byExample(example)`
-///
-/// Fetches all documents from a collection that match the specified
-/// example and returns a cursor.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use
-///
-/// *{ a : { c : 1 } }*
-///
-/// as example, then you will find all documents, such that the attribute
-/// *a* contains a document of the form *{c : 1 }*. For example the document
-///
-/// *{ a : { c : 1 }, b : 1 }*
-///
-/// will match, but the document
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will not.
-///
-/// However, if you use
-///
-/// *{ a.c : 1 }*,
-///
-/// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute *c* of value *1*. Both the following documents
-///
-/// *{ a : { c : 1 }, b : 1 }* and
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will match.
-///
-/// `collection.byExample(path1, value1, ...)`
-///
-/// As alternative you can supply an array of paths and values.
-///
-/// @EXAMPLES
-///
-/// Use *toArray* to get all documents at once:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{003_collectionByExample}
-/// ~ db._create("users");
-///   db.users.save({ name: "Gerhard" });
-///   db.users.save({ name: "Helmut" });
-///   db.users.save({ name: "Angela" });
-///   db.users.all().toArray();
-///   db.users.byExample({ "_id" : "users/20" }).toArray();
-///   db.users.byExample({ "name" : "Gerhard" }).toArray();
-///   db.users.byExample({ "name" : "Helmut", "_id" : "users/15" }).toArray();
-/// ~ db._drop("users");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Use *next* to loop over all documents:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{004_collectionByExampleNext}
-/// ~ db._create("users");
-///   db.users.save({ name: "Gerhard" });
-///   db.users.save({ name: "Helmut" });
-///   db.users.save({ name: "Angela" });
-///   var a = db.users.byExample( {"name" : "Angela" } );
-///   while (a.hasNext()) print(a.next());
-/// ~ db._drop("users");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExample = function (example) {
@@ -9545,48 +9002,7 @@ ArangoCollection.prototype.byExample = function (example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example using a hash index
-/// @startDocuBLock collectionByExampleHash
-/// `collection.byExampleHash(index, example)`
-///
-/// Selects all documents from the specified hash index that match the
-/// specified example and returns a cursor.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use
-///
-/// *{ a : { c : 1 } }*
-///
-/// as example, then you will find all documents, such that the attribute
-/// *a* contains a document of the form *{c : 1 }*. For example the document
-///
-/// *{ a : { c : 1 }, b : 1 }*
-///
-/// will match, but the document
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will not.
-///
-/// However, if you use
-///
-/// *{ a.c : 1 }*,
-///
-/// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute @LIT{c} of value *1*. Both the following documents
-///
-/// *{ a : { c : 1 }, b : 1 }* and
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will match.
-///
-/// `collection.byExampleHash(index-id, path1, value1, ...)`
-/// @endDocuBlock
+/// @brief was docuBlock collectionByExampleHash
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExampleHash = function (index, example) {
@@ -9598,48 +9014,7 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example using a skiplist index
-/// @startDocuBlock collectionByExampleSkiplist
-/// `collection.byExampleSkiplist(index, example)`
-///
-/// Selects all documents from the specified skiplist index that match the
-/// specified example and returns a cursor.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use
-///
-/// *{ a : { c : 1 } }*
-///
-/// as example, then you will find all documents, such that the attribute
-/// *a* contains a document of the form *{c : 1 }*. For example the document
-///
-/// *{ a : { c : 1 }, b : 1 }*
-///
-/// will match, but the document
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will not.
-///
-/// However, if you use
-///
-/// *{ a.c : 1 }*,
-///
-/// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute @LIT{c} of value *1*. Both the following documents
-///
-/// *{ a : { c : 1 }, b : 1 }*and
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will match.
-///
-/// `collection.byExampleSkiplist(index, path1, value1, ...)`
-/// @endDocuBlock
+/// @brief was docuBlock collectionByExampleSkiplist
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
@@ -9663,49 +9038,7 @@ ArangoCollection.prototype.byConditionSkiplist = function (index, condition) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a range query for a collection
-/// @startDocuBlock collectionRange
-/// `collection.range(attribute, left, right)`
-///
-/// Returns all documents from a collection such that the *attribute* is
-/// greater or equal than *left* and strictly less than *right*.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute.
-///
-/// For range queries it is required that a skiplist index is present for the
-/// queried attribute. If no skiplist index is present on the attribute, an
-/// error will be thrown.
-///
-/// Note: the *range* simple query function is **deprecated** as of ArangoDB 2.6. 
-/// The function may be removed in future versions of ArangoDB. The preferred
-/// way for retrieving documents from a collection within a specific range
-/// is to use an AQL query as follows: 
-///
-///     FOR doc IN @@collection 
-///       FILTER doc.value >= @left && doc.value < @right 
-///       LIMIT @skip, @limit 
-///       RETURN doc
-///
-/// @EXAMPLES
-///
-/// Use *toArray* to get all documents at once:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{005_collectionRange}
-/// ~ db._create("old");
-///   db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
-///   db.old.save({ age: 15 });
-///   db.old.save({ age: 25 });
-///   db.old.save({ age: 30 });
-///   db.old.range("age", 10, 30).toArray();
-/// ~ db._drop("old")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionRange
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.range = function (name, left, right) {
@@ -9713,44 +9046,7 @@ ArangoCollection.prototype.range = function (name, left, right) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a closed range query for a collection
-/// @startDocuBlock collectionClosedRange
-/// `collection.closedRange(attribute, left, right)`
-///
-/// Returns all documents of a collection such that the *attribute* is
-/// greater or equal than *left* and less or equal than *right*.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute.
-///
-/// Note: the *closedRange* simple query function is **deprecated** as of ArangoDB 2.6. 
-/// The function may be removed in future versions of ArangoDB. The preferred
-/// way for retrieving documents from a collection within a specific range
-/// is to use an AQL query as follows: 
-///
-///     FOR doc IN @@collection 
-///       FILTER doc.value >= @left && doc.value <= @right 
-///       LIMIT @skip, @limit 
-///       RETURN doc
-///
-/// @EXAMPLES
-///
-/// Use *toArray* to get all documents at once:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{006_collectionClosedRange}
-/// ~ db._create("old");
-///   db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
-///   db.old.save({ age: 15 });
-///   db.old.save({ age: 25 });
-///   db.old.save({ age: 30 });
-///   db.old.closedRange("age", 10, 30).toArray();
-/// ~ db._drop("old")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock collectionClosedRange
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.closedRange = function (name, left, right) {
@@ -9758,67 +9054,7 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a geo index selection
-/// @startDocuBlock collectionGeo
-/// `collection.geo(location-attribute)`
-///
-/// Looks up a geo index defined on attribute *location_attribute*.
-///
-/// Returns a geo index object if an index was found. The `near` or
-/// `within` operators can then be used to execute a geo-spatial query on
-/// this particular index.
-///
-/// This is useful for collections with multiple defined geo indexes.
-///
-/// `collection.geo(location_attribute, true)`
-///
-/// Looks up a geo index on a compound attribute *location_attribute*.
-///
-/// Returns a geo index object if an index was found. The `near` or
-/// `within` operators can then be used to execute a geo-spatial query on
-/// this particular index.
-///
-/// `collection.geo(latitude_attribute, longitude_attribute)`
-///
-/// Looks up a geo index defined on the two attributes *latitude_attribute*
-/// and *longitude-attribute*.
-///
-/// Returns a geo index object if an index was found. The `near` or
-/// `within` operators can then be used to execute a geo-spatial query on
-/// this particular index.
-///
-/// Note: the *geo* simple query helper function is **deprecated** as of ArangoDB 
-/// 2.6. The function may be removed in future versions of ArangoDB. The preferred
-/// way for running geo queries is to use their AQL equivalents.
-///
-/// @EXAMPLES
-///
-/// Assume you have a location stored as list in the attribute *home*
-/// and a destination stored in the attribute *work*. Then you can use the
-/// `geo` operator to select which geo-spatial attributes (and thus which
-/// index) to use in a `near` query.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{geoIndexSimpleQuery}
-/// ~db._create("complex")
-/// |for (i = -90;  i <= 90;  i += 10) {
-/// |  for (j = -180;  j <= 180;  j += 10) {
-/// |    db.complex.save({ name : "Name/" + i + "/" + j,
-/// |                      home : [ i, j ],
-/// |                      work : [ -i, -j ] });
-/// |  }
-/// |}
-///
-///  db.complex.near(0, 170).limit(5); // xpError(ERROR_QUERY_GEO_INDEX_MISSING)
-///  db.complex.ensureIndex({ type: "geo", fields: [ "home" ] });
-///  db.complex.near(0, 170).limit(5).toArray();
-///  db.complex.geo("work").near(0, 170).limit(5); // xpError(ERROR_QUERY_GEO_INDEX_MISSING)
-///  db.complex.ensureIndex({ type: "geo", fields: [ "work" ] });
-///  db.complex.geo("work").near(0, 170).limit(5).toArray();
-/// ~ db._drop("complex");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// 
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionGeo
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.geo = function(loc, order) {
@@ -9884,83 +9120,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a near query for a collection
-/// @startDocuBlock collectionNear
-/// `collection.near(latitude, longitude)`
-///
-/// The returned list is sorted according to the distance, with the nearest
-/// document to the coordinate (*latitude*, *longitude*) coming first.
-/// If there are near documents of equal distance, documents are chosen randomly
-/// from this set until the limit is reached. It is possible to change the limit
-/// using the *limit* operator.
-///
-/// In order to use the *near* operator, a geo index must be defined for the
-/// collection. This index also defines which attribute holds the coordinates
-/// for the document.  If you have more then one geo-spatial index, you can use
-/// the *geo* operator to select a particular index.
-///
-/// *Note*: `near` does not support negative skips.
-//     However, you can still use `limit` followed to skip.
-///
-/// `collection.near(latitude, longitude).limit(limit)`
-///
-/// Limits the result to limit documents instead of the default 100.
-///
-/// *Note*: Unlike with multiple explicit limits, `limit` will raise
-/// the implicit default limit imposed by `within`.
-///
-/// `collection.near(latitude, longitude).distance()`
-///
-/// This will add an attribute `distance` to all documents returned, which
-/// contains the distance between the given point and the document in meters.
-///
-/// `collection.near(latitude, longitude).distance(name)`
-///
-/// This will add an attribute *name* to all documents returned, which
-/// contains the distance between the given point and the document in meters.
-///
-/// Note: the *near* simple query function is **deprecated** as of ArangoDB 2.6. 
-/// The function may be removed in future versions of ArangoDB. The preferred
-/// way for retrieving documents from a collection using the near operator is
-/// to use the AQL *NEAR* function in an [AQL query](../Aql/GeoFunctions.md) as follows: 
-///
-///     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
-///       RETURN doc
-///
-/// @EXAMPLES
-///
-/// To get the nearest two locations:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{007_collectionNear}
-/// ~ db._create("geo");
-///   db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
-///   |for (var i = -90;  i <= 90;  i += 10) { 
-///   |   for (var j = -180; j <= 180; j += 10) {
-///   |     db.geo.save({
-///   |        name : "Name/" + i + "/" + j,
-///   |        loc: [ i, j ] });
-///   } }
-///   db.geo.near(0, 0).limit(2).toArray();
-/// ~ db._drop("geo");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// If you need the distance as well, then you can use the `distance`
-/// operator:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{008_collectionNearDistance}
-/// ~ db._create("geo");
-///   db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
-///   |for (var i = -90;  i <= 90;  i += 10) {
-///   |  for (var j = -180; j <= 180; j += 10) {
-///   |     db.geo.save({
-///   |         name : "Name/" + i + "/" + j,
-///   |         loc: [ i, j ] });
-///   } }
-///   db.geo.near(0, 0).distance().limit(2).toArray();
-/// ~ db._drop("geo");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionNear
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.near = function (lat, lon) {
@@ -9968,53 +9128,7 @@ ArangoCollection.prototype.near = function (lat, lon) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a within query for a collection
-/// @startDocuBlock collectionWithin
-/// `collection.within(latitude, longitude, radius)`
-///
-/// This will find all documents within a given radius around the coordinate
-/// (*latitude*, *longitude*). The returned array is sorted by distance,
-/// beginning with the nearest document.
-///
-/// In order to use the *within* operator, a geo index must be defined for the
-/// collection. This index also defines which attribute holds the coordinates
-/// for the document.  If you have more then one geo-spatial index, you can use
-/// the `geo` operator to select a particular index.
-///
-///
-/// `collection.within(latitude, longitude, radius).distance()`
-///
-/// This will add an attribute `_distance` to all documents returned, which
-/// contains the distance between the given point and the document in meters.
-///
-/// `collection.within(latitude, longitude, radius).distance(name)`
-///
-/// This will add an attribute *name* to all documents returned, which
-/// contains the distance between the given point and the document in meters.
-///
-/// Note: the *within* simple query function is **deprecated** as of ArangoDB 2.6. 
-/// The function may be removed in future versions of ArangoDB. The preferred
-/// way for retrieving documents from a collection using the within operator  is
-/// to use the AQL *WITHIN* function in an [AQL query](../Aql/GeoFunctions.md) as follows: 
-///
-///     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
-///       RETURN doc
-///
-/// @EXAMPLES
-///
-/// To find all documents within a radius of 2000 km use:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{009_collectionWithin}
-/// ~ db._create("geo");
-/// ~ db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
-/// |~ for (var i = -90;  i <= 90;  i += 10) {
-/// |  for (var j = -180; j <= 180; j += 10) {
-///       db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
-///   db.geo.within(0, 0, 2000 * 1000).distance().toArray();
-/// ~ db._drop("geo");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionWithin
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.within = function (lat, lon, radius) {
@@ -10030,41 +9144,7 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock collectionIterate
-/// @brief iterates over some elements of a collection
-/// `collection.iterate(iterator, options)`
-///
-/// Iterates over some elements of the collection and apply the function
-/// *iterator* to the elements. The function will be called with the
-/// document as first argument and the current number (starting with 0)
-/// as second argument.
-///
-/// *options* must be an object with the following attributes:
-///
-/// - *limit* (optional, default none): use at most *limit* documents.
-///
-/// - *probability* (optional, default all): a number between *0* and
-///   *1*. Documents are chosen with this probability.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{accessViaGeoIndex}
-/// ~db._create("example")
-/// |for (i = -90;  i <= 90;  i += 10) {
-/// |  for (j = -180;  j <= 180;  j += 10) {
-/// |    db.example.save({ name : "Name/" + i + "/" + j,
-/// |                      home : [ i, j ],
-/// |                      work : [ -i, -j ] });
-/// |  }
-/// |}
-///
-///  db.example.ensureIndex({ type: "geo", fields: [ "home" ] });
-///  |items = db.example.getIndexes().map(function(x) { return x.id; });
-///  db.example.index(items[1]);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionIterate
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.iterate = function (iterator, options) {
@@ -10138,46 +9218,9 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  document methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes documents matching an example
-/// @startDocuBlock documentsCollectionRemoveByExample
-/// `collection.removeByExample(example)`
-///
-/// Removes all documents matching an example.
-///
-/// `collection.removeByExample(document, waitForSync)`
-///
-/// The optional *waitForSync* parameter can be used to force synchronization
-/// of the document deletion operation to disk even in case that the
-/// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronization of just
-/// specific operations. To use this, set the *waitForSync* parameter to
-/// *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `collection.removeByExample(document, waitForSync, limit)`
-///
-/// The optional *limit* parameter can be used to restrict the number of
-/// removals to the specified value. If *limit* is specified but less than the
-/// number of documents in the collection, it is undefined which documents are
-/// removed.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{010_documentsCollectionRemoveByExample}
-/// ~ db._create("example");
-/// ~ db.example.save({ Hello : "world" });
-///   db.example.removeByExample( {Hello : "world"} );
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionRemoveByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.removeByExample = function (example, waitForSync, limit) {
@@ -10185,44 +9228,7 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces documents matching an example
-/// @startDocuBlock documentsCollectionReplaceByExample
-/// `collection.replaceByExample(example, newValue)`
-///
-/// Replaces all documents matching an example with a new document body.
-/// The entire document body of each document matching the *example* will be
-/// replaced with *newValue*. The document meta-attributes such as *_id*,
-/// *_key*, *_from*, *_to* will not be replaced.
-///
-/// `collection.replaceByExample(document, newValue, waitForSync)`
-///
-/// The optional *waitForSync* parameter can be used to force synchronization
-/// of the document replacement operation to disk even in case that the
-/// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronization of just
-/// specific operations. To use this, set the *waitForSync* parameter to
-/// *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `collection.replaceByExample(document, newValue, waitForSync, limit)`
-///
-/// The optional *limit* parameter can be used to restrict the number of
-/// replacements to the specified value. If *limit* is specified but less than
-/// the number of documents in the collection, it is undefined which documents are
-/// replaced.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{011_documentsCollectionReplaceByExample}
-/// ~ db._create("example");
-///   db.example.save({ Hello : "world" });
-///   db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionReplaceByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.replaceByExample = function (example, newValue, waitForSync, limit) {
@@ -10230,69 +9236,14 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief partially updates documents matching an example
-/// @startDocuBlock documentsCollectionUpdateByExample
-/// `collection.updateByExample(example, newValue)`
-///
-/// Partially updates all documents matching an example with a new document body.
-/// Specific attributes in the document body of each document matching the
-/// *example* will be updated with the values from *newValue*.
-/// The document meta-attributes such as *_id*, *_key*, *_from*,
-/// *_to* cannot be updated.
-///
-/// Partial update could also be used to append new fields,
-/// if there were no old field with same name.
-///
-/// `collection.updateByExample(document, newValue, keepNull, waitForSync)`
-///
-/// The optional *keepNull* parameter can be used to modify the behavior when
-/// handling *null* values. Normally, *null* values are stored in the
-/// database. By setting the *keepNull* parameter to *false*, this behavior
-/// can be changed so that all attributes in *data* with *null* values will
-/// be removed from the target document.
-///
-/// The optional *waitForSync* parameter can be used to force synchronization
-/// of the document replacement operation to disk even in case that the
-/// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronization of just
-/// specific operations. To use this, set the *waitForSync* parameter to
-/// *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `collection.updateByExample(document, newValue, keepNull, waitForSync, limit)`
-///
-/// The optional *limit* parameter can be used to restrict the number of
-/// updates to the specified value. If *limit* is specified but less than
-/// the number of documents in the collection, it is undefined which documents are
-/// updated.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
-/// ~ db._create("example");
-///   db.example.save({ Hello : "world", foo : "bar" });
-///   db.example.updateByExample({ Hello: "world" }, { Hello: "foo", World: "bar" }, false);
-///   db.example.byExample({ Hello: "foo" }).toArray()
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionUpdateByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {
   throw "cannot call abstract updateExample function";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:
 });
 
 module.define("@arangodb/arango-statement-common", function(exports, module) {
@@ -10325,13 +9276,7 @@ module.define("@arangodb/arango-statement-common", function(exports, module) {
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   ArangoStatement
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -10382,9 +9327,6 @@ function ArangoStatement (database, data) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief binds a parameter to the statement
@@ -10546,20 +9488,10 @@ ArangoStatement.prototype.execute = function () {
   throw "cannot call abstract method execute()";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.ArangoStatement = ArangoStatement;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:
 });
 
 module.define("@arangodb/common", function(exports, module) {
@@ -10598,13 +9530,7 @@ var fs = require("fs");
 
 var mimetypes = require("@arangodb/mimetypes").mimeTypes;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 module "arangodb"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief errors
@@ -10617,9 +9543,6 @@ Object.keys(internal.errors).forEach(function (key) {
 
 exports.errors = internal.errors;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoError
@@ -10627,9 +9550,6 @@ exports.errors = internal.errors;
 
 exports.ArangoError = internal.ArangoError;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a module
@@ -11108,14 +10028,7 @@ exports.checkAvailableVersions = function (version) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:
 });
 
 module.define("@arangodb/general-graph", function(exports, module) {
@@ -11155,15 +10068,9 @@ var arangodb = require("@arangodb"),
   ArangoError = arangodb.ArangoError,
   db = arangodb.db,
   errors = arangodb.errors,
-  _ = require("underscore");
+  _ = require("lodash");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             module "@arangodb/general-graph"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transform a string into an array.
@@ -11173,7 +10080,7 @@ var stringToArray = function (x) {
   if (typeof x === "string") {
     return [x];
   }
-  return _.clone(x);
+  return x.slice();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -11296,20 +10203,7 @@ var wrapCollection = function(col) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_example_description
-///
-/// For many of the following functions *examples* can be passed in as a parameter.
-/// *Examples* are used to filter the result set for objects that match the conditions.
-/// These *examples* can have the following values:
-///
-/// * *null*, there is no matching executed all found results are valid.
-/// * A *string*, only results are returned, which *_id* equal the value of the string
-/// * An example *object*, defining a set of attributes.
-///     Only results having these attributes are matched.
-/// * A *list* containing example *objects* and/or *strings*.
-///     All results matching at least one of the elements in the list are returned.
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_example_description
 ////////////////////////////////////////////////////////////////////////////////
 
 var transformExample = function(example) {
@@ -11358,13 +10252,7 @@ var checkAllowsRestriction = function(list, rest, msg) {
 };
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             module "@arangodb/general-graph"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             Fluent AQL Interface
-// -----------------------------------------------------------------------------
 
 var AQLStatement = function(query, type) {
   this.query = query;
@@ -11407,9 +10295,6 @@ AQLStatement.prototype.allowsRestrict = function() {
     || this.isNeighborQuery();
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                AQL Generator for fluent interface
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Starting point of the fluent interface.
@@ -11535,58 +10420,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_edges
-/// @brief Select all edges for the vertices selected before.
-///
-/// `graph_query.edges(examples)`
-///
-/// Creates an AQL statement to select all edges for each of the vertices selected
-/// in the step before.
-/// This will include *inbound* as well as *outbound* edges.
-/// The resulting set of edges can be filtered by defining one or more *examples*.
-///
-/// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
-/// parameter vertexExamplex, *m* the average amount of edges of a vertex and *x* the maximal depths.
-/// Hence the default call would have a complexity of **O(n\*m)**;
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @EXAMPLES
-///
-/// To request unfiltered edges:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesUnfiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-///   query.edges().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered edges by a single example:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredSingle}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-///   query.edges({type: "married"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered edges by multiple examples:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredMultiple}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-///   query.edges([{type: "married"}, {type: "friend"}]).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_edges
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.edges = function(example) {
@@ -11595,53 +10429,7 @@ AQLGenerator.prototype.edges = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_outEdges
-/// @brief Select all outbound edges for the vertices selected before.
-///
-/// `graph_query.outEdges(examples)`
-///
-/// Creates an AQL statement to select all *outbound* edges for each of the vertices selected
-/// in the step before.
-/// The resulting set of edges can be filtered by defining one or more *examples*.
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @EXAMPLES
-///
-/// To request unfiltered outbound edges:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesUnfiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-///   query.outEdges().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered outbound edges by a single example:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesFilteredSingle}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-///   query.outEdges({type: "married"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered outbound edges by multiple examples:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesFilteredMultiple}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-///   query.outEdges([{type: "married"}, {type: "friend"}]).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_outEdges
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.outEdges = function(example) {
@@ -11650,54 +10438,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_inEdges
-/// @brief Select all inbound edges for the vertices selected before.
-///
-/// `graph_query.inEdges(examples)`
-///
-///
-/// Creates an AQL statement to select all *inbound* edges for each of the vertices selected
-/// in the step before.
-/// The resulting set of edges can be filtered by defining one or more *examples*.
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @EXAMPLES
-///
-/// To request unfiltered inbound edges:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesUnfiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-///   query.inEdges().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered inbound edges by a single example:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesFilteredSingle}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-///   query.inEdges({type: "married"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered inbound edges by multiple examples:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesFilteredMultiple}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-///   query.inEdges([{type: "married"}, {type: "friend"}]).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_inEdges
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.inEdges = function(example) {
@@ -11759,54 +10500,7 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_vertices
-/// @brief Select all vertices connected to the edges selected before.
-///
-/// `graph_query.vertices(examples)`
-///
-/// Creates an AQL statement to select all vertices for each of the edges selected
-/// in the step before.
-/// This includes all vertices contained in *_from* as well as *_to* attribute of the edges.
-/// The resulting set of vertices can be filtered by defining one or more *examples*.
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @EXAMPLES
-///
-/// To request unfiltered vertices:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesUnfiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.vertices().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered vertices by a single example:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesFilteredSingle}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.vertices({name: "Alice"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered vertices by multiple examples:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesFilteredMultiple}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.vertices([{name: "Alice"}, {name: "Charly"}]).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_vertices
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.vertices = function(example) {
@@ -11820,54 +10514,7 @@ AQLGenerator.prototype.vertices = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_fromVertices
-/// @brief Select all source vertices of the edges selected before.
-///
-/// `graph_query.fromVertices(examples)`
-///
-/// Creates an AQL statement to select the set of vertices where the edges selected
-/// in the step before start at.
-/// This includes all vertices contained in *_from* attribute of the edges.
-/// The resulting set of vertices can be filtered by defining one or more *examples*.
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @EXAMPLES
-///
-/// To request unfiltered source vertices:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesUnfiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.fromVertices().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered source vertices by a single example:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredSingle}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.fromVertices({name: "Alice"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered source vertices by multiple examples:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredMultiple}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_fromVertices
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.fromVertices = function(example) {
@@ -11880,54 +10527,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_toVertices
-/// @brief Select all vertices targeted by the edges selected before.
-///
-/// `graph_query.toVertices(examples)`
-///
-/// Creates an AQL statement to select the set of vertices where the edges selected
-/// in the step before end in.
-/// This includes all vertices contained in *_to* attribute of the edges.
-/// The resulting set of vertices can be filtered by defining one or more *examples*.
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @EXAMPLES
-///
-/// To request unfiltered target vertices:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesUnfiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.toVertices().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered target vertices by a single example:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredSingle}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.toVertices({name: "Bob"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered target vertices by multiple examples:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredMultiple}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.toVertices([{name: "Bob"}, {name: "Diana"}]).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_toVertices
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.toVertices = function(example) {
@@ -11957,39 +10557,7 @@ AQLGenerator.prototype.getLastVar = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_path
-/// @brief The result of the query is the path to all elements.
-///
-/// `graph_query.path()`
-///
-/// By defaut the result of the generated AQL query is the set of elements passing the last matches.
-/// So having a `vertices()` query as the last step the result will be set of vertices.
-/// Using `path()` as the last action before requesting the result
-/// will modify the result such that the path required to find the set vertices is returned.
-///
-/// @EXAMPLES
-///
-/// Request the iteratively explored path using vertices and edges:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLPathSimple}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices({name: "Alice"});
-///   query.outEdges().toVertices().path().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// When requesting neighbors the path to these neighbors is expanded:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLPathNeighbors}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices({name: "Alice"});
-///   query.neighbors().path().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_path
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.path = function() {
@@ -12014,64 +10582,7 @@ AQLGenerator.prototype.pathEdges = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_neighbors
-/// @brief Select all neighbors of the vertices selected in the step before.
-///
-/// `graph_query.neighbors(examples, options)`
-///
-/// Creates an AQL statement to select all neighbors for each of the vertices selected
-/// in the step before.
-/// The resulting set of vertices can be filtered by defining one or more *examples*.
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @PARAM{options, object, optional}
-///   An object defining further options. Can have the following values:
-///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
-///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
-///       considered to be on the path.
-///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
-///       considered on the intermediate vertex steps.
-///   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
-///   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
-///
-/// @EXAMPLES
-///
-/// To request unfiltered neighbors:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsUnfiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices({name: "Alice"});
-///   query.neighbors().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered neighbors by a single example:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsFilteredSingle}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices({name: "Alice"});
-///   query.neighbors({name: "Bob"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered neighbors by multiple examples:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsFilteredMultiple}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.vertices([{name: "Bob"}, {name: "Charly"}]).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.neighbors = function(vertexExample, options) {
@@ -12085,7 +10596,7 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
     + this.stack.length + ')';
   var opts;
   if (options) {
-    opts = _.clone(options);
+    opts = _.extend({}, options);
   } else {
     opts = {};
   }
@@ -12130,58 +10641,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_restrict
-/// @brief Restricts the last statement in the chain to return
-/// only elements of a specified set of collections
-///
-/// `graph_query.restrict(restrictions)`
-///
-/// By default all collections in the graph are searched for matching elements
-/// whenever vertices and edges are requested.
-/// Using *restrict* after such a statement allows to restrict the search
-/// to a specific set of collections within the graph.
-/// Restriction is only applied to this one part of the query.
-/// It does not effect earlier or later statements.
-///
-/// @PARAMS
-///
-/// @PARAM{restrictions, array, optional}
-/// Define either one or a list of collections in the graph.
-/// Only elements from these collections are taken into account for the result.
-///
-/// @EXAMPLES
-///
-/// Request all directly connected vertices unrestricted:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnrestricted}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices({name: "Alice"});
-///   query.edges().vertices().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Apply a restriction to the directly connected vertices:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestricted}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices({name: "Alice"});
-///   query.edges().vertices().restrict("female").toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Restriction of a query is only valid for collections known to the graph:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestrictedUnknown}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices({name: "Alice"});
-///   query.edges().vertices().restrict(["female", "male", "products"]).toArray(); // xpError(ERROR_BAD_PARAMETER);
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_restrict
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.restrict = function(restrictions) {
@@ -12216,62 +10676,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_filter
-/// @brief Filter the result of the query
-///
-/// `graph_query.filter(examples)`
-///
-/// This can be used to further specfiy the expected result of the query.
-/// The result set is reduced to the set of elements that matches the given *examples*.
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @EXAMPLES
-///
-/// Request vertices unfiltered:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredVertices}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.toVertices().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Request vertices filtered:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredVertices}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.toVertices().filter({name: "Alice"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Request edges unfiltered:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredEdges}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.toVertices().outEdges().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Request edges filtered:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredEdges}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._edges({type: "married"});
-///   query.toVertices().outEdges().filter({type: "married"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_filter
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.filter = function(example) {
@@ -12317,31 +10722,7 @@ AQLGenerator.prototype.execute = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_toArray
-/// @brief Returns an array containing the complete result.
-///
-/// `graph_query.toArray()`
-///
-/// This function executes the generated query and returns the
-/// entire result as one array.
-/// ToArray does not return the generated query anymore and
-/// hence can only be the endpoint of a query.
-/// However keeping a reference to the query before
-/// executing allows to chain further statements to it.
-///
-/// @EXAMPLES
-///
-/// To collect the entire result of a query toArray can be used:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices();
-///   query.toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_toArray
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.toArray = function() {
@@ -12351,30 +10732,7 @@ AQLGenerator.prototype.toArray = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_count
-/// @brief Returns the number of returned elements if the query is executed.
-///
-/// `graph_query.count()`
-///
-/// This function determines the amount of elements to be expected within the result of the query.
-/// It can be used at the beginning of execution of the query
-/// before using *next()* or in between *next()* calls.
-/// The query object maintains a cursor of the query for you.
-/// *count()* does not change the cursor position.
-///
-/// @EXAMPLES
-///
-/// To count the number of matched elements:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLCount}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices();
-///   query.count();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_fluent_aql_count
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.count = function() {
@@ -12383,44 +10741,7 @@ AQLGenerator.prototype.count = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_hasNext
-/// @brief Checks if the query has further results.
-///
-/// `graph_query.hasNext()`
-///
-/// The generated statement maintains a cursor for you.
-/// If this cursor is already present *hasNext()* will
-/// use this cursors position to determine if there are
-/// further results available.
-/// If the query has not yet been executed *hasNext()*
-/// will execute it and create the cursor for you.
-///
-/// @EXAMPLES
-///
-/// Start query execution with hasNext:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNext}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices();
-///   query.hasNext();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Iterate over the result as long as it has more elements:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNextIteration}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices();
-/// | while (query.hasNext()) {
-/// |   var entry = query.next();
-/// |   // Do something with the entry
-///   }
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fluent_aql_hasNext
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.hasNext = function() {
@@ -12429,46 +10750,7 @@ AQLGenerator.prototype.hasNext = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fluent_aql_next
-/// @brief Request the next element in the result.
-///
-/// `graph_query.next()`
-///
-/// The generated statement maintains a cursor for you.
-/// If this cursor is already present *next()* will
-/// use this cursors position to deliver the next result.
-/// Also the cursor position will be moved by one.
-/// If the query has not yet been executed *next()*
-/// will execute it and create the cursor for you.
-/// It will throw an error of your query has no further results.
-///
-/// @EXAMPLES
-///
-/// Request some elements with next:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNext}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices();
-///   query.next();
-///   query.next();
-///   query.next();
-///   query.next();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// The cursor is recreated if the query is changed:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNextRecreate}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   var query = graph._vertices();
-///   query.next();
-///   query.edges();
-///   query.next();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_fluent_aql_next
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.next = function() {
@@ -12476,51 +10758,12 @@ AQLGenerator.prototype.next = function() {
   return this.cursor.next();
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Deprecated block
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_undirectedRelation
-/// @brief Define an undirected relation.
-///
-/// `graph_module._undirectedRelation(relationName, vertexCollections)`
-///
-/// Defines an undirected relation with the name *relationName* using the
-/// list of *vertexCollections*. This relation allows the user to store
-/// edges in any direction between any pair of vertices within the
-/// *vertexCollections*.
-///
-/// @PARAMS
-///
-/// @PARAM{relationName, string, required}
-///   The name of the edge collection where the edges should be stored.
-///   Will be created if it does not yet exist.
-///
-/// @PARAM{vertexCollections, array, required}
-///   One or a list of collection names for which connections are allowed.
-///   Will be created if they do not exist.
-///
-/// @EXAMPLES
-///
-/// To define simple relation with only one vertex collection:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition1}
-///   var graph_module = require("@arangodb/general-graph");
-///   graph_module._undirectedRelation("friend", "user");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To define a relation between several vertex collections:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition2}
-///   var graph_module = require("@arangodb/general-graph");
-///   graph_module._undirectedRelation("marriage", ["female", "male"]);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_undirectedRelation
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -12560,81 +10803,11 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 /// Deprecated block
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_directedRelation
-/// @brief Define a directed relation.
-///
-/// `graph_module._directedRelation(relationName, fromVertexCollections, toVertexCollections)`
-///
-/// The *relationName* defines the name of this relation and references to the underlying edge collection.
-/// The *fromVertexCollections* is an Array of document collections holding the start vertices.
-/// The *toVertexCollections* is an Array of document collections holding the target vertices.
-/// Relations are only allowed in the direction from any collection in *fromVertexCollections*
-/// to any collection in *toVertexCollections*.
-///
-/// @PARAMS
-///
-/// @PARAM{relationName, string, required}
-///   The name of the edge collection where the edges should be stored.
-///   Will be created if it does not yet exist.
-///
-/// @PARAM{fromVertexCollections, array, required}
-///   One or a list of collection names. Source vertices for the edges
-///   have to be stored in these collections. Collections will be created if they do not exist.
-///
-/// @PARAM{toVertexCollections, array, required}
-///   One or a list of collection names. Target vertices for the edges
-///   have to be stored in these collections. Collections will be created if they do not exist.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
-///   var graph_module = require("@arangodb/general-graph");
-///   graph_module._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_directedRelation
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_relation
-/// @brief Define a directed relation.
-///
-/// `graph_module._relation(relationName, fromVertexCollections, toVertexCollections)`
-///
-/// The *relationName* defines the name of this relation and references to the underlying edge collection.
-/// The *fromVertexCollections* is an Array of document collections holding the start vertices.
-/// The *toVertexCollections* is an Array of document collections holding the target vertices.
-/// Relations are only allowed in the direction from any collection in *fromVertexCollections*
-/// to any collection in *toVertexCollections*.
-///
-/// @PARAMS
-///
-/// @PARAM{relationName, string, required}
-///   The name of the edge collection where the edges should be stored.
-///   Will be created if it does not yet exist.
-///
-/// @PARAM{fromVertexCollections, array, required}
-///   One or a list of collection names. Source vertices for the edges
-///   have to be stored in these collections. Collections will be created if they do not exist.
-///
-/// @PARAM{toVertexCollections, array, required}
-///   One or a list of collection names. Target vertices for the edges
-///   have to be stored in these collections. Collections will be created if they do not exist.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinition}
-///   var graph_module = require("@arangodb/general-graph");
-///   graph_module._relation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinitionSingle}
-///   var graph_module = require("@arangodb/general-graph");
-///   graph_module._relation("has_bought", "Customer", "Product");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_relation
 ////////////////////////////////////////////////////////////////////////////////
 
 var _relation = function (
@@ -12678,20 +10851,7 @@ var _relation = function (
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_list
-/// @brief List all graphs.
-///
-/// `graph_module._list()`
-///
-/// Lists all graph names stored in this database.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphList}
-///   var graph_module = require("@arangodb/general-graph");
-///   graph_module._list();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_list
 ////////////////////////////////////////////////////////////////////////////////
 
 var _list = function() {
@@ -12708,29 +10868,7 @@ var _listObjects = function() {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_definitions
-/// @brief Create a list of edge definitions to construct a graph.
-///
-/// `graph_module._edgeDefinitions(relation1, relation2, ..., relationN)`
-///
-/// The list of edge definitions of a graph can be managed by the graph module itself.
-/// This function is the entry point for the management and will return the correct list.
-///
-/// @PARAMS
-///
-/// @PARAM{relationX, object, optional}
-/// An object representing a definition of one relation in the graph
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
-///   var graph_module = require("@arangodb/general-graph");
-///   directed_relation = graph_module._relation("lives_in", "user", "city");
-///   undirected_relation = graph_module._relation("knows", "user", "user");
-///   edgedefinitions = graph_module._edgeDefinitions(directed_relation, undirected_relation);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_edge_definitions
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -12747,33 +10885,7 @@ var _edgeDefinitions = function () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_extend_edge_definitions
-/// @brief Extend the list of edge definitions to construct a graph.
-///
-/// `graph_module._extendEdgeDefinitions(edgeDefinitions, relation1, relation2, ..., relationN)`
-///
-/// In order to add more edge definitions to the graph before creating
-/// this function can be used to add more definitions to the initial list.
-///
-/// @PARAMS
-///
-/// @PARAM{edgeDefinitions, array, required}
-/// A list of relation definition objects.
-///
-/// @PARAM{relationX, object, required}
-/// An object representing a definition of one relation in the graph
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
-///   var graph_module = require("@arangodb/general-graph");
-///   directed_relation = graph_module._relation("lives_in", "user", "city");
-///   undirected_relation = graph_module._relation("knows", "user", "user");
-///   edgedefinitions = graph_module._edgeDefinitions(directed_relation);
-///   edgedefinitions = graph_module._extendEdgeDefinitions(undirected_relation);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_extend_edge_definitions
 ////////////////////////////////////////////////////////////////////////////////
 
 var _extendEdgeDefinitions = function (edgeDefinition) {
@@ -12802,100 +10914,11 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// @brief create a new graph
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_how_to_create
-///
-/// * Create a graph
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo1}
-///   var graph_module = require("@arangodb/general-graph");
-///   var graph = graph_module._create("myGraph");
-///   graph;
-/// ~ graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// * Add some vertex collections
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo2}
-/// ~ var graph_module = require("@arangodb/general-graph");
-/// ~ var graph = graph_module._create("myGraph");
-///   graph._addVertexCollection("shop");
-///   graph._addVertexCollection("customer");
-///   graph._addVertexCollection("pet");
-///   graph;
-/// ~ graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// * Define relations on the
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo3}
-/// ~ var graph_module = require("@arangodb/general-graph");
-/// ~ var graph = graph_module._create("myGraph");
-///   var rel = graph_module._relation("isCustomer", ["shop"], ["customer"]);
-///   graph._extendEdgeDefinitions(rel);
-///   graph;
-/// ~ graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_how_to_create
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_create
-/// @brief Create a graph
-///
-/// `graph_module._create(graphName, edgeDefinitions, orphanCollections)`
-///
-/// The creation of a graph requires the name of the graph and a definition of its edges.
-///
-/// For every type of edge definition a convenience method exists that can be used to create a graph.
-/// Optionally a list of vertex collections can be added, which are not used in any edge definition.
-/// These collections are referred to as orphan collections within this chapter.
-/// All collections used within the creation process are created if they do not exist.
-///
-/// @PARAMS
-///
-/// @PARAM{graphName, string, required}
-/// Unique identifier of the graph
-///
-/// @PARAM{edgeDefinitions, array, optional}
-/// List of relation definition objects
-///
-/// @PARAM{orphanCollections, array, optional}
-/// List of additional vertex collection names
-///
-/// @EXAMPLES
-///
-/// Create an empty graph, edge definitions can be added at runtime:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph}
-///   var graph_module = require("@arangodb/general-graph");
-///   graph = graph_module._create("myGraph");
-/// ~ graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Create a graph using an edge collection `edges` and a single vertex collection `vertices` 
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphSingle}
-/// ~ db._drop("edges");
-/// ~ db._drop("vertices");
-///   var graph_module = require("@arangodb/general-graph");
-///   var edgeDefinitions = [ { collection: "edges", "from": [ "vertices" ], "to" : [ "vertices" ] } ];
-///   graph = graph_module._create("myGraph", edgeDefinitions);
-/// ~ graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Create a graph with edge definitions and orphan collections:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
-///   var graph_module = require("@arangodb/general-graph");
-/// | graph = graph_module._create("myGraph",
-///   [graph_module._relation("myRelation", ["male", "female"], ["male", "female"])], ["sessions"]);
-/// ~ graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_create
 ////////////////////////////////////////////////////////////////////////////////
 
 var _create = function (graphName, edgeDefinitions, orphanCollections, options) {
@@ -13228,254 +11251,28 @@ var updateBindCollections = function(graph) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_collection_save
-/// @brief Create a new vertex in vertexCollectionName
-///
-/// `graph.vertexCollectionName.save(data)`
-///
-/// @PARAMS
-///
-/// @PARAM{data, object, required}
-/// JSON data of vertex.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph.male.save({name: "Floyd", _key: "floyd"});
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_vertex_collection_save
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_collection_replace
-/// @brief Replaces the data of a vertex in collection vertexCollectionName
-///
-/// `graph.vertexCollectionName.replace(vertexId, data, options)`
-///
-/// @PARAMS
-///
-/// @PARAM{vertexId, string, required}
-/// *_id* attribute of the vertex
-///
-/// @PARAM{data, object, required}
-/// JSON data of vertex.
-///
-/// @PARAM{options, object, optional}
-/// See [collection documentation](../Documents/DocumentMethods.md)
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionReplace}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph.male.save({neym: "Jon", _key: "john"});
-///   graph.male.replace("male/john", {name: "John"});
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_vertex_collection_replace
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_collection_update
-/// @brief Updates the data of a vertex in collection vertexCollectionName
-///
-/// `graph.vertexCollectionName.update(vertexId, data, options)`
-///
-/// @PARAMS
-///
-/// @PARAM{vertexId, string, required}
-/// *_id* attribute of the vertex
-///
-/// @PARAM{data, object, required}
-/// JSON data of vertex.
-///
-/// @PARAM{options, object, optional}
-/// See [collection documentation](../Documents/DocumentMethods.md)
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionUpdate}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph.female.save({name: "Lynda", _key: "linda"});
-///   graph.female.update("female/linda", {name: "Linda", _key: "linda"});
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_vertex_collection_update
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_collection_remove
-/// @brief Removes a vertex in collection *vertexCollectionName*
-///
-/// `graph.vertexCollectionName.remove(vertexId, options)`
-///
-/// Additionally removes all ingoing and outgoing edges of the vertex recursively
-/// (see [edge remove](#remove-an-edge)).
-///
-/// @PARAMS
-///
-/// @PARAM{vertexId, string, required}
-/// *_id* attribute of the vertex
-///
-/// @PARAM{options, object, optional}
-/// See [collection documentation](../Documents/DocumentMethods.md)
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionRemove}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph.male.save({name: "Kermit", _key: "kermit"});
-///   db._exists("male/kermit")
-///   graph.male.remove("male/kermit")
-///   db._exists("male/kermit")
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_vertex_collection_remove
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_collection_save
-/// @brief Creates an edge from vertex *from* to vertex *to* in collection edgeCollectionName
-///
-/// `graph.edgeCollectionName.save(from, to, data, options)`
-///
-/// @PARAMS
-///
-/// @PARAM{from, string, required}
-/// *_id* attribute of the source vertex
-///
-/// @PARAM{to, string, required}
-/// *_id* attribute of the target vertex
-///
-/// @PARAM{data, object, required}
-/// JSON data of the edge
-///
-/// @PARAM{options, object, optional}
-/// See [collection documentation](../Edges/README.md)
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// If the collections of *from* and *to* are not defined in an edge definition of the graph,
-/// the edge will not be stored.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   | graph.relation.save(
-///   |  "relation/aliceAndBob",
-///   |   "female/alice",
-///      {type: "married", _key: "bobAndAlice"}); // xpError(ERROR_GRAPH_INVALID_EDGE)
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_edge_collection_save
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_collection_replace
-/// @brief Replaces the data of an edge in collection edgeCollectionName
-///
-/// `graph.edgeCollectionName.replace(edgeId, data, options)`
-///
-/// @PARAMS
-///
-/// @PARAM{edgeId, string, required}
-/// *_id* attribute of the edge
-///
-/// @PARAM{data, object, required}
-/// JSON data of the edge
-///
-/// @PARAM{options, object, optional}
-/// See [collection documentation](../Documents/DocumentMethods.md)
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionReplace}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph.relation.save("female/alice", "female/diana", {typo: "nose", _key: "aliceAndDiana"});
-///   graph.relation.replace("relation/aliceAndDiana", {type: "knows"});
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_edge_collection_replace
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_collection_update
-/// @brief Updates the data of an edge in collection edgeCollectionName
-///
-/// `graph.edgeCollectionName.update(edgeId, data, options)`
-///
-/// @PARAMS
-///
-/// @PARAM{edgeId, string, required}
-/// *_id* attribute of the edge
-///
-/// @PARAM{data, object, required}
-/// JSON data of the edge
-///
-/// @PARAM{options, object, optional}
-/// See [collection documentation](../Documents/DocumentMethods.md)
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionUpdate}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph.relation.save("female/alice", "female/diana", {type: "knows", _key: "aliceAndDiana"});
-///   graph.relation.update("relation/aliceAndDiana", {type: "quarrelled", _key: "aliceAndDiana"});
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_edge_collection_update
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_collection_remove
-/// @brief Removes an edge in collection edgeCollectionName
-///
-/// `graph.edgeCollectionName.remove(edgeId, options)`
-///
-/// If this edge is used as a vertex by another edge, the other edge will be removed (recursively).
-///
-/// @PARAMS
-///
-/// @PARAM{edgeId, string, required}
-/// *_id* attribute of the edge
-///
-/// @PARAM{options, object, optional}
-/// See [collection documentation](../Documents/DocumentMethods.md)
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionRemove}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph.relation.save("female/alice", "female/diana", {_key: "aliceAndDiana"});
-///   db._exists("relation/aliceAndDiana")
-///   graph.relation.remove("relation/aliceAndDiana")
-///   db._exists("relation/aliceAndDiana")
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_edge_collection_remove
 ////////////////////////////////////////////////////////////////////////////////
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections,
                      orphanCollections, revision, id) {
@@ -13513,32 +11310,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_graph
-/// @brief Get a graph
-///
-/// `graph_module._graph(graphName)`
-///
-/// A graph can be retrieved by its name.
-///
-/// @PARAMS
-///
-/// @PARAM{graphName, string, required}
-/// Unique identifier of the graph
-///
-/// @EXAMPLES
-///
-/// Get a graph:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphLoadGraph}
-/// ~ var examples = require("@arangodb/graph-examples/example-graph.js");
-/// ~ var g1 = examples.loadGraph("social");
-///   var graph_module = require("@arangodb/general-graph");
-///   graph = graph_module._graph("social");
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_graph
 ////////////////////////////////////////////////////////////////////////////////
 
 var _graph = function(graphName) {
@@ -13592,7 +11364,7 @@ var _renameCollection = function(oldName, newName) {
         return;
       }
       gdb.toArray().forEach(function(doc) {
-        var c = _.clone(doc), i, j, changed = false;
+        var c = _.extend({}, doc), i, j, changed = false;
         if (c.edgeDefinitions) {
           for (i = 0; i < c.edgeDefinitions.length; ++i) {
             var def = c.edgeDefinitions[i];
@@ -13674,54 +11446,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_drop
-/// @brief Remove a graph
-///
-/// `graph_module._drop(graphName, dropCollections)`
-///
-/// A graph can be dropped by its name.
-/// This will automatically drop all collections contained in the graph as
-/// long as they are not used within other graphs.
-/// To drop the collections, the optional parameter *drop-collections* can be set to *true*.
-///
-/// @PARAMS
-///
-/// @PARAM{graphName, string, required}
-/// Unique identifier of the graph
-///
-/// @PARAM{dropCollections, boolean, optional}
-/// Define if collections should be dropped (default: false)
-///
-/// @EXAMPLES
-///
-/// Drop a graph and keep collections:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphKeep}
-/// ~ var examples = require("@arangodb/graph-examples/example-graph.js");
-/// ~ var g1 = examples.loadGraph("social");
-///   var graph_module = require("@arangodb/general-graph");
-///   graph_module._drop("social");
-///   db._collection("female");
-///   db._collection("male");
-///   db._collection("relation");
-/// ~ db._drop("female");
-/// ~ db._drop("male");
-/// ~ db._drop("relation");
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphDropCollections}
-/// ~ var examples = require("@arangodb/graph-examples/example-graph.js");
-/// ~ var g1 = examples.loadGraph("social");
-///   var graph_module = require("@arangodb/general-graph");
-///   graph_module._drop("social", true);
-///   db._collection("female");
-///   db._collection("male");
-///   db._collection("relation");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_drop
 ////////////////////////////////////////////////////////////////////////////////
 
 var _drop = function(graphId, dropCollections) {
@@ -13888,44 +11613,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edges
-/// @brief Select some edges from the graph.
-///
-/// `graph._edges(examples)`
-///
-/// Creates an AQL statement to select a subset of the edges stored in the graph.
-/// This is one of the entry points for the fluent AQL interface.
-/// It will return a mutable AQL statement which can be further refined, using the
-/// functions described below.
-/// The resulting set of edges can be filtered by defining one or more *examples*.
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @EXAMPLES
-///
-/// In the examples the *toArray* function is used to print the result.
-/// The description of this function can be found below.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgesUnfiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph._edges().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered edges:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgesFiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph._edges({type: "married"}).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_edges
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._edges = function(edgeExample) {
@@ -13936,46 +11624,7 @@ Graph.prototype._edges = function(edgeExample) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertices
-/// @brief Select some vertices from the graph.
-///
-/// `graph._vertices(examples)`
-///
-/// Creates an AQL statement to select a subset of the vertices stored in the graph.
-/// This is one of the entry points for the fluent AQL interface.
-/// It will return a mutable AQL statement which can be further refined, using the
-/// functions described below.
-/// The resulting set of edges can be filtered by defining one or more *examples*.
-///
-/// @PARAMS
-///
-/// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-///
-/// @EXAMPLES
-///
-/// In the examples the *toArray* function is used to print the result.
-/// The description of this function can be found below.
-///
-/// To request unfiltered vertices:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVerticesUnfiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph._vertices().toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// To request filtered vertices:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVerticesFiltered}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph._vertices([{name: "Alice"}, {name: "Bob"}]).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_vertices
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._vertices = function(example) {
@@ -13984,29 +11633,7 @@ Graph.prototype._vertices = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_fromVertex
-/// @brief Get the source vertex of an edge
-///
-/// `graph._fromVertex(edgeId)`
-///
-/// Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
-///
-/// @PARAMS
-///
-/// @PARAM{edgeId, string, required}
-/// *_id* attribute of the edge
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph._fromVertex("relation/aliceAndBob")
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_fromVertex
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._fromVertex = function(edgeId) {
@@ -14027,29 +11654,7 @@ Graph.prototype._fromVertex = function(edgeId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_toVertex
-/// @brief Get the target vertex of an edge
-///
-/// `graph._toVertex(edgeId)`
-///
-/// Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
-///
-/// @PARAMS
-///
-/// @PARAM{edgeId, string, required}
-/// *_id* attribute of the edge
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("social");
-///   graph._toVertex("relation/aliceAndBob")
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_toVertex
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._toVertex = function(edgeId) {
@@ -14099,55 +11704,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_neighbors
-/// @brief Get all neighbors of the vertices defined by the example
-///
-/// `graph._neighbors(vertexExample, options)`
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertexExample.
-/// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
-/// parameter vertexExamplex, *m* the average amount of neighbors and *x* the maximal depths.
-/// Hence the default call would have a complexity of **O(n\*m)**;
-///
-/// @PARAMS
-///
-/// @PARAM{vertexExample, object, optional}
-/// See [Definition of examples](#definition-of-examples)
-/// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values:
-///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition-of-examples)
-///   * *neighborExamples*: Filter the neighbor vertices, see [Definition of examples](#definition-of-examples)
-///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
-///       considered to be on the path.
-///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
-///       considered on the intermediate vertex steps.
-///   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
-///   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
-///
-/// @EXAMPLES
-///
-/// A route planner example, all neighbors of capitals.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._neighbors({isCapital : true});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all outbound neighbors of Hamburg.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._neighbors = function(vertexExample, options) {
@@ -14163,46 +11720,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_common_neighbors
-/// @brief Get all common neighbors of the vertices defined by the examples.
-///
-/// `graph._commonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
-///
-/// This function returns the intersection of *graph_module._neighbors(vertex1Example, optionsVertex1)*
-/// and *graph_module._neighbors(vertex2Example, optionsVertex2)*.
-/// For parameter documentation see [_neighbors](#neighbors).
-///
-/// The complexity of this method is **O(n\*m^x)** with *n* being the maximal amount of vertices
-/// defined by the parameters vertexExamples, *m* the average amount of neighbors and *x* the
-/// maximal depths.
-/// Hence the default call would have a complexity of **O(n\*m)**;
-///
-/// @EXAMPLES
-///
-/// A route planner example, all common neighbors of capitals.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors1}
-/// var examples = require("@arangodb/graph-examples/example-graph.js");
-/// var graph = examples.loadGraph("routeplanner");
-/// graph._commonNeighbors({isCapital : true}, {isCapital : true});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all common outbound neighbors of Hamburg with any other location
-/// which have a maximal depth of 2 :
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-/// | graph._commonNeighbors(
-/// |   'germanCity/Hamburg',
-/// |   {},
-/// |   {direction : 'outbound', maxDepth : 2},
-///     {direction : 'outbound', maxDepth : 2});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_common_neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -14229,38 +11747,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_count_common_neighbors
-/// @brief Get the amount of common neighbors of the vertices defined by the examples.
-///
-/// `graph._countCommonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
-///
-/// Similar to [_commonNeighbors](#commonneighbors) but returns count instead of the elements.
-///
-/// @EXAMPLES
-///
-/// A route planner example, all common neighbors of capitals.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   var example = { isCapital: true };
-///   var options = { includeData: true };
-///   graph._countCommonNeighbors(example, example, options, options);
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all common outbound neighbors of Hamburg with any other location
-/// which have a maximal depth of 2 :
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   var options = { direction: 'outbound', maxDepth: 2, includeData: true };
-///   graph._countCommonNeighbors('germanCity/Hamburg', {}, options, options);
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_count_common_neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -14302,55 +11789,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_common_properties
-/// @brief Get the vertices of the graph that share common properties.
-///
-/// `graph._commonProperties(vertex1Example, vertex2Examples, options)`
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex1Example and vertex2Example.
-///
-/// The complexity of this method is **O(n)** with *n* being the maximal amount of vertices
-/// defined by the parameters vertexExamples.
-///
-/// @PARAMS
-///
-/// @PARAM{vertex1Examples, object, optional}
-/// Filter the set of source vertices, see [Definition of examples](#definition-of-examples)
-///
-/// @PARAM{vertex2Examples, object, optional}
-/// Filter the set of vertices compared to, see [Definition of examples](#definition-of-examples)
-///
-/// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values:
-///   * *vertex1CollectionRestriction* : One or a list of vertex-collection names that should be
-///       searched for source vertices.
-///   * *vertex2CollectionRestriction* : One or a list of vertex-collection names that should be
-///       searched for compare vertices.
-///   * *ignoreProperties* : One or a list of attribute names of a document that should be ignored.
-///
-/// @EXAMPLES
-///
-/// A route planner example, all locations with the same properties:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._commonProperties({}, {});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all cities which share same properties except for population.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._commonProperties({}, {}, {ignoreProperties: 'population'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_common_properties
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, options) {
@@ -14375,37 +11814,7 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_count_common_properties
-/// @brief Get the amount of vertices of the graph that share common properties.
-///
-/// `graph._countCommonProperties(vertex1Example, vertex2Examples, options)`
-///
-/// Similar to [_commonProperties](#commonproperties) but returns count instead of
-/// the objects.
-///
-/// @EXAMPLES
-///
-/// A route planner example, all locations with the same properties:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties1}
-/// var examples = require("@arangodb/graph-examples/example-graph.js");
-/// var graph = examples.loadGraph("routeplanner");
-/// graph._countCommonProperties({}, {});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all German cities which share same properties except for population.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
-/// var examples = require("@arangodb/graph-examples/example-graph.js");
-/// var graph = examples.loadGraph("routeplanner");
-/// | graph._countCommonProperties({}, {}, {vertex1CollectionRestriction : 'germanCity',
-///   vertex2CollectionRestriction : 'germanCity' ,ignoreProperties: 'population'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_count_common_properties
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example, options) {
@@ -14435,51 +11844,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_paths
-/// @brief The _paths function returns all paths of a graph.
-///
-/// `graph._paths(options)`
-///
-/// This function determines all available paths in a graph.
-///
-/// The complexity of this method is **O(n\*n\*m)** with *n* being the amount of vertices in
-/// the graph and *m* the average amount of connected edges;
-///
-/// @PARAMS
-///
-/// @PARAM{options, object, optional}
-/// An object containing options, see below:
-///   * *direction*        : The direction of the edges. Possible values are *any*,
-///     *inbound* and *outbound* (default).
-///   * *followCycles* (optional) : If set to *true* the query follows cycles in the graph,
-///     default is false.
-///   * *minLength* (optional)     : Defines the minimal length a path must
-///     have to be returned (default is 0).
-///   * *maxLength* (optional)     : Defines the maximal length a path must
-///      have to be returned (default is 10).
-///
-/// @EXAMPLES
-///
-/// Return all paths of the graph "social":
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("social");
-///   g._paths();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Return all inbound paths of the graph "social" with a maximal
-/// length of 1 and a minimal length of 2:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("social");
-///   g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_paths
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._paths = function(options) {
   var query = "RETURN"
@@ -14496,89 +11861,7 @@ Graph.prototype._paths = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_shortest_path
-/// @brief The _shortestPath function returns all shortest paths of a graph.
-///
-/// `graph._shortestPath(startVertexExample, endVertexExample, options)`
-///
-/// This function determines all shortest paths in a graph.
-/// The function accepts an id, an example, a list of examples
-/// or even an empty example as parameter for
-/// start and end vertex. If one wants to call this function to receive nearly all
-/// shortest paths for a graph the option *algorithm* should be set to
-/// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
-/// to increase performance.
-/// If no algorithm is provided in the options the function chooses the appropriate
-/// one (either [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
-/// or [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)) according to its parameters.
-/// The length of a path is by default the amount of edges from one start vertex to
-/// an end vertex. The option weight allows the user to define an edge attribute
-/// representing the length.
-///
-/// The complexity of the function is described
-/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
-///
-/// @PARAMS
-///
-/// @PARAM{startVertexExample, object, optional}
-/// An example for the desired start Vertices
-/// (see [Definition of examples](#definition-of-examples)).
-///
-/// @PARAM{endVertexExample, object, optional}
-/// An example for the desired
-/// end Vertices (see [Definition of examples](#definition-of-examples)).
-///
-/// @PARAM{options, object, optional}
-/// An object containing options, see below:
-///   * *direction*                        : The direction of the edges as a string.
-///   Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeCollectionRestriction*        : One or multiple edge
-///   collection names. Only edges from these collections will be considered for the path.
-///   * *startVertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   start vertex of a path.
-///   * *endVertexCollectionRestriction*   : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   end vertex of a path.
-///   * *edgeExamples*                     : A filter example for the
-///   edges in the shortest paths
-///   (see [example](#definition-of-examples)).
-///   * *algorithm*                        : The algorithm to calculate
-///   the shortest paths. If both start and end vertex examples are empty
-///   [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
-///   used, otherwise the default is [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)
-///   * *weight*                           : The name of the attribute of
-///   the edges containing the length as a string.
-///   * *defaultWeight*                    : Only used with the option *weight*.
-///   If an edge does not have the attribute named as defined in option *weight* this default
-///   is used as length.
-///   If no default is supplied the default would be positive Infinity so the path could
-///   not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, shortest path from all german to all french cities:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
-///   startVertexCollectionRestriction : 'germanCity'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, shortest path from Hamburg and Cologne to Lyon:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
-///   {weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_shortest_path
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, options) {
   var ex1 = transformExample(startVertexExample);
@@ -14602,38 +11885,7 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_distance_to
-/// @brief The _distanceTo function returns all paths and there distance within a graph.
-///
-/// `graph._distanceTo(startVertexExample, endVertexExample, options)`
-///
-/// This function is a wrapper of [graph._shortestPath](#shortestpath).
-/// It does not return the actual path but only the distance between two vertices.
-///
-/// @EXAMPLES
-///
-/// A route planner example, shortest distance from all german to all french cities:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
-///   startVertexCollectionRestriction : 'germanCity'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | g._distanceTo([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
-///   {weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_distance_to
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, options) {
   var ex1 = transformExample(startVertexExample);
@@ -14656,79 +11908,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_absolute_eccentricity
-/// @brief Get the
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the vertices defined by the examples.
-///
-/// `graph._absoluteEccentricity(vertexExample, options)`
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertexExample.
-///
-/// The complexity of the function is described
-/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
-///
-/// @PARAMS
-///
-/// @PARAM{vertexExample, object, optional}
-/// Filter the vertices, see [Definition of examples](#definition-of-examples)
-///
-/// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values:
-///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
-///       considered to be on the path.
-///   * *startVertexCollectionRestriction* : One or a list of vertex-collection names that should be
-///       considered for source vertices.
-///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
-///       considered for target vertices.
-///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
-///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
-///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
-///       [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*: The name of the attribute of the edges containing the weight.
-///   * *defaultWeight*: Only used with the option *weight*.
-///       If an edge does not have the attribute named as defined in option *weight* this default
-///       is used as weight.
-///       If no default is supplied the default would be positive infinity so the path and
-///       hence the eccentricity can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the absolute eccentricity of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
-/// |   + "'routeplanner', {})"
-///   ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute eccentricity of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._absoluteEccentricity({}, {weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute eccentricity of all cities regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-/// | graph._absoluteEccentricity({}, {startVertexCollectionRestriction : 'germanCity',
-///   direction : 'outbound', weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_absolute_eccentricity
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
   var ex1 = transformExample(vertexExample);
@@ -14752,40 +11932,7 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_eccentricity
-/// @brief Get the normalized
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the vertices defined by the examples.
-///
-/// `graph._eccentricity(vertexExample, options)`
-///
-/// Similar to [_absoluteEccentricity](#absoluteeccentricity) but returns a normalized result.
-///
-/// The complexity of the function is described
-/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
-///
-/// @EXAMPLES
-///
-/// A route planner example, the eccentricity of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleEccentricity2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._eccentricity();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the weighted eccentricity.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleEccentricity3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._eccentricity({weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_eccentricity
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._eccentricity = function(options) {
   var query = "RETURN"
@@ -14807,78 +11954,7 @@ Graph.prototype._eccentricity = function(options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_absolute_closeness
-/// @brief Get the
-/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of the vertices defined by the examples.
-///
-/// `graph._absoluteCloseness(vertexExample, options)`
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for *vertexExample*.
-///
-/// The complexity of the function is described
-/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
-///
-/// @PARAMS
-///
-/// @PARAM{vertexExample, object, optional}
-/// Filter the vertices, see [Definition of examples](#definition-of-examples)
-///
-/// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values:
-///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
-///       considered to be on the path.
-///   * *startVertexCollectionRestriction* : One or a list of vertex-collection names that should be
-///       considered for source vertices.
-///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
-///       considered for target vertices.
-///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
-///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
-///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
-///       [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*: The name of the attribute of the edges containing the weight.
-///   * *defaultWeight*: Only used with the option *weight*.
-///       If an edge does not have the attribute named as defined in option *weight* this default
-///       is used as weight.
-///       If no default is supplied the default would be positive infinity so the path and
-///       hence the closeness can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the absolute closeness of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._absoluteCloseness({});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute closeness of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._absoluteCloseness({}, {weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute closeness of all German Cities regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-/// | graph._absoluteCloseness({}, {startVertexCollectionRestriction : 'germanCity',
-///   direction : 'outbound', weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_absolute_closeness
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._absoluteCloseness = function(vertexExample, options) {
   var ex1 = transformExample(vertexExample);
@@ -14901,51 +11977,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_closeness
-/// @brief Get the normalized
-/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of graphs vertices.
-///
-/// `graph._closeness(options)`
-///
-/// Similar to [_absoluteCloseness](#absolutecloseness) but returns a normalized value.
-///
-/// The complexity of the function is described
-/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
-///
-/// @EXAMPLES
-///
-/// A route planner example, the normalized closeness of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCloseness1}
-/// var examples = require("@arangodb/graph-examples/example-graph.js");
-/// var graph = examples.loadGraph("routeplanner");
-/// graph._closeness();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the closeness of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCloseness2}
-/// var examples = require("@arangodb/graph-examples/example-graph.js");
-/// var graph = examples.loadGraph("routeplanner");
-/// graph._closeness({weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the closeness of all cities regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCloseness3}
-/// var examples = require("@arangodb/graph-examples/example-graph.js");
-/// var graph = examples.loadGraph("routeplanner");
-/// graph._closeness({direction : 'outbound', weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_closeness
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._closeness = function(options) {
   var query = "RETURN"
@@ -14965,64 +11997,7 @@ Graph.prototype._closeness = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_absolute_betweenness
-/// @brief Get the
-/// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of all vertices in the graph.
-///
-/// `graph._absoluteBetweenness(vertexExample, options)`
-///
-/// The complexity of the function is described
-/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
-///
-/// @PARAMS
-///
-/// @PARAM{vertexExample, object, optional}
-/// Filter the vertices, see [Definition of examples](#definition-of-examples)
-///
-/// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values:
-///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *weight*: The name of the attribute of the edges containing the weight.
-///   * *defaultWeight*: Only used with the option *weight*.
-///       If an edge does not have the attribute named as defined in option *weight* this default
-///       is used as weight.
-///       If no default is supplied the default would be positive infinity so the path and
-///       hence the betweeness can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the absolute betweenness of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._absoluteBetweenness({});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute betweenness of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._absoluteBetweenness({weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute betweenness of all cities regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._absoluteBetweenness({direction : 'outbound', weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_absolute_betweenness
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._absoluteBetweenness = function(example, options) {
 
@@ -15045,48 +12020,7 @@ Graph.prototype._absoluteBetweenness = function(example, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_betweenness
-/// @brief Get the normalized
-/// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of graphs vertices.
-///
-/// `graph_module._betweenness(options)`
-///
-/// Similar to [_absoluteBetweeness](#absolutebetweenness) but returns normalized values.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the betweenness of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._betweenness();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the betweenness of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._betweenness({weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the betweenness of all cities regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._betweenness({direction : 'outbound', weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_betweenness
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._betweenness = function(options) {
 
@@ -15107,64 +12041,7 @@ Graph.prototype._betweenness = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_radius
-/// @brief Get the
-/// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.
-///
-/// `graph._radius(options)`
-///
-/// The complexity of the function is described
-/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
-///
-/// @PARAMS
-///
-/// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values:
-///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
-///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
-///       [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*: The name of the attribute of the edges containing the weight.
-///   * *defaultWeight*: Only used with the option *weight*.
-///       If an edge does not have the attribute named as defined in option *weight* this default
-///       is used as weight.
-///       If no default is supplied the default would be positive infinity so the path and
-///       hence the radius can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the radius of the graph.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._radius();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the radius of the graph.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._radius({weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the radius of the graph regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._radius({direction : 'outbound', weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_radius
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._radius = function(options) {
 
@@ -15187,63 +12064,7 @@ Graph.prototype._radius = function(options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_diameter
-/// @brief Get the
-/// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.
-///
-/// `graph._diameter(graphName, options)`
-///
-/// The complexity of the function is described
-/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
-///
-/// @PARAMS
-///
-/// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values:
-///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
-///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
-///       [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*: The name of the attribute of the edges containing the weight.
-///   * *defaultWeight*: Only used with the option *weight*.
-///       If an edge does not have the attribute named as defined in option *weight* this default
-///       is used as weight.
-///       If no default is supplied the default would be positive infinity so the path and
-///       hence the radius can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the diameter of the graph.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDiameter1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._diameter();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the diameter of the graph.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDiameter2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._diameter({weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the diameter of the graph regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDiameter3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._diameter({direction : 'outbound', weight : 'distance'});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_diameter
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._diameter = function(options) {
 
@@ -15265,35 +12086,7 @@ Graph.prototype._diameter = function(options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__extendEdgeDefinitions
-/// @brief Add another edge definition to the graph
-///
-/// `graph._extendEdgeDefinitions(edgeDefinition)`
-///
-/// Extends the edge definitions of a graph. If an orphan collection is used in this
-/// edge definition, it will be removed from the orphanage. If the edge collection of
-/// the edge definition to add is already used in the graph or used in a different
-/// graph with different *from* and/or *to* collections an error is thrown.
-///
-/// @PARAMS
-///
-/// @PARAM{edgeDefinition, object, required}
-/// The relation definition to extend the graph
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
-///   var graph_module = require("@arangodb/general-graph")
-/// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
-///   var graph = graph_module._create("myGraph", [ed1]);
-///   graph._extendEdgeDefinitions(ed2);
-/// ~ var blub = graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph__extendEdgeDefinitions
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
@@ -15442,38 +12235,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__editEdgeDefinition
-/// @brief Modify an relation definition
-///
-/// `graph_module._editEdgeDefinition(edgeDefinition)`
-///
-/// Edits one relation definition of a graph. The edge definition used as argument will
-/// replace the existing edge definition of the graph which has the same collection.
-/// Vertex Collections of the replaced edge definition that are not used in the new
-/// definition will transform to an orphan. Orphans that are used in this new edge
-/// definition will be deleted from the list of orphans. Other graphs with the same edge
-/// definition will be modified, too.
-///
-/// @PARAMS
-///
-/// @PARAM{edgeDefinition, object, required}
-/// The edge definition to replace the existing edge
-/// definition with the same attribute *collection*.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
-///   var graph_module = require("@arangodb/general-graph")
-/// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var original = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
-///   var modified = graph_module._relation("myEC1", ["myVC2"], ["myVC3"]);
-///   var graph = graph_module._create("myGraph", [original]);
-///   graph._editEdgeDefinitions(modified);
-/// ~ var blub = graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph__editEdgeDefinition
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
@@ -15521,53 +12283,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
-/// @brief Delete one relation definition
-///
-/// `graph_module._deleteEdgeDefinition(edgeCollectionName, dropCollection)`
-///
-/// Deletes a relation definition defined by the edge collection of a graph. If the
-/// collections defined in the edge definition (collection, from, to) are not used
-/// in another edge definition of the graph, they will be moved to the orphanage.
-///
-/// @PARAMS
-///
-/// @PARAM{edgeCollectionName, string, required}
-/// Name of edge collection in the relation definition.
-/// @PARAM{dropCollection, boolean, optional}
-/// Define if the edge collection should be dropped. Default false.
-///
-/// @EXAMPLES
-///
-/// Remove an edge definition but keep the edge collection:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
-///   var graph_module = require("@arangodb/general-graph")
-/// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
-///   var graph = graph_module._create("myGraph", [ed1, ed2]);
-///   graph._deleteEdgeDefinition("myEC1");
-///   db._collection("myEC1");
-/// ~ db._drop("myEC1");
-/// ~ var blub = graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Remove an edge definition and drop the edge collection:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinitionWithDrop}
-///   var graph_module = require("@arangodb/general-graph")
-/// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
-///   var graph = graph_module._create("myGraph", [ed1, ed2]);
-///   graph._deleteEdgeDefinition("myEC1", true);
-///   db._collection("myEC1");
-/// ~ db._drop("myEC1");
-/// ~ var blub = graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph__deleteEdgeDefinition
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection) {
@@ -15622,37 +12338,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection)
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__addVertexCollection
-/// @brief Add a vertex collection to the graph
-///
-/// `graph._addVertexCollection(vertexCollectionName, createCollection)`
-///
-/// Adds a vertex collection to the set of orphan collections of the graph. If the
-/// collection does not exist, it will be created. If it is already used by any edge
-/// definition of the graph, an error will be thrown.
-///
-/// @PARAMS
-///
-/// @PARAM{vertexCollectionName, string, required}
-/// Name of vertex collection.
-///
-/// @PARAM{createCollection, boolean, optional}
-/// If true the collection will be created if it does not exist. Default: true.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addVertexCollection}
-///   var graph_module = require("@arangodb/general-graph");
-/// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
-///   var graph = graph_module._create("myGraph", [ed1]);
-///   graph._addVertexCollection("myVC3", true);
-/// ~ db._drop("myVC3");
-/// ~ var blub = graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph__addVertexCollection
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._addVertexCollection = function(vertexCollectionName, createCollection) {
@@ -15692,27 +12378,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__orphanCollections
-/// @brief Get all orphan collections
-///
-/// `graph._orphanCollections()`
-///
-/// Returns all vertex collections of the graph that are not used in any edge definition.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
-///   var graph_module = require("@arangodb/general-graph")
-/// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
-///   var graph = graph_module._create("myGraph", [ed1]);
-///   graph._addVertexCollection("myVC3", true);
-///   graph._orphanCollections();
-/// ~ var blub = graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph__orphanCollections
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._orphanCollections = function() {
@@ -15720,42 +12386,7 @@ Graph.prototype._orphanCollections = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__removeVertexCollection
-/// @brief Remove a vertex collection from the graph
-///
-/// `graph._removeVertexCollection(vertexCollectionName, dropCollection)`
-///
-/// Removes a vertex collection from the graph.
-/// Only collections not used in any relation definition can be removed.
-/// Optionally the collection can be deleted, if it is not used in any other graph.
-///
-/// @PARAMS
-///
-/// @PARAM{vertexCollectionName, string, required}
-/// Name of vertex collection.
-///
-/// @PARAM{dropCollection, boolean, optional}
-/// If true the collection will be dropped if it is
-/// not used in any other graph. Default: false.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeVertexCollections}
-///   var graph_module = require("@arangodb/general-graph")
-/// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
-///   var graph = graph_module._create("myGraph", [ed1]);
-///   graph._addVertexCollection("myVC3", true);
-///   graph._addVertexCollection("myVC4", true);
-///   graph._orphanCollections();
-///   graph._removeVertexCollection("myVC3");
-///   graph._orphanCollections();
-/// ~ db._drop("myVC3");
-/// ~ var blub = graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph__removeVertexCollection
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCollection) {
@@ -15787,44 +12418,7 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_connectingEdges
-/// @brief Get all connecting edges between 2 groups of vertices defined by the examples
-///
-/// `graph._connectingEdges(vertexExample, vertexExample2, options)`
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertexExample.
-///
-/// @PARAMS
-///
-/// @PARAM{vertexExample1, object, optional}
-/// See [Definition of examples](Functions.md#definition-of-examples)
-/// @PARAM{vertexExample2, object, optional}
-/// See [Definition of examples](Functions.md#definition-of-examples)
-/// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values:
-///   * *edgeExamples*: Filter the edges, see [Definition of examples](Functions.md#definition-of-examples)
-///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
-///       considered to be on the path.
-///   * *vertex1CollectionRestriction* : One or a list of vertex-collection names that should be
-///       considered on the intermediate vertex steps.
-///   * *vertex2CollectionRestriction* : One or a list of vertex-collection names that should be
-///       considered on the intermediate vertex steps.
-///
-/// @EXAMPLES
-///
-/// A route planner example, all connecting edges between capitals.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleConnectingEdges1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._getConnectingEdges({isCapital : true}, {isCapital : true});
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_general_graph_connectingEdges
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, options) {
@@ -15884,9 +12478,6 @@ Graph.prototype._PRINT = function(context) {
   context.output += " ]";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 /// Deprecated function (announced 2.3)
 exports._undirectedRelation = _undirectedRelation;
@@ -15910,57 +12501,14 @@ exports._listObjects = _listObjects;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_create_graph_example1
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example1}
-///   var graph_module = require("@arangodb/general-graph");
-///   var edgeDefinitions = graph_module._edgeDefinitions();
-///   graph_module._extendEdgeDefinitions(edgeDefinitions, graph_module._relation("friend_of", "Customer", "Customer"));
-/// | graph_module._extendEdgeDefinitions(
-/// | edgeDefinitions, graph_module._relation(
-///   "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
-///   graph_module._create("myStore", edgeDefinitions);
-/// ~ graph_module._drop("myStore");
-/// ~ db._drop("Electronics");
-/// ~ db._drop("Customer");
-/// ~ db._drop("Groceries");
-/// ~ db._drop("Company");
-/// ~ db._drop("has_bought");
-/// ~ db._drop("friend_of");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_create_graph_example1
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_create_graph_example2
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example2}
-///   var graph_module = require("@arangodb/general-graph");
-/// |  var edgeDefinitions = graph_module._edgeDefinitions(
-/// |  graph_module._relation("friend_of", ["Customer"], ["Customer"]), graph_module._relation(
-///    "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
-///   graph_module._create("myStore", edgeDefinitions);
-/// ~ graph_module._drop("myStore");
-/// ~ db._drop("Electronics");
-/// ~ db._drop("Customer");
-/// ~ db._drop("Groceries");
-/// ~ db._drop("Company");
-/// ~ db._drop("has_bought");
-/// ~ db._drop("friend_of");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
+/// @brief was docuBlock JSF_general_graph_create_graph_example2
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 });
 
 module.define("@arangodb/graph-common", function(exports, module) {
@@ -16000,9 +12548,6 @@ var is = require("@arangodb/is"),
   GraphArray,
   Iterator;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             module "@arangodb/graph-blueprint"
-// -----------------------------------------------------------------------------
 
 Iterator = function (wrapper, cursor, stringRepresentation) {
   this.next = function next() {
@@ -16023,13 +12568,7 @@ Iterator = function (wrapper, cursor, stringRepresentation) {
 };
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        GraphArray
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a graph arrays
@@ -16043,9 +12582,6 @@ GraphArray = function (len) {
 
 GraphArray.prototype = new Array(0);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief map
@@ -16185,9 +12721,6 @@ GraphArray.prototype.properties = function () {
   return this.map(function(a) {return a.properties();});
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              Edge
-// -----------------------------------------------------------------------------
 
 Edge = function (graph, properties) {
   this._graph = graph;
@@ -16195,9 +12728,6 @@ Edge = function (graph, properties) {
   this._properties = properties;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// the real docu is in Users/ModuleGraph/EdgeMethods.mdpp
@@ -16293,9 +12823,6 @@ Edge.prototype.getPeerVertex = function (vertex) {
   return null;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge printing
@@ -16318,9 +12845,6 @@ Edge.prototype._PRINT = function (context) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Vertex
-// -----------------------------------------------------------------------------
 
 Vertex = function (graph, properties) {
   this._graph = graph;
@@ -16328,9 +12852,6 @@ Vertex = function (graph, properties) {
   this._properties = properties;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// the real docu is in Users/ModuleGraph/VertexMethods.mdpp
@@ -16445,9 +12966,6 @@ Vertex.prototype.properties = function () {
   return this._properties._shallowCopy;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vertex representation
@@ -16470,17 +12988,11 @@ Vertex.prototype._PRINT = function (context) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             Graph
-// -----------------------------------------------------------------------------
 
 Graph = function (name, vertices, edges, waitForSync) {
   this.initialize(name, vertices, edges, waitForSync);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 Graph.prototype._prepareEdgeData = function (data, label) {
   var edgeData;
@@ -16517,9 +13029,6 @@ Graph.prototype._prepareVertexData = function (data) {
   return vertexData;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a vertex from the graph, create it if it doesn't exist
@@ -16617,9 +13126,6 @@ Graph.prototype.size = function () {
   return this._edges.count();
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// this is no documentation.
@@ -16728,9 +13234,6 @@ Graph.prototype._PRINT = function (context) {
   context.output += "Graph(\"" + this._properties._key + "\")";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.Edge = Edge;
 exports.Graph = Graph;
@@ -16738,14 +13241,7 @@ exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
 exports.Iterator = Iterator;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 });
 
 module.define("@arangodb/graph", function(exports, module) {
@@ -16793,14 +13289,7 @@ Object.keys(gp).forEach(function (m) {
 
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 });
 
 module.define("@arangodb/graph/traversal", function(exports, module) {
@@ -16846,9 +13335,6 @@ var db = arangodb.db;
 
 var ArangoTraverser;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the query was aborted
@@ -16930,9 +13416,6 @@ var abortedException = function (message, options) {
 
 abortedException.prototype = new Error();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       datasources
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default ArangoCollection datasource
@@ -17150,9 +13633,6 @@ function graphDatasourceFactory (name) {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         expanders
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default outbound expander function
@@ -17426,9 +13906,6 @@ function expandEdgesWithLabels (config, vertex, path) {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          visitors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default visitor that just tracks every visit
@@ -17473,9 +13950,6 @@ function countingVisitor (config, result, vertex, path) {
 function doNothingVisitor () {
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           filters
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default filter to visit & expand all vertices
@@ -17540,9 +14014,6 @@ function includeMatchingAttributesFilter (config, vertex, path) {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief combine an array of filters
@@ -18329,13 +14800,7 @@ function astarSearch () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   ArangoTraverser
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traversal constructor
@@ -18521,9 +14986,6 @@ ArangoTraverser = function (config) {
   this.config = config;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the traversal
@@ -18582,9 +15044,6 @@ ArangoTraverser.prototype.traverse = function (result, startVertex, endVertex) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief every element can be revisited
@@ -18676,9 +15135,6 @@ ArangoTraverser.PRUNE                = 'prune';
 
 ArangoTraverser.EXCLUDE              = 'exclude';
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.collectionDatasourceFactory     = collectionDatasourceFactory;
 exports.generalGraphDatasourceFactory   = generalGraphDatasourceFactory;
@@ -18703,14 +15159,7 @@ exports.abortedException                = abortedException;
 
 exports.Traverser                       = ArangoTraverser;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:
 });
 
 module.define("@arangodb/is", function(exports, module) {
@@ -18923,13 +15372,7 @@ var SimpleQueryNear;
 var SimpleQueryWithin;
 var SimpleQueryWithinRectangle;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              GENERAL ARRAY CURSOR
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief array query
@@ -18956,9 +15399,6 @@ function GeneralArrayCursor (documents, skip, limit, data) {
   this.execute();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an array query
@@ -19033,9 +15473,6 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all elements of the cursor
@@ -19097,13 +15534,7 @@ GeneralArrayCursor.prototype.dispose = function() {
   this._extra = null;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      SIMPLE QUERY
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple query
@@ -19118,9 +15549,6 @@ function SimpleQuery () {
   this._batchSize = null;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join limits
@@ -19165,79 +15593,16 @@ SimpleQuery.prototype.clone = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query
-/// @startDocuBlock queryExecute
-/// `query.execute(batchSize)`
-///
-/// Executes a simple query. If the optional batchSize value is specified,
-/// the server will return at most batchSize values in one roundtrip.
-/// The batchSize cannot be adjusted after the query is first executed.
-///
-/// **Note**: There is no need to explicitly call the execute method if another
-/// means of fetching the query results is chosen. The following two approaches
-/// lead to the same result:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{executeQuery}
-/// ~ db._create("users");
-/// ~ db.users.save({ name: "Gerhard" });
-/// ~ db.users.save({ name: "Helmut" });
-/// ~ db.users.save({ name: "Angela" });
-///   result = db.users.all().toArray();
-///   q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
-/// ~ db._drop("users")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// The following two alternatives both use a batchSize and return the same
-/// result:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{executeQueryBatchSize}
-/// ~ db._create("users");
-/// ~ db.users.save({ name: "Gerhard" });
-/// ~ db.users.save({ name: "Helmut" });
-/// ~ db.users.save({ name: "Angela" });
-///   q = db.users.all(); q.setBatchSize(20); q.execute(); while (q.hasNext()) { print(q.next()); }
-///   q = db.users.all(); q.execute(20); while (q.hasNext()) { print(q.next()); }
-/// ~ db._drop("users")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock queryExecute
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.execute = function () {
   throw "cannot execute abstract query";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief limit
-/// @startDocuBlock queryLimit
-/// `query.limit(number)`
-///
-/// Limits a result to the first *number* documents. Specifying a limit of
-/// *0* will return no documents at all. If you do not need a limit, just do
-/// not add the limit operator. The limit must be non-negative.
-///
-/// In general the input to *limit* should be sorted. Otherwise it will be
-/// unclear which documents will be included in the result set.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{queryLimit}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().toArray();
-///   db.five.all().limit(2).toArray();
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock queryLimit
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.limit = function (limit) {
@@ -19256,34 +15621,7 @@ SimpleQuery.prototype.limit = function (limit) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skip
-/// @startDocuBlock querySkip
-/// `query.skip(number)`
-///
-/// Skips the first *number* documents. If *number* is positive, then this
-/// number of documents are skipped before returning the query results.
-///
-/// In general the input to *skip* should be sorted. Otherwise it will be
-/// unclear which documents will be included in the result set.
-///
-/// Note: using negative *skip* values is **deprecated** as of ArangoDB 2.6 and 
-/// will not be supported in future versions of ArangoDB.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{querySkip}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().toArray();
-///   db.five.all().skip(3).toArray();
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock querySkip
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.skip = function (skip) {
@@ -19341,13 +15679,7 @@ SimpleQuery.prototype.toArray = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the batch size
-/// @startDocuBlock cursorGetBatchSize
-/// `cursor.getBatchSize()`
-///
-/// Returns the batch size for queries. If the returned value is undefined, the
-/// server will determine a sensible batch size for any following requests.
-/// @endDocuBlock
+/// @brief was docuBlock cursorGetBatchSize
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.getBatchSize = function () {
@@ -19355,13 +15687,7 @@ SimpleQuery.prototype.getBatchSize = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the batch size for any following requests
-/// @startDocuBlock cursorSetBatchSize
-/// `cursor.setBatchSize(number)`
-///
-/// Sets the batch size for queries. The batch size determines how many results
-/// are at most transferred from the server to the client in one chunk.
-/// @endDocuBlock
+/// @brief was docuBlock cursorSetBatchSize
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.setBatchSize = function (value) {
@@ -19371,56 +15697,7 @@ SimpleQuery.prototype.setBatchSize = function (value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief counts the number of documents
-/// @startDocuBlock cursorCount
-/// `cursor.count()`
-///
-/// The *count* operator counts the number of document in the result set and
-/// returns that number. The *count* operator ignores any limits and returns
-/// the total number of documents found.
-///
-/// **Note**: Not all simple queries support counting. In this case *null* is
-/// returned.
-///
-/// `cursor.count(true)`
-///
-/// If the result set was limited by the *limit* operator or documents were
-/// skiped using the *skip* operator, the *count* operator with argument
-/// *true* will use the number of elements in the final result set - after
-/// applying *limit* and *skip*.
-///
-/// **Note**: Not all simple queries support counting. In this case *null* is
-/// returned.
-///
-/// @EXAMPLES
-///
-/// Ignore any limit:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{cursorCount}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().limit(2).count();
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Counting any limit or skip:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{cursorCountLimit}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().limit(2).count(true);
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock cursorCount
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.count = function (applyPagination) {
@@ -19434,28 +15711,7 @@ SimpleQuery.prototype.count = function (applyPagination) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the cursor is exhausted
-/// @startDocuBlock cursorHasNext
-/// `cursor.hasNext()`
-///
-/// The *hasNext* operator returns *true*, then the cursor still has
-/// documents. In this case the next document can be accessed using the
-/// *next* operator, which will advance the cursor.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{cursorHasNext}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   var a = db.five.all();
-///   while (a.hasNext()) print(a.next());
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock cursorHasNext
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.hasNext = function () {
@@ -19465,29 +15721,7 @@ SimpleQuery.prototype.hasNext = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next result document
-/// @startDocuBlock cursorNext
-/// `cursor.next()`
-///
-/// If the *hasNext* operator returns *true*, then the underlying
-/// cursor of the simple query still has documents.  In this case the
-/// next document can be accessed using the *next* operator, which
-/// will advance the underlying cursor. If you use *next* on an
-/// exhausted cursor, then *undefined* is returned.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{cursorNext}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().next();
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock cursorNext
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.next = function () {
@@ -19497,14 +15731,7 @@ SimpleQuery.prototype.next = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief disposes the result
-/// @startDocuBlock cursorDispose
-/// `cursor.dispose()`
-///
-/// If you are no longer interested in any further results, you should call
-/// *dispose* in order to free any resources associated with the cursor.
-/// After calling *dispose* you can no longer access the cursor.
-/// @endDocuBlock
+/// @brief was docuBlock cursorDispose
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.dispose = function() {
@@ -19517,13 +15744,7 @@ SimpleQuery.prototype.dispose = function() {
   this._countTotal = null;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  SIMPLE QUERY ALL
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all query
@@ -19536,9 +15757,6 @@ function SimpleQueryAll (collection) {
 SimpleQueryAll.prototype = new SimpleQuery();
 SimpleQueryAll.prototype.constructor = SimpleQueryAll;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones an all query
@@ -19574,13 +15792,7 @@ SimpleQueryAll.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                SIMPLE QUERY ARRAY
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief array query
@@ -19593,9 +15805,6 @@ SimpleQueryArray = function (documents) {
 SimpleQueryArray.prototype = new SimpleQuery();
 SimpleQueryArray.prototype.constructor = SimpleQueryArray;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones an all query
@@ -19645,13 +15854,7 @@ SimpleQueryArray.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  QUERY BY EXAMPLE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query-by-example
@@ -19665,9 +15868,6 @@ function SimpleQueryByExample (collection, example) {
 SimpleQueryByExample.prototype = new SimpleQuery();
 SimpleQueryByExample.prototype.constructor = SimpleQueryByExample;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a query-by-example
@@ -19705,13 +15905,7 @@ SimpleQueryByExample.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                QUERY BY CONDITION
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query-by-condition
@@ -19725,9 +15919,6 @@ function SimpleQueryByCondition (collection, condition) {
 SimpleQueryByCondition.prototype = new SimpleQuery();
 SimpleQueryByCondition.prototype.constructor = SimpleQueryByCondition;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a query-by-condition
@@ -19765,13 +15956,7 @@ SimpleQueryByCondition.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       RANGE QUERY
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief range query
@@ -19788,9 +15973,6 @@ function SimpleQueryRange (collection, attribute, left, right, type) {
 SimpleQueryRange.prototype = new SimpleQuery();
 SimpleQueryRange.prototype.constructor = SimpleQueryRange;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a range query
@@ -19830,13 +16012,7 @@ SimpleQueryRange.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  SIMPLE QUERY GEO
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index
@@ -19847,9 +16023,6 @@ function SimpleQueryGeo (collection, index) {
   this._index = index;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a geo index
@@ -19867,9 +16040,6 @@ SimpleQueryGeo.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a near query for an index
@@ -19895,13 +16065,7 @@ SimpleQueryGeo.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
   return new SimpleQueryWithinRectangle(this._collection, lat1, lon1, lat2, lon2, this._index);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 SIMPLE QUERY NEAR
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief near query
@@ -19947,9 +16111,6 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
 SimpleQueryNear.prototype = new SimpleQuery();
 SimpleQueryNear.prototype.constructor = SimpleQueryNear;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a near query
@@ -19994,9 +16155,6 @@ SimpleQueryNear.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the distance attribute
@@ -20017,13 +16175,7 @@ SimpleQueryNear.prototype.distance = function (attribute) {
   return clone;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               SIMPLE QUERY WITHIN
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief within query
@@ -20068,9 +16220,6 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
 SimpleQueryWithin.prototype = new SimpleQuery();
 SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a within query
@@ -20140,13 +16289,7 @@ SimpleQueryWithin.prototype.distance = function (attribute) {
   return clone;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      SIMPLE QUERY WITHINRECTANGLE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief within-rectangle query
@@ -20191,9 +16334,6 @@ SimpleQueryWithinRectangle = function (collection, latitude1, longitude1, latitu
 SimpleQueryWithinRectangle.prototype = new SimpleQuery();
 SimpleQueryWithinRectangle.prototype.constructor = SimpleQueryWithinRectangle;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a within-rectangle query
@@ -20246,13 +16386,7 @@ SimpleQueryWithinRectangle.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             SIMPLE QUERY FULLTEXT
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fulltext query
@@ -20294,9 +16428,6 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
 SimpleQueryFulltext.prototype = new SimpleQuery();
 SimpleQueryFulltext.prototype.constructor = SimpleQueryFulltext;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a fulltext query
@@ -20338,9 +16469,6 @@ SimpleQueryFulltext.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
@@ -20354,1565 +16482,7 @@ exports.SimpleQueryWithin = SimpleQueryWithin;
 exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 exports.SimpleQueryFulltext = SimpleQueryFulltext;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:
-});
-
-module.define("underscore", function(exports, module) {
-//     Underscore.js 1.8.3
-//     http://underscorejs.org
-//     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
-//     Underscore may be freely distributed under the MIT license.
-
-(function() {
-
-  // Baseline setup
-  // --------------
-
-  // Establish the root object, `window` in the browser, or `exports` on the server.
-  var root = this;
-
-  // Save the previous value of the `_` variable.
-  var previousUnderscore = root._;
-
-  // Save bytes in the minified (but not gzipped) version:
-  var ArrayProto = Array.prototype, ObjProto = Object.prototype, FuncProto = Function.prototype;
-
-  // Create quick reference variables for speed access to core prototypes.
-  var
-    push             = ArrayProto.push,
-    slice            = ArrayProto.slice,
-    toString         = ObjProto.toString,
-    hasOwnProperty   = ObjProto.hasOwnProperty;
-
-  // All **ECMAScript 5** native function implementations that we hope to use
-  // are declared here.
-  var
-    nativeIsArray      = Array.isArray,
-    nativeKeys         = Object.keys,
-    nativeBind         = FuncProto.bind,
-    nativeCreate       = Object.create;
-
-  // Naked function reference for surrogate-prototype-swapping.
-  var Ctor = function(){};
-
-  // Create a safe reference to the Underscore object for use below.
-  var _ = function(obj) {
-    if (obj instanceof _) return obj;
-    if (!(this instanceof _)) return new _(obj);
-    this._wrapped = obj;
-  };
-
-  // Export the Underscore object for **Node.js**, with
-  // backwards-compatibility for the old `require()` API. If we're in
-  // the browser, add `_` as a global object.
-  if (typeof exports !== 'undefined') {
-    if (typeof module !== 'undefined' && module.exports) {
-      exports = module.exports = _;
-    }
-    exports._ = _;
-  } else {
-    root._ = _;
-  }
-
-  // Current version.
-  _.VERSION = '1.8.3';
-
-  // Internal function that returns an efficient (for current engines) version
-  // of the passed-in callback, to be repeatedly applied in other Underscore
-  // functions.
-  var optimizeCb = function(func, context, argCount) {
-    if (context === void 0) return func;
-    switch (argCount == null ? 3 : argCount) {
-      case 1: return function(value) {
-        return func.call(context, value);
-      };
-      case 2: return function(value, other) {
-        return func.call(context, value, other);
-      };
-      case 3: return function(value, index, collection) {
-        return func.call(context, value, index, collection);
-      };
-      case 4: return function(accumulator, value, index, collection) {
-        return func.call(context, accumulator, value, index, collection);
-      };
-    }
-    return function() {
-      return func.apply(context, arguments);
-    };
-  };
-
-  // A mostly-internal function to generate callbacks that can be applied
-  // to each element in a collection, returning the desired result — either
-  // identity, an arbitrary callback, a property matcher, or a property accessor.
-  var cb = function(value, context, argCount) {
-    if (value == null) return _.identity;
-    if (_.isFunction(value)) return optimizeCb(value, context, argCount);
-    if (_.isObject(value)) return _.matcher(value);
-    return _.property(value);
-  };
-  _.iteratee = function(value, context) {
-    return cb(value, context, Infinity);
-  };
-
-  // An internal function for creating assigner functions.
-  var createAssigner = function(keysFunc, undefinedOnly) {
-    return function(obj) {
-      var length = arguments.length;
-      if (length < 2 || obj == null) return obj;
-      for (var index = 1; index < length; index++) {
-        var source = arguments[index],
-            keys = keysFunc(source),
-            l = keys.length;
-        for (var i = 0; i < l; i++) {
-          var key = keys[i];
-          if (!undefinedOnly || obj[key] === void 0) obj[key] = source[key];
-        }
-      }
-      return obj;
-    };
-  };
-
-  // An internal function for creating a new object that inherits from another.
-  var baseCreate = function(prototype) {
-    if (!_.isObject(prototype)) return {};
-    if (nativeCreate) return nativeCreate(prototype);
-    Ctor.prototype = prototype;
-    var result = new Ctor;
-    Ctor.prototype = null;
-    return result;
-  };
-
-  var property = function(key) {
-    return function(obj) {
-      return obj == null ? void 0 : obj[key];
-    };
-  };
-
-  // Helper for collection methods to determine whether a collection
-  // should be iterated as an array or as an object
-  // Related: http://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength
-  // Avoids a very nasty iOS 8 JIT bug on ARM-64. #2094
-  var MAX_ARRAY_INDEX = Math.pow(2, 53) - 1;
-  var getLength = property('length');
-  var isArrayLike = function(collection) {
-    var length = getLength(collection);
-    return typeof length == 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
-  };
-
-  // Collection Functions
-  // --------------------
-
-  // The cornerstone, an `each` implementation, aka `forEach`.
-  // Handles raw objects in addition to array-likes. Treats all
-  // sparse array-likes as if they were dense.
-  _.each = _.forEach = function(obj, iteratee, context) {
-    iteratee = optimizeCb(iteratee, context);
-    var i, length;
-    if (isArrayLike(obj)) {
-      for (i = 0, length = obj.length; i < length; i++) {
-        iteratee(obj[i], i, obj);
-      }
-    } else {
-      var keys = _.keys(obj);
-      for (i = 0, length = keys.length; i < length; i++) {
-        iteratee(obj[keys[i]], keys[i], obj);
-      }
-    }
-    return obj;
-  };
-
-  // Return the results of applying the iteratee to each element.
-  _.map = _.collect = function(obj, iteratee, context) {
-    iteratee = cb(iteratee, context);
-    var keys = !isArrayLike(obj) && _.keys(obj),
-        length = (keys || obj).length,
-        results = Array(length);
-    for (var index = 0; index < length; index++) {
-      var currentKey = keys ? keys[index] : index;
-      results[index] = iteratee(obj[currentKey], currentKey, obj);
-    }
-    return results;
-  };
-
-  // Create a reducing function iterating left or right.
-  function createReduce(dir) {
-    // Optimized iterator function as using arguments.length
-    // in the main function will deoptimize the, see #1991.
-    function iterator(obj, iteratee, memo, keys, index, length) {
-      for (; index >= 0 && index < length; index += dir) {
-        var currentKey = keys ? keys[index] : index;
-        memo = iteratee(memo, obj[currentKey], currentKey, obj);
-      }
-      return memo;
-    }
-
-    return function(obj, iteratee, memo, context) {
-      iteratee = optimizeCb(iteratee, context, 4);
-      var keys = !isArrayLike(obj) && _.keys(obj),
-          length = (keys || obj).length,
-          index = dir > 0 ? 0 : length - 1;
-      // Determine the initial value if none is provided.
-      if (arguments.length < 3) {
-        memo = obj[keys ? keys[index] : index];
-        index += dir;
-      }
-      return iterator(obj, iteratee, memo, keys, index, length);
-    };
-  }
-
-  // **Reduce** builds up a single result from a list of values, aka `inject`,
-  // or `foldl`.
-  _.reduce = _.foldl = _.inject = createReduce(1);
-
-  // The right-associative version of reduce, also known as `foldr`.
-  _.reduceRight = _.foldr = createReduce(-1);
-
-  // Return the first value which passes a truth test. Aliased as `detect`.
-  _.find = _.detect = function(obj, predicate, context) {
-    var key;
-    if (isArrayLike(obj)) {
-      key = _.findIndex(obj, predicate, context);
-    } else {
-      key = _.findKey(obj, predicate, context);
-    }
-    if (key !== void 0 && key !== -1) return obj[key];
-  };
-
-  // Return all the elements that pass a truth test.
-  // Aliased as `select`.
-  _.filter = _.select = function(obj, predicate, context) {
-    var results = [];
-    predicate = cb(predicate, context);
-    _.each(obj, function(value, index, list) {
-      if (predicate(value, index, list)) results.push(value);
-    });
-    return results;
-  };
-
-  // Return all the elements for which a truth test fails.
-  _.reject = function(obj, predicate, context) {
-    return _.filter(obj, _.negate(cb(predicate)), context);
-  };
-
-  // Determine whether all of the elements match a truth test.
-  // Aliased as `all`.
-  _.every = _.all = function(obj, predicate, context) {
-    predicate = cb(predicate, context);
-    var keys = !isArrayLike(obj) && _.keys(obj),
-        length = (keys || obj).length;
-    for (var index = 0; index < length; index++) {
-      var currentKey = keys ? keys[index] : index;
-      if (!predicate(obj[currentKey], currentKey, obj)) return false;
-    }
-    return true;
-  };
-
-  // Determine if at least one element in the object matches a truth test.
-  // Aliased as `any`.
-  _.some = _.any = function(obj, predicate, context) {
-    predicate = cb(predicate, context);
-    var keys = !isArrayLike(obj) && _.keys(obj),
-        length = (keys || obj).length;
-    for (var index = 0; index < length; index++) {
-      var currentKey = keys ? keys[index] : index;
-      if (predicate(obj[currentKey], currentKey, obj)) return true;
-    }
-    return false;
-  };
-
-  // Determine if the array or object contains a given item (using `===`).
-  // Aliased as `includes` and `include`.
-  _.contains = _.includes = _.include = function(obj, item, fromIndex, guard) {
-    if (!isArrayLike(obj)) obj = _.values(obj);
-    if (typeof fromIndex != 'number' || guard) fromIndex = 0;
-    return _.indexOf(obj, item, fromIndex) >= 0;
-  };
-
-  // Invoke a method (with arguments) on every item in a collection.
-  _.invoke = function(obj, method) {
-    var args = slice.call(arguments, 2);
-    var isFunc = _.isFunction(method);
-    return _.map(obj, function(value) {
-      var func = isFunc ? method : value[method];
-      return func == null ? func : func.apply(value, args);
-    });
-  };
-
-  // Convenience version of a common use case of `map`: fetching a property.
-  _.pluck = function(obj, key) {
-    return _.map(obj, _.property(key));
-  };
-
-  // Convenience version of a common use case of `filter`: selecting only objects
-  // containing specific `key:value` pairs.
-  _.where = function(obj, attrs) {
-    return _.filter(obj, _.matcher(attrs));
-  };
-
-  // Convenience version of a common use case of `find`: getting the first object
-  // containing specific `key:value` pairs.
-  _.findWhere = function(obj, attrs) {
-    return _.find(obj, _.matcher(attrs));
-  };
-
-  // Return the maximum element (or element-based computation).
-  _.max = function(obj, iteratee, context) {
-    var result = -Infinity, lastComputed = -Infinity,
-        value, computed;
-    if (iteratee == null && obj != null) {
-      obj = isArrayLike(obj) ? obj : _.values(obj);
-      for (var i = 0, length = obj.length; i < length; i++) {
-        value = obj[i];
-        if (value > result) {
-          result = value;
-        }
-      }
-    } else {
-      iteratee = cb(iteratee, context);
-      _.each(obj, function(value, index, list) {
-        computed = iteratee(value, index, list);
-        if (computed > lastComputed || computed === -Infinity && result === -Infinity) {
-          result = value;
-          lastComputed = computed;
-        }
-      });
-    }
-    return result;
-  };
-
-  // Return the minimum element (or element-based computation).
-  _.min = function(obj, iteratee, context) {
-    var result = Infinity, lastComputed = Infinity,
-        value, computed;
-    if (iteratee == null && obj != null) {
-      obj = isArrayLike(obj) ? obj : _.values(obj);
-      for (var i = 0, length = obj.length; i < length; i++) {
-        value = obj[i];
-        if (value < result) {
-          result = value;
-        }
-      }
-    } else {
-      iteratee = cb(iteratee, context);
-      _.each(obj, function(value, index, list) {
-        computed = iteratee(value, index, list);
-        if (computed < lastComputed || computed === Infinity && result === Infinity) {
-          result = value;
-          lastComputed = computed;
-        }
-      });
-    }
-    return result;
-  };
-
-  // Shuffle a collection, using the modern version of the
-  // [Fisher-Yates shuffle](http://en.wikipedia.org/wiki/Fisher–Yates_shuffle).
-  _.shuffle = function(obj) {
-    var set = isArrayLike(obj) ? obj : _.values(obj);
-    var length = set.length;
-    var shuffled = Array(length);
-    for (var index = 0, rand; index < length; index++) {
-      rand = _.random(0, index);
-      if (rand !== index) shuffled[index] = shuffled[rand];
-      shuffled[rand] = set[index];
-    }
-    return shuffled;
-  };
-
-  // Sample **n** random values from a collection.
-  // If **n** is not specified, returns a single random element.
-  // The internal `guard` argument allows it to work with `map`.
-  _.sample = function(obj, n, guard) {
-    if (n == null || guard) {
-      if (!isArrayLike(obj)) obj = _.values(obj);
-      return obj[_.random(obj.length - 1)];
-    }
-    return _.shuffle(obj).slice(0, Math.max(0, n));
-  };
-
-  // Sort the object's values by a criterion produced by an iteratee.
-  _.sortBy = function(obj, iteratee, context) {
-    iteratee = cb(iteratee, context);
-    return _.pluck(_.map(obj, function(value, index, list) {
-      return {
-        value: value,
-        index: index,
-        criteria: iteratee(value, index, list)
-      };
-    }).sort(function(left, right) {
-      var a = left.criteria;
-      var b = right.criteria;
-      if (a !== b) {
-        if (a > b || a === void 0) return 1;
-        if (a < b || b === void 0) return -1;
-      }
-      return left.index - right.index;
-    }), 'value');
-  };
-
-  // An internal function used for aggregate "group by" operations.
-  var group = function(behavior) {
-    return function(obj, iteratee, context) {
-      var result = {};
-      iteratee = cb(iteratee, context);
-      _.each(obj, function(value, index) {
-        var key = iteratee(value, index, obj);
-        behavior(result, value, key);
-      });
-      return result;
-    };
-  };
-
-  // Groups the object's values by a criterion. Pass either a string attribute
-  // to group by, or a function that returns the criterion.
-  _.groupBy = group(function(result, value, key) {
-    if (_.has(result, key)) result[key].push(value); else result[key] = [value];
-  });
-
-  // Indexes the object's values by a criterion, similar to `groupBy`, but for
-  // when you know that your index values will be unique.
-  _.indexBy = group(function(result, value, key) {
-    result[key] = value;
-  });
-
-  // Counts instances of an object that group by a certain criterion. Pass
-  // either a string attribute to count by, or a function that returns the
-  // criterion.
-  _.countBy = group(function(result, value, key) {
-    if (_.has(result, key)) result[key]++; else result[key] = 1;
-  });
-
-  // Safely create a real, live array from anything iterable.
-  _.toArray = function(obj) {
-    if (!obj) return [];
-    if (_.isArray(obj)) return slice.call(obj);
-    if (isArrayLike(obj)) return _.map(obj, _.identity);
-    return _.values(obj);
-  };
-
-  // Return the number of elements in an object.
-  _.size = function(obj) {
-    if (obj == null) return 0;
-    return isArrayLike(obj) ? obj.length : _.keys(obj).length;
-  };
-
-  // Split a collection into two arrays: one whose elements all satisfy the given
-  // predicate, and one whose elements all do not satisfy the predicate.
-  _.partition = function(obj, predicate, context) {
-    predicate = cb(predicate, context);
-    var pass = [], fail = [];
-    _.each(obj, function(value, key, obj) {
-      (predicate(value, key, obj) ? pass : fail).push(value);
-    });
-    return [pass, fail];
-  };
-
-  // Array Functions
-  // ---------------
-
-  // Get the first element of an array. Passing **n** will return the first N
-  // values in the array. Aliased as `head` and `take`. The **guard** check
-  // allows it to work with `_.map`.
-  _.first = _.head = _.take = function(array, n, guard) {
-    if (array == null) return void 0;
-    if (n == null || guard) return array[0];
-    return _.initial(array, array.length - n);
-  };
-
-  // Returns everything but the last entry of the array. Especially useful on
-  // the arguments object. Passing **n** will return all the values in
-  // the array, excluding the last N.
-  _.initial = function(array, n, guard) {
-    return slice.call(array, 0, Math.max(0, array.length - (n == null || guard ? 1 : n)));
-  };
-
-  // Get the last element of an array. Passing **n** will return the last N
-  // values in the array.
-  _.last = function(array, n, guard) {
-    if (array == null) return void 0;
-    if (n == null || guard) return array[array.length - 1];
-    return _.rest(array, Math.max(0, array.length - n));
-  };
-
-  // Returns everything but the first entry of the array. Aliased as `tail` and `drop`.
-  // Especially useful on the arguments object. Passing an **n** will return
-  // the rest N values in the array.
-  _.rest = _.tail = _.drop = function(array, n, guard) {
-    return slice.call(array, n == null || guard ? 1 : n);
-  };
-
-  // Trim out all falsy values from an array.
-  _.compact = function(array) {
-    return _.filter(array, _.identity);
-  };
-
-  // Internal implementation of a recursive `flatten` function.
-  var flatten = function(input, shallow, strict, startIndex) {
-    var output = [], idx = 0;
-    for (var i = startIndex || 0, length = getLength(input); i < length; i++) {
-      var value = input[i];
-      if (isArrayLike(value) && (_.isArray(value) || _.isArguments(value))) {
-        //flatten current level of array or arguments object
-        if (!shallow) value = flatten(value, shallow, strict);
-        var j = 0, len = value.length;
-        output.length += len;
-        while (j < len) {
-          output[idx++] = value[j++];
-        }
-      } else if (!strict) {
-        output[idx++] = value;
-      }
-    }
-    return output;
-  };
-
-  // Flatten out an array, either recursively (by default), or just one level.
-  _.flatten = function(array, shallow) {
-    return flatten(array, shallow, false);
-  };
-
-  // Return a version of the array that does not contain the specified value(s).
-  _.without = function(array) {
-    return _.difference(array, slice.call(arguments, 1));
-  };
-
-  // Produce a duplicate-free version of the array. If the array has already
-  // been sorted, you have the option of using a faster algorithm.
-  // Aliased as `unique`.
-  _.uniq = _.unique = function(array, isSorted, iteratee, context) {
-    if (!_.isBoolean(isSorted)) {
-      context = iteratee;
-      iteratee = isSorted;
-      isSorted = false;
-    }
-    if (iteratee != null) iteratee = cb(iteratee, context);
-    var result = [];
-    var seen = [];
-    for (var i = 0, length = getLength(array); i < length; i++) {
-      var value = array[i],
-          computed = iteratee ? iteratee(value, i, array) : value;
-      if (isSorted) {
-        if (!i || seen !== computed) result.push(value);
-        seen = computed;
-      } else if (iteratee) {
-        if (!_.contains(seen, computed)) {
-          seen.push(computed);
-          result.push(value);
-        }
-      } else if (!_.contains(result, value)) {
-        result.push(value);
-      }
-    }
-    return result;
-  };
-
-  // Produce an array that contains the union: each distinct element from all of
-  // the passed-in arrays.
-  _.union = function() {
-    return _.uniq(flatten(arguments, true, true));
-  };
-
-  // Produce an array that contains every item shared between all the
-  // passed-in arrays.
-  _.intersection = function(array) {
-    var result = [];
-    var argsLength = arguments.length;
-    for (var i = 0, length = getLength(array); i < length; i++) {
-      var item = array[i];
-      if (_.contains(result, item)) continue;
-      for (var j = 1; j < argsLength; j++) {
-        if (!_.contains(arguments[j], item)) break;
-      }
-      if (j === argsLength) result.push(item);
-    }
-    return result;
-  };
-
-  // Take the difference between one array and a number of other arrays.
-  // Only the elements present in just the first array will remain.
-  _.difference = function(array) {
-    var rest = flatten(arguments, true, true, 1);
-    return _.filter(array, function(value){
-      return !_.contains(rest, value);
-    });
-  };
-
-  // Zip together multiple lists into a single array -- elements that share
-  // an index go together.
-  _.zip = function() {
-    return _.unzip(arguments);
-  };
-
-  // Complement of _.zip. Unzip accepts an array of arrays and groups
-  // each array's elements on shared indices
-  _.unzip = function(array) {
-    var length = array && _.max(array, getLength).length || 0;
-    var result = Array(length);
-
-    for (var index = 0; index < length; index++) {
-      result[index] = _.pluck(array, index);
-    }
-    return result;
-  };
-
-  // Converts lists into objects. Pass either a single array of `[key, value]`
-  // pairs, or two parallel arrays of the same length -- one of keys, and one of
-  // the corresponding values.
-  _.object = function(list, values) {
-    var result = {};
-    for (var i = 0, length = getLength(list); i < length; i++) {
-      if (values) {
-        result[list[i]] = values[i];
-      } else {
-        result[list[i][0]] = list[i][1];
-      }
-    }
-    return result;
-  };
-
-  // Generator function to create the findIndex and findLastIndex functions
-  function createPredicateIndexFinder(dir) {
-    return function(array, predicate, context) {
-      predicate = cb(predicate, context);
-      var length = getLength(array);
-      var index = dir > 0 ? 0 : length - 1;
-      for (; index >= 0 && index < length; index += dir) {
-        if (predicate(array[index], index, array)) return index;
-      }
-      return -1;
-    };
-  }
-
-  // Returns the first index on an array-like that passes a predicate test
-  _.findIndex = createPredicateIndexFinder(1);
-  _.findLastIndex = createPredicateIndexFinder(-1);
-
-  // Use a comparator function to figure out the smallest index at which
-  // an object should be inserted so as to maintain order. Uses binary search.
-  _.sortedIndex = function(array, obj, iteratee, context) {
-    iteratee = cb(iteratee, context, 1);
-    var value = iteratee(obj);
-    var low = 0, high = getLength(array);
-    while (low < high) {
-      var mid = Math.floor((low + high) / 2);
-      if (iteratee(array[mid]) < value) low = mid + 1; else high = mid;
-    }
-    return low;
-  };
-
-  // Generator function to create the indexOf and lastIndexOf functions
-  function createIndexFinder(dir, predicateFind, sortedIndex) {
-    return function(array, item, idx) {
-      var i = 0, length = getLength(array);
-      if (typeof idx == 'number') {
-        if (dir > 0) {
-            i = idx >= 0 ? idx : Math.max(idx + length, i);
-        } else {
-            length = idx >= 0 ? Math.min(idx + 1, length) : idx + length + 1;
-        }
-      } else if (sortedIndex && idx && length) {
-        idx = sortedIndex(array, item);
-        return array[idx] === item ? idx : -1;
-      }
-      if (item !== item) {
-        idx = predicateFind(slice.call(array, i, length), _.isNaN);
-        return idx >= 0 ? idx + i : -1;
-      }
-      for (idx = dir > 0 ? i : length - 1; idx >= 0 && idx < length; idx += dir) {
-        if (array[idx] === item) return idx;
-      }
-      return -1;
-    };
-  }
-
-  // Return the position of the first occurrence of an item in an array,
-  // or -1 if the item is not included in the array.
-  // If the array is large and already in sort order, pass `true`
-  // for **isSorted** to use binary search.
-  _.indexOf = createIndexFinder(1, _.findIndex, _.sortedIndex);
-  _.lastIndexOf = createIndexFinder(-1, _.findLastIndex);
-
-  // Generate an integer Array containing an arithmetic progression. A port of
-  // the native Python `range()` function. See
-  // [the Python documentation](http://docs.python.org/library/functions.html#range).
-  _.range = function(start, stop, step) {
-    if (stop == null) {
-      stop = start || 0;
-      start = 0;
-    }
-    step = step || 1;
-
-    var length = Math.max(Math.ceil((stop - start) / step), 0);
-    var range = Array(length);
-
-    for (var idx = 0; idx < length; idx++, start += step) {
-      range[idx] = start;
-    }
-
-    return range;
-  };
-
-  // Function (ahem) Functions
-  // ------------------
-
-  // Determines whether to execute a function as a constructor
-  // or a normal function with the provided arguments
-  var executeBound = function(sourceFunc, boundFunc, context, callingContext, args) {
-    if (!(callingContext instanceof boundFunc)) return sourceFunc.apply(context, args);
-    var self = baseCreate(sourceFunc.prototype);
-    var result = sourceFunc.apply(self, args);
-    if (_.isObject(result)) return result;
-    return self;
-  };
-
-  // Create a function bound to a given object (assigning `this`, and arguments,
-  // optionally). Delegates to **ECMAScript 5**'s native `Function.bind` if
-  // available.
-  _.bind = function(func, context) {
-    if (nativeBind && func.bind === nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
-    if (!_.isFunction(func)) throw new TypeError('Bind must be called on a function');
-    var args = slice.call(arguments, 2);
-    var bound = function() {
-      return executeBound(func, bound, context, this, args.concat(slice.call(arguments)));
-    };
-    return bound;
-  };
-
-  // Partially apply a function by creating a version that has had some of its
-  // arguments pre-filled, without changing its dynamic `this` context. _ acts
-  // as a placeholder, allowing any combination of arguments to be pre-filled.
-  _.partial = function(func) {
-    var boundArgs = slice.call(arguments, 1);
-    var bound = function() {
-      var position = 0, length = boundArgs.length;
-      var args = Array(length);
-      for (var i = 0; i < length; i++) {
-        args[i] = boundArgs[i] === _ ? arguments[position++] : boundArgs[i];
-      }
-      while (position < arguments.length) args.push(arguments[position++]);
-      return executeBound(func, bound, this, this, args);
-    };
-    return bound;
-  };
-
-  // Bind a number of an object's methods to that object. Remaining arguments
-  // are the method names to be bound. Useful for ensuring that all callbacks
-  // defined on an object belong to it.
-  _.bindAll = function(obj) {
-    var i, length = arguments.length, key;
-    if (length <= 1) throw new Error('bindAll must be passed function names');
-    for (i = 1; i < length; i++) {
-      key = arguments[i];
-      obj[key] = _.bind(obj[key], obj);
-    }
-    return obj;
-  };
-
-  // Memoize an expensive function by storing its results.
-  _.memoize = function(func, hasher) {
-    var memoize = function(key) {
-      var cache = memoize.cache;
-      var address = '' + (hasher ? hasher.apply(this, arguments) : key);
-      if (!_.has(cache, address)) cache[address] = func.apply(this, arguments);
-      return cache[address];
-    };
-    memoize.cache = {};
-    return memoize;
-  };
-
-  // Delays a function for the given number of milliseconds, and then calls
-  // it with the arguments supplied.
-  _.delay = function(func, wait) {
-    var args = slice.call(arguments, 2);
-    return setTimeout(function(){
-      return func.apply(null, args);
-    }, wait);
-  };
-
-  // Defers a function, scheduling it to run after the current call stack has
-  // cleared.
-  _.defer = _.partial(_.delay, _, 1);
-
-  // Returns a function, that, when invoked, will only be triggered at most once
-  // during a given window of time. Normally, the throttled function will run
-  // as much as it can, without ever going more than once per `wait` duration;
-  // but if you'd like to disable the execution on the leading edge, pass
-  // `{leading: false}`. To disable execution on the trailing edge, ditto.
-  _.throttle = function(func, wait, options) {
-    var context, args, result;
-    var timeout = null;
-    var previous = 0;
-    if (!options) options = {};
-    var later = function() {
-      previous = options.leading === false ? 0 : _.now();
-      timeout = null;
-      result = func.apply(context, args);
-      if (!timeout) context = args = null;
-    };
-    return function() {
-      var now = _.now();
-      if (!previous && options.leading === false) previous = now;
-      var remaining = wait - (now - previous);
-      context = this;
-      args = arguments;
-      if (remaining <= 0 || remaining > wait) {
-        if (timeout) {
-          clearTimeout(timeout);
-          timeout = null;
-        }
-        previous = now;
-        result = func.apply(context, args);
-        if (!timeout) context = args = null;
-      } else if (!timeout && options.trailing !== false) {
-        timeout = setTimeout(later, remaining);
-      }
-      return result;
-    };
-  };
-
-  // Returns a function, that, as long as it continues to be invoked, will not
-  // be triggered. The function will be called after it stops being called for
-  // N milliseconds. If `immediate` is passed, trigger the function on the
-  // leading edge, instead of the trailing.
-  _.debounce = function(func, wait, immediate) {
-    var timeout, args, context, timestamp, result;
-
-    var later = function() {
-      var last = _.now() - timestamp;
-
-      if (last < wait && last >= 0) {
-        timeout = setTimeout(later, wait - last);
-      } else {
-        timeout = null;
-        if (!immediate) {
-          result = func.apply(context, args);
-          if (!timeout) context = args = null;
-        }
-      }
-    };
-
-    return function() {
-      context = this;
-      args = arguments;
-      timestamp = _.now();
-      var callNow = immediate && !timeout;
-      if (!timeout) timeout = setTimeout(later, wait);
-      if (callNow) {
-        result = func.apply(context, args);
-        context = args = null;
-      }
-
-      return result;
-    };
-  };
-
-  // Returns the first function passed as an argument to the second,
-  // allowing you to adjust arguments, run code before and after, and
-  // conditionally execute the original function.
-  _.wrap = function(func, wrapper) {
-    return _.partial(wrapper, func);
-  };
-
-  // Returns a negated version of the passed-in predicate.
-  _.negate = function(predicate) {
-    return function() {
-      return !predicate.apply(this, arguments);
-    };
-  };
-
-  // Returns a function that is the composition of a list of functions, each
-  // consuming the return value of the function that follows.
-  _.compose = function() {
-    var args = arguments;
-    var start = args.length - 1;
-    return function() {
-      var i = start;
-      var result = args[start].apply(this, arguments);
-      while (i--) result = args[i].call(this, result);
-      return result;
-    };
-  };
-
-  // Returns a function that will only be executed on and after the Nth call.
-  _.after = function(times, func) {
-    return function() {
-      if (--times < 1) {
-        return func.apply(this, arguments);
-      }
-    };
-  };
-
-  // Returns a function that will only be executed up to (but not including) the Nth call.
-  _.before = function(times, func) {
-    var memo;
-    return function() {
-      if (--times > 0) {
-        memo = func.apply(this, arguments);
-      }
-      if (times <= 1) func = null;
-      return memo;
-    };
-  };
-
-  // Returns a function that will be executed at most one time, no matter how
-  // often you call it. Useful for lazy initialization.
-  _.once = _.partial(_.before, 2);
-
-  // Object Functions
-  // ----------------
-
-  // Keys in IE < 9 that won't be iterated by `for key in ...` and thus missed.
-  var hasEnumBug = !{toString: null}.propertyIsEnumerable('toString');
-  var nonEnumerableProps = ['valueOf', 'isPrototypeOf', 'toString',
-                      'propertyIsEnumerable', 'hasOwnProperty', 'toLocaleString'];
-
-  function collectNonEnumProps(obj, keys) {
-    var nonEnumIdx = nonEnumerableProps.length;
-    var constructor = obj.constructor;
-    var proto = (_.isFunction(constructor) && constructor.prototype) || ObjProto;
-
-    // Constructor is a special case.
-    var prop = 'constructor';
-    if (_.has(obj, prop) && !_.contains(keys, prop)) keys.push(prop);
-
-    while (nonEnumIdx--) {
-      prop = nonEnumerableProps[nonEnumIdx];
-      if (prop in obj && obj[prop] !== proto[prop] && !_.contains(keys, prop)) {
-        keys.push(prop);
-      }
-    }
-  }
-
-  // Retrieve the names of an object's own properties.
-  // Delegates to **ECMAScript 5**'s native `Object.keys`
-  _.keys = function(obj) {
-    if (!_.isObject(obj)) return [];
-    if (nativeKeys) return nativeKeys(obj);
-    var keys = [];
-    for (var key in obj) if (_.has(obj, key)) keys.push(key);
-    // Ahem, IE < 9.
-    if (hasEnumBug) collectNonEnumProps(obj, keys);
-    return keys;
-  };
-
-  // Retrieve all the property names of an object.
-  _.allKeys = function(obj) {
-    if (!_.isObject(obj)) return [];
-    var keys = [];
-    for (var key in obj) keys.push(key);
-    // Ahem, IE < 9.
-    if (hasEnumBug) collectNonEnumProps(obj, keys);
-    return keys;
-  };
-
-  // Retrieve the values of an object's properties.
-  _.values = function(obj) {
-    var keys = _.keys(obj);
-    var length = keys.length;
-    var values = Array(length);
-    for (var i = 0; i < length; i++) {
-      values[i] = obj[keys[i]];
-    }
-    return values;
-  };
-
-  // Returns the results of applying the iteratee to each element of the object
-  // In contrast to _.map it returns an object
-  _.mapObject = function(obj, iteratee, context) {
-    iteratee = cb(iteratee, context);
-    var keys =  _.keys(obj),
-          length = keys.length,
-          results = {},
-          currentKey;
-      for (var index = 0; index < length; index++) {
-        currentKey = keys[index];
-        results[currentKey] = iteratee(obj[currentKey], currentKey, obj);
-      }
-      return results;
-  };
-
-  // Convert an object into a list of `[key, value]` pairs.
-  _.pairs = function(obj) {
-    var keys = _.keys(obj);
-    var length = keys.length;
-    var pairs = Array(length);
-    for (var i = 0; i < length; i++) {
-      pairs[i] = [keys[i], obj[keys[i]]];
-    }
-    return pairs;
-  };
-
-  // Invert the keys and values of an object. The values must be serializable.
-  _.invert = function(obj) {
-    var result = {};
-    var keys = _.keys(obj);
-    for (var i = 0, length = keys.length; i < length; i++) {
-      result[obj[keys[i]]] = keys[i];
-    }
-    return result;
-  };
-
-  // Return a sorted list of the function names available on the object.
-  // Aliased as `methods`
-  _.functions = _.methods = function(obj) {
-    var names = [];
-    for (var key in obj) {
-      if (_.isFunction(obj[key])) names.push(key);
-    }
-    return names.sort();
-  };
-
-  // Extend a given object with all the properties in passed-in object(s).
-  _.extend = createAssigner(_.allKeys);
-
-  // Assigns a given object with all the own properties in the passed-in object(s)
-  // (https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)
-  _.extendOwn = _.assign = createAssigner(_.keys);
-
-  // Returns the first key on an object that passes a predicate test
-  _.findKey = function(obj, predicate, context) {
-    predicate = cb(predicate, context);
-    var keys = _.keys(obj), key;
-    for (var i = 0, length = keys.length; i < length; i++) {
-      key = keys[i];
-      if (predicate(obj[key], key, obj)) return key;
-    }
-  };
-
-  // Return a copy of the object only containing the whitelisted properties.
-  _.pick = function(object, oiteratee, context) {
-    var result = {}, obj = object, iteratee, keys;
-    if (obj == null) return result;
-    if (_.isFunction(oiteratee)) {
-      keys = _.allKeys(obj);
-      iteratee = optimizeCb(oiteratee, context);
-    } else {
-      keys = flatten(arguments, false, false, 1);
-      iteratee = function(value, key, obj) { return key in obj; };
-      obj = Object(obj);
-    }
-    for (var i = 0, length = keys.length; i < length; i++) {
-      var key = keys[i];
-      var value = obj[key];
-      if (iteratee(value, key, obj)) result[key] = value;
-    }
-    return result;
-  };
-
-   // Return a copy of the object without the blacklisted properties.
-  _.omit = function(obj, iteratee, context) {
-    if (_.isFunction(iteratee)) {
-      iteratee = _.negate(iteratee);
-    } else {
-      var keys = _.map(flatten(arguments, false, false, 1), String);
-      iteratee = function(value, key) {
-        return !_.contains(keys, key);
-      };
-    }
-    return _.pick(obj, iteratee, context);
-  };
-
-  // Fill in a given object with default properties.
-  _.defaults = createAssigner(_.allKeys, true);
-
-  // Creates an object that inherits from the given prototype object.
-  // If additional properties are provided then they will be added to the
-  // created object.
-  _.create = function(prototype, props) {
-    var result = baseCreate(prototype);
-    if (props) _.extendOwn(result, props);
-    return result;
-  };
-
-  // Create a (shallow-cloned) duplicate of an object.
-  _.clone = function(obj) {
-    if (!_.isObject(obj)) return obj;
-    return _.isArray(obj) ? obj.slice() : _.extend({}, obj);
-  };
-
-  // Invokes interceptor with the obj, and then returns obj.
-  // The primary purpose of this method is to "tap into" a method chain, in
-  // order to perform operations on intermediate results within the chain.
-  _.tap = function(obj, interceptor) {
-    interceptor(obj);
-    return obj;
-  };
-
-  // Returns whether an object has a given set of `key:value` pairs.
-  _.isMatch = function(object, attrs) {
-    var keys = _.keys(attrs), length = keys.length;
-    if (object == null) return !length;
-    var obj = Object(object);
-    for (var i = 0; i < length; i++) {
-      var key = keys[i];
-      if (attrs[key] !== obj[key] || !(key in obj)) return false;
-    }
-    return true;
-  };
-
-
-  // Internal recursive comparison function for `isEqual`.
-  var eq = function(a, b, aStack, bStack) {
-    // Identical objects are equal. `0 === -0`, but they aren't identical.
-    // See the [Harmony `egal` proposal](http://wiki.ecmascript.org/doku.php?id=harmony:egal).
-    if (a === b) return a !== 0 || 1 / a === 1 / b;
-    // A strict comparison is necessary because `null == undefined`.
-    if (a == null || b == null) return a === b;
-    // Unwrap any wrapped objects.
-    if (a instanceof _) a = a._wrapped;
-    if (b instanceof _) b = b._wrapped;
-    // Compare `[[Class]]` names.
-    var className = toString.call(a);
-    if (className !== toString.call(b)) return false;
-    switch (className) {
-      // Strings, numbers, regular expressions, dates, and booleans are compared by value.
-      case '[object RegExp]':
-      // RegExps are coerced to strings for comparison (Note: '' + /a/i === '/a/i')
-      case '[object String]':
-        // Primitives and their corresponding object wrappers are equivalent; thus, `"5"` is
-        // equivalent to `new String("5")`.
-        return '' + a === '' + b;
-      case '[object Number]':
-        // `NaN`s are equivalent, but non-reflexive.
-        // Object(NaN) is equivalent to NaN
-        if (+a !== +a) return +b !== +b;
-        // An `egal` comparison is performed for other numeric values.
-        return +a === 0 ? 1 / +a === 1 / b : +a === +b;
-      case '[object Date]':
-      case '[object Boolean]':
-        // Coerce dates and booleans to numeric primitive values. Dates are compared by their
-        // millisecond representations. Note that invalid dates with millisecond representations
-        // of `NaN` are not equivalent.
-        return +a === +b;
-    }
-
-    var areArrays = className === '[object Array]';
-    if (!areArrays) {
-      if (typeof a != 'object' || typeof b != 'object') return false;
-
-      // Objects with different constructors are not equivalent, but `Object`s or `Array`s
-      // from different frames are.
-      var aCtor = a.constructor, bCtor = b.constructor;
-      if (aCtor !== bCtor && !(_.isFunction(aCtor) && aCtor instanceof aCtor &&
-                               _.isFunction(bCtor) && bCtor instanceof bCtor)
-                          && ('constructor' in a && 'constructor' in b)) {
-        return false;
-      }
-    }
-    // Assume equality for cyclic structures. The algorithm for detecting cyclic
-    // structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
-
-    // Initializing stack of traversed objects.
-    // It's done here since we only need them for objects and arrays comparison.
-    aStack = aStack || [];
-    bStack = bStack || [];
-    var length = aStack.length;
-    while (length--) {
-      // Linear search. Performance is inversely proportional to the number of
-      // unique nested structures.
-      if (aStack[length] === a) return bStack[length] === b;
-    }
-
-    // Add the first object to the stack of traversed objects.
-    aStack.push(a);
-    bStack.push(b);
-
-    // Recursively compare objects and arrays.
-    if (areArrays) {
-      // Compare array lengths to determine if a deep comparison is necessary.
-      length = a.length;
-      if (length !== b.length) return false;
-      // Deep compare the contents, ignoring non-numeric properties.
-      while (length--) {
-        if (!eq(a[length], b[length], aStack, bStack)) return false;
-      }
-    } else {
-      // Deep compare objects.
-      var keys = _.keys(a), key;
-      length = keys.length;
-      // Ensure that both objects contain the same number of properties before comparing deep equality.
-      if (_.keys(b).length !== length) return false;
-      while (length--) {
-        // Deep compare each member
-        key = keys[length];
-        if (!(_.has(b, key) && eq(a[key], b[key], aStack, bStack))) return false;
-      }
-    }
-    // Remove the first object from the stack of traversed objects.
-    aStack.pop();
-    bStack.pop();
-    return true;
-  };
-
-  // Perform a deep comparison to check if two objects are equal.
-  _.isEqual = function(a, b) {
-    return eq(a, b);
-  };
-
-  // Is a given array, string, or object empty?
-  // An "empty" object has no enumerable own-properties.
-  _.isEmpty = function(obj) {
-    if (obj == null) return true;
-    if (isArrayLike(obj) && (_.isArray(obj) || _.isString(obj) || _.isArguments(obj))) return obj.length === 0;
-    return _.keys(obj).length === 0;
-  };
-
-  // Is a given value a DOM element?
-  _.isElement = function(obj) {
-    return !!(obj && obj.nodeType === 1);
-  };
-
-  // Is a given value an array?
-  // Delegates to ECMA5's native Array.isArray
-  _.isArray = nativeIsArray || function(obj) {
-    return toString.call(obj) === '[object Array]';
-  };
-
-  // Is a given variable an object?
-  _.isObject = function(obj) {
-    var type = typeof obj;
-    return type === 'function' || type === 'object' && !!obj;
-  };
-
-  // Add some isType methods: isArguments, isFunction, isString, isNumber, isDate, isRegExp, isError.
-  _.each(['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp', 'Error'], function(name) {
-    _['is' + name] = function(obj) {
-      return toString.call(obj) === '[object ' + name + ']';
-    };
-  });
-
-  // Define a fallback version of the method in browsers (ahem, IE < 9), where
-  // there isn't any inspectable "Arguments" type.
-  if (!_.isArguments(arguments)) {
-    _.isArguments = function(obj) {
-      return _.has(obj, 'callee');
-    };
-  }
-
-  // Optimize `isFunction` if appropriate. Work around some typeof bugs in old v8,
-  // IE 11 (#1621), and in Safari 8 (#1929).
-  if (typeof /./ != 'function' && typeof Int8Array != 'object') {
-    _.isFunction = function(obj) {
-      return typeof obj == 'function' || false;
-    };
-  }
-
-  // Is a given object a finite number?
-  _.isFinite = function(obj) {
-    return isFinite(obj) && !isNaN(parseFloat(obj));
-  };
-
-  // Is the given value `NaN`? (NaN is the only number which does not equal itself).
-  _.isNaN = function(obj) {
-    return _.isNumber(obj) && obj !== +obj;
-  };
-
-  // Is a given value a boolean?
-  _.isBoolean = function(obj) {
-    return obj === true || obj === false || toString.call(obj) === '[object Boolean]';
-  };
-
-  // Is a given value equal to null?
-  _.isNull = function(obj) {
-    return obj === null;
-  };
-
-  // Is a given variable undefined?
-  _.isUndefined = function(obj) {
-    return obj === void 0;
-  };
-
-  // Shortcut function for checking if an object has a given property directly
-  // on itself (in other words, not on a prototype).
-  _.has = function(obj, key) {
-    return obj != null && hasOwnProperty.call(obj, key);
-  };
-
-  // Utility Functions
-  // -----------------
-
-  // Run Underscore.js in *noConflict* mode, returning the `_` variable to its
-  // previous owner. Returns a reference to the Underscore object.
-  _.noConflict = function() {
-    root._ = previousUnderscore;
-    return this;
-  };
-
-  // Keep the identity function around for default iteratees.
-  _.identity = function(value) {
-    return value;
-  };
-
-  // Predicate-generating functions. Often useful outside of Underscore.
-  _.constant = function(value) {
-    return function() {
-      return value;
-    };
-  };
-
-  _.noop = function(){};
-
-  _.property = property;
-
-  // Generates a function for a given object that returns a given property.
-  _.propertyOf = function(obj) {
-    return obj == null ? function(){} : function(key) {
-      return obj[key];
-    };
-  };
-
-  // Returns a predicate for checking whether an object has a given set of
-  // `key:value` pairs.
-  _.matcher = _.matches = function(attrs) {
-    attrs = _.extendOwn({}, attrs);
-    return function(obj) {
-      return _.isMatch(obj, attrs);
-    };
-  };
-
-  // Run a function **n** times.
-  _.times = function(n, iteratee, context) {
-    var accum = Array(Math.max(0, n));
-    iteratee = optimizeCb(iteratee, context, 1);
-    for (var i = 0; i < n; i++) accum[i] = iteratee(i);
-    return accum;
-  };
-
-  // Return a random integer between min and max (inclusive).
-  _.random = function(min, max) {
-    if (max == null) {
-      max = min;
-      min = 0;
-    }
-    return min + Math.floor(Math.random() * (max - min + 1));
-  };
-
-  // A (possibly faster) way to get the current timestamp as an integer.
-  _.now = Date.now || function() {
-    return new Date().getTime();
-  };
-
-   // List of HTML entities for escaping.
-  var escapeMap = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#x27;',
-    '`': '&#x60;'
-  };
-  var unescapeMap = _.invert(escapeMap);
-
-  // Functions for escaping and unescaping strings to/from HTML interpolation.
-  var createEscaper = function(map) {
-    var escaper = function(match) {
-      return map[match];
-    };
-    // Regexes for identifying a key that needs to be escaped
-    var source = '(?:' + _.keys(map).join('|') + ')';
-    var testRegexp = RegExp(source);
-    var replaceRegexp = RegExp(source, 'g');
-    return function(string) {
-      string = string == null ? '' : '' + string;
-      return testRegexp.test(string) ? string.replace(replaceRegexp, escaper) : string;
-    };
-  };
-  _.escape = createEscaper(escapeMap);
-  _.unescape = createEscaper(unescapeMap);
-
-  // If the value of the named `property` is a function then invoke it with the
-  // `object` as context; otherwise, return it.
-  _.result = function(object, property, fallback) {
-    var value = object == null ? void 0 : object[property];
-    if (value === void 0) {
-      value = fallback;
-    }
-    return _.isFunction(value) ? value.call(object) : value;
-  };
-
-  // Generate a unique integer id (unique within the entire client session).
-  // Useful for temporary DOM ids.
-  var idCounter = 0;
-  _.uniqueId = function(prefix) {
-    var id = ++idCounter + '';
-    return prefix ? prefix + id : id;
-  };
-
-  // By default, Underscore uses ERB-style template delimiters, change the
-  // following template settings to use alternative delimiters.
-  _.templateSettings = {
-    evaluate    : /<%([\s\S]+?)%>/g,
-    interpolate : /<%=([\s\S]+?)%>/g,
-    escape      : /<%-([\s\S]+?)%>/g
-  };
-
-  // When customizing `templateSettings`, if you don't want to define an
-  // interpolation, evaluation or escaping regex, we need one that is
-  // guaranteed not to match.
-  var noMatch = /(.)^/;
-
-  // Certain characters need to be escaped so that they can be put into a
-  // string literal.
-  var escapes = {
-    "'":      "'",
-    '\\':     '\\',
-    '\r':     'r',
-    '\n':     'n',
-    '\u2028': 'u2028',
-    '\u2029': 'u2029'
-  };
-
-  var escaper = /\\|'|\r|\n|\u2028|\u2029/g;
-
-  var escapeChar = function(match) {
-    return '\\' + escapes[match];
-  };
-
-  // JavaScript micro-templating, similar to John Resig's implementation.
-  // Underscore templating handles arbitrary delimiters, preserves whitespace,
-  // and correctly escapes quotes within interpolated code.
-  // NB: `oldSettings` only exists for backwards compatibility.
-  _.template = function(text, settings, oldSettings) {
-    if (!settings && oldSettings) settings = oldSettings;
-    settings = _.defaults({}, settings, _.templateSettings);
-
-    // Combine delimiters into one regular expression via alternation.
-    var matcher = RegExp([
-      (settings.escape || noMatch).source,
-      (settings.interpolate || noMatch).source,
-      (settings.evaluate || noMatch).source
-    ].join('|') + '|$', 'g');
-
-    // Compile the template source, escaping string literals appropriately.
-    var index = 0;
-    var source = "__p+='";
-    text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
-      source += text.slice(index, offset).replace(escaper, escapeChar);
-      index = offset + match.length;
-
-      if (escape) {
-        source += "'+\n((__t=(" + escape + "))==null?'':_.escape(__t))+\n'";
-      } else if (interpolate) {
-        source += "'+\n((__t=(" + interpolate + "))==null?'':__t)+\n'";
-      } else if (evaluate) {
-        source += "';\n" + evaluate + "\n__p+='";
-      }
-
-      // Adobe VMs need the match returned to produce the correct offest.
-      return match;
-    });
-    source += "';\n";
-
-    // If a variable is not specified, place data values in local scope.
-    if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
-
-    source = "var __t,__p='',__j=Array.prototype.join," +
-      "print=function(){__p+=__j.call(arguments,'');};\n" +
-      source + 'return __p;\n';
-
-    try {
-      var render = new Function(settings.variable || 'obj', '_', source);
-    } catch (e) {
-      e.source = source;
-      throw e;
-    }
-
-    var template = function(data) {
-      return render.call(this, data, _);
-    };
-
-    // Provide the compiled source as a convenience for precompilation.
-    var argument = settings.variable || 'obj';
-    template.source = 'function(' + argument + '){\n' + source + '}';
-
-    return template;
-  };
-
-  // Add a "chain" function. Start chaining a wrapped Underscore object.
-  _.chain = function(obj) {
-    var instance = _(obj);
-    instance._chain = true;
-    return instance;
-  };
-
-  // OOP
-  // ---------------
-  // If Underscore is called as a function, it returns a wrapped object that
-  // can be used OO-style. This wrapper holds altered versions of all the
-  // underscore functions. Wrapped objects may be chained.
-
-  // Helper function to continue chaining intermediate results.
-  var result = function(instance, obj) {
-    return instance._chain ? _(obj).chain() : obj;
-  };
-
-  // Add your own custom functions to the Underscore object.
-  _.mixin = function(obj) {
-    _.each(_.functions(obj), function(name) {
-      var func = _[name] = obj[name];
-      _.prototype[name] = function() {
-        var args = [this._wrapped];
-        push.apply(args, arguments);
-        return result(this, func.apply(_, args));
-      };
-    });
-  };
-
-  // Add all of the Underscore functions to the wrapper object.
-  _.mixin(_);
-
-  // Add all mutator Array functions to the wrapper.
-  _.each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
-    var method = ArrayProto[name];
-    _.prototype[name] = function() {
-      var obj = this._wrapped;
-      method.apply(obj, arguments);
-      if ((name === 'shift' || name === 'splice') && obj.length === 0) delete obj[0];
-      return result(this, obj);
-    };
-  });
-
-  // Add all accessor Array functions to the wrapper.
-  _.each(['concat', 'join', 'slice'], function(name) {
-    var method = ArrayProto[name];
-    _.prototype[name] = function() {
-      return result(this, method.apply(this._wrapped, arguments));
-    };
-  });
-
-  // Extracts the result from a wrapped and chained object.
-  _.prototype.value = function() {
-    return this._wrapped;
-  };
-
-  // Provide unwrapping proxy for some methods used in engine operations
-  // such as arithmetic and JSON stringification.
-  _.prototype.valueOf = _.prototype.toJSON = _.prototype.value;
-
-  _.prototype.toString = function() {
-    return '' + this._wrapped;
-  };
-
-  // AMD registration happens at the end for compatibility with AMD loaders
-  // that may not enforce next-turn semantics on modules. Even though general
-  // practice for AMD registration is to be anonymous, underscore registers
-  // as a named module because, like jQuery, it is a base library that is
-  // popular enough to be bundled in a third party lib, but not be part of
-  // an AMD load request. Those cases could generate an error when an
-  // anonymous define() is called outside of a loader request.
-  if (typeof define === 'function' && define.amd) {
-    define('underscore', [], function() {
-      return _;
-    });
-  }
-}.call(this));
 });
 
 /*jshint -W051:true */
@@ -21950,9 +16520,6 @@ if (typeof global === 'undefined' && typeof window !== 'undefined') {
   global = window;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  global functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief common globals
@@ -22072,9 +16639,6 @@ global.ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 
 global.tutorial = require("@arangodb/tutorial");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        initialize
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints help
@@ -22108,13 +16672,13 @@ if (typeof window === 'undefined') {
   initHelp();
 
   // these variables are not defined in the browser context
-  if (
+  if (! (
     global.IS_EXECUTE_SCRIPT ||
     global.IS_EXECUTE_STRING ||
     global.IS_CHECK_SCRIPT ||
     global.IS_UNIT_TESTS ||
     global.IS_JS_LINT
-  ) {
+  )) {
     try {
       // this will not work from within a browser
       var __fs__ = require("fs");
@@ -22140,11 +16704,4 @@ if (typeof window === 'undefined') {
   } catch (e) {}
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:
