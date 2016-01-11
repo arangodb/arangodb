@@ -56,3 +56,11 @@ exports.union = function union() {
   }
   return result;
 };
+
+exports.drain = function (generator) {
+  let results = [];
+  for (let result of generator) {
+    results.push(result);
+  }
+  return results;
+};

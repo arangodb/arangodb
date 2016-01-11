@@ -28,6 +28,7 @@
 
 const joi = require('joi');
 const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
+const actions = require('@arangodb/actions');
 
 const DEFAULT_BODY_SCHEMA = joi.object().optional().meta({allowInvalid: true});
 
@@ -43,8 +44,8 @@ module.exports = class Route extends SwaggerContext {
     this._methods = methods;
     this._handler = handler;
     this.name = name;
-    if (['POST', 'PUT', 'PATCH'].some(function (method) {
-      return methods.indexOf(method) !== -1;
+    if (methods.some(function (method) {
+      return actions.BODYFREE_METHODS.indexOf(method) === -1;
     })) {
       this._bodyParam = {type: DEFAULT_BODY_SCHEMA};
     }

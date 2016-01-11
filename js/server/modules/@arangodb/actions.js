@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2012-2014 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
+/// @author Alan Plum
+/// @author Copyright 2014-2016, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -95,7 +96,8 @@ var RoutingList = {};
 /// @brief all methods
 ////////////////////////////////////////////////////////////////////////////////
 
-var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
+var ALL_METHODS = [ 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH' ];
+var BODYFREE_METHODS = [ 'CONNECT', 'DELETE', 'GET', 'HEAD', 'TRACE' ];
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2165,6 +2167,7 @@ exports.PUT                      = "PUT";
 exports.PATCH                    = "PATCH";
 
 exports.ALL_METHODS              = ALL_METHODS;
+exports.BODYFREE_METHODS         = BODYFREE_METHODS;
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;
@@ -2200,5 +2203,3 @@ exports.HTTP_SERVER_ERROR        = 500;
 exports.HTTP_NOT_IMPLEMENTED     = 501;
 exports.HTTP_BAD_GATEWAY         = 502;
 exports.HTTP_SERVICE_UNAVAILABLE = 503;
-
-

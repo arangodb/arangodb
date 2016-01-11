@@ -4,6 +4,7 @@
 'use strict';
 
 const createRouter = require('@arangodb/foxx/router');
+const Tree = require('@arangodb/foxx/router/tree');
 
 const $_WILDCARD = Symbol.for('@@wildcard'); // catch-all suffix
 const $_TERMINAL = Symbol.for('@@terminal'); // terminal -- routes be here
@@ -25,15 +26,15 @@ const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware (not including ro
 //     if (thing.handler) {
 //       return `Context(${thing.handler})`;
 //     }
-//     if (thing._tree) {
+//     if (thing.tree) {
 //       return {
-//         '@@router': objectify(thing._tree)
+//         '@@router': objectify(thing.tree.root)
 //       };
 //     }
 //     if (thing.router) {
 //       return {
 //         path: thing.path,
-//         '@@router': objectify(thing.router._tree)
+//         '@@router': objectify(thing.tree.root)
 //       };
 //     }
 //     const obj = {};
@@ -51,7 +52,7 @@ const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware (not including ro
 //   console.infoLines(JSON.stringify(objectify(something), null, 2));
 // }
 
-describe('Router', function () {
+describe('Tree', function () {
   let router, childRouter1, childRouter2;
   let GET_SLASH;
   let USE_SLASH;
@@ -79,7 +80,7 @@ describe('Router', function () {
     POST_HELLO = router.post('/hello', function () {});
     GET_HELLO_WORLD = router.get('/hello/world', function () {});
     USE_HELLO_WORLD = router.use('/hello/world', function () {});
-    GET_HELLO_PARAM = router.get('/hello/:symbol', function () {});
+    GET_HELLO_PARAM = router.get('/hello/:thing', function () {});
     USE_HELLO_PARAM = router.use('/hello/:thang', function () {});
     GET_WORLD = childRouter1.get('/world', function () {});
     GET_SLASH2 = childRouter2.get(function () {});
@@ -94,10 +95,9 @@ describe('Router', function () {
     childRouter2 = createRouter();
     prepareRouter(router, childRouter1, childRouter2);
   });
-  describe('_buildTree', function () {
+  describe('constructor', function () {
     it('creates the correct tree', function () {
-      router._buildTree();
-      const tree = router._tree;
+      const tree = new Tree({}, router).root;
       expect(tree.size).toBe(3);
       expect(tree.get($_TERMINAL).size).toBe(1);
       expect(tree.get($_TERMINAL).get($_ROUTES))
@@ -129,7 +129,7 @@ describe('Router', function () {
       expect(tree.get('hello').get($_WILDCARD).size).toBe(1);
       expect(tree.get('hello').get($_WILDCARD).get($_ROUTES).length).toBe(1);
 
-      const child1 = tree.get('hello').get($_WILDCARD).get($_ROUTES)[0].router._tree;
+      const child1 = tree.get('hello').get($_WILDCARD).get($_ROUTES)[0].tree.root;
       expect(child1.size).toBe(1);
       expect(child1.get('world').size).toBe(1);
       expect(child1.get('world').get($_TERMINAL).size).toBe(1);
@@ -140,7 +140,7 @@ describe('Router', function () {
       expect(tree.get($_WILDCARD).get($_MIDDLEWARE))
       .toEqual([USE_SLASH]);
 
-      const child2 = tree.get($_WILDCARD).get($_ROUTES)[0].router._tree;
+      const child2 = tree.get($_WILDCARD).get($_ROUTES)[0].tree.root;
       expect(child2.size).toBe(4);
       expect(child2.get($_TERMINAL).size).toBe(1);
       expect(child2.get($_TERMINAL).get($_ROUTES))
@@ -164,13 +164,15 @@ describe('Router', function () {
 
     });
   });
-  describe('_traverse', function () {
+  describe('findRoutes', function () {
+    let tree;
     beforeEach(function () {
-      router._buildTree();
+      tree = new Tree({}, router);
+      global.tree = tree;
     });
     it('finds all routes for /', function () {
       const matches = [];
-      for (const route of router._traverse([])) {
+      for (const route of tree.findRoutes([])) {
         matches.push(route);
       }
       expect(matches.length).toBe(3);
@@ -215,7 +217,7 @@ describe('Router', function () {
     });
     it('finds all routes for /hello', function () {
       const matches = [];
-      for (const route of router._traverse(['hello'])) {
+      for (const route of tree.findRoutes(['hello'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(2);
@@ -247,7 +249,7 @@ describe('Router', function () {
     });
     it('finds all routes for /hello/world', function () {
       const matches = [];
-      for (const route of router._traverse(['hello', 'world'])) {
+      for (const route of tree.findRoutes(['hello', 'world'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(5);
@@ -319,7 +321,7 @@ describe('Router', function () {
     });
     it('finds all routes for /hello/mlady', function () {
       const matches = [];
-      for (const route of router._traverse(['hello', 'mlady'])) {
+      for (const route of tree.findRoutes(['hello', 'mlady'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(2);
@@ -352,7 +354,7 @@ describe('Router', function () {
     });
     it('finds all routes for /potato/salad', function () {
       const matches = [];
-      for (const route of router._traverse(['potato', 'salad'])) {
+      for (const route of tree.findRoutes(['potato', 'salad'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(3);
