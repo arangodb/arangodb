@@ -84,8 +84,8 @@ exports.Helper = {
     var fig = collection.figures();
     var files = fig.datafiles.count + fig.journals.count;
 
-    // wait for at most 10 seconds
-    var end = internal.time() + 10;
+    // wait for at most 15 seconds
+    var end = internal.time() + 15;
     collection.rotate();
 
     while (internal.time() < end) {
