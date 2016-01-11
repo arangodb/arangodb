@@ -662,7 +662,7 @@ void ApplicationV8::collectGarbage () {
           ! _dirtyContexts.empty()) {
         context = _dirtyContexts.back();
         _dirtyContexts.pop_back();
-        if (context->_numExecutions < 10 && ! context->_hasActiveExternals) {
+        if (context->_numExecutions < 50 && ! context->_hasActiveExternals) {
           // don't collect this one
           _freeContexts.emplace_back(context);
           context = nullptr;
@@ -693,8 +693,8 @@ void ApplicationV8::collectGarbage () {
     gc->updateGcStamp(lastGc);
 
     if (context != nullptr) {
-      // LOG_TRACE("will collect now: %d, numExecutions: %d, hasActive: %d", (int) context->_id, (int) context->_numExecutions, (int) context->_hasActiveExternals);
-      LOG_TRACE("collecting V8 garbage");
+      LOG_TRACE("collecting v8 garbage in context #%d, numExecutions: %d, hasActive: %d", 
+                (int) context->_id, (int) context->_numExecutions, (int) context->_hasActiveExternals);
       bool hasActiveExternals = false;
       auto isolate = context->isolate;
       TRI_ASSERT(context->_locker == nullptr);
@@ -1212,7 +1212,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
 
   for (int i = n - 1; i > 0; --i) {
     // check if there's actually anything to clean up in the context
-    if (_freeContexts[i]->_numExecutions < 10 && ! _freeContexts[i]->_hasActiveExternals) {
+    if (_freeContexts[i]->_numExecutions < 50 && ! _freeContexts[i]->_hasActiveExternals) {
       continue;
     }
 
