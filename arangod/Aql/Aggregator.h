@@ -44,7 +44,7 @@ struct Aggregator {
   virtual char const* name() const = 0;
   virtual void reset() = 0;
   virtual void reduce(AqlValue const&, struct TRI_document_collection_t const*) = 0;
-  virtual AqlValue getValue() = 0;
+  virtual AqlValue stealValue() = 0;
 
   static Aggregator* fromTypeString(triagens::arango::AqlTransaction*, std::string const&);
   static Aggregator* fromJson(triagens::arango::AqlTransaction*, triagens::basics::Json const&,  
@@ -64,7 +64,7 @@ struct AggregatorLength final : public Aggregator {
 
   void reset() override final;
   void reduce(AqlValue const&, struct TRI_document_collection_t const*) override final;
-  AqlValue getValue() override final;
+  AqlValue stealValue() override final;
 
   uint64_t count;
 };
@@ -80,7 +80,7 @@ struct AggregatorMin final : public Aggregator {
 
   void reset() override final;
   void reduce(AqlValue const&, struct TRI_document_collection_t const*) override final;
-  AqlValue getValue() override final;
+  AqlValue stealValue() override final;
 
   AqlValue value;
   struct TRI_document_collection_t const* coll;
@@ -97,7 +97,7 @@ struct AggregatorMax final : public Aggregator {
 
   void reset() override final;
   void reduce(AqlValue const&, struct TRI_document_collection_t const*) override final;
-  AqlValue getValue() override final;
+  AqlValue stealValue() override final;
   
   AqlValue value;
   struct TRI_document_collection_t const* coll;
@@ -114,7 +114,7 @@ struct AggregatorSum final : public Aggregator {
 
   void reset() override final;
   void reduce(AqlValue const&, struct TRI_document_collection_t const*) override final;
-  AqlValue getValue() override final;
+  AqlValue stealValue() override final;
   
   double sum;
   bool invalid;
@@ -131,7 +131,7 @@ struct AggregatorAverage final : public Aggregator {
 
   void reset() override final;
   void reduce(AqlValue const&, struct TRI_document_collection_t const*) override final;
-  AqlValue getValue() override final;
+  AqlValue stealValue() override final;
   
   uint64_t count;
   double sum;

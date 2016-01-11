@@ -666,8 +666,16 @@ class Ast {
 
   AstNode* nodeFromJson(TRI_json_t const*, bool);
 
-  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief traverse the AST using a depth-first visitor
+  //////////////////////////////////////////////////////////////////////////////
+
+  static AstNode* traverseAndModify(AstNode*,
+                                    std::function<AstNode*(AstNode*, void*)>,
+                                    void*);
+
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make condition from example
   //////////////////////////////////////////////////////////////////////////////
@@ -784,14 +792,6 @@ class Ast {
                                     std::function<bool(AstNode const*, void*)>,
                                     std::function<AstNode*(AstNode*, void*)>,
                                     std::function<void(AstNode const*, void*)>,
-                                    void*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief traverse the AST using a depth-first visitor
-  //////////////////////////////////////////////////////////////////////////////
-
-  static AstNode* traverseAndModify(AstNode*,
-                                    std::function<AstNode*(AstNode*, void*)>,
                                     void*);
 
   //////////////////////////////////////////////////////////////////////////////

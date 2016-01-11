@@ -233,10 +233,7 @@ std::vector<Variable const*> CollectNode::getVariablesUsedHere() const {
 
   // copy result into vector
   std::vector<Variable const*> vv;
-  vv.reserve(v.size());
-  for (auto const& x : v) {
-    vv.emplace_back(x);
-  }
+  vv.insert(vv.begin(), v.begin(), v.end());
   return vv;
 }
 

@@ -244,9 +244,8 @@ class CollectNode : public ExecutionNode {
 
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> v;
-    size_t const n =
-        _groupVariables.size() + (_outVariable == nullptr ? 0 : 1);
-    v.reserve(n);
+    v.reserve(
+        _groupVariables.size() + _aggregateVariables.size() + (_outVariable == nullptr ? 0 : 1));
 
     for (auto const& p : _groupVariables) {
       v.emplace_back(p.first);

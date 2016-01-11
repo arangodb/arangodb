@@ -27,8 +27,6 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-#include <iostream>
-
 using namespace std;
 using namespace triagens::arango;
 using namespace triagens::aql;
@@ -576,7 +574,19 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   std::unordered_map<std::vector<AqlValue>, AggregateValuesType*, GroupKeyHash, GroupKeyEqual>
       allGroups(1024, GroupKeyHash(_trx, groupColls), GroupKeyEqual(_trx, groupColls));
-  
+
+  // cleanup function for group values
+  auto cleanup = [&allGroups] () -> void {
+    for (auto& it : allGroups) {
+      for (auto& it2 : *(it.second)) {
+        delete it2;
+      }
+      delete it.second;
+    }
+  };
+
+  // prevent memory leaks by always cleaning up the groups 
+  TRI_DEFER(cleanup()); 
 
   auto buildResult = [&](AqlItemBlock const* src) {
     TRI_ASSERT(groupColls.size() == _groupRegisters.size());
@@ -617,13 +627,13 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       size_t j = 0;
       for (auto const& r : *(it.second)) {
         // TODO: check if cloning is necessary
-        result->setValue(row, _aggregateRegisters[j++].first, r->getValue());
+        result->setValue(row, _aggregateRegisters[j++].first, r->stealValue());
       }
 
       if (en->_count) {
         // set group count in result register
         // TODO: check if cloning is necessary
-        result->setValue(row, _collectRegister, it.second->back()->getValue());
+        result->setValue(row, _collectRegister, it.second->back()->stealValue());
         // int64_t value = (*(it.second))[0].toInt64();
         //result->setValue(row, _collectRegister, AqlValue(new Json(static_cast<double>(value))));
       }

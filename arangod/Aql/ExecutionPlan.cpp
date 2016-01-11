@@ -1077,10 +1077,10 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
   std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
       aggregateVariables{};
 
-  auto en = registerNode(
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables, nullptr,
+  auto collectNode = new CollectNode(this, nextId(), options, groupVariables, aggregateVariables, nullptr,
                         outVariable, std::vector<Variable const*>(),
-                        _ast->variables()->variables(false), true, false));
+                        _ast->variables()->variables(false), true, false);
+  auto en = registerNode(collectNode);
 
   return addDependency(previous, en);
 }
@@ -1095,6 +1095,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 3);
 
   auto options = createCollectOptions(node->getMember(0));
+
+  std::unordered_map<Variable const*, Variable const*> aliases;
 
   // group variables
   std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
@@ -1127,6 +1129,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
         auto calc = createTemporaryCalculation(expression, previous);
         previous = calc;
         groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
+
+        aliases.emplace(v, groupVariables.back().second);
       }
     }
   }
@@ -1134,6 +1138,17 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
   // aggregate variables 
   std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
   {
+    auto variableReplacer = [&aliases, this] (AstNode* node, void*) -> AstNode* {
+      if (node->type == NODE_TYPE_REFERENCE) {
+        auto it = aliases.find(static_cast<Variable const*>(node->getData()));
+
+        if (it != aliases.end()) {
+          return _ast->createNodeReference((*it).second);
+        }
+      }
+      return node;
+    };
+
     auto list = node->getMember(2);
     size_t const numVars = list->numMembers();
 
@@ -1156,21 +1171,34 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
       // operand is always a function call
       TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
 
-      // function should have one argument (an array with the parameters)
-      TRI_ASSERT(expression->numMembers() == 1);
-      auto args = expression->getMember(0);
-      // the number of arguments should also be one (note: this has been
-      // validated before)
-      TRI_ASSERT(expression->numMembers() == 1);
-
-      auto calc = createTemporaryCalculation(args->getMember(0), previous);
-      previous = calc;
-
       // build aggregator 
       auto func = static_cast<Function*>(expression->getData());
       TRI_ASSERT(func != nullptr);
 
-      aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(getOutVariable(calc), func->externalName)));
+      // function should have one argument (an array with the parameters)
+      TRI_ASSERT(expression->numMembers() == 1);
+
+      auto args = expression->getMember(0);
+      // the number of arguments should also be one (note: this has been
+      // validated before)
+      TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
+      TRI_ASSERT(args->numMembers() == 1);
+
+      auto arg = args->getMember(0);
+      arg = Ast::traverseAndModify(arg, variableReplacer, nullptr);
+      
+
+      if (arg->type == NODE_TYPE_REFERENCE) {
+        // operand is a variable
+        auto e = static_cast<Variable*>(arg->getData());
+        aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(e, func->externalName)));
+      }
+      else {
+        auto calc = createTemporaryCalculation(arg, previous);
+        previous = calc;
+
+        aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(getOutVariable(calc), func->externalName)));
+      }
     }
   }
   

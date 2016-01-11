@@ -76,7 +76,7 @@ void AggregatorLength::reduce(AqlValue const&, TRI_document_collection_t const*)
   ++count;
 }
   
-AqlValue AggregatorLength::getValue() {
+AqlValue AggregatorLength::stealValue() {
   uint64_t copy = count;
   count = 0; 
   return AqlValue(new Json(static_cast<double>(copy)));
@@ -100,7 +100,7 @@ void AggregatorMin::reduce(AqlValue const& cmpValue,
   }
 }
   
-AqlValue AggregatorMin::getValue() {
+AqlValue AggregatorMin::stealValue() {
   AqlValue copy = value;
   value.erase();
   return copy;
@@ -124,7 +124,7 @@ void AggregatorMax::reduce(AqlValue const& cmpValue,
   }
 }
 
-AqlValue AggregatorMax::getValue() {
+AqlValue AggregatorMax::stealValue() {
   AqlValue copy = value;
   value.erase();
   return copy;
@@ -152,7 +152,7 @@ void AggregatorSum::reduce(AqlValue const& cmpValue,
   invalid = true;
 }
 
-AqlValue AggregatorSum::getValue() {
+AqlValue AggregatorSum::stealValue() {
   if (invalid || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
     return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
   }
@@ -184,7 +184,7 @@ void AggregatorAverage::reduce(AqlValue const& cmpValue,
   invalid = true;
 }
 
-AqlValue AggregatorAverage::getValue() {
+AqlValue AggregatorAverage::stealValue() {
   if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
     return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
   }
