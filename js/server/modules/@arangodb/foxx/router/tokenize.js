@@ -34,6 +34,22 @@ const $_WILDCARD = Symbol.for('@@wildcard'); // catch-all suffix
 const $_TERMINAL = Symbol.for('@@terminal'); // terminal -- routes be here
 const $_PARAM = Symbol.for('@@parameter'); // named parameter (no routes here, like static part)
 
+function reverse(pathTokens, pathParamNames) {
+  let path = [];
+  let i = 0;
+  for (let token of pathTokens) {
+    if (token === $_PARAM) {
+      path.push(':' + pathParamNames[i]);
+      i++;
+    } else if (token === $_WILDCARD) {
+      path.push('*');
+    } else if (token !== $_TERMINAL) {
+      path.push(token);
+    }
+  }
+  return '/' + path.join('/');
+}
+
 module.exports = _.extend(
   function tokenize(path, ctx) {
     if (path === '/') {
@@ -58,6 +74,7 @@ module.exports = _.extend(
   }, {
     WILDCARD: $_WILDCARD,
     TERMINAL: $_TERMINAL,
-    PARAM: $_PARAM
+    PARAM: $_PARAM,
+    reverse: reverse
   }
 );
