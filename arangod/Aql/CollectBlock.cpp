@@ -746,7 +746,6 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             returnBlock(cur);
             _done = true;
 
-            allGroups.clear();
             groupValues.clear();
 
             return TRI_ERROR_NO_ERROR;
@@ -770,11 +769,9 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       }
       delete it.second;
     }
-    allGroups.clear();
     throw;
   }
 
-  allGroups.clear();
   groupValues.clear();
 
   if (!skipping) {
