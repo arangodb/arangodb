@@ -70,7 +70,7 @@ module.exports = class SyntheticRequest {
   // Express compat
 
   get originalUrl() {
-    return `/_db/${this._raw.database}${this._raw.url}`;
+    return `/_db/${encodeURIComponent(this._raw.database)}${this._raw.url}`;
   }
 
   get path() {
