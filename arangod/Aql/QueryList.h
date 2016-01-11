@@ -38,9 +38,16 @@ namespace aql {
 class Query;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             struct QueryEntryCopy
+// --SECTION--                                                 struct QueryEntry
 // -----------------------------------------------------------------------------
       
+struct QueryEntry {
+  QueryEntry(triagens::aql::Query const*, double);
+
+  triagens::aql::Query const* query;
+  double const started;
+};
+
 struct QueryEntryCopy {
   QueryEntryCopy (TRI_voc_tick_t,
                   std::string const&,
@@ -54,23 +61,6 @@ struct QueryEntryCopy {
   double          runTime;
   std::string     queryState;
 };
-
-struct QueryEntry {
-  QueryEntry(triagens::aql::Query const*, double);
-
-  triagens::aql::Query const* query;
-  double const started;
-};
-
-struct QueryEntryCopy {
-  QueryEntryCopy(TRI_voc_tick_t, std::string const&, double, double);
-
-  TRI_voc_tick_t id;
-  std::string queryString;
-  double started;
-  double runTime;
-};
-
 
 class QueryList {
   

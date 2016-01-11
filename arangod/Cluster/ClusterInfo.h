@@ -57,6 +57,8 @@ class CollectionInfo {
  public:
   CollectionInfo();
 
+  explicit CollectionInfo(struct TRI_json_t*);
+
   CollectionInfo(CollectionInfo const&);
 
   CollectionInfo(CollectionInfo&&);
@@ -66,13 +68,6 @@ class CollectionInfo {
   CollectionInfo& operator=(CollectionInfo&&);
 
   ~CollectionInfo();
-
-  explicit CollectionInfo(struct TRI_json_t*);
-    if (TRI_IsObjectJson(node)) {
-      return (int) (TRI_LengthVector(&node->_value._objects) / 2);
-    }
-    return 0;
-  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the replication factor
@@ -357,13 +352,6 @@ class CollectionInfo {
     return 0;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the json
-  ////////////////////////////////////////////////////////////////////////////////
-
-  TRI_json_t const* getJson() const { return _json; }
-
-  
   
  private:
   TRI_json_t* _json;
