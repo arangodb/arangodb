@@ -107,4 +107,49 @@ module.exports = class SwaggerContext {
     this._deprecated = typeof flag === 'boolean' ? flag : true;
     return this;
   }
+  _merge(swaggerObj, pathOnly) {
+    if (!pathOnly) {
+      for (let header of swaggerObj._headers.entries()) {
+        this._headers.set(header[0], header[1]);
+      }
+      for (let queryParam of swaggerObj._queryParams.entries()) {
+        this._queryParams.set(queryParam[0], queryParam[1]);
+      }
+      for (let response of swaggerObj._responses.entries()) {
+        this._responses.set(response[0], response[1]);
+      }
+      this._bodyParam = swaggerObj._bodyParam || this._bodyParam;
+      this._deprecated = swaggerObj._deprecated || this._deprecated;
+      this._description = swaggerObj._description || this._description;
+      this._summary = swaggerObj._summary || this._summary;
+    }
+    if (this.path.charAt(this.path.length - 1) === '*') {
+      this.path = this.path.slice(0, this.path.length - 1);
+    }
+    if (this.path.charAt(this.path.length - 1) === '/') {
+      this.path = this.path.slice(0, this.path.length - 1);
+    }
+    this._pathTokens.pop();
+    this._pathTokens = this._pathTokens.concat(swaggerObj._pathTokens);
+    for (let pathParam of swaggerObj._pathParams.entries()) {
+      let name = pathParam[0];
+      let def = pathParam[1];
+      if (this._pathParams.has(name)) {
+        let baseName = name;
+        let i = 2;
+        let match = name.match(/(^.+)([0-9]+)$/i);
+        if (match) {
+          baseName = match[1];
+          i = Number(match[2]);
+        }
+        while (this._pathParams.has(baseName + i)) {
+          i++;
+        }
+        name = baseName + i;
+      }
+      this._pathParams.set(name, def);
+      this._pathParamNames.push(name);
+    }
+    this.path = tokenize.reverse(this._pathTokens, this._pathParamNames);
+  }
 };
