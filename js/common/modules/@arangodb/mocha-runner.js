@@ -77,6 +77,10 @@ function logStats(stats) {
     + colors.COLOR_RED
     + stats.failures
     + colors.COLOR_RESET
+    + ' | '
+    + colors.COLOR_CYAN
+    + stats.pending
+    + colors.COLOR_RESET
     + ' )'
   );
 }
@@ -99,6 +103,14 @@ function logSuite(suite, indentLevel) {
         indent(indentLevel)
         + colors.COLOR_GREEN
         + '[PASS] '
+        + test.title
+        + colors.COLOR_RESET
+      );
+    } else if (test.result === 'pending') {
+      print(
+        indent(indentLevel)
+        + colors.COLOR_CYAN
+        + '[SKIP] '
         + test.title
         + colors.COLOR_RESET
       );
@@ -155,10 +167,10 @@ function buildJson(results) {
       newName = `${name} ${i++}`;
     }
     result[newName] = {
-      status: stats.result === 'pass',
+      status: stats.result === 'pass' || stats.result === 'pending',
       duration: stats.duration
     };
-    if (stats.result !== 'pass') {
+    if (stats.result !== 'pass' && stats.result !== 'pending') {
       result[newName].message = stats.err.stack;
     }
   }
