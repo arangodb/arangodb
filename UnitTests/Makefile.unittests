@@ -486,7 +486,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-errors.js \
                @top_srcdir@/js/common/tests/shell-fs.js \
                @top_srcdir@/js/common/tests/shell-env.js \
-               @top_srcdir@/js/common/tests/shell-foxx-manager-install-jasmine-spec.js \
+               @top_srcdir@/js/common/tests/shell-foxx-manager-install-spec.js \
                @top_srcdir@/js/common/tests/shell-general-graph.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
