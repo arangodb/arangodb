@@ -47,8 +47,8 @@ account for uniqueness checks.
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-    @startDocuBlockInline ensureUniqueSkiplist
-    @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplist}
+    @startDocuBlockInline ensureUniqueSkiplistSingle
+    @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistSingle}
     ~db._create("ids");
     db.ids.ensureIndex({ type: "skiplist", fields: [ "myId" ], unique: true });
     db.ids.save({ "myId": 123 });
@@ -57,7 +57,7 @@ details, including the index-identifier, is returned.
     db.ids.save({ "myId": 123 });  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
     ~db._drop("ids");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock ensureUniqueSkiplist
+    @endDocuBlock ensureUniqueSkiplistSingle
     
     @startDocuBlockInline ensureUniqueSkiplistMultiColmun
     @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistMultiColmun}

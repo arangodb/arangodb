@@ -20,11 +20,11 @@ end users. End users should access collections using the collection name.
 
 Get a collection by name:
 
-    @startDocuBlockInline collectionDatabaseName
-    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseName}
+    @startDocuBlockInline collectionDatabaseNameKnown
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseNameKnown}
       db._collection("demo");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock collectionDatabaseName
+    @endDocuBlock collectionDatabaseNameKnown
 
 Get a collection by id:
 
@@ -133,13 +133,13 @@ or *edge*. On default it is document. Instead of giving a type you can also use
 
 With defaults:
 
-    @startDocuBlockInline collectionDatabaseCreate
-    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreate}
+    @startDocuBlockInline collectionDatabaseCreateSuccess
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateSuccess}
       c = db._create("users");
       c.properties();
     ~ db._drop("users");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock collectionDatabaseCreate
+    @endDocuBlock collectionDatabaseCreateSuccess
 
 With properties:
 
@@ -278,15 +278,15 @@ is thrown if there is no such collection.
 
 Drops a collection:
 
-    @startDocuBlockInline collectionDatabaseDrop
-    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDrop}
+    @startDocuBlockInline collectionDatabaseDropByObject
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDropByObject}
     ~ db._create("example");
       col = db.example;
       db._drop(col);
       col;
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock collectionDatabaseDrop
+    @endDocuBlock collectionDatabaseDropByObject
 
 Drops a collection identified by name:
 
@@ -325,8 +325,8 @@ there is no such collection.
 
 Truncates a collection:
 
-    @startDocuBlockInline collectionDatabaseTruncate
-    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseTruncate}
+    @startDocuBlockInline collectionDatabaseTruncateByObject
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseTruncateByObject}
     ~ db._create("example");
       col = db.example;
       col.save({ "Hello" : "World" });
@@ -335,7 +335,7 @@ Truncates a collection:
       col.count();
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock collectionDatabaseTruncate
+    @endDocuBlock collectionDatabaseTruncateByObject
 
 Truncates a collection identified by name:
 

@@ -112,8 +112,8 @@ The batchSize cannot be adjusted after the query is first executed.
 means of fetching the query results is chosen. The following two approaches
 lead to the same result:
 
-    @startDocuBlockInline executeQuery
-    @EXAMPLE_ARANGOSH_OUTPUT{executeQuery}
+    @startDocuBlockInline executeQueryNoBatchSize
+    @EXAMPLE_ARANGOSH_OUTPUT{executeQueryNoBatchSize}
     ~ db._create("users");
     ~ db.users.save({ name: "Gerhard" });
     ~ db.users.save({ name: "Helmut" });
@@ -122,7 +122,7 @@ lead to the same result:
       q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
     ~ db._drop("users")
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock executeQuery
+    @endDocuBlock executeQueryNoBatchSize
 
 The following two alternatives both use a batchSize and return the same
 result:
@@ -181,8 +181,8 @@ returned.
 
 Ignore any limit:
 
-    @startDocuBlockInline cursorCount
-    @EXAMPLE_ARANGOSH_OUTPUT{cursorCount}
+    @startDocuBlockInline cursorCountUnLimited
+    @EXAMPLE_ARANGOSH_OUTPUT{cursorCountUnLimited}
     ~ db._create("five");
     ~ db.five.save({ name : "one" });
     ~ db.five.save({ name : "two" });
@@ -192,7 +192,7 @@ Ignore any limit:
       db.five.all().limit(2).count();
     ~ db._drop("five")
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock cursorCount
+    @endDocuBlock cursorCountUnLimited
 
 Counting any limit or skip:
 

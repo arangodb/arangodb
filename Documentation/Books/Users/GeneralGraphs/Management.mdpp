@@ -25,14 +25,14 @@ An object representing a definition of one relation in the graph
 
 @EXAMPLES
 
-    @startDocuBlockInline generalGraphEdgeDefinitions
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
+    @startDocuBlockInline generalGraphEdgeDefinitionsSimple
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsSimple}
       var graph_module = require("@arangodb/general-graph");
       directed_relation = graph_module._relation("lives_in", "user", "city");
       undirected_relation = graph_module._relation("knows", "user", "user");
       edgedefinitions = graph_module._edgeDefinitions(directed_relation, undirected_relation);
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphEdgeDefinitions
+    @endDocuBlock generalGraphEdgeDefinitionsSimple
 
 
 
@@ -99,12 +99,12 @@ to any collection in *toVertexCollections*.
 
 @EXAMPLES
 
-    @startDocuBlockInline generalGraphRelationDefinition
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinition}
+    @startDocuBlockInline generalGraphRelationDefinitionSave
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinitionSave}
       var graph_module = require("@arangodb/general-graph");
       graph_module._relation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphRelationDefinition
+    @endDocuBlock generalGraphRelationDefinitionSave
 
     @startDocuBlockInline generalGraphRelationDefinitionSingle
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinitionSingle}
@@ -240,13 +240,13 @@ List of additional vertex collection names
 
 Create an empty graph, edge definitions can be added at runtime:
 
-    @startDocuBlockInline generalGraphCreateGraph
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph}
+    @startDocuBlockInline generalGraphCreateGraphNoData
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphNoData}
       var graph_module = require("@arangodb/general-graph");
       graph = graph_module._create("myGraph");
     ~ graph_module._drop("myGraph", true);
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphCreateGraph
+    @endDocuBlock generalGraphCreateGraphNoData
 
 Create a graph using an edge collection `edges` and a single vertex collection `vertices` 
 
@@ -529,8 +529,8 @@ Define if the edge collection should be dropped. Default false.
 
 Remove an edge definition but keep the edge collection:
 
-    @startDocuBlockInline general_graph__deleteEdgeDefinition
-    @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
+    @startDocuBlockInline general_graph__deleteEdgeDefinitionNoDrop
+    @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinitionNoDrop}
       var graph_module = require("@arangodb/general-graph")
     ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
       var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
@@ -541,7 +541,7 @@ Remove an edge definition but keep the edge collection:
     ~ db._drop("myEC1");
     ~ var blub = graph_module._drop("myGraph", true);
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock general_graph__deleteEdgeDefinition
+    @endDocuBlock general_graph__deleteEdgeDefinitionNoDrop
 
 Remove an edge definition and drop the edge collection:
 

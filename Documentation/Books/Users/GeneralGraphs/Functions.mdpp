@@ -67,7 +67,7 @@ Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as
       graph._toVertex("relation/aliceAndBob")
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphGetFromVertex
+    @endDocuBlock generalGraphGetToVertex
 
 
 
@@ -339,14 +339,14 @@ An object containing options, see below:
 
 Return all paths of the graph "social":
 
-    @startDocuBlockInline generalGraphModulePaths
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths}
+    @startDocuBlockInline generalGraphModulePaths1
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths1}
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var g = examples.loadGraph("social");
       g._paths();
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphModulePaths
+    @endDocuBlock generalGraphModulePaths1
 
 Return all inbound paths of the graph "social" with a maximal
 length of 1 and a minimal length of 2:

@@ -219,8 +219,8 @@ argument.
 
 Remove a document:
 
-    @startDocuBlockInline documentsCollectionRemove
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemove}
+    @startDocuBlockInline documentsCollectionRemoveSuccess
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveSuccess}
     ~ db._create("example");
       a1 = db.example.insert({ a : 1 });
       db._remove(a1);
@@ -228,7 +228,7 @@ Remove a document:
       db._remove(a1, true);
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionRemove
+    @endDocuBlock documentsCollectionRemoveSuccess
 
 Remove a document with a conflict:
 

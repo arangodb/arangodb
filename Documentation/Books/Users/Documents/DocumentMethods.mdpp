@@ -338,14 +338,14 @@ first argument.
 
 Returns the document for a document-handle:
 
-    @startDocuBlockInline documentsCollectionName
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionName}
+    @startDocuBlockInline documentsCollectionNameValid
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameValid}
     ~ db._create("example");
     ~ var myid = db.example.insert({_key: "2873916"});
       db.example.document("example/2873916");
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionName
+    @endDocuBlock documentsCollectionNameValid
 
 An error is raised if the document is unknown:
 
@@ -522,15 +522,15 @@ first argument.
 
 Create and update a document:
 
-    @startDocuBlockInline documentsCollectionReplace
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplace}
+    @startDocuBlockInline documentsCollectionReplace1
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplace1}
     ~ db._create("example");
       a1 = db.example.insert({ a : 1 });
       a2 = db.example.replace(a1, { a : 2 });
       a3 = db.example.replace(a1, { a : 3 }); // xpError(ERROR_ARANGO_CONFLICT);
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionReplace
+    @endDocuBlock documentsCollectionReplace1
 
 Use a document handle:
 
@@ -599,8 +599,8 @@ first argument.
 
 Create and update a document:
 
-    @startDocuBlockInline documentsCollectionUpdate
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdate}
+    @startDocuBlockInline documentsCollection_UpdateDocument
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollection_UpdateDocument}
     ~ db._create("example");
       a1 = db.example.insert({"a" : 1});
       a2 = db.example.update(a1, {"b" : 2, "c" : 3});
@@ -611,24 +611,24 @@ Create and update a document:
       db.example.document(a5);
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionUpdate
+    @endDocuBlock documentsCollection_UpdateDocument
 
 Use a document handle:
 
-    @startDocuBlockInline documentsCollectionUpdateHandle
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandle}
+    @startDocuBlockInline documentsCollection_UpdateHandleSingle
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollection_UpdateHandleSingle}
     ~ db._create("example");
     ~ var myid = db.example.insert({_key: "18612115"});
       a1 = db.example.insert({"a" : 1});
       a2 = db.example.update("example/18612115", { "x" : 1, "y" : 2 });
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionUpdateHandle
+    @endDocuBlock documentsCollection_UpdateHandleSingle
 
 Use the keepNull parameter to remove attributes with null values:
 
-    @startDocuBlockInline documentsCollectionUpdateHandleKeepNull
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleKeepNull}
+    @startDocuBlockInline documentsCollection_UpdateHandleKeepNull
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollection_UpdateHandleKeepNull}
     ~ db._create("example");
     ~ var myid = db.example.insert({_key: "19988371"});
       db.example.insert({"a" : 1});
@@ -642,12 +642,12 @@ Use the keepNull parameter to remove attributes with null values:
       db.example.document("example/19988371");
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionUpdateHandleKeepNull
+    @endDocuBlock documentsCollection_UpdateHandleKeepNull
 
 Patching array values:
 
-    @startDocuBlockInline documentsCollectionUpdateHandleArray
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleArray}
+    @startDocuBlockInline documentsCollection_UpdateHandleArray
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollection_UpdateHandleArray}
     ~ db._create("example");
     ~ var myid = db.example.insert({_key: "20774803"});
     |  db.example.insert({"a" : { "one" : 1, "two" : 2, "three" : 3 },
@@ -661,7 +661,7 @@ Patching array values:
       db.example.document("example/20774803");
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionUpdateHandleArray
+    @endDocuBlock documentsCollection_UpdateHandleArray
 
 
 
@@ -703,8 +703,8 @@ first argument.
 
 Remove a document:
 
-    @startDocuBlockInline documentDocumentRemove
-    @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemove}
+    @startDocuBlockInline documentDocumentRemoveSimple
+    @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemoveSimple}
     ~ db._create("example");
       a1 = db.example.insert({ a : 1 });
       db.example.document(a1);
@@ -712,7 +712,7 @@ Remove a document:
       db.example.document(a1); // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentDocumentRemove
+    @endDocuBlock documentDocumentRemoveSimple
 
 Remove a document with a conflict:
 
@@ -939,15 +939,15 @@ one shard.
 
 @EXAMPLES
 
-    @startDocuBlockInline documentsCollectionFirst
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirst}
+    @startDocuBlockInline documentsCollectionFirstSuccess
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirstSuccess}
     ~ db._create("example");
     ~ db.example.save({ Hello : "world" });
     ~ db.example.save({ Foo : "bar" });
       db.example.first(1);
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionFirst
+    @endDocuBlock documentsCollectionFirstSuccess
 
     @startDocuBlockInline documentsCollectionFirstNull
     @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirstNull}
@@ -985,15 +985,15 @@ one shard.
 
 @EXAMPLES
 
-    @startDocuBlockInline documentsCollectionLast
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLast}
+    @startDocuBlockInline documentsCollectionLastFound
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLastFound}
     ~ db._create("example");
     ~ db.example.save({ Hello : "world" });
     ~ db.example.save({ Foo : "bar" });
       db.example.last(2);
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionLast
+    @endDocuBlock documentsCollectionLastFound
 
     @startDocuBlockInline documentsCollectionLastNull
     @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLastNull}

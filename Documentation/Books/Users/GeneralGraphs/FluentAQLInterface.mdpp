@@ -175,15 +175,15 @@ will execute it and create the cursor for you.
 
 Start query execution with hasNext:
 
-    @startDocuBlockInline generalGraphFluentAQLHasNext
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNext}
+    @startDocuBlockInline generalGraphFluentAQLHasNextFirst
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNextFirst}
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var graph = examples.loadGraph("social");
       var query = graph._vertices();
       query.hasNext();
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphFluentAQLHasNext
+    @endDocuBlock generalGraphFluentAQLHasNextFirst
 
 Iterate over the result as long as it has more elements:
 
@@ -236,8 +236,8 @@ Request some elements with next:
 
 The cursor is recreated if the query is changed:
 
-    @startDocuBlockInline generalGraphFluentAQLNextRecreate
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNextRecreate}
+    @startDocuBlockInline generalGraphFluentAQLRecreateNext
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRecreateNext}
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var graph = examples.loadGraph("social");
       var query = graph._vertices();
@@ -246,7 +246,7 @@ The cursor is recreated if the query is changed:
       query.next();
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphFluentAQLNextRecreate
+    @endDocuBlock generalGraphFluentAQLRecreateNext
 
 
 !SUBSECTION Count
@@ -670,7 +670,7 @@ To request unfiltered neighbors:
       query.neighbors().toArray();
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphFluentAQLToVerticesFilteredMultiple
+    @endDocuBlock generalGraphFluentAQLNeighborsUnfiltered
 
 To request filtered neighbors by a single example:
 
@@ -735,15 +735,15 @@ Request all directly connected vertices unrestricted:
 
 Apply a restriction to the directly connected vertices:
 
-    @startDocuBlockInline generalGraphFluentAQLRestricted
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestricted}
+    @startDocuBlockInline generalGraphFluentAQLRestrictedVertices
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestrictedVertices}
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var graph = examples.loadGraph("social");
       var query = graph._vertices({name: "Alice"});
       query.edges().vertices().restrict("female").toArray();
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphFluentAQLRestricted
+    @endDocuBlock generalGraphFluentAQLRestrictedVertices
 
 Restriction of a query is only valid for collections known to the graph:
 
