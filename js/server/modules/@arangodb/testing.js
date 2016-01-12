@@ -943,6 +943,10 @@ function runHere (options, instanceInfo, file) {
       var runTest = require("jsunity").runTest; 
       result = runTest(file, true);
     }
+    else if (file.indexOf("-jasmine-spec") === -1) {
+      var runTest = require("@arangodb/mocha-runner");
+      result = runTest(file, true);
+    }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
       var executeTestSuite = require("jasmine").executeTestSuite; 
