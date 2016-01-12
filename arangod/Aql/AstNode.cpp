@@ -173,7 +173,6 @@ std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
     {static_cast<int>(VALUE_TYPE_DOUBLE), "double"},
     {static_cast<int>(VALUE_TYPE_STRING), "string"}};
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resolve an attribute access
 ////////////////////////////////////////////////////////////////////////////////
