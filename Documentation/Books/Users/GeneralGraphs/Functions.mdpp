@@ -25,7 +25,9 @@ Get the source vertex of an edge
 
 Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeId, string, required}
 *_id* attribute of the edge
@@ -55,7 +57,9 @@ Get the target vertex of an edge
 
 Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeId, string, required}
 *_id* attribute of the edge
@@ -89,7 +93,9 @@ The complexity of this method is **O(n\*m^x)** with *n* being the vertices defin
 parameter vertexExamplex, *m* the average amount of neighbors and *x* the maximal depths.
 Hence the default call would have a complexity of **O(n\*m)**;
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexExample, object, optional}
 See [Definition of examples](#definition-of-examples)
@@ -239,7 +245,9 @@ example as parameter for vertex1Example and vertex2Example.
 The complexity of this method is **O(n)** with *n* being the maximal amount of vertices
 defined by the parameters vertexExamples.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertex1Examples, object, optional}
 Filter the set of source vertices, see [Definition of examples](#definition-of-examples)
@@ -336,7 +344,9 @@ This function determines all available paths in a graph.
 The complexity of this method is **O(n\*n\*m)** with *n* being the amount of vertices in
 the graph and *m* the average amount of connected edges;
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{options, object, optional}
 An object containing options, see below:
@@ -402,7 +412,9 @@ representing the length.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{startVertexExample, object, optional}
 An example for the desired start Vertices
@@ -526,7 +538,9 @@ example as parameter for vertexExample.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexExample, object, optional}
 Filter the vertices, see [Definition of examples](#definition-of-examples)
@@ -654,7 +668,9 @@ example as parameter for *vertexExample*.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexExample, object, optional}
 Filter the vertices, see [Definition of examples](#definition-of-examples)
@@ -790,7 +806,9 @@ of all vertices in the graph.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexExample, object, optional}
 Filter the vertices, see [Definition of examples](#definition-of-examples)
@@ -912,7 +930,9 @@ of a graph.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{options, object, optional}
 An object defining further options. Can have the following values:
@@ -981,7 +1001,9 @@ of a graph.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{options, object, optional}
 An object defining further options. Can have the following values:

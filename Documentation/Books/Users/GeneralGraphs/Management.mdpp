@@ -18,7 +18,9 @@ Create a list of edge definitions to construct a graph.
 The list of edge definitions of a graph can be managed by the graph module itself.
 This function is the entry point for the management and will return the correct list.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{relationX, object, optional}
 An object representing a definition of one relation in the graph
@@ -49,7 +51,9 @@ Extend the list of edge definitions to construct a graph.
 In order to add more edge definitions to the graph before creating
 this function can be used to add more definitions to the initial list.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeDefinitions, array, required}
 A list of relation definition objects.
@@ -87,7 +91,9 @@ The *toVertexCollections* is an Array of document collections holding the target
 Relations are only allowed in the direction from any collection in *fromVertexCollections*
 to any collection in *toVertexCollections*.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{relationName, string, required}
   The name of the edge collection where the edges should be stored.
@@ -140,7 +146,9 @@ list of *vertexCollections*. This relation allows the user to store
 edges in any direction between any pair of vertices within the
 *vertexCollections*.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{relationName, string, required}
   The name of the edge collection where the edges should be stored.
@@ -192,7 +200,9 @@ The *toVertexCollections* is an Array of document collections holding the target
 Relations are only allowed in the direction from any collection in *fromVertexCollections*
 to any collection in *toVertexCollections*.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{relationName, string, required}
   The name of the edge collection where the edges should be stored.
@@ -235,7 +245,9 @@ Optionally a list of vertex collections can be added, which are not used in any 
 These collections are referred to as orphan collections within this chapter.
 All collections used within the creation process are created if they do not exist.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{graphName, string, required}
 Unique identifier of the graph
@@ -368,7 +380,9 @@ Get a graph
 
 A graph can be retrieved by its name.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{graphName, string, required}
 Unique identifier of the graph
@@ -404,7 +418,9 @@ This will automatically drop all collections contained in the graph as
 long as they are not used within other graphs.
 To drop the collections, the optional parameter *drop-collections* can be set to *true*.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{graphName, string, required}
 Unique identifier of the graph
@@ -466,7 +482,9 @@ edge definition, it will be removed from the orphanage. If the edge collection o
 the edge definition to add is already used in the graph or used in a different
 graph with different *from* and/or *to* collections an error is thrown.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeDefinition, object, required}
 The relation definition to extend the graph
@@ -504,7 +522,9 @@ definition will transform to an orphan. Orphans that are used in this new edge
 definition will be deleted from the list of orphans. Other graphs with the same edge
 definition will be modified, too.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeDefinition, object, required}
 The edge definition to replace the existing edge
@@ -540,7 +560,9 @@ Deletes a relation definition defined by the edge collection of a graph. If the
 collections defined in the edge definition (collection, from, to) are not used
 in another edge definition of the graph, they will be moved to the orphanage.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeCollectionName, string, required}
 Name of edge collection in the relation definition.
@@ -604,7 +626,9 @@ Adds a vertex collection to the set of orphan collections of the graph. If the
 collection does not exist, it will be created. If it is already used by any edge
 definition of the graph, an error will be thrown.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexCollectionName, string, required}
 Name of vertex collection.
@@ -670,7 +694,9 @@ Removes a vertex collection from the graph.
 Only collections not used in any relation definition can be removed.
 Optionally the collection can be deleted, if it is not used in any other graph.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexCollectionName, string, required}
 Name of vertex collection.
@@ -712,7 +738,9 @@ Create a new vertex in vertexCollectionName
 
 `graph.vertexCollectionName.save(data)`
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{data, object, required}
 JSON data of vertex.
@@ -740,7 +768,9 @@ Replaces the data of a vertex in collection vertexCollectionName
 
 `graph.vertexCollectionName.replace(vertexId, data, options)`
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexId, string, required}
 *_id* attribute of the vertex
@@ -775,7 +805,9 @@ Updates the data of a vertex in collection vertexCollectionName
 
 `graph.vertexCollectionName.update(vertexId, data, options)`
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexId, string, required}
 *_id* attribute of the vertex
@@ -813,7 +845,9 @@ Removes a vertex in collection *vertexCollectionName*
 Additionally removes all ingoing and outgoing edges of the vertex recursively
 (see [edge remove](#remove-an-edge)).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexId, string, required}
 *_id* attribute of the vertex
@@ -849,7 +883,9 @@ Creates an edge from vertex *from* to vertex *to* in collection edgeCollectionNa
 
 `graph.edgeCollectionName.save(from, to, data, options)`
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{from, string, required}
 *_id* attribute of the source vertex
@@ -900,7 +936,9 @@ Replaces the data of an edge in collection edgeCollectionName
 
 `graph.edgeCollectionName.replace(edgeId, data, options)`
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeId, string, required}
 *_id* attribute of the edge
@@ -935,7 +973,9 @@ Updates the data of an edge in collection edgeCollectionName
 
 `graph.edgeCollectionName.update(edgeId, data, options)`
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeId, string, required}
 *_id* attribute of the edge
@@ -972,7 +1012,9 @@ Removes an edge in collection edgeCollectionName
 
 If this edge is used as a vertex by another edge, the other edge will be removed (recursively).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeId, string, required}
 *_id* attribute of the edge
@@ -1009,7 +1051,9 @@ Get all connecting edges between 2 groups of vertices defined by the examples
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertexExample.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexExample1, object, optional}
 See [Definition of examples](Functions.md#definition-of-examples)
