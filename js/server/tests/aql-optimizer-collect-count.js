@@ -74,6 +74,9 @@ function optimizerCountTestSuite () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group WITH COUNT i RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group WITH COUNT i INTO group RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group WITH COUNT COUNT INTO group RETURN 1");
+
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE doc = MIN(i.group) WITH COUNT INTO group RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE doc = MIN(i.group) WITH COUNT INTO group RETURN 1");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

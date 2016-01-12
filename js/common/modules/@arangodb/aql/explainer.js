@@ -808,7 +808,10 @@ function processQuery (query, explain) {
           }).join(", ");
 
         if (node.hasOwnProperty("aggregates")) {
-          collect += " " + keyword("AGGREGATE") + " " + 
+          if (node.groups.length > 0) {
+            collect += " ";
+          }
+          collect += keyword("AGGREGATE") + " " + 
           node.aggregates.map(function(node) {
             return variableName(node.outVariable) + " = " + func(node.type) + "(" + variableName(node.inVariable) + ")";
           }).join(", ");

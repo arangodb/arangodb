@@ -588,7 +588,11 @@ AstNode* Ast::createNodeCollectAggregate(AstNode const* list, AstNode const* agg
 
   node->addMember(options);
   node->addMember(list);
-  node->addMember(aggregations);
+
+  // wrap aggregations again
+  auto agg = createNode(NODE_TYPE_AGGREGATIONS);
+  agg->addMember(aggregations);
+  node->addMember(agg);
 
   return node;
 }
@@ -1609,6 +1613,8 @@ void Ast::validateAndOptimize() {
         // NOOPT will turn all function optimizations off
         ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
       }
+    } else if (node->type == NODE_TYPE_AGGREGATIONS) {
+      ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
     } else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
       return false;
     } else if (node->type == NODE_TYPE_REMOVE ||
@@ -1653,6 +1659,8 @@ void Ast::validateAndOptimize() {
         // NOOPT will turn all function optimizations off
         --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
       }
+    } else if (node->type == NODE_TYPE_AGGREGATIONS) {
+      --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
     }
   };
 

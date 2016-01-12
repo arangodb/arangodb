@@ -43,6 +43,8 @@ Aggregator* Aggregator::fromTypeString(triagens::arango::AqlTransaction* trx, st
     return new AggregatorAverage(trx);
   }
 
+  // aggregator function name should have been validated before
+  TRI_ASSERT(false);
   return nullptr;
 }
 

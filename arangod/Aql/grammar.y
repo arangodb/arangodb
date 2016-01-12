@@ -414,6 +414,26 @@ collect_statement:
 
           if (member != nullptr) {
             TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+            auto func = member->getMember(1);
+
+            bool isValid = true;
+            if (func->type != NODE_TYPE_FCALL) {
+              // aggregate expression must be a function call
+              isValid = false;
+            }
+            else {
+              auto f = static_cast<triagens::aql::Function*>(func->getData());
+              if (! Aggregator::isSupported(f->externalName)) {
+                // aggregate expression must be a call to MIN|MAX|LENGTH...
+                isValid = false;
+              }
+            }
+
+            if (! isValid) {
+              parser->registerError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION);
+              YYABORT;
+            }
+
             auto v = static_cast<Variable*>(member->getMember(0)->getData());
             scopes->addVariable(v);
           }
@@ -437,6 +457,7 @@ collect_statement:
         scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
 
         // register all group variables
+        std::unordered_set<Variable const*> groupVars;
         size_t n = $1->numMembers();
         for (size_t i = 0; i < n; ++i) {
           auto member = $1->getMember(i);
@@ -445,11 +466,14 @@ collect_statement:
             TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
             auto v = static_cast<Variable*>(member->getMember(0)->getData());
             scopes->addVariable(v);
+            groupVars.emplace(v);
           }
         }
 
         // register aggregate variables too
         n = $2->numMembers();
+        std::unordered_set<Variable const*> variablesUsed;
+
         for (size_t i = 0; i < n; ++i) {
           auto member = $2->getMember(i);
 
@@ -471,9 +495,20 @@ collect_statement:
             }
 
             if (! isValid) {
-              parser->registerParseError(TRI_ERROR_QUERY_PARSE, 
-                "aggregate expression must be a function call that uses a supported aggregate expression", 
-                yylloc.first_line, yylloc.first_column);
+              parser->registerError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION);
+              YYABORT;
+            }
+            else {
+              variablesUsed.clear();
+              Ast::getReferencedVariables(func, variablesUsed);
+
+              for (auto& it : groupVars) {
+                if (variablesUsed.find(it) != variablesUsed.end()) {
+                  parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, 
+                    "use of unknown variable '%s' in aggregate expression", it->name.c_str(), yylloc.first_line, yylloc.first_column);
+                  break;
+                }
+              }
             }
 
             auto v = static_cast<Variable*>(member->getMember(0)->getData());

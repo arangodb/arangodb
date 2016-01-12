@@ -1096,12 +1096,11 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
 
   auto options = createCollectOptions(node->getMember(0));
 
-  std::unordered_map<Variable const*, Variable const*> aliases;
-
   // group variables
   std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
   {
     auto list = node->getMember(1);
+    TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
     size_t const numVars = list->numMembers();
 
     groupVariables.reserve(numVars);
@@ -1129,8 +1128,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
         auto calc = createTemporaryCalculation(expression, previous);
         previous = calc;
         groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
-
-        aliases.emplace(v, groupVariables.back().second);
       }
     }
   }
@@ -1138,18 +1135,10 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
   // aggregate variables 
   std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
   {
-    auto variableReplacer = [&aliases, this] (AstNode* node, void*) -> AstNode* {
-      if (node->type == NODE_TYPE_REFERENCE) {
-        auto it = aliases.find(static_cast<Variable const*>(node->getData()));
-
-        if (it != aliases.end()) {
-          return _ast->createNodeReference((*it).second);
-        }
-      }
-      return node;
-    };
-
     auto list = node->getMember(2);
+    TRI_ASSERT(list->type == NODE_TYPE_AGGREGATIONS);
+    list = list->getMember(0);
+    TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
     size_t const numVars = list->numMembers();
 
     aggregateVariables.reserve(numVars);
@@ -1185,8 +1174,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
       TRI_ASSERT(args->numMembers() == 1);
 
       auto arg = args->getMember(0);
-      arg = Ast::traverseAndModify(arg, variableReplacer, nullptr);
-      
 
       if (arg->type == NODE_TYPE_REFERENCE) {
         // operand is a variable

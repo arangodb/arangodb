@@ -73,6 +73,7 @@ void SortedCollectBlock::CollectGroup::initialize(size_t capacity) {
 
   // reset aggregators
   for (auto& it : aggregators) {
+    TRI_ASSERT(it != nullptr);
     it->reset();
   }
 }
@@ -95,6 +96,7 @@ void SortedCollectBlock::CollectGroup::reset() {
 
   // reset all aggregators  
   for (auto& it : aggregators) {
+    TRI_ASSERT(it != nullptr);
     it->reset();
   }
 }
@@ -621,8 +623,10 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   // cleanup function for group values
   auto cleanup = [&allGroups] () -> void {
     for (auto& it : allGroups) {
-      for (auto& it2 : *(it.second)) {
-        delete it2;
+      if (it.second != nullptr) {
+        for (auto& it2 : *(it.second)) {
+          delete it2;
+        }
       }
       delete it.second;
     }
@@ -811,7 +815,6 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       for (auto& it2 : it.first) {
         const_cast<AqlValue*>(&it2)->destroy();
       }
-      delete it.second;
     }
     throw;
   }
