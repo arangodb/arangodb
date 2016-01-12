@@ -375,18 +375,6 @@ Scheduler* ApplicationScheduler::scheduler () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installs a signal handler
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::installSignalHandler (SignalTask* task) {
-  if (_scheduler == nullptr) {
-    LOG_FATAL_AND_EXIT("no scheduler is known, cannot install signal handler");
-  }
-
-  _scheduler->registerTask(task);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of used threads
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -617,8 +605,11 @@ void ApplicationScheduler::buildSchedulerReporter () {
   if (0.0 < _reportInterval) {
     Task* reporter = new SchedulerReporterTask(_scheduler, _reportInterval);
 
-    _scheduler->registerTask(reporter);
-    _tasks.emplace_back(reporter);
+    int res = _scheduler->registerTask(reporter);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _tasks.emplace_back(reporter);
+    }
   }
 }
 
@@ -635,21 +626,34 @@ void ApplicationScheduler::buildControlCHandler () {
     // control C handler
     Task* controlC = new ControlCTask(_applicationServer);
 
-    _scheduler->registerTask(controlC);
-    _tasks.emplace_back(controlC);
+    int res = _scheduler->registerTask(controlC);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _tasks.emplace_back(controlC);
+    }
   }
 
-  // hangup handler
-  Task* hangup = new HangupTask();
+  {
+    // hangup handler
+    Task* hangup = new HangupTask();
 
-  _scheduler->registerTask(hangup);
-  _tasks.emplace_back(hangup);
+    int res = _scheduler->registerTask(hangup);
 
-  // sigusr handler
-  Task* sigusr = new Sigusr1Task(this);
+    if (res == TRI_ERROR_NO_ERROR) {
+      _tasks.emplace_back(hangup);
+    }
+  }
 
-  _scheduler->registerTask(sigusr);
-  _tasks.emplace_back(sigusr);
+  {
+    // sigusr handler
+    Task* sigusr = new Sigusr1Task(this);
+
+    int res = _scheduler->registerTask(sigusr);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _tasks.emplace_back(sigusr);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

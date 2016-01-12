@@ -1120,6 +1120,9 @@ bool HttpCommTask::setup (Scheduler* scheduler, EventLoop loop) {
     return false;
   }
 
+  _server->registerChunkedTask(this);
+  setupDone();
+
   return ok;
 }
 
