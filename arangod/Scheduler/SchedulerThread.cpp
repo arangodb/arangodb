@@ -118,6 +118,7 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
   // thread has already been stopped
   if (_stopped) {
     // do nothing
+    deleteTask(task);
     return false;
   }
 
