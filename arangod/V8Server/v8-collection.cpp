@@ -2420,15 +2420,16 @@ static void JS_PropertiesVocbaseCol(
   result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
               v8::Number::New(isolate, document->_info.indexBuckets()));
 
-  TRI_json_t* keyOptions =
-      document->_keyGenerator->toJson(TRI_UNKNOWN_MEM_ZONE);
-
   TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-  if (keyOptions != nullptr) {
-    result->Set(KeyOptionsKey, TRI_ObjectJson(isolate, keyOptions)->ToObject());
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-  } else {
+  try {
+    VPackBuilder optionsBuilder;
+    optionsBuilder.openObject();
+    document->_keyGenerator->toVelocyPack(optionsBuilder);
+    optionsBuilder.close();
+    result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, optionsBuilder.slice())->ToObject());
+  }
+  catch (...) {
+    // Could not build the VPack
     result->Set(KeyOptionsKey, v8::Array::New(isolate));
   }
   TRI_GET_GLOBAL_STRING(WaitForSyncKey);

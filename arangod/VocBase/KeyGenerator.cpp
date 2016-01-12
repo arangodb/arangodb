@@ -205,7 +205,17 @@ int KeyGenerator::globalCheck(std::string const& key, bool isRestore) {
   return TRI_ERROR_NO_ERROR;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the generator
+///        Not virtual because this is identical for all of them
+//////////////////////////////////////////////////////////////////////////////
 
+std::shared_ptr<VPackBuilder> KeyGenerator::toVelocyPack() const {
+  auto builder = std::make_shared<VPackBuilder>();
+  toVelocyPack(*builder);
+  builder->close();
+  return builder;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the key enerator
@@ -279,24 +289,18 @@ int TraditionalKeyGenerator::validate(std::string const& key, bool isRestore) {
 void TraditionalKeyGenerator::track(TRI_voc_key_t) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON representation of the generator
+/// @brief create a VPack representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TraditionalKeyGenerator::toJson(TRI_memory_zone_t* zone) const {
-  TRI_json_t* json = TRI_CreateObjectJson(zone, 2);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VPack representation of the generator
+////////////////////////////////////////////////////////////////////////////////
 
-  if (json != nullptr) {
-    TRI_Insert3ObjectJson(
-        zone, json, "type",
-        TRI_CreateStringCopyJson(zone, name().c_str(), name().size()));
-    TRI_Insert3ObjectJson(zone, json, "allowUserKeys",
-                          TRI_CreateBooleanJson(zone, _allowUserKeys));
-  }
-
-  return json;
+void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(!builder.isClosed());
+  builder.add("type", VPackValue(name()));
+  builder.add("allowUserKeys", VPackValue(_allowUserKeys)); 
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the generator
@@ -414,25 +418,15 @@ void AutoIncrementKeyGenerator::track(TRI_voc_key_t key) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON representation of the generator
+/// @brief create a VelocyPack representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* AutoIncrementKeyGenerator::toJson(TRI_memory_zone_t* zone) const {
-  TRI_json_t* json = TRI_CreateObjectJson(zone, 4);
-
-  if (json != nullptr) {
-    TRI_Insert3ObjectJson(
-        zone, json, "type",
-        TRI_CreateStringCopyJson(zone, name().c_str(), name().size()));
-    TRI_Insert3ObjectJson(zone, json, "allowUserKeys",
-                          TRI_CreateBooleanJson(zone, _allowUserKeys));
-    TRI_Insert3ObjectJson(zone, json, "offset",
-                          TRI_CreateNumberJson(zone, (double)_offset));
-    TRI_Insert3ObjectJson(zone, json, "increment",
-                          TRI_CreateNumberJson(zone, (double)_increment));
-  }
-
-  return json;
+void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const { 
+  TRI_ASSERT(!builder.isClosed());
+  builder.add("type", VPackValue(name()));
+  builder.add("allowUserKeys", VPackValue(_allowUserKeys)); 
+  builder.add("offset", VPackValue(_offset)); 
+  builder.add("increment", VPackValue(_increment)); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////

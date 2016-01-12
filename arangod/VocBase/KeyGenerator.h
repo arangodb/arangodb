@@ -30,9 +30,6 @@
 
 #include <array>
 
-struct TRI_json_t;
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of a key in a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,11 +106,16 @@ class KeyGenerator {
   virtual void track(TRI_voc_key_t) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a JSON representation of the generator
+  /// @brief return a VelocyPack representation of the generator
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual struct TRI_json_t* toJson(TRI_memory_zone_t*) const = 0;
+  std::shared_ptr<VPackBuilder> toVelocyPack() const;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief build a VelocyPack representation of the generator in the builder
+  //////////////////////////////////////////////////////////////////////////////
+  
+  virtual void toVelocyPack(VPackBuilder&) const = 0;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check global key attributes
@@ -187,10 +189,10 @@ class TraditionalKeyGenerator : public KeyGenerator {
   static std::string name() { return "traditional"; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a JSON representation of the generator
+  /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
-
-  struct TRI_json_t* toJson(TRI_memory_zone_t*) const override;
+  
+  virtual void toVelocyPack(VPackBuilder&) const override;
 };
 
 
@@ -244,11 +246,10 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   static std::string name() { return "autoincrement"; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a JSON representation of the generator
+  /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
-
-  struct TRI_json_t* toJson(TRI_memory_zone_t*) const override;
-
+  
+  virtual void toVelocyPack(VPackBuilder&) const override;
   
  private:
   triagens::basics::Mutex _lock;
