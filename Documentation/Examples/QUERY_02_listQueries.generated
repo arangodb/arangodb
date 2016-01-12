@@ -10,7 +10,7 @@ arangosh&gt; tasks.register({
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"this is a sample task to spawn a slow aql query"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"timed"</span>, 
   <span class="hljs-string">"offset"</span> : <span class="hljs-number">0.00001</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1452167981.89619</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1452619688.371183</span>, 
   <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('internal').db._query('FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLE..."</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
@@ -18,9 +18,9 @@ arangosh&gt; tasks.register({
 arangosh&gt; queries.current();
 [ 
   { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"166"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"4001"</span>, 
     <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLEEP(1000) RETURN sleepLoooong"</span>, 
-    <span class="hljs-string">"runTime"</span> : <span class="hljs-number">1.9659910202026367</span>, 
-    <span class="hljs-string">"started"</span> : <span class="hljs-string">"2016-01-07T11:59:41Z"</span> 
+    <span class="hljs-string">"runTime"</span> : <span class="hljs-number">1.8614799976348877</span>, 
+    <span class="hljs-string">"started"</span> : <span class="hljs-string">"2016-01-12T17:28:08Z"</span> 
   } 
 ]

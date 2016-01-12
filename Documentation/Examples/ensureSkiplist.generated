@@ -1,6 +1,6 @@
 arangosh&gt; db.names.ensureIndex({ type: <span class="hljs-string">"skiplist"</span>, fields: [ <span class="hljs-string">"first"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/1144075369"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/4234518459"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
@@ -12,31 +12,31 @@ arangosh&gt; db.names.ensureIndex({ type: <span class="hljs-string">"skiplist"</
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/1144337513"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1144337513"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1144337513"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/4234780603"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"4234780603"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"4234780603"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/1144534121"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1144534121"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1144534121"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/4234977211"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"4234977211"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"4234977211"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/1144730729"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1144730729"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1144730729"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/4235173819"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"4235173819"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"4235173819"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/1144927337"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1144927337"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1144927337"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/4235370427"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"4235370427"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"4235370427"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/1145123945"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1145123945"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1145123945"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/4235567035"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"4235567035"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"4235567035"</span> 
 }

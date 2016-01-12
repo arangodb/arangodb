@@ -1,6 +1,6 @@
 arangosh&gt; db.examples.ensureIndex({ type: <span class="hljs-string">"cap"</span>, size: <span class="hljs-number">10</span> });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"examples/1090073705"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"examples/4181172155"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"cap"</span>, 
   <span class="hljs-string">"size"</span> : <span class="hljs-number">10</span>, 
   <span class="hljs-string">"byteSize"</span> : <span class="hljs-number">0</span>, 
