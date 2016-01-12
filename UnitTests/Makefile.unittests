@@ -513,7 +513,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-hash-index-noncluster.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js \
-               @top_srcdir@/js/common/tests/shell-query-timecritical-jasmine-spec.js
+               @top_srcdir@/js/common/tests/shell-query-timecritical-spec.js
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (BASICS)
