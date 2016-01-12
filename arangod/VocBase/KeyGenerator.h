@@ -36,9 +36,7 @@
 
 #define TRI_VOC_KEY_MAX_LENGTH (254)
 
-
 class KeyGenerator {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief available key generators
@@ -50,7 +48,6 @@ class KeyGenerator {
     TYPE_AUTOINCREMENT = 2
   };
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -65,7 +62,6 @@ class KeyGenerator {
 
   virtual ~KeyGenerator();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the lookup table for key checks
@@ -85,7 +81,6 @@ class KeyGenerator {
 
   static KeyGenerator* factory(VPackSlice const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a key
@@ -114,16 +109,15 @@ class KeyGenerator {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
-  
+
   virtual void toVelocyPack(VPackBuilder&) const = 0;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check global key attributes
   //////////////////////////////////////////////////////////////////////////////
 
   int globalCheck(std::string const&, bool);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the users can specify their own keys
@@ -138,9 +132,7 @@ class KeyGenerator {
   static std::array<bool, 256> LookupTable;
 };
 
-
 class TraditionalKeyGenerator : public KeyGenerator {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -154,7 +146,6 @@ class TraditionalKeyGenerator : public KeyGenerator {
 
   ~TraditionalKeyGenerator();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate a key
@@ -162,7 +153,6 @@ class TraditionalKeyGenerator : public KeyGenerator {
 
   static bool validateKey(char const* key);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a key
@@ -191,13 +181,11 @@ class TraditionalKeyGenerator : public KeyGenerator {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
-  
+
   virtual void toVelocyPack(VPackBuilder&) const override;
 };
 
-
 class AutoIncrementKeyGenerator : public KeyGenerator {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -211,7 +199,6 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 
   ~AutoIncrementKeyGenerator();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate a key
@@ -219,7 +206,6 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 
   static bool validateKey(char const* key);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a key
@@ -248,9 +234,9 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
-  
+
   virtual void toVelocyPack(VPackBuilder&) const override;
-  
+
  private:
   triagens::basics::Mutex _lock;
 
@@ -268,5 +254,3 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 bool TRI_ValidateDocumentIdKeyGenerator(char const*, size_t*);
 
 #endif
-
-

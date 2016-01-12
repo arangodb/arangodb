@@ -610,7 +610,6 @@ VocShaper* TRI_document_collection_t::getShaper() const {
 int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 triagens::wal::DocumentOperation&, bool&);
 
-
 static int FillIndex(triagens::arango::Transaction*, TRI_document_collection_t*,
                      triagens::arango::Index*);
 
@@ -633,8 +632,6 @@ static int SkiplistIndexFromJson(triagens::arango::Transaction*,
 static int FulltextIndexFromJson(triagens::arango::Transaction*,
                                  TRI_document_collection_t*, TRI_json_t const*,
                                  TRI_idx_iid_t, triagens::arango::Index**);
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a datafile identifier
@@ -912,8 +909,6 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
   return true;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an existing header
 ////////////////////////////////////////////////////////////////////////////////
@@ -932,8 +927,6 @@ static void UpdateHeader(TRI_voc_fid_t fid, TRI_df_marker_t const* m,
   newHeader->_fid = fid;
   newHeader->setDataPtr(marker);  // ONLY IN OPENITERATOR
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief garbage-collect a collection's indexes
@@ -1248,14 +1241,11 @@ static int CloneMarkerNoLegend(triagens::wal::Marker*& marker,
   return TRI_ERROR_INTERNAL;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of operations buffer for the open iterator
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t OpenIteratorBufferSize = 128;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state during opening of a collection
@@ -1285,7 +1275,6 @@ typedef struct open_iterator_operation_s {
   TRI_df_marker_t const* _marker;
   TRI_voc_fid_t _fid;
 } open_iterator_operation_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mark a transaction as failed during opening of a collection
@@ -2032,7 +2021,6 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-
 struct OpenIndexIteratorContext {
   triagens::arango::Transaction* trx;
   TRI_document_collection_t* collection;
@@ -2267,7 +2255,6 @@ static int IterateMarkersCollection(triagens::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -2400,7 +2387,6 @@ void TRI_FreeDocumentCollection(TRI_document_collection_t* document) {
   TRI_DestroyDocumentCollection(document);
   delete document;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a datafile description
@@ -3177,8 +3163,6 @@ int TRI_CloseDocumentCollection(TRI_document_collection_t* document,
   return res;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pid name structure
 ////////////////////////////////////////////////////////////////////////////////
@@ -3187,7 +3171,6 @@ typedef struct pid_name_s {
   TRI_shape_pid_t _pid;
   char* _name;
 } pid_name_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts extracts a field list from a json object
@@ -3617,7 +3600,6 @@ static int PathBasedIndexFromJson(
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update statistics for a collection
 /// note: the write-lock for the collection must be held to call this
@@ -3839,8 +3821,9 @@ static int PidNamesByAttributeNames(
 
     // sort according to pid
     std::sort(pidNames.begin(), pidNames.end(),
-              [](PidNameType const& l, PidNameType const& r)
-                  -> bool { return l.second < r.second; });
+              [](PidNameType const& l, PidNameType const& r) -> bool {
+                return l.second < r.second;
+              });
 
     for (auto const& it : pidNames) {
       pids.emplace_back(it.second);
@@ -3881,8 +3864,6 @@ static int PidNamesByAttributeNames(
 
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a cap constraint to a collection
@@ -3998,7 +3979,6 @@ static int CapConstraintFromJson(triagens::arango::Transaction* trx,
   return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
@@ -4037,8 +4017,6 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection(
 
   return idx;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a geo index to a collection
@@ -4263,7 +4241,6 @@ static int GeoIndexFromJson(triagens::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;  // shut the vc++ up
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, list style
 ////////////////////////////////////////////////////////////////////////////////
@@ -4382,8 +4359,6 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection(
   return idx;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a hash index to the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -4470,7 +4445,6 @@ static int HashIndexFromJson(triagens::arango::Transaction* trx,
                                 CreateHashIndexDocumentCollection, dst);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index (unique or non-unique)
 /// the index lock must be held when calling this function
@@ -4526,8 +4500,6 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection(
 
   return idx;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a skiplist index to the collection
@@ -4613,7 +4585,6 @@ static int SkiplistIndexFromJson(triagens::arango::Transaction* trx,
                                 CreateSkiplistIndexDocumentCollection, dst);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a skiplist index (unique or non-unique)
 /// the index lock must be held when calling this function
@@ -4669,8 +4640,6 @@ triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection(
 
   return idx;
 }
-
-
 
 static triagens::arango::Index* LookupFulltextIndexDocumentCollection(
     TRI_document_collection_t* document, std::string const& attribute,
@@ -4818,7 +4787,6 @@ static int FulltextIndexFromJson(triagens::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a fulltext index (unique or non-unique)
 /// the index lock must be held when calling this function
@@ -4860,9 +4828,6 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection(
 
   return idx;
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a select-by-example query
@@ -4924,7 +4889,6 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an element from the document collection
@@ -5750,5 +5714,3 @@ int TRI_document_collection_t::postInsertIndexes(
   // post-insert will never return an error
   return TRI_ERROR_NO_ERROR;
 }
-
-

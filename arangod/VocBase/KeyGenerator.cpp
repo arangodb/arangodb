@@ -59,8 +59,6 @@ void KeyGenerator::Initialize() {
   }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the key enerator
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,25 +72,25 @@ KeyGenerator::KeyGenerator(bool allowUserKeys)
 
 KeyGenerator::~KeyGenerator() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the generator type from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
 KeyGenerator::GeneratorType KeyGenerator::generatorType(
     VPackSlice const& parameters) {
-  if (! parameters.isObject()) {
+  if (!parameters.isObject()) {
     return KeyGenerator::TYPE_TRADITIONAL;
   }
   VPackSlice const type = parameters.get("type");
 
-  if (! type.isString()) {
+  if (!type.isString()) {
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
   std::string typeName = type.copyString();
 
-  if (TRI_CaseEqualString(typeName.c_str(), TraditionalKeyGenerator::name().c_str())) {
+  if (TRI_CaseEqualString(typeName.c_str(),
+                          TraditionalKeyGenerator::name().c_str())) {
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
@@ -128,7 +126,8 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
 
   if (readOptions) {
     // Change allowUserKeys only if it is a boolean value, otherwise use default
-    allowUserKeys = triagens::basics::VelocyPackHelper::getBooleanValue(options, "allowUserKeys", allowUserKeys);
+    allowUserKeys = triagens::basics::VelocyPackHelper::getBooleanValue(
+        options, "allowUserKeys", allowUserKeys);
   }
 
   if (type == TYPE_TRADITIONAL) {
@@ -180,7 +179,6 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
   return nullptr;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check global key attributes
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +227,6 @@ TraditionalKeyGenerator::TraditionalKeyGenerator(bool allowUserKeys)
 ////////////////////////////////////////////////////////////////////////////////
 
 TraditionalKeyGenerator::~TraditionalKeyGenerator() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
@@ -299,7 +296,7 @@ void TraditionalKeyGenerator::track(TRI_voc_key_t) {}
 void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
-  builder.add("allowUserKeys", VPackValue(_allowUserKeys)); 
+  builder.add("allowUserKeys", VPackValue(_allowUserKeys));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,7 +316,6 @@ AutoIncrementKeyGenerator::AutoIncrementKeyGenerator(bool allowUserKeys,
 ////////////////////////////////////////////////////////////////////////////////
 
 AutoIncrementKeyGenerator::~AutoIncrementKeyGenerator() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a numeric key
@@ -421,12 +417,12 @@ void AutoIncrementKeyGenerator::track(TRI_voc_key_t key) {
 /// @brief create a VelocyPack representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const { 
+void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
-  builder.add("allowUserKeys", VPackValue(_allowUserKeys)); 
-  builder.add("offset", VPackValue(_offset)); 
-  builder.add("increment", VPackValue(_increment)); 
+  builder.add("allowUserKeys", VPackValue(_allowUserKeys));
+  builder.add("offset", VPackValue(_offset));
+  builder.add("increment", VPackValue(_increment));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,5 +468,3 @@ bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t* split) {
   // validate document key
   return TraditionalKeyGenerator::validateKey(p);
 }
-
-
