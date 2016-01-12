@@ -66,8 +66,7 @@ details, including the index-identifier, is returned.
     db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
     db.ids.save({ "name" : { "first" : "jens", "last": "jensen" }});
     db.ids.save({ "name" : { "first" : "hans", "last": "jensen" }});
-    | db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }}); 
-    ~ // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
+    db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
     ~db._drop("ids");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock ensureUniqueSkiplistMultiColmun

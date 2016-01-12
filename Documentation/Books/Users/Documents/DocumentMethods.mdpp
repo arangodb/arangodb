@@ -353,8 +353,7 @@ An error is raised if the document is unknown:
     @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameUnknown}
     ~ db._create("example");
     ~ var myid = db.example.insert({_key: "2873916"});
-    | db.example.document("example/4472917");
-    ~     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
+      db.example.document("example/4472917"); // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentsCollectionNameUnknown
