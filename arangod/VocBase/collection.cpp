@@ -1217,6 +1217,13 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       // Copy the ownership of the options over
       _keyOptions = builder.steal();
     }
+
+    if (options.hasKey("deleted")) {
+      VPackSlice const slice = options.get("deleted");
+      if (slice.isBoolean()) {
+        _deleted = slice.getBoolean();
+      }
+    }
   }
 
 #ifndef TRI_HAVE_ANONYMOUS_MMAP

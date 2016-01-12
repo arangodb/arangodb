@@ -58,7 +58,7 @@ ThreadPool::~ThreadPool() {
   _stopping = true;
   _condition.broadcast();
 
-  for (auto it : _threads) {
+  for (auto* it : _threads) {
     it->waitForDone();
     delete it;
   }
