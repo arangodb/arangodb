@@ -339,14 +339,6 @@ int Scheduler::registerTask(Task* task, ssize_t* tn) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a new task with a pre-selected thread number
-////////////////////////////////////////////////////////////////////////////////
-
-int Scheduler::registerTaskInThread(Task* task, ssize_t tn) {
-  return registerTask(task, nullptr, tn);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unregisters a task
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -448,11 +440,16 @@ Task* Scheduler::lookupTaskById(uint64_t taskId) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a new task
+/// the caller must not use the task object afterwards, as it may be deleted
+/// by this function or a SchedulerThread
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
+  TRI_ASSERT(task != nullptr);
+
   if (task->isUserDefined() && task->id().empty()) {
     // user-defined task without id is invalid
+    deleteTask(task);
     return TRI_ERROR_TASK_INVALID_ID;
   }
 
@@ -466,16 +463,18 @@ int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
     n = want;
 
     if (nrThreads <= n) {
+      deleteTask(task);
       return TRI_ERROR_INTERNAL;
     }
   }
 
-  {
+  try {
     MUTEX_LOCKER(schedulerLock);
 
     int res = checkInsertTask(task);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      deleteTask(task);
       return res;
     }
 
@@ -490,12 +489,18 @@ int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
     task2thread[task] = thread;
     taskRegistered[task->taskId()] = task;
   }
+  catch (...) {
+    destroyTask(task);
+    throw;
+  }
 
   if (nullptr != got) {
     *got = static_cast<ssize_t>(n);
   }
 
   if (!thread->registerTask(this, task)) {
+    // no need to delete the task here, as SchedulerThread::registerTask
+    // takes over the ownership
     return TRI_ERROR_INTERNAL;
   }
 

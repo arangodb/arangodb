@@ -171,7 +171,7 @@ void HttpServer::stopListening() {
 /// @brief registers a chunked task
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::registerChunkedTask(HttpCommTask* task, ssize_t n) {
+void HttpServer::registerChunkedTask(HttpCommTask* task) {
   auto id = task->taskId();
   MUTEX_LOCKER(HttpCommTaskMapLock);
 
@@ -231,14 +231,7 @@ void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
 
   // registers the task and get the number of the scheduler thread
   ssize_t n;
-  int res = _scheduler->registerTask(task, &n);
-
-  // register the ChunkedTask in the same thread
-  if (res == TRI_ERROR_NO_ERROR) {
-    registerChunkedTask(task, n);
-  }
-
-  task->setupDone();
+  _scheduler->registerTask(task, &n);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -350,10 +343,14 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
     return false;
   }
 
-  _scheduler->registerTask(task);
-  _listenTasks.emplace_back(task);
+  int res = _scheduler->registerTask(task);
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    _listenTasks.emplace_back(task);
+    return true;
+  }
 
-  return true;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

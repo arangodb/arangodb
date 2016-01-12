@@ -219,14 +219,6 @@ static void JS_RegisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::unique_ptr<TRI_json_t> json(task->toJson());
 
   if (json == nullptr) {
-    if (period > 0.0) {
-      V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
-      delete t;
-    } else {
-      V8TimerTask* t = dynamic_cast<V8TimerTask*>(task);
-      delete t;
-    }
-
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 

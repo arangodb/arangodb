@@ -146,7 +146,7 @@ class HttpServer : protected TaskManager {
   /// @brief registers a chunked task
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerChunkedTask(HttpCommTask*, ssize_t);
+  void registerChunkedTask(HttpCommTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregisters a chunked task
