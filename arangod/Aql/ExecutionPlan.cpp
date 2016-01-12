@@ -28,12 +28,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionPlan.h"
-#include "Aql/AggregateNode.h"
-#include "Aql/AggregationOptions.h"
+#include "Aql/CollectNode.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
+#include "Aql/Function.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
@@ -372,15 +373,15 @@ Variable const* ExecutionPlan::getOutVariable (ExecutionNode const* node) const 
     return static_cast<CalculationNode const*>(node)->outVariable();
   }
 
-  if (node->getType() == ExecutionNode::AGGREGATE) {
-    // AggregateNode has an outVariale() method, but we cannot use it.
-    // for AggregateNode, outVariable() will return the variable filled by INTO,
+  if (node->getType() == ExecutionNode::COLLECT) {
+    // CollectNode has an outVariale() method, but we cannot use it.
+    // for CollectNode, outVariable() will return the variable filled by INTO,
     // but INTO is an optional feature
     // so this will return the first result variable of the COLLECT
     // this part of the code should only be called for anonymous COLLECT nodes,
     // which only have one result variable
-    auto en = static_cast<AggregateNode const*>(node);
-    auto const& vars = en->aggregateVariables();
+    auto en = static_cast<CollectNode const*>(node);
+    auto const& vars = en->groupVariables();
 
     TRI_ASSERT(vars.size() == 1);
     auto v = vars[0].first;
@@ -395,19 +396,22 @@ Variable const* ExecutionPlan::getOutVariable (ExecutionNode const* node) const 
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)
 ////////////////////////////////////////////////////////////////////////////////
 
-AggregateNode* ExecutionPlan::createAnonymousCollect (CalculationNode const* previous) {
+CollectNode* ExecutionPlan::createAnonymousCollect (CalculationNode const* previous) {
   // generate an out variable for the COLLECT
   auto out = _ast->variables()->createTemporaryVariable();
   TRI_ASSERT(out != nullptr);
 
-  std::vector<std::pair<Variable const*, Variable const*>> const aggregateVariables{
+  std::vector<std::pair<Variable const*, Variable const*>> const groupVariables{
     std::make_pair(out, previous->outVariable())
   };
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
+      aggregateVariables{};
 
-  auto en = new AggregateNode(
+  auto en = new CollectNode(
     this, 
     nextId(), 
-    AggregationOptions(),
+    CollectOptions(),
+    groupVariables,
     aggregateVariables, 
     nullptr, 
     nullptr,
@@ -500,8 +504,8 @@ ModificationOptions ExecutionPlan::createModificationOptions (AstNode const* nod
 /// @brief create COLLECT options from an AST node
 ////////////////////////////////////////////////////////////////////////////////
 
-AggregationOptions ExecutionPlan::createAggregationOptions (AstNode const* node) {
-  AggregationOptions options;
+CollectOptions ExecutionPlan::createCollectOptions (AstNode const* node) {
+  CollectOptions options;
 
   // parse the modification options we got
   if (node != nullptr && 
@@ -520,7 +524,7 @@ AggregationOptions ExecutionPlan::createAggregationOptions (AstNode const* node)
 
         if (strcmp(name, "method") == 0) {
           if (value->isStringValue()) {
-            options.method = AggregationOptions::methodFromString(value->getStringValue());
+            options.method = CollectOptions::methodFromString(value->getStringValue());
           }
         }
       }
@@ -902,13 +906,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
 
   TRI_ASSERT(n >= 2);
 
-  auto options = createAggregationOptions(node->getMember(0));
+  auto options = createCollectOptions(node->getMember(0));
 
   auto list = node->getMember(1);
   size_t const numVars = list->numMembers();
   
-  std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
-  aggregateVariables.reserve(numVars);
+  std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
+  groupVariables.reserve(numVars);
 
   for (size_t i = 0; i < numVars; ++i) {
     auto assigner = list->getMember(i);
@@ -928,13 +932,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
     if (expression->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
-      aggregateVariables.emplace_back(std::make_pair(v, e));
+      groupVariables.emplace_back(std::make_pair(v, e));
     }
     else {
       // operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
       previous = calc;
-      aggregateVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
+      groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
     }
   }
 
@@ -961,10 +965,14 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
     }
   }
   
-  auto collectNode = new AggregateNode(
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
+      aggregateVariables{};
+  
+  auto collectNode = new CollectNode(
     this, 
     nextId(),
     options, 
+    groupVariables, 
     aggregateVariables, 
     nullptr, 
     outVariable, 
@@ -989,13 +997,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous
              node->type == NODE_TYPE_COLLECT_EXPRESSION);
   TRI_ASSERT(node->numMembers() == 4);
 
-  auto options = createAggregationOptions(node->getMember(0));
+  auto options = createCollectOptions(node->getMember(0));
 
   auto list = node->getMember(1);
   size_t const numVars = list->numMembers();
   
-  std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
-  aggregateVariables.reserve(numVars);
+  std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
+  groupVariables.reserve(numVars);
   for (size_t i = 0; i < numVars; ++i) {
     auto assigner = list->getMember(i);
 
@@ -1014,13 +1022,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous
     if (expression->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
-      aggregateVariables.emplace_back(std::make_pair(v, e));
+      groupVariables.emplace_back(std::make_pair(v, e));
     }
     else {
       // operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
       previous = calc;
-      aggregateVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
+      groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
     }
   }
 
@@ -1044,11 +1052,15 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous
   // output variable
   auto v = node->getMember(2);
   Variable* outVariable = static_cast<Variable*>(v->getData());
+  
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
+      aggregateVariables{};
         
-  auto collectNode = new AggregateNode(
+  auto collectNode = new CollectNode(
     this, 
     nextId(), 
     options,
+    groupVariables, 
     aggregateVariables, 
     expressionVariable, 
     outVariable, 
@@ -1075,13 +1087,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
              node->type == NODE_TYPE_COLLECT_COUNT);
   TRI_ASSERT(node->numMembers() == 3);
 
-  auto options = createAggregationOptions(node->getMember(0));
+  auto options = createCollectOptions(node->getMember(0));
 
   auto list = node->getMember(1);
   size_t const numVars = list->numMembers();
   
-  std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
-  aggregateVariables.reserve(numVars);
+  std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
+  groupVariables.reserve(numVars);
   for (size_t i = 0; i < numVars; ++i) {
     auto assigner = list->getMember(i);
 
@@ -1100,13 +1112,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
     if (expression->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
-      aggregateVariables.emplace_back(std::make_pair(v, e));
+      groupVariables.emplace_back(std::make_pair(v, e));
     }
     else {
       // operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
       previous = calc;
-      aggregateVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
+      groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
     }
   }
 
@@ -1116,10 +1128,14 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
   Variable* outVariable = static_cast<Variable*>(v->getData());
 
   TRI_ASSERT(outVariable != nullptr);
+  
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
+      aggregateVariables{};
 
-  auto en = registerNode(new AggregateNode(this, 
+  auto en = registerNode(new CollectNode(this, 
                                            nextId(),
                                            options, 
+                                           groupVariables, 
                                            aggregateVariables, 
                                            nullptr, 
                                            outVariable, 
@@ -1127,6 +1143,120 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
                                            _ast->variables()->variables(false), 
                                            true,
                                            false));
+
+  return addDependency(previous, en);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST COLLECT node, AGGREGATE
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
+                                                       AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT_AGGREGATE);
+  TRI_ASSERT(node->numMembers() == 3);
+
+  auto options = createCollectOptions(node->getMember(0));
+
+  // group variables
+  std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
+  {
+    auto list = node->getMember(1);
+    TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
+    size_t const numVars = list->numMembers();
+
+    groupVariables.reserve(numVars);
+    for (size_t i = 0; i < numVars; ++i) {
+      auto assigner = list->getMember(i);
+
+      if (assigner == nullptr) {
+        continue;
+      }
+
+      TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
+      auto out = assigner->getMember(0);
+      TRI_ASSERT(out != nullptr);
+      auto v = static_cast<Variable*>(out->getData());
+      TRI_ASSERT(v != nullptr);
+
+      auto expression = assigner->getMember(1);
+
+      if (expression->type == NODE_TYPE_REFERENCE) {
+        // operand is a variable
+        auto e = static_cast<Variable*>(expression->getData());
+        groupVariables.emplace_back(std::make_pair(v, e));
+      } else {
+        // operand is some misc expression
+        auto calc = createTemporaryCalculation(expression, previous);
+        previous = calc;
+        groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
+      }
+    }
+  }
+ 
+  // aggregate variables 
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+  {
+    auto list = node->getMember(2);
+    TRI_ASSERT(list->type == NODE_TYPE_AGGREGATIONS);
+    list = list->getMember(0);
+    TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
+    size_t const numVars = list->numMembers();
+
+    aggregateVariables.reserve(numVars);
+    for (size_t i = 0; i < numVars; ++i) {
+      auto assigner = list->getMember(i);
+
+      if (assigner == nullptr) {
+        continue;
+      }
+
+      TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
+      auto out = assigner->getMember(0);
+      TRI_ASSERT(out != nullptr);
+      auto v = static_cast<Variable*>(out->getData());
+      TRI_ASSERT(v != nullptr);
+
+      auto expression = assigner->getMember(1);
+
+      // operand is always a function call
+      TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
+
+      // build aggregator 
+      auto func = static_cast<Function*>(expression->getData());
+      TRI_ASSERT(func != nullptr);
+
+      // function should have one argument (an array with the parameters)
+      TRI_ASSERT(expression->numMembers() == 1);
+
+      auto args = expression->getMember(0);
+      // the number of arguments should also be one (note: this has been
+      // validated before)
+      TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
+      TRI_ASSERT(args->numMembers() == 1);
+
+      auto arg = args->getMember(0);
+
+      if (arg->type == NODE_TYPE_REFERENCE) {
+        // operand is a variable
+        auto e = static_cast<Variable*>(arg->getData());
+        aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(e, func->externalName)));
+      }
+      else {
+        auto calc = createTemporaryCalculation(arg, previous);
+        previous = calc;
+
+        aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(getOutVariable(calc), func->externalName)));
+      }
+    }
+  }
+  
+  auto collectNode = new CollectNode(
+      this, nextId(), options, groupVariables, aggregateVariables, nullptr,
+      nullptr, std::vector<Variable const*>(),
+      std::unordered_map<VariableId, std::string const>(), false, false);
+
+  auto en = registerNode(collectNode);
 
   return addDependency(previous, en);
 }
@@ -1515,6 +1645,11 @@ ExecutionNode* ExecutionPlan::fromNode (AstNode const* node) {
 
       case NODE_TYPE_COLLECT_COUNT: {
         en = fromNodeCollectCount(en, member);
+        break;
+      }
+      
+      case NODE_TYPE_COLLECT_AGGREGATE: {
+        en = fromNodeCollectAggregate(en, member);
         break;
       }
       

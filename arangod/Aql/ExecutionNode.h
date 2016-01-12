@@ -79,7 +79,7 @@ namespace triagens {
           CALCULATION             =  7, 
           SUBQUERY                =  8, 
           SORT                    =  9, 
-          AGGREGATE               = 10, 
+          COLLECT                 = 10, 
           SCATTER                 = 11,
           GATHER                  = 12,
           REMOTE                  = 13,

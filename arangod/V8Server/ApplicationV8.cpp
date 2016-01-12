@@ -208,7 +208,6 @@ bool ApplicationV8::V8Context::addGlobalContextMethod (std::string const& method
 /// @brief executes all global methods
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 void ApplicationV8::V8Context::handleGlobalContextMethods () {
   std::vector<GlobalContextMethods::MethodType> copy;
 

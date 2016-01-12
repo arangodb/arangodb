@@ -31,8 +31,8 @@
 #define ARANGODB_AQL_EXECUTION_PLAN_H 1
 
 #include "Basics/Common.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/AggregationOptions.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"
@@ -41,10 +41,10 @@
 namespace triagens {
   namespace aql {
 
-    class AggregateNode;
     class Ast;
     struct AstNode;
     class CalculationNode;
+    class CollectNode;
     class ExecutionNode;
 
 // -----------------------------------------------------------------------------
@@ -376,7 +376,7 @@ namespace triagens {
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)
 ////////////////////////////////////////////////////////////////////////////////
 
-        AggregateNode* createAnonymousCollect (CalculationNode const*);
+        CollectNode* createAnonymousCollect (CalculationNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create modification options from an AST node
@@ -388,7 +388,7 @@ namespace triagens {
 /// @brief create COLLECT options from an AST node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AggregationOptions createAggregationOptions (AstNode const*);
+        CollectOptions createCollectOptions (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds "previous" as dependency to "plan", returns "plan"
@@ -452,6 +452,13 @@ namespace triagens {
 
         ExecutionNode* fromNodeCollectCount (ExecutionNode*,
                                              AstNode const*);
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST COLLECT node, AGGREGATE
+////////////////////////////////////////////////////////////////////////////////
+  
+        ExecutionNode* fromNodeCollectAggregate (ExecutionNode*, 
+                                                 AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST LIMIT node

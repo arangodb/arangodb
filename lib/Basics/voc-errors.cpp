@@ -174,6 +174,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_QUERY_FULLTEXT_INDEX_MISSING, "no suitable fulltext index found for fulltext query on '%s'");
   REG_ERROR(ERROR_QUERY_INVALID_DATE_VALUE, "invalid date value");
   REG_ERROR(ERROR_QUERY_MULTI_MODIFY, "multi-modify query");
+  REG_ERROR(ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, "invalid aggregate expression");
   REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
   REG_ERROR(ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, "collection '%s' used as expression operand");

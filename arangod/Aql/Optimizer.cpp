@@ -526,14 +526,6 @@ void Optimizer::setupRules () {
                removeSortRandRule_pass5,
                true);
 
-  // specialize the variables that are used in a COLLECT INTO
-#if 0
-  registerRule("specialize-collect-variables",
-               specializeCollectVariables,
-               specializeCollectVariables_pass5,
-               true);
-#endif 
-
   // remove INTO from COLLECT
   registerRule("remove-collect-into",
                removeCollectIntoRule,

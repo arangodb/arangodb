@@ -27,9 +27,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
-#include "Aql/AggregateNode.h"
-#include "Aql/AggregationOptions.h"
 #include "Aql/ClusterNodes.h"
+#include "Aql/CollectNode.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
@@ -445,213 +445,6 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
-#if 0
-struct CollectVariableFinder {
-  Variable const* searchVariable;
-  std::unordered_set<std::string>& attributeNames;
-  std::vector<AstNode const*> stack;
-  bool canUseOptimization;
-  bool isArgumentToLength;
-
-  CollectVariableFinder (AggregateNode const* collectNode,
-                         std::unordered_set<std::string>& attributeNames)
-    : searchVariable(collectNode->outVariable()),
-      attributeNames(attributeNames),
-      stack(),
-      canUseOptimization(true),
-      isArgumentToLength(false) {
-
-    TRI_ASSERT(searchVariable != nullptr);
-    stack.reserve(4);
-  }
-
-  void analyze (AstNode const* node) {
-    TRI_ASSERT(node != nullptr);
-
-    if (! canUseOptimization) {
-      // we already know we cannot apply this optimization
-      return;
-    }
-
-    stack.push_back(node);
-
-    size_t const n = node->numMembers();
-    for (size_t i = 0; i < n; ++i) {
-      auto sub = node->getMember(i);
-      if (sub != nullptr) {
-        // recurse into subnodes
-        analyze(sub);
-      }
-    }
-
-    if (node->type == NODE_TYPE_REFERENCE) {
-      auto variable = static_cast<Variable const*>(node->getData());
-
-      TRI_ASSERT(variable != nullptr);
-
-      if (variable->id == searchVariable->id) {
-        bool handled = false;
-        auto const size = stack.size();
-
-        if (size >= 3 &&
-            stack[size - 3]->type == NODE_TYPE_EXPANSION) {
-          // our variable is used in an expansion, e.g. g[*].attribute
-          auto expandNode = stack[size - 3];
-          TRI_ASSERT(expandNode->numMembers() == 2);
-          TRI_ASSERT(expandNode->getMember(0)->type == NODE_TYPE_ITERATOR);
-
-          auto expansion = expandNode->getMember(1);
-          TRI_ASSERT(expansion != nullptr);
-          while (expansion->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            // note which attribute is used with our variable
-            if (expansion->getMember(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-              expansion = expansion->getMember(0);
-            }
-            else {
-              attributeNames.emplace(expansion->getStringValue());
-              handled = true;
-              break;
-            }
-          }
-        } 
-        else if (size >= 3 &&
-                 stack[size - 2]->type == NODE_TYPE_ARRAY &&
-                 stack[size - 3]->type == NODE_TYPE_FCALL) {
-          auto func = static_cast<Function const*>(stack[size - 3]->getData());
-
-          if (func->externalName == "LENGTH" &&
-              stack[size - 2]->numMembers() == 1) {
-            // call to function LENGTH() with our variable as its single argument
-            handled = true;
-            isArgumentToLength = true;
-          }
-        }
-      
-        if (! handled) {
-          canUseOptimization = false;
-        }
-      }
-    }
-
-    stack.pop_back();
-  }
-
-};
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief specialize the variables used in a COLLECT INTO
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0    
-int triagens::aql::specializeCollectVariables (Optimizer* opt, 
-                                               ExecutionPlan* plan, 
-                                               Optimizer::Rule const* rule) {
-  bool modified = false;
-  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::AGGREGATE, true);
-  
-  for (auto n : nodes) {
-    auto collectNode = static_cast<AggregateNode*>(n);
-    TRI_ASSERT(collectNode != nullptr);
-          
-    auto deps = collectNode->getDependencies();
-    if (deps.size() != 1) {
-      continue;
-    }
-
-    if (! collectNode->hasOutVariable() ||
-        collectNode->hasExpressionVariable() ||
-        collectNode->count()) {
-      // COLLECT without INTO or a COLLECT that already uses an 
-      // expression variable or a COLLECT that only counts
-      continue;
-    }
-
-    auto outVariable = collectNode->outVariable();
-    // must have an outVariable if we got here
-    TRI_ASSERT(outVariable != nullptr);
-       
-    std::unordered_set<std::string> attributeNames; 
-    CollectVariableFinder finder(collectNode, attributeNames);
-
-    // check all following nodes for usage of the out variable
-    std::vector<ExecutionNode*> parents(n->getParents());
-    
-    while (! parents.empty() &&
-           finder.canUseOptimization) {
-      auto current = parents.back();
-      parents.pop_back();
-
-      for (auto it : current->getParents()) {
-        parents.emplace_back(it);
-      }
-
-      // now check current node for usage of out variable 
-      auto const&& variablesUsed = current->getVariablesUsedHere();
-
-      bool found = false;
-      for (auto it : variablesUsed) {
-        if (it == outVariable) {
-          found = true;
-          break;
-        }
-      }
-
-      if (found) {
-        // variable is used. now find out how it is used
-        if (current->getType() != EN::CALCULATION) {
-          // variable is used outside of a calculation... skip optimization
-          // TODO
-          break;
-        }
-
-        auto calculationNode = static_cast<CalculationNode*>(current);
-        auto expression = calculationNode->expression(); 
-        TRI_ASSERT(expression != nullptr);
-
-        finder.analyze(expression->node());
-      }
-    }
-
-    if (finder.canUseOptimization) {
-      // can use the optimization
-
-      if (! finder.attributeNames.empty()) {
-        auto obj = plan->getAst()->createNodeObject();
-
-        for (auto const& attributeName : finder.attributeNames) {
-          for (auto it : collectNode->getVariablesUsedHere()) {
-            if (it->name == attributeName) {
-              auto refNode = plan->getAst()->createNodeReference(it);
-              auto element = plan->getAst()->createNodeObjectElement(it->name.c_str(), refNode);
-              obj->addMember(element);
-            }
-          }
-        }
-
-        if (obj->numMembers() == attributeNames.size()) {
-          collectNode->removeDependency(deps[0]);
-          auto calculationNode = plan->createTemporaryCalculation(obj);
-          calculationNode->addDependency(deps[0]);
-          collectNode->addDependency(calculationNode);
- 
-          collectNode->setExpressionVariable(calculationNode->outVariable());
-          modified = true;
-        }
-      }
-    }
-  }
-  
-  if (modified) {
-    plan->findVarUsage();
-  }
- 
-  opt->addPlan(plan, rule, modified);
-
-  return TRI_ERROR_NO_ERROR;
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove INTO of a COLLECT if not used
 ////////////////////////////////////////////////////////////////////////////////
@@ -660,10 +453,10 @@ int triagens::aql::removeCollectIntoRule (Optimizer* opt,
                                           ExecutionPlan* plan, 
                                           Optimizer::Rule const* rule) {
   bool modified = false;
-  std::vector<ExecutionNode*> nodes(std::move(plan->findNodesOfType(EN::AGGREGATE, true)));
+  std::vector<ExecutionNode*> nodes(std::move(plan->findNodesOfType(EN::COLLECT, true)));
   
   for (auto const& n : nodes) {
-    auto collectNode = static_cast<AggregateNode*>(n);
+    auto collectNode = static_cast<CollectNode*>(n);
     TRI_ASSERT(collectNode != nullptr);
 
     auto outVariable = collectNode->outVariable();
@@ -1022,13 +815,13 @@ int triagens::aql::removeSortRandRule (Optimizer* opt,
 
       switch (current->getType()) {
         case EN::SORT: 
-        case EN::AGGREGATE: 
+        case EN::COLLECT:
         case EN::FILTER: 
         case EN::SUBQUERY:
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
         case EN::INDEX: { 
-          // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
+          // if we found another SortNode, a CollectNode, FilterNode, a SubqueryNode, 
           // an EnumerateListNode, a TraversalNode or an IndexNode
           // this means we cannot apply our optimization
           collectionNode = nullptr;
@@ -1228,7 +1021,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
                currentType == EN::ENUMERATE_COLLECTION ||
                currentType == EN::ENUMERATE_LIST ||
                currentType == EN::TRAVERSAL ||
-               currentType == EN::AGGREGATE ||
+               currentType == EN::COLLECT ||
                currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
         shouldMove = false;
@@ -1375,7 +1168,7 @@ int triagens::aql::fuseCalculationsRule (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the "right" type of AggregateNode and 
+/// @brief determine the "right" type of CollectNode and 
 /// add a sort node for each COLLECT (note: the sort may be removed later) 
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1383,21 +1176,21 @@ int triagens::aql::fuseCalculationsRule (Optimizer* opt,
 int triagens::aql::specializeCollectRule (Optimizer* opt, 
                                           ExecutionPlan* plan, 
                                           Optimizer::Rule const* rule) {
-  std::vector<ExecutionNode*> nodes(std::move(plan->findNodesOfType(EN::AGGREGATE, true)));
+  std::vector<ExecutionNode*> nodes(std::move(plan->findNodesOfType(EN::COLLECT, true)));
   bool modified = false;
   
   for (auto const& n : nodes) {
-    auto collectNode = static_cast<AggregateNode*>(n);
+    auto collectNode = static_cast<CollectNode*>(n);
 
     if (collectNode->isSpecialized()) {
       // already specialized this node
       continue;
     }
 
-    auto const& aggregateVariables = collectNode->aggregateVariables();
+    auto const& groupVariables = collectNode->groupVariables();
 
     // test if we can use an alternative version of COLLECT with a hash table
-    bool const canUseHashAggregation = (! aggregateVariables.empty() &&
+    bool const canUseHashAggregation = (! groupVariables.empty() &&
                                         (! collectNode->hasOutVariable() || collectNode->count()) &&
                                         collectNode->getOptions().canUseHashMethod());
   
@@ -1406,18 +1199,18 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
       std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
    
       // use the cloned COLLECT node 
-      auto newCollectNode = static_cast<AggregateNode*>(newPlan->getNodeById(collectNode->id()));
+      auto newCollectNode = static_cast<CollectNode*>(newPlan->getNodeById(collectNode->id()));
       TRI_ASSERT(newCollectNode != nullptr);
       
-      // specialize the AggregateNode so it will become a HashAggregateBlock later
-      // additionally, add a SortNode BEHIND the AggregateNode (to sort the final result)
-      newCollectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH);
+      // specialize the CollectNode so it will become a HashCollectBlock later
+      // additionally, add a SortNode BEHIND the CollectNode (to sort the final result)
+      newCollectNode->aggregationMethod(CollectOptions::CollectMethod::COLLECT_METHOD_HASH);
       newCollectNode->specialized();
 
       if (! collectNode->isDistinctCommand()) {
         // add the post-SORT
         std::vector<std::pair<Variable const*, bool>> sortElements;
-        for (auto const& v : newCollectNode->aggregateVariables()) {
+        for (auto const& v : newCollectNode->groupVariables()) {
           sortElements.emplace_back(std::make_pair(v.first, true));
         }  
 
@@ -1448,13 +1241,13 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
     
     // finally, adjust the original plan and create a sorted version of COLLECT    
     
-    // specialize the AggregateNode so it will become a SortedAggregateBlock later
-    collectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_SORTED);
+    // specialize the CollectNode so it will become a SortedCollectBlock later
+    collectNode->aggregationMethod(CollectOptions::CollectMethod::COLLECT_METHOD_SORTED);
      
-    // insert a SortNode IN FRONT OF the AggregateNode
-    if (! aggregateVariables.empty()) { 
+    // insert a SortNode IN FRONT OF the CollectNode
+    if (! groupVariables.empty()) { 
       std::vector<std::pair<Variable const*, bool>> sortElements;
-      for (auto const& v : aggregateVariables) {
+      for (auto const& v : groupVariables) {
         sortElements.emplace_back(std::make_pair(v.second, true));
       }
 
@@ -1694,9 +1487,9 @@ class triagens::aql::RedundantCalculationsReplacer final : public WalkerWorker<E
           break;
         }
 
-        case EN::AGGREGATE: {
-          auto node = static_cast<AggregateNode*>(en);
-          for (auto& variable : node->_aggregateVariables) {
+        case EN::COLLECT: {
+          auto node = static_cast<CollectNode*>(en);
+          for (auto& variable : node->_groupVariables) {
             variable.second = Variable::replace(variable.second, _replacements);
           }
           break;
@@ -1825,8 +1618,8 @@ int triagens::aql::removeRedundantCalculationsRule (Optimizer* opt,
         }
       }
 
-      if (current->getType() == EN::AGGREGATE) {
-        if (static_cast<AggregateNode*>(current)->hasOutVariable()) {
+      if (current->getType() == EN::COLLECT) {
+        if (static_cast<CollectNode*>(current)->hasOutVariable()) {
           // COLLECT ... INTO is evil (tm): it needs to keep all already defined variables
           // we need to abort optimization here
           break;
@@ -2182,7 +1975,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         }
 
         case EN::SINGLETON:
-        case EN::AGGREGATE:
+        case EN::COLLECT:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -2898,7 +2691,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
           continue;
         }
 
-        case EN::AGGREGATE:
+        case EN::COLLECT:
         case EN::SUBQUERY:
         case EN::RETURN:
         case EN::NORESULTS:
@@ -2999,7 +2792,7 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
       switch (inspectNode->getType()) {
         case EN::ENUMERATE_LIST:
         case EN::SINGLETON:
-        case EN::AGGREGATE:
+        case EN::COLLECT:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -3284,7 +3077,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         case EN::SINGLETON:
         case EN::ENUMERATE_LIST:
         case EN::SUBQUERY:        
-        case EN::AGGREGATE:
+        case EN::COLLECT:
         case EN::INSERT:
         case EN::REPLACE:
         case EN::UPDATE:

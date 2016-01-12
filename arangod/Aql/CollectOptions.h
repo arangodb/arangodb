@@ -35,10 +35,10 @@ namespace triagens {
   namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AggregationOptions
+/// @brief CollectOptions
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct AggregationOptions {
+    struct CollectOptions {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -48,10 +48,10 @@ namespace triagens {
 /// @brief selected aggregation method
 ////////////////////////////////////////////////////////////////////////////////
         
-      enum AggregationMethod {
-        AGGREGATION_METHOD_UNDEFINED,
-        AGGREGATION_METHOD_HASH,
-        AGGREGATION_METHOD_SORTED
+      enum CollectMethod {
+        COLLECT_METHOD_UNDEFINED,
+        COLLECT_METHOD_HASH,
+        COLLECT_METHOD_SORTED
       };
 
 // -----------------------------------------------------------------------------
@@ -62,15 +62,15 @@ namespace triagens {
 /// @brief constructor, using default values
 ////////////////////////////////////////////////////////////////////////////////
 
-      AggregationOptions ()
-        : method(AGGREGATION_METHOD_UNDEFINED) {
+      CollectOptions ()
+        : method(COLLECT_METHOD_UNDEFINED) {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor, using JSON
 ////////////////////////////////////////////////////////////////////////////////
       
-      AggregationOptions (triagens::basics::Json const&);
+      CollectOptions (triagens::basics::Json const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -93,19 +93,19 @@ namespace triagens {
 /// @brief get the aggregation method from a string
 ////////////////////////////////////////////////////////////////////////////////
           
-      static AggregationMethod methodFromString (std::string const&);
+      static CollectMethod methodFromString (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the aggregation method
 ////////////////////////////////////////////////////////////////////////////////
           
-      static std::string methodToString (AggregationOptions::AggregationMethod method);
+      static std::string methodToString (CollectOptions::CollectMethod method);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-      AggregationMethod method;
+      CollectMethod method;
 
     };
 

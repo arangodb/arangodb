@@ -134,7 +134,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSortedAggregateBlock1 : function () {
-      internal.debugSetFailAt("AggregatorGroup::addValues");
+      internal.debugSetFailAt("CollectGroup::addValues");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
     },
@@ -144,7 +144,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSortedAggregateBlock2 : function () {
-      internal.debugSetFailAt("SortedAggregateBlock::getOrSkipSome");
+      internal.debugSetFailAt("SortedCollectBlock::getOrSkipSome");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g RETURN [ key, g ]");
@@ -155,7 +155,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSortedAggregateBlock3 : function () {
-      internal.debugSetFailAt("SortedAggregateBlock::hasMore");
+      internal.debugSetFailAt("SortedCollectBlock::hasMore");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g RETURN [ key, g ]");
@@ -166,7 +166,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashedAggregateBlock : function () {
-      internal.debugSetFailAt("HashedAggregateBlock::getOrSkipSome");
+      internal.debugSetFailAt("HashedCollectBlock::getOrSkipSome");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value RETURN key");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 RETURN key");
       assertFailingQuery("FOR i IN 1..10000 COLLECT key = i RETURN key");

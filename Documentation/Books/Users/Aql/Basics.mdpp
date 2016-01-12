@@ -119,6 +119,7 @@ The current list of keywords is:
 - ANY
 - ALL
 - NONE
+- AGGREGATE
 
 Additional keywords may be added in future versions of ArangoDB. 
 

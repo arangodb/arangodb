@@ -17,9 +17,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/ApplicationServer/ApplicationFeature.cpp \
 	arangod/ApplicationServer/ApplicationServer.cpp \
-	arangod/Aql/AggregateBlock.cpp \
-	arangod/Aql/AggregateNode.cpp \
-	arangod/Aql/AggregationOptions.cpp \
+	arangod/Aql/Aggregator.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
 	arangod/Aql/AqlItemBlockManager.cpp \
 	arangod/Aql/AqlValue.cpp \
@@ -31,6 +29,9 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/CalculationBlock.cpp \
 	arangod/Aql/ClusterBlocks.cpp \
 	arangod/Aql/ClusterNodes.cpp \
+	arangod/Aql/CollectBlock.cpp \
+	arangod/Aql/CollectNode.cpp \
+	arangod/Aql/CollectOptions.cpp \
 	arangod/Aql/Collection.cpp \
 	arangod/Aql/Collections.cpp \
 	arangod/Aql/CollectionScanner.cpp \

@@ -376,6 +376,14 @@ namespace triagens {
                                          char const*,
                                          size_t length,
                                          AstNode const*);
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collect node, AGGREGATE
+////////////////////////////////////////////////////////////////////////////////
+  
+        AstNode* createNodeCollectAggregate (AstNode const*, 
+                                             AstNode const*, 
+                                             AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST sort node

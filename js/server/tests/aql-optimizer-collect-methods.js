@@ -126,7 +126,7 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual("hash", node.aggregationOptions.method);
           }
@@ -166,7 +166,7 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual("hash", node.aggregationOptions.method);
           }
@@ -204,7 +204,7 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual("sorted", node.aggregationOptions.method);
           }
@@ -241,7 +241,7 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual("hash", node.aggregationOptions.method);
           }
@@ -282,7 +282,7 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual("sorted", node.aggregationOptions.method);
           }
@@ -317,7 +317,7 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual("sorted", node.aggregationOptions.method);
           }

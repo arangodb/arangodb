@@ -149,7 +149,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_FCALL_USER),               "user function call" },
   { static_cast<int>(NODE_TYPE_RANGE),                    "range" },
   { static_cast<int>(NODE_TYPE_NOP),                      "no-op" },
-  { static_cast<int>(NODE_TYPE_COLLECT_COUNT),            "collect count" },
+  { static_cast<int>(NODE_TYPE_COLLECT_COUNT),            "collect with count" },
   { static_cast<int>(NODE_TYPE_COLLECT_EXPRESSION),       "collect expression" },
   { static_cast<int>(NODE_TYPE_CALCULATED_OBJECT_ELEMENT),"calculated object element" },
   { static_cast<int>(NODE_TYPE_EXAMPLE),                  "example" },
@@ -160,7 +160,9 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_DIRECTION),                "direction" },
   { static_cast<int>(NODE_TYPE_COLLECTION_LIST),          "collection list" },
   { static_cast<int>(NODE_TYPE_OPERATOR_NARY_AND),        "n-ary and" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_NARY_OR),         "n-ary or" }
+  { static_cast<int>(NODE_TYPE_OPERATOR_NARY_OR),         "n-ary or" },
+  { static_cast<int>(NODE_TYPE_COLLECT_AGGREGATE),        "collect with aggregate"},
+  { static_cast<int>(NODE_TYPE_AGGREGATIONS),             "aggregations array"}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -589,6 +591,8 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_COLLECT:
     case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_COLLECT_EXPRESSION:
+    case NODE_TYPE_COLLECT_AGGREGATE:
+    case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
     case NODE_TYPE_LIMIT:
@@ -731,6 +735,8 @@ AstNode::AstNode (std::function<void (AstNode*)> registerNode,
     case NODE_TYPE_COLLECT:
     case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_COLLECT_EXPRESSION:
+    case NODE_TYPE_COLLECT_AGGREGATE:
+    case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
     case NODE_TYPE_LIMIT:
@@ -2466,6 +2472,8 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_NOP:
     case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_COLLECT_EXPRESSION:
+    case NODE_TYPE_COLLECT_AGGREGATE:
+    case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
     case NODE_TYPE_UPSERT:
     case NODE_TYPE_EXAMPLE:
@@ -2620,6 +2628,8 @@ AstNode const* AstNode::findReference(AstNode const* findme) const
   case NODE_TYPE_NOP:
   case NODE_TYPE_COLLECT_COUNT:
   case NODE_TYPE_COLLECT_EXPRESSION:
+  case NODE_TYPE_COLLECT_AGGREGATE:
+  case NODE_TYPE_AGGREGATIONS:
   case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
   case NODE_TYPE_UPSERT:
   case NODE_TYPE_EXAMPLE:

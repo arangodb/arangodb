@@ -583,6 +583,31 @@ AstNode* Ast::createNodeCollectCount (AstNode const* list,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collect node, AGGREGATE
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCollectAggregate (AstNode const* list, 
+                                          AstNode const* aggregations, 
+                                          AstNode const* options) {
+  AstNode* node = createNode(NODE_TYPE_COLLECT_AGGREGATE);
+
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+
+  node->addMember(options);
+  node->addMember(list);
+
+  // wrap aggregations again
+  auto agg = createNode(NODE_TYPE_AGGREGATIONS);
+  agg->addMember(aggregations);
+  node->addMember(agg);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST sort node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1627,6 +1652,9 @@ void Ast::validateAndOptimize () {
         ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
       }
     }
+    else if (node->type == NODE_TYPE_AGGREGATIONS) {
+      ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+    } 
     else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
       return false;
     }
@@ -1674,6 +1702,9 @@ void Ast::validateAndOptimize () {
         // NOOPT will turn all function optimizations off
         --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
       }
+    }
+    else if (node->type == NODE_TYPE_AGGREGATIONS) {
+      --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
     }
   };
 

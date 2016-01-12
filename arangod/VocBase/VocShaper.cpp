@@ -44,7 +44,6 @@
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
-#include <iostream>
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------

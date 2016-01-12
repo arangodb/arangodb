@@ -624,6 +624,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
 			@top_srcdir@/js/server/tests/aql-multi-modify.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-collect-aggregate.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-methods.js \
