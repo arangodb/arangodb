@@ -56,21 +56,6 @@ function runJSUnityTests(tests) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs all jasmine tests
-////////////////////////////////////////////////////////////////////////////////
-
-function runJasmineTests(testFiles, options) {
-  var result = true;
-
-  if (testFiles.length > 0) {
-    print('\nRunning Jasmine Tests: ' + testFiles.join(', '));
-    result = require('jasmine').executeTestSuite(testFiles, options);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief runs all mocha tests
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -89,26 +74,18 @@ function runMochaTests(testFiles) {
 /// @brief runs tests from command-line
 ////////////////////////////////////////////////////////////////////////////////
 
-function runCommandLineTests(opts) {
+function runCommandLineTests() {
   var result = true,
-    options = opts || {},
-    jasmineReportFormat = options.jasmineReportFormat || 'progress',
     unitTests = internal.unitTests(),
     isSpecRegEx = /.+-spec.*\.js/,
-    isJasmineRegEx = /.+-jasmine-spec.*\.js/,
     isSpec = function (unitTest) {
       return isSpecRegEx.test(unitTest);
     },
-    isJasmine = function (unitTest) {
-      return isJasmineRegEx.test(unitTest);
-    },
-    jasmine = _.filter(unitTests, isJasmine),
     jsUnity = _.reject(unitTests, isSpec),
-    mocha = _.reject(_.filter(unitTests, isSpec), isJasmine);
+    mocha = _.filter(unitTests, isSpec);
 
   result = (
     runJSUnityTests(jsUnity)
-    && runJasmineTests(jasmine, { format: jasmineReportFormat })
     && runMochaTests(mocha)
   );
 
