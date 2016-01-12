@@ -1190,50 +1190,10 @@ def unwrapPostJson(reference, layer):
     return rc
 
 
-files = { 
-  "Administration" : ["js/actions/_admin/app.js",
-                      "js/actions/_admin/routing/app.js",
-                      "js/actions/_admin/server/app.js",
-                      "js/actions/_admin/database/app.js",
-                      "arangod/RestHandler/RestShutdownHandler.cpp",
-                      "arangod/RestHandler/RestAdminLogHandler.cpp",
-                      "js/actions/api-tasks.js",
-                      "js/actions/api-endpoint.js",
-                      "arangod/RestHandler/RestVersionHandler.cpp",
-                      "js/actions/api-system.js" ],# TODO: no docu here.
-  "AQL" : [ "arangod/RestHandler/RestQueryHandler.cpp",
-            "js/actions/api-aqlfunction.js",
-            "js/actions/api-explain.js",
-            "arangod/RestHandler/RestQueryCacheHandler.cpp"],
-  "Bulk" : [ "arangod/RestHandler/RestExportHandler.cpp",
-             "arangod/RestHandler/RestImportHandler.cpp",
-             "arangod/RestHandler/RestBatchHandler.cpp" ],
-  "Collections" : [ "js/actions/_api/collection/app.js" ],
-  "Cursors" : [ "arangod/RestHandler/RestCursorHandler.cpp" ],
-  "Database" : [ "js/actions/api-database.js" ],
-  "Cluster" : ["js/actions/api-cluster.js"],
-  "Documents" : [ "arangod/RestHandler/RestDocumentHandler.cpp" ],
-  "Graph" : ["js/apps/system/_api/gharial/APP/gharial.js"],
-  "Graph edges" : [ "arangod/RestHandler/RestEdgeHandler.cpp", "arangod/RestHandler/RestEdgesHandler.cpp" ],
-  "Graph Traversal" : [ "js/actions/api-traversal.js" ],
-  "Indexes" : [ "js/actions/api-index.js" ],
-  "job" : [ "arangod/HttpServer/AsyncJobManager.cpp",
-            "arangod/RestHandler/RestJobHandler.cpp"],
-  "Replication" : [ "arangod/RestHandler/RestReplicationHandler.cpp" ],
-  "Simple Queries" : [ "js/actions/api-simple.js",
-                       "arangod/RestHandler/RestSimpleHandler.cpp",
-                       "arangod/RestHandler/RestSimpleQueryHandler.cpp" ],
-  "Transactions" : [ "js/actions/api-transaction.js" ],
-  "User handling" : [ "js/actions/_api/user/app.js" ],
-  "wal" : [ "js/actions/_admin/wal/app.js" ]
-}
-
-# Intentionaly not there: 
-#  "structure" : [ "js/actions/api-structure.js" ],
 
 
-if len(sys.argv) < 3:
-  print >> sys.stderr, "usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir>"
+if len(sys.argv) < 4:
+  print >> sys.stderr, "usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir> <docublockdir>"
   sys.exit(1)
 
 scriptDir = sys.argv[1]
@@ -1257,6 +1217,17 @@ f.close()
 
 paths = {};
 
+topdir = sys.argv[4]
+files = {}
+
+
+# Intentionaly not there: 
+#  "structure" : [ "js/actions/api-structure.js" ],
+
+for chapter in os.listdir(topdir):
+    files[chapter] = []
+    for oneFile in os.listdir(topdir + "/" + chapter):
+        files[chapter].append(topdir + "/" + chapter + '/' + oneFile)
 
 for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
     currentTag = name
