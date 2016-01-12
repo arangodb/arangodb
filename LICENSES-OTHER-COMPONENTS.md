@@ -158,12 +158,6 @@
 * GITHUB: https://github.com/pksunkara/inflect
 * License: [MIT-style License](https://github.com/pksunkara/inflect/blob/master/LICENSE)
 
-#### Jasmine
-
-* Project Home: https://jasmine.github.io
-* GITHUB: https://github.com/jasmine/jasmine
-* License: [MIT License](https://github.com/jasmine/jasmine/blob/master/MIT.LICENSE)
-
 #### Joi
 
 * GITHUB: https://github.com/hapijs/joi
@@ -306,6 +300,12 @@
 * Project Home: http://filesizejs.com/
 * GITHUB: https://github.com/avoidwork/filesize.js
 * License: [BSD-style 3-Clause License](https://github.com/avoidwork/filesize.js/blob/master/LICENSE)
+
+#### Jasmine
+
+* Project Home: https://jasmine.github.io
+* GITHUB: https://github.com/jasmine/jasmine
+* License: [MIT License](https://github.com/jasmine/jasmine/blob/master/MIT.LICENSE)
 
 #### jq-console
 
