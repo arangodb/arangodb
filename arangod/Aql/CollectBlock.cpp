@@ -569,6 +569,8 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
     aggregateColls.emplace_back(cur->getDocumentCollection(it.second));
   }
 
+  TRI_ASSERT(aggregateColls.size() == en->_aggregateVariables.size());
+  TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
   
   typedef std::vector<Aggregator*> AggregateValuesType;
 
@@ -583,6 +585,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       }
       delete it.second;
     }
+    allGroups.clear();
   };
 
   // prevent memory leaks by always cleaning up the groups 
@@ -624,18 +627,17 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             ->erase();  // to prevent double-freeing later
       }
 
-      size_t j = 0;
-      for (auto const& r : *(it.second)) {
-        // TODO: check if cloning is necessary
-        result->setValue(row, _aggregateRegisters[j++].first, r->stealValue());
+      if (it.second != nullptr && ! en->_count) {
+        TRI_ASSERT(it.second->size() == _aggregateRegisters.size());
+        size_t j = 0;
+        for (auto const& r : *(it.second)) {
+          result->setValue(row, _aggregateRegisters[j++].first, r->stealValue());
+        }
       }
-
-      if (en->_count) {
+      else if (en->_count) {
         // set group count in result register
-        // TODO: check if cloning is necessary
+        TRI_ASSERT(it.second != nullptr);
         result->setValue(row, _collectRegister, it.second->back()->stealValue());
-        // int64_t value = (*(it.second))[0].toInt64();
-        //result->setValue(row, _collectRegister, AqlValue(new Json(static_cast<double>(value))));
       }
 
       ++row;
@@ -682,7 +684,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         if (en->_aggregateVariables.empty()) {
           // no aggregate registers. this means we'll only count the number of items
           if (en->_count) {
-            aggregateValues->emplace_back(new AggregatorLength(_trx));
+            aggregateValues->emplace_back(new AggregatorLength(_trx, 1));
           }
         }
         else {
@@ -698,6 +700,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           }
         }
 
+        // note: aggregateValues may be a nullptr!
         allGroups.emplace(group, aggregateValues.get());
         aggregateValues.release();
       } else {

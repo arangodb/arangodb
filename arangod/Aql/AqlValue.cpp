@@ -331,25 +331,6 @@ bool AqlValue::isNull(bool emptyIsNull) const {
 }
   
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief increase value for (numeric) AQL value
-////////////////////////////////////////////////////////////////////////////////
-  
-void AqlValue::increase() {
-  if (_type == JSON) {
-    TRI_json_t* json = _json->json();
-
-    if (TRI_IsNumberJson(json)) {
-      double value = json->_value._number;
-      // overwrite existing number
-      TRI_InitNumberJson(json, value + 1.0);
-      return;
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the array member at position i
 ////////////////////////////////////////////////////////////////////////////////
 

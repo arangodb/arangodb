@@ -39,7 +39,7 @@ namespace arango {
 namespace aql {
 
 struct Aggregator {
-  Aggregator(triagens::arango::AqlTransaction* trx) : trx(trx) { }
+  explicit Aggregator(triagens::arango::AqlTransaction* trx) : trx(trx) { }
   virtual ~Aggregator() = default;
   virtual char const* name() const = 0;
   virtual void reset() = 0;
@@ -56,7 +56,8 @@ struct Aggregator {
 };
 
 struct AggregatorLength final : public Aggregator {
-  AggregatorLength(triagens::arango::AqlTransaction* trx) : Aggregator(trx), count(0) { }
+  explicit AggregatorLength(triagens::arango::AqlTransaction* trx) : Aggregator(trx), count(0) { }
+  AggregatorLength(triagens::arango::AqlTransaction* trx, uint64_t initialCount) : Aggregator(trx), count(initialCount) { }
 
   char const* name() const override final {
     return "LENGTH";
@@ -70,7 +71,7 @@ struct AggregatorLength final : public Aggregator {
 };
 
 struct AggregatorMin final : public Aggregator {
-  AggregatorMin(triagens::arango::AqlTransaction* trx) : Aggregator(trx), value(), coll(nullptr) { }
+  explicit AggregatorMin(triagens::arango::AqlTransaction* trx) : Aggregator(trx), value(), coll(nullptr) { }
   
   ~AggregatorMin();
 
@@ -87,7 +88,7 @@ struct AggregatorMin final : public Aggregator {
 };
 
 struct AggregatorMax final : public Aggregator {
-  AggregatorMax(triagens::arango::AqlTransaction* trx) : Aggregator(trx), value(), coll(nullptr) { }
+  explicit AggregatorMax(triagens::arango::AqlTransaction* trx) : Aggregator(trx), value(), coll(nullptr) { }
   
   ~AggregatorMax();
 
@@ -104,7 +105,7 @@ struct AggregatorMax final : public Aggregator {
 };
 
 struct AggregatorSum final : public Aggregator {
-  AggregatorSum(triagens::arango::AqlTransaction* trx) : Aggregator(trx), sum(0.0), invalid(false) { }
+  explicit AggregatorSum(triagens::arango::AqlTransaction* trx) : Aggregator(trx), sum(0.0), invalid(false) { }
   
   ~AggregatorSum();
 
@@ -121,7 +122,7 @@ struct AggregatorSum final : public Aggregator {
 };
 
 struct AggregatorAverage final : public Aggregator {
-  AggregatorAverage(triagens::arango::AqlTransaction* trx) : Aggregator(trx), count(0), sum(0.0), invalid(false) { }
+  explicit AggregatorAverage(triagens::arango::AqlTransaction* trx) : Aggregator(trx), count(0), sum(0.0), invalid(false) { }
   
   ~AggregatorAverage();
 
