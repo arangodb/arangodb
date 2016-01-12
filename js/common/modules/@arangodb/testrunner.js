@@ -56,7 +56,7 @@ function runJSUnityTests(tests) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs all jsunity tests
+/// @brief runs all jasmine tests
 ////////////////////////////////////////////////////////////////////////////////
 
 function runJasmineTests(testFiles, options) {
@@ -65,6 +65,21 @@ function runJasmineTests(testFiles, options) {
   if (testFiles.length > 0) {
     print('\nRunning Jasmine Tests: ' + testFiles.join(', '));
     result = require('jasmine').executeTestSuite(testFiles, options);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs all mocha tests
+////////////////////////////////////////////////////////////////////////////////
+
+function runMochaTests(testFiles) {
+  var result = true;
+
+  if (testFiles.length > 0) {
+    print('\nRunning Mocha Tests: ' + testFiles.join(', '));
+    result = require('@arangodb/mocha-runner')(testFiles);
   }
 
   return result;
@@ -80,13 +95,22 @@ function runCommandLineTests(opts) {
     jasmineReportFormat = options.jasmineReportFormat || 'progress',
     unitTests = internal.unitTests(),
     isSpecRegEx = /.+-spec.*\.js/,
+    isJasmineRegEx = /.+-jasmine-spec.*\.js/,
     isSpec = function (unitTest) {
       return isSpecRegEx.test(unitTest);
     },
-    jasmine = _.filter(unitTests, isSpec),
-    jsUnity = _.reject(unitTests, isSpec);
+    isJasmine = function (unitTest) {
+      return isJasmineRegEx.test(unitTest);
+    },
+    jasmine = _.filter(unitTests, isJasmine),
+    jsUnity = _.reject(unitTests, isSpec),
+    mocha = _.reject(_.filter(unitTests, isSpec), isJasmine);
 
-  result = runJSUnityTests(jsUnity) && runJasmineTests(jasmine, { format: jasmineReportFormat });
+  result = (
+    runJSUnityTests(jsUnity)
+    && runJasmineTests(jasmine, { format: jasmineReportFormat })
+    && runMochaTests(mocha)
+  );
 
   internal.setUnitTestsResult(result);
 }
