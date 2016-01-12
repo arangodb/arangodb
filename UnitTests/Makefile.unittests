@@ -535,7 +535,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
                @top_srcdir@/js/server/tests/shell-foxx-model-events-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-preprocessor.js \
-               @top_srcdir@/js/server/tests/shell-foxx-query-jasmine-spec.js \
+               @top_srcdir@/js/server/tests/shell-foxx-query-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-repository-jasmine-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
