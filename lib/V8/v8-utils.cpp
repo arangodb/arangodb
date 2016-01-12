@@ -4068,10 +4068,11 @@ static bool SingleRunGarbageCollectionV8(v8::Isolate* isolate,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the V8 garbage collection for at most a specifiable amount of
-/// time
+/// time. returns a boolean indicating whether or not the caller should attempt
+/// to do more gc 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
+bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
   int idleTimeInMs = 1000;
 
   if (availableTime >= 5.0) {
@@ -4097,7 +4098,7 @@ void TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
 
   while (++gcTries <= gcAttempts) {
     if (SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
-      return;
+      return false;
     }
   }
 
@@ -4108,12 +4109,14 @@ void TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
       // much CPU
       if (++gcTries > gcAttempts ||
           SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
-        return;
+        return false;
       }
     }
 
     usleep(100);
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

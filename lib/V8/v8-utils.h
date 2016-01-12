@@ -182,7 +182,7 @@ void TRI_normalize_V8_Obj(const v8::FunctionCallbackInfo<v8::Value>& args,
 /// time
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RunGarbageCollectionV8(v8::Isolate*, double);
+bool TRI_RunGarbageCollectionV8(v8::Isolate*, double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear the instance-local cache of wrapped objects
