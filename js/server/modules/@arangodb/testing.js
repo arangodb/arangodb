@@ -894,7 +894,7 @@ function runThere (options, instanceInfo, file) {
       t = 'var runTest = require("jsunity").runTest; '+
           'return runTest(' + JSON.stringify(file) + ', true);';
     }
-    else {
+    else if (file.indexOf("-jasmine-spec") !== -1) {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
       t = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
           'try {' +
@@ -905,6 +905,19 @@ function runThere (options, instanceInfo, file) {
           '  status: false,' + 
           '  message: e.message || String(e) || "unknown",' +
           '  stack: e.stack' + 
+          '};' +
+          '}';
+    }
+    else {
+      t = 'var runTest = require("@arangodb/mocha-runner"); ' +
+          'try {' +
+          'return { status: runTest(' + JSON.stringify(file) + ', true), message: "Success" };' +
+          ' } catch (e) {' +
+          'var error = e.cause || e;' +
+          'return {' +
+          '  status: false,' +
+          '  message: error.message,' +
+          '  stack: error.stack' +
           '};' +
           '}';
     }
