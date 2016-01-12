@@ -7,7 +7,7 @@
 !SUBSECTION Reuse address
 
 
-@brief try to reuse address
+try to reuse address
 `--server.reuse-address`
 
 If this boolean option is set to *true* then the socket option
@@ -32,7 +32,7 @@ SO_EXCLUSIVEADDRUSE as a measure to alleviate this problem.
 !SUBSECTION Disable authentication-unix-sockets
 
 
-@brief disable authentication for requests via UNIX domain sockets
+disable authentication for requests via UNIX domain sockets
 `--server.disable-authentication-unix-sockets value`
 
 Setting *value* to true will turn off authentication on the server side
@@ -56,7 +56,7 @@ sockets.
 !SUBSECTION Disable replication-applier
 
 
-@brief disable the replication applier on server startup
+disable the replication applier on server startup
 `--server.disable-replication-applier flag`
 
 If *true* the server will start with the replication applier turned off,
@@ -81,7 +81,7 @@ The default is *false*.
 !SUBSECTION Default API compatibility
 
 
-@brief default API compatibility
+default API compatibility
 `--server.default-api-compatibility`
 
 This option can be used to determine the API compatibility of the ArangoDB
@@ -105,7 +105,7 @@ clients.
 !SUBSECTION Hide Product header
 
 
-@brief hide the "Server: ArangoDB" header in HTTP responses
+hide the "Server: ArangoDB" header in HTTP responses
 `--server.hide-product-header`
 
 If *true*, the server will exclude the HTTP header "Server: ArangoDB" in
@@ -119,7 +119,7 @@ The default is *false*.
 !SUBSECTION Allow method override
 
 
-@brief allow HTTP method override via custom headers?
+allow HTTP method override via custom headers?
 `--server.allow-method-override`
 
 When this option is set to *true*, the HTTP request method will optionally
@@ -146,7 +146,7 @@ The default value for this option is *false*.
 !SUBSECTION Server threads
 
 
-@brief number of dispatcher threads
+number of dispatcher threads
 `--server.threads number`
 
 Specifies the *number* of threads that are spawned to handle HTTP REST
@@ -157,7 +157,7 @@ requests.
 !SUBSECTION Keyfile
 
 
-@brief keyfile containing server certificate
+keyfile containing server certificate
 `--server.keyfile filename`
 
 If SSL encryption is used, this option must be used to specify the filename
@@ -217,7 +217,7 @@ at least one SSL endpoint.
 !SUBSECTION Cafile
 
 
-@brief CA file
+CA file
 `--server.cafile filename`
 
 This option can be used to specify a file with CA certificates that are
@@ -237,7 +237,7 @@ used.
 !SUBSECTION SSL protocol
 
 
-@brief SSL protocol type to use
+SSL protocol type to use
 `--server.ssl-protocolvalue`
 
 Use this option to specify the default encryption protocol to be used.
@@ -256,7 +256,7 @@ The default *value* is 4 (i.e. TLSv1).
 !SUBSECTION SSL cache
 
 
-@brief whether or not to use SSL session caching
+whether or not to use SSL session caching
 `--server.ssl-cache value`
 
 Set to true if SSL session caching should be used.
@@ -271,7 +271,7 @@ only if the client supports sending the session id.
 !SUBSECTION SSL options
 
 
-@brief ssl options to use
+ssl options to use
 `--server.ssl-options value`
 
 This option can be used to set various SSL-related options. Individual
@@ -305,7 +305,7 @@ used.
 !SUBSECTION SSL cipher
 
 
-@brief ssl cipher list to use
+ssl cipher list to use
 `--server.ssl-cipher-list cipher-list`
 
 This option can be used to restrict the server to certain SSL ciphers
@@ -338,7 +338,7 @@ The default value for *cipher-list* is "ALL".
 !SUBSECTION Backlog size
 
 
-@brief listen backlog size
+listen backlog size
 `--server.backlog-size`
 
 Allows to specify the size of the backlog for the *listen* system call
@@ -365,7 +365,7 @@ the option *--disable-figures*.
 !SUBSECTION Session timeout
 
 
-@brief time to live for server sessions
+time to live for server sessions
 `--server.session-timeout value`
 
 The timeout for web interface sessions, using for authenticating requests
@@ -386,7 +386,7 @@ Sessions are only used when authentication is turned on.
 !SUBSECTION Directory
 
 
-@brief path to the database
+path to the database
 `--database.directory directory`
 
 The directory containing the collections and datafiles. Defaults
@@ -429,7 +429,7 @@ directory as argument.
 !SUBSECTION Disable AQL query tracking
 
 
-@brief disable the query tracking feature
+disable the query tracking feature
 `--database.disable-query-tracking flag`
 
 If *true*, the server's query tracking feature will be disabled by
@@ -442,7 +442,7 @@ The default is *false*.
 !SUBSECTION Throw collection not loaded error
 
 
-@brief throw collection not loaded error
+throw collection not loaded error
 `--database.throw-collection-not-loaded-error flag`
 
 Accessing a not-yet loaded collection will automatically load a collection
@@ -471,7 +471,7 @@ The default value is *false*.
 !SUBSECTION AQL Query caching mode
 
 
-@brief whether or not to enable the AQL query cache
+whether or not to enable the AQL query cache
 `--database.query-cache-mode`
 
 Toggles the AQL query cache behavior. Possible values are:
@@ -488,7 +488,7 @@ Toggles the AQL query cache behavior. Possible values are:
 !SUBSECTION AQL Query cache size 
 
 
-@brief maximum number of elements in the query cache per database
+maximum number of elements in the query cache per database
 `--database.query-cache-max-results`
 
 Maximum number of query results that can be stored per database-specific
@@ -504,7 +504,7 @@ This option only has an effect if the query cache mode is set to either
 !SUBSECTION Index threads
 
 
-@brief number of background threads for parallel index creation
+number of background threads for parallel index creation
 `--database.index-threads`
 
 Specifies the *number* of background threads for index creation. When a
@@ -522,7 +522,7 @@ edge index in the collection to be split into multiple buckets).
 !SUBSECTION V8 contexts
 
 
-@brief number of V8 contexts for executing JavaScript actions
+number of V8 contexts for executing JavaScript actions
 `--server.v8-contexts number`
 
 Specifies the *number* of V8 contexts that are created for executing
@@ -536,7 +536,7 @@ requires periodic CPU processing time for garbage collection.
 !SUBSECTION Garbage collection frequency (time-based)
 
 
-@brief JavaScript garbage collection frequency (each x seconds)
+JavaScript garbage collection frequency (each x seconds)
 `--javascript.gc-frequency frequency`
 
 Specifies the frequency (in seconds) for the automatic garbage collection of
@@ -548,7 +548,7 @@ still work in periods with no or little numbers of requests.
 !SUBSECTION Garbage collection interval (request-based)
 
 
-@brief JavaScript garbage collection interval (each x requests)
+JavaScript garbage collection interval (each x requests)
 `--javascript.gc-interval interval`
 
 Specifies the interval (approximately in number of requests) that the
@@ -559,7 +559,7 @@ garbage collection for JavaScript objects will be run in each thread.
 !SUBSECTION V8 options
 
 
-@brief optional arguments to pass to v8
+optional arguments to pass to v8
 `--javascript.v8-options options`
 
 Optional arguments to pass to the V8 Javascript engine. The V8 engine will

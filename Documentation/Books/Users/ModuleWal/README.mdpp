@@ -6,7 +6,7 @@ This module provides functionality for administering the write-ahead logs.
 <!-- arangod/V8Server/v8-vocbase.h -->
 
 
-@brief retrieves the configuration of the write-ahead log
+retrieves the configuration of the write-ahead log
 `internal.wal.properties()`
 
 Retrieves the configuration of the write-ahead log. The result is a JSON
@@ -39,7 +39,7 @@ array with the following attributes:
 <!-- arangod/V8Server/v8-vocbase.h -->
 
 
-@brief configures the write-ahead log
+configures the write-ahead log
 `internal.wal.properties(properties)`
 
 Configures the behavior of the write-ahead log. *properties* must be a JSON
@@ -77,7 +77,7 @@ will be ignored and the configuration for them will not be modified.
 <!-- arangod/V8Server/v8-vocbase.h -->
 
 
-@brief flushes the currently open WAL logfile
+flushes the currently open WAL logfile
 `internal.wal.flush(waitForSync, waitForCollector)`
 
 Flushes the write-ahead log. By flushing the currently active write-ahead

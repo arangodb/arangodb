@@ -4,7 +4,7 @@
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief returns a single collection or null
+returns a single collection or null
 `db._collection(collection-name)`
 
 Returns the collection with the given name or null if no such collection
@@ -48,7 +48,7 @@ Unknown collection:
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief creates a new document or edge collection
+creates a new document or edge collection
 `db._create(collection-name)`
 
 Creates a new document collection named *collection-name*.
@@ -185,7 +185,7 @@ With a special key option:
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief creates a new edge collection
+creates a new edge collection
 `db._createEdgeCollection(collection-name)`
 
 Creates a new edge collection named *collection-name*. If the
@@ -208,7 +208,7 @@ for *waitForSync* is *false*.
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief creates a new document collection
+creates a new document collection
 `db._createDocumentCollection(collection-name)`
 
 Creates a new document collection named *collection-name*. If the
@@ -219,7 +219,7 @@ document name already exists and error is thrown.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief returns all collections
+returns all collections
 `db._collections()`
 
 Returns all collections of the given database.
@@ -242,7 +242,7 @@ Returns all collections of the given database.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief selects a collection from the vocbase
+selects a collection from the vocbase
 `db.collection-name`
 
 Returns the collection with the given *collection-name*. If no such
@@ -267,7 +267,7 @@ default properties.
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief drops a collection
+drops a collection
 `db._drop(collection)`
 
 Drops a *collection* and all its indexes.
@@ -313,7 +313,7 @@ Drops a collection identified by name:
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief truncates a collection
+truncates a collection
 `db._truncate(collection)`
 
 Truncates a *collection*, removing all documents but keeping all its

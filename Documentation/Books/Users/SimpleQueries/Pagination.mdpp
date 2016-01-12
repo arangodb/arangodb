@@ -16,7 +16,7 @@ should be sorted, so that the pagination works in a predicable way.
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
-@brief limit
+limit
 `query.limit(number)`
 
 Limits a result to the first *number* documents. Specifying a limit of
@@ -50,7 +50,7 @@ unclear which documents will be included in the result set.
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
-@brief skip
+skip
 `query.skip(number)`
 
 Skips the first *number* documents. If *number* is positive, then this

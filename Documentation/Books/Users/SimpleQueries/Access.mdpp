@@ -22,7 +22,7 @@ is specified, the server will pick a reasonable default value.
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
-@brief checks if the cursor is exhausted
+checks if the cursor is exhausted
 `cursor.hasNext()`
 
 The *hasNext* operator returns *true*, then the cursor still has
@@ -52,7 +52,7 @@ documents. In this case the next document can be accessed using the
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
-@brief returns the next result document
+returns the next result document
 `cursor.next()`
 
 If the *hasNext* operator returns *true*, then the underlying
@@ -83,7 +83,7 @@ exhausted cursor, then *undefined* is returned.
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
-@brief sets the batch size for any following requests
+sets the batch size for any following requests
 `cursor.setBatchSize(number)`
 
 Sets the batch size for queries. The batch size determines how many results
@@ -94,7 +94,7 @@ are at most transferred from the server to the client in one chunk.
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
-@brief returns the batch size
+returns the batch size
 `cursor.getBatchSize()`
 
 Returns the batch size for queries. If the returned value is undefined, the
@@ -105,7 +105,7 @@ server will determine a sensible batch size for any following requests.
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
-@brief executes a query
+executes a query
 `query.execute(batchSize)`
 
 Executes a simple query. If the optional batchSize value is specified,
@@ -149,7 +149,7 @@ result:
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
-@brief disposes the result
+disposes the result
 `cursor.dispose()`
 
 If you are no longer interested in any further results, you should call
@@ -161,7 +161,7 @@ After calling *dispose* you can no longer access the cursor.
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
-@brief counts the number of documents
+counts the number of documents
 `cursor.count()`
 
 The *count* operator counts the number of document in the result set and

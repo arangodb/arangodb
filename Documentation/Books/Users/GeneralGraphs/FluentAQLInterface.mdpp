@@ -30,7 +30,7 @@ Therefore you get exactly this two entry points:
 
 
 
-@brief Select some edges from the graph.
+Select some edges from the graph.
 
 `graph._edges(examples)`
 
@@ -77,7 +77,7 @@ To request filtered edges:
 
 
 
-@brief Select some vertices from the graph.
+Select some vertices from the graph.
 
 `graph._vertices(examples)`
 
@@ -134,7 +134,7 @@ The cursor functionality is described in this section.
 
 
 
-@brief Returns an array containing the complete result.
+Returns an array containing the complete result.
 
 `graph_query.toArray()`
 
@@ -166,7 +166,7 @@ To collect the entire result of a query toArray can be used:
 
 
 
-@brief Checks if the query has further results.
+Checks if the query has further results.
 
 `graph_query.hasNext()`
 
@@ -213,7 +213,7 @@ Iterate over the result as long as it has more elements:
 
 
 
-@brief Request the next element in the result.
+Request the next element in the result.
 
 `graph_query.next()`
 
@@ -263,7 +263,7 @@ The cursor is recreated if the query is changed:
 
 
 
-@brief Returns the number of returned elements if the query is executed.
+Returns the number of returned elements if the query is executed.
 
 `graph_query.count()`
 
@@ -301,7 +301,7 @@ In this section all available query statements are described.
 
 
 
-@brief Select all edges for the vertices selected before.
+Select all edges for the vertices selected before.
 
 `graph_query.edges(examples)`
 
@@ -364,7 +364,7 @@ To request filtered edges by multiple examples:
 
 
 
-@brief Select all outbound edges for the vertices selected before.
+Select all outbound edges for the vertices selected before.
 
 `graph_query.outEdges(examples)`
 
@@ -422,7 +422,7 @@ To request filtered outbound edges by multiple examples:
 
 
 
-@brief Select all inbound edges for the vertices selected before.
+Select all inbound edges for the vertices selected before.
 
 `graph_query.inEdges(examples)`
 
@@ -481,7 +481,7 @@ To request filtered inbound edges by multiple examples:
 
 
 
-@brief Select all vertices connected to the edges selected before.
+Select all vertices connected to the edges selected before.
 
 `graph_query.vertices(examples)`
 
@@ -540,7 +540,7 @@ To request filtered vertices by multiple examples:
 
 
 
-@brief Select all source vertices of the edges selected before.
+Select all source vertices of the edges selected before.
 
 `graph_query.fromVertices(examples)`
 
@@ -599,7 +599,7 @@ To request filtered source vertices by multiple examples:
 
 
 
-@brief Select all vertices targeted by the edges selected before.
+Select all vertices targeted by the edges selected before.
 
 `graph_query.toVertices(examples)`
 
@@ -658,7 +658,7 @@ To request filtered target vertices by multiple examples:
 
 
 
-@brief Select all neighbors of the vertices selected in the step before.
+Select all neighbors of the vertices selected in the step before.
 
 `graph_query.neighbors(examples, options)`
 
@@ -727,7 +727,7 @@ To request filtered neighbors by multiple examples:
 
 
 
-@brief Restricts the last statement in the chain to return
+Restricts the last statement in the chain to return
 only elements of a specified set of collections
 
 `graph_query.restrict(restrictions)`
@@ -790,7 +790,7 @@ Restriction of a query is only valid for collections known to the graph:
 
 
 
-@brief Filter the result of the query
+Filter the result of the query
 
 `graph_query.filter(examples)`
 
@@ -859,7 +859,7 @@ Request edges filtered:
 
 
 
-@brief The result of the query is the path to all elements.
+The result of the query is the path to all elements.
 
 `graph_query.path()`
 

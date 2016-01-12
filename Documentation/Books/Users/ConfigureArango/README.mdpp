@@ -11,7 +11,7 @@ environment variable.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief program options
+program options
 `--help`
 
 `-h`
@@ -24,7 +24,7 @@ exits. In order to see all options use *--help-all*.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief version of the application
+version of the application
 `--version`
 
 `-v`
@@ -49,7 +49,7 @@ Whether or not this option is specified, the server will always perform a versio
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief config file
+config file
 `--configuration filename`
 
 `-c filename`
@@ -136,7 +136,7 @@ parameter pid-file is given, then the server will report an error and exit.
 <!-- arangod/RestServer/ArangoServer.h -->
 
 
-@brief server default language for sorting strings
+server default language for sorting strings
 `--default-language default-language`
 
 The default language ist used for sorting and comparing strings.
@@ -188,7 +188,7 @@ start up a new database process:
 
 
 
-@brief the user id to use for the process
+the user id to use for the process
 `--uid uid`
 
 The name (identity) of the user the server will run as. If this parameter
@@ -216,7 +216,7 @@ can lower privileges but not raise them.
 
 
 
-@brief the group id to use for the process
+the group id to use for the process
 `--gid gid`
 
 The name (identity) of the group the server will run as. If this parameter
@@ -236,7 +236,7 @@ This parameter is related to the parameter uid.
 
 
 
-@brief pid file
+pid file
 `--pid-file filename`
 
 The name of the process ID file to use when running the server as a
@@ -262,7 +262,7 @@ already running in this or another mode.
 !SUBSECTION Random Generator
 
 
-@brief random number generator to use
+random number generator to use
 `--random.generator arg`
 
 The argument is an integer (1,2,3 or 4) which sets the manner in which
