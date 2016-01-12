@@ -65,6 +65,8 @@ exports.run = function runMochaTests(run, files, reporterName) {
   }
 
   var suite = new MochaSuite('', new MochaContext());
+  suite.timeout(0);
+  suite.bail(false);
 
   Object.keys(interfaces).forEach(function (key) {
     interfaces[key](suite);
