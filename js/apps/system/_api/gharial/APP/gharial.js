@@ -206,35 +206,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_list_http_examples
-/// @brief Lists all graphs known to the graph module.
-/// 
-/// @RESTHEADER{GET /_api/gharial, List all graphs}
-/// 
-/// @RESTDESCRIPTION
-/// Lists all graph names stored in this database.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Is returned if the module is available and the graphs could be listed.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialList}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   examples.loadGraph("routeplanner");
-///   var url = "/_api/gharial";
-///   var response = logCurlRequest('GET', url);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-/// ~ examples.dropGraph("social");
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_list_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -247,63 +219,7 @@
   });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_create_http_examples
-/// @brief Create a new graph in the graph module.
-/// 
-/// @RESTHEADER{POST /_api/gharial, Create a graph}
-/// 
-/// @RESTDESCRIPTION
-/// The creation of a graph requires the name of the graph and a definition of its edges.
-/// [See also edge definitions](../GeneralGraphs/Management.md#edge-definitions).
-/// 
-/// @RESTBODYPARAM{name,string,required,string}
-/// Name of the graph.
-/// 
-/// @RESTBODYPARAM{edgeDefinitions,string,optional,string}
-/// An array of definitions for the edge
-/// 
-/// @RESTBODYPARAM{orphanCollections,string,optional,string}
-/// An array of additional vertex collections.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{201}
-/// Is returned if the graph could be created.
-/// The body contains the graph configuration that has been stored.
-/// 
-/// @RESTRETURNCODE{409}
-/// Returned if there is a conflict storing the graph.
-/// This can occur either if a graph with this name is already stored, or if there is one edge definition with a
-/// the same [edge collection](../Glossary/README.md#edge-collection)
-/// but a different signature used in any other graph.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialCreate}
-///   var graph = require("@arangodb/general-graph");
-/// | if (graph._exists("myGraph")) {
-/// |    graph._drop("myGraph", true);
-///   }
-///   var url = "/_api/gharial";
-///   body = {
-///     name: "myGraph",
-///     edgeDefinitions: [{
-///       collection: "edges",
-///       from: [ "startVertices" ],
-///       to: [ "endVertices" ]
-///     }]
-///   };
-///
-///   var response = logCurlRequest('POST', url, body);
-///
-///   assert(response.code === 201);
-///
-///   logJsonResponse(response);
-///
-///   graph._drop("myGraph", true);
-///
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_create_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Creates a new graph
@@ -338,51 +254,7 @@
   });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_get_http_examples
-/// @brief Get a graph from the graph module.
-/// 
-/// @RESTHEADER{GET /_api/gharial/{graph-name}, Get a graph}
-/// 
-/// @RESTDESCRIPTION
-/// Gets a graph from the collection *\_graphs*.
-/// Returns the definition content of this graph.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the graph could be found.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetGraph}
-///   var graph = require("@arangodb/general-graph");
-/// | if (graph._exists("myGraph")) {
-/// |    graph._drop("myGraph", true);
-///   }
-///   graph._create("myGraph", [{
-///     collection: "edges",
-///     from: [ "startVertices" ],
-///     to: [ "endVertices" ]
-///   }]);
-///   var url = "/_api/gharial/myGraph";
-///
-///   var response = logCurlRequest('GET', url);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-///
-///   graph._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_get_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Get information of a graph
@@ -404,47 +276,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_drop_http_examples
-/// @brief delete an existing graph
-/// 
-/// @RESTHEADER{DELETE /_api/gharial/{graph-name}, Drop a graph}
-/// 
-/// @RESTDESCRIPTION
-/// Removes a graph from the collection *\_graphs*.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{dropCollections, boolean, optional}
-/// Drop collections of this graph as well.
-/// Collections will only be dropped if they are not used in other graphs.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the graph could be dropped.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialDrop}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social?dropCollections=true";
-///   var response = logCurlRequest('DELETE', url);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_drop_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Drops an existing graph
@@ -474,41 +306,7 @@
 /////////////////////// Definitions ////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_list_vertex_http_examples
-/// @brief Lists all vertex collections used in this graph.
-/// 
-/// @RESTHEADER{GET /_api/gharial/{graph-name}/vertex, List vertex collections}
-/// 
-/// @RESTDESCRIPTION
-/// Lists all vertex collections within this graph.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Is returned if the collections could be listed.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialListVertex}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/vertex";
-///   var response = logCurlRequest('GET', url);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_list_vertex_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -541,45 +339,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_collection_add_http_examples
-/// @brief Add an additional vertex collection to the graph.
-/// 
-/// @RESTHEADER{POST /_api/gharial/{graph-name}/vertex, Add vertex collection}
-/// 
-/// @RESTDESCRIPTION
-/// Adds a vertex collection to the set of collections of the graph. If the
-/// collection does not exist, it will be created.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{201}
-/// Returned if the edge collection could be added successfully.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddVertexCol}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/vertex";
-///   body = {
-///     collection: "otherVertices"
-///   };
-///   var response = logCurlRequest('POST', url, body);
-///
-///   assert(response.code === 201);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_vertex_collection_add_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Create a new vertex collection.
@@ -621,77 +381,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_collection_remove_http_examples
-/// @brief Remove a vertex collection form the graph.
-/// 
-/// @RESTHEADER{DELETE /_api/gharial/{graph-name}/vertex/{collection-name}, Remove vertex collection}
-/// 
-/// @RESTDESCRIPTION
-/// Removes a vertex collection from the graph and optionally deletes the collection,
-/// if it is not used in any other graph.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required}
-/// The name of the vertex collection.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{dropCollection, boolean, optional}
-/// Drop the collection as well.
-/// Collection will only be dropped if it is not used in other graphs.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the vertex collection was removed from the graph successfully.
-/// 
-/// @RESTRETURNCODE{400}
-/// Returned if the vertex collection is still used in an edge definition.
-/// In this case it cannot be removed from the graph yet, it has to be removed from the edge definition first.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// ///
-/// You can remove vertex collections that are not used in any edge collection:
-///
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialRemoveVertexCollection}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("social");
-///   g._addVertexCollection("otherVertices");
-///   var url = "/_api/gharial/social/vertex/otherVertices";
-///   var response = logCurlRequest('DELETE', url);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-/// ~ examples.dropGraph("social");
-/// ~ db._drop("otherVertices");
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// You cannot remove vertex collections that are used in edge collections:
-///
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialRemoveVertexCollectionFailed}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("social");
-///   var url = "/_api/gharial/social/vertex/male";
-///   var response = logCurlRequest('DELETE', url);
-///
-///   assert(response.code === 400);
-///
-///   logJsonResponse(response);
-///   db._drop("male");
-///   db._drop("female");
-///   db._drop("relation");
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_vertex_collection_remove_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Delete a vertex collection.
@@ -744,41 +434,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_list_edge_http_examples
-/// @brief Lists all edge definitions
-/// 
-/// @RESTHEADER{GET /_api/gharial/{graph-name}/edge, List edge definitions}
-/// 
-/// @RESTDESCRIPTION
-/// Lists all edge collections within this graph.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Is returned if the edge definitions could be listed.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialListEdge}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/edge";
-///   var response = logCurlRequest('GET', url);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_list_edge_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** List all edge collections.
@@ -802,63 +458,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_definition_add_http_examples
-/// @brief Add a new edge definition to the graph
-/// 
-/// @RESTHEADER{POST /_api/gharial/{graph-name}/edge, Add edge definition}
-/// 
-/// @RESTDESCRIPTION
-/// Adds an additional edge definition to the graph.
-/// This edge definition has to contain a *collection* and an array of each *from* and *to* vertex collections.
-/// An edge definition can only be added if this definition is either not used in any other graph, or it is used
-/// with exactly the same definition. It is not possible to store a definition "e" from "v1" to "v2" in the one
-/// graph, and "e" from "v2" to "v1" in the other graph.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTBODYPARAM{collection,string,required,string}
-/// The name of the edge collection to be used.
-/// 
-/// @RESTBODYPARAM{from,array,required,string}
-/// One or many vertex collections that can contain source vertices.
-/// 
-/// @RESTBODYPARAM{to,array,required,string}
-/// One or many edge collections that can contain target vertices.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the definition could be added successfully.
-/// 
-/// @RESTRETURNCODE{400}
-/// Returned if the defininition could not be added, the edge collection is used in an other graph with
-/// a different signature.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddEdgeCol}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/edge";
-///   body = {
-///     collection: "lives_in",
-///     from: ["female", "male"],
-///     to: ["city"]
-///   };
-///   var response = logCurlRequest('POST', url, body);
-///
-///   assert(response.code === 201);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_edge_definition_add_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Create a new edge definition.
@@ -902,62 +502,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_definition_modify_http_examples
-/// @brief Replace an existing edge definition
-/// 
-/// @RESTHEADER{POST /_api/gharial/{graph-name}/edge/{definition-name}, Replace an edge definition}
-/// 
-/// @RESTDESCRIPTION
-/// Change one specific edge definition.
-/// This will modify all occurrences of this definition in all graphs known to your database.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{definition-name, string, required}
-/// The name of the edge collection used in the definition.
-/// 
-/// @RESTBODYPARAM{collection,string,required,string}
-/// The name of the edge collection to be used.
-/// 
-/// @RESTBODYPARAM{from,array,required,string}
-/// One or many vertex collections that can contain source vertices.
-/// 
-/// @RESTBODYPARAM{to,array,required,string}
-/// One or many edge collections that can contain target vertices.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the edge definition could be replaced.
-/// 
-/// @RESTRETURNCODE{400}
-/// Returned if no edge definition with this name is found in the graph.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialReplaceEdgeCol}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/edge/relation";
-///   body = {
-///     collection: "relation",
-///     from: ["female", "male", "animal"],
-///     to: ["female", "male", "animal"]
-///   };
-///   var response = logCurlRequest('PUT', url, body);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_edge_definition_modify_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Replace an edge definition.
@@ -1014,58 +559,9 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_definition_remove_http_examples
-/// @brief Remove an edge definition form the graph
-/// 
-/// @RESTHEADER{DELETE /_api/gharial/{graph-name}/edge/{definition-name}, Remove an edge definition from the graph}
-/// 
-/// @RESTDESCRIPTION
-/// Remove one edge definition from the graph.
-/// This will only remove the edge collection, the vertex collections remain untouched and can still be used
-/// in your queries.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{definition-name, string, required}
-/// The name of the edge collection used in the definition.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{dropCollection, boolean, optional}
-/// Drop the collection as well.
-/// Collection will only be dropped if it is not used in other graphs.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the edge definition could be removed from the graph.
-/// 
-/// @RESTRETURNCODE{400}
-/// Returned if no edge definition with this name is found in the graph.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialEdgeDefinitionRemove}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/edge/relation";
-///   var response = logCurlRequest('DELETE', url);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-///   db._drop("relation");
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_edge_definition_remove_http_examples
 ////////////////////////////////////////////////////////////////////////////////
-//
+
   /** Delete an edge definition.
    *
    * Removes an existing edge definition from this graph.
@@ -1111,58 +607,7 @@
 ////////////////////// Vertex Operations /////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_create_http_examples
-/// @brief create a new vertex
-/// 
-/// @RESTHEADER{POST /_api/gharial/{graph-name}/vertex/{collection-name}, Create a vertex}
-/// 
-/// @RESTDESCRIPTION
-/// Adds a vertex to the given collection.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required} 
-/// The name of the vertex collection the vertex belongs to.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{waitForSync, boolean, optional}
-/// Define if the request should wait until synced to disk.
-/// 
-/// @RESTALLBODYPARAM{storeThisObject,object,required}
-/// The body has to be the JSON object to be stored.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{201}
-/// Returned if the vertex could be added and waitForSync is true.
-/// 
-/// @RESTRETURNCODE{202}
-/// Returned if the request was successful but waitForSync is false.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph or no vertex collection with this name could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddVertex}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/vertex/male";
-///   body = {
-///     name: "Francis"
-///   }
-///   var response = logCurlRequest('POST', url, body);
-///
-///   assert(response.code === 202);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_vertex_create_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Create a new vertex.
@@ -1202,57 +647,7 @@
   });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_get_http_examples
-/// @brief fetches an existing vertex
-/// 
-/// @RESTHEADER{GET /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}, Get a vertex}
-/// 
-/// @RESTDESCRIPTION
-/// Gets a vertex from the given collection.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required} 
-/// The name of the vertex collection the vertex belongs to.
-/// 
-/// @RESTPARAM{vertex-key, string, required} 
-/// The *_key* attribute of the vertex.
-/// 
-/// @RESTHEADERPARAMETERS
-/// 
-/// @RESTPARAM{if-match, string, optional}
-/// If the "If-Match" header is given, then it must contain exactly one etag. The document is returned,
-/// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
-/// you can supply the etag in an attribute rev in the URL.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the vertex could be found.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
-/// 
-/// @RESTRETURNCODE{412}
-/// Returned if if-match header is given, but the documents revision is different.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetVertex}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/vertex/female/alice";
-///   var response = logCurlRequest('GET', url);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_vertex_get_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Get a vertex.
@@ -1288,72 +683,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_replace_http_examples
-/// @brief replaces an existing vertex
-/// 
-/// @RESTHEADER{PUT /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}, Replace a vertex}
-/// 
-/// @RESTDESCRIPTION
-/// Replaces the data of a vertex in the collection.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required} 
-/// The name of the vertex collection the vertex belongs to.
-/// 
-/// @RESTPARAM{vertex-key, string, required} 
-/// The *_key* attribute of the vertex.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{waitForSync, boolean, optional}
-/// Define if the request should wait until synced to disk.
-/// 
-/// @RESTHEADERPARAMETERS
-/// 
-/// @RESTPARAM{if-match, string, optional}
-/// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,
-/// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
-/// you can supply the etag in an attribute rev in the URL.
-/// 
-/// @RESTALLBODYPARAM{storeThisJsonObject,object,required}
-/// The body has to be the JSON object to be stored.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the vertex could be replaced.
-/// 
-/// @RESTRETURNCODE{202}
-/// Returned if the request was successful but waitForSync is false.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
-/// 
-/// @RESTRETURNCODE{412}
-/// Returned if if-match header is given, but the documents revision is different.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialReplaceVertex}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   body = {
-///     name: "Alice Cooper",
-///     age: 26
-///   }
-///   var url = "/_api/gharial/social/vertex/female/alice";
-///   var response = logCurlRequest('PUT', url, body);
-///
-///   assert(response.code === 202);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_vertex_replace_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Replace a vertex.
@@ -1399,74 +729,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_modify_http_examples
-/// @brief replace an existing vertex
-/// 
-/// @RESTHEADER{PATCH /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}, Modify a vertex}
-/// 
-/// @RESTDESCRIPTION
-/// Updates the data of the specific vertex in the collection.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required} 
-/// The name of the vertex collection the vertex belongs to.
-/// 
-/// @RESTPARAM{vertex-key, string, required} 
-/// The *_key* attribute of the vertex.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{waitForSync, boolean, optional}
-/// Define if the request should wait until synced to disk.
-/// 
-/// @RESTPARAM{keepNull, boolean, optional}
-/// Define if values set to null should be stored. By default the key is removed from the document.
-/// 
-/// @RESTHEADERPARAMETERS
-/// 
-/// @RESTPARAM{if-match, string, optional}
-/// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,
-/// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
-/// you can supply the etag in an attribute rev in the URL.
-/// 
-/// @RESTALLBODYPARAM{replaceAttributes,object,required}
-/// The body has to contain a JSON object containing exactly the attributes that should be replaced.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the vertex could be updated.
-/// 
-/// @RESTRETURNCODE{202}
-/// Returned if the request was successful but waitForSync is false.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
-/// 
-/// @RESTRETURNCODE{412}
-/// Returned if if-match header is given, but the documents revision is different.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialModifyVertex}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   body = {
-///     age: 26
-///   }
-///   var url = "/_api/gharial/social/vertex/female/alice";
-///   var response = logCurlRequest('PATCH', url, body);
-///
-///   assert(response.code === 202);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_vertex_modify_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Update a vertex.
@@ -1515,65 +778,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_vertex_delete_http_examples
-/// @brief removes a vertex from a graph
-/// 
-/// @RESTHEADER{DELETE /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}, Remove a vertex}
-/// 
-/// @RESTDESCRIPTION
-/// Removes a vertex from the collection.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required} 
-/// The name of the vertex collection the vertex belongs to.
-/// 
-/// @RESTPARAM{vertex-key, string, required} 
-/// The *_key* attribute of the vertex.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{waitForSync, boolean, optional}
-/// Define if the request should wait until synced to disk.
-/// 
-/// @RESTHEADERPARAMETERS
-/// 
-/// @RESTPARAM{if-match, string, optional}
-/// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,
-/// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
-/// you can supply the etag in an attribute rev in the URL.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the vertex could be removed.
-/// 
-/// @RESTRETURNCODE{202}
-/// Returned if the request was successful but waitForSync is false.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
-/// 
-/// @RESTRETURNCODE{412}
-/// Returned if if-match header is given, but the documents revision is different.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialDeleteVertex}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/vertex/female/alice";
-///   var response = logCurlRequest('DELETE', url);
-///
-///   assert(response.code === 202);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_vertex_delete_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Delete a vertex.
@@ -1617,67 +822,7 @@
 //////////////////////////// Edge Operations //////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_create_http_examples
-/// @brief Creates an edge in an existing graph
-///
-/// @RESTHEADER{POST /_api/gharial/{graph-name}/edge/{collection-name}, Create an edge}
-/// 
-/// @RESTDESCRIPTION
-/// Creates a new edge in the collection.
-/// Within the body the has to contain a *\_from* and *\_to* value referencing to valid vertices in the graph.
-/// Furthermore the edge has to be valid in the definition of this
-/// [edge collection](../Glossary/README.md#edge-collection).
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required} 
-/// The name of the edge collection the edge belongs to.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{waitForSync, boolean, optional}
-/// Define if the request should wait until synced to disk.
-/// 
-/// @RESTPARAM{_from, string, required}
-/// 
-/// @RESTPARAM{_to, string, required}
-/// 
-/// @RESTALLBODYPARAM{storeThisJsonObject,object,required}
-/// The body has to be the JSON object to be stored.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{201}
-/// Returned if the edge could be created.
-/// 
-/// @RESTRETURNCODE{202}
-/// Returned if the request was successful but waitForSync is false.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name, no edge collection or no edge with this id could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddEdge}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/edge/relation";
-///   body = {
-///     type: "friend",
-///     _from: "female/alice",
-///     _to: "female/diana"
-///   };
-///   var response = logCurlRequest('POST', url, body);
-///
-///   assert(response.code === 202);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_edge_create_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Create a new edge.
@@ -1748,57 +893,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_get_http_examples
-/// @brief fetch an edge
-/// 
-/// @RESTHEADER{GET /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}, Get an edge}
-/// 
-/// @RESTDESCRIPTION
-/// Gets an edge from the given collection.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required} 
-/// The name of the edge collection the edge belongs to.
-/// 
-/// @RESTPARAM{edge-key, string, required} 
-/// The *_key* attribute of the vertex.
-/// 
-/// @RESTHEADERPARAMETERS
-/// 
-/// @RESTPARAM{if-match, string, optional}
-/// If the "If-Match" header is given, then it must contain exactly one etag. The document is returned,
-/// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
-/// you can supply the etag in an attribute rev in the URL.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the edge could be found.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name, no edge collection or no edge with this id could be found.
-/// 
-/// @RESTRETURNCODE{412}
-/// Returned if if-match header is given, but the documents revision is different.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetEdge}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
-///   var response = logCurlRequest('GET', url);
-///
-///   assert(response.code === 200);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_edge_get_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Load an edge.
@@ -1837,71 +932,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_replace_http_examples
-/// @brief replace the content of an existing edge
-///
-/// @RESTHEADER{PUT /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}, Replace an edge}
-/// 
-/// @RESTDESCRIPTION
-/// Replaces the data of an edge in the collection.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required} 
-/// The name of the edge collection the edge belongs to.
-/// 
-/// @RESTPARAM{edge-key, string, required} 
-/// The *_key* attribute of the vertex.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{waitForSync, boolean, optional}
-/// Define if the request should wait until synced to disk.
-/// 
-/// @RESTHEADERPARAMETERS
-/// 
-/// @RESTPARAM{if-match, string, optional}
-/// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,
-/// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
-/// you can supply the etag in an attribute rev in the URL.
-/// 
-/// @RESTALLBODYPARAM{storeThisJsonObject,object,required}
-/// The body has to be the JSON object to be stored.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the edge could be replaced.
-/// 
-/// @RESTRETURNCODE{202}
-/// Returned if the request was successful but waitForSync is false.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name, no edge collection or no edge with this id could be found.
-/// 
-/// @RESTRETURNCODE{412}
-/// Returned if if-match header is given, but the documents revision is different.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialPutEdge}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
-///   body = {
-///     type: "divorced"
-///   }
-///   var response = logCurlRequest('PUT', url, body);
-///
-///   assert(response.code === 202);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_edge_replace_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Replace an edge.
@@ -1947,64 +978,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_modify_http_examples
-/// @brief modify an existing edge
-///
-/// @RESTHEADER{PATCH /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}, Modify an edge}
-/// 
-/// @RESTDESCRIPTION
-/// Updates the data of the specific edge in the collection.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required}
-/// The name of the edge collection the edge belongs to.
-/// 
-/// @RESTPARAM{edge-key, string, required}
-/// The *_key* attribute of the vertex.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{waitForSync, boolean, optional}
-/// Define if the request should wait until synced to disk.
-/// 
-/// @RESTPARAM{keepNull, boolean, optional}
-/// Define if values set to null should be stored. By default the key is removed from the document.
-/// 
-/// @RESTALLBODYPARAM{updateAttributes,object,required}
-/// The body has to be a JSON object containing the attributes to be updated.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the edge could be updated.
-/// 
-/// @RESTRETURNCODE{202}
-/// Returned if the request was successful but waitForSync is false.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name, no edge collection or no edge with this id could be found.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialPatchEdge}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
-///   body = {
-///     since: "01.01.2001"
-///   }
-///   var response = logCurlRequest('PATCH', url, body);
-///
-///   assert(response.code === 202);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_edge_modify_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
   /** Update an edge.
@@ -2053,65 +1027,7 @@
   );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_edge_delete_http_examples
-/// @brief removes an edge from graph
-/// 
-/// @RESTHEADER{DELETE /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}, Remove an edge}
-/// 
-/// @RESTDESCRIPTION
-/// Removes an edge from the collection.
-/// 
-/// @RESTURLPARAMETERS
-/// 
-/// @RESTPARAM{graph-name, string, required}
-/// The name of the graph.
-/// 
-/// @RESTPARAM{collection-name, string, required} 
-/// The name of the edge collection the edge belongs to.
-/// 
-/// @RESTPARAM{edge-key, string, required} 
-/// The *_key* attribute of the vertex.
-/// 
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTPARAM{waitForSync, boolean, optional}
-/// Define if the request should wait until synced to disk.
-/// 
-/// @RESTHEADERPARAMETERS
-/// 
-/// @RESTPARAM{if-match, string, optional}
-/// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,
-/// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
-/// you can supply the etag in an attribute rev in the URL.
-/// 
-/// @RESTRETURNCODES
-/// 
-/// @RESTRETURNCODE{200}
-/// Returned if the edge could be removed.
-/// 
-/// @RESTRETURNCODE{202}
-/// Returned if the request was successful but waitForSync is false.
-/// 
-/// @RESTRETURNCODE{404}
-/// Returned if no graph with this name, no edge collection or no edge with this id could be found.
-/// 
-/// @RESTRETURNCODE{412}
-/// Returned if if-match header is given, but the documents revision is different.
-/// 
-/// @EXAMPLES
-/// 
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialDeleteEdge}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
-///   var response = logCurlRequest('DELETE', url);
-///
-///   assert(response.code === 202);
-///
-///   logJsonResponse(response);
-///   examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_general_graph_edge_delete_http_examples
 ////////////////////////////////////////////////////////////////////////////////
 
 
