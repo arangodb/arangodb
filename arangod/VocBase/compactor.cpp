@@ -483,7 +483,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     // we found an index entry with a revision id <= the marker revision
     auto oldPtr = found->getDataPtr();
-    if (! TRI_IsWalDataMarkerDatafile(oldPtr) && oldPtr != static_cast<void const*>(marker)) {
+    auto const isWalDataMarker = TRI_IsWalDataMarkerDatafile(oldPtr);
+    if (! isWalDataMarker &&
+        oldPtr != static_cast<void const*>(marker)) {
       // the index points to a datafile marker, but not to THIS marker
       context->_dfi._numberDead += 1;
       context->_dfi._sizeDead += AlignedSize(marker);
@@ -507,9 +509,14 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     // let marker point to the new position
     found2->setDataPtr(result);
     // update fid in case it changes
-    if (found2->_fid != targetFid) {
+    if (!isWalDataMarker && found2->_fid != targetFid) {
       found2->_fid = targetFid;
     }
+
+    // update datafile info
+    // keep track of alive stats
+    context->_dfi._numberAlive += 1;
+    context->_dfi._sizeAlive += AlignedSize(marker);
   }
 
   // deletions
@@ -542,6 +549,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
     }
+    
+    context->_dfi._numberShapes++;
+    context->_dfi._sizeShapes += AlignedSize(marker);
   }
 
   // attributes
@@ -559,6 +569,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
     }
+    
+    context->_dfi._numberAttributes++;
+    context->_dfi._sizeAttributes += AlignedSize(marker);
   }
 
   // transaction markers
@@ -948,11 +961,11 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     if (n > 1) {
       // this is a merge of multiple datafiles...
       // now fuse the statistics of datafile 1..n into the 0th datafile's statistics
+      TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
+
       TRI_doc_datafile_info_t* dst = TRI_FindDatafileInfoDocumentCollection(document, compactor->_fid, false);
 
       if (dst != nullptr) {
-        TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
-
         for (size_t k = 1; k < n; ++k) {
           auto compaction = static_cast<compaction_info_t const*>(TRI_AtVector(compactions, k));
           TRI_doc_datafile_info_t* src = TRI_FindDatafileInfoDocumentCollection(document, compaction->_datafile->_fid, false);
@@ -971,9 +984,9 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
             dst->_sizeTransactions   += src->_sizeTransactions;
           }
         }
-
-        TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
       }
+
+      TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
     }
 
 
