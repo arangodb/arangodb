@@ -87,7 +87,6 @@ ApplicationDispatcher::ApplicationDispatcher ()
   : ApplicationFeature("dispatcher"),
     _applicationScheduler(nullptr),
     _dispatcher(nullptr),
-    _dispatcherReporterTask(nullptr),
     _reportInterval(0.0),
     _nrStandardThreads(0),
     _nrAQLThreads(0) {
@@ -267,10 +266,6 @@ void ApplicationDispatcher::stop () {
     return;
   }
 
-  if (_dispatcherReporterTask != nullptr) {
-    _dispatcherReporterTask = nullptr;
-  }
-
   if (_dispatcher != nullptr) {
     _dispatcher->shutdown();
     delete _dispatcher;
@@ -304,9 +299,8 @@ void ApplicationDispatcher::buildDispatcherReporter () {
   }
 
   if (0.0 < _reportInterval) {
-    _dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportInterval);
-
-    _applicationScheduler->scheduler()->registerTask(_dispatcherReporterTask);
+    auto dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportInterval);
+    _applicationScheduler->scheduler()->registerTask(dispatcherReporterTask);
   }
 }
 

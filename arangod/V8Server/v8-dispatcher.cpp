@@ -263,15 +263,6 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   int res = GlobalScheduler->registerTask(task);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (period > 0.0) {
-      V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
-      delete t;
-    }
-    else {
-      V8TimerTask* t = dynamic_cast<V8TimerTask*>(task);
-      delete t;
-    }
-
     TRI_V8_THROW_EXCEPTION(res);
   }
 
