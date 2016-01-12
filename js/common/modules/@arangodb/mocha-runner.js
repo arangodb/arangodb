@@ -1,3 +1,4 @@
+/*global print */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -27,25 +28,20 @@
 /// @author Copyright 2016, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Module = require('module');
-var ArangoError = require('@arangodb').ArangoError;
-var errors = require('@arangodb').errors;
-var runTests = require('@arangodb/mocha').run;
-var internal = require('internal');
-var print = internal.print;
-var colors = internal.COLORS;
+const Module = require('module');
+const ArangoError = require('@arangodb').ArangoError;
+const errors = require('@arangodb').errors;
+const runTests = require('@arangodb/mocha').run;
+const colors = require('internal').COLORS;
 
-module.exports = function (files, throwOnFail) {
+module.exports = function (files, returnJson) {
   const results = runTests(run, files, 'suite');
   print();
   logSuite(results);
   logStats(results.stats);
   print();
-  if (throwOnFail && results.stats.failures) {
-    var failure = findSuiteFailure(results);
-    var error = new Error('Test failure');
-    error.cause = failure;
-    throw error;
+  if (returnJson) {
+    return buildJson(results);
   }
   return results.stats.failures === 0;
 };
@@ -143,22 +139,48 @@ function indent(level, indentWith) {
   return padding;
 }
 
-function findSuiteFailure(suite) {
-  for (let test of suite.tests) {
-    if (test.result !== 'pass') {
-      return test.err;
+function buildJson(results) {
+  const result = {
+    duration: results.stats.duration,
+    status: results.stats.failures ? false : true,
+    failed: results.stats.failures,
+    total: results.stats.tests
+  };
+  for (const test of findTests(results)) {
+    const name = test[0];
+    const stats = test[1];
+    let newName = name;
+    let i = 1;
+    while (result.hasOwnProperty(newName)) {
+      newName = `${name} ${i++}`;
+    }
+    result[newName] = {
+      status: stats.result === 'pass',
+      duration: stats.duration
+    };
+    if (stats.result !== 'pass') {
+      result[newName].message = stats.err.stack;
     }
   }
-  for (let sub of suite.suites) {
-    let failure = findSuiteFailure(sub);
-    if (failure) {
-      return failure;
+  return result;
+}
+
+function findTests(suite, prefix) {
+  prefix = prefix ? prefix + ' ' : '';
+  const results = [];
+  for (const test of suite.tests) {
+    results.push([prefix + test.title, test]);
+  }
+  for (const sub of suite.suites) {
+    for (const res of findTests(sub, prefix + sub.title)) {
+      results.push(res);
     }
   }
+  return results;
 }
 
 function run(filename, context) {
-  var module = new Module(filename);
+  const module = new Module(filename);
 
   if (context) {
     Object.keys(context).forEach(function (key) {
@@ -170,7 +192,7 @@ function run(filename, context) {
     module.load(filename);
     return module.exports;
   } catch(e) {
-    var err = new ArangoError({
+    const err = new ArangoError({
       errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
       errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
       + '\nFile: ' + filename

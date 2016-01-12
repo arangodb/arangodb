@@ -910,16 +910,7 @@ function runThere (options, instanceInfo, file) {
     }
     else {
       t = 'var runTest = require("@arangodb/mocha-runner"); ' +
-          'try {' +
-          'return { status: runTest(' + JSON.stringify(file) + ', true), message: "Success" };' +
-          ' } catch (e) {' +
-          'var error = e.cause || e;' +
-          'return {' +
-          '  status: false,' +
-          '  message: error.message,' +
-          '  stack: error.stack' +
-          '};' +
-          '}';
+          'return runTest(' + JSON.stringify(file) + ', true);';
     }
     var o = makeAuthorizationHeaders(options);
     o.method = "POST";
