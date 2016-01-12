@@ -10,12 +10,14 @@ Graphs allow you to structure your models in line with your domain and group the
 
 !SUBSECTION Comming from a relational background - whats a graph?
 
-In SQL you commonly have the construct of a contingency table if you have *n:n* relation between two tables.
-An *edge collection* is somewhat similar to these *contingency tables*; *vertex collections* resemble the tables with the objects to connect.
-While simple graph queries with fixed number of hops via the contingency table may be doable in SQL, graph databases can handle arbitrary number of these hops over edge collections - this is called *traversal*.
+In SQL you commonly have the construct of a relation table to store *n:m* relations between two data tables.
+An *edge collection* is somewhat similar to these *relation tables*; *vertex collections* resemble the data tables with the objects to connect.
+While simple graph queries with fixed number of hops via the relation table may be doable in SQL with several nested joins,
+graph databases can handle an arbitrary number of these hops over edge collections - this is called *traversal*.
 Also edges in one edge collection may point to several vertex collections.
-Its common to have attributes attached to edges, i.e. a *label* naming this interconnect.
-Edges have a direction, with their relations `_from` and `_to` pointing to documents (vertices) in vertex collections.
+Its common to have attributes attached to edges, i.e. a *label* naming this interconnection.
+Edges have a direction, with their relations `_from` and `_to` pointing *from* one document *to* another document stored in vertex collections.
+In queries you can define in which directions the edge relations may be followed (`OUTBOUND`: `_from` -> `_to`, `INBOUND`: `_to` -> `_from`, `ANY`: `_from` <-> `_to`).
 
 !SUBSECTION Named Graphs
 Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/README.md#graphs-tab).
@@ -47,7 +49,7 @@ Sometimes you may not need all the powers of the general graph facilities, but s
 You [may use AQL Graph Functions](../Aql/GraphFunctions.md) that are a little deeper explained in the [traversals](../Traversals/README.md) and the [Working with Edges](../Edges/README.md) Chapter.
 
 !SUBSECTION Blueprint Graphs
-*Blueprint 2 graphs* are a superset of *named graphs* (they require vertices to be named).
+*Blueprint 2 graphs* are a subset of *named graphs*. It only supports one edge and one vertex collection per graph. Both vertices and edges have to contain a label attribute; Blueprints API defines a special `LABEL` attribute for this.
 We offer [blueprints support via an api compatible java driver](https://github.com/arangodb/blueprints-arangodb-graph).
 
 !SUBSECTION Example Graphs
