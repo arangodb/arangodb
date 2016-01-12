@@ -4,7 +4,7 @@
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief looks up a document and returns it
+looks up a document and returns it
 `db._document(document)`
 
 This method finds a document given its identifier. It returns the document
@@ -25,7 +25,9 @@ other client.
 As before. Instead of document a *document-handle* can be passed as
 first argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Returns the document:
 
@@ -44,7 +46,7 @@ Returns the document:
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief checks whether a document exists
+checks whether a document exists
 `db._exists(document)`
 
 This method determines whether a document exists given its identifier.
@@ -66,7 +68,7 @@ As before, but instead of a document a document-handle can be passed.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief replaces a document
+replaces a document
 `db._replace(document, data)`
 
 The method returns a document with the attributes *_id*, *_rev* and
@@ -101,7 +103,9 @@ of *true*.
 As before. Instead of document a *document-handle* can be passed as
 first argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Create and replace a document:
 
@@ -121,7 +125,7 @@ Create and replace a document:
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief update a document
+update a document
 `db._update(document, data, overwrite, keepNull, waitForSync)`
 
 Updates an existing *document*. The *document* must be a document in
@@ -164,7 +168,9 @@ document is overwritten.
 As before. Instead of document a *document-handle* can be passed as
 first argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Create and update a document:
 
@@ -184,7 +190,7 @@ Create and update a document:
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief removes a document
+removes a document
 `db._remove(document)`
 
 Removes a document. If there is revision mismatch, then an error is thrown.
@@ -215,7 +221,9 @@ of *true*.
 As before. Instead of document a *document-handle* can be passed as first
 argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Remove a document:
 

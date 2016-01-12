@@ -25,12 +25,16 @@ Get the source vertex of an edge
 
 Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeId, string, required}
 *_id* attribute of the edge
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline generalGraphGetFromVertex
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
@@ -53,12 +57,16 @@ Get the target vertex of an edge
 
 Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{edgeId, string, required}
 *_id* attribute of the edge
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline generalGraphGetToVertex
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
@@ -85,7 +93,9 @@ The complexity of this method is **O(n\*m^x)** with *n* being the vertices defin
 parameter vertexExamplex, *m* the average amount of neighbors and *x* the maximal depths.
 Hence the default call would have a complexity of **O(n\*m)**;
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexExample, object, optional}
 See [Definition of examples](#definition-of-examples)
@@ -101,7 +111,9 @@ An object defining further options. Can have the following values:
   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all neighbors of capitals.
 
@@ -144,7 +156,9 @@ defined by the parameters vertexExamples, *m* the average amount of neighbors an
 maximal depths.
 Hence the default call would have a complexity of **O(n\*m)**;
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all common neighbors of capitals.
 
@@ -185,7 +199,9 @@ Get the amount of common neighbors of the vertices defined by the examples.
 
 Similar to [_commonNeighbors](#commonneighbors) but returns count instead of the elements.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all common neighbors of capitals.
 
@@ -229,7 +245,9 @@ example as parameter for vertex1Example and vertex2Example.
 The complexity of this method is **O(n)** with *n* being the maximal amount of vertices
 defined by the parameters vertexExamples.
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertex1Examples, object, optional}
 Filter the set of source vertices, see [Definition of examples](#definition-of-examples)
@@ -245,7 +263,9 @@ An object defining further options. Can have the following values:
       searched for compare vertices.
   * *ignoreProperties* : One or a list of attribute names of a document that should be ignored.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all locations with the same properties:
 
@@ -282,7 +302,9 @@ Get the amount of vertices of the graph that share common properties.
 Similar to [_commonProperties](#commonproperties) but returns count instead of
 the objects.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all locations with the same properties:
 
@@ -322,7 +344,9 @@ This function determines all available paths in a graph.
 The complexity of this method is **O(n\*n\*m)** with *n* being the amount of vertices in
 the graph and *m* the average amount of connected edges;
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{options, object, optional}
 An object containing options, see below:
@@ -335,7 +359,9 @@ An object containing options, see below:
   * *maxLength* (optional)     : Defines the maximal length a path must
      have to be returned (default is 10).
 
-@EXAMPLES
+
+**Examples**
+
 
 Return all paths of the graph "social":
 
@@ -386,7 +412,9 @@ representing the length.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{startVertexExample, object, optional}
 An example for the desired start Vertices
@@ -423,7 +451,9 @@ An object containing options, see below:
                                          If no default is supplied the default would be positive Infinity so the path could
                                          not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, shortest path from all german to all french cities:
 
@@ -462,7 +492,9 @@ The _distanceTo function returns all paths and there distance within a graph.
 This function is a wrapper of [graph._shortestPath](#shortestpath).
 It does not return the actual path but only the distance between two vertices.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, shortest distance from all german to all french cities:
 
@@ -506,7 +538,9 @@ example as parameter for vertexExample.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexExample, object, optional}
 Filter the vertices, see [Definition of examples](#definition-of-examples)
@@ -531,7 +565,9 @@ An object defining further options. Can have the following values:
       If no default is supplied the default would be positive infinity so the path and
       hence the eccentricity can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the absolute eccentricity of all locations.
 
@@ -588,7 +624,9 @@ Similar to [_absoluteEccentricity](#absoluteeccentricity) but returns a normaliz
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the eccentricity of all locations.
 
@@ -630,7 +668,9 @@ example as parameter for *vertexExample*.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexExample, object, optional}
 Filter the vertices, see [Definition of examples](#definition-of-examples)
@@ -655,7 +695,9 @@ An object defining further options. Can have the following values:
                      If no default is supplied the default would be positive infinity so the path and
                      hence the closeness can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the absolute closeness of all locations.
 
@@ -710,7 +752,9 @@ Similar to [_absoluteCloseness](#absolutecloseness) but returns a normalized val
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the normalized closeness of all locations.
 
@@ -762,7 +806,9 @@ of all vertices in the graph.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{vertexExample, object, optional}
 Filter the vertices, see [Definition of examples](#definition-of-examples)
@@ -777,7 +823,9 @@ An object defining further options. Can have the following values:
                      If no default is supplied the default would be positive infinity so the path and
                      hence the betweeness can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the absolute betweenness of all locations.
 
@@ -828,7 +876,9 @@ of graphs vertices.
 
 Similar to [_absoluteBetweeness](#absolutebetweenness) but returns normalized values.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the betweenness of all locations.
 
@@ -880,7 +930,9 @@ of a graph.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{options, object, optional}
 An object defining further options. Can have the following values:
@@ -895,7 +947,9 @@ An object defining further options. Can have the following values:
                      If no default is supplied the default would be positive infinity so the path and
                      hence the radius can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the radius of the graph.
 
@@ -947,7 +1001,9 @@ of a graph.
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@PARAMS
+
+**Parameters**
+
 
 @PARAM{options, object, optional}
 An object defining further options. Can have the following values:
@@ -962,7 +1018,9 @@ An object defining further options. Can have the following values:
                       If no default is supplied the default would be positive infinity so the path and
                       hence the radius can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the diameter of the graph.
 

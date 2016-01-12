@@ -4,12 +4,14 @@
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
-@brief drops a collection
+drops a collection
 `collection.drop()`
 
 Drops a *collection* and all its indexes.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionDrop
     @EXAMPLE_ARANGOSH_OUTPUT{collectionDrop}
@@ -27,13 +29,15 @@ Drops a *collection* and all its indexes.
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief truncates a collection
+truncates a collection
 `collection.truncate()`
 
 Truncates a *collection*, removing all documents but keeping all its
 indexes.
 
-@EXAMPLES
+
+**Examples**
+
 
 Truncates a collection:
 
@@ -58,7 +62,7 @@ Truncates a collection:
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
-@brief returns the figures of a collection
+returns the figures of a collection
 `collection.figures()`
 
 Returns an object containing statistics about the collection.
@@ -148,7 +152,9 @@ a collection is normally slightly higher than the sum of the reported
 *fileSize* values. Still the sum of the *fileSize* values can still be 
 used as a lower bound approximation of the disk usage.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionFigures
     @EXAMPLE_ARANGOSH_OUTPUT{collectionFigures}
@@ -163,12 +169,14 @@ used as a lower bound approximation of the disk usage.
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
-@brief loads a collection
+loads a collection
 `collection.load()`
 
 Loads a collection into memory.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionLoad
     @EXAMPLE_ARANGOSH_OUTPUT{collectionLoad}
@@ -195,7 +203,7 @@ Not all indexes implement the reserve function at the moment. The indexes that d
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
-@brief returns the revision id of a collection
+returns the revision id of a collection
 `collection.revision()`
 
 Returns the revision id of the collection
@@ -215,7 +223,7 @@ as an opaque string, and only use it for equality/non-equality comparisons.
 <!-- arangod/V8Server/v8-query.cpp -->
 
 
-@brief calculates a checksum for the data in a collection
+calculates a checksum for the data in a collection
 `collection.checksum(withRevisions, withData)`
 
 The *checksum* operation calculates a CRC32 checksum of the keys
@@ -236,13 +244,15 @@ checksumming will make the calculation slower, but is more accurate.
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
-@brief unloads a collection
+unloads a collection
 `collection.unload()`
 
 Starts unloading a collection from memory. Note that unloading is deferred
 until all query have finished.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline CollectionUnload
     @EXAMPLE_ARANGOSH_OUTPUT{CollectionUnload}
@@ -260,7 +270,7 @@ until all query have finished.
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
-@brief renames a collection
+renames a collection
 `collection.rename(new-name)`
 
 Renames a collection using the *new-name*. The *new-name* must not
@@ -275,7 +285,9 @@ database.
 
 **Note**: this method is not available in a cluster.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionRename
     @EXAMPLE_ARANGOSH_OUTPUT{collectionRename}
@@ -293,7 +305,7 @@ database.
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
-@brief rotates the current journal of a collection
+rotates the current journal of a collection
 `collection.rotate()`
 
 Rotates the current journal of a collection. This operation makes the

@@ -29,7 +29,7 @@ Use *""* to disable.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log file for requests
+log file for requests
 `--log.requests-file filename`
 
 This option allows the user to specify the name of a file to which
@@ -63,14 +63,14 @@ fetching
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log file
+log file
 
 
 !SUBSECTION Level
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log level
+log level
 `--log.level level`
 
 `--log level`
@@ -167,7 +167,7 @@ warnings, status information, and debug information to be logged as well.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log dates and times in local time zone
+log dates and times in local time zone
 `--log.use-local-time`
 
 If specified, all dates and times in log messages will use the server's
@@ -181,7 +181,7 @@ is used, a `Z` will be appended to indicate Zulu time.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log line number
+log line number
 `--log.line-number`
 
 Normally, if an human readable fatal, error, warning or info message is
@@ -196,7 +196,7 @@ be use to always log these pieces of information.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log prefix
+log prefix
 `--log.prefix prefix`
 
 This option is used specify an prefix to logged text.
@@ -206,7 +206,7 @@ This option is used specify an prefix to logged text.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log thread identifier
+log thread identifier
 `--log.thread`
 
 Whenever log output is generated, the process ID is written as part of the
@@ -230,7 +230,7 @@ when this command line option is set.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log source filter
+log source filter
 `--log.source-filter arg`
 
 For debug and trace messages, only log those messages originated from the
@@ -241,7 +241,7 @@ C source file *arg*. The argument can be used multiple times.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log content filter
+log content filter
 `--log.content-filter arg`
 
 Only log message containing the specified string *arg*.
@@ -251,7 +251,7 @@ Only log message containing the specified string *arg*.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief performance logging
+performance logging
 `--log.performance`
 
 If this option is set, performance-related info messages will be logged
@@ -277,7 +277,7 @@ are subject to change in future versions of ArangoDB.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log application name
+log application name
 `--log.application name`
 
 Specifies the *name* of the application which should be logged if this
@@ -289,7 +289,7 @@ information is to be logged.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
-@brief log facility
+log facility
 `--log.facility name`
 
 If this option is set, then in addition to output being directed to the

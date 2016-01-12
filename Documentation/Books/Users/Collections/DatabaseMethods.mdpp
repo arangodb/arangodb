@@ -4,7 +4,7 @@
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief returns a single collection or null
+returns a single collection or null
 `db._collection(collection-name)`
 
 Returns the collection with the given name or null if no such collection
@@ -16,7 +16,9 @@ Returns the collection with the given identifier or null if no such
 collection exists. Accessing collections by identifier is discouraged for
 end users. End users should access collections using the collection name.
 
-@EXAMPLES
+
+**Examples**
+
 
 Get a collection by name:
 
@@ -46,7 +48,7 @@ Unknown collection:
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief creates a new document or edge collection
+creates a new document or edge collection
 `db._create(collection-name)`
 
 Creates a new document collection named *collection-name*.
@@ -129,7 +131,9 @@ Specifies the optional *type* of the collection, it can either be *document*
 or *edge*. On default it is document. Instead of giving a type you can also use 
 *db._createEdgeCollection* or *db._createDocumentCollection*.
 
-@EXAMPLES
+
+**Examples**
+
 
 With defaults:
 
@@ -181,7 +185,7 @@ With a special key option:
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief creates a new edge collection
+creates a new edge collection
 `db._createEdgeCollection(collection-name)`
 
 Creates a new edge collection named *collection-name*. If the
@@ -204,7 +208,7 @@ for *waitForSync* is *false*.
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief creates a new document collection
+creates a new document collection
 `db._createDocumentCollection(collection-name)`
 
 Creates a new document collection named *collection-name*. If the
@@ -215,12 +219,14 @@ document name already exists and error is thrown.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief returns all collections
+returns all collections
 `db._collections()`
 
 Returns all collections of the given database.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionsDatabaseName
     @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
@@ -236,14 +242,16 @@ Returns all collections of the given database.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief selects a collection from the vocbase
+selects a collection from the vocbase
 `db.collection-name`
 
 Returns the collection with the given *collection-name*. If no such
 collection exists, create a collection named *collection-name* with the
 default properties.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionDatabaseCollectionName
     @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCollectionName}
@@ -259,7 +267,7 @@ default properties.
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief drops a collection
+drops a collection
 `db._drop(collection)`
 
 Drops a *collection* and all its indexes.
@@ -305,7 +313,7 @@ Drops a collection identified by name:
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief truncates a collection
+truncates a collection
 `db._truncate(collection)`
 
 Truncates a *collection*, removing all documents but keeping all its
@@ -321,7 +329,9 @@ thrown if there is no such collection.
 Truncates a collection named *collection-name*. No error is thrown if
 there is no such collection.
 
-@EXAMPLES
+
+**Examples**
+
 
 Truncates a collection:
 

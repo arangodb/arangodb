@@ -15,7 +15,9 @@ return the database name
 
 Returns the name of the current database as a string.
 
-@EXAMPLES
+
+**Examples**
+
 
 @startDocuBlockInline dbName
 @EXAMPLE_ARANGOSH_OUTPUT{dbName}
@@ -33,7 +35,9 @@ return the database id
 
 Returns the id of the current database as a string.
 
-@EXAMPLES
+
+**Examples**
+
 
 @startDocuBlockInline dbId
 @EXAMPLE_ARANGOSH_OUTPUT{dbId}
@@ -51,7 +55,9 @@ return the path to database files
 
 Returns the filesystem path of the current database as a string.
 
-@EXAMPLES
+
+**Examples**
+
 
 @startDocuBlockInline dbPath
 @EXAMPLE_ARANGOSH_OUTPUT{dbPath}

@@ -79,8 +79,6 @@ var optionsDocumentation = [
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
-  '   - `jasmineReportFormat`: this option is passed on to the `format`',
-  '     option of the Jasmine options object, only for Jasmine tests.',
   '',
   '   - benchargs : additional commandline arguments to arangob',
   '',
@@ -489,23 +487,18 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 function readImportantLogLines(logPath) {
   var i, j;
   var importantLines = {};
-  var list=fs.list(logPath);
-  var jasmineTest = fs.join("jasmine", "core");
+  var list = fs.list(logPath);
   for (i = 0; i < list.length; i++) {
     var fnLines = [];
-    if (list[i].slice(0,3) === 'log') {
-      var buf = fs.readBuffer(fs.join(logPath,list[i]));
+    if (list[i].slice(0, 3) === 'log') {
+      var buf = fs.readBuffer(fs.join(logPath, list[i]));
       var lineStart = 0;
       var maxBuffer = buf.length;
       for (j = 0; j < maxBuffer; j++) {
         if (buf[j] === 10) { // \n
           var line = buf.asciiSlice(lineStart, j);
           // filter out regular INFO lines, and test related messages
-          if ((line.search(" INFO ") < 0) &&
-            (line.search("WARNING about to execute:") < 0) &&
-            (line.search(jasmineTest) < 0)) {
-            fnLines.push(line);
-          }
+          fnLines.push(line);
           lineStart = j + 1;
         }
       }
@@ -894,32 +887,9 @@ function runThere (options, instanceInfo, file) {
       t = 'var runTest = require("jsunity").runTest; '+
           'return runTest(' + JSON.stringify(file) + ', true);';
     }
-    else if (file.indexOf("-jasmine-spec") !== -1) {
-      var jasmineReportFormat = options.jasmineReportFormat || 'progress';
-      t = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
-          'try {' +
-          'return { status: executeTestSuite([' + JSON.stringify(file) + '], {"format": '+
-          JSON.stringify(jasmineReportFormat) + '}), message: "Success"};'+
-          ' } catch (e) {' +
-          'return {' +
-          '  status: false,' + 
-          '  message: e.message || String(e) || "unknown",' +
-          '  stack: e.stack' + 
-          '};' +
-          '}';
-    }
     else {
       t = 'var runTest = require("@arangodb/mocha-runner"); ' +
-          'try {' +
-          'return { status: runTest(' + JSON.stringify(file) + ', true), message: "Success" };' +
-          ' } catch (e) {' +
-          'var error = e.cause || e;' +
-          'return {' +
-          '  status: false,' +
-          '  message: error.message,' +
-          '  stack: error.stack' +
-          '};' +
-          '}';
+          'return runTest(' + JSON.stringify(file) + ', true);';
     }
     var o = makeAuthorizationHeaders(options);
     o.method = "POST";
@@ -948,30 +918,18 @@ function runThere (options, instanceInfo, file) {
 function runHere (options, instanceInfo, file) {
   var result;
   try {
-    if (file.indexOf("-spec") === -1) {
-      var runTest = require("jsunity").runTest; 
+    if (file.indexOf('-spec') === -1) {
+      let runTest = require('jsunity').runTest;
       result = runTest(file, true);
     }
     else {
-      var jasmineReportFormat = options.jasmineReportFormat || 'progress';
-      var executeTestSuite = require("jasmine").executeTestSuite; 
-      try {
-        result = executeTestSuite([ file ], { format: jasmineReportFormat });
-      } catch (e) {
-        result = {
-          status: false,
-          message: e.message || String(e) || "unknown",
-          stack: e.stack
-        };
-        return result;
-      }
+      let runTest = require('@arangodb/mocha-runner');
+      result = runTest(file, true);
     }
-    if (file.indexOf("-spec") !== -1) {
-      result = {
-        status: result, 
-        message: ''
-      };
-    }
+    result = {
+      status: result,
+      message: ''
+    };
  }
   catch (err) {
     result = err;
@@ -1026,7 +984,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   if (addArgs !== undefined) {
     args = _.extend(args, addArgs);
   }
-  var arangosh = fs.join("bin","arangosh");
+  var arangosh = fs.join("bin", "arangosh");
   var result;
   var rc = executeAndWait(arangosh, toArgv(args));
   try {
@@ -1035,12 +993,11 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   catch(x) {
     return rc;
   }
-  if ((typeof(result[0]) === 'object') && 
+  if ((typeof result[0] === 'object') &&
       result[0].hasOwnProperty('status')) {
     return result[0];
   }
   else {
-    // Jasmine tests...
     return rc;
   }
 }

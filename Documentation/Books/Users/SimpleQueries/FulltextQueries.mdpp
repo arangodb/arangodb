@@ -14,7 +14,7 @@ When a fulltext index exists, it can be queried using a fulltext query.
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-@brief queries the fulltext index
+queries the fulltext index
 `collection.fulltext(attribute, query)`
 
 The *fulltext* simple query functions performs a fulltext search on the specified
@@ -30,7 +30,9 @@ way for executing fulltext queries is to use an AQL query using the *FULLTEXT*
     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
       RETURN doc
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionFulltext
     @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}

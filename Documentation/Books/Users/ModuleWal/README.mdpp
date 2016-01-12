@@ -6,7 +6,7 @@ This module provides functionality for administering the write-ahead logs.
 <!-- arangod/V8Server/v8-vocbase.h -->
 
 
-@brief retrieves the configuration of the write-ahead log
+retrieves the configuration of the write-ahead log
 `internal.wal.properties()`
 
 Retrieves the configuration of the write-ahead log. The result is a JSON
@@ -25,7 +25,9 @@ array with the following attributes:
   operations that, when reached, will activate write-throttling. A value of
   *0* means that write-throttling will not be triggered.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline WalPropertiesGet
     @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesGet}
@@ -37,7 +39,7 @@ array with the following attributes:
 <!-- arangod/V8Server/v8-vocbase.h -->
 
 
-@brief configures the write-ahead log
+configures the write-ahead log
 `internal.wal.properties(properties)`
 
 Configures the behavior of the write-ahead log. *properties* must be a JSON
@@ -57,7 +59,9 @@ JSON object with the following attributes:
 Specifying any of the above attributes is optional. Not specified attributes
 will be ignored and the configuration for them will not be modified.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline WalPropertiesSet
     @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesSet}
@@ -73,7 +77,7 @@ will be ignored and the configuration for them will not be modified.
 <!-- arangod/V8Server/v8-vocbase.h -->
 
 
-@brief flushes the currently open WAL logfile
+flushes the currently open WAL logfile
 `internal.wal.flush(waitForSync, waitForCollector)`
 
 Flushes the write-ahead log. By flushing the currently active write-ahead
@@ -92,7 +96,9 @@ write-ahead log garbage collector. Note that setting this option to *true*
 might block for a long time if there are long-running transactions and
 the write-ahead log garbage collector cannot finish garbage collection.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline WalFlush
     @EXAMPLE_ARANGOSH_OUTPUT{WalFlush}

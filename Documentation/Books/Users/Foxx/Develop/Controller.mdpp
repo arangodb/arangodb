@@ -13,7 +13,9 @@ options array with the following attributes:
 
 * *urlPrefix*: All routes you define within will be prefixed with it.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app = new Controller(applicationContext, {
@@ -41,7 +43,9 @@ request is recieved.
 `callback` get's two arguments `request` and `response`, see below for further
 information about these objects.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.get('/goose/barn', function (req, res) {
@@ -67,7 +71,9 @@ request is recieved.
 `callback` get's two arguments `request` and `response`, see below for further
 information about these objects.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.head('/goose/barn', function (req, res) {
@@ -93,7 +99,9 @@ request is recieved.
 `callback` get's two arguments `request` and `response`, see below for further
 information about these objects.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.post('/goose/barn', function (req, res) {
@@ -119,7 +127,9 @@ request is recieved.
 `callback` get's two arguments `request` and `response`, see below for further
 information about these objects.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.put('/goose/barn', function (req, res) {
@@ -145,7 +155,9 @@ request is recieved.
 `callback` get's two arguments `request` and `response`, see below for further
 information about these objects.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.patch('/goose/barn', function (req, res) {
@@ -171,7 +183,9 @@ request is recieved.
 `callback` get's two arguments `request` and `response`, see below for further
 information about these objects.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.delete('/goose/barn', function (req, res) {
@@ -788,7 +802,9 @@ If `callback` returns the Boolean value `false`, the route handling
 will not proceed. You can use this to intercept invalid or unauthorized
 requests and prevent them from being passed to the matching routes.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.before('/high/way', function(req, res) {
@@ -808,7 +824,9 @@ app.before('/high/way', function(req, res) {
 Similar to `Controller.before(path, callback)` but `callback` will be invoked
 after the request is handled in the specific route.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.after('/high/way', function(req, res) {
@@ -835,7 +853,9 @@ So using around you can execute code before and after a specific handler
 and even call the handler only under certain circumstances.
 If you omit `path` `callback` will be called on every request.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.around('/high/way', function(req, res, opts, next) {
@@ -975,7 +995,9 @@ be read and its value will be verified as the cookie value's signature.
 
 If the cookie is not set or its signature is invalid, "undefined" will be returned instead.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 var sid = request.cookie("sid", {signed: "keyboardcat"});
@@ -1013,7 +1035,9 @@ You provide your response body as a string here.
 
 Set the status *code* of your response, for example:
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 response.status(404);
@@ -1029,7 +1053,9 @@ response.status(404);
 
 Set a header attribute, for example:
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 response.set("Content-Length", 123);
@@ -1056,7 +1082,9 @@ response.set({
 Set the content type to JSON and the body to the JSON encoded *object*
 you provided.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 response.json({'born': 'December 12, 1915'});
@@ -1091,7 +1119,9 @@ If *signed* is a string, it will be used as the *secret* instead.
 If a *secret* is provided, a second cookie with the name *name + ".sig"* will
 be added to the response, containing the cookie's HMAC signature.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 response.cookie("sid", "abcdef", {signed: "keyboardcat"});
@@ -1110,7 +1140,9 @@ object, the content type will be set to `application/octet-stream` if not
 yet set. If *value* is a string, the content type will be set to `text/html`
 if not yet set. If *value* is an object, it will be treated as in `res.json`.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 response.send({"born": "December 12, 1915"});
@@ -1137,7 +1169,9 @@ Currently only the following option exists:
 - `lastModified`: if set to true, the last modification date and time
   of the file will be returned in the `Last-Modified` HTTP header
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 response.sendFile('/tmp/results.json');
@@ -1213,7 +1247,9 @@ In the `opts` object you can set the following keys:
 * *cookieName*: A string used as the name of the cookie
 * *sessionLifetime*: An integer. Lifetime of sessions in seconds
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.activateAuthentication({
@@ -1249,7 +1285,9 @@ the options:
 
 Both *onSuccess* and *onError* should take request and result as arguments.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.login('/login', {
@@ -1283,7 +1321,9 @@ and *onError* function:
 Both *onSuccess* and *onError* should take request and result as arguments.
 
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.logout('/logout', {
@@ -1327,7 +1367,9 @@ If you want default attributes for the accepted attributes or set additional fie
 (for example *admin*) use the option *defaultAttributes* which should be a hash
 mapping attribute names to default values.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.register('/logout', {
@@ -1363,7 +1405,9 @@ the options:
 
 Both *onSuccess* and *onError* should take request and result as arguments.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 app.changePassword('/changePassword', {

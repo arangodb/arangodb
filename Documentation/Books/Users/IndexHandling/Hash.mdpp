@@ -19,7 +19,7 @@ of `null`.
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief ensures that a unique constraint exists
+ensures that a unique constraint exists
 `collection.ensureIndex({ type: "hash", fields: [ "field1", ..., "fieldn" ], unique: true })`
 
 Creates a unique hash index on all documents using *field1*, ... *fieldn*
@@ -63,7 +63,7 @@ details, including the index-identifier, is returned.
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief ensures that a non-unique hash index exists
+ensures that a non-unique hash index exists
 `collection.ensureIndex({ type: "hash", fields: [ "field1", ..., "fieldn" ] })`
 
 Creates a non-unique hash index on all documents using  *field1*, ... *fieldn*

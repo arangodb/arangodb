@@ -31,7 +31,7 @@ transaction is automatically aborted, and all changes are rolled back.
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief executes a transaction
+executes a transaction
 `db._executeTransaction(object)`
 
 Executes a server-side transaction, as specified by *object*.

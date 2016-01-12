@@ -54,7 +54,9 @@ than one shard.
 Note that this does not imply any restriction of the number of revisions
 of documents.
 
-@EXAMPLES
+
+**Examples**
+
 
 Restrict the number of document to at most 10 documents:
 

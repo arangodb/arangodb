@@ -11,7 +11,9 @@ Fetches all documents from a collection and returns a cursor. You can use
 *toArray*, *next*, or *hasNext* to access the result. The result
 can be limited using the *skip* and *limit* operator.
 
-@EXAMPLES
+
+**Examples**
+
 
 Use *toArray* to get all documents at once:
 
@@ -106,7 +108,9 @@ will match.
 
 As alternative you can supply an array of paths and values.
 
-@EXAMPLES
+
+**Examples**
+
 
 Use *toArray* to get all documents at once:
 
@@ -156,7 +160,9 @@ See *byExample* for details.
 
 As alternative you can supply an array of paths and values.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionFirstExample
     @EXAMPLE_ARANGOSH_OUTPUT{collectionFirstExample}
@@ -202,7 +208,9 @@ is to use an AQL query as follows:
       LIMIT @skip, @limit
       RETURN doc
 
-@EXAMPLES
+
+**Examples**
+
 
 Use *toArray* to get all documents at once:
 
@@ -247,7 +255,9 @@ is to use an AQL query as follows:
       LIMIT @skip, @limit
       RETURN doc
 
-@EXAMPLES
+
+**Examples**
+
 
 Use *toArray* to get all documents at once:
 
@@ -283,7 +293,9 @@ counts the number of documents in a result set
 
 Returns the number of living documents in the collection.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionCount
     @EXAMPLE_ARANGOSH_OUTPUT{collectionCount}
@@ -413,7 +425,9 @@ array and that exist in the collection will be returned.
 Keys for which no document can be found in the underlying collection are ignored,
 and no exception will be thrown for them.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionLookupByKeys
     @EXAMPLE_ARANGOSH_OUTPUT{collectionLookupByKeys}
@@ -460,7 +474,9 @@ of *true*.
 
 Note: since ArangoDB 2.2, *insert* is an alias for *save*.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline documentsCollectionInsert
     @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsert}
@@ -518,7 +534,9 @@ of *true*.
 As before. Instead of document a *document-handle* can be passed as
 first argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Create and update a document:
 
@@ -699,7 +717,9 @@ of *true*.
 As before. Instead of document a *document-handle* can be passed as
 first argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Remove a document:
 
@@ -747,7 +767,9 @@ The method will return an object containing the number of removed documents
 in the *removed* sub-attribute, and the number of not-removed/ignored
 documents in the *ignored* sub-attribute.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionRemoveByKeys
     @EXAMPLE_ARANGOSH_OUTPUT{collectionRemoveByKeys}
@@ -793,7 +815,9 @@ removals to the specified value. If *limit* is specified but less than the
 number of documents in the collection, it is undefined which documents are
 removed.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline 010_documentsCollectionRemoveByExample
     @EXAMPLE_ARANGOSH_OUTPUT{010_documentsCollectionRemoveByExample}
@@ -837,7 +861,9 @@ replacements to the specified value. If *limit* is specified but less than
 the number of documents in the collection, it is undefined which documents are
 replaced.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline 011_documentsCollectionReplaceByExample
     @EXAMPLE_ARANGOSH_OUTPUT{011_documentsCollectionReplaceByExample}
@@ -900,7 +926,9 @@ an object with the following sub-attributes:
 - *limit*
 - *mergeObjects*
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline 012_documentsCollectionUpdateByExample
     @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
@@ -937,7 +965,9 @@ returned is *null*.
 **Note**: this method is not supported in sharded collections with more than
 one shard.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline documentsCollectionFirstSuccess
     @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirstSuccess}
@@ -983,7 +1013,9 @@ returned is *null*.
 **Note**: this method is not supported in sharded collections with more than
 one shard.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline documentsCollectionLastFound
     @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLastFound}
@@ -1026,7 +1058,9 @@ return the server version string
 Returns the server version string. Note that this is not the version of the
 database.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline dbVersion
     @EXAMPLE_ARANGOSH_OUTPUT{dbVersion}
@@ -1074,7 +1108,9 @@ as second argument.
 - *probability* (optional, default all): a number between *0* and
   *1*. Documents are chosen with this probability.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline accessViaGeoIndex
     @EXAMPLE_ARANGOSH_OUTPUT{accessViaGeoIndex}

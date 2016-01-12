@@ -20,7 +20,7 @@ of `null`.
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief ensures that a unique skiplist index exists
+ensures that a unique skiplist index exists
 `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ], unique: true })`
 
 Creates a unique skiplist index on all documents using *field1*, ... *fieldn*
@@ -76,7 +76,7 @@ details, including the index-identifier, is returned.
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief ensures that a non-unique skiplist index exists
+ensures that a non-unique skiplist index exists
 `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ] })`
 
 Creates a non-unique skiplist index on all documents using *field1*, ...
@@ -105,7 +105,7 @@ details, including the index-identifier, is returned.
 !SUBSECTION Query by example using a skiplist index
 
 
-@brief constructs a query-by-example using a skiplist index
+constructs a query-by-example using a skiplist index
 `collection.byExampleSkiplist(index, example)`
 
 Selects all documents from the specified skiplist index that match the
