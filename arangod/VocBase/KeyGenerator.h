@@ -30,8 +30,6 @@
 
 #include <array>
 
-
-
 struct TRI_json_t;
 
 
@@ -82,13 +80,13 @@ class KeyGenerator {
   /// @brief get the generator type from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneratorType generatorType(struct TRI_json_t const*);
+  static GeneratorType generatorType(VPackSlice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a key generator based on the options specified
   //////////////////////////////////////////////////////////////////////////////
 
-  static KeyGenerator* factory(struct TRI_json_t const*);
+  static KeyGenerator* factory(VPackSlice const&);
 
   
  public:

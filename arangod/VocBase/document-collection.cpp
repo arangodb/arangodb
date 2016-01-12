@@ -2287,12 +2287,11 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> buffer =
       parameters.keyOptions();
 
-  std::unique_ptr<TRI_json_t> json;
+  VPackSlice slice;
   if (buffer != nullptr) {
-    VPackSlice const slice(buffer->data());
-    json.reset(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+    slice = VPackSlice(buffer->data());
   }
-  KeyGenerator* keyGenerator = KeyGenerator::factory(json.get());
+  KeyGenerator* keyGenerator = KeyGenerator::factory(slice);
 
   if (keyGenerator == nullptr) {
     TRI_set_errno(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
@@ -3087,12 +3086,12 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
       collection->_info.keyOptions();
   std::unique_ptr<TRI_json_t> json;
 
+  VPackSlice slice;
   if (buffer.get() != nullptr) {
-    VPackSlice const slice(buffer->data());
-    json.reset(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+    slice = VPackSlice(buffer->data());
   }
 
-  KeyGenerator* keyGenerator = KeyGenerator::factory(json.get());
+  KeyGenerator* keyGenerator = KeyGenerator::factory(slice);
 
   if (keyGenerator == nullptr) {
     TRI_CloseCollection(collection);
