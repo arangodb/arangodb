@@ -367,14 +367,14 @@ the graph and *m* the average amount of connected edges;
 
 Return all paths of the graph "social":
 
-    @startDocuBlockInline generalGraphPaths
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths}
+    @startDocuBlockInline generalGraphPaths1
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths1}
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var g = examples.loadGraph("social");
       db._query("RETURN GRAPH_PATHS('social')").toArray();
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphPaths
+    @endDocuBlock generalGraphPaths1
 
 Return all inbound paths of the graph "social" with a maximal
 length of 1 and a minimal length of 2:
