@@ -1913,7 +1913,15 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
   if (!writeMarker) {
     return collection;
   }
+
+  if (collection == nullptr) {
+    // something went wrong... must not continue
+    return nullptr;
+  }
+
   VPackSlice const slice = builder.slice();
+
+  TRI_ASSERT(cid != 0);
 
   int res = TRI_ERROR_NO_ERROR;
 
