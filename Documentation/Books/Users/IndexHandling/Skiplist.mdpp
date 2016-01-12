@@ -57,9 +57,10 @@ details, including the index-identifier, is returned.
     db.ids.save({ "myId": 123 });  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
     ~db._drop("ids");
     @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock ensureUniqueSkiplist
+    
     @startDocuBlockInline ensureUniqueSkiplistMultiColmun
     @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistMultiColmun}
-    @endDocuBlock ensureUniqueSkiplistMultiColmun
     ~db._create("ids");
     db.ids.ensureIndex({ type: "skiplist", fields: [ "name.first", "name.last" ], unique: true });
     db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
@@ -69,7 +70,7 @@ details, including the index-identifier, is returned.
     ~ // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
     ~db._drop("ids");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock ensureUniqueSkiplist
+    @endDocuBlock ensureUniqueSkiplistMultiColmun
 
 
 

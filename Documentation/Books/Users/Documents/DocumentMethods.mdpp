@@ -4,7 +4,7 @@
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-@brief constructs an all query for a collection
+constructs an all query for a collection
 `collection.all()`
 
 Fetches all documents from a collection and returns a cursor. You can use
@@ -49,7 +49,7 @@ Use *limit* to restrict the documents:
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-@brief constructs a query-by-example for a collection
+constructs a query-by-example for a collection
 `collection.byExample(example)`
 
 Fetches all documents from a collection that match the specified
@@ -110,33 +110,33 @@ As alternative you can supply an array of paths and values.
 
 Use *toArray* to get all documents at once:
 
-@startDocuBlockInline 003_collectionByExample
-@EXAMPLE_ARANGOSH_OUTPUT{003_collectionByExample}
-@endDocuBlock 003_collectionByExample
-~ db._create("users");
-  db.users.save({ name: "Gerhard" });
-  db.users.save({ name: "Helmut" });
-  db.users.save({ name: "Angela" });
-  db.users.all().toArray();
-  db.users.byExample({ "_id" : "users/20" }).toArray();
-  db.users.byExample({ "name" : "Gerhard" }).toArray();
-  db.users.byExample({ "name" : "Helmut", "_id" : "users/15" }).toArray();
-~ db._drop("users");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline 003_collectionByExample
+    @EXAMPLE_ARANGOSH_OUTPUT{003_collectionByExample}
+    ~ db._create("users");
+      db.users.save({ name: "Gerhard" });
+      db.users.save({ name: "Helmut" });
+      db.users.save({ name: "Angela" });
+      db.users.all().toArray();
+      db.users.byExample({ "_id" : "users/20" }).toArray();
+      db.users.byExample({ "name" : "Gerhard" }).toArray();
+      db.users.byExample({ "name" : "Helmut", "_id" : "users/15" }).toArray();
+    ~ db._drop("users");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 003_collectionByExample
 
 Use *next* to loop over all documents:
 
-@startDocuBlockInline 004_collectionByExampleNext
-@EXAMPLE_ARANGOSH_OUTPUT{004_collectionByExampleNext}
-@endDocuBlock 004_collectionByExampleNext
-~ db._create("users");
-  db.users.save({ name: "Gerhard" });
-  db.users.save({ name: "Helmut" });
-  db.users.save({ name: "Angela" });
-  var a = db.users.byExample( {"name" : "Angela" } );
-  while (a.hasNext()) print(a.next());
-~ db._drop("users");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline 004_collectionByExampleNext
+    @EXAMPLE_ARANGOSH_OUTPUT{004_collectionByExampleNext}
+    ~ db._create("users");
+      db.users.save({ name: "Gerhard" });
+      db.users.save({ name: "Helmut" });
+      db.users.save({ name: "Angela" });
+      var a = db.users.byExample( {"name" : "Angela" } );
+      while (a.hasNext()) print(a.next());
+    ~ db._drop("users");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 004_collectionByExampleNext
 
 
 
@@ -144,7 +144,7 @@ Use *next* to loop over all documents:
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief constructs a query-by-example for a collection
+constructs a query-by-example for a collection
 `collection.firstExample(example)`
 
 Returns the first document of a collection that matches the specified
@@ -158,16 +158,16 @@ As alternative you can supply an array of paths and values.
 
 @EXAMPLES
 
-@startDocuBlockInline collectionFirstExample
-@EXAMPLE_ARANGOSH_OUTPUT{collectionFirstExample}
-@endDocuBlock collectionFirstExample
-~ db._create("users");
-~ db.users.save({ name: "Gerhard" });
-~ db.users.save({ name: "Helmut" });
-~ db.users.save({ name: "Angela" });
-  db.users.firstExample("name", "Angela");
-~ db._drop("users");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline collectionFirstExample
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionFirstExample}
+    ~ db._create("users");
+    ~ db.users.save({ name: "Gerhard" });
+    ~ db.users.save({ name: "Helmut" });
+    ~ db.users.save({ name: "Angela" });
+      db.users.firstExample("name", "Angela");
+    ~ db._drop("users");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock collectionFirstExample
 
 
 
@@ -175,7 +175,7 @@ As alternative you can supply an array of paths and values.
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-@brief constructs a range query for a collection
+constructs a range query for a collection
 `collection.range(attribute, left, right)`
 
 Returns all documents from a collection such that the *attribute* is
@@ -197,26 +197,26 @@ The function may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection within a specific range
 is to use an AQL query as follows: 
 
-    FOR doc IN @@collection 
-      FILTER doc.value >= @left && doc.value < @right 
-      LIMIT @skip, @limit 
+    FOR doc IN @@collection
+      FILTER doc.value >= @left && doc.value < @right
+      LIMIT @skip, @limit
       RETURN doc
 
 @EXAMPLES
 
 Use *toArray* to get all documents at once:
 
-@startDocuBlockInline 005_collectionRange
-@EXAMPLE_ARANGOSH_OUTPUT{005_collectionRange}
-@endDocuBlock 005_collectionRange
-~ db._create("old");
-  db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
-  db.old.save({ age: 15 });
-  db.old.save({ age: 25 });
-  db.old.save({ age: 30 });
-  db.old.range("age", 10, 30).toArray();
-~ db._drop("old")
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline 005_collectionRange
+    @EXAMPLE_ARANGOSH_OUTPUT{005_collectionRange}
+    ~ db._create("old");
+      db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
+      db.old.save({ age: 15 });
+      db.old.save({ age: 25 });
+      db.old.save({ age: 30 });
+      db.old.range("age", 10, 30).toArray();
+    ~ db._drop("old")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 005_collectionRange
 
 
 
@@ -224,7 +224,7 @@ Use *toArray* to get all documents at once:
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-@brief constructs a closed range query for a collection
+constructs a closed range query for a collection
 `collection.closedRange(attribute, left, right)`
 
 Returns all documents of a collection such that the *attribute* is
@@ -240,35 +240,35 @@ not as attribute.
 Note: the *closedRange* simple query function is **deprecated** as of ArangoDB 2.6. 
 The function may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection within a specific range
-is to use an AQL query as follows: 
+is to use an AQL query as follows:
 
-    FOR doc IN @@collection 
-      FILTER doc.value >= @left && doc.value <= @right 
-      LIMIT @skip, @limit 
+    FOR doc IN @@collection
+      FILTER doc.value >= @left && doc.value <= @right
+      LIMIT @skip, @limit
       RETURN doc
 
 @EXAMPLES
 
 Use *toArray* to get all documents at once:
 
-@startDocuBlockInline 006_collectionClosedRange
-@EXAMPLE_ARANGOSH_OUTPUT{006_collectionClosedRange}
-@endDocuBlock 006_collectionClosedRange
-~ db._create("old");
-  db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
-  db.old.save({ age: 15 });
-  db.old.save({ age: 25 });
-  db.old.save({ age: 30 });
-  db.old.closedRange("age", 10, 30).toArray();
-~ db._drop("old")
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline 006_collectionClosedRange
+    @EXAMPLE_ARANGOSH_OUTPUT{006_collectionClosedRange}
+    ~ db._create("old");
+      db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
+      db.old.save({ age: 15 });
+      db.old.save({ age: 25 });
+      db.old.save({ age: 30 });
+      db.old.closedRange("age", 10, 30).toArray();
+    ~ db._drop("old")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 006_collectionClosedRange
 
 
 !SUBSECTION Any
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief returns any document from a collection
+returns any document from a collection
 `collection.any()`
 
 Returns a random document from the collection or *null* if none exists.
@@ -278,20 +278,20 @@ Returns a random document from the collection or *null* if none exists.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief counts the number of documents in a result set
+counts the number of documents in a result set
 `collection.count()`
 
 Returns the number of living documents in the collection.
 
 @EXAMPLES
 
-@startDocuBlockInline collectionCount
-@EXAMPLE_ARANGOSH_OUTPUT{collectionCount}
-@endDocuBlock collectionCount
-~ db._create("users");
-  db.users.count();
-~ db._drop("users");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline collectionCount
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionCount}
+    ~ db._create("users");
+      db.users.count();
+    ~ db._drop("users");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock collectionCount
 
 
 
@@ -299,7 +299,7 @@ Returns the number of living documents in the collection.
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief converts collection into an array
+converts collection into an array
 `collection.toArray()`
 
 Converts the collection into an array of documents. Never use this call
@@ -310,7 +310,7 @@ in a production environment.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief looks up a document
+looks up a document
 `collection.document(document)`
 
 The *document* method finds a document given its identifier or a document
@@ -338,36 +338,36 @@ first argument.
 
 Returns the document for a document-handle:
 
-@startDocuBlockInline documentsCollectionName
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionName}
-@endDocuBlock documentsCollectionName
-~ db._create("example");
-~ var myid = db.example.insert({_key: "2873916"});
-  db.example.document("example/2873916");
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionName
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionName}
+    ~ db._create("example");
+    ~ var myid = db.example.insert({_key: "2873916"});
+      db.example.document("example/2873916");
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionName
 
 An error is raised if the document is unknown:
 
-@startDocuBlockInline documentsCollectionNameUnknown
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameUnknown}
-@endDocuBlock documentsCollectionNameUnknown
-~ db._create("example");
-~ var myid = db.example.insert({_key: "2873916"});
-| db.example.document("example/4472917");
-~     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionNameUnknown
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameUnknown}
+    ~ db._create("example");
+    ~ var myid = db.example.insert({_key: "2873916"});
+    | db.example.document("example/4472917");
+    ~     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionNameUnknown
 
 An error is raised if the handle is invalid:
 
-@startDocuBlockInline documentsCollectionNameHandle
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameHandle}
-@endDocuBlock documentsCollectionNameHandle
-~ db._create("example");
-  db.example.document(""); // xpError(ERROR_ARANGO_DOCUMENT_HANDLE_BAD)
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionNameHandle
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameHandle}
+    ~ db._create("example");
+      db.example.document(""); // xpError(ERROR_ARANGO_DOCUMENT_HANDLE_BAD)
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionNameHandle
 
 
 
@@ -375,7 +375,7 @@ An error is raised if the handle is invalid:
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief checks whether a document exists
+checks whether a document exists
 `collection.exists(document)`
 
 The *exists* method determines whether a document exists given its
@@ -405,37 +405,37 @@ first argument.
 <!-- arangod/V8Server/v8-query.cpp-->
 
 
-@brief fetches multiple documents by their keys
+fetches multiple documents by their keys
 `collection.documents(keys)`
 
 Looks up the documents in the specified collection using the array of keys
 provided. All documents for which a matching key was specified in the *keys*
-array and that exist in the collection will be returned. 
-Keys for which no document can be found in the underlying collection are ignored, 
+array and that exist in the collection will be returned.
+Keys for which no document can be found in the underlying collection are ignored,
 and no exception will be thrown for them.
 
 @EXAMPLES
 
-@startDocuBlockInline collectionLookupByKeys
-@EXAMPLE_ARANGOSH_OUTPUT{collectionLookupByKeys}
-@endDocuBlock collectionLookupByKeys
-~ db._drop("example");
-~ db._create("example");
-  keys = [ ];
-| for (var i = 0; i < 10; ++i) {
-|   db.example.insert({ _key: "test" + i, value: i });
-|   keys.push("test" + i);
-  }
-  db.example.documents(keys);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline collectionLookupByKeys
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionLookupByKeys}
+    ~ db._drop("example");
+    ~ db._create("example");
+      keys = [ ];
+    | for (var i = 0; i < 10; ++i) {
+    |   db.example.insert({ _key: "test" + i, value: i });
+    |   keys.push("test" + i);
+      }
+      db.example.documents(keys);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock collectionLookupByKeys
 
 
 !SUBSECTION Insert
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief insert a new document
+insert a new document
 `collection.insert(data)`
 
 Creates a new document in the *collection* from the given *data*. The
@@ -463,14 +463,14 @@ Note: since ArangoDB 2.2, *insert* is an alias for *save*.
 
 @EXAMPLES
 
-@startDocuBlockInline documentsCollectionInsert
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsert}
-@endDocuBlock documentsCollectionInsert
-~ db._create("example");
-  db.example.insert({ Hello : "World" });
-  db.example.insert({ Hello : "World" }, true);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionInsert
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsert}
+    ~ db._create("example");
+      db.example.insert({ Hello : "World" });
+      db.example.insert({ Hello : "World" }, true);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionInsert
 
 
 
@@ -478,7 +478,7 @@ Note: since ArangoDB 2.2, *insert* is an alias for *save*.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief replaces a document
+replaces a document
 `collection.replace(document, data)`
 
 Replaces an existing *document*. The *document* must be a document in
@@ -523,27 +523,27 @@ first argument.
 
 Create and update a document:
 
-@startDocuBlockInline documentsCollectionReplace
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplace}
-@endDocuBlock documentsCollectionReplace
-~ db._create("example");
-  a1 = db.example.insert({ a : 1 });
-  a2 = db.example.replace(a1, { a : 2 });
-  a3 = db.example.replace(a1, { a : 3 }); // xpError(ERROR_ARANGO_CONFLICT);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionReplace
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplace}
+    ~ db._create("example");
+      a1 = db.example.insert({ a : 1 });
+      a2 = db.example.replace(a1, { a : 2 });
+      a3 = db.example.replace(a1, { a : 3 }); // xpError(ERROR_ARANGO_CONFLICT);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionReplace
 
 Use a document handle:
 
-@startDocuBlockInline documentsCollectionReplaceHandle
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplaceHandle}
-@endDocuBlock documentsCollectionReplaceHandle
-~ db._create("example");
-~ var myid = db.example.insert({_key: "3903044"});
-  a1 = db.example.insert({ a : 1 });
-  a2 = db.example.replace("example/3903044", { a : 2 });
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionReplaceHandle
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplaceHandle}
+    ~ db._create("example");
+    ~ var myid = db.example.insert({_key: "3903044"});
+      a1 = db.example.insert({ a : 1 });
+      a2 = db.example.replace("example/3903044", { a : 2 });
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionReplaceHandle
 
 
 
@@ -551,7 +551,7 @@ Use a document handle:
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief updates a document
+updates a document
 `collection.update(document, data, overwrite, keepNull, waitForSync)` or
 `collection.update(document, data,
 overwrite: true or false, keepNull: true or false, waitForSync: true or false)`
@@ -600,69 +600,69 @@ first argument.
 
 Create and update a document:
 
-@startDocuBlockInline documentsCollectionUpdate
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdate}
-@endDocuBlock documentsCollectionUpdate
-~ db._create("example");
-  a1 = db.example.insert({"a" : 1});
-  a2 = db.example.update(a1, {"b" : 2, "c" : 3});
-  a3 = db.example.update(a1, {"d" : 4}); // xpError(ERROR_ARANGO_CONFLICT);
-  a4 = db.example.update(a2, {"e" : 5, "f" : 6 });
-  db.example.document(a4);
-  a5 = db.example.update(a4, {"a" : 1, c : 9, e : 42 });
-  db.example.document(a5);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionUpdate
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdate}
+    ~ db._create("example");
+      a1 = db.example.insert({"a" : 1});
+      a2 = db.example.update(a1, {"b" : 2, "c" : 3});
+      a3 = db.example.update(a1, {"d" : 4}); // xpError(ERROR_ARANGO_CONFLICT);
+      a4 = db.example.update(a2, {"e" : 5, "f" : 6 });
+      db.example.document(a4);
+      a5 = db.example.update(a4, {"a" : 1, c : 9, e : 42 });
+      db.example.document(a5);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionUpdate
 
 Use a document handle:
 
-@startDocuBlockInline documentsCollectionUpdateHandle
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandle}
-@endDocuBlock documentsCollectionUpdateHandle
-~ db._create("example");
-~ var myid = db.example.insert({_key: "18612115"});
-  a1 = db.example.insert({"a" : 1});
-  a2 = db.example.update("example/18612115", { "x" : 1, "y" : 2 });
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionUpdateHandle
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandle}
+    ~ db._create("example");
+    ~ var myid = db.example.insert({_key: "18612115"});
+      a1 = db.example.insert({"a" : 1});
+      a2 = db.example.update("example/18612115", { "x" : 1, "y" : 2 });
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionUpdateHandle
 
 Use the keepNull parameter to remove attributes with null values:
 
-@startDocuBlockInline documentsCollectionUpdateHandleKeepNull
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleKeepNull}
-@endDocuBlock documentsCollectionUpdateHandleKeepNull
-~ db._create("example");
-~ var myid = db.example.insert({_key: "19988371"});
-  db.example.insert({"a" : 1});
-|db.example.update("example/19988371",
-                   { "b" : null, "c" : null, "d" : 3 });
-  db.example.document("example/19988371");
-  db.example.update("example/19988371", { "a" : null }, false, false);
-  db.example.document("example/19988371");
-| db.example.update("example/19988371",
-                    { "b" : null, "c": null, "d" : null }, false, false);
-  db.example.document("example/19988371");
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionUpdateHandleKeepNull
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleKeepNull}
+    ~ db._create("example");
+    ~ var myid = db.example.insert({_key: "19988371"});
+      db.example.insert({"a" : 1});
+    |db.example.update("example/19988371",
+                       { "b" : null, "c" : null, "d" : 3 });
+      db.example.document("example/19988371");
+      db.example.update("example/19988371", { "a" : null }, false, false);
+      db.example.document("example/19988371");
+    | db.example.update("example/19988371",
+                        { "b" : null, "c": null, "d" : null }, false, false);
+      db.example.document("example/19988371");
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionUpdateHandleKeepNull
 
 Patching array values:
 
-@startDocuBlockInline documentsCollectionUpdateHandleArray
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleArray}
-@endDocuBlock documentsCollectionUpdateHandleArray
-~ db._create("example");
-~ var myid = db.example.insert({_key: "20774803"});
-|  db.example.insert({"a" : { "one" : 1, "two" : 2, "three" : 3 },
-                      "b" : { }});
-| db.example.update("example/20774803", {"a" : { "four" : 4 },
-                                         "b" : { "b1" : 1 }});
-  db.example.document("example/20774803");
-| db.example.update("example/20774803", { "a" : { "one" : null },
-|                                         "b" : null },
-                    false, false);
-  db.example.document("example/20774803");
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionUpdateHandleArray
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleArray}
+    ~ db._create("example");
+    ~ var myid = db.example.insert({_key: "20774803"});
+    |  db.example.insert({"a" : { "one" : 1, "two" : 2, "three" : 3 },
+                          "b" : { }});
+    | db.example.update("example/20774803", {"a" : { "four" : 4 },
+                                             "b" : { "b1" : 1 }});
+      db.example.document("example/20774803");
+    | db.example.update("example/20774803", { "a" : { "one" : null },
+    |                                         "b" : null },
+                        false, false);
+      db.example.document("example/20774803");
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionUpdateHandleArray
 
 
 
@@ -670,7 +670,7 @@ Patching array values:
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief removes a document
+removes a document
 `collection.remove(document)`
 
 Removes a document. If there is revision mismatch, then an error is thrown.
@@ -704,30 +704,30 @@ first argument.
 
 Remove a document:
 
-@startDocuBlockInline documentDocumentRemove
-@EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemove}
-@endDocuBlock documentDocumentRemove
-~ db._create("example");
-  a1 = db.example.insert({ a : 1 });
-  db.example.document(a1);
-  db.example.remove(a1);
-  db.example.document(a1); // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentDocumentRemove
+    @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemove}
+    ~ db._create("example");
+      a1 = db.example.insert({ a : 1 });
+      db.example.document(a1);
+      db.example.remove(a1);
+      db.example.document(a1); // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentDocumentRemove
 
 Remove a document with a conflict:
 
-@startDocuBlockInline documentDocumentRemoveConflict
-@EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemoveConflict}
-@endDocuBlock documentDocumentRemoveConflict
-~ db._create("example");
-  a1 = db.example.insert({ a : 1 });
-  a2 = db.example.replace(a1, { a : 2 });
-  db.example.remove(a1);       // xpError(ERROR_ARANGO_CONFLICT);
-  db.example.remove(a1, true);
-  db.example.document(a1);     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentDocumentRemoveConflict
+    @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemoveConflict}
+    ~ db._create("example");
+      a1 = db.example.insert({ a : 1 });
+      a2 = db.example.replace(a1, { a : 2 });
+      db.example.remove(a1);       // xpError(ERROR_ARANGO_CONFLICT);
+      db.example.remove(a1, true);
+      db.example.document(a1);     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentDocumentRemoveConflict
 
 
 
@@ -735,7 +735,7 @@ Remove a document with a conflict:
 <!-- arangod/V8Server/v8-query.cpp-->
 
 
-@brief removes multiple documents by their keys
+removes multiple documents by their keys
 `collection.removeByKeys(keys)`
 
 Looks up the documents in the specified collection using the array of keys
@@ -750,26 +750,26 @@ documents in the *ignored* sub-attribute.
 
 @EXAMPLES
 
-@startDocuBlockInline collectionRemoveByKeys
-@EXAMPLE_ARANGOSH_OUTPUT{collectionRemoveByKeys}
-@endDocuBlock collectionRemoveByKeys
-~ db._drop("example");
-~ db._create("example");
-  keys = [ ];
-| for (var i = 0; i < 10; ++i) {
-|   db.example.insert({ _key: "test" + i, value: i });
-|   keys.push("test" + i);
-  }
-  db.example.removeByKeys(keys);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline collectionRemoveByKeys
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionRemoveByKeys}
+    ~ db._drop("example");
+    ~ db._create("example");
+      keys = [ ];
+    | for (var i = 0; i < 10; ++i) {
+    |   db.example.insert({ _key: "test" + i, value: i });
+    |   keys.push("test" + i);
+      }
+      db.example.removeByKeys(keys);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock collectionRemoveByKeys
 
 
 !SUBSECTION Remove By Example
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-@brief removes documents matching an example
+removes documents matching an example
 `collection.removeByExample(example)`
 
 Removes all documents matching an example.
@@ -796,21 +796,21 @@ removed.
 
 @EXAMPLES
 
-@startDocuBlockInline 010_documentsCollectionRemoveByExample
-@EXAMPLE_ARANGOSH_OUTPUT{010_documentsCollectionRemoveByExample}
-@endDocuBlock 010_documentsCollectionRemoveByExample
-~ db._create("example");
-~ db.example.save({ Hello : "world" });
-  db.example.removeByExample( {Hello : "world"} );
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline 010_documentsCollectionRemoveByExample
+    @EXAMPLE_ARANGOSH_OUTPUT{010_documentsCollectionRemoveByExample}
+    ~ db._create("example");
+    ~ db.example.save({ Hello : "world" });
+      db.example.removeByExample( {Hello : "world"} );
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 010_documentsCollectionRemoveByExample
 
 
 !SUBSECTION Replace By Example
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-@brief replaces documents matching an example
+replaces documents matching an example
 `collection.replaceByExample(example, newValue)`
 
 Replaces all documents matching an example with a new document body.
@@ -840,21 +840,21 @@ replaced.
 
 @EXAMPLES
 
-@startDocuBlockInline 011_documentsCollectionReplaceByExample
-@EXAMPLE_ARANGOSH_OUTPUT{011_documentsCollectionReplaceByExample}
-@endDocuBlock 011_documentsCollectionReplaceByExample
-~ db._create("example");
-  db.example.save({ Hello : "world" });
-  db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline 011_documentsCollectionReplaceByExample
+    @EXAMPLE_ARANGOSH_OUTPUT{011_documentsCollectionReplaceByExample}
+    ~ db._create("example");
+      db.example.save({ Hello : "world" });
+      db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 011_documentsCollectionReplaceByExample
 
 
 !SUBSECTION Update By Example
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-@brief partially updates documents matching an example
+partially updates documents matching an example
 `collection.updateByExample(example, newValue)`
 
 Partially updates all documents matching an example with a new document body.
@@ -903,22 +903,22 @@ an object with the following sub-attributes:
 
 @EXAMPLES
 
-@startDocuBlockInline 012_documentsCollectionUpdateByExample
-@EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
-@endDocuBlock 012_documentsCollectionUpdateByExample
-~ db._create("example");
-  db.example.save({ Hello : "world", foo : "bar" });
-  db.example.updateByExample({ Hello: "world" }, { Hello: "foo", World: "bar" }, false);
-  db.example.byExample({ Hello: "foo" }).toArray()
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline 012_documentsCollectionUpdateByExample
+    @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
+    ~ db._create("example");
+      db.example.save({ Hello : "world", foo : "bar" });
+      db.example.updateByExample({ Hello: "world" }, { Hello: "foo", World: "bar" }, false);
+      db.example.byExample({ Hello: "foo" }).toArray()
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 012_documentsCollectionUpdateByExample
 
 
 !SUBSECTION First
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief selects the n first documents in the collection
+selects the n first documents in the collection
 `collection.first(count)`
 
 The *first* method returns the n first documents from the collection, in
@@ -940,31 +940,31 @@ one shard.
 
 @EXAMPLES
 
-@startDocuBlockInline documentsCollectionFirst
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirst}
-@endDocuBlock documentsCollectionFirst
-~ db._create("example");
-~ db.example.save({ Hello : "world" });
-~ db.example.save({ Foo : "bar" });
-  db.example.first(1);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionFirst
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirst}
+    ~ db._create("example");
+    ~ db.example.save({ Hello : "world" });
+    ~ db.example.save({ Foo : "bar" });
+      db.example.first(1);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionFirst
 
-@startDocuBlockInline documentsCollectionFirstNull
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirstNull}
-@endDocuBlock documentsCollectionFirstNull
-~ db._create("example");
-~ db.example.save({ Hello : "world" });
-  db.example.first();
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionFirstNull
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirstNull}
+    ~ db._create("example");
+    ~ db.example.save({ Hello : "world" });
+      db.example.first();
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionFirstNull
 
 
 !SUBSECTION Last
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief selects the n last documents in the collection
+selects the n last documents in the collection
 `collection.last(count)`
 
 The *last* method returns the n last documents from the collection, in
@@ -986,31 +986,31 @@ one shard.
 
 @EXAMPLES
 
-@startDocuBlockInline documentsCollectionLast
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLast}
-@endDocuBlock documentsCollectionLast
-~ db._create("example");
-~ db.example.save({ Hello : "world" });
-~ db.example.save({ Foo : "bar" });
-  db.example.last(2);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionLast
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLast}
+    ~ db._create("example");
+    ~ db.example.save({ Hello : "world" });
+    ~ db.example.save({ Foo : "bar" });
+      db.example.last(2);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionLast
 
-@startDocuBlockInline documentsCollectionLastNull
-@EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLastNull}
-@endDocuBlock documentsCollectionLastNull
-~ db._create("example");
-~ db.example.save({ Hello : "world" });
-  db.example.last(1);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline documentsCollectionLastNull
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLastNull}
+    ~ db._create("example");
+    ~ db.example.save({ Hello : "world" });
+      db.example.last(1);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionLastNull
 
 
 
 !SUBSECTION Collection type
 
 
-@brief returns the type of a collection
+returns the type of a collection
 `collection.type()`
 
 Returns the type of a collection. Possible values are:
@@ -1021,7 +1021,7 @@ Returns the type of a collection. Possible values are:
 !SUBSECTION Get the Version of ArangoDB
 
 
-@brief return the server version string
+return the server version string
 `db._version()`
 
 Returns the server version string. Note that this is not the version of the
@@ -1029,38 +1029,38 @@ database.
 
 @EXAMPLES
 
-@startDocuBlockInline dbVersion
-@EXAMPLE_ARANGOSH_OUTPUT{dbVersion}
-@endDocuBlock dbVersion
-  require("internal").db._version();
-@END_EXAMPLE_ARANGOSH_OUTPUT
+    @startDocuBlockInline dbVersion
+    @EXAMPLE_ARANGOSH_OUTPUT{dbVersion}
+      require("internal").db._version();
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock dbVersion
 
 
 !SUBSECTION Misc
 
 
-@brief returns all edges connected to a vertex
+returns all edges connected to a vertex
 `collection.edges(vertex-id)`
 
 Returns all edges connected to the vertex specified by *vertex-id*.
 
 
 
-@brief returns inbound edges connected to a vertex
+returns inbound edges connected to a vertex
 `collection.inEdges(vertex-id)`
 
 Returns inbound edges connected to the vertex specified by *vertex-id*.
 
 
 
-@brief returns outbound edges connected to a vertex
+returns outbound edges connected to a vertex
 `collection.outEdges(vertex-id)`
 
 Returns outbound edges connected to the vertex specified by *vertex-id*.
 
 
 
-@brief iterates over some elements of a collection
+iterates over some elements of a collection
 `collection.iterate(iterator, options)`
 
 Iterates over some elements of the collection and apply the function
@@ -1077,27 +1077,23 @@ as second argument.
 
 @EXAMPLES
 
-@startDocuBlockInline accessViaGeoIndex
-@EXAMPLE_ARANGOSH_OUTPUT{accessViaGeoIndex}
-@endDocuBlock accessViaGeoIndex
-~db._create("example")
-|for (i = -90;  i <= 90;  i += 10) {
-|  for (j = -180;  j <= 180;  j += 10) {
-|    db.example.save({ name : "Name/" + i + "/" + j,
-|                      home : [ i, j ],
-|                      work : [ -i, -j ] });
-|  }
-|}
-
- db.example.ensureIndex({ type: "geo", fields: [ "home" ] });
- |items = db.example.getIndexes().map(function(x) { return x.id; });
- db.example.index(items[1]);
-~ db._drop("example");
-@END_EXAMPLE_ARANGOSH_OUTPUT
-
-
-
-
+    @startDocuBlockInline accessViaGeoIndex
+    @EXAMPLE_ARANGOSH_OUTPUT{accessViaGeoIndex}
+    ~db._create("example")
+    |for (i = -90;  i <= 90;  i += 10) {
+    |  for (j = -180;  j <= 180;  j += 10) {
+    |    db.example.save({ name : "Name/" + i + "/" + j,
+    |                      home : [ i, j ],
+    |                      work : [ -i, -j ] });
+    |  }
+    |}
+    
+     db.example.ensureIndex({ type: "geo", fields: [ "home" ] });
+     |items = db.example.getIndexes().map(function(x) { return x.id; });
+     db.example.index(items[1]);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock accessViaGeoIndex
 
 `edge.setProperty(name, value)`
 
