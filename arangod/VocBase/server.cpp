@@ -53,13 +53,11 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief page size
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t PageSize;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mask value for significant bits of server id
@@ -72,7 +70,6 @@ size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define DATABASE_MANAGER_INTERVAL (500 * 1000)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for serializing the creation of database
@@ -110,8 +107,6 @@ static std::atomic<uint64_t> CurrentTick(0);
 
 static TRI_server_id_t ServerId;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a new server id
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +133,6 @@ static int GenerateServerId(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ReadServerId(char const* filename) {
-  TRI_json_t* idString;
   TRI_server_id_t foundId;
 
   TRI_ASSERT(filename != nullptr);
@@ -146,28 +140,26 @@ static int ReadServerId(char const* filename) {
   if (!TRI_ExistsFile(filename)) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
-
-  TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr);
-
-  if (!TRI_IsObjectJson(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  try {
+    std::string filenameString(filename);
+    std::shared_ptr<VPackBuilder> builder =
+        triagens::basics::VelocyPackHelper::velocyPackFromFile(filenameString);
+    VPackSlice content = builder->slice();
+    if (!content.isObject()) {
+      return TRI_ERROR_INTERNAL;
     }
+    VPackSlice idSlice = content.get("serverId");
+    if (!idSlice.isString()) {
+      return TRI_ERROR_INTERNAL;
+    }
+    std::string idString = idSlice.copyString();
+    foundId = TRI_UInt64String(idString.c_str());
+  } catch (...) {
+    // Nothing to free
     return TRI_ERROR_INTERNAL;
   }
-
-  idString = TRI_LookupObjectJson(json, "serverId");
-
-  if (!TRI_IsStringJson(idString)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    return TRI_ERROR_INTERNAL;
-  }
-
-  foundId = TRI_UInt64String2(idString->_value._string.data,
-                              idString->_value._string.length - 1);
 
   LOG_TRACE("using existing server id: %llu", (unsigned long long)foundId);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (foundId == 0) {
     return TRI_ERROR_INTERNAL;
@@ -253,7 +245,6 @@ static int DetermineServerId(TRI_server_t* server, bool checkVersion) {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a user can see a database
@@ -999,8 +990,6 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
                                   bool deleted,
                                   TRI_vocbase_defaults_t const* defaults,
                                   char const* directory) {
-  // TRI_json_t* properties;
-
   TRI_ASSERT(id > 0);
   TRI_ASSERT(name != nullptr);
   TRI_ASSERT(directory != nullptr);
@@ -1572,7 +1561,6 @@ static void DatabaseManager(void* data) {
   CloseDroppedDatabases(server);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
@@ -1669,7 +1657,6 @@ void TRI_InitServerGlobals() {
 
   memset(&ServerId, 0, sizeof(TRI_server_id_t));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the global server id
@@ -2526,7 +2513,6 @@ void TRI_GetDatabaseDefaultsServer(TRI_server_t* server,
   memcpy(target, &server->_defaults, sizeof(TRI_vocbase_defaults_t));
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick
 ////////////////////////////////////////////////////////////////////////////////
@@ -2564,7 +2550,6 @@ void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
 TRI_voc_tick_t TRI_CurrentTickServer() {
   return (ServerIdentifier | (CurrentTick << 16));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)
@@ -2634,5 +2619,3 @@ TRI_server_t::~TRI_server_t() {
     TRI_Free(TRI_CORE_MEM_ZONE, _basePath);
   }
 }
-
-
