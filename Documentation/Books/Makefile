@@ -194,7 +194,7 @@ check-docublocks:
 		grep -v '.*#.*:.*' \
 		   >> /tmp/rawindoc.txt
 	cat /tmp/rawindoc.txt | sed  -e "s;.*ck ;;" -e "s;.*ne ;;" |sort -u > /tmp/indoc.txt
-	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
+	grep -R '^/// @startDocuBlock' ../DocuBlocks --include "*.md" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
 # searching the Inline docublocks needs some more blacklisting:
 	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v ppbook |\

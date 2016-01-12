@@ -87,7 +87,7 @@ However, if you use
 
 ```json
 { a.c : 1 }
-```,
+```
 
 then you will find all documents, which contain a sub-document in *a*
 that has an attribute *c* of value *1*. Both the following documents
@@ -104,13 +104,13 @@ and
 
 will match.
 
-`collection.byExample(path1, value1, ...)`
+```
+collection.byExample(path1, value1, ...)
+```
 
 As alternative you can supply an array of paths and values.
 
-
 **Examples**
-
 
 Use *toArray* to get all documents at once:
 
@@ -128,6 +128,7 @@ Use *toArray* to get all documents at once:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 003_collectionByExample
 
+
 Use *next* to loop over all documents:
 
     @startDocuBlockInline 004_collectionByExampleNext
@@ -142,8 +143,6 @@ Use *next* to loop over all documents:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 004_collectionByExampleNext
 
-
-
 !SUBSECTION First Example
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
@@ -152,7 +151,7 @@ constructs a query-by-example for a collection
 `collection.firstExample(example)`
 
 Returns the first document of a collection that matches the specified
-example. If no such document exists, *null* will be returned. 
+example. If no such document exists, *null* will be returned.
 The example has to be specified as paths and values.
 See *byExample* for details.
 

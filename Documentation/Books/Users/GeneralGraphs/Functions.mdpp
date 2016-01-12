@@ -27,10 +27,7 @@ Returns the vertex defined with the attribute *_from* of the edge with *edgeId* 
 
 
 **Parameters**
-
-
-@PARAM{edgeId, string, required}
-*_id* attribute of the edge
+ * edgeId (required) *_id* attribute of the edge
 
 
 **Examples**
@@ -61,8 +58,7 @@ Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as
 **Parameters**
 
 
-@PARAM{edgeId, string, required}
-*_id* attribute of the edge
+ * edgeId (required) *_id* attribute of the edge
 
 
 **Examples**
@@ -96,11 +92,8 @@ Hence the default call would have a complexity of **O(n\*m)**;
 
 **Parameters**
 
-
-@PARAM{vertexExample, object, optional}
-See [Definition of examples](#definition-of-examples)
-@PARAM{options, object, optional}
-An object defining further options. Can have the following values:
+ * vertexExample (optional) See [Definition of examples](#definition-of-examples)
+ * options (optional) An object defining further options. Can have the following values:
   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition-of-examples)
   * *neighborExamples*: Filter the neighbor vertices, see [Definition of examples](#definition-of-examples)
@@ -249,14 +242,10 @@ defined by the parameters vertexExamples.
 **Parameters**
 
 
-@PARAM{vertex1Examples, object, optional}
-Filter the set of source vertices, see [Definition of examples](#definition-of-examples)
+* vertex1Examples (optional) Filter the set of source vertices, see [Definition of examples](#definition-of-examples)
 
-@PARAM{vertex2Examples, object, optional}
-Filter the set of vertices compared to, see [Definition of examples](#definition-of-examples)
-
-@PARAM{options, object, optional}
-An object defining further options. Can have the following values:
+* vertex2Examples (optional) Filter the set of vertices compared to, see [Definition of examples](#definition-of-examples)
+* options (optional) An object defining further options. Can have the following values:
   * *vertex1CollectionRestriction* : One or a list of vertex-collection names that should be
       searched for source vertices.
   * *vertex2CollectionRestriction* : One or a list of vertex-collection names that should be
@@ -348,8 +337,7 @@ the graph and *m* the average amount of connected edges;
 **Parameters**
 
 
-@PARAM{options, object, optional}
-An object containing options, see below:
+* options (optional) An object containing options, see below:
   * *direction*        : The direction of the edges. Possible values are *any*,
     *inbound* and *outbound* (default).
   * *followCycles* (optional) : If set to *true* the query follows cycles in the graph,
@@ -416,16 +404,9 @@ The complexity of the function is described
 **Parameters**
 
 
-@PARAM{startVertexExample, object, optional}
-An example for the desired start Vertices
-(see [Definition of examples](#definition-of-examples)).
-
-@PARAM{endVertexExample, object, optional}
-An example for the desired
-end Vertices (see [Definition of examples](#definition-of-examples)).
-
-@PARAM{options, object, optional}
-An object containing options, see below:
+* startVertexExample (optional) An example for the desired start Vertices (see [Definition of examples](#definition-of-examples)).
+* endVertexExample (optional) An example for the desired end Vertices (see [Definition of examples](#definition-of-examples)).
+* options (optional) An object containing options, see below:
   * *direction*                        : The direction of the edges as a string.
                                          Possible values are *outbound*, *inbound* and *any* (default).
   * *edgeCollectionRestriction*        : One or multiple edge
@@ -541,12 +522,8 @@ The complexity of the function is described
 
 **Parameters**
 
-
-@PARAM{vertexExample, object, optional}
-Filter the vertices, see [Definition of examples](#definition-of-examples)
-
-@PARAM{options, object, optional}
-An object defining further options. Can have the following values:
+* vertexExample (optional) Filter the vertices, see [Definition of examples](#definition-of-examples)
+* options (optional) An object defining further options. Can have the following values:
   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
       considered to be on the path.
@@ -671,12 +648,8 @@ The complexity of the function is described
 
 **Parameters**
 
-
-@PARAM{vertexExample, object, optional}
-Filter the vertices, see [Definition of examples](#definition-of-examples)
-
-@PARAM{options, object, optional}
-An object defining further options. Can have the following values:
+* vertexExample (optional) Filter the vertices, see [Definition of examples](#definition-of-examples)
+* options (optional) An object defining further options. Can have the following values:
   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
                                   considered to be on the path.
@@ -809,12 +782,8 @@ The complexity of the function is described
 
 **Parameters**
 
-
-@PARAM{vertexExample, object, optional}
-Filter the vertices, see [Definition of examples](#definition-of-examples)
-
-@PARAM{options, object, optional}
-An object defining further options. Can have the following values:
+* vertexExample (optional) Filter the vertices, see [Definition of examples](#definition-of-examples)
+* options (optional) An object defining further options. Can have the following values:
   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
   * *weight*: The name of the attribute of the edges containing the weight.
   * *defaultWeight*: Only used with the option *weight*.
@@ -933,9 +902,7 @@ The complexity of the function is described
 
 **Parameters**
 
-
-@PARAM{options, object, optional}
-An object defining further options. Can have the following values:
+* options (optional) An object defining further options. Can have the following values:
   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
@@ -1004,9 +971,7 @@ The complexity of the function is described
 
 **Parameters**
 
-
-@PARAM{options, object, optional}
-An object defining further options. Can have the following values:
+* options (optional) An object defining further options. Can have the following values:
   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
