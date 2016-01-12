@@ -370,7 +370,7 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
     // this part of the code should only be called for anonymous COLLECT nodes,
     // which only have one result variable
     auto en = static_cast<CollectNode const*>(node);
-    auto const& vars = en->collectVariables();
+    auto const& vars = en->groupVariables();
 
     TRI_ASSERT(vars.size() == 1);
     auto v = vars[0].first;

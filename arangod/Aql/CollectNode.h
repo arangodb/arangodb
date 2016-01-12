@@ -221,7 +221,7 @@ class CollectNode : public ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::pair<Variable const*, Variable const*>> const&
-  collectVariables() const {
+  groupVariables() const {
     return _groupVariables;
   }
 
