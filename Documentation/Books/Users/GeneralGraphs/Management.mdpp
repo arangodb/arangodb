@@ -21,10 +21,7 @@ This function is the entry point for the management and will return the correct 
 
 **Parameters**
 
-
-@PARAM{relationX, object, optional}
-An object representing a definition of one relation in the graph
-
+* relationX (optional) An object representing a definition of one relation in the graph
 
 **Examples**
 
@@ -54,13 +51,8 @@ this function can be used to add more definitions to the initial list.
 
 **Parameters**
 
-
-@PARAM{edgeDefinitions, array, required}
-A list of relation definition objects.
-
-@PARAM{relationX, object, required}
-An object representing a definition of one relation in the graph
-
+* edgeDefinitions (required) A list of relation definition objects.
+* relationX (required) An object representing a definition of one relation in the graph
 
 **Examples**
 
@@ -94,17 +86,11 @@ to any collection in *toVertexCollections*.
 
 **Parameters**
 
-
-@PARAM{relationName, string, required}
-  The name of the edge collection where the edges should be stored.
+* relationName (required) The name of the edge collection where the edges should be stored.
   Will be created if it does not yet exist.
-
-@PARAM{fromVertexCollections, array, required}
-  One or a list of collection names. Source vertices for the edges
+* fromVertexCollections (required) One or a list of collection names. Source vertices for the edges
   have to be stored in these collections. Collections will be created if they do not exist.
-
-@PARAM{toVertexCollections, array, required}
-  One or a list of collection names. Target vertices for the edges
+* toVertexCollections (required) One or a list of collection names. Target vertices for the edges
   have to be stored in these collections. Collections will be created if they do not exist.
 
 
@@ -149,13 +135,9 @@ edges in any direction between any pair of vertices within the
 
 **Parameters**
 
-
-@PARAM{relationName, string, required}
-  The name of the edge collection where the edges should be stored.
+* relationName (required) The name of the edge collection where the edges should be stored.
   Will be created if it does not yet exist.
-
-@PARAM{vertexCollections, array, required}
-  One or a list of collection names for which connections are allowed.
+* vertexCollections (required) One or a list of collection names for which connections are allowed.
   Will be created if they do not exist.
 
 
@@ -203,19 +185,12 @@ to any collection in *toVertexCollections*.
 
 **Parameters**
 
-
-@PARAM{relationName, string, required}
-  The name of the edge collection where the edges should be stored.
+* relationName (required) The name of the edge collection where the edges should be stored.
   Will be created if it does not yet exist.
-
-@PARAM{fromVertexCollections, array, required}
-  One or a list of collection names. Source vertices for the edges
+* fromVertexCollections (required) One or a list of collection names. Source vertices for the edges
   have to be stored in these collections. Collections will be created if they do not exist.
-
-@PARAM{toVertexCollections, array, required}
-  One or a list of collection names. Target vertices for the edges
+* toVertexCollections (required) One or a list of collection names. Target vertices for the edges
   have to be stored in these collections. Collections will be created if they do not exist.
-
 
 **Examples**
 
@@ -248,15 +223,9 @@ All collections used within the creation process are created if they do not exis
 
 **Parameters**
 
-
-@PARAM{graphName, string, required}
-Unique identifier of the graph
-
-@PARAM{edgeDefinitions, array, optional}
-List of relation definition objects
-
-@PARAM{orphanCollections, array, optional}
-List of additional vertex collection names
+* graphName (required) Unique identifier of the graph
+* edgeDefinitions (optional) List of relation definition objects
+* orphanCollections (optional) List of additional vertex collection names
 
 
 **Examples**
@@ -383,9 +352,7 @@ A graph can be retrieved by its name.
 
 **Parameters**
 
-
-@PARAM{graphName, string, required}
-Unique identifier of the graph
+* graphName (required) Unique identifier of the graph
 
 
 **Examples**
@@ -421,13 +388,8 @@ To drop the collections, the optional parameter *drop-collections* can be set to
 
 **Parameters**
 
-
-@PARAM{graphName, string, required}
-Unique identifier of the graph
-
-@PARAM{dropCollections, boolean, optional}
-Define if collections should be dropped (default: false)
-
+* graphName (required) Unique identifier of the graph
+* dropCollections (optional) Define if collections should be dropped (default: false)
 
 **Examples**
 
@@ -485,9 +447,7 @@ graph with different *from* and/or *to* collections an error is thrown.
 
 **Parameters**
 
-
-@PARAM{edgeDefinition, object, required}
-The relation definition to extend the graph
+* edgeDefinition (required) The relation definition to extend the graph
 
 
 **Examples**
@@ -525,10 +485,8 @@ definition will be modified, too.
 
 **Parameters**
 
-
-@PARAM{edgeDefinition, object, required}
-The edge definition to replace the existing edge
-definition with the same attribute *collection*.
+* edgeDefinition (required) The edge definition to replace the existing edge
+  definition with the same attribute *collection*.
 
 
 **Examples**
@@ -563,12 +521,8 @@ in another edge definition of the graph, they will be moved to the orphanage.
 
 **Parameters**
 
-
-@PARAM{edgeCollectionName, string, required}
-Name of edge collection in the relation definition.
-@PARAM{dropCollection, boolean, optional}
-Define if the edge collection should be dropped. Default false.
-
+* edgeCollectionName (required) Name of edge collection in the relation definition.
+* dropCollection (optional) Define if the edge collection should be dropped. Default false.
 
 **Examples**
 
@@ -629,13 +583,8 @@ definition of the graph, an error will be thrown.
 
 **Parameters**
 
-
-@PARAM{vertexCollectionName, string, required}
-Name of vertex collection.
-
-@PARAM{createCollection, boolean, optional}
-If true the collection will be created if it does not exist. Default: true.
-
+* vertexCollectionName (required) Name of vertex collection.
+* createCollection (optional) If true the collection will be created if it does not exist. Default: true.
 
 **Examples**
 
@@ -697,14 +646,9 @@ Optionally the collection can be deleted, if it is not used in any other graph.
 
 **Parameters**
 
-
-@PARAM{vertexCollectionName, string, required}
-Name of vertex collection.
-
-@PARAM{dropCollection, boolean, optional}
-If true the collection will be dropped if it is
-not used in any other graph. Default: false.
-
+* vertexCollectionName (required) Name of vertex collection.
+* dropCollection (optional) If true the collection will be dropped if it is
+  not used in any other graph. Default: false.
 
 **Examples**
 
@@ -741,9 +685,7 @@ Create a new vertex in vertexCollectionName
 
 **Parameters**
 
-
-@PARAM{data, object, required}
-JSON data of vertex.
+* data (required) JSON data of vertex.
 
 
 **Examples**
@@ -771,15 +713,9 @@ Replaces the data of a vertex in collection vertexCollectionName
 
 **Parameters**
 
-
-@PARAM{vertexId, string, required}
-*_id* attribute of the vertex
-
-@PARAM{data, object, required}
-JSON data of vertex.
-
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
+* vertexId (required) *_id* attribute of the vertex
+* data (required) JSON data of vertex.
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
 
 **Examples**
@@ -808,16 +744,9 @@ Updates the data of a vertex in collection vertexCollectionName
 
 **Parameters**
 
-
-@PARAM{vertexId, string, required}
-*_id* attribute of the vertex
-
-@PARAM{data, object, required}
-JSON data of vertex.
-
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
-
+* vertexId (required) *_id* attribute of the vertex
+* data (required) JSON data of vertex.
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
 **Examples**
 
@@ -848,12 +777,8 @@ Additionally removes all ingoing and outgoing edges of the vertex recursively
 
 **Parameters**
 
-
-@PARAM{vertexId, string, required}
-*_id* attribute of the vertex
-
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
+* vertexId (required) *_id* attribute of the vertex
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
 
 **Examples**
@@ -886,18 +811,10 @@ Creates an edge from vertex *from* to vertex *to* in collection edgeCollectionNa
 
 **Parameters**
 
-
-@PARAM{from, string, required}
-*_id* attribute of the source vertex
-
-@PARAM{to, string, required}
-*_id* attribute of the target vertex
-
-@PARAM{data, object, required}
-JSON data of the edge
-
-@PARAM{options, object, optional}
-See [collection documentation](../Edges/README.md)
+* from (required) *_id* attribute of the source vertex
+* to (required) *_id* attribute of the target vertex
+* data (required) JSON data of the edge
+* options (optional) See [collection documentation](../Edges/README.md)
 
 
 **Examples**
@@ -939,15 +856,9 @@ Replaces the data of an edge in collection edgeCollectionName
 
 **Parameters**
 
-
-@PARAM{edgeId, string, required}
-*_id* attribute of the edge
-
-@PARAM{data, object, required}
-JSON data of the edge
-
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
+* edgeId (required) *_id* attribute of the edge
+* data (required) JSON data of the edge
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
 
 **Examples**
@@ -976,15 +887,9 @@ Updates the data of an edge in collection edgeCollectionName
 
 **Parameters**
 
-
-@PARAM{edgeId, string, required}
-*_id* attribute of the edge
-
-@PARAM{data, object, required}
-JSON data of the edge
-
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
+* edgeId (required) *_id* attribute of the edge
+* data (required) JSON data of the edge
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
 
 **Examples**
@@ -1015,12 +920,8 @@ If this edge is used as a vertex by another edge, the other edge will be removed
 
 **Parameters**
 
-
-@PARAM{edgeId, string, required}
-*_id* attribute of the edge
-
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
+* edgeId (required) *_id* attribute of the edge
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
 
 **Examples**
@@ -1054,13 +955,9 @@ example as parameter for vertexExample.
 
 **Parameters**
 
-
-@PARAM{vertexExample1, object, optional}
-See [Definition of examples](Functions.md#definition-of-examples)
-@PARAM{vertexExample2, object, optional}
-See [Definition of examples](Functions.md#definition-of-examples)
-@PARAM{options, object, optional}
-An object defining further options. Can have the following values:
+* vertexExample1 (optional) See [Definition of examples](Functions.md#definition-of-examples)
+* vertexExample2 (optional) See [Definition of examples](Functions.md#definition-of-examples)
+* options (optional) An object defining further options. Can have the following values:
   * *edgeExamples*: Filter the edges, see [Definition of examples](Functions.md#definition-of-examples)
   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
       considered to be on the path.

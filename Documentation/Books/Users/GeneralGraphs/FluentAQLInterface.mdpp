@@ -43,10 +43,7 @@ The resulting set of edges can be filtered by defining one or more *examples*.
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
-
+* examples (optional) See [Definition of examples](#definition-of-examples)
 
 **Examples**
 
@@ -92,10 +89,7 @@ The resulting set of edges can be filtered by defining one or more *examples*.
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
-
+* examples (optional) See [Definition of examples](#definition-of-examples)
 
 **Examples**
 
@@ -321,10 +315,7 @@ Hence the default call would have a complexity of **O(n\*m)**;
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
-
+* examples (optional) See [Definition of examples](#definition-of-examples)
 
 **Examples**
 
@@ -381,9 +372,7 @@ The resulting set of edges can be filtered by defining one or more *examples*.
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
+* examples (optional) See [Definition of examples](#definition-of-examples)
 
 
 **Examples**
@@ -442,9 +431,7 @@ The resulting set of edges can be filtered by defining one or more *examples*.
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
+* examples (optional) See [Definition of examples](#definition-of-examples)
 
 
 **Examples**
@@ -503,9 +490,7 @@ The resulting set of vertices can be filtered by defining one or more *examples*
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
+* examples (optional) See [Definition of examples](#definition-of-examples)
 
 
 **Examples**
@@ -564,9 +549,7 @@ The resulting set of vertices can be filtered by defining one or more *examples*
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
+* examples (optional) See [Definition of examples](#definition-of-examples)
 
 
 **Examples**
@@ -625,9 +608,7 @@ The resulting set of vertices can be filtered by defining one or more *examples*
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
+* examples (optional) See [Definition of examples](#definition-of-examples)
 
 
 **Examples**
@@ -685,12 +666,8 @@ The resulting set of vertices can be filtered by defining one or more *examples*
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
-
-@PARAM{options, object, optional}
-  An object defining further options. Can have the following values:
+* examples (optional) See [Definition of examples](#definition-of-examples)
+* options (optional) An object defining further options. Can have the following values:
   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
@@ -760,10 +737,8 @@ It does not effect earlier or later statements.
 
 **Parameters**
 
-
-@PARAM{restrictions, array, optional}
-Define either one or a list of collections in the graph.
-Only elements from these collections are taken into account for the result.
+* restrictions (optional) Define either one or a list of collections in the graph.
+  Only elements from these collections are taken into account for the result.
 
 
 **Examples**
@@ -820,9 +795,7 @@ The result set is reduced to the set of elements that matches the given *example
 
 **Parameters**
 
-
-@PARAM{examples, object, optional}
-See [Definition of examples](#definition-of-examples)
+* examples (optional) See [Definition of examples](#definition-of-examples)
 
 
 **Examples**
