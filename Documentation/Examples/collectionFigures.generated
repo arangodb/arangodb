@@ -15,7 +15,7 @@ arangosh&gt; db.demo.figures()
   }, 
   <span class="hljs-string">"journals"</span> : { 
     <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">33554432</span> 
+    <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">1048576</span> 
   }, 
   <span class="hljs-string">"compactors"</span> : { 
     <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
@@ -37,12 +37,12 @@ arangosh&gt; db.demo.figures()
     <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"size"</span> : <span class="hljs-number">16120</span> 
   }, 
-  <span class="hljs-string">"lastTick"</span> : <span class="hljs-string">"3920404411"</span>, 
+  <span class="hljs-string">"lastTick"</span> : <span class="hljs-string">"18684626"</span>, 
   <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"documentReferences"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"-"</span>, 
   <span class="hljs-string">"compactionStatus"</span> : { 
     <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-01-12T17:28:11Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-01-12T17:56:29Z"</span> 
   } 
 }

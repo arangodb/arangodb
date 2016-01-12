@@ -1,0 +1,17 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"collections"</span> : { 
+    <span class="hljs-string">"write"</span> : <span class="hljs-string">"products"</span> 
+  }, 
+  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () { var db = require('internal').db; db.products.save({});  return db.products.count(); }"</span> 
+}
+EOF
+
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+
+{ 
+  <span class="hljs-string">"result"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
+}
