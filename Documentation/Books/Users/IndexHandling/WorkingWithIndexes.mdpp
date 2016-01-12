@@ -92,7 +92,9 @@ Calling this method returns an index object. Whether or not the index
 object existed before the call is indicated in the return attribute
 *isNewlyCreated*.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionEnsureIndex
     @EXAMPLE_ARANGOSH_OUTPUT{collectionEnsureIndex}

@@ -30,7 +30,9 @@ way for executing fulltext queries is to use an AQL query using the *FULLTEXT*
     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
       RETURN doc
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionFulltext
     @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}

@@ -25,7 +25,9 @@ other client.
 As before. Instead of document a *document-handle* can be passed as
 first argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Returns the document:
 
@@ -101,7 +103,9 @@ of *true*.
 As before. Instead of document a *document-handle* can be passed as
 first argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Create and replace a document:
 
@@ -164,7 +168,9 @@ document is overwritten.
 As before. Instead of document a *document-handle* can be passed as
 first argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Create and update a document:
 
@@ -215,7 +221,9 @@ of *true*.
 As before. Instead of document a *document-handle* can be passed as first
 argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 Remove a document:
 

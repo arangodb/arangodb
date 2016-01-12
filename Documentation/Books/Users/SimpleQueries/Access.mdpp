@@ -29,7 +29,9 @@ The *hasNext* operator returns *true*, then the cursor still has
 documents. In this case the next document can be accessed using the
 *next* operator, which will advance the cursor.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline cursorHasNext
     @EXAMPLE_ARANGOSH_OUTPUT{cursorHasNext}
@@ -59,7 +61,9 @@ next document can be accessed using the *next* operator, which
 will advance the underlying cursor. If you use *next* on an
 exhausted cursor, then *undefined* is returned.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline cursorNext
     @EXAMPLE_ARANGOSH_OUTPUT{cursorNext}
@@ -177,7 +181,9 @@ applying *limit* and *skip*.
 **Note**: Not all simple queries support counting. In this case *null* is
 returned.
 
-@EXAMPLES
+
+**Examples**
+
 
 Ignore any limit:
 

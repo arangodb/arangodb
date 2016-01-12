@@ -35,7 +35,9 @@ At least one endpoint must be specified or ArangoDB will refuse to start.
 It is recommended to specify at least two endpoints so ArangoDB has an
 alternative endpoint if one of them becomes unavailable.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 --cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint
@@ -58,7 +60,9 @@ server(s).
 *prefix* must consist of the letters *a-z*, *A-Z* and the digits *0-9*
 only. Specifying a prefix is mandatory.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 --cluster.prefix mycluster
@@ -100,7 +104,9 @@ If no *endpoint* is specified, the server will look up its internal
 endpoint address in the agency. If no endpoint can be found in the agency
 for the server's id, ArangoDB will refuse to start.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 --cluster.my-address tcp://192.168.1.1:8530

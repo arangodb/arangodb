@@ -16,7 +16,9 @@ Returns the collection with the given identifier or null if no such
 collection exists. Accessing collections by identifier is discouraged for
 end users. End users should access collections using the collection name.
 
-@EXAMPLES
+
+**Examples**
+
 
 Get a collection by name:
 
@@ -129,7 +131,9 @@ Specifies the optional *type* of the collection, it can either be *document*
 or *edge*. On default it is document. Instead of giving a type you can also use 
 *db._createEdgeCollection* or *db._createDocumentCollection*.
 
-@EXAMPLES
+
+**Examples**
+
 
 With defaults:
 
@@ -220,7 +224,9 @@ document name already exists and error is thrown.
 
 Returns all collections of the given database.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionsDatabaseName
     @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
@@ -243,7 +249,9 @@ Returns the collection with the given *collection-name*. If no such
 collection exists, create a collection named *collection-name* with the
 default properties.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionDatabaseCollectionName
     @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCollectionName}
@@ -321,7 +329,9 @@ thrown if there is no such collection.
 Truncates a collection named *collection-name*. No error is thrown if
 there is no such collection.
 
-@EXAMPLES
+
+**Examples**
+
 
 Truncates a collection:
 

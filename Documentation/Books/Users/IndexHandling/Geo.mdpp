@@ -48,7 +48,9 @@ in the *fields* array:
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-@EXAMPLES
+
+**Examples**
+
 
 Create a geo index for an array attribute:
 

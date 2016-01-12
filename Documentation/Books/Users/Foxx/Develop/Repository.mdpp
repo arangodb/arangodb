@@ -234,7 +234,9 @@ Saves a model into the database.
 Expects a model. Will set the ID and Rev on the model.
 Returns the model.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.save(my_model);
@@ -249,7 +251,9 @@ repository.save(my_model);
 
 Returns the model for the given ID ("collection/key") or "key".
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 var byIdModel = repository.byId('test/12411');
@@ -266,7 +270,9 @@ byKeyModel.get('name');
 
 Returns an array of models for the given ID.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 var myModel = repository.byExample({ amazing: true });
@@ -280,7 +286,9 @@ myModel[0].get('name');
 
 Returns the first model that matches the given example.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 var myModel = repository.firstExample({ amazing: true });
@@ -304,7 +312,9 @@ this really useful we have to explicitly provide something to order by.
   * *skip* (optional): skips the first given number of models.
   * *limit* (optional): only returns at most the given number of models.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 var myModel = repository.all({ skip: 4, limit: 2 });
@@ -318,7 +328,9 @@ myModel[0].get('name');
 
 Returns a random model from this repository (or null if there is none).
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.any();
@@ -334,7 +346,9 @@ repository.any();
 Remove the model from the repository.
 Expects a model.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.remove(myModel);
@@ -348,7 +362,9 @@ repository.remove(myModel);
 Remove the document with the given ID ("collection/key") or "key".
 Expects an ID or key of an existing document.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.removeById('test/12121');
@@ -362,7 +378,9 @@ repository.removeById('12122');
 
 Find all documents that fit this example and remove them.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.removeByExample({ toBeDeleted: true });
@@ -379,7 +397,9 @@ Find the model in the database by its *_id* and replace it with this version.
 Expects a model. Sets the revision of the model.
 Returns the model.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 myModel.set('name', 'Jan Steemann');
@@ -396,7 +416,9 @@ and replace it with the given object's attributes.
 
 If the object is a model, updates the model's revision and returns the model.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.replaceById('test/123345', myNewModel);
@@ -411,7 +433,9 @@ repository.replaceById('123346', myNewModel);
 Find every matching item by example and replace it with the attributes in
 the provided object.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.replaceByExample({ replaceMe: true }, myNewModel);
@@ -427,7 +451,9 @@ Find the model in the database by its *_id* and update it with the given object.
 Expects a model. Sets the revision of the model and updates its properties.
 Returns the model.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.update(myModel, {name: 'Jan Steeman'});
@@ -443,7 +469,9 @@ attributes in the provided object.
 
 If the object is a model, updates the model's revision and returns the model.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.updateById('test/12131', { newAttribute: 'awesome' });
@@ -458,7 +486,9 @@ repository.updateById('12132', { newAttribute: 'awesomer' });
 Find every matching item by example and update it with the attributes in
 the provided object.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.updateByExample({ findMe: true }, { newAttribute: 'awesome' });
@@ -471,7 +501,9 @@ repository.updateByExample({ findMe: true }, { newAttribute: 'awesome' });
 
 Checks whether a model with the given ID or key exists.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.exists(model.get('_id'));
@@ -486,7 +518,9 @@ repository.exists(model.get('_id'));
 
 Returns the number of entries in this collection.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.count();
@@ -512,7 +546,9 @@ method will not be available.
 * *left*: lower bound of the value range (inclusive).
 * *right*: upper bound of the value range (exclusive).
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.range("age", 10, 13);
@@ -541,7 +577,9 @@ repository. If no geo index is present, the methods will not be available.
     will be used as the property name, otherwise the name defaults to *"distance"*.
   * *limit* (optional): number of models to return. Defaults to *100*.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.near(0, 0, {geo: "home", distance: true, limit: 10});
@@ -572,7 +610,9 @@ repository. If no geo index is present, the methods will not be available.
     will be used as the property name, otherwise the name defaults to *"distance"*.
   * *limit* (optional): number of models to return. Defaults to *100*.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.within(0, 0, 2000 * 1000, {geo: "home", distance: true, limit: 10});
@@ -598,7 +638,9 @@ If no fulltext index is present, the method will not be available.
 * *options* (optional):
   * *limit* (optional): number of models to return. Defaults to all.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```javascript
 repository.fulltext("text", "word", {limit: 1});

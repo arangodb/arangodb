@@ -45,7 +45,9 @@ The resulting set of edges can be filtered by defining one or more *examples*.
 @PARAM{examples, object, optional}
 See [Definition of examples](#definition-of-examples)
 
-@EXAMPLES
+
+**Examples**
+
 
 In the examples the *toArray* function is used to print the result.
 The description of this function can be found below.
@@ -90,7 +92,9 @@ The resulting set of edges can be filtered by defining one or more *examples*.
 @PARAM{examples, object, optional}
 See [Definition of examples](#definition-of-examples)
 
-@EXAMPLES
+
+**Examples**
+
 
 In the examples the *toArray* function is used to print the result.
 The description of this function can be found below.
@@ -141,7 +145,9 @@ hence can only be the endpoint of a query.
 However keeping a reference to the query before
 executing allows to chain further statements to it.
 
-@EXAMPLES
+
+**Examples**
+
 
 To collect the entire result of a query toArray can be used:
 
@@ -171,7 +177,9 @@ further results available.
 If the query has not yet been executed *hasNext()*
 will execute it and create the cursor for you.
 
-@EXAMPLES
+
+**Examples**
+
 
 Start query execution with hasNext:
 
@@ -217,7 +225,9 @@ If the query has not yet been executed *next()*
 will execute it and create the cursor for you.
 It will throw an error of your query has no further results.
 
-@EXAMPLES
+
+**Examples**
+
 
 Request some elements with next:
 
@@ -263,7 +273,9 @@ before using *next()* or in between *next()* calls.
 The query object maintains a cursor of the query for you.
 *count()* does not change the cursor position.
 
-@EXAMPLES
+
+**Examples**
+
 
 To count the number of matched elements:
 
@@ -307,7 +319,9 @@ Hence the default call would have a complexity of **O(n\*m)**;
 @PARAM{examples, object, optional}
 See [Definition of examples](#definition-of-examples)
 
-@EXAMPLES
+
+**Examples**
+
 
 To request unfiltered edges:
 
@@ -363,7 +377,9 @@ The resulting set of edges can be filtered by defining one or more *examples*.
 @PARAM{examples, object, optional}
 See [Definition of examples](#definition-of-examples)
 
-@EXAMPLES
+
+**Examples**
+
 
 To request unfiltered outbound edges:
 
@@ -420,7 +436,9 @@ The resulting set of edges can be filtered by defining one or more *examples*.
 @PARAM{examples, object, optional}
 See [Definition of examples](#definition-of-examples)
 
-@EXAMPLES
+
+**Examples**
+
 
 To request unfiltered inbound edges:
 
@@ -477,7 +495,9 @@ The resulting set of vertices can be filtered by defining one or more *examples*
 @PARAM{examples, object, optional}
 See [Definition of examples](#definition-of-examples)
 
-@EXAMPLES
+
+**Examples**
+
 
 To request unfiltered vertices:
 
@@ -534,7 +554,9 @@ The resulting set of vertices can be filtered by defining one or more *examples*
 @PARAM{examples, object, optional}
 See [Definition of examples](#definition-of-examples)
 
-@EXAMPLES
+
+**Examples**
+
 
 To request unfiltered source vertices:
 
@@ -591,7 +613,9 @@ The resulting set of vertices can be filtered by defining one or more *examples*
 @PARAM{examples, object, optional}
 See [Definition of examples](#definition-of-examples)
 
-@EXAMPLES
+
+**Examples**
+
 
 To request unfiltered target vertices:
 
@@ -658,7 +682,9 @@ See [Definition of examples](#definition-of-examples)
   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
 
-@EXAMPLES
+
+**Examples**
+
 
 To request unfiltered neighbors:
 
@@ -719,7 +745,9 @@ It does not effect earlier or later statements.
 Define either one or a list of collections in the graph.
 Only elements from these collections are taken into account for the result.
 
-@EXAMPLES
+
+**Examples**
+
 
 Request all directly connected vertices unrestricted:
 
@@ -774,7 +802,9 @@ The result set is reduced to the set of elements that matches the given *example
 @PARAM{examples, object, optional}
 See [Definition of examples](#definition-of-examples)
 
-@EXAMPLES
+
+**Examples**
+
 
 Request vertices unfiltered:
 
@@ -838,7 +868,9 @@ So having a `vertices()` query as the last step the result will be set of vertic
 Using `path()` as the last action before requesting the result
 will modify the result such that the path required to find the set vertices is returned.
 
-@EXAMPLES
+
+**Examples**
+
 
 Request the iteratively explored path using vertices and edges:
 

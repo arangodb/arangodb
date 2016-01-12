@@ -30,7 +30,9 @@ Returns the vertex defined with the attribute *_from* of the edge with *edgeId* 
 @PARAM{edgeId, string, required}
 *_id* attribute of the edge
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline generalGraphGetFromVertex
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
@@ -58,7 +60,9 @@ Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as
 @PARAM{edgeId, string, required}
 *_id* attribute of the edge
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline generalGraphGetToVertex
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
@@ -101,7 +105,9 @@ An object defining further options. Can have the following values:
   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all neighbors of capitals.
 
@@ -144,7 +150,9 @@ defined by the parameters vertexExamples, *m* the average amount of neighbors an
 maximal depths.
 Hence the default call would have a complexity of **O(n\*m)**;
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all common neighbors of capitals.
 
@@ -185,7 +193,9 @@ Get the amount of common neighbors of the vertices defined by the examples.
 
 Similar to [_commonNeighbors](#commonneighbors) but returns count instead of the elements.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all common neighbors of capitals.
 
@@ -245,7 +255,9 @@ An object defining further options. Can have the following values:
       searched for compare vertices.
   * *ignoreProperties* : One or a list of attribute names of a document that should be ignored.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all locations with the same properties:
 
@@ -282,7 +294,9 @@ Get the amount of vertices of the graph that share common properties.
 Similar to [_commonProperties](#commonproperties) but returns count instead of
 the objects.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all locations with the same properties:
 
@@ -335,7 +349,9 @@ An object containing options, see below:
   * *maxLength* (optional)     : Defines the maximal length a path must
      have to be returned (default is 10).
 
-@EXAMPLES
+
+**Examples**
+
 
 Return all paths of the graph "social":
 
@@ -423,7 +439,9 @@ An object containing options, see below:
                                          If no default is supplied the default would be positive Infinity so the path could
                                          not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, shortest path from all german to all french cities:
 
@@ -462,7 +480,9 @@ The _distanceTo function returns all paths and there distance within a graph.
 This function is a wrapper of [graph._shortestPath](#shortestpath).
 It does not return the actual path but only the distance between two vertices.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, shortest distance from all german to all french cities:
 
@@ -531,7 +551,9 @@ An object defining further options. Can have the following values:
       If no default is supplied the default would be positive infinity so the path and
       hence the eccentricity can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the absolute eccentricity of all locations.
 
@@ -588,7 +610,9 @@ Similar to [_absoluteEccentricity](#absoluteeccentricity) but returns a normaliz
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the eccentricity of all locations.
 
@@ -655,7 +679,9 @@ An object defining further options. Can have the following values:
                      If no default is supplied the default would be positive infinity so the path and
                      hence the closeness can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the absolute closeness of all locations.
 
@@ -710,7 +736,9 @@ Similar to [_absoluteCloseness](#absolutecloseness) but returns a normalized val
 The complexity of the function is described
 [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the normalized closeness of all locations.
 
@@ -777,7 +805,9 @@ An object defining further options. Can have the following values:
                      If no default is supplied the default would be positive infinity so the path and
                      hence the betweeness can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the absolute betweenness of all locations.
 
@@ -828,7 +858,9 @@ of graphs vertices.
 
 Similar to [_absoluteBetweeness](#absolutebetweenness) but returns normalized values.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the betweenness of all locations.
 
@@ -895,7 +927,9 @@ An object defining further options. Can have the following values:
                      If no default is supplied the default would be positive infinity so the path and
                      hence the radius can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the radius of the graph.
 
@@ -962,7 +996,9 @@ An object defining further options. Can have the following values:
                       If no default is supplied the default would be positive infinity so the path and
                       hence the radius can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the diameter of the graph.
 

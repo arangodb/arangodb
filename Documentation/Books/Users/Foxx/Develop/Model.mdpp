@@ -134,7 +134,9 @@ the second object those to be defined on the prototype.
 
 If you initialize a model, you can give it initial *data* as an object.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 instance = new Model({
@@ -152,7 +154,9 @@ instance = new Model({
 
 Get the value of an attribute
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 instance = new Model({
@@ -172,7 +176,9 @@ instance.get("a");
 
 Set the value of an attribute or multiple attributes at once
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 instance = new Model({
@@ -195,7 +201,9 @@ instance.set({
 
 Returns true if the attribute is set to a non-null or non-undefined value.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
 instance = new Model({

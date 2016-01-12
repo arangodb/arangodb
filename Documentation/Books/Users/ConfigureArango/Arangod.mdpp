@@ -403,7 +403,9 @@ writers or they lack features required by arangod (e.g. flock()).
 When using the command line version, you can simply supply the database
 directory as argument.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 > ./arangod --server.endpoint tcp://127.0.0.1:8529 --database.directory

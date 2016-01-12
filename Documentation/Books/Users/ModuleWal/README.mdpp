@@ -25,7 +25,9 @@ array with the following attributes:
   operations that, when reached, will activate write-throttling. A value of
   *0* means that write-throttling will not be triggered.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline WalPropertiesGet
     @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesGet}
@@ -57,7 +59,9 @@ JSON object with the following attributes:
 Specifying any of the above attributes is optional. Not specified attributes
 will be ignored and the configuration for them will not be modified.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline WalPropertiesSet
     @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesSet}
@@ -92,7 +96,9 @@ write-ahead log garbage collector. Note that setting this option to *true*
 might block for a long time if there are long-running transactions and
 the write-ahead log garbage collector cannot finish garbage collection.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline WalFlush
     @EXAMPLE_ARANGOSH_OUTPUT{WalFlush}
