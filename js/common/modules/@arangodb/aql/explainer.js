@@ -807,7 +807,7 @@ function processQuery (query, explain) {
             return variableName(node.outVariable) + " = " + variableName(node.inVariable);
           }).join(", ");
 
-        if (node.hasOwnProperty("aggregates")) {
+        if (node.hasOwnProperty("aggregates") && node.aggregates.length > 0) {
           if (node.groups.length > 0) {
             collect += " ";
           }
