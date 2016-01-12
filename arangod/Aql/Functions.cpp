@@ -1683,7 +1683,6 @@ AqlValue Functions::Min(triagens::aql::Query* query,
   TRI_json_t const* valueJson = value.json();
   size_t const n = TRI_LengthArrayJson(valueJson);
   TRI_json_t const* minValue = nullptr;
-  ;
 
   for (size_t i = 0; i < n; ++i) {
     auto value = static_cast<TRI_json_t const*>(

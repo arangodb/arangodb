@@ -17,6 +17,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/ApplicationServer/ApplicationFeature.cpp \
 	arangod/ApplicationServer/ApplicationServer.cpp \
+	arangod/Aql/Aggregator.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
 	arangod/Aql/AqlItemBlockManager.cpp \
 	arangod/Aql/AqlValue.cpp \

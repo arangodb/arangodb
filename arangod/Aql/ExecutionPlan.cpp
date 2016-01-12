@@ -28,6 +28,7 @@
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
+#include "Aql/Function.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
@@ -36,8 +37,8 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/JsonHelper.h"
 
 using namespace triagens::aql;
 using namespace triagens::basics;
@@ -66,7 +67,6 @@ ExecutionPlan::~ExecutionPlan() {
     delete x.second;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from an AST
@@ -394,7 +394,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
 
   std::vector<std::pair<Variable const*, Variable const*>> const
       groupVariables{std::make_pair(out, previous->outVariable())};
-  std::vector<std::pair<Variable const*, Variable const*>> const
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
       aggregateVariables{};
 
   auto en = new CollectNode(this, nextId(), CollectOptions(),
@@ -935,7 +935,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     }
   }
   
-  std::vector<std::pair<Variable const*, Variable const*>> const
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
       aggregateVariables{};
 
   auto collectNode = new CollectNode(
@@ -1009,7 +1009,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression(ExecutionNode* previous,
   auto v = node->getMember(2);
   Variable* outVariable = static_cast<Variable*>(v->getData());
   
-  std::vector<std::pair<Variable const*, Variable const*>> const
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
       aggregateVariables{};
 
   auto collectNode = new CollectNode(
@@ -1074,13 +1074,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
 
   TRI_ASSERT(outVariable != nullptr);
   
-  std::vector<std::pair<Variable const*, Variable const*>> const
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
       aggregateVariables{};
 
-  auto en = registerNode(
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables, nullptr,
+  auto collectNode = new CollectNode(this, nextId(), options, groupVariables, aggregateVariables, nullptr,
                         outVariable, std::vector<Variable const*>(),
-                        _ast->variables()->variables(false), true, false));
+                        _ast->variables()->variables(false), true, false);
+  auto en = registerNode(collectNode);
 
   return addDependency(previous, en);
 }
@@ -1095,6 +1095,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 3);
 
   auto options = createCollectOptions(node->getMember(0));
+
+  std::unordered_map<Variable const*, Variable const*> aliases;
 
   // group variables
   std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
@@ -1127,13 +1129,26 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
         auto calc = createTemporaryCalculation(expression, previous);
         previous = calc;
         groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
+
+        aliases.emplace(v, groupVariables.back().second);
       }
     }
   }
  
   // aggregate variables 
-  std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
   {
+    auto variableReplacer = [&aliases, this] (AstNode* node, void*) -> AstNode* {
+      if (node->type == NODE_TYPE_REFERENCE) {
+        auto it = aliases.find(static_cast<Variable const*>(node->getData()));
+
+        if (it != aliases.end()) {
+          return _ast->createNodeReference((*it).second);
+        }
+      }
+      return node;
+    };
+
     auto list = node->getMember(2);
     size_t const numVars = list->numMembers();
 
@@ -1153,10 +1168,37 @@ ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
 
       auto expression = assigner->getMember(1);
 
-      // operand is some misc expression
-      auto calc = createTemporaryCalculation(expression, previous);
-      previous = calc;
-      groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
+      // operand is always a function call
+      TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
+
+      // build aggregator 
+      auto func = static_cast<Function*>(expression->getData());
+      TRI_ASSERT(func != nullptr);
+
+      // function should have one argument (an array with the parameters)
+      TRI_ASSERT(expression->numMembers() == 1);
+
+      auto args = expression->getMember(0);
+      // the number of arguments should also be one (note: this has been
+      // validated before)
+      TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
+      TRI_ASSERT(args->numMembers() == 1);
+
+      auto arg = args->getMember(0);
+      arg = Ast::traverseAndModify(arg, variableReplacer, nullptr);
+      
+
+      if (arg->type == NODE_TYPE_REFERENCE) {
+        // operand is a variable
+        auto e = static_cast<Variable*>(arg->getData());
+        aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(e, func->externalName)));
+      }
+      else {
+        auto calc = createTemporaryCalculation(arg, previous);
+        previous = calc;
+
+        aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(getOutVariable(calc), func->externalName)));
+      }
     }
   }
   

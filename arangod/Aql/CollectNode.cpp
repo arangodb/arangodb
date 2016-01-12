@@ -29,8 +29,7 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
-
-
+    
 CollectNode::CollectNode(
     ExecutionPlan* plan, triagens::basics::Json const& base,
     Variable const* expressionVariable, Variable const* outVariable,
@@ -38,7 +37,7 @@ CollectNode::CollectNode(
     std::unordered_map<VariableId, std::string const> const& variableMap,
     std::vector<std::pair<Variable const*, Variable const*>> const&
         groupVariables,
-    std::vector<std::pair<Variable const*, Variable const*>> const&
+    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const&
         aggregateVariables,
     bool count, bool isDistinctCommand)
     : ExecutionNode(plan, base),
@@ -51,7 +50,12 @@ CollectNode::CollectNode(
       _variableMap(variableMap),
       _count(count),
       _isDistinctCommand(isDistinctCommand),
-      _specialized(false) {}
+      _specialized(false) {
+
+}
+  
+CollectNode::~CollectNode() {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for CollectNode
@@ -66,6 +70,7 @@ void CollectNode::toJsonHelper(triagens::basics::Json& nodes,
     return;
   }
 
+  // group variables
   {
     triagens::basics::Json values(triagens::basics::Json::Array,
                                   _groupVariables.size());
@@ -79,6 +84,7 @@ void CollectNode::toJsonHelper(triagens::basics::Json& nodes,
     json("groups", values);
   }
   
+  // aggregate variables
   {
     triagens::basics::Json values(triagens::basics::Json::Array,
                                   _aggregateVariables.size());
@@ -86,7 +92,8 @@ void CollectNode::toJsonHelper(triagens::basics::Json& nodes,
     for (auto const& aggregateVariable : _aggregateVariables) {
       triagens::basics::Json variable(triagens::basics::Json::Object);
       variable("outVariable", aggregateVariable.first->toJson())("inVariable",
-                                                     aggregateVariable.second->toJson());
+                                                     aggregateVariable.second.first->toJson());
+      variable("type", triagens::basics::Json(aggregateVariable.second.second));
       values(variable);
     }
     json("aggregates", values);
@@ -157,8 +164,8 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 
     for (auto& it : _aggregateVariables) {
       auto out = plan->getAst()->variables()->createVariable(it.first);
-      auto in = plan->getAst()->variables()->createVariable(it.second);
-      aggregateVariables.emplace_back(std::make_pair(out, in));
+      auto in = plan->getAst()->variables()->createVariable(it.second.first);
+      aggregateVariables.emplace_back(std::make_pair(out, std::make_pair(in, it.second.second)));
     }
   }
 
@@ -177,7 +184,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere
+/// @brief helper struct for finding variables
 ////////////////////////////////////////////////////////////////////////////////
 
 struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
@@ -226,10 +233,7 @@ std::vector<Variable const*> CollectNode::getVariablesUsedHere() const {
 
   // copy result into vector
   std::vector<Variable const*> vv;
-  vv.reserve(v.size());
-  for (auto const& x : v) {
-    vv.emplace_back(x);
-  }
+  vv.insert(vv.begin(), v.begin(), v.end());
   return vv;
 }
 
@@ -241,6 +245,9 @@ void CollectNode::getVariablesUsedHere(
     std::unordered_set<Variable const*>& vars) const {
   for (auto const& p : _groupVariables) {
     vars.emplace(p.second);
+  }
+  for (auto const& p : _aggregateVariables) {
+    vars.emplace(p.second.first);
   }
 
   if (_expressionVariable != nullptr) {

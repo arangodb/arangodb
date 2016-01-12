@@ -299,6 +299,7 @@ bool ApplicationEndpointServer::loadEndpoints() {
   VPackSlice const slice = builder->slice();
 
   if (!slice.isObject()) {
+    LOG_WARNING("error loading ENDPOINTS file '%s'", filename.c_str());
     return false;
   }
 
