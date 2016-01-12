@@ -802,13 +802,23 @@ function processQuery (query, explain) {
                  (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
                  "   " + annotation("/* " + node.aggregationOptions.method + "*/");
       case "CollectNode":
-        return keyword("COLLECT") + " " + node.groups.map(function(node) {
-          return variableName(node.outVariable) + " = " + variableName(node.inVariable);
-        }).join(", ") + 
-                 (node.count ? " " + keyword("WITH COUNT") : "") + 
-                 (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
-                 (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
-                 "   " + annotation("/* " + node.collectOptions.method + "*/");
+        var collect = keyword("COLLECT") + " " + 
+          node.groups.map(function(node) {
+            return variableName(node.outVariable) + " = " + variableName(node.inVariable);
+          }).join(", ");
+
+        if (node.hasOwnProperty("aggregates")) {
+          collect += " " + keyword("AGGREGATE") + " " + 
+          node.aggregates.map(function(node) {
+            return variableName(node.outVariable) + " = " + func(node.type) + "(" + variableName(node.inVariable) + ")";
+          }).join(", ");
+        }
+        collect += 
+          (node.count ? " " + keyword("WITH COUNT") : "") + 
+          (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
+          (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") +
+          "   " + annotation("/* " + node.collectOptions.method + "*/");
+        return collect;
       case "SortNode":
         return keyword("SORT") + " " + node.elements.map(function(node) {
           return variableName(node.inVariable) + " " + keyword(node.ascending ? "ASC" : "DESC"); 

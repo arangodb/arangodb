@@ -35,49 +35,52 @@ class AqlTransaction;
 }
 
 namespace aql {
+struct Aggregator;
 class AqlItemBlock;
 class ExecutionEngine;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief details about the current group
-///////////////////////////////////////////////////////////////////////////////
-
-struct CollectGroup {
-  std::vector<AqlValue> groupValues;
-  std::vector<TRI_document_collection_t const*> collections;
-
-  std::vector<AqlItemBlock*> groupBlocks;
-  size_t firstRow;
-  size_t lastRow;
-  size_t groupLength;
-  bool rowsAreValid;
-  bool const count;
-
-  CollectGroup() = delete;
-
-  explicit CollectGroup(bool);
-
-  ~CollectGroup();
-
-  void initialize(size_t capacity);
-  void reset();
-
-  void setFirstRow(size_t value) {
-    firstRow = value;
-    rowsAreValid = true;
-  }
-
-  void setLastRow(size_t value) {
-    lastRow = value;
-    rowsAreValid = true;
-  }
-
-  void addValues(AqlItemBlock const* src, RegisterId groupRegister);
-};
-
+  
+typedef std::vector<Aggregator*> AggregateValuesType;
 
 class SortedCollectBlock : public ExecutionBlock {
+
+ private:
+  typedef std::vector<Aggregator*> AggregateValuesType;
+
+  struct CollectGroup {
+    std::vector<AqlValue> groupValues;
+    std::vector<TRI_document_collection_t const*> collections;
+
+    std::vector<AqlItemBlock*> groupBlocks;
+    AggregateValuesType aggregators;
+    size_t firstRow;
+    size_t lastRow;
+    size_t groupLength;
+    bool rowsAreValid;
+    bool const count;
+
+    CollectGroup() = delete;
+
+    explicit CollectGroup(bool);
+
+    ~CollectGroup();
+
+    void initialize(size_t capacity);
+    void reset();
+
+    void setFirstRow(size_t value) {
+      firstRow = value;
+      rowsAreValid = true;
+    }
+
+    void setLastRow(size_t value) {
+      lastRow = value;
+      rowsAreValid = true;
+    }
+
+    void addValues(AqlItemBlock const* src, RegisterId groupRegister);
+  };
+
+
  public:
   SortedCollectBlock(ExecutionEngine*, CollectNode const*);
 

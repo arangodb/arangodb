@@ -39,6 +39,10 @@ namespace arango {
 namespace aql {
 
 struct Aggregator {
+  Aggregator() = delete;
+  Aggregator(Aggregator const&) = delete;
+  Aggregator& operator=(Aggregator const&) = delete;
+
   explicit Aggregator(triagens::arango::AqlTransaction* trx) : trx(trx) { }
   virtual ~Aggregator() = default;
   virtual char const* name() const = 0;
