@@ -292,6 +292,11 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   while (skipped < atMost) {
     // read the next input row
+    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    throwIfKilled(); // check if we were aborted
 
     bool newGroup = false;
     if (!isTotalAggregation) {
@@ -382,6 +387,8 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
+
+            throwIfKilled();
 
             emitGroup(cur, res.get(), skipped);
             ++skipped;
@@ -701,6 +708,12 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   try {
     while (skipped < atMost) {
+      TRI_IF_FAILURE("HashedCollectBlock::getOrSkipSomeOuter") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      throwIfKilled(); // check if we were aborted
+
       groupValues.clear();
 
       // for hashing simply re-use the aggregate registers, without cloning
@@ -786,6 +799,8 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
               TRI_IF_FAILURE("HashedCollectBlock::getOrSkipSome") {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
               }
+
+              throwIfKilled();
             }
 
             ++skipped;
