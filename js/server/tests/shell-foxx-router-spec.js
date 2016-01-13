@@ -420,5 +420,82 @@ describe('Tree#buildSwaggerPaths', function () {
     .with.a.property('get').that.is.an('object');
   });
 
+  it('sets the "consumes" info to the default body mime type', function () {
+    const router = new Router();
+    router.post('/data', function () {});
+    const tree = new Tree({}, router);
+    const docs = tree.buildSwaggerPaths();
+    expect(docs).to.have.a.property('/data')
+    .with.a.deep.property('post.consumes')
+    .that.is.eql(['application/json']);
+  });
+
+  it('sets the "consumes" info to the body mime type', function () {
+    const mimeType = 'banana';
+    const router = new Router();
+    const route = router.post('/data', function () {});
+    route._bodyParam.contentType.mime = mimeType;
+    const tree = new Tree({}, router);
+    const docs = tree.buildSwaggerPaths();
+    expect(docs).to.have.a.property('/data')
+    .with.a.deep.property('post.consumes')
+    .that.is.eql([mimeType]);
+  });
+
+  it('does not set the "consumes" info for body-free methods', function () {
+    const router = new Router();
+    router.get('/no-data', function () {});
+    const tree = new Tree({}, router);
+    const docs = tree.buildSwaggerPaths();
+    expect(docs).to.have.a.property('/no-data')
+    .with.not.a.deep.property('get.consumes'); // this may not work?
+  });
+
+  it('sets the "consumes" info to empty if explicitly forbidden', function () {
+    const router = new Router();
+    router.post('/no-data', function () {})
+    .body(null);
+    const tree = new Tree({}, router);
+    const docs = tree.buildSwaggerPaths();
+    expect(docs).to.have.a.property('/no-data')
+    .with.a.deep.property('post.consumes')
+    .that.is.eql([]);
+  });
+
+  it('sets the "produces" info to the default response mime type', function () {
+    const router = new Router();
+    router.get('/body', function () {});
+    const tree = new Tree({}, router);
+    const docs = tree.buildSwaggerPaths();
+    expect(docs).to.have.a.property('/body')
+    .with.a.deep.property('get.produces')
+    .that.is.eql(['application/json']);
+  });
+
+  it('sets the "produces" info to all response mime types', function () {
+    const mimeType = 'banana';
+    const router = new Router();
+    const route = router.get('/body', function () {});
+    route._responses.set(200, {contentType: {mime: mimeType}});
+    const tree = new Tree({}, router);
+    const docs = tree.buildSwaggerPaths();
+    expect(docs).to.have.a.property('/body')
+    .with.a.deep.property('get.produces')
+    .that.is.eql([mimeType, 'application/json']);
+  });
+
+  it('only sets the "produces" info once per response mime type', function () {
+    const mimeType = 'banana';
+    const router = new Router();
+    const route = router.get('/body', function () {});
+    route._responses.set(200, {contentType: {mime: mimeType}});
+    route._responses.set(400, {contentType: {mime: mimeType}});
+    const tree = new Tree({}, router);
+    const docs = tree.buildSwaggerPaths();
+    expect(docs).to.have.a.property('/body')
+    .with.a.deep.property('get.produces')
+    .that.is.eql([mimeType, 'application/json']);
+  });
+
   // TODO test all the other swagger path object properties
 });

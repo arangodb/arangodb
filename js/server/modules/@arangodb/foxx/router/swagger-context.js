@@ -33,6 +33,87 @@ const tokenize = require('@arangodb/foxx/router/tokenize');
 
 const DEFAULT_BODY_SCHEMA = joi.object().optional().meta({allowInvalid: true});
 
+function joi2swagger(joi) {
+  switch (joi._type) {
+    default:
+      return ['string'];
+    case 'binary':
+      return ['string', 'binary'];
+    case 'boolean':
+      return ['boolean'];
+    case 'date':
+      return ['string', 'date-time'];
+    case 'func':
+      return ['string'];
+    case 'number':
+      if (joi._tests.some(function (test) {
+        return test.name === 'integer';
+      })) {
+        return ['integer'];
+      }
+      return ['number'];
+    case 'array':
+      return ['array'];
+    case 'object':
+      return ['object'];
+    case 'string':
+      if (joi._meta.some(function (meta) {
+        return meta.secret;
+      })) {
+        return ['string', 'password'];
+      }
+      return ['string'];
+  }
+}
+
+function swaggerifyParam(joi) {
+  const param = {
+    required: joi._presence === 'required',
+    description: joi._description
+  };
+  let item = param;
+  if (joi._meta.some(function (meta) {
+    return meta.allowMultiple;
+  })) {
+    param.type = 'array';
+    param.collectionFormat = 'multi';
+    param.items = {};
+    item = param.items;
+  }
+  const type = joi2swagger(joi);
+  item.type = type[0];
+  if (type.length > 1) {
+    item.format = type[1];
+  }
+  if (joi._valids._set) {
+    item.enum = joi._valids._set;
+  }
+  if (joi._flags.hasOwnProperty('default')) {
+    item.default = joi._flags.default;
+  }
+  return param;
+}
+
+function swaggerifySchema(joi) {
+  const schema = {};
+  const type = joi2swagger(joi);
+  schema.type = type[0];
+  if (type.length > 1) {
+    schema.format = type[1];
+  }
+  // TODO implement this properly
+  return schema;
+}
+
+function swaggerifyBody(joi) {
+  const body = {
+    required: joi._presence === 'required',
+    description: joi._description
+  };
+  body.schema = swaggerifySchema(joi);
+  return body;
+}
+
 
 module.exports = exports = class SwaggerContext {
   constructor(path) {
@@ -198,7 +279,10 @@ module.exports = exports = class SwaggerContext {
     this.path = tokenize.reverse(this._pathTokens, this._pathParamNames);
   }
   _buildOperation() {
-    const operation = {};
+    const operation = {
+      produces: [],
+      parameters: []
+    };
     if (this._deprecated) {
       operation.deprecated = this._deprecated;
     }
@@ -208,6 +292,94 @@ module.exports = exports = class SwaggerContext {
     if (this._summary) {
       operation.summary = this._summary;
     }
+    if (this._bodyParam) {
+      operation.consumes = (
+        this._bodyParam.contentType
+        ? [this._bodyParam.contentType.mime]
+        : []
+      );
+    }
+    for (const response of this._responses.values()) {
+      if (operation.produces.indexOf(response.contentType.mime) === -1) {
+        operation.produces.push(response.contentType.mime);
+      }
+    }
+    if (operation.produces.indexOf('application/json') === -1) {
+      // ArangoDB errors use 'application/json'
+      operation.produces.push('application/json');
+    }
+
+    for (const param of this._pathParams.entries()) {
+      const name = param[0];
+      const def = param[1];
+      const parameter = (
+        def.type && def.type.isJoi
+        ? swaggerifyParam(def.type)
+        : {type: 'string'}
+      );
+      parameter.name = name;
+      parameter.in = 'path';
+      parameter.required = true;
+      if (def.description) {
+        parameter.description = def.description;
+      }
+      operation.parameters.push(parameter);
+    }
+
+    for (const param of this._queryParams.entries()) {
+      const name = param[0];
+      const def = param[1];
+      const parameter = (
+        def.type && def.type.isJoi
+        ? swaggerifyParam(def.type)
+        : {type: 'string'}
+      );
+      parameter.name = name;
+      parameter.in = 'query';
+      if (def.description) {
+        parameter.description = def.description;
+      }
+      operation.parameters.push(parameter);
+    }
+
+    for (const param of this._headers.entries()) {
+      const name = param[0];
+      const def = param[1];
+      const parameter = (
+        def.type && def.type.isJoi
+        ? swaggerifyParam(def.type)
+        : {type: 'string'}
+      );
+      parameter.name = name;
+      parameter.in = 'header';
+      if (def.description) {
+        parameter.description = def.description;
+      }
+      operation.parameters.push(parameter);
+    }
+
+    if (this._bodyParam && this._bodyParam.contentType) {
+      // TODO handle multipart and form-urlencoded
+      const def = (
+        this._bodyParam.type
+        ? (this._bodyParam.type.schema || this._bodyParam.type)
+        : null
+      );
+      const parameter = (
+        def && def.isJoi
+        ? swaggerifyBody(def)
+        : {schema: {type: 'string'}}
+      );
+      parameter.name = 'body';
+      parameter.in = 'body';
+      if (this._bodyParam.description) {
+        parameter.description = this._bodyParam.description;
+      }
+      operation.parameters.push(parameter);
+    }
+
+    // TODO handle this._responses => responses object
+
     return operation;
   }
 };
