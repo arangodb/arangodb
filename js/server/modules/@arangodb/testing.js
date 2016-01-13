@@ -1676,7 +1676,13 @@ testFuncs.importing = function (options) {
 
 testFuncs.upgrade = function (options) {
   if (options.cluster) {
-    return true;
+    return {"upgrade":
+            {
+              "status" : true,
+              "message": "skipped because of cluster",
+              "skipped": true
+            }
+           };
   }
 
   var result = {};
@@ -2263,6 +2269,7 @@ function UnitTest (which, options) {
   if (which === "all") {
     var n;
     for (n = 0; n < allTests.length; n++) {
+      var r;
       print("Doing test", allTests[n], "with options", options);
       results[allTests[n]] = r = testFuncs[allTests[n]](options);
       ok = true;
