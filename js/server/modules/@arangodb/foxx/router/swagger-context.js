@@ -26,10 +26,15 @@
 /// @author Copyright 2015-2016, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const parseMediaType = require('media-typer').parse;
+const joi = require('joi');
+const mimeTypes = require('mime-types');
+const mediaTyper = require('media-typer');
 const tokenize = require('@arangodb/foxx/router/tokenize');
 
-module.exports = class SwaggerContext {
+const DEFAULT_BODY_SCHEMA = joi.object().optional().meta({allowInvalid: true});
+
+
+module.exports = exports = class SwaggerContext {
   constructor(path) {
     if (!path) {
       path = '';
@@ -68,28 +73,64 @@ module.exports = class SwaggerContext {
     return this;
   }
   body(type, description) {
-    if (type === 'json') {
-      type = 'application/json';
-    } else if (type === 'text') {
-      type = 'text/plain';
-    } else if (type === 'binary') {
-      type = 'application/octet-stream';
+    if (type === null) {
+      this._bodyParam = {};
+    } else {
+      let contentType = 'application/json; charset=utf-8';
+      if (type === 'binary') {
+        contentType = 'application/octet-stream';
+      } else if (typeof type !== 'object') {
+        contentType = mimeTypes.contentType(type) || type;
+      }
+      const parsed = mediaTyper.parse(contentType);
+      this._bodyParam = {
+        type: type,
+        description: description,
+        contentType: {
+          header: contentType,
+          parsed: parsed,
+          mime: mediaTyper.format({
+            type: parsed.type,
+            subtype: parsed.subtype,
+            suffix: parsed.suffix
+          })
+        }
+      };
     }
-    this._bodyParam = {
-      type: type,
-      mime: parseMediaType(typeof type === 'string' ? type : 'application/json'),
-      description: description
-    };
     return this;
   }
+  // TODO response headers maybe?
   response(status, type, description) {
-    let statusCode = Number(status || undefined);
-    if (Number.isNaN(statusCode)) {
+    let statusCode = Number(status);
+    if (!statusCode || Number.isNaN(statusCode)) {
       description = type;
       type = status;
       statusCode = 200;
     }
-    this._responses.set(statusCode, {type: type, description: description});
+    if (type === null) {
+      this._responses.set(statusCode, {});
+    } else {
+      let contentType = 'application/json; charset=utf-8';
+      if (type === 'binary') {
+        contentType = 'application/octet-stream';
+      } else if (typeof type !== 'object') {
+        contentType = mimeTypes.contentType(type) || type;
+      }
+      const parsed = mediaTyper.parse(contentType);
+      this._responses.set(statusCode, {
+        type: type,
+        description: description,
+        contentType: {
+          header: contentType,
+          parsed: parsed,
+          mime: mediaTyper.format({
+            type: parsed.type,
+            subtype: parsed.subtype,
+            suffix: parsed.suffix
+          })
+        }
+      });
+    }
     return this;
   }
   error(status, description) {
@@ -118,7 +159,11 @@ module.exports = class SwaggerContext {
       for (let response of swaggerObj._responses.entries()) {
         this._responses.set(response[0], response[1]);
       }
-      this._bodyParam = swaggerObj._bodyParam || this._bodyParam;
+      if (swaggerObj._bodyParam) {
+        if (!this._bodyParam || swaggerObj._bodyParam.type !== DEFAULT_BODY_SCHEMA) {
+          this._bodyParam = swaggerObj._bodyParam;
+        }
+      }
       this._deprecated = swaggerObj._deprecated || this._deprecated;
       this._description = swaggerObj._description || this._description;
       this._summary = swaggerObj._summary || this._summary;
@@ -166,3 +211,5 @@ module.exports = class SwaggerContext {
     return operation;
   }
 };
+
+exports.DEFAULT_BODY_SCHEMA = DEFAULT_BODY_SCHEMA;
