@@ -32,9 +32,7 @@
 namespace triagens {
 namespace basics {
 
-
 class VelocyPackHelper {
-  
  private:
   VelocyPackHelper() = delete;
   ~VelocyPackHelper() = delete;
@@ -98,12 +96,16 @@ class VelocyPackHelper {
   /// @brief parses a json file to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::shared_ptr<VPackBuilder> velocyPackFromFile(
-      std::string const& path);
+  static std::shared_ptr<VPackBuilder> velocyPackFromFile(std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief writes a VelocyPack to a file
+  //////////////////////////////////////////////////////////////////////////////
+
+  static bool velocyPackToFile(char const*, VPackSlice const&, bool);
 };
 }
 }
 
 #endif
-
 

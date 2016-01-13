@@ -182,35 +182,31 @@ static int WriteServerId(char const* filename) {
   struct tm tb;
 
   TRI_ASSERT(filename != nullptr);
+  // create a VelocyPackObject
+  VPackBuilder builder;
+  try {
+    builder.openObject();
 
-  // create a json object
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
+    TRI_ASSERT(ServerId != 0);
+    idString = TRI_StringUInt64((uint64_t)ServerId);
+    builder.add("serverId", VPackValue(idString));
 
-  if (json == nullptr) {
+    tt = time(0);
+    TRI_gmtime(tt, &tb);
+    len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+    builder.add("createdTime", VPackValue(buffer));
+
+    builder.close();
+  } catch (...) {
     // out of memory
     LOG_ERROR("cannot save server id in file '%s': out of memory", filename);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_ASSERT(ServerId != 0);
-
-  idString = TRI_StringUInt64((uint64_t)ServerId);
-  TRI_Insert3ObjectJson(
-      TRI_CORE_MEM_ZONE, json, "serverId",
-      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, idString, strlen(idString)));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-
-  tt = time(0);
-  TRI_gmtime(tt, &tb);
-  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  TRI_Insert3ObjectJson(
-      TRI_CORE_MEM_ZONE, json, "createdTime",
-      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, buffer, len));
-
   // save json info to file
   LOG_DEBUG("Writing server id to file '%s'", filename);
-  bool ok = TRI_SaveJson(filename, json, true);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  bool ok = triagens::basics::VelocyPackHelper::velocyPackToFile(
+      filename, builder.slice(), true);
 
   if (!ok) {
     LOG_ERROR("could not save server id in file '%s': %s", filename,
@@ -1007,37 +1003,31 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-
-  if (json == nullptr) {
+  // Build the VelocyPack to store
+  VPackBuilder builder;
+  try {
+    builder.openObject();
+    builder.add("id", VPackValue(tickString));
+    builder.add("name", VPackValue(name));
+    builder.add("deleted", VPackValue(deleted));
+    builder.close();
+  } catch (...) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "id",
-                        TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString,
-                                                 strlen(tickString)));
-  TRI_Insert3ObjectJson(
-      TRI_CORE_MEM_ZONE, json, "name",
-      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name, strlen(name)));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted",
-                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, deleted));
-
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
-  if (!TRI_SaveJson(file, json, true)) {
+  if (!triagens::basics::VelocyPackHelper::velocyPackToFile(
+          file, builder.slice(), true)) {
     LOG_ERROR("cannot save database information in file '%s'", file);
 
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
   TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
   return TRI_ERROR_NO_ERROR;
