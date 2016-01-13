@@ -191,7 +191,6 @@ In this context the default value for the JavaScript garbage collection frequenc
 (`--javascript.gc-frequency`) was also increased from 10 seconds to 15 seconds, 
 as less internal operations in ArangoDB are carried out in JavaScript.
 
-
 !SECTION Client tools
 
 arangodump will now fail by default when trying to dump edges that
