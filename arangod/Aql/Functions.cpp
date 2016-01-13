@@ -416,17 +416,15 @@ static bool Variance(Json const& values, double& value, size_t& count) {
   count = 0;
   bool unused = false;
   double mean = 0;
-  double delta = 0;
-  double current = 0;
   for (size_t i = 0; i < values.size(); ++i) {
     Json element = values.at(i);
     if (!element.isNull()) {
       if (!element.isNumber()) {
         return false;
       }
-      current = ValueToNumber(element.json(), unused);
+      double current = ValueToNumber(element.json(), unused);
       count++;
-      delta = current - mean;
+      double delta = current - mean;
       mean += delta / count;
       value += delta * (current - mean);
     }
@@ -1775,6 +1773,7 @@ AqlValue Functions::Sum(triagens::aql::Query* query,
 
   TRI_json_t const* valueJson = value.json();
   size_t const n = TRI_LengthArrayJson(valueJson);
+
   double sum = 0.0;
 
   for (size_t i = 0; i < n; ++i) {

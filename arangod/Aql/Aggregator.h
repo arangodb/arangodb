@@ -111,8 +111,6 @@ struct AggregatorMax final : public Aggregator {
 struct AggregatorSum final : public Aggregator {
   explicit AggregatorSum(triagens::arango::AqlTransaction* trx) : Aggregator(trx), sum(0.0), invalid(false) { }
   
-  ~AggregatorSum();
-
   char const* name () const override final {
     return "SUM";
   }
@@ -128,8 +126,6 @@ struct AggregatorSum final : public Aggregator {
 struct AggregatorAverage final : public Aggregator {
   explicit AggregatorAverage(triagens::arango::AqlTransaction* trx) : Aggregator(trx), count(0), sum(0.0), invalid(false) { }
   
-  ~AggregatorAverage();
-
   char const* name () const override final {
     return "AVERAGE";
   }
@@ -141,6 +137,45 @@ struct AggregatorAverage final : public Aggregator {
   uint64_t count;
   double sum;
   bool invalid;
+};
+
+struct AggregatorVarianceBase : public Aggregator {
+  AggregatorVarianceBase(triagens::arango::AqlTransaction* trx, bool population) : Aggregator(trx), population(population), count(0), sum(0.0), mean(0.0), invalid(false) { }
+
+  void reset() override final;
+  void reduce(AqlValue const&, struct TRI_document_collection_t const*) override final;
+  
+  bool const population; 
+  uint64_t count;
+  double sum;
+  double mean;
+  bool invalid;
+};
+
+struct AggregatorVariance final : public AggregatorVarianceBase {
+  AggregatorVariance(triagens::arango::AqlTransaction* trx, bool population) : AggregatorVarianceBase(trx, population) { }
+  
+  char const* name () const override final {
+    if (population) {
+      return "VARIANCE_POPULATION";
+    }
+    return "VARIANCE_SAMPLE";
+  }
+
+  AqlValue stealValue() override final;
+};
+
+struct AggregatorStddev final : public AggregatorVarianceBase {
+  AggregatorStddev(triagens::arango::AqlTransaction* trx, bool population) : AggregatorVarianceBase(trx, population) { }
+  
+  char const* name () const override final {
+    if (population) {
+      return "STDDEV_POPULATION";
+    }
+    return "STDDEV_SAMPLE";
+  }
+
+  AqlValue stealValue() override final;
 };
 
 
