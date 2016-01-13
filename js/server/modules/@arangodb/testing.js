@@ -498,9 +498,15 @@ function readImportantLogLines(logPath) {
       for (j = 0; j < maxBuffer; j++) {
         if (buf[j] === 10) { // \n
           var line = buf.asciiSlice(lineStart, j);
-          // filter out regular INFO lines, and test related messages
-          fnLines.push(line);
           lineStart = j + 1;
+          // filter out regular INFO lines, and test related messages
+          if (
+            line.search('WARNING about to execute:') !== -1
+            && line.search(' INFO ') !== -1
+          ) {
+            continue;
+          }
+          fnLines.push(line);
         }
       }
     }
