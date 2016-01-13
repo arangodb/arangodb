@@ -1,6 +1,6 @@
 !CHAPTER Handling Edges
 
-Examples will explain the API on the [knows graph](../Graphs/README.md#the-knowsgraph):
+Examples will explain the REST API for [manipulating edges](../GeneralGraphs/Functions.md) of the [graph module](../Graphs/README.md) on the [knows graph](../Graphs/README.md#the-knowsgraph):
 
 ![Social Example Graph](../Graphs/knows_graph.png)
 

@@ -1,5 +1,7 @@
 !CHAPTER Working with Edges using REST 
 
+This is documentation to ArangoDB's [REST interface for edges](../Edges/README.md).
+
 <!-- arangod/RestHandler/RestEdgeHandler.cpp -->
 @startDocuBlock API_EDGE_READ
 

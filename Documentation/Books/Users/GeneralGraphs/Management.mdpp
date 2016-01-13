@@ -1,9 +1,6 @@
 !CHAPTER Graph Management
 
-Before we create our first graph, the philosophy of handling the graph content has to be introduced.
-A graph contains of a set of edge definitions each referring to one [edge collection](../Glossary/README.md#edge-collection) and
-defining constraints on the vertex collections used as start and end points of the edges.
-Furthermore a graph can contain an arbitrary amount of vertex collections, called  orphan collections, that are not used in any edge definition but should be managed by the graph.
+This chapter describes the javascript interface for [creating and modifying named graphs](../Graphs/README.md).
 In order to create a non empty graph the functionality to create edge definitions has to be introduced first:
 
 !SECTION Edge Definitions

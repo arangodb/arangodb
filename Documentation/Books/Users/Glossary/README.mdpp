@@ -103,13 +103,25 @@ ArangoDB currently uses 64bit unsigned integer values to maintain document revis
 
 !SUBSECTION Edge
 
-Edges are special documents used for connecting other documents into a graph. An edge describe the connection between two documents using the internal attributes: _from and _to. These contain document handles, namely the start-point and the end-point of the edge.
+Edges are special documents used for connecting other documents into a graph. An edge describes the connection between two documents using the internal attributes: _from and _to. These contain document handles, namely the start-point and the end-point of the edge.
 
 The values of _from and _to are immutable once saved.
 
 !SUBSECTION Edge Collection
 
 Edge collections are collections that store edges.
+
+!SUBSECTION Edge Definition
+
+Edge definitions are parts of the definition of `named grahps`. They describe which edge collections connect which vertex collections.
+
+!SUBSECTION General Graph
+
+Module maintaining graph setup in the `_graphs` collection - aka `named graphs`. Configures which edge collections relate to which vertex collections. Ensures graph consistency in modification queries.
+
+!SUBSECTION Named Graphs
+
+Named graphs enforce consistency between edge collections and vertex collections, so if you remove a vertex, edges pointing to it will be removed too.
 
 !SUBSECTION Index
 
@@ -160,3 +172,8 @@ index entries with the same lookup value.
 !SUBSECTION Skiplist Index 
 
 A skiplist is a sorted index type that can be used to find ranges of documents.
+
+
+!SUBSECTION Anonymous Graphs
+
+You may use edge collections with vertex collections without the graph management facilities. However, graph consistency is not enforced by these. If you remove vertices, you have to ensure by yourselves edges pointing to this vertex are removed. Anonymous graphs may not be browsed using graph viewer in the webinterface. This may be faster in some scenarios.

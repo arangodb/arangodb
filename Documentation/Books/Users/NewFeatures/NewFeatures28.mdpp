@@ -66,16 +66,16 @@ Example:
 db._create("posts");
 db.posts.ensureHashIndex("tags[*]");
 ```
-  
+
 When given the following document
 
 ```json
-{ 
-  "tags": [ 
-    "AQL", 
-    "ArangoDB", 
-    "Index" 
-  ] 
+{
+  "tags": [
+    "AQL",
+    "ArangoDB",
+    "Index"
+  ]
 }
 ```
 

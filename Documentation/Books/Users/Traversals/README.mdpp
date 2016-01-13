@@ -1,8 +1,8 @@
 !CHAPTER Traversals
 
-ArangoDB provides several ways to query graph data. Very simple operations can
-be composed with the low-level edge methods *edges*, *inEdges*, and *outEdges* for
-[edge collections](../Edges/README.md). For more complex operations,
+ArangoDB provides [several ways to query graph data](../Graphs/README.md).
+Very simple operations can be composed with the low-level edge methods *edges*, *inEdges*, and *outEdges* for
+[edge collections](../Edges/README.md). These work on named and anonymous graphs. For more complex operations,
 ArangoDB provides predefined traversal objects.
 
 Also Traversals have been added to AQL.

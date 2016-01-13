@@ -11,7 +11,7 @@ start the traversal:
 
 ```js
 var config = {
-  datasource: traversal.generalGraphDatasourceFactory("world_graph"),
+  datasource: traversal.generalGraphDatasourceFactory("worldCountry"),
   strategy: "depthfirst",
   order: "preorder",
   filter: traversal.visitAllFilter,
@@ -54,7 +54,7 @@ The full script, which includes all steps carried out so far is thus:
 var traversal = require("org/arangodb/graph/traversal");
 
 var config = {
-  datasource: traversal.generalGraphDatasourceFactory("world_graph"),
+  datasource: traversal.generalGraphDatasourceFactory("worldCountry"),
   strategy: "depthfirst",
   order: "preorder",
   filter: traversal.visitAllFilter,

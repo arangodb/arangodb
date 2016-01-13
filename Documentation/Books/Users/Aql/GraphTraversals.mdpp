@@ -71,9 +71,9 @@ So all together this query has returned the following paths:
 !SUBSECTION Syntax
 
 Now let's see how we can write a query that follows this schema.
-You have two options here, you can either use a managed graph (see [the graphs chapter](../Graphs/README.md) on how to create it).
+You have two options here, you can either use a named graph (see [the graphs chapter](../Graphs/README.md) on how to create it) or anonymous graphs.
 
-!SUBSUBSECTION Working on managed graphs:
+!SUBSUBSECTION Working on named graphs:
 
 `FOR ` vertex[, edge[, path]]
  `IN` `MIN`[..`MAX`]
@@ -88,8 +88,8 @@ You have two options here, you can either use a managed graph (see [the graphs c
      - `edges`: an array of all edges on this path.
  - `IN` `MIN`..`MAX` `OUTBOUND` startVertex `GRAPH` graphName
    - `OUTBOUND|INBOUND|ANY` traversal will be done for outbound / inbound / inbound+outbound pointing edges
-   - **startVertex**: one vertex where the traversal will originate from
-   - **graphName**: the name of a managed graph. It's vertex and edge collections will be looked up.
+   - **startVertex**: one vertex where the traversal will originate from, this can be specified in the form of an id string or in the form of a document with the attribute `_id`. All other values will lead to a warning and an empty result. If the specified id does not exist, the result is empty as well and there is no warning.
+   - **graphName**: the name identifying the named graph. It's vertex and edge collections will be looked up.
    - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`, which is the minimal possible value.
    - `MAX`: up to `MAX` length paths are traversed. If omitted in the query, `MAX` equals `MIN`. Thus only the vertices and edges in the range of `MIN` are returned.
 
@@ -100,7 +100,7 @@ You have two options here, you can either use a managed graph (see [the graphs c
  `OUTBOUND|INBOUND|ANY` startVertex
  edgeCollection1, .., edgeCollectionN
 
-Instead of the `GRAPH graphName` you may specify a **list of edge collections**. Vertex collections are evaluated from the edges. The rest of the behavior is similar to the managed version.
+Instead of the `GRAPH graphName` you may specify a **list of edge collections**. Vertex collections are evaluated from the edges. The rest of the behavior is similar to the named version.
 
 !SUBSECTION Using filters and the explainer to extrapolate the costs
 
@@ -182,7 +182,7 @@ To get started we select the full graph; for better overview we only return the 
     @endDocuBlock GRAPHTRAV_02_traverse_all
 
 We can nicely see its heading for the first outer vertex, then going back to the branch to descend into the next tree. After that it returns to our start node, to descend again.
-As we can see both queries return the same result, the first one uses the managed graph, the second directly uses the edge collection.
+As we can see both queries return the same result, the first one uses the named graph, the second directly uses the edge collection.
 
 Now we only want the elements of a specific depth - 2 - the ones that are right behind the fork:
 
