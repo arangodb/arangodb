@@ -420,10 +420,6 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 
   for (auto const& name : files) {
     TRI_vocbase_t* vocbase;
-    TRI_json_t* json;
-    TRI_json_t const* deletedJson;
-    TRI_json_t const* nameJson;
-    TRI_json_t const* idJson;
     TRI_voc_tick_t id;
     TRI_vocbase_defaults_t defaults;
     char* parametersFile;
@@ -514,10 +510,12 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     }
 
     LOG_DEBUG("reading database parameters from file '%s'", parametersFile);
-
-    json = TRI_JsonFile(TRI_CORE_MEM_ZONE, parametersFile, nullptr);
-
-    if (json == nullptr) {
+    std::string fileName(parametersFile);
+    std::shared_ptr<VPackBuilder> builder;
+    try {
+      builder =
+          triagens::basics::VelocyPackHelper::velocyPackFromFile(fileName);
+    } catch (...) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
           databaseDirectory);
@@ -528,61 +526,55 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
+    VPackSlice parameters = builder->slice();
+    std::string parametersString = parameters.toJson();
 
-    LOG_DEBUG("database parameters: %s",
-              triagens::basics::JsonHelper::toString(json).c_str());
+    LOG_DEBUG("database parameters: %s", parametersString.c_str());
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
 
-    deletedJson = TRI_LookupObjectJson(json, "deleted");
+    if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters,
+                                                            "deleted", false)) {
+      // database is deleted, skip it!
+      LOG_INFO("found dropped database in directory '%s'", databaseDirectory);
 
-    if (TRI_IsBooleanJson(deletedJson)) {
-      if (deletedJson->_value._boolean) {
-        // database is deleted, skip it!
-        LOG_INFO("found dropped database in directory '%s'", databaseDirectory);
+      LOG_INFO("removing superfluous database directory '%s'",
+               databaseDirectory);
 
-        LOG_INFO("removing superfluous database directory '%s'",
-                 databaseDirectory);
+      TRI_RemoveDirectory(databaseDirectory);
 
-        TRI_RemoveDirectory(databaseDirectory);
-
-        TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-        continue;
-      }
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      continue;
     }
+    VPackSlice idSlice = parameters.get("id");
 
-    idJson = TRI_LookupObjectJson(json, "id");
-
-    if (!TRI_IsStringJson(idJson)) {
+    if (!idSlice.isString()) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
           databaseDirectory);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
+    std::string idString = idSlice.copyString();
 
-    id = (TRI_voc_tick_t)TRI_UInt64String(idJson->_value._string.data);
+    id = (TRI_voc_tick_t)TRI_UInt64String(idString.c_str());
 
-    nameJson = TRI_LookupObjectJson(json, "name");
+    VPackSlice nameSlice = parameters.get("name");
 
-    if (!TRI_IsStringJson(nameJson)) {
+    if (!nameSlice.isString()) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
           databaseDirectory);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
+    std::string dbname = nameSlice.copyString();
 
-    databaseName =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, nameJson->_value._string.data,
-                              nameJson->_value._string.length - 1);
+    databaseName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, dbname.c_str());
 
     // .........................................................................
     // setup defaults
@@ -590,7 +582,6 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 
     // use defaults
     TRI_GetDatabaseDefaultsServer(server, &defaults);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (databaseName == nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
