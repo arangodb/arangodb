@@ -69,7 +69,7 @@ size_t RestAqlHandler::queue() const { return Dispatcher::AQL_QUEUE; }
 bool RestAqlHandler::isDirect() const { return false; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/instantiate
+/// @brief POST method for /_api/aql/instantiate (internal)
 /// The body is a JSON with attributes "plan" for the execution plan and
 /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +140,7 @@ void RestAqlHandler::createQueryFromJson() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/parse
+/// @brief POST method for /_api/aql/parse (internal)
 /// The body is a Json with attributes "query" for the query string,
 /// "parameters" for the query parameters and "options" for the options.
 /// This does the same as AQL_PARSE with exactly these parameters and
@@ -197,7 +197,7 @@ void RestAqlHandler::parseQuery() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/explain
+/// @brief POST method for /_api/aql/explain (internal)
 /// The body is a Json with attributes "query" for the query string,
 /// "parameters" for the query parameters and "options" for the options.
 /// This does the same as AQL_EXPLAIN with exactly these parameters and
@@ -252,7 +252,7 @@ void RestAqlHandler::explainQuery() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/query
+/// @brief POST method for /_api/aql/query (internal)
 /// The body is a Json with attributes "query" for the query string,
 /// "parameters" for the query parameters and "options" for the options.
 /// This sets up the query as as AQL_EXECUTE would, but does not use
@@ -330,8 +330,8 @@ void RestAqlHandler::createQueryFromString() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using
-/// the part of the cursor API with side effects.
+/// @brief PUT method for /_api/aql/<operation>/<queryId>, (internal)
+/// this is using the part of the cursor API with side effects.
 /// <operation>: can be "lock" or "getSome" or "skip" or "initializeCursor" or
 /// "shutdown".
 /// The body must be a Json with the following attributes:
@@ -428,7 +428,8 @@ void RestAqlHandler::useQuery(std::string const& operation,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief GET method for /_api/aql/<operation>/<queryId>, this is using
+/// @brief GET method for /_api/aql/<operation>/<queryId>, (internal)
+/// this is using
 /// the part of the cursor API without side effects. The operation must
 /// be one of "count", "remaining" and "hasMore". The result is a Json
 /// with, depending on the operation, the following attributes:
