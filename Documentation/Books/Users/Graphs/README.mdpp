@@ -4,8 +4,8 @@
 
 A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge collections*.
 A vertex can be a document of a *document collection* or of an *edge collection* (so *edges* can be used as *vertices*).
-Which collections are used within a graph is defined via *edge definitions*.
-A graph can contain more than one *edge definition*, at least one is needed.
+Which collections are used within a named graph is defined via *edge definitions*.
+A named graph can contain more than one *edge definition*, at least one is needed.
 Graphs allow you to structure your models in line with your domain and group them logically in collections and giving you the power to query them in the same graph queries.
 
 !SUBSECTION Comming from a relational background - whats a graph?
@@ -40,16 +40,26 @@ However the graph module adds an additional layer on top of these collections gi
 
 * All modifications are executed transactional
 * If you delete a vertex all edges will be deleted, you will never have loose ends
-* If you insert an edge it is checked if the edge matches the definition, your edge collections will only contain valid edges
+* If you insert an edge it is checked if the edge matches the *edge definitions*, your edge collections will only contain valid edges
 
-These guarantees are lost if you access the collections in any other way than the graph module or AQL, so if you delete documents from your vertex collections directly, the edges will be untouched.
+These guarantees are lost if you access the collections in any other way than the graph module or AQL,
+so if you delete documents from your vertex collections directly, the edges pointing to them will be remain in place.
 
-!SUBSECTION Using partial infrastructures with anonymous graphs
-Sometimes you may not need all the powers of the general graph facilities, but some of its bits may be valuable to you.
+!SUBSECTION Anonymous graphs
+Sometimes you may not need all the powers of named graphs, but some of its bits may be valuable to you.
 You [may use AQL Graph Functions](../Aql/GraphFunctions.md) that are a little deeper explained in the [traversals](../Traversals/README.md) and the [Working with Edges](../Edges/README.md) Chapter.
+Anonymous graphs don't have *edge definitions* describing which *vertex collection* is connected by which *edge collection*. The graph model has to be maintained in the client side code.
+This gives you more freedom than the strict *named graphs*.
+
+!SUBSUBSECTION When to choose anonymous or named graphs?
+As noted above, named graphs ensure graph integrity, both when inserting or removing edges or vertices.
+So you won't encounter dangling edges, even if you use the same vertex collection in several named graphs.
+This involves more operations inside the database which don't come for free.
+Therefore anonymous graphs may be faster in many operations.
+So this question boils down to 'Can I afford the additional effort or do I need the warranty for integrity?'. 
 
 !SUBSECTION Blueprint Graphs
-*Blueprint 2 graphs* are a subset of *named graphs*. It only supports one edge and one vertex collection per graph. Both vertices and edges have to contain a label attribute; Blueprints API defines a special `LABEL` attribute for this.
+*Blueprint 2 graphs* are a subset of *named graphs*. It only supports one edge and one vertex collection per graph. Both vertices and edges have to contain a label attribute; the Blueprints API defines a special `LABEL` attribute for this.
 We offer [blueprints support via an api compatible java driver](https://github.com/arangodb/blueprints-arangodb-graph).
 
 !SUBSECTION Example Graphs
