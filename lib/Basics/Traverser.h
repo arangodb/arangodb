@@ -1183,40 +1183,42 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() {
-    if (_lastEdges.empty()) {
-      _enumeratedPath.edges.clear();
-      _enumeratedPath.vertices.clear();
-      return _enumeratedPath;
-    }
-    _getEdge(_enumeratedPath.vertices.back(), _enumeratedPath.edges,
-             _lastEdges.top(), _lastEdgesIdx.top(), _lastEdgesDir.top());
-    if (_lastEdges.top() != nullptr) {
-      // Could continue the path in the next depth.
-      _lastEdges.push(nullptr);
-      _lastEdgesDir.push(false);
-      _lastEdgesIdx.push(0);
-      vertexIdentifier v;
-      bool isValid = _getVertex(_enumeratedPath.edges.back(),
-                                _enumeratedPath.vertices.back(),
-                                _enumeratedPath.vertices.size(), v);
-      _enumeratedPath.vertices.push_back(v);
-      TRI_ASSERT(_enumeratedPath.vertices.size() ==
-                 _enumeratedPath.edges.size() + 1);
-      if (!isValid) {
-        prune();
-        return next();
-      }
-    } else {
-      if (_enumeratedPath.edges.empty()) {
-        // We are done with enumerating paths
+    // Avoid tail recusion. May crash on high search depth
+    while (true) {
+      if (_lastEdges.empty()) {
         _enumeratedPath.edges.clear();
         _enumeratedPath.vertices.clear();
-      } else {
-        prune();
-        return next();
+        return _enumeratedPath;
       }
+      _getEdge(_enumeratedPath.vertices.back(), _enumeratedPath.edges,
+               _lastEdges.top(), _lastEdgesIdx.top(), _lastEdgesDir.top());
+      if (_lastEdges.top() != nullptr) {
+        // Could continue the path in the next depth.
+        _lastEdges.push(nullptr);
+        _lastEdgesDir.push(false);
+        _lastEdgesIdx.push(0);
+        vertexIdentifier v;
+        bool isValid = _getVertex(_enumeratedPath.edges.back(),
+                                  _enumeratedPath.vertices.back(),
+                                  _enumeratedPath.vertices.size(), v);
+        _enumeratedPath.vertices.push_back(v);
+        TRI_ASSERT(_enumeratedPath.vertices.size() ==
+                   _enumeratedPath.edges.size() + 1);
+        if (isValid) {
+          return _enumeratedPath;
+        }
+      } else {
+        if (_enumeratedPath.edges.empty()) {
+          // We are done with enumerating paths
+          _enumeratedPath.edges.clear();
+          _enumeratedPath.vertices.clear();
+          return _enumeratedPath;
+        }
+      }
+      // This either modifies the stack or _lastEdges is empty.
+      // This will return in next depth
+      prune();
     }
-    return _enumeratedPath;
   }
 
   //////////////////////////////////////////////////////////////////////////////
