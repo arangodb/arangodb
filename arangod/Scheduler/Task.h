@@ -38,7 +38,6 @@ namespace rest {
 class Scheduler;
 class HttpResponse;
 
-
 class TaskData : public RequestStatisticsAgent {
  public:
   static uint64_t const TASK_DATA_RESPONSE = 1000;
@@ -52,7 +51,6 @@ class TaskData : public RequestStatisticsAgent {
   std::unique_ptr<HttpResponse> _response;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base class for tasks
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +61,6 @@ class Task {
 
   friend class TaskManager;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new task
@@ -95,7 +92,6 @@ class Task {
 
   virtual ~Task();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the task name for debugging
@@ -154,7 +150,6 @@ class Task {
 
   virtual void signalTask(TaskData*) {}
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a task specific description in JSON format
@@ -180,7 +175,6 @@ class Task {
 
   virtual void cleanup() = 0;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief scheduler
@@ -200,7 +194,6 @@ class Task {
 
   EventLoop _loop;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief task id
@@ -218,4 +211,3 @@ class Task {
 }
 
 #endif
-

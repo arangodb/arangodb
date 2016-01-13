@@ -31,7 +31,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch error count header
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +178,8 @@ std::string HttpResponse::responseString(HttpResponseCode code) {
 /// @brief get http response code from string
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpResponse::responseCode(std::string const& str) {
+HttpResponse::HttpResponseCode HttpResponse::responseCode(
+    std::string const& str) {
   int number = ::atoi(str.c_str());
 
   switch (number) {
@@ -432,7 +432,6 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode(int code) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new http response
 ////////////////////////////////////////////////////////////////////////////////
@@ -463,7 +462,6 @@ HttpResponse::~HttpResponse() {
     delete[] it;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the response code
@@ -560,7 +558,7 @@ std::string HttpResponse::header(std::string const& key, bool& found) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string HttpResponse::header(char const* key, size_t keyLength,
-                            bool& found) const {
+                                 bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
   if (kv == nullptr) {
@@ -1006,7 +1004,6 @@ int HttpResponse::deflate(size_t bufferSize) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for special headers
 ////////////////////////////////////////////////////////////////////////////////
@@ -1020,5 +1017,3 @@ void HttpResponse::checkHeader(char const* key, char const* value) {
     }
   }
 }
-
-

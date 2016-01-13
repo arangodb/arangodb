@@ -150,6 +150,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVersionHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
+	arangod/RestHandler/WorkMonitorHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/ConsoleThread.cpp \
 	arangod/RestServer/VocbaseContext.cpp \

@@ -32,7 +32,6 @@
 
 #include "Basics/Mutex.h"
 
-
 struct TRI_json_t;
 
 namespace triagens {
@@ -44,7 +43,6 @@ namespace rest {
 class SchedulerThread;
 class TaskData;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief input-output scheduler
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +51,6 @@ class Scheduler : private TaskManager {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief scheduler singleton
@@ -61,7 +58,6 @@ class Scheduler : private TaskManager {
 
   static std::unique_ptr<Scheduler> SCHEDULER;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -79,10 +75,8 @@ class Scheduler : private TaskManager {
 
   explicit Scheduler(size_t nrThreads);
 
-
   virtual ~Scheduler();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief starts scheduler, keeps running
@@ -212,13 +206,17 @@ class Scheduler : private TaskManager {
   /// @brief returns the task for a task id
   ///
   /// Warning: ONLY call this from within the scheduler task! Otherwise, the
-  /// task
-  ///          MIGHT already be deleted.
+  /// task MIGHT already be deleted.
   //////////////////////////////////////////////////////////////////////////////
 
   Task* lookupTaskById(uint64_t);
 
-  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the loop for a task id
+  //////////////////////////////////////////////////////////////////////////////
+
+  size_t lookupLoopById(uint64_t);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief main event loop
@@ -300,7 +298,6 @@ class Scheduler : private TaskManager {
 
   virtual void signalTask(std::unique_ptr<TaskData>&) = 0;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief registers a new task
@@ -316,7 +313,6 @@ class Scheduler : private TaskManager {
 
   int checkInsertTask(Task const*);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of scheduler threads
@@ -330,7 +326,6 @@ class Scheduler : private TaskManager {
 
   SchedulerThread** threads;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the signal handlers for the scheduler
@@ -338,7 +333,6 @@ class Scheduler : private TaskManager {
 
   static void initializeSignalHandlers();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief true if scheduler is shutting down
@@ -386,5 +380,3 @@ class Scheduler : private TaskManager {
 }
 
 #endif
-
-

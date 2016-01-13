@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,11 +17,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_VERSION_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_VERSION_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_WORK_MONITOR_HANDLER_H
+#define ARANGOD_REST_HANDLER_WORK_MONITOR_HANDLER_H 1
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -32,13 +31,13 @@ namespace arangodb {
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestVersionHandler : public triagens::admin::RestBaseHandler {
+class WorkMonitorHandler : public triagens::admin::RestBaseHandler {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit RestVersionHandler(triagens::rest::HttpRequest*);
+  explicit WorkMonitorHandler(triagens::rest::HttpRequest*);
 
  public:
   //////////////////////////////////////////////////////////////////////////////

@@ -437,6 +437,21 @@ Task* Scheduler::lookupTaskById(uint64_t taskId) {
   return task->second;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the loop for a task id
+////////////////////////////////////////////////////////////////////////////////
+
+size_t Scheduler::lookupLoopById(uint64_t taskId) {
+  MUTEX_LOCKER(schedulerLock);
+
+  auto&& task = taskRegistered.find(taskId);
+
+  if (task == taskRegistered.end()) {
+    return nrThreads;
+  }
+
+  return task->second->eventLoop();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a new task

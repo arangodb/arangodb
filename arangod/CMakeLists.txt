@@ -193,6 +193,7 @@ add_executable(
     RestHandler/RestUploadHandler.cpp
     RestHandler/RestVersionHandler.cpp
     RestHandler/RestVocbaseBaseHandler.cpp
+    RestHandler/WorkMonitorHandler.cpp
     RestServer/ArangoServer.cpp
     RestServer/ConsoleThread.cpp
     RestServer/VocbaseContext.cpp
