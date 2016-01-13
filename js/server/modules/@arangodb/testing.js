@@ -502,7 +502,7 @@ function readImportantLogLines(logPath) {
           // filter out regular INFO lines, and test related messages
           if (
             line.search('WARNING about to execute:') !== -1
-            && line.search(' INFO ') !== -1
+            || line.search(' INFO ') !== -1
           ) {
             continue;
           }
