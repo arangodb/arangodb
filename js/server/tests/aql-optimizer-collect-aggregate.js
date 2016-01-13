@@ -1099,6 +1099,276 @@ function optimizerAggregateTestSuite () {
       assertEqual(1, results.json.length);
       assertTrue(Math.abs(expected - results.json[0]) < 0.01);
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN VARIANCE_SAMPLE(" + JSON.stringify(values) + ")").json[0]) < 0.01);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevEmpty : function () {
+      var query = "FOR i IN [ ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleEmpty : function () {
+      var query = "FOR i IN [ ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevOnlyNull : function () {
+      var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ null, null, null, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleOnlyNull : function () {
+      var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ null, null, null, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSingle : function () {
+      var query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(0, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ -42.5 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleSingle : function () {
+      var query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ -42.5 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleSingleWithNull : function () {
+      var query = "FOR i IN [ -42.5, null ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ -42.5, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleTwoValues : function () {
+      var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(2, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ 19, 23 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleSingleTwoValues : function () {
+      var expected = 2.8284271247461903;
+      var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertTrue(Math.abs(results.json[0] - expected) < 0.01);
+      assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV_SAMPLE([ 19, 23 ])").json[0]) < 0.01);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSingleString : function () {
+      var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ '-42.5foo' ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleSingleString : function () {
+      var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ '-42.5foo' ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleTwoStrings : function () {
+      var query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ '-42.5foo', '99baz' ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSingleWithNulls : function () {
+      var query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(0, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ -42.5, null, null, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleSingleWithNulls : function () {
+      var query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ -42.5, null, null, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevMixed : function () {
+      var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+
+      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      assertEqual("sorted", collectNode.collectOptions.method);
+      assertFalse(collectNode.count);
+      assertFalse(collectNode.isDistinctCommand);
+
+      assertEqual(0, collectNode.groups.length);
+
+      assertEqual(1, collectNode.aggregates.length);
+      assertEqual("m", collectNode.aggregates[0].outVariable.name);
+      assertEqual("STDDEV", collectNode.aggregates[0].type);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevNumbers : function () {
+      var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, -34];
+      var expected = 22.249494376277408;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertTrue(Math.abs(expected - results.json[0]) < 0.01);
+      assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV(" + JSON.stringify(values) + ")").json[0]) < 0.01);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleNumbers : function () {
+      var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, -34];
+      var expected = 23.453026338714675;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertTrue(Math.abs(expected - results.json[0]) < 0.01);
+      assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV_SAMPLE(" + JSON.stringify(values) + ")").json[0]) < 0.01);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevNumbersOthers : function () {
+      var values = [ 1, 42, 23, 19.5, 4, -28 ];
+      var expected = 21.771062598473844;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertTrue(Math.abs(expected - results.json[0]) < 0.01);
+      assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV(" + JSON.stringify(values) + ")").json[0]) < 0.01);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleNumbersOthers : function () {
+      var values = [ 1, 42, 23, 19.5, 4, -28 ];
+      var expected = 23.84900417208232;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertTrue(Math.abs(expected - results.json[0]) < 0.01);
+      assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV_SAMPLE(" + JSON.stringify(values) + ")").json[0]) < 0.01);
     }
 
   };

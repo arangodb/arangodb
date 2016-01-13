@@ -115,6 +115,7 @@ void SortedCollectBlock::CollectGroup::addValues(AqlItemBlock const* src,
     if (count) {
       groupLength += lastRow + 1 - firstRow;
     } else {
+      TRI_ASSERT(src != nullptr);
       auto block = src->slice(firstRow, lastRow + 1);
       try {
         TRI_IF_FAILURE("CollectGroup::addValues") {
@@ -439,6 +440,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
                                    size_t row) {
   if (row > 0) {
     // re-use already copied AqlValues
+    TRI_ASSERT(cur != nullptr);
     for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
       res->setValue(row, i, res->getValue(0, i));
       // Note: if this throws, then all values will be deleted
@@ -454,10 +456,9 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
       // that a group might theoretically consist of multiple documents, from
       // different collections. but there
       // is only one collection pointer per output register
-      auto document = cur->getDocumentCollection(it.second);
       res->setValue(row, it.first,
                     AqlValue(new Json(_currentGroup.groupValues[i].toJson(
-                        _trx, document, true))));
+                    _trx, _currentGroup.collections[i], true))));
     } else {
       res->setValue(row, it.first, _currentGroup.groupValues[i]);
     }
@@ -471,8 +472,9 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
   size_t j = 0;
   for (auto& it : _currentGroup.aggregators) {
     RegisterId reg = _aggregateRegisters[j].second;
-    TRI_document_collection_t const* collection = cur->getDocumentCollection(reg);
     if (_currentGroup.rowsAreValid) {
+      TRI_ASSERT(cur != nullptr);
+      TRI_document_collection_t const* collection = cur->getDocumentCollection(reg);
       for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1; ++r) {
         it->reduce(cur->getValueReference(r, reg), collection);
       }

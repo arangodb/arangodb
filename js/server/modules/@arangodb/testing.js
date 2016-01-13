@@ -1676,7 +1676,13 @@ testFuncs.importing = function (options) {
 
 testFuncs.upgrade = function (options) {
   if (options.cluster) {
-    return true;
+    return {"upgrade":
+            {
+              "status" : true,
+              "message": "skipped because of cluster",
+              "skipped": true
+            }
+           };
   }
 
   var result = {};
@@ -2260,6 +2266,7 @@ function UnitTest (which, options) {
   delete options.jsonReply;
   var i;
   var ok;
+  var r;
   if (which === "all") {
     var n;
     for (n = 0; n < allTests.length; n++) {
@@ -2301,7 +2308,6 @@ function UnitTest (which, options) {
     throw 'Unknown test "' + which + '"';
   }
   else {
-    var r;
     results[which] = r = testFuncs[which](options);
     // print("Testresult:", yaml.safeDump(r));
     ok = true;
