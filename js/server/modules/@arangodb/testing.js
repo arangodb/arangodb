@@ -2266,10 +2266,10 @@ function UnitTest (which, options) {
   delete options.jsonReply;
   var i;
   var ok;
+  var r;
   if (which === "all") {
     var n;
     for (n = 0; n < allTests.length; n++) {
-      var r;
       print("Doing test", allTests[n], "with options", options);
       results[allTests[n]] = r = testFuncs[allTests[n]](options);
       ok = true;
@@ -2308,7 +2308,6 @@ function UnitTest (which, options) {
     throw 'Unknown test "' + which + '"';
   }
   else {
-    var r;
     results[which] = r = testFuncs[which](options);
     // print("Testresult:", yaml.safeDump(r));
     ok = true;
