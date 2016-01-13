@@ -44,7 +44,6 @@
 
 struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
-struct TRI_json_t;
 class TRI_headers_t;
 
 class VocShaper;
@@ -779,15 +778,6 @@ int TRI_FromVelocyPackIndexDocumentCollection(triagens::arango::Transaction*,
                                               TRI_document_collection_t*,
                                               VPackSlice const&,
                                               triagens::arango::Index**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an index, based on a JSON description
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_FromJsonIndexDocumentCollection(triagens::arango::Transaction*,
-                                        TRI_document_collection_t*,
-                                        struct TRI_json_t const*,
-                                        triagens::arango::Index**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rolls back a document operation
