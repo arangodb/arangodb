@@ -25,9 +25,9 @@
 
 using namespace triagens::basics;
 using namespace triagens::aql;
-    
+  
 Aggregator* Aggregator::fromTypeString(triagens::arango::AqlTransaction* trx, std::string const& type) {
-  if (type == "LENGTH") {
+  if (type == "LENGTH" || type == "COUNT") {
     return new AggregatorLength(trx);
   }
   if (type == "MIN") {
@@ -39,8 +39,20 @@ Aggregator* Aggregator::fromTypeString(triagens::arango::AqlTransaction* trx, st
   if (type == "SUM") {
     return new AggregatorSum(trx);
   }
-  if (type == "AVERAGE") {
+  if (type == "AVERAGE" || type == "AVG") {
     return new AggregatorAverage(trx);
+  }
+  if (type == "VARIANCE_POPULATION" || type == "VARIANCE") {
+    return new AggregatorVariance(trx, true);
+  }
+  if (type == "VARIANCE_SAMPLE") {
+    return new AggregatorVariance(trx, false);
+  }
+  if (type == "STDDEV_POPULATION" || type == "STDDEV") {
+    return new AggregatorStddev(trx, true);
+  }
+  if (type == "STDDEV_SAMPLE") {
+    return new AggregatorStddev(trx, false);
   }
 
   // aggregator function name should have been validated before
@@ -62,11 +74,17 @@ Aggregator* Aggregator::fromJson(triagens::arango::AqlTransaction* trx,
 }
 
 bool Aggregator::isSupported(std::string const& type) {
-  return (type == "LENGTH" ||
+  return (
+      type == "LENGTH" || type == "COUNT" ||
       type == "MIN" ||
       type == "MAX" ||
       type == "SUM" ||
-      type == "AVERAGE");
+      type == "AVERAGE" || type == "AVG" ||
+      type == "VARIANCE_POPULATION" || type == "VARIANCE" || 
+      type == "VARIANCE_SAMPLE" ||
+      type == "STDDEV_POPULATION" || type == "STDDEV" || 
+      type == "STDDEV_SAMPLE" 
+  );
 }
 
   
@@ -95,7 +113,8 @@ void AggregatorMin::reset() {
 void AggregatorMin::reduce(AqlValue const& cmpValue,
                            TRI_document_collection_t const* cmpColl) {
   if (value.isEmpty() || 
-      AqlValue::Compare(trx, value, coll, cmpValue, cmpColl, true) > 0) {
+      (!cmpValue.isNull(true) && AqlValue::Compare(trx, value, coll, cmpValue, cmpColl, true) > 0)) {
+    // the value `null` itself will not be used in MIN() to compare lower than e.g. value `false`
     value.destroy();
     value = cmpValue.clone();
     coll = cmpColl;
@@ -103,6 +122,9 @@ void AggregatorMin::reduce(AqlValue const& cmpValue,
 }
   
 AqlValue AggregatorMin::stealValue() {
+  if (value.isEmpty()) {
+    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+  }
   AqlValue copy = value;
   value.erase();
   return copy;
@@ -127,12 +149,12 @@ void AggregatorMax::reduce(AqlValue const& cmpValue,
 }
 
 AqlValue AggregatorMax::stealValue() {
+  if (value.isEmpty()) {
+    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+  }
   AqlValue copy = value;
   value.erase();
   return copy;
-}
-
-AggregatorSum::~AggregatorSum() {
 }
 
 void AggregatorSum::reset() {
@@ -142,12 +164,18 @@ void AggregatorSum::reset() {
 
 void AggregatorSum::reduce(AqlValue const& cmpValue,
                            TRI_document_collection_t const*) {
-  if (!invalid && cmpValue.isNumber()) {
-    bool failed = false;
-    double number = cmpValue.toNumber(failed);
-    if (! failed && !std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
-      sum += number;
+  if (!invalid) {
+    if (cmpValue.isNull(true)) {
+      // ignore `null` values here
       return;
+    }
+    if (cmpValue.isNumber()) {
+      bool failed = false;
+      double const number = cmpValue.toNumber(failed);
+      if (! failed && !std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+        sum += number;
+        return;
+      }
     }
   }
 
@@ -162,9 +190,6 @@ AqlValue AggregatorSum::stealValue() {
   return AqlValue(new triagens::basics::Json(sum));
 }
 
-AggregatorAverage::~AggregatorAverage() {
-}
-
 void AggregatorAverage::reset() {
   count = 0;
   sum = 0.0;
@@ -173,13 +198,19 @@ void AggregatorAverage::reset() {
 
 void AggregatorAverage::reduce(AqlValue const& cmpValue,
                                TRI_document_collection_t const*) {
-  if (!invalid && cmpValue.isNumber()) {
-    bool failed = false;
-    double number = cmpValue.toNumber(failed);
-    if (! failed && !std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
-      sum += number;
-      ++count;
+  if (!invalid) {
+    if (cmpValue.isNull(true)) {
+      // ignore `null` values here
       return;
+    }
+    if (cmpValue.isNumber()) {
+      bool failed = false;
+      double const number = cmpValue.toNumber(failed);
+      if (! failed && !std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+        sum += number;
+        ++count;
+        return;
+      }
     }
   }
 
@@ -194,5 +225,63 @@ AqlValue AggregatorAverage::stealValue() {
   TRI_ASSERT(count > 0);
 
   return AqlValue(new triagens::basics::Json(sum / static_cast<double>(count)));
+}
+
+void AggregatorVarianceBase::reset() {
+  count = 0;
+  sum = 0.0;
+  mean = 0.0;
+  invalid = false;
+}
+
+void AggregatorVarianceBase::reduce(AqlValue const& cmpValue,
+                                    TRI_document_collection_t const*) {
+  if (!invalid) {
+    if (cmpValue.isNull(true)) {
+      // ignore `null` values here
+      return;
+    }
+    if (cmpValue.isNumber()) {
+      bool failed = false;
+      double const number = cmpValue.toNumber(failed);
+      if (! failed && !std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+        double const delta = number - mean;
+        ++count;
+        mean += delta / count;
+        sum += delta * (number - mean);
+        return;
+      }
+    }
+  }
+
+  invalid = true;
+}
+
+AqlValue AggregatorVariance::stealValue() {
+  if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+  }
+
+  TRI_ASSERT(count > 0);
+
+  if (!population) {
+    TRI_ASSERT(count > 1);
+    return AqlValue(new triagens::basics::Json(sum / static_cast<double>(count - 1)));
+  }
+  return AqlValue(new triagens::basics::Json(sum / static_cast<double>(count)));
+}
+
+AqlValue AggregatorStddev::stealValue() {
+  if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+  }
+
+  TRI_ASSERT(count > 0);
+
+  if (!population) {
+    TRI_ASSERT(count > 1);
+    return AqlValue(new triagens::basics::Json(sqrt(sum / static_cast<double>(count - 1))));
+  }
+  return AqlValue(new triagens::basics::Json(sqrt(sum / static_cast<double>(count))));
 }
 
