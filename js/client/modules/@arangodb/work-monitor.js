@@ -34,6 +34,8 @@ const printf = require("internal").printf;
 
 const workOverview = function() {
   const res = arango.GET("/_admin/work-monitor");
+  arangosh.checkRequestResult(res);
+
   const work = res.work;
 
   const output = function(indent, w) {
