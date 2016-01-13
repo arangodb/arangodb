@@ -464,7 +464,7 @@ def loopDirectories():
             if os.path.isdir(filename):
                 for root, dirs, files in os.walk(filename):
                     for file in files:
-                        if (file.endswith(".mdpp") or file.endswith(".js") or file.endswith(".cpp")):
+                        if (file.endswith(".md") or file.endswith(".mdpp") or file.endswith(".js") or file.endswith(".cpp")):
                             filenames.append(os.path.join(root, file))
             else:
                 filenames.append(filename)
@@ -490,6 +490,7 @@ def loopDirectories():
             fstate = OPTION_NORMAL
             sys.stdout = open(filename, 'w')
 
+    print >> sys.stderr, repr(filenames)
     for filename in filenames:
         if (filename.find("#") < 0):
             f = open(filename, "r")

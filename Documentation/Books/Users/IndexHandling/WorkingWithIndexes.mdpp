@@ -36,7 +36,7 @@ db._index("demo/362549736");
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief returns information about the indexes
+returns information about the indexes
 `getIndexes()`
 
 Returns an array of all indexes defined for the collection.
@@ -64,7 +64,7 @@ method obsoletes the specialized index-specific methods *ensureHashIndex*,
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief ensures that an index exists
+ensures that an index exists
 `collection.ensureIndex(index-description)`
 
 Ensures that an index according to the *index-description* exists. A
@@ -92,7 +92,9 @@ Calling this method returns an index object. Whether or not the index
 object existed before the call is indicated in the return attribute
 *isNewlyCreated*.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionEnsureIndex
     @EXAMPLE_ARANGOSH_OUTPUT{collectionEnsureIndex}
@@ -109,7 +111,7 @@ object existed before the call is indicated in the return attribute
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief drops an index
+drops an index
 `collection.dropIndex(index)`
 
 Drops the index. If the index does not exist, then *false* is
@@ -142,7 +144,7 @@ Same as above. Instead of an index an index handle can be given.
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief finds an index
+finds an index
 `db._index(index-handle)`
 
 Returns the index with *index-handle* or null if no such index exists.
@@ -164,7 +166,7 @@ Returns the index with *index-handle* or null if no such index exists.
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief drops an index
+drops an index
 `db._dropIndex(index)`
 
 Drops the *index*.  If the index does not exist, then *false* is
@@ -193,7 +195,7 @@ Drops the index with *index-handle*.
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief finds an index
+finds an index
 
 So you've created an index, and since its maintainance isn't for free,
 you definitely want to know whether your query can utilize it.

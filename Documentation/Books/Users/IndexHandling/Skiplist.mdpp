@@ -20,7 +20,7 @@ of `null`.
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief ensures that a unique skiplist index exists
+ensures that a unique skiplist index exists
 `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ], unique: true })`
 
 Creates a unique skiplist index on all documents using *field1*, ... *fieldn*
@@ -47,8 +47,8 @@ account for uniqueness checks.
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-    @startDocuBlockInline ensureUniqueSkiplist
-    @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplist}
+    @startDocuBlockInline ensureUniqueSkiplistSingle
+    @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistSingle}
     ~db._create("ids");
     db.ids.ensureIndex({ type: "skiplist", fields: [ "myId" ], unique: true });
     db.ids.save({ "myId": 123 });
@@ -57,26 +57,26 @@ details, including the index-identifier, is returned.
     db.ids.save({ "myId": 123 });  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
     ~db._drop("ids");
     @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock ensureUniqueSkiplistSingle
+    
     @startDocuBlockInline ensureUniqueSkiplistMultiColmun
     @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistMultiColmun}
-    @endDocuBlock ensureUniqueSkiplistMultiColmun
     ~db._create("ids");
     db.ids.ensureIndex({ type: "skiplist", fields: [ "name.first", "name.last" ], unique: true });
     db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
     db.ids.save({ "name" : { "first" : "jens", "last": "jensen" }});
     db.ids.save({ "name" : { "first" : "hans", "last": "jensen" }});
-    | db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }}); 
-    ~ // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
+    db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
     ~db._drop("ids");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock ensureUniqueSkiplist
+    @endDocuBlock ensureUniqueSkiplistMultiColmun
 
 
 
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-@brief ensures that a non-unique skiplist index exists
+ensures that a non-unique skiplist index exists
 `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ] })`
 
 Creates a non-unique skiplist index on all documents using *field1*, ...
@@ -105,7 +105,7 @@ details, including the index-identifier, is returned.
 !SUBSECTION Query by example using a skiplist index
 
 
-@brief constructs a query-by-example using a skiplist index
+constructs a query-by-example using a skiplist index
 `collection.byExampleSkiplist(index, example)`
 
 Selects all documents from the specified skiplist index that match the

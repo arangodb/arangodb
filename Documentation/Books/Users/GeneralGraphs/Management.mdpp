@@ -18,21 +18,22 @@ Create a list of edge definitions to construct a graph.
 The list of edge definitions of a graph can be managed by the graph module itself.
 This function is the entry point for the management and will return the correct list.
 
-@PARAMS
 
-@PARAM{relationX, object, optional}
-An object representing a definition of one relation in the graph
+**Parameters**
 
-@EXAMPLES
+* relationX (optional) An object representing a definition of one relation in the graph
 
-    @startDocuBlockInline generalGraphEdgeDefinitions
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
+**Examples**
+
+
+    @startDocuBlockInline generalGraphEdgeDefinitionsSimple
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsSimple}
       var graph_module = require("@arangodb/general-graph");
       directed_relation = graph_module._relation("lives_in", "user", "city");
       undirected_relation = graph_module._relation("knows", "user", "user");
       edgedefinitions = graph_module._edgeDefinitions(directed_relation, undirected_relation);
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphEdgeDefinitions
+    @endDocuBlock generalGraphEdgeDefinitionsSimple
 
 
 
@@ -47,15 +48,14 @@ Extend the list of edge definitions to construct a graph.
 In order to add more edge definitions to the graph before creating
 this function can be used to add more definitions to the initial list.
 
-@PARAMS
 
-@PARAM{edgeDefinitions, array, required}
-A list of relation definition objects.
+**Parameters**
 
-@PARAM{relationX, object, required}
-An object representing a definition of one relation in the graph
+* edgeDefinitions (required) A list of relation definition objects.
+* relationX (required) An object representing a definition of one relation in the graph
 
-@EXAMPLES
+**Examples**
+
 
     @startDocuBlockInline generalGraphEdgeDefinitionsExtend
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
@@ -83,28 +83,26 @@ The *toVertexCollections* is an Array of document collections holding the target
 Relations are only allowed in the direction from any collection in *fromVertexCollections*
 to any collection in *toVertexCollections*.
 
-@PARAMS
 
-@PARAM{relationName, string, required}
-  The name of the edge collection where the edges should be stored.
+**Parameters**
+
+* relationName (required) The name of the edge collection where the edges should be stored.
   Will be created if it does not yet exist.
-
-@PARAM{fromVertexCollections, array, required}
-  One or a list of collection names. Source vertices for the edges
+* fromVertexCollections (required) One or a list of collection names. Source vertices for the edges
+  have to be stored in these collections. Collections will be created if they do not exist.
+* toVertexCollections (required) One or a list of collection names. Target vertices for the edges
   have to be stored in these collections. Collections will be created if they do not exist.
 
-@PARAM{toVertexCollections, array, required}
-  One or a list of collection names. Target vertices for the edges
-  have to be stored in these collections. Collections will be created if they do not exist.
 
-@EXAMPLES
+**Examples**
 
-    @startDocuBlockInline generalGraphRelationDefinition
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinition}
+
+    @startDocuBlockInline generalGraphRelationDefinitionSave
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinitionSave}
       var graph_module = require("@arangodb/general-graph");
       graph_module._relation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphRelationDefinition
+    @endDocuBlock generalGraphRelationDefinitionSave
 
     @startDocuBlockInline generalGraphRelationDefinitionSingle
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinitionSingle}
@@ -134,17 +132,17 @@ list of *vertexCollections*. This relation allows the user to store
 edges in any direction between any pair of vertices within the
 *vertexCollections*.
 
-@PARAMS
 
-@PARAM{relationName, string, required}
-  The name of the edge collection where the edges should be stored.
+**Parameters**
+
+* relationName (required) The name of the edge collection where the edges should be stored.
   Will be created if it does not yet exist.
-
-@PARAM{vertexCollections, array, required}
-  One or a list of collection names for which connections are allowed.
+* vertexCollections (required) One or a list of collection names for which connections are allowed.
   Will be created if they do not exist.
 
-@EXAMPLES
+
+**Examples**
+
 
 To define simple relation with only one vertex collection:
 
@@ -184,21 +182,18 @@ The *toVertexCollections* is an Array of document collections holding the target
 Relations are only allowed in the direction from any collection in *fromVertexCollections*
 to any collection in *toVertexCollections*.
 
-@PARAMS
 
-@PARAM{relationName, string, required}
-  The name of the edge collection where the edges should be stored.
+**Parameters**
+
+* relationName (required) The name of the edge collection where the edges should be stored.
   Will be created if it does not yet exist.
-
-@PARAM{fromVertexCollections, array, required}
-  One or a list of collection names. Source vertices for the edges
+* fromVertexCollections (required) One or a list of collection names. Source vertices for the edges
+  have to be stored in these collections. Collections will be created if they do not exist.
+* toVertexCollections (required) One or a list of collection names. Target vertices for the edges
   have to be stored in these collections. Collections will be created if they do not exist.
 
-@PARAM{toVertexCollections, array, required}
-  One or a list of collection names. Target vertices for the edges
-  have to be stored in these collections. Collections will be created if they do not exist.
+**Examples**
 
-@EXAMPLES
 
     @startDocuBlockInline generalGraphDirectedRelationDefinition
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
@@ -225,28 +220,26 @@ Optionally a list of vertex collections can be added, which are not used in any 
 These collections are referred to as orphan collections within this chapter.
 All collections used within the creation process are created if they do not exist.
 
-@PARAMS
 
-@PARAM{graphName, string, required}
-Unique identifier of the graph
+**Parameters**
 
-@PARAM{edgeDefinitions, array, optional}
-List of relation definition objects
+* graphName (required) Unique identifier of the graph
+* edgeDefinitions (optional) List of relation definition objects
+* orphanCollections (optional) List of additional vertex collection names
 
-@PARAM{orphanCollections, array, optional}
-List of additional vertex collection names
 
-@EXAMPLES
+**Examples**
+
 
 Create an empty graph, edge definitions can be added at runtime:
 
-    @startDocuBlockInline generalGraphCreateGraph
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph}
+    @startDocuBlockInline generalGraphCreateGraphNoData
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphNoData}
       var graph_module = require("@arangodb/general-graph");
       graph = graph_module._create("myGraph");
     ~ graph_module._drop("myGraph", true);
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphCreateGraph
+    @endDocuBlock generalGraphCreateGraphNoData
 
 Create a graph using an edge collection `edges` and a single vertex collection `vertices` 
 
@@ -334,7 +327,9 @@ List all graphs.
 
 Lists all graph names stored in this database.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline generalGraphList
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphList}
@@ -354,12 +349,14 @@ Get a graph
 
 A graph can be retrieved by its name.
 
-@PARAMS
 
-@PARAM{graphName, string, required}
-Unique identifier of the graph
+**Parameters**
 
-@EXAMPLES
+* graphName (required) Unique identifier of the graph
+
+
+**Examples**
+
 
 Get a graph:
 
@@ -388,15 +385,14 @@ This will automatically drop all collections contained in the graph as
 long as they are not used within other graphs.
 To drop the collections, the optional parameter *drop-collections* can be set to *true*.
 
-@PARAMS
 
-@PARAM{graphName, string, required}
-Unique identifier of the graph
+**Parameters**
 
-@PARAM{dropCollections, boolean, optional}
-Define if collections should be dropped (default: false)
+* graphName (required) Unique identifier of the graph
+* dropCollections (optional) Define if collections should be dropped (default: false)
 
-@EXAMPLES
+**Examples**
+
 
 Drop a graph and keep collections:
 
@@ -448,12 +444,14 @@ edge definition, it will be removed from the orphanage. If the edge collection o
 the edge definition to add is already used in the graph or used in a different
 graph with different *from* and/or *to* collections an error is thrown.
 
-@PARAMS
 
-@PARAM{edgeDefinition, object, required}
-The relation definition to extend the graph
+**Parameters**
 
-@EXAMPLES
+* edgeDefinition (required) The relation definition to extend the graph
+
+
+**Examples**
+
 
     @startDocuBlockInline general_graph__extendEdgeDefinitions
     @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
@@ -484,13 +482,15 @@ definition will transform to an orphan. Orphans that are used in this new edge
 definition will be deleted from the list of orphans. Other graphs with the same edge
 definition will be modified, too.
 
-@PARAMS
 
-@PARAM{edgeDefinition, object, required}
-The edge definition to replace the existing edge
-definition with the same attribute *collection*.
+**Parameters**
 
-@EXAMPLES
+* edgeDefinition (required) The edge definition to replace the existing edge
+  definition with the same attribute *collection*.
+
+
+**Examples**
+
 
     @startDocuBlockInline general_graph__editEdgeDefinition
     @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
@@ -518,19 +518,19 @@ Deletes a relation definition defined by the edge collection of a graph. If the
 collections defined in the edge definition (collection, from, to) are not used
 in another edge definition of the graph, they will be moved to the orphanage.
 
-@PARAMS
 
-@PARAM{edgeCollectionName, string, required}
-Name of edge collection in the relation definition.
-@PARAM{dropCollection, boolean, optional}
-Define if the edge collection should be dropped. Default false.
+**Parameters**
 
-@EXAMPLES
+* edgeCollectionName (required) Name of edge collection in the relation definition.
+* dropCollection (optional) Define if the edge collection should be dropped. Default false.
+
+**Examples**
+
 
 Remove an edge definition but keep the edge collection:
 
-    @startDocuBlockInline general_graph__deleteEdgeDefinition
-    @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
+    @startDocuBlockInline general_graph__deleteEdgeDefinitionNoDrop
+    @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinitionNoDrop}
       var graph_module = require("@arangodb/general-graph")
     ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
       var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
@@ -541,7 +541,7 @@ Remove an edge definition but keep the edge collection:
     ~ db._drop("myEC1");
     ~ var blub = graph_module._drop("myGraph", true);
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock general_graph__deleteEdgeDefinition
+    @endDocuBlock general_graph__deleteEdgeDefinitionNoDrop
 
 Remove an edge definition and drop the edge collection:
 
@@ -580,15 +580,14 @@ Adds a vertex collection to the set of orphan collections of the graph. If the
 collection does not exist, it will be created. If it is already used by any edge
 definition of the graph, an error will be thrown.
 
-@PARAMS
 
-@PARAM{vertexCollectionName, string, required}
-Name of vertex collection.
+**Parameters**
 
-@PARAM{createCollection, boolean, optional}
-If true the collection will be created if it does not exist. Default: true.
+* vertexCollectionName (required) Name of vertex collection.
+* createCollection (optional) If true the collection will be created if it does not exist. Default: true.
 
-@EXAMPLES
+**Examples**
+
 
     @startDocuBlockInline general_graph__addVertexCollection
     @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addVertexCollection}
@@ -614,7 +613,9 @@ Get all orphan collections
 
 Returns all vertex collections of the graph that are not used in any edge definition.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline general_graph__orphanCollections
     @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
@@ -642,16 +643,15 @@ Removes a vertex collection from the graph.
 Only collections not used in any relation definition can be removed.
 Optionally the collection can be deleted, if it is not used in any other graph.
 
-@PARAMS
 
-@PARAM{vertexCollectionName, string, required}
-Name of vertex collection.
+**Parameters**
 
-@PARAM{dropCollection, boolean, optional}
-If true the collection will be dropped if it is
-not used in any other graph. Default: false.
+* vertexCollectionName (required) Name of vertex collection.
+* dropCollection (optional) If true the collection will be dropped if it is
+  not used in any other graph. Default: false.
 
-@EXAMPLES
+**Examples**
+
 
     @startDocuBlockInline general_graph__removeVertexCollections
     @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeVertexCollections}
@@ -682,12 +682,14 @@ Create a new vertex in vertexCollectionName
 
 `graph.vertexCollectionName.save(data)`
 
-@PARAMS
 
-@PARAM{data, object, required}
-JSON data of vertex.
+**Parameters**
 
-@EXAMPLES
+* data (required) JSON data of vertex.
+
+
+**Examples**
+
 
     @startDocuBlockInline generalGraphVertexCollectionSave
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
@@ -708,18 +710,16 @@ Replaces the data of a vertex in collection vertexCollectionName
 
 `graph.vertexCollectionName.replace(vertexId, data, options)`
 
-@PARAMS
 
-@PARAM{vertexId, string, required}
-*_id* attribute of the vertex
+**Parameters**
 
-@PARAM{data, object, required}
-JSON data of vertex.
+* vertexId (required) *_id* attribute of the vertex
+* data (required) JSON data of vertex.
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
 
-@EXAMPLES
+**Examples**
+
 
     @startDocuBlockInline generalGraphVertexCollectionReplace
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionReplace}
@@ -741,18 +741,15 @@ Updates the data of a vertex in collection vertexCollectionName
 
 `graph.vertexCollectionName.update(vertexId, data, options)`
 
-@PARAMS
 
-@PARAM{vertexId, string, required}
-*_id* attribute of the vertex
+**Parameters**
 
-@PARAM{data, object, required}
-JSON data of vertex.
+* vertexId (required) *_id* attribute of the vertex
+* data (required) JSON data of vertex.
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
+**Examples**
 
-@EXAMPLES
 
     @startDocuBlockInline generalGraphVertexCollectionUpdate
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionUpdate}
@@ -777,15 +774,15 @@ Removes a vertex in collection *vertexCollectionName*
 Additionally removes all ingoing and outgoing edges of the vertex recursively
 (see [edge remove](#remove-an-edge)).
 
-@PARAMS
 
-@PARAM{vertexId, string, required}
-*_id* attribute of the vertex
+**Parameters**
 
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
+* vertexId (required) *_id* attribute of the vertex
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline generalGraphVertexCollectionRemove
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionRemove}
@@ -811,21 +808,17 @@ Creates an edge from vertex *from* to vertex *to* in collection edgeCollectionNa
 
 `graph.edgeCollectionName.save(from, to, data, options)`
 
-@PARAMS
 
-@PARAM{from, string, required}
-*_id* attribute of the source vertex
+**Parameters**
 
-@PARAM{to, string, required}
-*_id* attribute of the target vertex
+* from (required) *_id* attribute of the source vertex
+* to (required) *_id* attribute of the target vertex
+* data (required) JSON data of the edge
+* options (optional) See [collection documentation](../Edges/README.md)
 
-@PARAM{data, object, required}
-JSON data of the edge
 
-@PARAM{options, object, optional}
-See [collection documentation](../Edges/README.md)
+**Examples**
 
-@EXAMPLES
 
     @startDocuBlockInline generalGraphEdgeCollectionSave1
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave1}
@@ -860,18 +853,16 @@ Replaces the data of an edge in collection edgeCollectionName
 
 `graph.edgeCollectionName.replace(edgeId, data, options)`
 
-@PARAMS
 
-@PARAM{edgeId, string, required}
-*_id* attribute of the edge
+**Parameters**
 
-@PARAM{data, object, required}
-JSON data of the edge
+* edgeId (required) *_id* attribute of the edge
+* data (required) JSON data of the edge
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
 
-@EXAMPLES
+**Examples**
+
 
     @startDocuBlockInline generalGraphEdgeCollectionReplace
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionReplace}
@@ -893,18 +884,16 @@ Updates the data of an edge in collection edgeCollectionName
 
 `graph.edgeCollectionName.update(edgeId, data, options)`
 
-@PARAMS
 
-@PARAM{edgeId, string, required}
-*_id* attribute of the edge
+**Parameters**
 
-@PARAM{data, object, required}
-JSON data of the edge
+* edgeId (required) *_id* attribute of the edge
+* data (required) JSON data of the edge
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
 
-@EXAMPLES
+**Examples**
+
 
     @startDocuBlockInline generalGraphEdgeCollectionUpdate
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionUpdate}
@@ -928,15 +917,15 @@ Removes an edge in collection edgeCollectionName
 
 If this edge is used as a vertex by another edge, the other edge will be removed (recursively).
 
-@PARAMS
 
-@PARAM{edgeId, string, required}
-*_id* attribute of the edge
+**Parameters**
 
-@PARAM{options, object, optional}
-See [collection documentation](../Documents/DocumentMethods.md)
+* edgeId (required) *_id* attribute of the edge
+* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline generalGraphEdgeCollectionRemove
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionRemove}
@@ -963,14 +952,12 @@ Get all connecting edges between 2 groups of vertices defined by the examples
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertexExample.
 
-@PARAMS
 
-@PARAM{vertexExample1, object, optional}
-See [Definition of examples](Functions.md#definition-of-examples)
-@PARAM{vertexExample2, object, optional}
-See [Definition of examples](Functions.md#definition-of-examples)
-@PARAM{options, object, optional}
-An object defining further options. Can have the following values:
+**Parameters**
+
+* vertexExample1 (optional) See [Definition of examples](Functions.md#definition-of-examples)
+* vertexExample2 (optional) See [Definition of examples](Functions.md#definition-of-examples)
+* options (optional) An object defining further options. Can have the following values:
   * *edgeExamples*: Filter the edges, see [Definition of examples](Functions.md#definition-of-examples)
   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
       considered to be on the path.
@@ -979,7 +966,9 @@ An object defining further options. Can have the following values:
   * *vertex2CollectionRestriction* : One or a list of vertex-collection names that should be
       considered on the intermediate vertex steps.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all connecting edges between capitals.
 

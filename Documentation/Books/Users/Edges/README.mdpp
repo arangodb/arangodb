@@ -37,7 +37,7 @@ Other fields can be updated as in default collection.
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
-@brief saves a new edge document
+saves a new edge document
 `edge-collection.insert(from, to, document)`
 
 Saves a new edge and returns the document-handle. *from* and *to*
@@ -56,7 +56,9 @@ applied. The *waitForSync* parameter cannot be used to disable
 synchronization for collections that have a default *waitForSync* value
 of *true*.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline EDGCOL_01_SaveEdgeCol
     @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_01_SaveEdgeCol}
@@ -77,7 +79,7 @@ of *true*.
 <!-- arangod/V8Server/v8-query.cpp -->
 
 
-@brief selects all edges for a set of vertices
+selects all edges for a set of vertices
 `edge-collection.edges(vertex)`
 
 The *edges* operator finds all edges starting from (outbound) or ending
@@ -111,7 +113,7 @@ or document handles.
 <!-- arangod/V8Server/v8-query.cpp -->
 
 
-@brief selects all inbound edges
+selects all inbound edges
 `edge-collection.inEdges(vertex)`
 
 The *edges* operator finds all edges ending in (inbound) *vertex*.
@@ -121,7 +123,9 @@ The *edges* operator finds all edges ending in (inbound) *vertex*.
 The *edges* operator finds all edges ending in (inbound) a document from
 *vertices*, which must a list of documents or document handles.
 
-    @EXAMPLES
+    
+**Examples**
+
     @startDocuBlockInline EDGCOL_02_inEdges
     @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_inEdges}
       db._create("vertex");
@@ -145,7 +149,7 @@ The *edges* operator finds all edges ending in (inbound) a document from
 <!-- arangod/V8Server/v8-query.cpp -->
 
 
-@brief selects all outbound edges
+selects all outbound edges
 `edge-collection.outEdges(vertex)`
 
 The *edges* operator finds all edges starting from (outbound)
@@ -156,7 +160,9 @@ The *edges* operator finds all edges starting from (outbound)
 The *edges* operator finds all edges starting from (outbound) a document
 from *vertices*, which must a list of documents or document handles.
 
-    @EXAMPLES
+    
+**Examples**
+
     @startDocuBlockInline EDGCOL_02_outEdges
     @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_outEdges}
       db._create("vertex");

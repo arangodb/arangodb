@@ -207,7 +207,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         }
       }
       
-      std::vector<std::pair<Variable const*, Variable const*>>
+      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>
         aggregateVariables;
       {
         size_t const len = jsonAggregates.size();
@@ -220,7 +220,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
           Variable* inVar =
               varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
-          aggregateVariables.emplace_back(std::make_pair(outVar, inVar));
+          std::string const type = JsonHelper::checkAndGetStringValue(oneJsonAggregate.json(), "type");
+          aggregateVariables.emplace_back(std::make_pair(outVar, std::make_pair(inVar, type)));
         }
       }
 
@@ -959,6 +960,16 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
       auto ep = static_cast<CollectNode const*>(en);
       for (auto const& p : ep->_groupVariables) {
+        // p is std::pair<Variable const*,Variable const*>
+        // and the first is the to be assigned output variable
+        // for which we need to create a register in the current
+        // frame:
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.emplace(p.first->id, VarInfo(depth, totalNrRegs));
+        totalNrRegs++;
+      }
+      for (auto const& p : ep->_aggregateVariables) {
         // p is std::pair<Variable const*,Variable const*>
         // and the first is the to be assigned output variable
         // for which we need to create a register in the current

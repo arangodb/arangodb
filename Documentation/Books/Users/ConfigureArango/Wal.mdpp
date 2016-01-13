@@ -13,7 +13,7 @@ a replication backlog.
 <!-- arangod/Wal/LogfileManager.h -->
 
 
-@brief the WAL logfiles directory
+the WAL logfiles directory
 `--wal.directory`
 
 Specifies the directory in which the write-ahead logfiles should be
@@ -50,7 +50,7 @@ not present, it will be created.
 <!-- arangod/Wal/LogfileManager.h -->
 
 
-@brief throttle writes to WAL when at least such many operations are
+throttle writes to WAL when at least such many operations are
 waiting for garbage collection
 `--wal.throttle-when-pending`
 
@@ -88,7 +88,7 @@ non-zero value, which is not the default.
 <!-- arangod/Wal/LogfileManager.h -->
 
 
-@brief maximum number of slots to be used in parallel
+maximum number of slots to be used in parallel
 `--wal.slots`
 
 Configures the amount of write slots the write-ahead log can give to write
@@ -107,7 +107,7 @@ disks may only require a value lower than the default.
 <!-- arangod/Wal/LogfileManager.h -->
 
 
-@brief ignore logfile errors when opening logfiles
+ignore logfile errors when opening logfiles
 `--wal.ignore-logfile-errors`
 
 Ignores any recovery errors caused by corrupted logfiles on startup. When
@@ -131,7 +131,7 @@ might cause data loss.
 <!-- arangod/Wal/LogfileManager.h -->
 
 
-@brief ignore recovery errors
+ignore recovery errors
 `--wal.ignore-recovery-errors`
 
 Ignores any recovery errors not caused by corrupted logfiles but by
@@ -144,7 +144,7 @@ have been manually edited or the server is somehow misconfigured.
 <!-- arangod/RestServer/ArangoServer.h -->
 
 
-@brief ignore datafile errors when loading collections
+ignore datafile errors when loading collections
 `--database.ignore-datafile-errors boolean`
 
 If set to `false`, CRC mismatch and other errors in collection datafiles

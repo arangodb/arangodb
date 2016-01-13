@@ -4,7 +4,7 @@
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief returns a single collection or null
+returns a single collection or null
 `db._collection(collection-name)`
 
 Returns the collection with the given name or null if no such collection
@@ -16,15 +16,17 @@ Returns the collection with the given identifier or null if no such
 collection exists. Accessing collections by identifier is discouraged for
 end users. End users should access collections using the collection name.
 
-@EXAMPLES
+
+**Examples**
+
 
 Get a collection by name:
 
-    @startDocuBlockInline collectionDatabaseName
-    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseName}
+    @startDocuBlockInline collectionDatabaseNameKnown
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseNameKnown}
       db._collection("demo");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock collectionDatabaseName
+    @endDocuBlock collectionDatabaseNameKnown
 
 Get a collection by id:
 
@@ -46,7 +48,7 @@ Unknown collection:
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief creates a new document or edge collection
+creates a new document or edge collection
 `db._create(collection-name)`
 
 Creates a new document collection named *collection-name*.
@@ -129,17 +131,19 @@ Specifies the optional *type* of the collection, it can either be *document*
 or *edge*. On default it is document. Instead of giving a type you can also use 
 *db._createEdgeCollection* or *db._createDocumentCollection*.
 
-@EXAMPLES
+
+**Examples**
+
 
 With defaults:
 
-    @startDocuBlockInline collectionDatabaseCreate
-    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreate}
+    @startDocuBlockInline collectionDatabaseCreateSuccess
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateSuccess}
       c = db._create("users");
       c.properties();
     ~ db._drop("users");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock collectionDatabaseCreate
+    @endDocuBlock collectionDatabaseCreateSuccess
 
 With properties:
 
@@ -171,8 +175,7 @@ With a special key option:
     @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateSpecialKey}
       db._create("users", { keyOptions: { allowUserKeys: false } });
       db.users.save({ name: "user 1" });
-    | db.users.save({ name: "user 2", _key: "myuser" });
-    ~    // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
+      db.users.save({ name: "user 2", _key: "myuser" }); // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
       db.users.save({ name: "user 3" });
     ~ db._drop("users");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -182,7 +185,7 @@ With a special key option:
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief creates a new edge collection
+creates a new edge collection
 `db._createEdgeCollection(collection-name)`
 
 Creates a new edge collection named *collection-name*. If the
@@ -205,7 +208,7 @@ for *waitForSync* is *false*.
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
-@brief creates a new document collection
+creates a new document collection
 `db._createDocumentCollection(collection-name)`
 
 Creates a new document collection named *collection-name*. If the
@@ -216,12 +219,14 @@ document name already exists and error is thrown.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief returns all collections
+returns all collections
 `db._collections()`
 
 Returns all collections of the given database.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionsDatabaseName
     @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
@@ -237,14 +242,16 @@ Returns all collections of the given database.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-@brief selects a collection from the vocbase
+selects a collection from the vocbase
 `db.collection-name`
 
 Returns the collection with the given *collection-name*. If no such
 collection exists, create a collection named *collection-name* with the
 default properties.
 
-@EXAMPLES
+
+**Examples**
+
 
     @startDocuBlockInline collectionDatabaseCollectionName
     @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCollectionName}
@@ -260,7 +267,7 @@ default properties.
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief drops a collection
+drops a collection
 `db._drop(collection)`
 
 Drops a *collection* and all its indexes.
@@ -279,15 +286,15 @@ is thrown if there is no such collection.
 
 Drops a collection:
 
-    @startDocuBlockInline collectionDatabaseDrop
-    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDrop}
+    @startDocuBlockInline collectionDatabaseDropByObject
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDropByObject}
     ~ db._create("example");
       col = db.example;
       db._drop(col);
       col;
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock collectionDatabaseDrop
+    @endDocuBlock collectionDatabaseDropByObject
 
 Drops a collection identified by name:
 
@@ -306,7 +313,7 @@ Drops a collection identified by name:
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
-@brief truncates a collection
+truncates a collection
 `db._truncate(collection)`
 
 Truncates a *collection*, removing all documents but keeping all its
@@ -322,12 +329,14 @@ thrown if there is no such collection.
 Truncates a collection named *collection-name*. No error is thrown if
 there is no such collection.
 
-@EXAMPLES
+
+**Examples**
+
 
 Truncates a collection:
 
-    @startDocuBlockInline collectionDatabaseTruncate
-    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseTruncate}
+    @startDocuBlockInline collectionDatabaseTruncateByObject
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseTruncateByObject}
     ~ db._create("example");
       col = db.example;
       col.save({ "Hello" : "World" });
@@ -336,7 +345,7 @@ Truncates a collection:
       col.count();
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock collectionDatabaseTruncate
+    @endDocuBlock collectionDatabaseTruncateByObject
 
 Truncates a collection identified by name:
 

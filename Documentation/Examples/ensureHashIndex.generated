@@ -1,6 +1,6 @@
 arangosh&gt; db.test.ensureIndex({ type: <span class="hljs-string">"hash"</span>, fields: [ <span class="hljs-string">"a"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/1142895721"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/1150163666"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a"</span> 
@@ -13,19 +13,19 @@ arangosh&gt; db.test.ensureIndex({ type: <span class="hljs-string">"hash"</span>
 }
 arangosh&gt; db.test.save({ a : <span class="hljs-number">1</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/1143157865"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1143157865"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1143157865"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/1150425810"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1150425810"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1150425810"</span> 
 }
 arangosh&gt; db.test.save({ a : <span class="hljs-number">1</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/1143354473"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1143354473"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1143354473"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/1150622418"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1150622418"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1150622418"</span> 
 }
 arangosh&gt; db.test.save({ a : <span class="hljs-literal">null</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/1143616617"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1143616617"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1143616617"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/1150884562"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1150884562"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1150884562"</span> 
 }

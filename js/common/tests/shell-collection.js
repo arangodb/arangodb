@@ -203,6 +203,28 @@ function CollectionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief journalSize
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateWithJournalSize : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn, { journalSize: 4 * 1024 * 1024 });
+
+      assertEqual(cn, c1.name());
+      assertEqual(4 * 1024 * 1024, c1.properties().journalSize);
+
+      c1.properties({ journalSize: 8 * 1024 * 1024 });
+      assertEqual(8 * 1024 * 1024, c1.properties().journalSize);
+      
+      c1.properties({ journalSize: 16 * 1024 * 1024 });
+      assertEqual(16 * 1024 * 1024, c1.properties().journalSize);
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create with id
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -244,7 +244,7 @@ function assertQueryError (errorCode, query, bindVars) {
   catch (e) {
     assertTrue(e.errorNum !== undefined, "unexpected error format while calling [" + query + "]");
     assertEqual(errorCode, e.errorNum, "unexpected error code (" + e.errorMessage +
-                "while executing: " + query + "expecting: " + errorCode + "): " );
+                " while executing: '" + query + "' expecting: " + errorCode + "): ");
   }
 }
 

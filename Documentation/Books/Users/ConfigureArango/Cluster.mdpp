@@ -4,7 +4,7 @@
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-@brief this server's id
+this server's id
 `--cluster.my-local-info info`
 
 Some local information about the server in the cluster, this can for
@@ -18,7 +18,7 @@ have a unique local info. This is ignored if my-id below is specified.
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-@brief list of agency endpoints
+list of agency endpoints
 `--cluster.agency-endpoint endpoint`
 
 An agency endpoint the server can connect to. The option can be specified
@@ -35,7 +35,9 @@ At least one endpoint must be specified or ArangoDB will refuse to start.
 It is recommended to specify at least two endpoints so ArangoDB has an
 alternative endpoint if one of them becomes unavailable.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 --cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint
@@ -47,7 +49,7 @@ tcp://192.168.1.2:4002
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-@brief global agency prefix
+global agency prefix
 `--cluster.agency-prefix prefix`
 
 The global key prefix used in all requests to the agency. The specified
@@ -58,7 +60,9 @@ server(s).
 *prefix* must consist of the letters *a-z*, *A-Z* and the digits *0-9*
 only. Specifying a prefix is mandatory.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 --cluster.prefix mycluster
@@ -69,7 +73,7 @@ only. Specifying a prefix is mandatory.
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-@brief this server's id
+this server's id
 `--cluster.my-id id`
 
 The local server's id in the cluster. Specifying *id* is mandatory on
@@ -86,7 +90,7 @@ digits *0-9* only.
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-@brief this server's address / endpoint
+this server's address / endpoint
 `--cluster.my-address endpoint`
 
 The server's endpoint for cluster-internal communication. If specified, it
@@ -100,7 +104,9 @@ If no *endpoint* is specified, the server will look up its internal
 endpoint address in the agency. If no endpoint can be found in the agency
 for the server's id, ArangoDB will refuse to start.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```
 --cluster.my-address tcp://192.168.1.1:8530
@@ -111,7 +117,7 @@ for the server's id, ArangoDB will refuse to start.
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-@brief username used for cluster-internal communication
+username used for cluster-internal communication
 `--cluster.username username`
 
 The username used for authorization of cluster-internal requests.
@@ -135,7 +141,7 @@ the cluster-internal communication will also be unauthenticated.
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-@brief password used for cluster-internal communication
+password used for cluster-internal communication
 `--cluster.password password`
 
 The password used for authorization of cluster-internal requests.

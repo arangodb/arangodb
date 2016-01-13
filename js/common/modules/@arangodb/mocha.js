@@ -33,6 +33,7 @@ var MochaSuite = require('mocha/lib/suite');
 var MochaRunner = require('mocha/lib/runner');
 var BaseReporter = require('mocha/lib/reporters/base');
 var DefaultReporter = require('mocha/lib/reporters/json');
+var escapeRe = require('mocha/node_modules/escape-string-regexp');
 
 function notIn(arr) {
   return function (item) {
@@ -65,13 +66,25 @@ exports.run = function runMochaTests(run, files, reporterName) {
   }
 
   var suite = new MochaSuite('', new MochaContext());
+  suite.timeout(0);
+  suite.bail(false);
 
   Object.keys(interfaces).forEach(function (key) {
     interfaces[key](suite);
   });
 
   var options = {};
-  var mocha = {options: options};
+  var mocha = {
+    options: options,
+    grep(re) {
+      this.options.grep = typeof re === 'string' ? new RegExp(escapeRe(re)) : re;
+      return this;
+    },
+    invert() {
+      this.options.invert = true;
+      return this;
+    }
+  };
 
   // Clean up after chai.should(), etc
   var globals = Object.getOwnPropertyNames(global);
@@ -93,6 +106,9 @@ exports.run = function runMochaTests(run, files, reporterName) {
 
     runner = new MochaRunner(suite, false);
     reporter = new Reporter(runner, options);
+    if (options.grep) {
+      runner.grep(options.grep, options.invert);
+    }
     runner.run();
   } finally {
     Object.getOwnPropertyNames(global)

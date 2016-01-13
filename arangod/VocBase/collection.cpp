@@ -1217,6 +1217,13 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       // Copy the ownership of the options over
       _keyOptions = builder.steal();
     }
+
+    if (options.hasKey("deleted")) {
+      VPackSlice const slice = options.get("deleted");
+      if (slice.isBoolean()) {
+        _deleted = slice.getBoolean();
+      }
+    }
   }
 
 #ifndef TRI_HAVE_ANONYMOUS_MMAP
@@ -1428,8 +1435,14 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
           slice, "doCompact", true);
       _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync", vocbase->_settings.defaultWaitForSync);
-      _maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<int>(
-          slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
+      if (slice.hasKey("journalSize")) {
+        _maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+            slice, "journalSize", vocbase->_settings.defaultMaximalSize);
+      }
+      else {
+        _maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+            slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
+      }
       _indexBuckets =
           triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
               slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
@@ -1438,9 +1451,16 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
           slice, "doCompact", true);
       _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync", false);
-      _maximalSize =
-          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-              slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+      if (slice.hasKey("journalSize")) {
+        _maximalSize =
+            triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+                slice, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+      }
+      else {
+        _maximalSize =
+            triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+                slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+      }
       _indexBuckets =
           triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
               slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
@@ -1450,9 +1470,16 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
         slice, "doCompact", _doCompact);
     _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
         slice, "waitForSync", _waitForSync);
-    _maximalSize =
-        triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-            slice, "maximalSize", _maximalSize);
+    if (slice.hasKey("journalSize")) {
+      _maximalSize =
+          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+              slice, "journalSize", _maximalSize);
+    }
+    else {
+      _maximalSize =
+          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+              slice, "maximalSize", _maximalSize);
+    }
     _indexBuckets =
         triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
             slice, "indexBuckets", _indexBuckets);

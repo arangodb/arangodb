@@ -585,7 +585,6 @@ void HttpCommTask::setupDone() {
   _setupDone.store(true, std::memory_order_relaxed);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
@@ -966,6 +965,9 @@ bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
 
   _scheduler = scheduler;
   _loop = loop;
+  
+  _server->registerChunkedTask(this);
+  setupDone();
 
   return true;
 }

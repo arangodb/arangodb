@@ -14,7 +14,7 @@ function code must be specified.
 <!-- js/common/modules/@arangodb/aql/functions.js -->
 
 
-@brief register an AQL user function
+register an AQL user function
 `aqlfunctions.register(name, code, isDeterministic)`
 
 Registers an AQL user function, identified by a fully qualified function
@@ -40,7 +40,9 @@ The function returns *true* when it updates/replaces an existing AQL
 function of the same name, and *false* otherwise. It will throw an exception
 when it detects syntactially invalid function code.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
   require("@arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit",
@@ -54,7 +56,7 @@ when it detects syntactially invalid function code.
 <!-- js/common/modules/@arangodb/aql/functions.js -->
 
 
-@brief delete an existing AQL user function
+delete an existing AQL user function
 `aqlfunctions.unregister(name)`
 
 Unregisters an existing AQL user function, identified by the fully qualified
@@ -63,7 +65,9 @@ function name.
 Trying to unregister a function that does not exist will result in an
 exception.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
   require("@arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
@@ -74,7 +78,7 @@ exception.
 <!-- js/common/modules/@arangodb/aql/functions.js -->
 
 
-@brief delete a group of AQL user functions
+delete a group of AQL user functions
 `aqlfunctions.unregisterGroup(prefix)`
 
 Unregisters a group of AQL user function, identified by a common function
@@ -82,7 +86,9 @@ group prefix.
 
 This will return the number of functions unregistered.
 
-@EXAMPLES
+
+**Examples**
+
 
 ```js
   require("@arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
@@ -95,7 +101,7 @@ This will return the number of functions unregistered.
 <!-- js/common/modules/@arangodb/aql/functions.js -->
 
 
-@brief list all AQL user functions
+list all AQL user functions
 `aqlfunctions.toArray()`
 
 Returns all previously registered AQL user functions, with their fully
@@ -106,7 +112,9 @@ by specifying a group prefix:
 
 `aqlfunctions.toArray(prefix)`
 
-@EXAMPLES
+
+**Examples**
+
 
 To list all available user functions:
 

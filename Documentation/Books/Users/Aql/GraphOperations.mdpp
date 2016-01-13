@@ -67,7 +67,9 @@ vertices (see [example](#short-explanation-of-the-example-parameter)).
                    should be fully extracted (true). By default this parameter is set to false, so only ids
                    will be returned.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all edges to locations with a distance of either 700 or 600.:
 
@@ -130,7 +132,9 @@ outbound, inbound or any (default) edges.
   * *direction*        : The direction of the edges as a string. Possible values are *outbound*, *inbound* and *any* (default).
   * *vertexCollectionRestriction*      : One or multiple vertex collections that should be considered.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all vertices of the graph
 
@@ -197,7 +201,9 @@ Note: in ArangoDB versions prior to 2.6 *NEIGHBORS* returned the array of neighb
 all attributes and not just the vertex ids. To return to the same behavior, set the *includeData*
 option to *true* in 2.6 and above.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all neighbors of locations with a distance of either
 700 or 600.:
@@ -249,7 +255,9 @@ Hence the default call would have a complexity of **O(n\*m)**;
 For parameter documentation read the documentation of
 [GRAPH_NEIGHBORS](#graphneighbors).
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all common neighbors of capitals.
 
@@ -307,7 +315,9 @@ defined by the parameters vertexExamples.
   * *vertex2CollectionRestriction*   : One or multiple vertex collection names. Only vertices from these collections will be considered.
   * *ignoreProperties* : One or multiple attributes of a document that should be ignored, either a string or an array..
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, all locations with the same properties:
 
@@ -363,18 +373,20 @@ the graph and *m* the average amount of connected edges;
   * *minLength* (optional)     : Defines the minimal length a path must have to be returned (default is 0).
   * *maxLength* (optional)     : Defines the maximal length a path must have to be returned (default is 10).
 
-@EXAMPLES
+
+**Examples**
+
 
 Return all paths of the graph "social":
 
-    @startDocuBlockInline generalGraphPaths
-    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths}
+    @startDocuBlockInline generalGraphPaths1
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths1}
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var g = examples.loadGraph("social");
       db._query("RETURN GRAPH_PATHS('social')").toArray();
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock generalGraphPaths
+    @endDocuBlock generalGraphPaths1
 
 Return all inbound paths of the graph "social" with a maximal
 length of 1 and a minimal length of 2:
@@ -450,7 +462,9 @@ This parameter triggers if the result contains the real data object *true* or
 it just includes the *_id* values *false*.
 The default value is *false* as it yields performance benefits.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, shortest distance from all german to all french cities:
 
@@ -544,7 +558,9 @@ The complexity of this function strongly depends on the usage.
    * [ "exclude" ]: Will not include non-matching vertices in the result but descend into them
    * [ "prune", "exclude" ]: Will completely ignore the vertex and its connected edges
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, start a traversal from Hamburg :
 
@@ -600,7 +616,9 @@ vertices (see [example](#short-explanation-of-the-example-parameter)).
 * *options* (optional) : An object containing options, see
  [Graph Traversals](../Aql/GraphOperations.md#graphtraversal):
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, start a traversal from Hamburg :
 
@@ -643,7 +661,9 @@ The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a g
 This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#graphshortestpath).
 It does not return the actual path but only the distance between two vertices.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, distance from all french to all german cities:
 
@@ -721,7 +741,9 @@ vertices (see [example](#short-explanation-of-the-example-parameter)).
 If an edge does not have the attribute named as defined in option *weight* this default is used as length.
 If no default is supplied the default would be positive Infinity so the path and hence the eccentricity can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the absolute eccentricity of all locations.
 
@@ -792,7 +814,9 @@ If an edge does not have the attribute named as defined in option *weight* this 
 If no default is supplied the default would be positive Infinity so the path and
 hence the eccentricity can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the eccentricity of all locations.
 
@@ -857,7 +881,9 @@ If an edge does not have the attribute named as defined in option *weight* this 
 If no default is supplied the default would be positive Infinity so the path and
 hence the eccentricity can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the absolute closeness of all locations.
 
@@ -928,7 +954,9 @@ If an edge does not have the attribute named as defined in option *weight* this 
 If no default is supplied the default would be positive Infinity so the path and
 hence the eccentricity can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the closeness of all locations.
 
@@ -995,7 +1023,9 @@ If an edge does not have the attribute named as defined in option *weight* this 
 If no default is supplied the default would be positive Infinity so the path and
 hence the betweenness can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the absolute betweenness of all locations.
 
@@ -1063,7 +1093,9 @@ If an edge does not have the attribute named as defined in option *weight* this 
 If no default is supplied the default would be positive Infinity so the path and
 hence the eccentricity can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the betweenness of all locations.
 
@@ -1130,7 +1162,9 @@ If an edge does not have the attribute named as defined in option *weight* this 
 If no default is supplied the default would be positive Infinity so the path and
 hence the eccentricity can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the radius of the graph.
 
@@ -1200,7 +1234,9 @@ If an edge does not have the attribute named as defined in option *weight* this 
 If no default is supplied the default would be positive Infinity so the path and
 hence the eccentricity can not be calculated.
 
-@EXAMPLES
+
+**Examples**
+
 
 A route planner example, the diameter of the graph.
 

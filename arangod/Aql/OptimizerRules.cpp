@@ -1126,11 +1126,11 @@ void triagens::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
       continue;
     }
 
-    auto const& collectVariables = collectNode->collectVariables();
+    auto const& groupVariables = collectNode->groupVariables();
 
     // test if we can use an alternative version of COLLECT with a hash table
     bool const canUseHashAggregation =
-        (!collectVariables.empty() &&
+        (!groupVariables.empty() &&
          (!collectNode->hasOutVariable() || collectNode->count()) &&
          collectNode->getOptions().canUseHashMethod());
 
@@ -1154,7 +1154,7 @@ void triagens::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
       if (!collectNode->isDistinctCommand()) {
         // add the post-SORT
         std::vector<std::pair<Variable const*, bool>> sortElements;
-        for (auto const& v : newCollectNode->collectVariables()) {
+        for (auto const& v : newCollectNode->groupVariables()) {
           sortElements.emplace_back(std::make_pair(v.first, true));
         }
 
@@ -1193,9 +1193,9 @@ void triagens::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
         CollectOptions::CollectMethod::COLLECT_METHOD_SORTED);
 
     // insert a SortNode IN FRONT OF the CollectNode
-    if (!collectVariables.empty()) {
+    if (!groupVariables.empty()) {
       std::vector<std::pair<Variable const*, bool>> sortElements;
-      for (auto const& v : collectVariables) {
+      for (auto const& v : groupVariables) {
         sortElements.emplace_back(std::make_pair(v.second, true));
       }
 

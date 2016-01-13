@@ -486,7 +486,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-errors.js \
                @top_srcdir@/js/common/tests/shell-fs.js \
                @top_srcdir@/js/common/tests/shell-env.js \
-               @top_srcdir@/js/common/tests/shell-foxx-manager-install-jasmine-spec.js \
+               @top_srcdir@/js/common/tests/shell-foxx-manager-install-spec.js \
                @top_srcdir@/js/common/tests/shell-general-graph.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
@@ -513,7 +513,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-hash-index-noncluster.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js \
-               @top_srcdir@/js/common/tests/shell-query-timecritical-jasmine-spec.js
+               @top_srcdir@/js/common/tests/shell-query-timecritical-spec.js
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (BASICS)
@@ -535,8 +535,8 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
                @top_srcdir@/js/server/tests/shell-foxx-model-events-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-preprocessor.js \
-               @top_srcdir@/js/server/tests/shell-foxx-query-jasmine-spec.js \
-               @top_srcdir@/js/server/tests/shell-foxx-repository-jasmine-spec.js \
+               @top_srcdir@/js/server/tests/shell-foxx-query-spec.js \
+               @top_srcdir@/js/server/tests/shell-foxx-repository-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-skiplist-index.js \
@@ -624,6 +624,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
 			@top_srcdir@/js/server/tests/aql-multi-modify.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-collect-aggregate.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-methods.js \

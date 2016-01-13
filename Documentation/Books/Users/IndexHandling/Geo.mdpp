@@ -48,12 +48,14 @@ in the *fields* array:
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-@EXAMPLES
+
+**Examples**
+
 
 Create a geo index for an array attribute:
 
-    @startDocuBlockInline geoIndexCreateForArrayAttribute
-    @EXAMPLE_ARANGOSH_OUTPUT{geoIndexCreateForArrayAttribute}
+    @startDocuBlockInline geoIndexCreateForArrayAttribute1
+    @EXAMPLE_ARANGOSH_OUTPUT{geoIndexCreateForArrayAttribute1}
     ~db._create("geo")
      db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
     | for (i = -90;  i <= 90;  i += 10) {
@@ -66,7 +68,7 @@ Create a geo index for an array attribute:
     db.geo.near(0, 0).count();
     ~db._drop("geo")
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock geoIndexCreateForArrayAttribute
+    @endDocuBlock geoIndexCreateForArrayAttribute1
 
 Create a geo index for a hash array attribute:
 
