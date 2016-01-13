@@ -12,6 +12,34 @@ v3.0.0 (XXXX-XX-XX)
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL keyword `AGGREGATE` for use in AQL `COLLECT` statement
+
+  Using `AGGREGATE` allows more efficient aggregation (incrementally while building
+  the groups) than previous versions of AQL, which built group aggregates afterwards
+  from the total of all group values.
+
+  `AGGREGATE` can be used inside a `COLLECT` statement only. If used, it must follow
+  the declaration of grouping keys:
+
+      FOR doc IN collection
+        COLLECT gender = doc.gender AGGREGATE minAge = MIN(doc.age), maxAge = MAX(doc.age)
+        RETURN { gender, minAge, maxAge }
+
+  or, if no grouping keys are used, it can follow the `COLLECT` keyword:
+      
+      FOR doc IN collection
+        COLLECT AGGREGATE minAge = MIN(doc.age), maxAge = MAX(doc.age)
+        RETURN { minAge, maxAge }
+
+  Only specific expressions are allowed on the right-hand side of each `AGGREGATE` 
+  assignment:
+
+  - on the top level the expression must be a call to one of the supported aggregation 
+    functions `LENGTH`, `MIN`, `MAX`, `SUM`, `AVERAGE`, `STDDEV_POPULATION`, `STDDEV_SAMPLE`, 
+    `VARIANCE_POPULATION`, or `VARIANCE_SAMPLE`
+
+  - the expression must not refer to variables introduced in the `COLLECT` itself
+
 * Foxx: mocha test paths with wildcard characters (asterisks) now work on Windows
 
 * reserved AQL keyword `NONE` for future use

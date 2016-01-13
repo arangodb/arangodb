@@ -498,9 +498,15 @@ function readImportantLogLines(logPath) {
       for (j = 0; j < maxBuffer; j++) {
         if (buf[j] === 10) { // \n
           var line = buf.asciiSlice(lineStart, j);
-          // filter out regular INFO lines, and test related messages
-          fnLines.push(line);
           lineStart = j + 1;
+          // filter out regular INFO lines, and test related messages
+          if (
+            line.search('WARNING about to execute:') !== -1
+            && line.search(' INFO ') !== -1
+          ) {
+            continue;
+          }
+          fnLines.push(line);
         }
       }
     }
@@ -2077,20 +2083,27 @@ testFuncs.authentication_parameters = function (options) {
 
   var test;
   for (test = 0; test < 3; test++) {
-    var all_ok = true;
     var instanceInfo = startInstance("tcp", options,
                                      authTestServerParams[test],
                                      "authentication_parameters_" + authTestNames[test]);
     if (instanceInfo === false) {
-      return {status: false, message: authTestNames[test] + ": failed to start server!"};
+      return {
+        authentication: {
+          status: false,
+          total: 1,
+          failed: 1,
+          message: authTestNames[test] + ": failed to start server!"
+        }
+      };
     }
     var r;
     var i;
     var testName = 'auth_' + authTestNames[test];
 
     print(Date() + " Starting " + authTestNames[test] + " test");
-    results[testName] = {};
+    results[testName] = {failed: 0, total: 0};
     for (i = 0; i < urlsTodo.length; i++) {
+      results[testName].total++;
       print("  URL: " + instanceInfo.url + urlsTodo[i]);
       if (!continueTesting) {
         print("Skipping " + urlsTodo[i] + ", server is gone.");
@@ -2098,17 +2111,18 @@ testFuncs.authentication_parameters = function (options) {
           status: false,
           message: instanceInfo.exitStatus
         };
+        results[testName].failed++;
         instanceInfo.exitStatus = "server is gone.";
-        all_ok = false;
         break;
       }
 
       r = download(instanceInfo.url + urlsTodo[i],"", downloadOptions);
       if (r.code === authTestExpectRC[test][i]) {
-        results[testName][urlsTodo[i]] = { status: true, message: ""};
+        results[testName][urlsTodo[i]] = { status: true };
       }
       else {
         checkBodyForJsonToParse(r);
+        results[testName].failed++;
         results[testName][urlsTodo[i]] = { 
           status: false,
           message: "we expected " + 
@@ -2118,11 +2132,10 @@ testFuncs.authentication_parameters = function (options) {
             " Full Status: "
             + yaml.safeDump(r)
         };
-        all_ok = false;
       }
       continueTesting = checkInstanceAlive(instanceInfo, options);
     }
-    results[testName].status = all_ok;
+    results[testName].status = results[testName].failed === 0;
 
     print("Shutting down " + authTestNames[test] + " test...");
     shutdownInstance(instanceInfo, options);

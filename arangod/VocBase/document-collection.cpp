@@ -2929,6 +2929,10 @@ int TRI_FillIndexesDocumentCollection(triagens::arango::Transaction* trx,
   auto const& indexes = document->allIndexes();
   size_t const n = indexes.size();
 
+  if (n == 1) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
   double start = TRI_microtime();
 
   // only log performance infos for indexes with more than this number of
@@ -2936,14 +2940,14 @@ int TRI_FillIndexesDocumentCollection(triagens::arango::Transaction* trx,
   static size_t const NotificationSizeThreshold = 131072;
   auto primaryIndex = document->primaryIndex();
 
-  if ((n > 1) && (primaryIndex->size() > NotificationSizeThreshold)) {
+  if (primaryIndex->size() > NotificationSizeThreshold) {
     LOG_ACTION(
         "fill-indexes-document-collection { collection: %s/%s }, indexes: %d",
         document->_vocbase->_name, document->_info.name().c_str(),
         (int)(n - 1));
   }
 
-  TRI_ASSERT(n >= 1);
+  TRI_ASSERT(n > 1);
 
   std::atomic<int> result(TRI_ERROR_NO_ERROR);
 
@@ -2971,10 +2975,10 @@ int TRI_FillIndexesDocumentCollection(triagens::arango::Transaction* trx,
       // loop and
       // prevent distribution to threads
       if (indexPool != nullptr && i != (n - 1)) {
-        // move task into thread pool
-        IndexFiller indexTask(trx, document, idx, callback);
-
         try {
+          // move task into thread pool
+          IndexFiller indexTask(trx, document, idx, callback);
+
           static_cast<triagens::basics::ThreadPool*>(indexPool)
               ->enqueue(indexTask);
         } catch (...) {

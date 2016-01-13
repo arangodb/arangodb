@@ -32,7 +32,9 @@ using namespace triagens::basics;
 /// @brief create a barrier for the specified number of waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-Barrier::Barrier(size_t size) : _condition(), _missing(size) {}
+Barrier::Barrier(size_t size) : _condition(), _missing(size) {
+  TRI_ASSERT(size > 0);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the barrier. this will call synchronize() to ensure all tasks
