@@ -40,6 +40,11 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+#include "velocypack/Builder.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
@@ -1540,8 +1545,12 @@ int InitialSyncer::changeCollection(TRI_vocbase_col_t* col,
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::handleCollection(TRI_json_t const* parameters,
-                                    TRI_json_t const* indexes, bool incremental,
-                                    std::string& errorMsg, sync_phase_e phase) {
+                                    TRI_json_t const* indexesJson,
+                                    bool incremental, std::string& errorMsg,
+                                    sync_phase_e phase) {
+  // Only Temporary indexesJson will be VPack soon
+  std::shared_ptr<VPackBuilder> builder = triagens::basics::JsonHelper::toVelocyPack(indexesJson);
+  VPackSlice indexes = builder->slice();
   if (checkAborted()) {
     return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
   }
@@ -1744,7 +1753,8 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
 
       if (res == TRI_ERROR_NO_ERROR) {
         // now create indexes
-        size_t const n = TRI_LengthVector(&indexes->_value._objects);
+        TRI_ASSERT(indexes.isArray());
+        VPackValueLength const n = indexes.length();
 
         if (n > 0) {
           std::string const progress = "creating " + std::to_string(n) +
@@ -1763,27 +1773,22 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
               TRI_document_collection_t* document = col->_collection;
               TRI_ASSERT(document != nullptr);
 
-              for (size_t i = 0; i < n; ++i) {
-                TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(
-                    TRI_AtVector(&indexes->_value._objects, i));
+              for (auto const& idxDef : VPackArrayIterator(indexes)) {
                 triagens::arango::Index* idx = nullptr;
 
-                if (TRI_IsObjectJson(idxDef)) {
-                  TRI_json_t const* type = TRI_LookupObjectJson(idxDef, "type");
-                  if (TRI_IsStringJson(type)) {
+                if (idxDef.isObject()) {
+                  VPackSlice const type = idxDef.get("type");
+                  if (type.isString()) {
                     std::string const progress =
                         "creating index of type " +
-                        std::string(type->_value._string.data,
-                                    type->_value._string.length - 1) +
+                        type.copyString() +
                         " for " + collectionMsg;
                     setProgress(progress);
                   }
                 }
 
-                // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-
-                res = TRI_FromJsonIndexDocumentCollection(&trx, document,
-                                                          idxDef, &idx);
+                res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document,
+                                                                idxDef, &idx);
 
                 if (res != TRI_ERROR_NO_ERROR) {
                   errorMsg = "could not create index: " +

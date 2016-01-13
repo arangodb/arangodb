@@ -750,7 +750,7 @@ int ContinuousSyncer::commitTransaction(TRI_json_t const* json) {
 int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
   TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
   std::string const name = JsonHelper::getStringValue(collectionJson, "name", "");
-  char const* cname = getCName(json);
+  std::string cname = getCName(json);
 
   if (name.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -759,8 +759,8 @@ int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
   TRI_voc_cid_t cid = getCid(json);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
-  if (col == nullptr && cname != nullptr) {
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname);
+  if (col == nullptr && !cname.empty()) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
   }
 
   if (col == nullptr) {
@@ -776,11 +776,11 @@ int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
 
 int ContinuousSyncer::changeCollection(TRI_json_t const* json) {
   TRI_voc_cid_t cid = getCid(json);
-  char const* cname = getCName(json);
+  std::string cname = getCName(json);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
-  if (col == nullptr && cname != nullptr) {
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname);
+  if (col == nullptr && !cname.empty()) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
     if (col != nullptr) {
       cid = col->_cid;
     }

@@ -49,14 +49,11 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::httpclient;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base url of the replication API
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string const Syncer::BaseUrl = "/_api/replication";
-
-
 
 Syncer::Syncer(TRI_vocbase_t* vocbase,
                TRI_replication_applier_configuration_t const* configuration)
@@ -124,7 +121,6 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
   }
 }
 
-
 Syncer::~Syncer() {
   // shutdown everything properly
   delete _client;
@@ -137,7 +133,6 @@ Syncer::~Syncer() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
-
 
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   Syncer* s = static_cast<Syncer*>(data);
@@ -156,25 +151,33 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t Syncer::getCid(TRI_json_t const* json) const {
-  if (!JsonHelper::isObject(json)) {
+  // Only temporary
+  std::shared_ptr<VPackBuilder> builder =
+      triagens::basics::JsonHelper::toVelocyPack(json);
+  return getCid(builder->slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection id from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
+  if (!slice.isObject()) {
     return 0;
   }
+  VPackSlice id = slice.get("cid");
 
-  TRI_json_t const* id = JsonHelper::getObjectElement(json, "cid");
-
-  if (JsonHelper::isString(id)) {
+  if (id.isString()) {
     // string cid, e.g. "9988488"
-    return StringUtils::uint64(id->_value._string.data,
-                               id->_value._string.length - 1);
-  } else if (JsonHelper::isNumber(id)) {
+    return StringUtils::uint64(id.copyString());
+  } else if (id.isNumber()) {
     // numeric cid, e.g. 9988488
-    return (TRI_voc_cid_t)id->_value._number;
+    return id.getNumericValue<TRI_voc_cid_t>();
   }
 
   return 0;
@@ -184,18 +187,19 @@ TRI_voc_cid_t Syncer::getCid(TRI_json_t const* json) const {
 /// @brief extract the collection name from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* Syncer::getCName(TRI_json_t const* json) const {
-  if (!JsonHelper::isObject(json)) {
-    return nullptr;
-  }
+std::string Syncer::getCName(TRI_json_t const* json) const {
+  // Only temporary
+  std::shared_ptr<VPackBuilder> builder =
+      triagens::basics::JsonHelper::toVelocyPack(json);
+  return getCName(builder->slice());
+}
 
-  TRI_json_t const* cname = JsonHelper::getObjectElement(json, "cname");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection name from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
 
-  if (JsonHelper::isString(cname)) {
-    return cname->_value._string.data;
-  }
-
-  return nullptr;
+std::string Syncer::getCName(VPackSlice const& slice) const {
+  return triagens::basics::VelocyPackHelper::getStringValue(slice, "cname", "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -436,9 +440,9 @@ int Syncer::dropCollection(TRI_json_t const* json, bool reportError) {
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
   if (col == nullptr) {
-    char const* cname = getCName(json);
-    if (cname != nullptr) {
-      col = TRI_LookupCollectionByNameVocBase(_vocbase, cname);
+    std::string cname = getCName(json);
+    if (!cname.empty()) {
+      col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
     }
   }
 
@@ -458,14 +462,32 @@ int Syncer::dropCollection(TRI_json_t const* json, bool reportError) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::createIndex(TRI_json_t const* json) {
-  TRI_json_t const* indexJson = JsonHelper::getObjectElement(json, "index");
+  // Only temporary
+  std::shared_ptr<VPackBuilder> builder =
+      triagens::basics::JsonHelper::toVelocyPack(json);
+  return createIndex(builder->slice());
+}
 
-  if (!JsonHelper::isObject(indexJson)) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an index, based on the VelocyPack provided
+////////////////////////////////////////////////////////////////////////////////
+
+int Syncer::createIndex(VPackSlice const& slice) {
+  VPackSlice const indexSlice = slice.get("index");
+  if (!indexSlice.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_voc_cid_t cid = getCid(json);
-  char const* cname = getCName(json);
+  TRI_voc_cid_t cid = getCid(slice);
+  std::string cnameString = getCName(slice);
+
+  // TODO
+  // Backwards compatibiltiy. old check to nullptr, new is empty string
+  // Other api does not know yet.
+  char const* cname = nullptr;
+  if (!cnameString.empty()) {
+    cname = cnameString.c_str();
+  }
 
   try {
     CollectionGuard guard(_vocbase, cid, cname);
@@ -486,7 +508,8 @@ int Syncer::createIndex(TRI_json_t const* json) {
     }
 
     triagens::arango::Index* idx = nullptr;
-    res = TRI_FromJsonIndexDocumentCollection(&trx, document, indexJson, &idx);
+    res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document, indexSlice,
+                                                    &idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
       res = TRI_SaveIndex(document, idx, true);
@@ -516,7 +539,15 @@ int Syncer::dropIndex(TRI_json_t const* json) {
   TRI_idx_iid_t const iid = StringUtils::uint64(id);
 
   TRI_voc_cid_t cid = getCid(json);
-  char const* cname = getCName(json);
+  std::string cnameString = getCName(json);
+
+  // TODO
+  // Backwards compatibiltiy. old check to nullptr, new is empty string
+  // Other api does not know yet.
+  char const* cname = nullptr;
+  if (!cnameString.empty()) {
+    cname = cnameString.c_str();
+  }
 
   try {
     CollectionGuard guard(_vocbase, cid, cname);
@@ -546,7 +577,8 @@ int Syncer::dropIndex(TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::getMasterState(std::string& errorMsg) {
-  std::string const url = BaseUrl + "/logger-state?serverId=" + _localServerIdString;
+  std::string const url =
+      BaseUrl + "/logger-state?serverId=" + _localServerIdString;
 
   // store old settings
   uint64_t maxRetries = _client->_maxRetries;
@@ -657,8 +689,8 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
   }
 
   // validate all values we got
-  std::string const masterIdString = std::string(serverId->_value._string.data,
-                                       serverId->_value._string.length - 1);
+  std::string const masterIdString = std::string(
+      serverId->_value._string.data, serverId->_value._string.length - 1);
   TRI_server_id_t const masterId = StringUtils::uint64(masterIdString);
 
   if (masterId == 0) {
@@ -680,7 +712,7 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
   int minor = 0;
 
   std::string const versionString(version->_value._string.data,
-                             version->_value._string.length - 1);
+                                  version->_value._string.length - 1);
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
     errorMsg = "invalid master version info" + endpointString + ": '" +
@@ -707,5 +739,4 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
