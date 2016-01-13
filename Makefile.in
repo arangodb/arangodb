@@ -269,9 +269,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/Actions/arangod_libarangod_a-RestActionHandler.$(OBJEXT) \
 	arangod/ApplicationServer/arangod_libarangod_a-ApplicationFeature.$(OBJEXT) \
 	arangod/ApplicationServer/arangod_libarangod_a-ApplicationServer.$(OBJEXT) \
-	arangod/Aql/arangod_libarangod_a-AggregateBlock.$(OBJEXT) \
-	arangod/Aql/arangod_libarangod_a-AggregateNode.$(OBJEXT) \
-	arangod/Aql/arangod_libarangod_a-AggregationOptions.$(OBJEXT) \
+	arangod/Aql/arangod_libarangod_a-Aggregator.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-AqlItemBlock.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-AqlItemBlockManager.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-AqlValue.$(OBJEXT) \
@@ -283,6 +281,9 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/Aql/arangod_libarangod_a-CalculationBlock.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-ClusterBlocks.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-ClusterNodes.$(OBJEXT) \
+	arangod/Aql/arangod_libarangod_a-CollectBlock.$(OBJEXT) \
+	arangod/Aql/arangod_libarangod_a-CollectNode.$(OBJEXT) \
+	arangod/Aql/arangod_libarangod_a-CollectOptions.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-Collection.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-Collections.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-CollectionScanner.$(OBJEXT) \
@@ -1426,9 +1427,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/ApplicationServer/ApplicationFeature.cpp \
 	arangod/ApplicationServer/ApplicationServer.cpp \
-	arangod/Aql/AggregateBlock.cpp \
-	arangod/Aql/AggregateNode.cpp \
-	arangod/Aql/AggregationOptions.cpp \
+	arangod/Aql/Aggregator.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
 	arangod/Aql/AqlItemBlockManager.cpp \
 	arangod/Aql/AqlValue.cpp \
@@ -1440,6 +1439,9 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/CalculationBlock.cpp \
 	arangod/Aql/ClusterBlocks.cpp \
 	arangod/Aql/ClusterNodes.cpp \
+	arangod/Aql/CollectBlock.cpp \
+	arangod/Aql/CollectNode.cpp \
+	arangod/Aql/CollectOptions.cpp \
 	arangod/Aql/Collection.cpp \
 	arangod/Aql/Collections.cpp \
 	arangod/Aql/CollectionScanner.cpp \
@@ -1979,6 +1981,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
 			@top_srcdir@/js/server/tests/aql-multi-modify.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-collect-aggregate.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-methods.js \
@@ -2262,13 +2265,7 @@ arangod/Aql/$(am__dirstamp):
 arangod/Aql/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/Aql/$(DEPDIR)
 	@: > arangod/Aql/$(DEPDIR)/$(am__dirstamp)
-arangod/Aql/arangod_libarangod_a-AggregateBlock.$(OBJEXT):  \
-	arangod/Aql/$(am__dirstamp) \
-	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
-arangod/Aql/arangod_libarangod_a-AggregateNode.$(OBJEXT):  \
-	arangod/Aql/$(am__dirstamp) \
-	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
-arangod/Aql/arangod_libarangod_a-AggregationOptions.$(OBJEXT):  \
+arangod/Aql/arangod_libarangod_a-Aggregator.$(OBJEXT):  \
 	arangod/Aql/$(am__dirstamp) \
 	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
 arangod/Aql/arangod_libarangod_a-AqlItemBlock.$(OBJEXT):  \
@@ -2302,6 +2299,15 @@ arangod/Aql/arangod_libarangod_a-ClusterBlocks.$(OBJEXT):  \
 	arangod/Aql/$(am__dirstamp) \
 	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
 arangod/Aql/arangod_libarangod_a-ClusterNodes.$(OBJEXT):  \
+	arangod/Aql/$(am__dirstamp) \
+	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
+arangod/Aql/arangod_libarangod_a-CollectBlock.$(OBJEXT):  \
+	arangod/Aql/$(am__dirstamp) \
+	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
+arangod/Aql/arangod_libarangod_a-CollectNode.$(OBJEXT):  \
+	arangod/Aql/$(am__dirstamp) \
+	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
+arangod/Aql/arangod_libarangod_a-CollectOptions.$(OBJEXT):  \
 	arangod/Aql/$(am__dirstamp) \
 	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
 arangod/Aql/arangod_libarangod_a-Collection.$(OBJEXT):  \
@@ -3860,9 +3866,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Actions/$(DEPDIR)/arangod_libarangod_a-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/ApplicationServer/$(DEPDIR)/arangod_libarangod_a-ApplicationFeature.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/ApplicationServer/$(DEPDIR)/arangod_libarangod_a-ApplicationServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateBlock.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateNode.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregationOptions.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Aggregator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AqlItemBlock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AqlItemBlockManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AqlValue.Po@am__quote@
@@ -3874,6 +3878,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CalculationBlock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-ClusterBlocks.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-ClusterNodes.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectBlock.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectNode.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectOptions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectionScanner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Collections.Po@am__quote@
@@ -4260,47 +4267,19 @@ arangod/ApplicationServer/arangod_libarangod_a-ApplicationServer.obj: arangod/Ap
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/ApplicationServer/arangod_libarangod_a-ApplicationServer.obj `if test -f 'arangod/ApplicationServer/ApplicationServer.cpp'; then $(CYGPATH_W) 'arangod/ApplicationServer/ApplicationServer.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/ApplicationServer/ApplicationServer.cpp'; fi`
 
-arangod/Aql/arangod_libarangod_a-AggregateBlock.o: arangod/Aql/AggregateBlock.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-AggregateBlock.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateBlock.Tpo -c -o arangod/Aql/arangod_libarangod_a-AggregateBlock.o `test -f 'arangod/Aql/AggregateBlock.cpp' || echo '$(srcdir)/'`arangod/Aql/AggregateBlock.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateBlock.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateBlock.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/AggregateBlock.cpp' object='arangod/Aql/arangod_libarangod_a-AggregateBlock.o' libtool=no @AMDEPBACKSLASH@
+arangod/Aql/arangod_libarangod_a-Aggregator.o: arangod/Aql/Aggregator.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-Aggregator.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Aggregator.Tpo -c -o arangod/Aql/arangod_libarangod_a-Aggregator.o `test -f 'arangod/Aql/Aggregator.cpp' || echo '$(srcdir)/'`arangod/Aql/Aggregator.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Aggregator.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Aggregator.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/Aggregator.cpp' object='arangod/Aql/arangod_libarangod_a-Aggregator.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-AggregateBlock.o `test -f 'arangod/Aql/AggregateBlock.cpp' || echo '$(srcdir)/'`arangod/Aql/AggregateBlock.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-Aggregator.o `test -f 'arangod/Aql/Aggregator.cpp' || echo '$(srcdir)/'`arangod/Aql/Aggregator.cpp
 
-arangod/Aql/arangod_libarangod_a-AggregateBlock.obj: arangod/Aql/AggregateBlock.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-AggregateBlock.obj -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateBlock.Tpo -c -o arangod/Aql/arangod_libarangod_a-AggregateBlock.obj `if test -f 'arangod/Aql/AggregateBlock.cpp'; then $(CYGPATH_W) 'arangod/Aql/AggregateBlock.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/AggregateBlock.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateBlock.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateBlock.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/AggregateBlock.cpp' object='arangod/Aql/arangod_libarangod_a-AggregateBlock.obj' libtool=no @AMDEPBACKSLASH@
+arangod/Aql/arangod_libarangod_a-Aggregator.obj: arangod/Aql/Aggregator.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-Aggregator.obj -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Aggregator.Tpo -c -o arangod/Aql/arangod_libarangod_a-Aggregator.obj `if test -f 'arangod/Aql/Aggregator.cpp'; then $(CYGPATH_W) 'arangod/Aql/Aggregator.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/Aggregator.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Aggregator.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Aggregator.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/Aggregator.cpp' object='arangod/Aql/arangod_libarangod_a-Aggregator.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-AggregateBlock.obj `if test -f 'arangod/Aql/AggregateBlock.cpp'; then $(CYGPATH_W) 'arangod/Aql/AggregateBlock.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/AggregateBlock.cpp'; fi`
-
-arangod/Aql/arangod_libarangod_a-AggregateNode.o: arangod/Aql/AggregateNode.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-AggregateNode.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateNode.Tpo -c -o arangod/Aql/arangod_libarangod_a-AggregateNode.o `test -f 'arangod/Aql/AggregateNode.cpp' || echo '$(srcdir)/'`arangod/Aql/AggregateNode.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateNode.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateNode.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/AggregateNode.cpp' object='arangod/Aql/arangod_libarangod_a-AggregateNode.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-AggregateNode.o `test -f 'arangod/Aql/AggregateNode.cpp' || echo '$(srcdir)/'`arangod/Aql/AggregateNode.cpp
-
-arangod/Aql/arangod_libarangod_a-AggregateNode.obj: arangod/Aql/AggregateNode.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-AggregateNode.obj -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateNode.Tpo -c -o arangod/Aql/arangod_libarangod_a-AggregateNode.obj `if test -f 'arangod/Aql/AggregateNode.cpp'; then $(CYGPATH_W) 'arangod/Aql/AggregateNode.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/AggregateNode.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateNode.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregateNode.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/AggregateNode.cpp' object='arangod/Aql/arangod_libarangod_a-AggregateNode.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-AggregateNode.obj `if test -f 'arangod/Aql/AggregateNode.cpp'; then $(CYGPATH_W) 'arangod/Aql/AggregateNode.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/AggregateNode.cpp'; fi`
-
-arangod/Aql/arangod_libarangod_a-AggregationOptions.o: arangod/Aql/AggregationOptions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-AggregationOptions.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregationOptions.Tpo -c -o arangod/Aql/arangod_libarangod_a-AggregationOptions.o `test -f 'arangod/Aql/AggregationOptions.cpp' || echo '$(srcdir)/'`arangod/Aql/AggregationOptions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregationOptions.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregationOptions.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/AggregationOptions.cpp' object='arangod/Aql/arangod_libarangod_a-AggregationOptions.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-AggregationOptions.o `test -f 'arangod/Aql/AggregationOptions.cpp' || echo '$(srcdir)/'`arangod/Aql/AggregationOptions.cpp
-
-arangod/Aql/arangod_libarangod_a-AggregationOptions.obj: arangod/Aql/AggregationOptions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-AggregationOptions.obj -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregationOptions.Tpo -c -o arangod/Aql/arangod_libarangod_a-AggregationOptions.obj `if test -f 'arangod/Aql/AggregationOptions.cpp'; then $(CYGPATH_W) 'arangod/Aql/AggregationOptions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/AggregationOptions.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregationOptions.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AggregationOptions.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/AggregationOptions.cpp' object='arangod/Aql/arangod_libarangod_a-AggregationOptions.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-AggregationOptions.obj `if test -f 'arangod/Aql/AggregationOptions.cpp'; then $(CYGPATH_W) 'arangod/Aql/AggregationOptions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/AggregationOptions.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-Aggregator.obj `if test -f 'arangod/Aql/Aggregator.cpp'; then $(CYGPATH_W) 'arangod/Aql/Aggregator.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/Aggregator.cpp'; fi`
 
 arangod/Aql/arangod_libarangod_a-AqlItemBlock.o: arangod/Aql/AqlItemBlock.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-AqlItemBlock.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AqlItemBlock.Tpo -c -o arangod/Aql/arangod_libarangod_a-AqlItemBlock.o `test -f 'arangod/Aql/AqlItemBlock.cpp' || echo '$(srcdir)/'`arangod/Aql/AqlItemBlock.cpp
@@ -4455,6 +4434,48 @@ arangod/Aql/arangod_libarangod_a-ClusterNodes.obj: arangod/Aql/ClusterNodes.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/ClusterNodes.cpp' object='arangod/Aql/arangod_libarangod_a-ClusterNodes.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-ClusterNodes.obj `if test -f 'arangod/Aql/ClusterNodes.cpp'; then $(CYGPATH_W) 'arangod/Aql/ClusterNodes.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/ClusterNodes.cpp'; fi`
+
+arangod/Aql/arangod_libarangod_a-CollectBlock.o: arangod/Aql/CollectBlock.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-CollectBlock.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectBlock.Tpo -c -o arangod/Aql/arangod_libarangod_a-CollectBlock.o `test -f 'arangod/Aql/CollectBlock.cpp' || echo '$(srcdir)/'`arangod/Aql/CollectBlock.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectBlock.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectBlock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/CollectBlock.cpp' object='arangod/Aql/arangod_libarangod_a-CollectBlock.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-CollectBlock.o `test -f 'arangod/Aql/CollectBlock.cpp' || echo '$(srcdir)/'`arangod/Aql/CollectBlock.cpp
+
+arangod/Aql/arangod_libarangod_a-CollectBlock.obj: arangod/Aql/CollectBlock.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-CollectBlock.obj -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectBlock.Tpo -c -o arangod/Aql/arangod_libarangod_a-CollectBlock.obj `if test -f 'arangod/Aql/CollectBlock.cpp'; then $(CYGPATH_W) 'arangod/Aql/CollectBlock.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/CollectBlock.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectBlock.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectBlock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/CollectBlock.cpp' object='arangod/Aql/arangod_libarangod_a-CollectBlock.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-CollectBlock.obj `if test -f 'arangod/Aql/CollectBlock.cpp'; then $(CYGPATH_W) 'arangod/Aql/CollectBlock.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/CollectBlock.cpp'; fi`
+
+arangod/Aql/arangod_libarangod_a-CollectNode.o: arangod/Aql/CollectNode.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-CollectNode.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectNode.Tpo -c -o arangod/Aql/arangod_libarangod_a-CollectNode.o `test -f 'arangod/Aql/CollectNode.cpp' || echo '$(srcdir)/'`arangod/Aql/CollectNode.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectNode.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectNode.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/CollectNode.cpp' object='arangod/Aql/arangod_libarangod_a-CollectNode.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-CollectNode.o `test -f 'arangod/Aql/CollectNode.cpp' || echo '$(srcdir)/'`arangod/Aql/CollectNode.cpp
+
+arangod/Aql/arangod_libarangod_a-CollectNode.obj: arangod/Aql/CollectNode.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-CollectNode.obj -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectNode.Tpo -c -o arangod/Aql/arangod_libarangod_a-CollectNode.obj `if test -f 'arangod/Aql/CollectNode.cpp'; then $(CYGPATH_W) 'arangod/Aql/CollectNode.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/CollectNode.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectNode.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectNode.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/CollectNode.cpp' object='arangod/Aql/arangod_libarangod_a-CollectNode.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-CollectNode.obj `if test -f 'arangod/Aql/CollectNode.cpp'; then $(CYGPATH_W) 'arangod/Aql/CollectNode.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/CollectNode.cpp'; fi`
+
+arangod/Aql/arangod_libarangod_a-CollectOptions.o: arangod/Aql/CollectOptions.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-CollectOptions.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectOptions.Tpo -c -o arangod/Aql/arangod_libarangod_a-CollectOptions.o `test -f 'arangod/Aql/CollectOptions.cpp' || echo '$(srcdir)/'`arangod/Aql/CollectOptions.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectOptions.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectOptions.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/CollectOptions.cpp' object='arangod/Aql/arangod_libarangod_a-CollectOptions.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-CollectOptions.o `test -f 'arangod/Aql/CollectOptions.cpp' || echo '$(srcdir)/'`arangod/Aql/CollectOptions.cpp
+
+arangod/Aql/arangod_libarangod_a-CollectOptions.obj: arangod/Aql/CollectOptions.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-CollectOptions.obj -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectOptions.Tpo -c -o arangod/Aql/arangod_libarangod_a-CollectOptions.obj `if test -f 'arangod/Aql/CollectOptions.cpp'; then $(CYGPATH_W) 'arangod/Aql/CollectOptions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/CollectOptions.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectOptions.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectOptions.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/CollectOptions.cpp' object='arangod/Aql/arangod_libarangod_a-CollectOptions.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-CollectOptions.obj `if test -f 'arangod/Aql/CollectOptions.cpp'; then $(CYGPATH_W) 'arangod/Aql/CollectOptions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/CollectOptions.cpp'; fi`
 
 arangod/Aql/arangod_libarangod_a-Collection.o: arangod/Aql/Collection.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-Collection.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Collection.Tpo -c -o arangod/Aql/arangod_libarangod_a-Collection.o `test -f 'arangod/Aql/Collection.cpp' || echo '$(srcdir)/'`arangod/Aql/Collection.cpp

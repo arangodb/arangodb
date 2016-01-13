@@ -37,7 +37,7 @@ using JsonHelper = triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectOptions::CollectOptions (Json const& json) {
-  Json obj = json.get("aggregationOptions");
+  Json obj = json.get("collectOptions");
 
   method = methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
 }
@@ -65,7 +65,7 @@ void CollectOptions::toJson (triagens::basics::Json& json,
   options = Json(Json::Object, 1)
     ("method", Json(methodToString(method)));
 
-  json("aggregationOptions", options);
+  json("collectOptions", options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
