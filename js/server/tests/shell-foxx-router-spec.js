@@ -1,10 +1,9 @@
-/*jshint globalstrict:false, strict:false */
-/*global describe, it, expect, beforeEach */
-(function () {
+/*global describe, it, beforeEach */
 'use strict';
 
-const createRouter = require('@arangodb/foxx/router');
+const Router = require('@arangodb/foxx/router/router');
 const Tree = require('@arangodb/foxx/router/tree');
+const expect = require('chai').expect;
 
 const $_WILDCARD = Symbol.for('@@wildcard'); // catch-all suffix
 const $_TERMINAL = Symbol.for('@@terminal'); // terminal -- routes be here
@@ -89,331 +88,337 @@ describe('Tree', function () {
     GET_POTATO_SALAD1 = childRouter2.get('/potato/salad', function () {});
     GET_POTATO_SALAD2 = childRouter2.get('/potato/salad', function () {});
   }
+
   beforeEach(function () {
-    router = createRouter();
-    childRouter1 = createRouter();
-    childRouter2 = createRouter();
+    router = new Router();
+    childRouter1 = new Router();
+    childRouter2 = new Router();
     prepareRouter(router, childRouter1, childRouter2);
   });
+
   describe('constructor', function () {
     it('creates the correct tree', function () {
       const tree = new Tree({}, router).root;
-      expect(tree.size).toBe(3);
-      expect(tree.get($_TERMINAL).size).toBe(1);
+      expect(tree.size).to.equal(3);
+      expect(tree.get($_TERMINAL).size).to.equal(1);
       expect(tree.get($_TERMINAL).get($_ROUTES))
-      .toEqual([GET_SLASH]);
+      .to.eql([GET_SLASH]);
 
-      expect(tree.get('hello').size).toBe(4);
-      expect(tree.get('hello').get($_TERMINAL).size).toBe(1);
+      expect(tree.get('hello').size).to.equal(4);
+      expect(tree.get('hello').get($_TERMINAL).size).to.equal(1);
       expect(tree.get('hello').get($_TERMINAL).get($_ROUTES))
-      .toEqual([POST_HELLO]);
+      .to.eql([POST_HELLO]);
 
-      expect(tree.get('hello').get('world').size).toBe(2);
-      expect(tree.get('hello').get('world').get($_TERMINAL).size).toBe(1);
+      expect(tree.get('hello').get('world').size).to.equal(2);
+      expect(tree.get('hello').get('world').get($_TERMINAL).size).to.equal(1);
       expect(tree.get('hello').get('world').get($_TERMINAL).get($_ROUTES))
-      .toEqual([GET_HELLO_WORLD]);
+      .to.eql([GET_HELLO_WORLD]);
 
-      expect(tree.get('hello').get('world').get($_WILDCARD).size).toBe(1);
+      expect(tree.get('hello').get('world').get($_WILDCARD).size).to.equal(1);
       expect(tree.get('hello').get('world').get($_WILDCARD).get($_MIDDLEWARE))
-      .toEqual([USE_HELLO_WORLD]);
+      .to.eql([USE_HELLO_WORLD]);
 
-      expect(tree.get('hello').get($_PARAM).size).toBe(2);
-      expect(tree.get('hello').get($_PARAM).get($_TERMINAL).size).toBe(1);
+      expect(tree.get('hello').get($_PARAM).size).to.equal(2);
+      expect(tree.get('hello').get($_PARAM).get($_TERMINAL).size).to.equal(1);
       expect(tree.get('hello').get($_PARAM).get($_TERMINAL).get($_ROUTES))
-      .toEqual([GET_HELLO_PARAM]);
+      .to.eql([GET_HELLO_PARAM]);
 
-      expect(tree.get('hello').get($_PARAM).get($_WILDCARD).size).toBe(1);
+      expect(tree.get('hello').get($_PARAM).get($_WILDCARD).size).to.equal(1);
       expect(tree.get('hello').get($_PARAM).get($_WILDCARD).get($_MIDDLEWARE))
-      .toEqual([USE_HELLO_PARAM]);
+      .to.eql([USE_HELLO_PARAM]);
 
-      expect(tree.get('hello').get($_WILDCARD).size).toBe(1);
-      expect(tree.get('hello').get($_WILDCARD).get($_ROUTES).length).toBe(1);
+      expect(tree.get('hello').get($_WILDCARD).size).to.equal(1);
+      expect(tree.get('hello').get($_WILDCARD).get($_ROUTES).length).to.equal(1);
 
       const child1 = tree.get('hello').get($_WILDCARD).get($_ROUTES)[0].tree.root;
-      expect(child1.size).toBe(1);
-      expect(child1.get('world').size).toBe(1);
-      expect(child1.get('world').get($_TERMINAL).size).toBe(1);
+      expect(child1.size).to.equal(1);
+      expect(child1.get('world').size).to.equal(1);
+      expect(child1.get('world').get($_TERMINAL).size).to.equal(1);
       expect(child1.get('world').get($_TERMINAL).get($_ROUTES))
-      .toEqual([GET_WORLD]);
+      .to.eql([GET_WORLD]);
 
-      expect(tree.get($_WILDCARD).size).toBe(2);
+      expect(tree.get($_WILDCARD).size).to.equal(2);
       expect(tree.get($_WILDCARD).get($_MIDDLEWARE))
-      .toEqual([USE_SLASH]);
+      .to.eql([USE_SLASH]);
 
       const child2 = tree.get($_WILDCARD).get($_ROUTES)[0].tree.root;
-      expect(child2.size).toBe(4);
-      expect(child2.get($_TERMINAL).size).toBe(1);
+      expect(child2.size).to.equal(4);
+      expect(child2.get($_TERMINAL).size).to.equal(1);
       expect(child2.get($_TERMINAL).get($_ROUTES))
-      .toEqual([GET_SLASH2]);
+      .to.eql([GET_SLASH2]);
 
-      expect(child2.get('hello').size).toBe(1);
-      expect(child2.get('hello').get('world').size).toBe(1);
-      expect(child2.get('hello').get('world').get($_TERMINAL).size).toBe(1);
+      expect(child2.get('hello').size).to.equal(1);
+      expect(child2.get('hello').get('world').size).to.equal(1);
+      expect(child2.get('hello').get('world').get($_TERMINAL).size).to.equal(1);
       expect(child2.get('hello').get('world').get($_TERMINAL).get($_ROUTES))
-      .toEqual([GET_HELLO_WORLD2]);
+      .to.eql([GET_HELLO_WORLD2]);
 
-      expect(child2.get('potato').size).toBe(1);
-      expect(child2.get('potato').get('salad').size).toBe(1);
-      expect(child2.get('potato').get('salad').get($_TERMINAL).size).toBe(1);
+      expect(child2.get('potato').size).to.equal(1);
+      expect(child2.get('potato').get('salad').size).to.equal(1);
+      expect(child2.get('potato').get('salad').get($_TERMINAL).size).to.equal(1);
       expect(child2.get('potato').get('salad').get($_TERMINAL).get($_ROUTES))
-      .toEqual([GET_POTATO_SALAD1, GET_POTATO_SALAD2]);
+      .to.eql([GET_POTATO_SALAD1, GET_POTATO_SALAD2]);
 
-      expect(child2.get($_WILDCARD).size).toBe(1);
+      expect(child2.get($_WILDCARD).size).to.equal(1);
       expect(child2.get($_WILDCARD).get($_ROUTES))
-      .toEqual([GET_ALL]);
+      .to.eql([GET_ALL]);
 
     });
   });
+
   describe('findRoutes', function () {
     let tree;
+
     beforeEach(function () {
       tree = new Tree({}, router);
-      global.tree = tree;
     });
+
     it('finds all routes for /', function () {
       const matches = [];
       for (const route of tree.findRoutes([])) {
         matches.push(route);
       }
-      expect(matches.length).toBe(3);
+      expect(matches.length).to.equal(3);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_SLASH) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: []},
           {middleware: USE_SLASH, path: [], suffix: []},
           {endpoint: GET_SLASH, path: [], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_SLASH2) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: []},
           {middleware: USE_SLASH, path: [], suffix: []},
           {router: CHILD2, path: [], suffix: []},
           {endpoint: GET_SLASH2, path: [], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_ALL) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: []},
           {middleware: USE_SLASH, path: [], suffix: []},
           {router: CHILD2, path: [], suffix: []},
           {endpoint: GET_ALL, path: [], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
     });
+
     it('finds all routes for /hello', function () {
       const matches = [];
       for (const route of tree.findRoutes(['hello'])) {
         matches.push(route);
       }
-      expect(matches.length).toBe(2);
+      expect(matches.length).to.equal(2);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== POST_HELLO) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['hello']},
           {middleware: USE_SLASH, path: [], suffix: ['hello']},
           {endpoint: POST_HELLO, path: ['hello'], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_ALL) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['hello']},
           {middleware: USE_SLASH, path: [], suffix: ['hello']},
           {router: CHILD2, path: [], suffix: ['hello']},
           {endpoint: GET_ALL, path: [], suffix: ['hello']}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
     });
+
     it('finds all routes for /hello/world', function () {
       const matches = [];
       for (const route of tree.findRoutes(['hello', 'world'])) {
         matches.push(route);
       }
-      expect(matches.length).toBe(5);
+      expect(matches.length).to.equal(5);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_HELLO_WORLD) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['hello', 'world']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
           {middleware: USE_HELLO_WORLD, path: ['hello', 'world'], suffix: []},
           {endpoint: GET_HELLO_WORLD, path: ['hello', 'world'], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_HELLO_PARAM) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['hello', 'world']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
           {middleware: USE_HELLO_PARAM, path: ['hello', 'world'], suffix: []},
           {endpoint: GET_HELLO_PARAM, path: ['hello', 'world'], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_WORLD) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['hello', 'world']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
           {router: CHILD1, path: ['hello'], suffix: ['world']},
           {endpoint: GET_WORLD, path: ['world'], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_HELLO_WORLD2) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['hello', 'world']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
           {router: CHILD2, path: [], suffix: ['hello', 'world']},
           {endpoint: GET_HELLO_WORLD2, path: ['hello', 'world'], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_ALL) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['hello', 'world']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
           {router: CHILD2, path: [], suffix: ['hello', 'world']},
           {endpoint: GET_ALL, path: [], suffix: ['hello', 'world']}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
     });
+
     it('finds all routes for /hello/mlady', function () {
       const matches = [];
       for (const route of tree.findRoutes(['hello', 'mlady'])) {
         matches.push(route);
       }
-      expect(matches.length).toBe(2);
+      expect(matches.length).to.equal(2);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_HELLO_PARAM) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['hello', 'mlady']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'mlady']},
           {middleware: USE_HELLO_PARAM, path: ['hello', 'mlady'], suffix: []},
           {endpoint: GET_HELLO_PARAM, path: ['hello', 'mlady'], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_ALL) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['hello', 'mlady']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'mlady']},
           {router: CHILD2, path: [], suffix: ['hello', 'mlady']},
           {endpoint: GET_ALL, path: [], suffix: ['hello', 'mlady']}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
     });
+
     it('finds all routes for /potato/salad', function () {
       const matches = [];
       for (const route of tree.findRoutes(['potato', 'salad'])) {
         matches.push(route);
       }
-      expect(matches.length).toBe(3);
+      expect(matches.length).to.equal(3);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_POTATO_SALAD1) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['potato', 'salad']},
           {middleware: USE_SLASH, path: [], suffix: ['potato', 'salad']},
           {router: CHILD2, path: [], suffix: ['potato', 'salad']},
           {endpoint: GET_POTATO_SALAD1, path: ['potato', 'salad'], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_POTATO_SALAD2) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['potato', 'salad']},
           {middleware: USE_SLASH, path: [], suffix: ['potato', 'salad']},
           {router: CHILD2, path: [], suffix: ['potato', 'salad']},
           {endpoint: GET_POTATO_SALAD2, path: ['potato', 'salad'], suffix: []}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
       expect(matches.some(function (match) {
         const i = match.length - 1;
         if (match[i].endpoint !== GET_ALL) {
           return false;
         }
-        expect(match).toEqual([
+        expect(match).to.eql([
           {router: router, path: [], suffix: ['potato', 'salad']},
           {middleware: USE_SLASH, path: [], suffix: ['potato', 'salad']},
           {router: CHILD2, path: [], suffix: ['potato', 'salad']},
           {endpoint: GET_ALL, path: [], suffix: ['potato', 'salad']}
         ]);
         return true;
-      })).toBe(true);
+      })).to.equal(true);
     });
   });
 });
 
 describe('Tree#buildSwaggerPaths', function () {
-  it('', function () {
-    const child = createRouter();
+  it('disambiguates duplicate path parameter names', function () {
+    const child = new Router();
     child.get('/:x', function () {});
-    const router = createRouter();
+    const router = new Router();
     router.use('/:x', child);
     const tree = new Tree({}, router);
     const docs = tree.buildSwaggerPaths();
-    console.log(docs);
-    expect(docs['/:x/:x2']).toBeDefined();
-    // TODO
-    expect(false).toEqual(true);
+    expect(docs).to.have.a.property('/:x/:x2')
+    .with.a.property('get').that.is.an('object');
   });
-});
 
-}());
+  // TODO test all the other swagger path object properties
+});
