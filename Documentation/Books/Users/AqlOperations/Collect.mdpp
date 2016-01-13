@@ -15,6 +15,8 @@ COLLECT variable-name = expression INTO groups-variable options
 COLLECT variable-name = expression INTO groups-variable = projection-expression options
 COLLECT variable-name = expression INTO groups-variable KEEP keep-variable options
 COLLECT variable-name = expression WITH COUNT INTO count-variable options
+COLLECT variable-name = expression AGGREGATE variable-name = aggregate-expression options
+COLLECT AGGREGATE variable-name = aggregate-expression options
 COLLECT WITH COUNT INTO count-variable options
 ```
 
@@ -178,6 +180,67 @@ FOR u IN users
 ```
 
 Note: the *WITH COUNT* clause can only be used together with an *INTO* clause.
+
+
+!SUBSECTION Aggregation
+
+A `COLLECT` statement can be used to perform aggregation of data per group. To
+only determine group lengths, the `WITH COUNT INTO` variant of `COLLECT` can be
+used as described before.
+
+For other aggregations, it is possible to run aggregate functions on the `COLLECT`
+results:
+
+```
+FOR u IN users
+  COLLECT ageGroup = FLOOR(u.age / 5) * 5 INTO g
+  RETURN { 
+    "ageGroup" : ageGroup,
+    "minAge" : MIN(g[*].u.age),
+    "maxAge" : MAX(g[*].u.age)
+  }
+```
+
+The above however requires storing all group values during the collect operation for 
+all groups, which can be inefficient. 
+
+The special `AGGREGATE` variant of `COLLECT` allows building the aggregate values 
+incrementally during the collect operation, and is therefore often more efficient.
+
+With the `AGGREGATE` variant the above query becomes:
+
+```
+FOR u IN users
+  COLLECT ageGroup = FLOOR(u.age / 5) * 5 
+  AGGREGATE minAge = MIN(u.age), maxAge = MAX(u.age)
+  RETURN {
+    ageGroup, 
+    minAge, 
+    maxAge 
+  }
+```
+
+The `AGGREGATE` keyword can be used inside a `COLLECT` statement only. If used, it must 
+follow the declaration of grouping keys, or, if no grouping keys are used, it can follow 
+the `COLLECT` keyword directly:
+
+```
+FOR u IN users
+  AGGREGATE minAge = MIN(u.age), maxAge = MAX(u.age)
+  RETURN {
+    minAge, 
+    maxAge 
+  }
+```
+      
+Only specific expressions are allowed on the right-hand side of each `AGGREGATE` 
+assignment:
+
+- on the top level, an aggregate expression must be a call to one of the supported 
+  aggregation functions `LENGTH`, `MIN`, `MAX`, `SUM`, `AVERAGE`, `STDDEV_POPULATION`, 
+  `STDDEV_SAMPLE`, `VARIANCE_POPULATION`, or `VARIANCE_SAMPLE`
+
+- an aggregate expression must not refer to variables introduced by the `COLLECT` itself
 
 
 !SUBSECTION COLLECT variants
