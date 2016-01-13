@@ -2031,12 +2031,19 @@ struct OpenIndexIteratorContext {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool OpenIndexIterator(char const* filename, void* data) {
-  // load json description of the index
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
+  // load VelocyPack description of the index
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    builder = triagens::basics::VelocyPackHelper::velocyPackFromFile(filename);
+  } catch (...) {
+    // Failed to parse file
+    LOG_ERROR("failed to parse index definition from '%s'", filename);
+    return false;
+  }
 
-  // json must be a index description
-  if (!TRI_IsObjectJson(json.get())) {
+  VPackSlice description = builder->slice();
+  // VelocyPack must be a index description
+  if (!description.isObject()) {
     LOG_ERROR("cannot read index definition from '%s'", filename);
     return false;
   }
@@ -2046,7 +2053,7 @@ static bool OpenIndexIterator(char const* filename, void* data) {
   TRI_document_collection_t* collection = ctx->collection;
 
   int res =
-      TRI_FromJsonIndexDocumentCollection(trx, collection, json.get(), nullptr);
+      TRI_FromVelocyPackIndexDocumentCollection(trx, collection, description, nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // error was already printed if we get here
