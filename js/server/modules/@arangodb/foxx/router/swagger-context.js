@@ -114,6 +114,13 @@ function swaggerifyBody(joi) {
   return body;
 }
 
+const DEFAULT_ERROR_SCHEMA = joi.object().keys({
+  error: joi.allow(true).required(),
+  errorNum: joi.number().integer().optional(),
+  errorMessage: joi.string().optional(),
+  code: joi.number().integer().optional()
+});
+
 
 module.exports = exports = class SwaggerContext {
   constructor(path) {
@@ -141,18 +148,22 @@ module.exports = exports = class SwaggerContext {
     this._pathParamNames = [];
     this._pathTokens = tokenize(path, this);
   }
+
   header(name, type, description) {
     this._headers.set(name, {type: type, description: description});
     return this;
   }
+
   pathParam(name, type, description) {
     this._pathParams.set(name, {type: type, description: description});
     return this;
   }
+
   queryParam(name, type, description) {
     this._queryParams.set(name, {type: type, description: description});
     return this;
   }
+
   body(type, description) {
     if (type === null) {
       this._bodyParam = {};
@@ -181,6 +192,7 @@ module.exports = exports = class SwaggerContext {
     return this;
   }
   // TODO response headers maybe?
+
   response(status, type, description) {
     let statusCode = Number(status);
     if (!statusCode || Number.isNaN(statusCode)) {
@@ -214,21 +226,26 @@ module.exports = exports = class SwaggerContext {
     }
     return this;
   }
+
   error(status, description) {
     return this.response(status, undefined, description);
   }
+
   summary(text) {
     this._summary = text;
     return this;
   }
+
   description(text) {
     this._description = text;
     return this;
   }
+
   deprecated(flag) {
     this._deprecated = typeof flag === 'boolean' ? flag : true;
     return this;
   }
+
   _merge(swaggerObj, pathOnly) {
     if (!pathOnly) {
       for (let header of swaggerObj._headers.entries()) {
@@ -278,6 +295,7 @@ module.exports = exports = class SwaggerContext {
     }
     this.path = tokenize.reverse(this._pathTokens, this._pathParamNames);
   }
+
   _buildOperation() {
     const operation = {
       produces: [],
@@ -360,25 +378,55 @@ module.exports = exports = class SwaggerContext {
 
     if (this._bodyParam && this._bodyParam.contentType) {
       // TODO handle multipart and form-urlencoded
-      const def = (
-        this._bodyParam.type
-        ? (this._bodyParam.type.schema || this._bodyParam.type)
+      const def = this._bodyParam;
+      const schema = (
+        def.type
+        ? (def.type.schema || def.type)
         : null
       );
       const parameter = (
-        def && def.isJoi
-        ? swaggerifyBody(def)
+        schema && schema.isJoi
+        ? swaggerifyBody(schema)
         : {schema: {type: 'string'}}
       );
       parameter.name = 'body';
       parameter.in = 'body';
-      if (this._bodyParam.description) {
-        parameter.description = this._bodyParam.description;
+      if (def.description) {
+        parameter.description = def.description;
       }
       operation.parameters.push(parameter);
     }
 
-    // TODO handle this._responses => responses object
+    operation.responses = {
+      default: {
+        description: 'Unexpected error',
+        schema: joi2schema(DEFAULT_ERROR_SCHEMA)
+      }
+    };
+
+    for (const entry of this._responses.entries()) {
+      const code = entry[0];
+      const def = entry[1];
+      const schema = (
+        def.type
+        ? (def.type.schema || def.type)
+        : null
+      );
+      const response = {
+        schema: (
+          schema && schema.isJoi
+          ? joi2schema(schema)
+          : {type: 'string'}
+        )
+      };
+      if (schema && schema.isJoi && schema._description) {
+        response.description = schema._description;
+      }
+      if (def.description) {
+        response.description = def.description;
+      }
+      operation.responses[code] = response;
+    }
 
     return operation;
   }
