@@ -422,6 +422,7 @@ endif ()
 ################################################################################
 
 include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${PROJECT_BINARY_DIR}/lib) #for configured file
 
 if (CUSTOM_INCLUDES)
   include_directories(${CUSTOM_INCLUDES})
