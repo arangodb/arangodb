@@ -341,53 +341,39 @@ static void DocumentVocbaseColCoordinator(
   // For the error processing we have to distinguish whether we are in
   // the ".exists" case (generateDocument==false) or the ".document" case
   // (generateDocument==true).
-  TRI_json_t* json = nullptr;
+  VPackBuilder builder;
   if (generateDocument) {
-    json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+    try {
+      VPackParser parser(builder);
+      parser.parse(resultBody);
+    } catch (...) {
+      // Do Nothing with the error
+      // Just make sure the builder is clear
+      builder.clear();
+    }
   }
+  VPackSlice slice = builder.slice();
+
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (!TRI_IsObjectJson(json)) {
+    if (!slice.isObject()) {
       if (generateDocument) {
-        if (nullptr != json) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-        }
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      } else {
-        TRI_V8_RETURN_FALSE();
       }
+      TRI_V8_RETURN_FALSE();
     }
     if (generateDocument) {
-      int errorNum = 0;
-      std::string errorMessage;
-      if (nullptr != json) {
-        TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
-        if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
-          errorNum = static_cast<int>(subjson->_value._number);
-        }
-        subjson = TRI_LookupObjectJson(json, "errorMessage");
-        if (nullptr != subjson && TRI_IsStringJson(subjson)) {
-          errorMessage = std::string(subjson->_value._string.data,
-                                     subjson->_value._string.length - 1);
-        }
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
+      int errorNum = triagens::basics::VelocyPackHelper::getNumericValue<int>(slice, "errorNum", 0);
+      std::string errorMessage = triagens::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
       TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
     } else {
       TRI_V8_RETURN_FALSE();
     }
   }
   if (generateDocument) {
-    v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json);
-
-    if (nullptr != json) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
+    v8::Handle<v8::Value> ret = TRI_VPackToV8(isolate, slice);
     TRI_V8_RETURN(ret);
   } else {
     // Note that for this case we will never get a 304 "NOT_MODIFIED"
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
     TRI_V8_RETURN_TRUE();
   }
 }
