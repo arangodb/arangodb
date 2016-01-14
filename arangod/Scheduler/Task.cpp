@@ -30,12 +30,10 @@
 using namespace triagens::rest;
 using namespace std;
 
-
 namespace {
 std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
                                                              100000.0));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
@@ -59,7 +57,6 @@ Task::Task(std::string const& name) : Task("", name) {}
 ////////////////////////////////////////////////////////////////////////////////
 
 Task::~Task() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the task
@@ -97,12 +94,9 @@ bool Task::isUserDefined() const { return false; }
 
 bool Task::needsMainEventLoop() const { return false; }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a task specific description in JSON format
 /// this does nothing for basic tasks, but derived classes may override it
 ////////////////////////////////////////////////////////////////////////////////
 
 void Task::getDescription(TRI_json_t* json) const {}
-
-

@@ -42,38 +42,15 @@ using namespace arangodb;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief map of ChunkedTask
-////////////////////////////////////////////////////////////////////////////////
-
-static std::unordered_map<uint64_t, HttpCommTask*> HttpCommTaskMap;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock for the above map
-////////////////////////////////////////////////////////////////////////////////
-
-static Mutex HttpCommTaskMapLock;
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint server
 ////////////////////////////////////////////////////////////////////////////////
 
 int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
-  MUTEX_LOCKER(HttpCommTaskMapLock);
-
-  auto&& it = HttpCommTaskMap.find(taskId);
-
-  if (it == HttpCommTaskMap.end()) {
-    return TRI_ERROR_TASK_NOT_FOUND;
-  }
-
   std::unique_ptr<TaskData> taskData(new TaskData());
 
   taskData->_taskId = taskId;
-  taskData->_loop = it->second->eventLoop();
+  taskData->_loop = Scheduler::SCHEDULER->lookupLoopById(taskId);
   taskData->_type = TaskData::TASK_DATA_CHUNK;
   taskData->_data = data;
 
@@ -81,7 +58,6 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new general server with dispatcher and job manager
@@ -103,15 +79,7 @@ HttpServer::HttpServer(Scheduler* scheduler, Dispatcher* dispatcher,
 /// @brief destructs a general server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::~HttpServer() {
-  for (auto& task : _commTasks) {
-    unregisterChunkedTask(task);
-    _scheduler->destroyTask(task);
-  }
-
-  stopListening();
-}
-
+HttpServer::~HttpServer() { stopListening(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a suitable communication task
@@ -121,7 +89,6 @@ HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
                                          ConnectionInfo const& info) {
   return new HttpCommTask(this, s, info, _keepAliveTimeout);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add the endpoint list
@@ -168,28 +135,6 @@ void HttpServer::stopListening() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a chunked task
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpServer::registerChunkedTask(HttpCommTask* task) {
-  auto id = task->taskId();
-  MUTEX_LOCKER(HttpCommTaskMapLock);
-
-  HttpCommTaskMap[id] = task;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisters a chunked task
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpServer::unregisterChunkedTask(HttpCommTask* task) {
-  auto id = task->taskId();
-  MUTEX_LOCKER(HttpCommTaskMapLock);
-
-  HttpCommTaskMap.erase(id);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes all listen and comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -208,7 +153,6 @@ void HttpServer::stop() {
       _commTasks.erase(task);
     }
 
-    unregisterChunkedTask(task);
     _scheduler->destroyTask(task);
   }
 }
@@ -239,12 +183,8 @@ void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
-  {
-    MUTEX_LOCKER(_commTasksLock);
-    _commTasks.erase(task);
-  }
-
-  unregisterChunkedTask(task);
+  MUTEX_LOCKER(_commTasksLock);
+  _commTasks.erase(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,12 +192,8 @@ void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
-  {
-    MUTEX_LOCKER(_commTasksLock);
-    _commTasks.erase(task);
-  }
-
-  unregisterChunkedTask(task);
+  MUTEX_LOCKER(_commTasksLock);
+  _commTasks.erase(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,7 +261,6 @@ bool HttpServer::handleRequest(HttpCommTask* task,
   return res == TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a listen port
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,7 +279,7 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
   }
 
   int res = _scheduler->registerTask(task);
-  
+
   if (res == TRI_ERROR_NO_ERROR) {
     _listenTasks.emplace_back(task);
     return true;
@@ -359,8 +294,16 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
 
 void HttpServer::handleRequestDirectly(HttpCommTask* task,
                                        HttpHandler* handler) {
-  handler->executeFull();
-  task->handleResponse(handler->getResponse());
+  HttpHandler::status_t status = handler->executeFull();
+
+  switch (status._status) {
+    case HttpHandler::HANDLER_FAILED:
+    case HttpHandler::HANDLER_DONE:
+      task->handleResponse(handler->getResponse());
+      break;
+
+    case HttpHandler::HANDLER_ASYNC:
+      // do nothing, just wait
+      break;
+  }
 }
-
-

@@ -1,8 +1,12 @@
+/*jshint unused: false */
+/* global arango */
+'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,31 +25,43 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "WorkMonitor.h"
-
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
-
-using namespace arangodb;
+const arangosh = require("@arangodb/arangosh");
+const printf = require("internal").printf;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief thread deleter
+/// @brief request work information
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::DELETE_HANDLER(WorkDescription*) { TRI_ASSERT(false); }
+const workOverview = function() {
+  const res = arango.GET("/_admin/work-monitor");
+  arangosh.checkRequestResult(res);
+
+  const work = res.work;
+
+  const output = function(indent, w) {
+   let txt = "";
+
+    if (w.type === "thread") {
+      txt = w.name;
+    } else if (w.type === "AQL query") {
+      txt = w.description;
+    } else if (w.type === "http-handler") {
+      txt = w.url + " (started: " + w.startTime + ")";
+    }
+	 
+    printf("%s%s: %s\n", indent, w.type, txt);
+
+    if (w.hasOwnProperty('parent')) {
+      output("  " + indent, w.parent);
+    }
+  };
+
+  work.forEach(function(w) {output("", w);});
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief thread description string
+/// @brief exports
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::VPACK_HANDLER(VPackBuilder*, WorkDescription*) {
-  TRI_ASSERT(false);
-}
+exports.workOverview = workOverview;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sends the overview
-////////////////////////////////////////////////////////////////////////////////
-
-void WorkMonitor::SEND_WORK_OVERVIEW(uint64_t, std::string const&) {
-  TRI_ASSERT(false);
-}

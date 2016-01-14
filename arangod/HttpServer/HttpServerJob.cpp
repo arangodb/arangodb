@@ -37,8 +37,6 @@ using namespace arangodb;
 using namespace triagens::rest;
 using namespace std;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,7 +59,6 @@ HttpServerJob::~HttpServerJob() {
     WorkMonitor::freeWorkDescription(_workDesc);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -134,5 +131,3 @@ void HttpServerJob::cleanup(DispatcherQueue* queue) {
 void HttpServerJob::handleError(triagens::basics::Exception const& ex) {
   _handler->handleError(ex);
 }
-
-

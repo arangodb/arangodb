@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,31 +20,37 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "WorkMonitor.h"
+#include "WorkMonitorHandler.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
+#include "HttpServer/HttpHandler.h"
+#include "Rest/HttpRequest.h"
 
 using namespace arangodb;
+using namespace triagens::basics;
+
+using triagens::rest::HttpRequest;
+using triagens::rest::HttpHandler;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief thread deleter
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::DELETE_HANDLER(WorkDescription*) { TRI_ASSERT(false); }
+WorkMonitorHandler::WorkMonitorHandler(HttpRequest* request)
+    : RestBaseHandler(request) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief thread description string
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::VPACK_HANDLER(VPackBuilder*, WorkDescription*) {
-  TRI_ASSERT(false);
-}
+bool WorkMonitorHandler::isDirect() const { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sends the overview
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::SEND_WORK_OVERVIEW(uint64_t, std::string const&) {
-  TRI_ASSERT(false);
+#include <iostream>
+
+HttpHandler::status_t WorkMonitorHandler::execute() {
+  WorkMonitor::requestWorkOverview(_taskId);
+  return status_t(HANDLER_ASYNC);
 }

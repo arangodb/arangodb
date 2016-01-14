@@ -47,8 +47,8 @@ FOR u IN users
   COLLECT age = u.age INTO usersByAge 
   SORT age DESC LIMIT 0, 5 
   RETURN { 
-    "age" : age, 
-    "users" : usersByAge[*].u.name 
+    age,
+    users : usersByAge[*].u.name 
   }
 
 [ 
@@ -120,8 +120,8 @@ FOR u IN users
           gender = u.gender INTO group
   SORT ageGroup DESC
   RETURN { 
-    "ageGroup" : ageGroup, 
-    "gender" : gender 
+    ageGroup,
+    gender
   }
 
 [ 
@@ -148,73 +148,166 @@ FOR u IN users
   { 
     "ageGroup" : 25, 
     "gender" : "m" 
+  } 
+]
+```
+
+!SUBSECTION Counting group values
+
+If the goal is to count the number of values in each group, AQL provides the special
+*COLLECT WITH COUNT INTO* syntax. This is a simple variant for grouping with an additional
+group length calculation:
+
+```
+FOR u IN users 
+  FILTER u.active == true
+  COLLECT ageGroup = FLOOR(u.age / 5) * 5, 
+          gender = u.gender WITH COUNT INTO numUsers
+  SORT ageGroup DESC
+  RETURN { 
+    ageGroup,
+    gender,
+    numUsers
+  }
+
+[ 
+  { 
+    "ageGroup" : 35, 
+    "gender" : "f", 
+    "numUsers" : 2 
+  }, 
+  { 
+    "ageGroup" : 35, 
+    "gender" : "m", 
+    "numUsers" : 2 
+  }, 
+  { 
+    "ageGroup" : 30, 
+    "gender" : "f", 
+    "numUsers" : 4 
+  }, 
+  { 
+    "ageGroup" : 30, 
+    "gender" : "m", 
+    "numUsers" : 4 
+  }, 
+  { 
+    "ageGroup" : 25, 
+    "gender" : "f", 
+    "numUsers" : 2 
+  }, 
+  { 
+    "ageGroup" : 25, 
+    "gender" : "m", 
+    "numUsers" : 2 
   } 
 ]
 ```
 
 !SUBSECTION Aggregation
 
-So far we only grouped data without aggregation. Adding aggregation is simple in AQL,
-as all that needs to be done is to run an aggregate function on the array created by
-the *INTO* clause of a *COLLECT* statement:
+Adding further aggregation is also simple in AQL by using an *AGGREGATE* clause
+in the *COLLECT*:
 
 ```
 FOR u IN users 
   FILTER u.active == true
   COLLECT ageGroup = FLOOR(u.age / 5) * 5, 
-          gender = u.gender INTO group
+          gender = u.gender 
+  AGGREGATE numUsers = LENGTH(1), 
+            minAge = MIN(u.age),
+            maxAge = MAX(u.age)
   SORT ageGroup DESC
   RETURN { 
-    "ageGroup" : ageGroup, 
-    "gender" : gender, 
-    "numUsers" : LENGTH(group) 
+    ageGroup,
+    gender,
+    numUsers,
+    minAge,
+    maxAge
   }
 
 [ 
   { 
     "ageGroup" : 35, 
     "gender" : "f", 
-    "numUsers" : 2 
+    "numUsers" : 2,
+    "minAge" : 36,
+    "maxAge" : 39, 
   }, 
   { 
     "ageGroup" : 35, 
     "gender" : "m", 
-    "numUsers" : 2 
+    "numUsers" : 2,
+    "minAge" : 35,
+    "maxAge" : 39, 
   }, 
-  { 
-    "ageGroup" : 30, 
-    "gender" : "f", 
-    "numUsers" : 4 
-  }, 
-  { 
-    "ageGroup" : 30, 
-    "gender" : "m", 
-    "numUsers" : 4 
-  }, 
-  { 
-    "ageGroup" : 25, 
-    "gender" : "f", 
-    "numUsers" : 2 
-  }, 
-  { 
-    "ageGroup" : 25, 
-    "gender" : "m", 
-    "numUsers" : 2 
-  } 
+  ...
 ]
 ```
 
-We have used the function *LENGTH* here (it returns the length of a array). This is the
-equivalent to SQL's `SELECT g, COUNT(*) FROM ... GROUP BY g`.
-In addition to *LENGTH* AQL also provides *MAX*, *MIN*, *SUM* and *AVERAGE* as 
-basic aggregation functions.
+We have used the aggregate functions *LENGTH* here (it returns the length of a array). 
+This is the equivalent to SQL's `SELECT g, COUNT(*) FROM ... GROUP BY g`. In addition to 
+*LENGTH* AQL also provides *MAX*, *MIN*, *SUM* and *AVERAGE*, *VARIANCE_POPULATION*, 
+*VARIANCE_SAMPLE*, *STDDEV_POPULATION* and *STDDEV_SAMPLE* as basic aggregation functions.
 
 In AQL all aggregation functions can be run on arrays only. If an aggregation function
-is run on anything that is not an array, an error will occur and the query will fail.
+is run on anything that is not an array, a warning will be produced and the result will
+be *null*.
+
+Using an *AGGREGATE* clause will ensure the aggregation is run while the groups are built
+in the collect operation. This is normally more efficient than collecting all group values
+for all groups and then doing a post-aggregation.
+
+
+!SUBSECTION Post-aggregation
+
+Aggregation can also be performed after a *COLLECT* operation using other AQL constructs,
+though performance-wise this is often inferior to using *COLLECT* with *AGGREGATE*.
+
+The same query as before can be turned into a post-aggregation query as shown below. Note
+that this query will build and pass on all group values for all groups inside the variable 
+*g*, and perform the aggregation at the latest possible stage:
+
+```
+FOR u IN users 
+  FILTER u.active == true
+  COLLECT ageGroup = FLOOR(u.age / 5) * 5, 
+          gender = u.gender INTO g
+  SORT ageGroup DESC
+  RETURN { 
+    ageGroup,
+    gender,
+    numUsers : LENGTH(g[*]),
+    minAge : MIN(g[*].u.age),
+    maxAge : MAX(g[*].u.age)
+  }
+
+[ 
+  { 
+    "ageGroup" : 35, 
+    "gender" : "f", 
+    "numUsers" : 2,
+    "minAge" : 36,
+    "maxAge" : 39, 
+  }, 
+  { 
+    "ageGroup" : 35, 
+    "gender" : "m", 
+    "numUsers" : 2,
+    "minAge" : 35,
+    "maxAge" : 39, 
+  }, 
+  ...
+]
+```
+
+This is in constrast to the previous query that used an *AGGREGATE* clause to perform
+the aggregation during the collect operation, at the earliest possible stage.
+
 
 !SUBSECTION Post-filtering aggregated data
 
-To filter on the results of a grouping or aggregation operation (i.e. something
+To filter the results of a grouping or aggregation operation (i.e. something
 similar to *HAVING* in SQL), simply add another *FILTER* clause after the *COLLECT* 
 statement. 
 
@@ -225,7 +318,7 @@ FOR u IN users
   FILTER u.active == true 
   COLLECT ageGroup = FLOOR(u.age / 5) * 5 INTO group 
   LET numUsers = LENGTH(group) 
-  FILTER numUsers > 2 // group must contain at least 3 users in order to qualify 
+  FILTER numUsers > 2 /* group must contain at least 3 users in order to qualify */
   SORT numUsers DESC 
   LIMIT 0, 3 
   RETURN { 

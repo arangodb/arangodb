@@ -2,12 +2,9 @@
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB Application Launcher
-///
-/// @file
-///
 /// DISCLAIMER
 ///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,15 +19,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
 /// @author Michael Hackstein
 /// @author Dr. Frank Celler
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 var arangodb = require("@arangodb");
 var arangosh = require("@arangodb/arangosh");
@@ -761,5 +755,3 @@ exports.search = store.search;
 exports.searchJson = store.searchJson;
 exports.update = store.update;
 exports.info = store.info;
-
-

@@ -966,7 +966,6 @@ bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   _scheduler = scheduler;
   _loop = loop;
   
-  _server->registerChunkedTask(this);
   setupDone();
 
   return true;
@@ -1029,7 +1028,6 @@ void HttpCommTask::signalTask(TaskData* data) {
     _scheduler->destroyTask(this);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -1100,5 +1098,3 @@ void HttpCommTask::handleTimeout() {
   _clientClosed = true;
   _server->handleCommunicationClosed(this);
 }
-
-

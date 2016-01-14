@@ -75,6 +75,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestVersionHandler.h"
+#include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -224,7 +225,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 
   factory->addHandler(
       "/_api/version",
-      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData,
+      RestHandlerCreator<RestVersionHandler>::createNoData,
       nullptr);
 
   factory->addHandler(
@@ -241,7 +242,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 
   factory->addHandler(
       "/_admin/version",
-      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData,
+      RestHandlerCreator<RestVersionHandler>::createNoData,
       nullptr);
 
   factory->addHandler(
@@ -253,6 +254,11 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   factory->addHandler(
       "/_admin/log",
       RestHandlerCreator<triagens::admin::RestAdminLogHandler>::createNoData,
+      nullptr);
+
+  factory->addHandler(
+      "/_admin/work-monitor",
+      RestHandlerCreator<WorkMonitorHandler>::createNoData,
       nullptr);
 
   factory->addPrefixHandler(
