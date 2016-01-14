@@ -2989,90 +2989,6 @@ static void JS_Wait(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief intentionally causes a segfault
-///
-/// @FUN{internal.debugSegfault(@FA{message})}
-///
-/// intentionally cause a segmentation violation
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugSegfault(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugSegfault(<message>)");
-  }
-
-  std::string const message = TRI_ObjectToString(args[0]);
-
-  TRI_SegfaultDebugging(message.c_str());
-
-  // we may get here if we are in non-maintainer mode
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a failure point
-///
-/// @FUN{internal.debugSetFailAt(@FA{point})}
-///
-/// Set a point for an intentional system failure
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugSetFailAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugSetFailAt(<point>)");
-  }
-
-  std::string const point = TRI_ObjectToString(args[0]);
-
-  TRI_AddFailurePointDebugging(point.c_str());
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a failure point
-///
-/// @FUN{internal.debugRemoveFailAt(@FA{point})}
-///
-/// Remove a point for an intentional system failure
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugRemoveFailAt(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugRemoveFailAt(<point>)");
-  }
-
-  std::string const point = TRI_ObjectToString(args[0]);
-
-  TRI_RemoveFailurePointDebugging(point.c_str());
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clears all failure points
 ///
 /// @FUN{internal.debugClearFailAt()}
@@ -4333,18 +4249,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_WAIT"), JS_Wait);
 
-// debugging functions
-#ifdef TRI_ENABLE_FAILURE_TESTS
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),
-                               JS_DebugSegfault);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_DEBUG_SET_FAILAT"),
-                               JS_DebugSetFailAt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_DEBUG_REMOVE_FAILAT"),
-                               JS_DebugRemoveFailAt);
-#endif
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);

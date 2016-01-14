@@ -175,6 +175,7 @@ add_executable(
     RestHandler/RestAdminLogHandler.cpp
     RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp
+    RestHandler/RestDebugHandler.cpp
     RestHandler/RestDebugHelperHandler.cpp
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp

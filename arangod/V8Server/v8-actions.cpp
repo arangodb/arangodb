@@ -1239,7 +1239,6 @@ static void JS_AccessSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
@@ -1282,5 +1281,184 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("SYS_SEND_CHUNK"), JS_SendChunk);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// Below Debugging Functions. Only compiled in maintainer mode.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
+static bool clusterSendToAllServers(
+    std::string const& dbname,
+    std::string const& path, // Note: Has to be properly encoded!
+    triagens::rest::HttpRequest::HttpRequestType const& method,
+    std::string const& body) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+  std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
+
+  // Have to propagate to DB Servers
+  std::vector<ServerID> DBServers;
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  auto reqBodyString = std::make_shared<std::string>(body);
+
+  DBServers = ci->getCurrentDBServers();
+  for (auto const& sid : DBServers) {
+    std::unique_ptr<std::map<std::string, std::string>> headers(
+        new std::map<std::string, std::string>());
+    cc->asyncRequest("", coordTransactionID, "server:" + sid,
+                     method,
+                     url,
+                     reqBodyString, headers, nullptr, 3600.0);
+  }
+
+  // Now listen to the results:
+  size_t count = DBServers.size();
+
+  for (; count > 0; count--) {
+    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    if (res.status == CL_COMM_TIMEOUT) {
+      cc->drop("", coordTransactionID, 0, "");
+      return TRI_ERROR_CLUSTER_TIMEOUT;
+    }
+    if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED) {
+      cc->drop("", coordTransactionID, 0, "");
+      return TRI_ERROR_INTERNAL;
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief intentionally causes a segfault
+///
+/// @FUN{internal.debugSegfault(@FA{message})}
+///
+/// intentionally cause a segmentation violation
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
+static void JS_DebugSegfault(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("debugSegfault(<message>)");
+  }
+
+  std::string const message = TRI_ObjectToString(args[0]);
+
+  TRI_SegfaultDebugging(message.c_str());
+
+  // we may get here if we are in non-maintainer mode
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a failure point
+///
+/// @FUN{internal.debugSetFailAt(@FA{point})}
+///
+/// Set a point for an intentional system failure
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
+static void JS_DebugSetFailAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+
+  if (v8g->_vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+  std::string dbname(v8g->_vocbase->_name);
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("debugSetFailAt(<point>)");
+  }
+
+  std::string const point = TRI_ObjectToString(args[0]);
+
+  TRI_AddFailurePointDebugging(point.c_str());
+
+  if (ServerState::instance()->isCoordinator()) {
+    int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+                                      triagens::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a failure point
+///
+/// @FUN{internal.debugRemoveFailAt(@FA{point})}
+///
+/// Remove a point for an intentional system failure
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
+static void JS_DebugRemoveFailAt(
+    const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+
+  if (v8g->_vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+  std::string dbname(v8g->_vocbase->_name);
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("debugRemoveFailAt(<point>)");
+  }
+
+  std::string const point = TRI_ObjectToString(args[0]);
+
+  TRI_RemoveFailurePointDebugging(point.c_str());
+
+  if (ServerState::instance()->isCoordinator()) {
+    int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+                                      triagens::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
+void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+                          std::string const& startupPath,
+                          std::string const& modules) {
+// debugging functions
+#ifdef TRI_ENABLE_FAILURE_TESTS
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),
+                               JS_DebugSegfault);
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_DEBUG_SET_FAILAT"),
+                               JS_DebugSetFailAt);
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_DEBUG_REMOVE_FAILAT"),
+                               JS_DebugRemoveFailAt);
+#endif
+}
+
 
 

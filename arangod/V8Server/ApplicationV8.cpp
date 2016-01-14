@@ -1291,6 +1291,9 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     TRI_InitV8Buffer(isolate, localContext);
     TRI_InitV8Conversions(localContext);
     TRI_InitV8Utils(isolate, localContext, _startupPath, modulesPath);
+#ifdef TRI_ENABLE_FAILURE_TESTS
+    TRI_InitV8DebugUtils(isolate, localContext, _startupPath, modulesPath);
+#endif
     TRI_InitV8Shell(isolate, localContext);
 
     {
