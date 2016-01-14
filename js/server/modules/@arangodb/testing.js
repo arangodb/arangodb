@@ -901,6 +901,9 @@ function runThere (options, instanceInfo, file) {
     var o = makeAuthorizationHeaders(options);
     o.method = "POST";
     o.timeout = 3600;
+    if (typeof(options.valgrind) === 'string') {
+      c.timeout *= 2;
+    }
     o.returnBodyOnError = true;
     r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
     if (! r.error && r.code === 200) {
