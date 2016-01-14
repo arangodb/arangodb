@@ -110,7 +110,6 @@ module.exports = exports = class SwaggerContext {
     }
     return this;
   }
-  // TODO response headers maybe?
 
   response(status, type, description) {
     let statusCode = Number(status);
