@@ -902,7 +902,7 @@ function runThere (options, instanceInfo, file) {
     o.method = "POST";
     o.timeout = 3600;
     if (typeof(options.valgrind) === 'string') {
-      c.timeout *= 2;
+      o.timeout *= 2;
     }
     o.returnBodyOnError = true;
     r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
