@@ -57,7 +57,6 @@ static char const* ReasonOnlyDeletions     = "compacting datafile because it con
 static char const* ReasonDeadSize          = "compacting datafile because it contains much dead object space";
 static char const* ReasonDeadSizeShare     = "compacting datafile because it contains high share of dead objects";
 static char const* ReasonDeadCount         = "compacting datafile because it contains many dead objects";
-static char const* ReasonDeletionCount     = "compacting datafile because it contains many deletions";
 static char const* ReasonNothingToCompact  = "checked datafiles, but no compaction opportunity found";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -567,7 +566,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     res = document->getShaper()->moveMarker(result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
+      LOG_FATAL_AND_EXIT("cannot re-locate attribute marker");
     }
     
     context->_dfi._numberAttributes++;
@@ -692,15 +691,13 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
 
-    bool deleted;
-
     TRI_doc_document_key_marker_t const* d = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
     TRI_voc_key_t key = (char*) d + d->_offsetKey;
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
     auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key));
-    deleted = (found == nullptr || found->_rid > d->_rid);
+    bool deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
       return true;
@@ -1137,11 +1134,6 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
       // the number of dead objects is above some threshold
       doCompact = true;
       reason = ReasonDeadCount;
-    }
-    else if (dfi->_numberDeletion >= (int64_t) COMPACTOR_DEAD_THRESHOLD) {
-      // the number of deletions is above some threshold
-      doCompact = true;
-      reason = ReasonDeletionCount;
     }
 
     if (! doCompact) {
