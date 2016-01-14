@@ -227,7 +227,7 @@ static void JS_SynchronizeReplication(
     v8::Handle<v8::Array> a = v8::Handle<v8::Array>::Cast(
         object->Get(TRI_V8_ASCII_STRING("restrictCollections")));
 
-    const uint32_t n = a->Length();
+    uint32_t const n = a->Length();
 
     for (uint32_t i = 0; i < n; ++i) {
       v8::Handle<v8::Value> cname = a->Get(i);

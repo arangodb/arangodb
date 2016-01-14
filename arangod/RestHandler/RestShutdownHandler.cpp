@@ -38,9 +38,6 @@ RestShutdownHandler::RestShutdownHandler(triagens::rest::HttpRequest* request,
           static_cast<triagens::rest::ApplicationServer*>(applicationServer)) {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestShutdownHandler::isDirect() const { return true; }
 

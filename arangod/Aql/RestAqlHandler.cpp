@@ -60,9 +60,6 @@ RestAqlHandler::RestAqlHandler(triagens::rest::HttpRequest* request,
 size_t RestAqlHandler::queue() const { return Dispatcher::AQL_QUEUE; }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestAqlHandler::isDirect() const { return false; }
 

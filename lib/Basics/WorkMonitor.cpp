@@ -335,13 +335,10 @@ void WorkMonitor::requestWorkOverview(uint64_t taskId) {
   WORK_OVERVIEW.push(taskId);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::run() {
-  const uint32_t maxSleep = 100 * 1000;
-  const uint32_t minSleep = 100;
+  uint32_t const maxSleep = 100 * 1000;
+  uint32_t const minSleep = 100;
   uint32_t s = minSleep;
 
   // clean old entries and create summary if requested
