@@ -36,10 +36,10 @@
 #include "Wal/Slots.h"
 
 #include <velocypack/Collection.h>
+#include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace triagens::wal;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a collection is volatile
@@ -168,7 +168,6 @@ static int WaitForDeletion(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the recover state
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +189,6 @@ RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
 ////////////////////////////////////////////////////////////////////////////////
 
 RecoverState::~RecoverState() { releaseResources(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief release opened collections and databases so they can be shut down
@@ -1034,12 +1032,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       char const* properties =
           reinterpret_cast<char const*>(m) + sizeof(index_create_marker_t);
-      TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
-
-      if (!TRI_IsObjectJson(json)) {
-        if (json != nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-        }
+      std::shared_ptr<VPackBuilder> builder;
+      try {
+        builder = VPackParser::fromJson(properties);
+      } catch (...) {
         LOG_WARNING(
             "cannot unpack index properties for index %llu, collection %llu in "
             "database %llu",
@@ -1048,9 +1044,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         ++state->errorCount;
         return state->canContinue();
       }
-
-      if (!TRI_IsObjectJson(json)) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      VPackSlice slice = builder->slice();
+      if (!slice.isObject()) {
         LOG_WARNING(
             "cannot unpack index properties for index %llu, collection %llu in "
             "database %llu",
@@ -1069,9 +1064,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
       TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
 
-      bool ok =
-          TRI_SaveJson(filename, json, vocbase->_settings.forceSyncProperties);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      bool ok = triagens::basics::VelocyPackHelper::velocyPackToFile(
+          filename, slice, vocbase->_settings.forceSyncProperties);
 
       if (!ok) {
         TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -1153,10 +1147,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         name = nameSlice.copyString();
         collection = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
 
-        if (collection !=
-            nullptr) {  // && !
-                        // TRI_IsSystemNameCollection(name->_value._string.data))
-                        // {
+        if (collection != nullptr) {  // && !
+          // TRI_IsSystemNameCollection(name->_value._string.data))
+          // {
           // if yes, delete it
           TRI_voc_cid_t otherCid = collection->_cid;
 
@@ -1238,30 +1231,34 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       char const* properties =
           reinterpret_cast<char const*>(m) + sizeof(database_create_marker_t);
-      TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
+      std::shared_ptr<VPackBuilder> parsedProperties;
+      try {
+        parsedProperties = VPackParser::fromJson(properties);
+      } catch (...) {
+        LOG_WARNING("cannot unpack database properties for database %llu",
+                    (unsigned long long)databaseId);
+        ++state->errorCount;
+        return state->canContinue();
+      }
+      VPackSlice const slice = parsedProperties->slice();
 
-      if (!TRI_IsObjectJson(json)) {
-        if (json != nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-        }
+      if (!slice.isObject()) {
         LOG_WARNING("cannot unpack database properties for database %llu",
                     (unsigned long long)databaseId);
         ++state->errorCount;
         return state->canContinue();
       }
 
-      TRI_json_t const* nameValue = TRI_LookupObjectJson(json, "name");
+      VPackSlice const nameSlice = slice.get("name");
 
-      if (!TRI_IsStringJson(nameValue)) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      if (!nameSlice.isString()) {
         LOG_WARNING("cannot unpack database properties for database %llu",
                     (unsigned long long)databaseId);
         ++state->errorCount;
         return state->canContinue();
       }
 
-      std::string nameString(nameValue->_value._string.data);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      std::string nameString = nameSlice.copyString();
 
       // remove already existing database with same name
       vocbase =
@@ -1541,5 +1538,4 @@ int RecoverState::fillIndexes() {
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
