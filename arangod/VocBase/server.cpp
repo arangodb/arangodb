@@ -175,12 +175,6 @@ static int ReadServerId(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteServerId(char const* filename) {
-  char* idString;
-  char buffer[32];
-  size_t len;
-  time_t tt;
-  struct tm tb;
-
   TRI_ASSERT(filename != nullptr);
   // create a VelocyPackObject
   VPackBuilder builder;
@@ -188,13 +182,14 @@ static int WriteServerId(char const* filename) {
     builder.openObject();
 
     TRI_ASSERT(ServerId != 0);
-    idString = TRI_StringUInt64((uint64_t)ServerId);
-    builder.add("serverId", VPackValue(idString));
+    builder.add("serverId", VPackValue(std::to_string(ServerId)));
 
-    tt = time(0);
+    time_t tt = time(0);
+    struct tm tb;
     TRI_gmtime(tt, &tb);
-    len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-    builder.add("createdTime", VPackValue(buffer));
+    char buffer[32];
+    size_t len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+    builder.add("createdTime", VPackValue(std::string(buffer, len)));
 
     builder.close();
   } catch (...) {
