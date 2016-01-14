@@ -97,7 +97,7 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
   /// @brief sets the processor affinity
   //////////////////////////////////////////////////////////////////////////////
 
-  void setProcessorAffinity(const std::vector<size_t>& cores);
+  void setProcessorAffinity(std::vector<size_t> const& cores);
 
   
  public:

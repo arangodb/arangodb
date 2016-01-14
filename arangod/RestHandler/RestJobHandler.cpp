@@ -62,7 +62,7 @@ HttpHandler::status_t RestJobHandler::execute() {
   if (type == HttpRequest::HTTP_REQUEST_GET) {
     getJob();
   } else if (type == HttpRequest::HTTP_REQUEST_PUT) {
-    const std::vector<std::string>& suffix = _request->suffix();
+    std::vector<std::string> const& suffix = _request->suffix();
 
     if (suffix.size() == 1) {
       putJob();

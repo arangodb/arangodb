@@ -236,12 +236,10 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
     _endpoints.push_back(httpEndpoint);
   }
 
-  const std::vector<std::string> dbNames;
-
   // add & validate endpoints
   for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.add((*i), dbNames, _backlogSize, _reuseAddress);
+    bool ok = _endpointList.add((*i), std::vector<std::string>(), _backlogSize, _reuseAddress);
 
     if (!ok) {
       LOG_FATAL_AND_EXIT("invalid endpoint '%s'", (*i).c_str());

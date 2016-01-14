@@ -185,7 +185,7 @@ static size_t ByteLengthString(v8::Isolate* isolate,
 /// @brief encodes a buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Encode(const v8::FunctionCallbackInfo<v8::Value>& args,
+static void Encode(v8::FunctionCallbackInfo<v8::Value> const& args,
                    const void* buf, size_t len, TRI_V8_encoding_t enc) {
   v8::Isolate* isolate = args.GetIsolate();
   if (enc == BUFFER) {
@@ -228,7 +228,7 @@ static void Encode(const v8::FunctionCallbackInfo<v8::Value>& args,
 
 static void FromConstructorTemplate(
     v8::Local<v8::FunctionTemplate> t,
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Value> argv[32];
   size_t argc = args.Length();
 
@@ -830,7 +830,7 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
 /// @brief binarySlice
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_BinarySlice(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_BinarySlice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t start;
@@ -850,7 +850,7 @@ static void JS_BinarySlice(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief asciiSlice
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_AsciiSlice(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_AsciiSlice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t start;
@@ -880,7 +880,7 @@ static void JS_AsciiSlice(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief utf8Slice
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Utf8Slice(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Utf8Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t start;
@@ -899,7 +899,7 @@ static void JS_Utf8Slice(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief ucs2Slice
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Ucs2Slice(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Ucs2Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t start;
@@ -918,7 +918,7 @@ static void JS_Ucs2Slice(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief hexSlice
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_HexSlice(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_HexSlice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t start;
@@ -955,7 +955,7 @@ static void JS_HexSlice(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief base64Slice
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Base64Slice(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Base64Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t start;
@@ -1033,7 +1033,7 @@ static void JS_Base64Slice(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief fill
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Fill(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Fill(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t start;
@@ -1059,7 +1059,7 @@ static void JS_Fill(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief copy
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Copy(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Copy(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1117,7 +1117,7 @@ static void JS_Copy(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief utf8Write
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Utf8Write(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Utf8Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1160,7 +1160,7 @@ static void JS_Utf8Write(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief ucs2Write
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Ucs2Write(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Ucs2Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1195,7 +1195,7 @@ static void JS_Ucs2Write(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief hexWrite
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_HexWrite(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_HexWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1256,7 +1256,7 @@ static void JS_HexWrite(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief asciiWrite
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_AsciiWrite(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_AsciiWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1293,7 +1293,7 @@ static void JS_AsciiWrite(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief base64Write
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Base64Write(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Base64Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1366,7 +1366,7 @@ static void JS_Base64Write(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief binaryWrite
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_BinaryWrite(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_BinaryWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1401,7 +1401,7 @@ static void JS_BinaryWrite(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, bool ENDIANNESS>
-static void ReadFloatGeneric(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void ReadFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1440,7 +1440,7 @@ static void ReadFloatGeneric(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief  readFloatLE
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ReadFloatLE(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ReadFloatLE(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ReadFloatGeneric<float, false>(args);
 }
 
@@ -1448,7 +1448,7 @@ static void JS_ReadFloatLE(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief readFloatBE
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ReadFloatBE(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ReadFloatBE(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ReadFloatGeneric<float, true>(args);
 }
 
@@ -1456,7 +1456,7 @@ static void JS_ReadFloatBE(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief readDoubleLE
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ReadDoubleLE(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ReadDoubleLE(v8::FunctionCallbackInfo<v8::Value> const& args) {
   return ReadFloatGeneric<double, false>(args);
 }
 
@@ -1464,7 +1464,7 @@ static void JS_ReadDoubleLE(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief readDoubleBE
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ReadDoubleBE(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ReadDoubleBE(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ReadFloatGeneric<double, true>(args);
 }
 
@@ -1473,7 +1473,7 @@ static void JS_ReadDoubleBE(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, bool ENDIANNESS>
-static void WriteFloatGeneric(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void WriteFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1517,7 +1517,7 @@ static void WriteFloatGeneric(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief writeFloatLE
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_WriteFloatLE(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_WriteFloatLE(v8::FunctionCallbackInfo<v8::Value> const& args) {
   WriteFloatGeneric<float, false>(args);
 }
 
@@ -1525,7 +1525,7 @@ static void JS_WriteFloatLE(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief writeFloatBE
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_WriteFloatBE(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_WriteFloatBE(v8::FunctionCallbackInfo<v8::Value> const& args) {
   WriteFloatGeneric<float, true>(args);
 }
 
@@ -1533,7 +1533,7 @@ static void JS_WriteFloatBE(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief writeDoubleLE
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_WriteDoubleLE(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_WriteDoubleLE(v8::FunctionCallbackInfo<v8::Value> const& args) {
   WriteFloatGeneric<double, false>(args);
 }
 
@@ -1541,7 +1541,7 @@ static void JS_WriteDoubleLE(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief writeDoubleBE
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_WriteDoubleBE(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_WriteDoubleBE(v8::FunctionCallbackInfo<v8::Value> const& args) {
   WriteFloatGeneric<double, true>(args);
 }
 
@@ -1549,7 +1549,7 @@ static void JS_WriteDoubleBE(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief byteLength
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ByteLength(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ByteLength(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1568,7 +1568,7 @@ static void JS_ByteLength(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief makeFastBuffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_MakeFastBuffer(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_MakeFastBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1607,7 +1607,7 @@ static void JS_MakeFastBuffer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SetFastBufferConstructor(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
   if (args[0]->IsFunction()) {

@@ -795,7 +795,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 /// @FUN{internal.defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_DefineAction(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
@@ -861,7 +861,7 @@ static void JS_DefineAction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExecuteGlobalContextFunction(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -896,7 +896,7 @@ static void JS_ExecuteGlobalContextFunction(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetCurrentRequest(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
@@ -915,7 +915,7 @@ static void JS_GetCurrentRequest(
 /// @FUN{internal.rawRequestBody()}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RawRequestBody(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -950,7 +950,7 @@ static void JS_RawRequestBody(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @FUN{internal.rawRequestBody()}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RequestParts(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1119,7 +1119,7 @@ static void JS_RequestParts(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetCurrentResponse(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
@@ -1136,7 +1136,7 @@ static void JS_GetCurrentResponse(
 /// @brief sendChunk
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_SendChunk(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_SendChunk(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1164,7 +1164,7 @@ static void JS_SendChunk(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief createSid
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CreateSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CreateSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1191,7 +1191,7 @@ static void JS_CreateSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief clearSid
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ClearSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ClearSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1217,7 +1217,7 @@ static void JS_ClearSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief accessSid
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_AccessSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_AccessSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1338,7 +1338,7 @@ static bool clusterSendToAllServers(
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugSegfault(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_DebugSegfault(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1367,7 +1367,7 @@ static void JS_DebugSegfault(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugSetFailAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1410,7 +1410,7 @@ static void JS_DebugSetFailAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 static void JS_DebugRemoveFailAt(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

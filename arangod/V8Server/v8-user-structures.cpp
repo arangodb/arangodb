@@ -489,7 +489,7 @@ class KeySpace {
     return TRI_ERROR_NO_ERROR;
   }
 
-  void keyPop(const v8::FunctionCallbackInfo<v8::Value>& args,
+  void keyPop(v8::FunctionCallbackInfo<v8::Value> const& args,
               std::string const& key) {
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
@@ -526,7 +526,7 @@ class KeySpace {
     TRI_V8_RETURN(result);
   }
 
-  void keyTransfer(const v8::FunctionCallbackInfo<v8::Value>& args,
+  void keyTransfer(v8::FunctionCallbackInfo<v8::Value> const& args,
                    std::string const& keyFrom, std::string const& keyTo) {
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
@@ -631,7 +631,7 @@ class KeySpace {
     return scope.Escape<v8::Value>(result);
   }
 
-  void keyGetAt(const v8::FunctionCallbackInfo<v8::Value>& args,
+  void keyGetAt(v8::FunctionCallbackInfo<v8::Value> const& args,
                 std::string const& key, int64_t index) {
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
@@ -747,7 +747,7 @@ class KeySpace {
     return "undefined";
   }
 
-  void keyMerge(const v8::FunctionCallbackInfo<v8::Value>& args,
+  void keyMerge(v8::FunctionCallbackInfo<v8::Value> const& args,
                 std::string const& key, v8::Handle<v8::Value> const& value,
                 bool nullMeansRemove) {
     v8::Isolate* isolate = args.GetIsolate();
@@ -837,7 +837,7 @@ static KeySpace* GetKeySpace(TRI_vocbase_t* vocbase, std::string const& name) {
 /// @brief creates a keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceCreate(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -899,7 +899,7 @@ static void JS_KeyspaceCreate(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief drops a keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceDrop(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceDrop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -937,7 +937,7 @@ static void JS_KeyspaceDrop(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns the number of items in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceCount(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -980,7 +980,7 @@ static void JS_KeyspaceCount(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns whether a keyspace exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1012,7 +1012,7 @@ static void JS_KeyspaceExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns all keys of the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1050,7 +1050,7 @@ static void JS_KeyspaceKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns all data of the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1088,7 +1088,7 @@ static void JS_KeyspaceGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief removes all keys from the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1126,7 +1126,7 @@ static void JS_KeyspaceRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1165,7 +1165,7 @@ static void JS_KeyGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief set the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeySet(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1212,7 +1212,7 @@ static void JS_KeySet(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief conditionally set the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeySetCas(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeySetCas(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1264,7 +1264,7 @@ static void JS_KeySetCas(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief remove the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1306,7 +1306,7 @@ static void JS_KeyRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief checks if a key exists in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1348,7 +1348,7 @@ static void JS_KeyExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief increase or decrease the value for a key in a keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyIncr(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyIncr(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1401,7 +1401,7 @@ static void JS_KeyIncr(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief merges an object into the object with the specified key
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyUpdate(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyUpdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1441,7 +1441,7 @@ static void JS_KeyUpdate(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns all keys of the key
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1475,7 +1475,7 @@ static void JS_KeyKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns all value of the hash array
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyValues(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyValues(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1509,7 +1509,7 @@ static void JS_KeyValues(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief right-pushes an element into a list value
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyPush(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyPush(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1549,7 +1549,7 @@ static void JS_KeyPush(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief pops an element from a list value
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyPop(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyPop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1583,7 +1583,7 @@ static void JS_KeyPop(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief transfer an element from a list value into another
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyTransfer(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyTransfer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1618,7 +1618,7 @@ static void JS_KeyTransfer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief get an element at a specific list position
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyGetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyGetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1653,7 +1653,7 @@ static void JS_KeyGetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief set an element at a specific list position
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeySetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeySetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1693,7 +1693,7 @@ static void JS_KeySetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns the type of the value for a key
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyType(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyType(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1732,7 +1732,7 @@ static void JS_KeyType(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns the number of items in a compound value
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyCount(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

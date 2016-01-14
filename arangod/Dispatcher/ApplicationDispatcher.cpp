@@ -160,7 +160,7 @@ size_t ApplicationDispatcher::numberOfThreads() {
 /// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::setProcessorAffinity(const std::vector<size_t>& cores) {
+void ApplicationDispatcher::setProcessorAffinity(std::vector<size_t> const& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
 #endif

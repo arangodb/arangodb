@@ -108,7 +108,7 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
 /// @brief registers a task
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RegisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -250,7 +250,7 @@ static void JS_RegisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @FUN{internal.unregisterTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_UnregisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -280,7 +280,7 @@ static void JS_UnregisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @FUN{internal.getTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_GetTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
