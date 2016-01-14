@@ -810,6 +810,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
                                  Collection const* collection)
     : BlockWithClients(engine, ep, shardIds),
       _collection(collection),
+      _index(0),
       _regId(ExecutionNode::MaxRegisterId),
       _alternativeRegId(ExecutionNode::MaxRegisterId) {
   // get the variable to inspect . . .
