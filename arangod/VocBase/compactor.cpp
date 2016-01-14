@@ -499,7 +499,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     // let marker point to the new position
     found2->setDataPtr(result);
     // update fid in case it changes
-    if (!isWalDataMarker && found2->_fid != targetFid) {
+    if (found2->_fid != targetFid) {
       found2->_fid = targetFid;
     }
 
@@ -562,7 +562,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
         result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
+      LOG_FATAL_AND_EXIT("cannot re-locate attribute marker");
     }
 
     context->_dfi._numberAttributes++;
