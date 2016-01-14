@@ -906,10 +906,19 @@ function runThere (options, instanceInfo, file) {
     if (! r.error && r.code === 200) {
       r = JSON.parse(r.body);
     } else {
-      return {
-        status: false,
-        message: r.body
-      };
+      if (r.hasOwnProperty('body')) {
+        return {
+          status: false,
+          message: r.body
+        };
+      }
+      else {
+        return {
+          status: false,
+          message: yaml.safeDump(r)
+        };
+
+      }
     }
     return r;
   } catch (e) {
