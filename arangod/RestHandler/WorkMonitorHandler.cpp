@@ -31,9 +31,6 @@ using namespace triagens::basics;
 using triagens::rest::HttpRequest;
 using triagens::rest::HttpHandler;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 WorkMonitorHandler::WorkMonitorHandler(HttpRequest* request)
     : RestBaseHandler(request) {}
