@@ -509,7 +509,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     // let marker point to the new position
     found2->setDataPtr(result);
     // update fid in case it changes
-    if (!isWalDataMarker && found2->_fid != targetFid) {
+    if (found2->_fid != targetFid) {
       found2->_fid = targetFid;
     }
 
