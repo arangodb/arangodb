@@ -21,12 +21,11 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/SortBlock.h"
+#include "SortBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
 using namespace triagens::arango;
 using namespace triagens::aql;
 
@@ -40,7 +39,7 @@ SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
     auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
     TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    _sortRegisters.emplace_back(make_pair(it->second.registerId, p.second));
+    _sortRegisters.emplace_back(std::make_pair(it->second.registerId, p.second));
   }
 }
 

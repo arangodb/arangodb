@@ -21,22 +21,21 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "TraversalBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
-#include "Aql/TraversalBlock.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterTraverser.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Traverser.h"
 
-using namespace std;
-using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::aql;
 
+using Json = triagens::basics::Json;
 using VertexId = triagens::arango::traverser::VertexId;
 
 
@@ -350,7 +349,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
       if (input.has(TRI_VOC_ATTRIBUTE_ID)) {
         Json _idJson = input.get(TRI_VOC_ATTRIBUTE_ID);
         if (_idJson.isString()) {
-          _vertexId = JsonHelper::getStringValue(_idJson.json(), "");
+          _vertexId = triagens::basics::JsonHelper::getStringValue(_idJson.json(), "");
           VertexId v = triagens::arango::traverser::IdStringToVertexId(
               _resolver, _vertexId);
           _traverser->setStartVertex(v);

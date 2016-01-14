@@ -26,11 +26,8 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/json-utilities.h"
 
-using namespace std;
-using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::aql;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch size value

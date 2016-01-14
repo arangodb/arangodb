@@ -21,15 +21,13 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ClusterNodes.h"
+#include "ClusterNodes.h"
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Ast.h"
 
-using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for RemoteNode from Json

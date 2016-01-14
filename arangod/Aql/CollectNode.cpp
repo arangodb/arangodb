@@ -26,8 +26,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/WalkerWorker.h"
 
-using namespace std;
-using namespace triagens::basics;
 using namespace triagens::aql;
     
 CollectNode::CollectNode(

@@ -34,13 +34,12 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/server.h"
 
-using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
 using namespace triagens::aql;
-using namespace std;
 
-
+using Json = triagens::basics::Json;
+using JsonHelper = triagens::basics::JsonHelper;
 
 RestAqlHandler::RestAqlHandler(triagens::rest::HttpRequest* request,
                                std::pair<ApplicationV8*, QueryRegistry*>* pair)
@@ -53,7 +52,6 @@ RestAqlHandler::RestAqlHandler(triagens::rest::HttpRequest* request,
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_queryRegistry != nullptr);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name
@@ -113,7 +111,7 @@ void RestAqlHandler::createQueryFromJson() {
   bool found;
   char const* ttlstring = _request->header("ttl", found);
   if (found) {
-    ttl = StringUtils::doubleDecimal(ttlstring);
+    ttl = triagens::basics::StringUtils::doubleDecimal(ttlstring);
   }
 
   // query id not set, now generate a new one
@@ -133,7 +131,7 @@ void RestAqlHandler::createQueryFromJson() {
   createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
-  answerBody("queryId", triagens::basics::Json(StringUtils::itoa(_qId)))(
+  answerBody("queryId", triagens::basics::Json(triagens::basics::StringUtils::itoa(_qId)))(
       "ttl", triagens::basics::Json(ttl));
 
   _response->body().appendText(answerBody.toString());
@@ -307,7 +305,7 @@ void RestAqlHandler::createQueryFromString() {
   bool found;
   char const* ttlstring = _request->header("ttl", found);
   if (found) {
-    ttl = StringUtils::doubleDecimal(ttlstring);
+    ttl = triagens::basics::StringUtils::doubleDecimal(ttlstring);
   }
 
   _qId = TRI_NewTickServer();
@@ -324,7 +322,7 @@ void RestAqlHandler::createQueryFromString() {
   createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
-  answerBody("queryId", triagens::basics::Json(StringUtils::itoa(_qId)))(
+  answerBody("queryId", triagens::basics::Json(triagens::basics::StringUtils::itoa(_qId)))(
       "ttl", triagens::basics::Json(ttl));
   _response->body().appendText(answerBody.toString());
 }
@@ -616,7 +614,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
-  _qId = StringUtils::uint64(idString);
+  _qId = triagens::basics::StringUtils::uint64(idString);
   query = nullptr;
 
   // sleep for 10ms each time, wait for at most 30 seconds...

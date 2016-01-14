@@ -29,7 +29,6 @@
 #include "Aql/Ast.h"
 #include "Aql/Index.h"
 
-using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 

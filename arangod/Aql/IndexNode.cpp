@@ -29,10 +29,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Index.h"
 
-using namespace std;
-using namespace triagens::basics;
 using namespace triagens::aql;
 
+using JsonHelper = triagens::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for IndexNode
