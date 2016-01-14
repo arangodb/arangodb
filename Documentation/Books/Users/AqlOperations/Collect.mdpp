@@ -220,9 +220,9 @@ FOR u IN users
   }
 ```
 
-The `AGGREGATE` keyword can be used inside a `COLLECT` statement only. If used, it must 
-follow the declaration of grouping keys, or, if no grouping keys are used, it can follow 
-the `COLLECT` keyword directly:
+The `AGGREGATE` keyword can only be used after the `COLLECT` keyword. If used, it 
+must follow the declaration of the grouping keys, or, if no grouping keys are used, 
+it can follow the `COLLECT` keyword directly:
 
 ```
 FOR u IN users
