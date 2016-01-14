@@ -29,91 +29,10 @@
 const joi = require('joi');
 const mimeTypes = require('mime-types');
 const mediaTyper = require('media-typer');
+const joi2schema = require('joi-to-json-schema');
 const tokenize = require('@arangodb/foxx/router/tokenize');
 
 const DEFAULT_BODY_SCHEMA = joi.object().optional().meta({allowInvalid: true});
-
-function joi2swagger(joi) {
-  switch (joi._type) {
-    default:
-      return ['string'];
-    case 'binary':
-      return ['string', 'binary'];
-    case 'boolean':
-      return ['boolean'];
-    case 'date':
-      return ['string', 'date-time'];
-    case 'func':
-      return ['string'];
-    case 'number':
-      if (joi._tests.some(function (test) {
-        return test.name === 'integer';
-      })) {
-        return ['integer'];
-      }
-      return ['number'];
-    case 'array':
-      return ['array'];
-    case 'object':
-      return ['object'];
-    case 'string':
-      if (joi._meta.some(function (meta) {
-        return meta.secret;
-      })) {
-        return ['string', 'password'];
-      }
-      return ['string'];
-  }
-}
-
-function swaggerifyParam(joi) {
-  const param = {
-    required: joi._presence === 'required',
-    description: joi._description
-  };
-  let item = param;
-  if (joi._meta.some(function (meta) {
-    return meta.allowMultiple;
-  })) {
-    param.type = 'array';
-    param.collectionFormat = 'multi';
-    param.items = {};
-    item = param.items;
-  }
-  const type = joi2swagger(joi);
-  item.type = type[0];
-  if (type.length > 1) {
-    item.format = type[1];
-  }
-  if (joi._valids._set) {
-    item.enum = joi._valids._set;
-  }
-  if (joi._flags.hasOwnProperty('default')) {
-    item.default = joi._flags.default;
-  }
-  return param;
-}
-
-function swaggerifySchema(joi) {
-  const schema = {};
-  const type = joi2swagger(joi);
-  schema.type = type[0];
-  if (type.length > 1) {
-    schema.format = type[1];
-  }
-  // TODO implement this properly
-  return schema;
-}
-
-function swaggerifyBody(joi) {
-  const body = {
-    required: joi._presence === 'required',
-    description: joi._description
-  };
-  body.schema = swaggerifySchema(joi);
-  return body;
-}
-
 const DEFAULT_ERROR_SCHEMA = joi.object().keys({
   error: joi.allow(true).required(),
   errorNum: joi.number().integer().optional(),
@@ -433,3 +352,73 @@ module.exports = exports = class SwaggerContext {
 };
 
 exports.DEFAULT_BODY_SCHEMA = DEFAULT_BODY_SCHEMA;
+
+
+function swaggerifyType(joi) {
+  switch (joi._type) {
+    default:
+      return ['string'];
+    case 'binary':
+      return ['string', 'binary'];
+    case 'boolean':
+      return ['boolean'];
+    case 'date':
+      return ['string', 'date-time'];
+    case 'func':
+      return ['string'];
+    case 'number':
+      if (joi._tests.some(function (test) {
+        return test.name === 'integer';
+      })) {
+        return ['integer'];
+      }
+      return ['number'];
+    case 'array':
+      return ['array'];
+    case 'object':
+      return ['object'];
+    case 'string':
+      if (joi._meta.some(function (meta) {
+        return meta.secret;
+      })) {
+        return ['string', 'password'];
+      }
+      return ['string'];
+  }
+}
+
+function swaggerifyParam(joi) {
+  const param = {
+    required: joi._presence === 'required',
+    description: joi._description
+  };
+  let item = param;
+  if (joi._meta.some(function (meta) {
+    return meta.allowMultiple;
+  })) {
+    param.type = 'array';
+    param.collectionFormat = 'multi';
+    param.items = {};
+    item = param.items;
+  }
+  const type = swaggerifyType(joi);
+  item.type = type[0];
+  if (type.length > 1) {
+    item.format = type[1];
+  }
+  if (joi._valids._set) {
+    item.enum = joi._valids._set;
+  }
+  if (joi._flags.hasOwnProperty('default')) {
+    item.default = joi._flags.default;
+  }
+  return param;
+}
+
+function swaggerifyBody(joi) {
+  return {
+    required: joi._presence === 'required',
+    description: joi._description,
+    schema: joi2schema(joi)
+  };
+}
