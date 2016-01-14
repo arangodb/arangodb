@@ -38,6 +38,11 @@ else ()
 
 endif ()
 
+# TODO # add vars to configure
+configure_file(Basics/local-configuration.h.in Basics/local-configuration.h COPYONLY)
+# Find includes in corresponding build directories
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
 include_directories(../3rdParty/linenoise-ng/include)
 include_directories(../3rdParty/linenoise-ng/src)
 add_definitions("-DTRI_HAVE_LINENOISE")

@@ -8,7 +8,7 @@
 ### @brief required cmake version
 ################################################################################
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.2)
 
 ################################################################################
 ### @brief cmake build types
@@ -700,7 +700,11 @@ set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
 ### @brief V8
 ################################################################################
 
-set(V8_VERSION "unknown" CACHE string "V8 version")
+
+# on the first run the cache variable would replace the regular variable and on
+# subsequent runs the regular variable would take precedence over the cache variable
+# the behavior is not consisten btween runs -- so the following line has to go
+##set(V8_VERSION "unknown" CACHE string "V8 version")
 
 if (MSVC OR RASPBIAN)
   set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
