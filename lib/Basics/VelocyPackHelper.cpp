@@ -82,6 +82,17 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
   return sub.copyString();
 }
 
+uint64_t stringUInt64(VPackSlice const& slice) {
+  if (slice.isString()) {
+    std::string tmp = slice.copyString();
+    return TRI_UInt64String(tmp.c_str()); 
+  }
+  if (slice.isNumber()) {
+    return slice.getNumericValue<uint64_t>();
+  }
+  return 0;
+}
+
 TRI_json_t* VelocyPackHelper::velocyPackToJson(VPackSlice const& slice) {
   return JsonHelper::fromString(slice.toJson());
 }
