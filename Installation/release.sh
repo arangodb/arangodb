@@ -20,9 +20,9 @@ if git tag | grep -q "^v$VERSION$";  then
   exit 1
 fi
 
-fgrep -q "v$VERSION" CHANGELOG
-
-if [ "$?" != 0 ];  then
+if fgrep -q "v$VERSION" CHANGELOG;  then
+ echo "version $VERSION defined in CHANGELOG" 
+else
   echo "$0: version $VERSION not defined in CHANGELOG"
   exit 1
 fi
