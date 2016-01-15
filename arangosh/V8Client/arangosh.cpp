@@ -2308,6 +2308,7 @@ static int WarmupEnvironment(v8::Isolate* isolate,
   files.push_back("common/bootstrap/modules/internal.js");  // deps: -
   files.push_back("common/bootstrap/errors.js");            // deps: internal
   files.push_back("client/bootstrap/modules/internal.js");  // deps: internal
+  files.push_back("common/bootstrap/modules/vm.js");        // deps: internal
   files.push_back("common/bootstrap/modules/console.js");   // deps: internal
   files.push_back("common/bootstrap/modules/assert.js");    // deps: -
   files.push_back("common/bootstrap/modules/buffer.js");    // deps: internal
