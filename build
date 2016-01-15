@@ -1,0 +1,43 @@
+#!/bin/bash
+# Copyright - 2015 - Jan Christoph Uhde <Jan@UhdeJC.com>
+
+project_root="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+build_dir="${project_root}-build"
+
+args=()
+cm_flags=()
+for arg in $@; do
+    case $arg in
+        -v|--verbose)
+            export VERBOSE=1
+            export V=1
+        ;;
+        -d|--debug)
+            cm_flags+=( '-DCMAKE_BUILD_TYPE=Debug' )
+        ;;
+        -e|--examples)
+            cm_flags+=( '-DLIBOBI_EXAMPLES=On' )
+        ;;
+        -c|--clean)
+            rm -fr $build_dir
+        ;;
+        --gcc)
+            cm_flags+=( '-DCMAKE_CXX_COMPILER=g++' )
+        ;;
+        --gcc-6)
+            cm_flags+=( '-DCMAKE_CXX_COMPILER=g++-6' )
+            cm_flags+=( '-DCMAKE_C_COMPILER=gcc-6' )
+        ;;
+        --clang)
+            cm_flags+=( '-DCMAKE_CXX_COMPILER=clang++' )
+        ;;
+        *)
+            args+=( "$arg" )
+        ;;
+    esac
+done
+
+test -d $build_dir || mkdir $build_dir || { exit 1; }
+cd $build_dir || { exit 1; }
+cmake "${cm_flags[@]}" "${args[@]}" "$project_root" && \
+make -j $(nproc)
