@@ -28,6 +28,7 @@
 #define VELOCYPACK_COLLECTION_H 1
 
 #include <functional>
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -116,6 +117,13 @@ class Collection {
 
   static void keys(Slice const* slice,
                    std::unordered_set<std::string>& result) {
+    return keys(*slice, result);
+  }
+  
+  static void keys(Slice const& slice, std::set<std::string>& result);
+
+  static void keys(Slice const* slice,
+                   std::set<std::string>& result) {
     return keys(*slice, result);
   }
 
