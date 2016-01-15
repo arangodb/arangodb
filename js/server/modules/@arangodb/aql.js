@@ -7114,46 +7114,6 @@ function AQL_EDGES (edgeCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to filter edges based on examples
-////////////////////////////////////////////////////////////////////////////////
-
-function FILTERED_EDGES (edges, vertex, direction, examples) {
-  'use strict';
-
-  var result = [ ];
-
-  FILTER(edges, examples).forEach (function (e) {
-    var key;
-
-    if (direction === "inbound") {
-      key = e._from;
-    }
-    else if (direction === "outbound") {
-      key = e._to;
-    }
-    else if (direction === "any") {
-      key = e._from;
-      if (key === vertex) {
-        key = e._to;
-      }
-    }
-
-    if (key === vertex) {
-      // do not return the start vertex itself
-      return;
-    }
-
-    try {
-      result.push({ edge: CLONE(e), vertex: DOCUMENT_HANDLE(key) });
-    }
-    catch (err) {
-    }
-  });
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
