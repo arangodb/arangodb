@@ -907,7 +907,7 @@ function runThere (options, instanceInfo, file) {
     o.returnBodyOnError = true;
     r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
     if (! r.error && r.code === 200) {
-      r = JSON.parse(r.body);
+      o = JSON.parse(r.body);
     } else {
       if (r.hasOwnProperty('body')) {
         return {
