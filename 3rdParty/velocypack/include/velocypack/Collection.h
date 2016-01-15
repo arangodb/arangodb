@@ -35,6 +35,7 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
 
 namespace arangodb {
@@ -106,24 +107,32 @@ class Collection {
   static std::vector<std::string> keys(Slice const* slice) {
     return keys(*slice);
   }
+  
+  template<typename T>
+  static void keys(Slice const& slice, T& result) {
+    ObjectIterator it(slice);
 
-  static void keys(Slice const& slice, std::vector<std::string>& result);
-
-  static void keys(Slice const* slice, std::vector<std::string>& result) {
-    return keys(*slice, result);
-  }
-
-  static void keys(Slice const& slice, std::unordered_set<std::string>& result);
-
-  static void keys(Slice const* slice,
-                   std::unordered_set<std::string>& result) {
-    return keys(*slice, result);
+    while (it.valid()) {
+      result.emplace(std::move(it.key().copyString()));
+      it.next();
+    }
   }
   
-  static void keys(Slice const& slice, std::set<std::string>& result);
+//  template<>
+  static void keys(Slice const& slice, std::vector<std::string>& result) {
+    // pre-allocate result vector
+    result.reserve(checkOverflow(slice.length()));
 
-  static void keys(Slice const* slice,
-                   std::set<std::string>& result) {
+    ObjectIterator it(slice);
+
+    while (it.valid()) {
+      result.emplace_back(std::move(it.key().copyString()));
+      it.next();
+    }
+  }
+
+  template<typename T>  
+  static void keys(Slice const* slice, T& result) {
     return keys(*slice, result);
   }
 
