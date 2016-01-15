@@ -930,26 +930,17 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ReloadAuthCoordinator(TRI_vocbase_t* vocbase) {
-  TRI_json_t* json = nullptr;
-  bool result;
+  VPackBuilder builder;
+  builder.openArray();
 
-  int res = usersOnCoordinator(std::string(vocbase->_name), json, 60.0);
+  int res = usersOnCoordinator(std::string(vocbase->_name), builder, 60.0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ASSERT(json != nullptr);
-
-    std::shared_ptr<VPackBuilder> transformed =
-        triagens::basics::JsonHelper::toVelocyPack(json);
-    result = TRI_PopulateAuthInfo(vocbase, transformed->slice());
-  } else {
-    result = false;
+    builder.close();
+    return TRI_PopulateAuthInfo(vocbase, builder.slice());
   }
 
-  if (json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  }
-
-  return result;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

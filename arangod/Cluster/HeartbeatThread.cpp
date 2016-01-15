@@ -702,24 +702,25 @@ bool HeartbeatThread::sendState() {
 
 bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
   bool result = false;
-  TRI_json_t* json = nullptr;
+  VPackBuilder builder;
+  builder.openArray();
 
   LOG_TRACE("fetching users for database '%s'", vocbase->_name);
 
-  int res = usersOnCoordinator(std::string(vocbase->_name), json, 10.0);
+  int res = usersOnCoordinator(std::string(vocbase->_name), builder, 10.0);
 
   if (res == TRI_ERROR_NO_ERROR) {
+    builder.close();
+    VPackSlice users = builder.slice();
     // we were able to read from the _users collection
-    TRI_ASSERT(TRI_IsArrayJson(json));
+    TRI_ASSERT(users.isArray());
 
-    if (TRI_LengthArrayJson(json) == 0) {
+    if (users.length() == 0) {
       // no users found, now insert initial default user
       TRI_InsertInitialAuthInfo(vocbase);
     } else {
       // users found in collection, insert them into cache
-      std::shared_ptr<VPackBuilder> transformed =
-          triagens::basics::JsonHelper::toVelocyPack(json);
-      TRI_PopulateAuthInfo(vocbase, transformed->slice());
+      TRI_PopulateAuthInfo(vocbase, users);
     }
 
     result = true;
@@ -733,10 +734,6 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
     // _users collection is not yet available
     // try again next time
     result = false;
-  }
-
-  if (json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
   if (result) {

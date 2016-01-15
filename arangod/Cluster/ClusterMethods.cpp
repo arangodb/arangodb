@@ -34,6 +34,9 @@
 #include "VocBase/Traverser.h"
 #include "VocBase/server.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -72,6 +75,33 @@ static T ExtractFigure(TRI_json_t const* json, char const* group,
   }
 
   return ExtractFigure<T>(g, name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a numeric value from an hierarchical VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+static T ExtractFigure(VPackSlice const& slice, char const* group,
+                       char const* name) {
+  VPackSlice g = slice.get(group);
+
+  if (!g.isObject()) {
+    return static_cast<T>(0);
+  }
+  return triagens::basics::VelocyPackHelper::getNumericValue<T>(g, name, 0);
+}
+
+
+
+static std::shared_ptr<VPackBuilder> ExtractAnswer(
+    ClusterCommResult const& res) {
+  try {
+    return VPackParser::fromJson(res.answer->body());
+  } catch (...) {
+    // Return an empty Builder
+    return std::make_shared<VPackBuilder>();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +208,7 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
 /// @brief returns users
 ////////////////////////////////////////////////////////////////////////////////
 
-int usersOnCoordinator(std::string const& dbname, TRI_json_t*& result,
+int usersOnCoordinator(std::string const& dbname, VPackBuilder& result,
                        double timeout) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -190,12 +220,6 @@ int usersOnCoordinator(std::string const& dbname, TRI_json_t*& result,
 
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (result == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // If we get here, the sharding attributes are not only _key, therefore
@@ -220,45 +244,38 @@ int usersOnCoordinator(std::string const& dbname, TRI_json_t*& result,
         headers, nullptr, 10.0);
   }
 
-  // Now listen to the results:
-  int count;
-  int nrok = 0;
-  for (count = (int)shards->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", timeout);
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == triagens::rest::HttpResponse::OK ||
-          res.answer_code == triagens::rest::HttpResponse::CREATED) {
-        TRI_json_t* json =
-            TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res.answer->body());
+  try {
+    // Now listen to the results:
+    int count;
+    int nrok = 0;
+    for (count = (int)shards->size(); count > 0; count--) {
+      auto res = cc->wait("", coordTransactionID, 0, "", timeout);
+      if (res.status == CL_COMM_RECEIVED) {
+        if (res.answer_code == triagens::rest::HttpResponse::OK ||
+            res.answer_code == triagens::rest::HttpResponse::CREATED) {
+          std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+          VPackSlice answer = answerBuilder->slice();
 
-        if (JsonHelper::isObject(json)) {
-          TRI_json_t const* r = TRI_LookupObjectJson(json, "result");
-
-          if (TRI_IsArrayJson(r)) {
-            size_t const n = TRI_LengthArrayJson(r);
-            for (size_t i = 0; i < n; ++i) {
-              TRI_json_t const* p = TRI_LookupArrayJson(r, i);
-
-              if (TRI_IsObjectJson(p)) {
-                TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result,
-                                       TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, p));
+          if (answer.isObject()) {
+            VPackSlice r = answer.get("result");
+            if (r.isArray()) {
+              for (auto const& p : VPackArrayIterator(r)) {
+                if (p.isObject()) {
+                  result.add(p);
+                }
               }
             }
+            nrok++;
           }
-          nrok++;
-        }
-
-        if (json != nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
     }
+    if (nrok != (int)shards->size()) {
+      return TRI_ERROR_INTERNAL;
+    }
+  } catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  if (nrok != (int)shards->size()) {
-    return TRI_ERROR_INTERNAL;
-  }
-
   return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
                               // the DBserver could have reported an error.
 }
@@ -306,14 +323,14 @@ int revisionOnCoordinator(std::string const& dbname,
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == triagens::rest::HttpResponse::OK) {
-        TRI_json_t* json =
-            TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res.answer->body());
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
 
-        if (JsonHelper::isObject(json)) {
-          TRI_json_t const* r = TRI_LookupObjectJson(json, "revision");
+        if (answer.isObject()) {
+          VPackSlice r = answer.get("revision");
 
-          if (TRI_IsStringJson(r)) {
-            TRI_voc_rid_t cmp = StringUtils::uint64(r->_value._string.data);
+          if (r.isString()) {
+            TRI_voc_rid_t cmp = StringUtils::uint64(r.copyString());
 
             if (cmp > rid) {
               // get the maximum value
@@ -321,10 +338,6 @@ int revisionOnCoordinator(std::string const& dbname,
             }
           }
           nrok++;
-        }
-
-        if (json != 0) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
     }
@@ -387,13 +400,12 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == triagens::rest::HttpResponse::OK) {
-        TRI_json_t* json =
-            TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res.answer->body());
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
 
-        if (JsonHelper::isObject(json)) {
-          TRI_json_t const* figures = TRI_LookupObjectJson(json, "figures");
-
-          if (TRI_IsObjectJson(figures)) {
+        if (answer.isObject()) {
+          VPackSlice figures = answer.get("figures");
+          if (figures.isObject()) {
             // add to the total
             result->_numberAlive +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "alive", "count");
@@ -438,13 +450,10 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<int64_t>(figures, "shapefiles", "fileSize");
 
             result->_numberDocumentDitches +=
-                ExtractFigure<uint64_t>(figures, "documentReferences");
+                triagens::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+                    figures, "documentReferences", 0);
           }
           nrok++;
-        }
-
-        if (json != nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
     }
@@ -499,17 +508,13 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == triagens::rest::HttpResponse::OK) {
-        TRI_json_t* json =
-            TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res.answer->body());
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
 
-        if (JsonHelper::isObject(json)) {
+        if (answer.isObject()) {
           // add to the total
-          result += JsonHelper::getNumericValue<uint64_t>(json, "count", 0);
+          result += triagens::basics::VelocyPackHelper::getNumericValue<uint64_t>(answer, "count", 0);
           nrok++;
-        }
-
-        if (json != 0) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
     }

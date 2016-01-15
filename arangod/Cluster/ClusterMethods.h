@@ -40,6 +40,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 struct TRI_json_t;
@@ -79,8 +80,9 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
 /// @brief returns users
 ////////////////////////////////////////////////////////////////////////////////
 
-int usersOnCoordinator(std::string const& dbname, struct TRI_json_t*& result,
+int usersOnCoordinator(std::string const& dbname, VPackBuilder& result,
                        double timeout);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
