@@ -59,7 +59,6 @@
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
-#include "RestHandler/RestDebugHelperHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
@@ -229,11 +228,6 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<RestVersionHandler>::createNoData,
       nullptr);
 
-  factory->addHandler(
-      "/_api/debug-helper",
-      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData,
-      nullptr);
-
   // And now the _admin handlers
   factory->addPrefixHandler(
       "/_admin/job",
@@ -244,11 +238,6 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   factory->addHandler(
       "/_admin/version",
       RestHandlerCreator<RestVersionHandler>::createNoData,
-      nullptr);
-
-  factory->addHandler(
-      "/_admin/debug-helper",
-      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData,
       nullptr);
 
   // further admin handlers
