@@ -24,6 +24,10 @@ endif ()
 
 project(arangodb)
 
+
+add_subdirectory(3rdParty)
+
+
 set(LIB_ARANGO        arango)
 set(LIB_ARANGO_CLIENT arango_client)
 set(LIB_ARANGO_V8     arango_v8)
