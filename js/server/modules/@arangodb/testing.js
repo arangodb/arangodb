@@ -365,21 +365,21 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       valgrindXmlFileBase = options.valgrindXmlFileBase;
     }
 
-    var p = new Planner({"numberOfDBservers"      : clusterNodes,
-                         "numberOfCoordinators"   : 1,
-                         "dispatchers"            : {"me": dispatcher},
-                         "dataPath"               : tmpDataDir,
-                         "logPath"                : tmpDataDir,
-                         "useSSLonCoordinators"   : protocol === "ssl",
-                         "valgrind"               : runInValgrind,
-                         "valgrindopts"           : toArgv(valgrindopts, true),
-                         "valgrindXmlFileBase"    : valgrindXmlFileBase + '_cluster',
-                         "valgrindTestname"       : testname,
-                         "valgrindHosts"          : valgrindHosts,
-                         "extremeVerbosity"       : options.extremeVerbosity
-                        });
+    var plan = new Planner({"numberOfDBservers"      : clusterNodes,
+                            "numberOfCoordinators"   : 1,
+                            "dispatchers"            : {"me": dispatcher},
+                            "dataPath"               : tmpDataDir,
+                            "logPath"                : tmpDataDir,
+                            "useSSLonCoordinators"   : protocol === "ssl",
+                            "valgrind"               : runInValgrind,
+                            "valgrindopts"           : toArgv(valgrindopts, true),
+                            "valgrindXmlFileBase"    : valgrindXmlFileBase + '_cluster',
+                            "valgrindTestname"       : testname,
+                            "valgrindHosts"          : valgrindHosts,
+                            "extremeVerbosity"       : options.extremeVerbosity
+                           });
 
-    instanceInfo.kickstarter = new Kickstarter(p.getPlan());
+    instanceInfo.kickstarter = new Kickstarter(plan.getPlan());
     var rc = instanceInfo.kickstarter.launch();
     if (rc.error) {
       print("Cluster startup failed: " + rc.errorMessage);
@@ -453,8 +453,8 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   while (true) {
     wait(0.5, false);
-    var r = download(url+"/_api/version", "", makeAuthorizationHeaders(options));
-    if (! r.error && r.code === 200) {
+    var reply = download(url+"/_api/version", "", makeAuthorizationHeaders(options));
+    if (! reply.error && reply.code === 200) {
       break;
     }
     count ++;
@@ -659,29 +659,30 @@ function checkInstanceAlive(instanceInfo, options) {
 function waitOnServerForGC(instanceInfo, options, waitTime) {
   try {
     print("waiting " + waitTime + " for server GC");
-    var r;
-    var t;
-    t = 'require("internal").wait(' + waitTime + ', true);';
-    var o = makeAuthorizationHeaders(options);
-    o.method = "POST";
-    o.timeout = waitTime * 10;
-    o.returnBodyOnError = true;
-    r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
+    var reply;
+    var remoteCommand;
+    remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
+    var requestOptions = makeAuthorizationHeaders(options);
+    requestOptions.method = "POST";
+    requestOptions.timeout = waitTime * 10;
+    requestOptions.returnBodyOnError = true;
+    reply = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",
+                     remoteCommand,
+                     requestOptions);
     print("waiting " + waitTime + " for server GC - done.");
-    if (! r.error && r.code === 200) {
-      r = JSON.parse(r.body);
+    if (! reply.error && reply.code === 200) {
+      return JSON.parse(reply.body);
     } else {
       return {
         status: false,
-        message: r.body
+        message: yaml.safedump(reply.body)
       };
     }
-    return r;
-  } catch (e) {
+  } catch (ex) {
     return {
       status: false,
-      message: e.message || String(e),
-      stack: e.stack
+      message: ex.message || String(ex),
+      stack: ex.stack
     };
   }
 
@@ -888,47 +889,48 @@ function findTests () {
 
 function runThere (options, instanceInfo, file) {
   try {
-    var r;
-    var t;
+    var reply;
+    var testCode;
     if (file.indexOf("-spec") === -1) {
-      t = 'var runTest = require("jsunity").runTest; '+
-          'return runTest(' + JSON.stringify(file) + ', true);';
+      testCode = 'var runTest = require("jsunity").runTest; '+
+        'return runTest(' + JSON.stringify(file) + ', true);';
     }
     else {
-      t = 'var runTest = require("@arangodb/mocha-runner"); ' +
-          'return runTest(' + JSON.stringify(file) + ', true);';
+      testCode = 'var runTest = require("@arangodb/mocha-runner"); ' +
+        'return runTest(' + JSON.stringify(file) + ', true);';
     }
-    var o = makeAuthorizationHeaders(options);
-    o.method = "POST";
-    o.timeout = 3600;
+    var httpOptions = makeAuthorizationHeaders(options);
+    httpOptions.method = "POST";
+    httpOptions.timeout = 3600;
     if (typeof(options.valgrind) === 'string') {
-      o.timeout *= 2;
+      httpOptions.timeout *= 2;
     }
-    o.returnBodyOnError = true;
-    r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
-    if (! r.error && r.code === 200) {
-      o = JSON.parse(r.body);
+    httpOptions.returnBodyOnError = true;
+    reply = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",
+                     testCode,
+                     httpOptions);
+    if (! reply.error && reply.code === 200) {
+      return JSON.parse(reply.body);
     } else {
-      if (r.hasOwnProperty('body')) {
+      if (reply.hasOwnProperty('body')) {
         return {
           status: false,
-          message: r.body
+          message: reply.body
         };
       }
       else {
         return {
           status: false,
-          message: yaml.safeDump(r)
+          message: yaml.safeDump(reply)
         };
 
       }
     }
-    return r;
-  } catch (e) {
+  } catch (ex) {
     return {
       status: false,
-      message: e.message || String(e),
-      stack: e.stack
+      message: ex.message || String(ex),
+      stack: ex.stack
     };
   }
 }
@@ -1063,24 +1065,24 @@ function performTests(options, testList, testname, remote) {
       }
 
       print("\n" + Date() + " arangod: Trying",te,"...");
-      var r;
+      var reply;
       if (remote) {
-        r = runThere(options, instanceInfo, te);
+        reply = runThere(options, instanceInfo, te);
       }
       else {
-        r = runHere(options, instanceInfo, te);
+        reply = runHere(options, instanceInfo, te);
       }
-      if (r.hasOwnProperty('status')) {
-        results[te] = r;
+      if (reply.hasOwnProperty('status')) {
+        results[te] = reply;
         if (results[te].status === false) {
           options.cleanup = false;
         }
-        if (! r.status && ! options.force) {
+        if (! reply.status && ! options.force) {
           break;
         }
       }
       else {
-        results[te] = {status: false, message: r};
+        results[te] = {status: false, message: reply};
         if (! options.force) {
           break;
         }
@@ -1135,10 +1137,10 @@ testFuncs.single_server = function (options) {
     var te = options.test;
     print("\n" + Date() + " arangod: Trying",te,"...");
     result = {};
-    var r = runThere(options, instanceInfo, makePathGeneric(te));
+    var reply = runThere(options, instanceInfo, makePathGeneric(te));
 
-    if (r.hasOwnProperty('status')) {
-      result[te] = r;
+    if (reply.hasOwnProperty('status')) {
+      result[te] = reply;
       if (result[te].status === false) {
         options.cleanup = false;
       }
@@ -1147,7 +1149,7 @@ testFuncs.single_server = function (options) {
     if (result[te].status === false) {
       options.cleanup = false;
     }
-    shutdownInstance(instanceInfo,options);
+    shutdownInstance(instanceInfo, options);
     print("done.");
     if ((!options.skipLogAnalysis) &&
         instanceInfo.hasOwnProperty('importantLogLines') &&
@@ -1304,9 +1306,9 @@ testFuncs.shell_client = function(options) {
 
       print("\narangosh: Trying",te,"...");
 
-      var r = runInArangosh(options, instanceInfo, te);
-      results[te] = r;
-      if (r.status !== true) {
+      var reply = runInArangosh(options, instanceInfo, te);
+      results[te] = reply;
+      if (reply.status !== true) {
         options.cleanup = false;
         if (! options.force) {
           break;
@@ -1345,39 +1347,39 @@ testFuncs.config = function (options) {
             "arangorestore",
             "arangosh"];
   var args;
-  var t;
+  var test;
   var i;
   print("--------------------------------------------------------------------------------");
   print("Absolut config tests");
   print("--------------------------------------------------------------------------------");
   for (i = 0; i < ts.length; i++) {
-    t = ts[i];
+    test = ts[i];
     args = {
-      "configuration" : fs.join(topDir,"etc","arangodb",t+".conf"),
+      "configuration" : fs.join(topDir,"etc","arangodb", test + ".conf"),
       "flatCommands"  : ["--help"]
     };
-    results[t] = executeAndWait(fs.join(topDir,"bin",t),
-                                toArgv(args));
-    print("Args for [" + t + "]:");
+    results[test] = executeAndWait(fs.join(topDir, "bin", test),
+                                   toArgv(args));
+    print("Args for [" + test + "]:");
     print(yaml.safeDump(args));
-    print("Result: " + results[t].status);
+    print("Result: " + results[test].status);
   }
   print("--------------------------------------------------------------------------------");
   print("relative config tests");
   print("--------------------------------------------------------------------------------");
   for (i = 0; i < ts.length; i++) {
-    t = ts[i];
+    test = ts[i];
 
     args = {
-      "configuration" : fs.join(topDir,"etc","relative",t+".conf"),
+      "configuration" : fs.join(topDir,"etc","relative", test + ".conf"),
       "flatCommands"  : ["--help"]
     };
 
-    results[t+"_rel"] = executeAndWait(fs.join(topDir,"bin",t),
+    results[test + "_rel"] = executeAndWait(fs.join(topDir,"bin", test),
                                        toArgv(args));
-    print("Args for (relative) [" + t + "]:");
+    print("Args for (relative) [" + test + "]:");
     print(yaml.safeDump(args));
-    print("Result: " + results[t + "_rel"].status);
+    print("Result: " + results[test + "_rel"].status);
   }
 
   return results;
@@ -1976,7 +1978,8 @@ testFuncs.arangob = function (options) {
     return {status: false, message: "failed to start server!"};
   }
   var results = {};
-  var i,r;
+  var i;
+  var oneResult;
   var continueTesting = true;
 
   for (i = 0; i < benchTodo.length; i++) {
@@ -2000,12 +2003,12 @@ testFuncs.arangob = function (options) {
       if (options.hasOwnProperty('benchargs')) {
         args = _.extend(args, options.benchargs);
       }
-      r = runArangoBenchmark(options, instanceInfo, args);
-      results[i] = r;
+      oneResult = runArangoBenchmark(options, instanceInfo, args);
+      results[i] = oneResult;
 
       continueTesting = checkInstanceAlive(instanceInfo, options);
 
-      if (r.status !== true && !options.force) {
+      if (oneResult.status !== true && !options.force) {
         break;
       }
     }
@@ -2108,7 +2111,7 @@ testFuncs.authentication_parameters = function (options) {
         }
       };
     }
-    var r;
+    var reply;
     var i;
     var testName = 'auth_' + authTestNames[test];
 
@@ -2128,21 +2131,21 @@ testFuncs.authentication_parameters = function (options) {
         break;
       }
 
-      r = download(instanceInfo.url + urlsTodo[i],"", downloadOptions);
-      if (r.code === authTestExpectRC[test][i]) {
+      reply = download(instanceInfo.url + urlsTodo[i],"", downloadOptions);
+      if (reply.code === authTestExpectRC[test][i]) {
         results[testName][urlsTodo[i]] = { status: true };
       }
       else {
-        checkBodyForJsonToParse(r);
+        checkBodyForJsonToParse(reply);
         results[testName].failed++;
         results[testName][urlsTodo[i]] = { 
           status: false,
           message: "we expected " + 
             authTestExpectRC[test][i] +
             " and we got "
-            + r.code +
+            + reply.code +
             " Full Status: "
-            + yaml.safeDump(r)
+            + yaml.safeDump(reply)
         };
       }
       continueTesting = checkInstanceAlive(instanceInfo, options);
@@ -2291,21 +2294,21 @@ function UnitTest (which, options) {
   delete options.jsonReply;
   var i;
   var ok;
-  var r;
+  var thisReply;
   if (which === "all") {
     var n;
     for (n = 0; n < allTests.length; n++) {
       print("Doing test", allTests[n], "with options", options);
-      results[allTests[n]] = r = testFuncs[allTests[n]](options);
+      results[allTests[n]] = thisReply = testFuncs[allTests[n]](options);
       ok = true;
-      for (i in r) {
-        if (r.hasOwnProperty(i)) {
-          if (r[i].status !== true) {
+      for (i in thisReply) {
+        if (thisReply.hasOwnProperty(i)) {
+          if (thisReply[i].status !== true) {
             ok = false;
           }
         }
       }
-      r.ok = ok;
+      thisReply.ok = ok;
       if (!ok) {
         allok = false;
       }
@@ -2333,19 +2336,19 @@ function UnitTest (which, options) {
     throw 'Unknown test "' + which + '"';
   }
   else {
-    results[which] = r = testFuncs[which](options);
+    results[which] = thisReply = testFuncs[which](options);
     // print("Testresult:", yaml.safeDump(r));
     ok = true;
-    for (i in r) {
-      if (r.hasOwnProperty(i) &&
+    for (i in thisReply) {
+      if (thisReply.hasOwnProperty(i) &&
           (which !== "single" || i !== "test")) {
-        if (r[i].status !== true) {
+        if (thisReply[i].status !== true) {
           ok = false;
           allok = false;
         }
       }
     }
-    r.ok = ok;
+    thisReply.ok = ok;
     results.all_ok = ok;
     results.crashed = serverCrashed;
     if (allok) {
