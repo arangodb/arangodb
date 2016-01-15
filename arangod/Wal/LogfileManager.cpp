@@ -1853,7 +1853,7 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
       LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
-  } catch () {
+  } catch (...) {
     LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
 
     return TRI_ERROR_OUT_OF_MEMORY;
