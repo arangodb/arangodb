@@ -1,5 +1,5 @@
 add_subdirectory(boost)
-add_subdirectory(etcd)
+#add_subdirectory(etcd)
 add_subdirectory(libev)
 add_subdirectory(linenoise-ng)
 add_subdirectory(V8-4.3.61)
