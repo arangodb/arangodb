@@ -21,12 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Variable.h"
+#include "Variable.h"
 #include "Basics/JsonHelper.h"
 
 using namespace triagens::aql;
-using namespace triagens::basics;
-
+using JsonHelper = triagens::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of $OLD variable

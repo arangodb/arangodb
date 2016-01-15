@@ -27,10 +27,8 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 
-using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
-
 
 SortNode::SortNode(ExecutionPlan* plan, triagens::basics::Json const& base,
                    SortElementVector const& elements, bool stable)

@@ -26,11 +26,10 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 
-using namespace std;
-using namespace triagens::basics;
 using namespace triagens::aql;
+using JsonHelper = triagens::basics::JsonHelper;
 
-const static bool Optional = true;
+static bool const Optional = true;
 
 
 ModificationNode::ModificationNode(ExecutionPlan* plan,

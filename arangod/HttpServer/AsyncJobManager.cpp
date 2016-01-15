@@ -225,7 +225,7 @@ void AsyncJobManager::deleteExpiredJobResults(double stamp) {
 /// @brief returns the list of pending jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCount) {
+std::vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCount) {
   return byStatus(AsyncJobResult::JOB_PENDING, maxCount);
 }
 
@@ -233,7 +233,7 @@ const std::vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCou
 /// @brief returns the list of done jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
+std::vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
   return byStatus(AsyncJobResult::JOB_DONE, maxCount);
 }
 
@@ -241,7 +241,7 @@ const std::vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount)
 /// @brief returns the list of jobs by status
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
+std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
     AsyncJobResult::Status status, size_t maxCount) {
   std::vector<AsyncJobResult::IdType> jobs;
 

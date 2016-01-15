@@ -53,13 +53,11 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief page size
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t PageSize;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mask value for significant bits of server id
@@ -72,7 +70,6 @@ size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define DATABASE_MANAGER_INTERVAL (500 * 1000)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for serializing the creation of database
@@ -110,8 +107,6 @@ static std::atomic<uint64_t> CurrentTick(0);
 
 static TRI_server_id_t ServerId;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a new server id
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +133,6 @@ static int GenerateServerId(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ReadServerId(char const* filename) {
-  TRI_json_t* idString;
   TRI_server_id_t foundId;
 
   TRI_ASSERT(filename != nullptr);
@@ -146,28 +140,26 @@ static int ReadServerId(char const* filename) {
   if (!TRI_ExistsFile(filename)) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
-
-  TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr);
-
-  if (!TRI_IsObjectJson(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  try {
+    std::string filenameString(filename);
+    std::shared_ptr<VPackBuilder> builder =
+        triagens::basics::VelocyPackHelper::velocyPackFromFile(filenameString);
+    VPackSlice content = builder->slice();
+    if (!content.isObject()) {
+      return TRI_ERROR_INTERNAL;
     }
+    VPackSlice idSlice = content.get("serverId");
+    if (!idSlice.isString()) {
+      return TRI_ERROR_INTERNAL;
+    }
+    std::string idString = idSlice.copyString();
+    foundId = TRI_UInt64String(idString.c_str());
+  } catch (...) {
+    // Nothing to free
     return TRI_ERROR_INTERNAL;
   }
-
-  idString = TRI_LookupObjectJson(json, "serverId");
-
-  if (!TRI_IsStringJson(idString)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    return TRI_ERROR_INTERNAL;
-  }
-
-  foundId = TRI_UInt64String2(idString->_value._string.data,
-                              idString->_value._string.length - 1);
 
   LOG_TRACE("using existing server id: %llu", (unsigned long long)foundId);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (foundId == 0) {
     return TRI_ERROR_INTERNAL;
@@ -190,35 +182,31 @@ static int WriteServerId(char const* filename) {
   struct tm tb;
 
   TRI_ASSERT(filename != nullptr);
+  // create a VelocyPackObject
+  VPackBuilder builder;
+  try {
+    builder.openObject();
 
-  // create a json object
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
+    TRI_ASSERT(ServerId != 0);
+    idString = TRI_StringUInt64((uint64_t)ServerId);
+    builder.add("serverId", VPackValue(idString));
 
-  if (json == nullptr) {
+    tt = time(0);
+    TRI_gmtime(tt, &tb);
+    len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+    builder.add("createdTime", VPackValue(buffer));
+
+    builder.close();
+  } catch (...) {
     // out of memory
     LOG_ERROR("cannot save server id in file '%s': out of memory", filename);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_ASSERT(ServerId != 0);
-
-  idString = TRI_StringUInt64((uint64_t)ServerId);
-  TRI_Insert3ObjectJson(
-      TRI_CORE_MEM_ZONE, json, "serverId",
-      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, idString, strlen(idString)));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-
-  tt = time(0);
-  TRI_gmtime(tt, &tb);
-  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  TRI_Insert3ObjectJson(
-      TRI_CORE_MEM_ZONE, json, "createdTime",
-      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, buffer, len));
-
   // save json info to file
   LOG_DEBUG("Writing server id to file '%s'", filename);
-  bool ok = TRI_SaveJson(filename, json, true);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  bool ok = triagens::basics::VelocyPackHelper::velocyPackToFile(
+      filename, builder.slice(), true);
 
   if (!ok) {
     LOG_ERROR("could not save server id in file '%s': %s", filename,
@@ -253,7 +241,6 @@ static int DetermineServerId(TRI_server_t* server, bool checkVersion) {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a user can see a database
@@ -433,10 +420,6 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 
   for (auto const& name : files) {
     TRI_vocbase_t* vocbase;
-    TRI_json_t* json;
-    TRI_json_t const* deletedJson;
-    TRI_json_t const* nameJson;
-    TRI_json_t const* idJson;
     TRI_voc_tick_t id;
     TRI_vocbase_defaults_t defaults;
     char* parametersFile;
@@ -527,10 +510,12 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     }
 
     LOG_DEBUG("reading database parameters from file '%s'", parametersFile);
-
-    json = TRI_JsonFile(TRI_CORE_MEM_ZONE, parametersFile, nullptr);
-
-    if (json == nullptr) {
+    std::string fileName(parametersFile);
+    std::shared_ptr<VPackBuilder> builder;
+    try {
+      builder =
+          triagens::basics::VelocyPackHelper::velocyPackFromFile(fileName);
+    } catch (...) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
           databaseDirectory);
@@ -541,61 +526,55 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
+    VPackSlice parameters = builder->slice();
+    std::string parametersString = parameters.toJson();
 
-    LOG_DEBUG("database parameters: %s",
-              triagens::basics::JsonHelper::toString(json).c_str());
+    LOG_DEBUG("database parameters: %s", parametersString.c_str());
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
 
-    deletedJson = TRI_LookupObjectJson(json, "deleted");
+    if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters,
+                                                            "deleted", false)) {
+      // database is deleted, skip it!
+      LOG_INFO("found dropped database in directory '%s'", databaseDirectory);
 
-    if (TRI_IsBooleanJson(deletedJson)) {
-      if (deletedJson->_value._boolean) {
-        // database is deleted, skip it!
-        LOG_INFO("found dropped database in directory '%s'", databaseDirectory);
+      LOG_INFO("removing superfluous database directory '%s'",
+               databaseDirectory);
 
-        LOG_INFO("removing superfluous database directory '%s'",
-                 databaseDirectory);
+      TRI_RemoveDirectory(databaseDirectory);
 
-        TRI_RemoveDirectory(databaseDirectory);
-
-        TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-        continue;
-      }
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      continue;
     }
+    VPackSlice idSlice = parameters.get("id");
 
-    idJson = TRI_LookupObjectJson(json, "id");
-
-    if (!TRI_IsStringJson(idJson)) {
+    if (!idSlice.isString()) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
           databaseDirectory);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
+    std::string idString = idSlice.copyString();
 
-    id = (TRI_voc_tick_t)TRI_UInt64String(idJson->_value._string.data);
+    id = (TRI_voc_tick_t)TRI_UInt64String(idString.c_str());
 
-    nameJson = TRI_LookupObjectJson(json, "name");
+    VPackSlice nameSlice = parameters.get("name");
 
-    if (!TRI_IsStringJson(nameJson)) {
+    if (!nameSlice.isString()) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
           databaseDirectory);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
+    std::string dbname = nameSlice.copyString();
 
-    databaseName =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, nameJson->_value._string.data,
-                              nameJson->_value._string.length - 1);
+    databaseName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, dbname.c_str());
 
     // .........................................................................
     // setup defaults
@@ -603,7 +582,6 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 
     // use defaults
     TRI_GetDatabaseDefaultsServer(server, &defaults);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (databaseName == nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
@@ -999,8 +977,6 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
                                   bool deleted,
                                   TRI_vocbase_defaults_t const* defaults,
                                   char const* directory) {
-  // TRI_json_t* properties;
-
   TRI_ASSERT(id > 0);
   TRI_ASSERT(name != nullptr);
   TRI_ASSERT(directory != nullptr);
@@ -1018,37 +994,31 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-
-  if (json == nullptr) {
+  // Build the VelocyPack to store
+  VPackBuilder builder;
+  try {
+    builder.openObject();
+    builder.add("id", VPackValue(tickString));
+    builder.add("name", VPackValue(name));
+    builder.add("deleted", VPackValue(deleted));
+    builder.close();
+  } catch (...) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "id",
-                        TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString,
-                                                 strlen(tickString)));
-  TRI_Insert3ObjectJson(
-      TRI_CORE_MEM_ZONE, json, "name",
-      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name, strlen(name)));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted",
-                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, deleted));
-
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
-  if (!TRI_SaveJson(file, json, true)) {
+  if (!triagens::basics::VelocyPackHelper::velocyPackToFile(
+          file, builder.slice(), true)) {
     LOG_ERROR("cannot save database information in file '%s'", file);
 
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
   TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
   return TRI_ERROR_NO_ERROR;
@@ -1572,7 +1542,6 @@ static void DatabaseManager(void* data) {
   CloseDroppedDatabases(server);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
@@ -1669,7 +1638,6 @@ void TRI_InitServerGlobals() {
 
   memset(&ServerId, 0, sizeof(TRI_server_id_t));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the global server id
@@ -2526,7 +2494,6 @@ void TRI_GetDatabaseDefaultsServer(TRI_server_t* server,
   memcpy(target, &server->_defaults, sizeof(TRI_vocbase_defaults_t));
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick
 ////////////////////////////////////////////////////////////////////////////////
@@ -2564,7 +2531,6 @@ void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
 TRI_voc_tick_t TRI_CurrentTickServer() {
   return (ServerIdentifier | (CurrentTick << 16));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)
@@ -2634,5 +2600,3 @@ TRI_server_t::~TRI_server_t() {
     TRI_Free(TRI_CORE_MEM_ZONE, _basePath);
   }
 }
-
-

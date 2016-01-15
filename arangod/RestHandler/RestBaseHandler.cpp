@@ -43,9 +43,6 @@ using namespace triagens::admin;
 RestBaseHandler::RestBaseHandler(HttpRequest* request) : HttpHandler(request) {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::handleError(Exception const& ex) {
   generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());

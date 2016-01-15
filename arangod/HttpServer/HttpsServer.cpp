@@ -65,9 +65,6 @@ void HttpsServer::setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask* HttpsServer::createCommTask(TRI_socket_t s,
                                           const ConnectionInfo& info) {

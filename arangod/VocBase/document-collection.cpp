@@ -57,6 +57,10 @@
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -610,31 +614,32 @@ VocShaper* TRI_document_collection_t::getShaper() const {
 int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 triagens::wal::DocumentOperation&, bool&);
 
-
 static int FillIndex(triagens::arango::Transaction*, TRI_document_collection_t*,
                      triagens::arango::Index*);
 
-static int CapConstraintFromJson(triagens::arango::Transaction*,
-                                 TRI_document_collection_t*, TRI_json_t const*,
-                                 TRI_idx_iid_t, triagens::arango::Index**);
+static int CapConstraintFromVelocyPack(triagens::arango::Transaction*,
+                                       TRI_document_collection_t*,
+                                       VPackSlice const&, TRI_idx_iid_t,
+                                       triagens::arango::Index**);
 
-static int GeoIndexFromJson(triagens::arango::Transaction*,
-                            TRI_document_collection_t*, TRI_json_t const*,
-                            TRI_idx_iid_t, triagens::arango::Index**);
+static int GeoIndexFromVelocyPack(triagens::arango::Transaction*,
+                                  TRI_document_collection_t*, VPackSlice const&,
+                                  TRI_idx_iid_t, triagens::arango::Index**);
 
-static int HashIndexFromJson(triagens::arango::Transaction*,
-                             TRI_document_collection_t*, TRI_json_t const*,
-                             TRI_idx_iid_t, triagens::arango::Index**);
+static int HashIndexFromVelocyPack(triagens::arango::Transaction*,
+                                   TRI_document_collection_t*,
+                                   VPackSlice const&, TRI_idx_iid_t,
+                                   triagens::arango::Index**);
 
-static int SkiplistIndexFromJson(triagens::arango::Transaction*,
-                                 TRI_document_collection_t*, TRI_json_t const*,
-                                 TRI_idx_iid_t, triagens::arango::Index**);
+static int SkiplistIndexFromVelocyPack(triagens::arango::Transaction*,
+                                       TRI_document_collection_t*,
+                                       VPackSlice const&, TRI_idx_iid_t,
+                                       triagens::arango::Index**);
 
-static int FulltextIndexFromJson(triagens::arango::Transaction*,
-                                 TRI_document_collection_t*, TRI_json_t const*,
-                                 TRI_idx_iid_t, triagens::arango::Index**);
-
-
+static int FulltextIndexFromVelocyPack(triagens::arango::Transaction*,
+                                       TRI_document_collection_t*,
+                                       VPackSlice const&, TRI_idx_iid_t,
+                                       triagens::arango::Index**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a datafile identifier
@@ -912,8 +917,6 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
   return true;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an existing header
 ////////////////////////////////////////////////////////////////////////////////
@@ -932,8 +935,6 @@ static void UpdateHeader(TRI_voc_fid_t fid, TRI_df_marker_t const* m,
   newHeader->_fid = fid;
   newHeader->setDataPtr(marker);  // ONLY IN OPENITERATOR
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief garbage-collect a collection's indexes
@@ -1248,14 +1249,11 @@ static int CloneMarkerNoLegend(triagens::wal::Marker*& marker,
   return TRI_ERROR_INTERNAL;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of operations buffer for the open iterator
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t OpenIteratorBufferSize = 128;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state during opening of a collection
@@ -1285,7 +1283,6 @@ typedef struct open_iterator_operation_s {
   TRI_df_marker_t const* _marker;
   TRI_voc_fid_t _fid;
 } open_iterator_operation_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mark a transaction as failed during opening of a collection
@@ -2032,7 +2029,6 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-
 struct OpenIndexIteratorContext {
   triagens::arango::Transaction* trx;
   TRI_document_collection_t* collection;
@@ -2043,12 +2039,19 @@ struct OpenIndexIteratorContext {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool OpenIndexIterator(char const* filename, void* data) {
-  // load json description of the index
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
+  // load VelocyPack description of the index
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    builder = triagens::basics::VelocyPackHelper::velocyPackFromFile(filename);
+  } catch (...) {
+    // Failed to parse file
+    LOG_ERROR("failed to parse index definition from '%s'", filename);
+    return false;
+  }
 
-  // json must be a index description
-  if (!TRI_IsObjectJson(json.get())) {
+  VPackSlice description = builder->slice();
+  // VelocyPack must be a index description
+  if (!description.isObject()) {
     LOG_ERROR("cannot read index definition from '%s'", filename);
     return false;
   }
@@ -2057,8 +2060,8 @@ static bool OpenIndexIterator(char const* filename, void* data) {
   triagens::arango::Transaction* trx = ctx->trx;
   TRI_document_collection_t* collection = ctx->collection;
 
-  int res =
-      TRI_FromJsonIndexDocumentCollection(trx, collection, json.get(), nullptr);
+  int res = TRI_FromVelocyPackIndexDocumentCollection(trx, collection,
+                                                      description, nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // error was already printed if we get here
@@ -2267,7 +2270,6 @@ static int IterateMarkersCollection(triagens::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -2287,12 +2289,11 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> buffer =
       parameters.keyOptions();
 
-  std::unique_ptr<TRI_json_t> json;
+  VPackSlice slice;
   if (buffer != nullptr) {
-    VPackSlice const slice(buffer->data());
-    json.reset(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+    slice = VPackSlice(buffer->data());
   }
-  KeyGenerator* keyGenerator = KeyGenerator::factory(json.get());
+  KeyGenerator* keyGenerator = KeyGenerator::factory(slice);
 
   if (keyGenerator == nullptr) {
     TRI_set_errno(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
@@ -2401,7 +2402,6 @@ void TRI_FreeDocumentCollection(TRI_document_collection_t* document) {
   TRI_DestroyDocumentCollection(document);
   delete document;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a datafile description
@@ -2662,43 +2662,29 @@ size_t TRI_DocumentIteratorDocumentCollection(
 int TRI_FromVelocyPackIndexDocumentCollection(
     triagens::arango::Transaction* trx, TRI_document_collection_t* document,
     VPackSlice const& slice, triagens::arango::Index** idx) {
-  std::unique_ptr<TRI_json_t> json(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
-  return TRI_FromJsonIndexDocumentCollection(trx, document, json.get(), idx);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an index, based on a JSON description
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_FromJsonIndexDocumentCollection(triagens::arango::Transaction* trx,
-                                        TRI_document_collection_t* document,
-                                        TRI_json_t const* json,
-                                        triagens::arango::Index** idx) {
-  TRI_ASSERT(TRI_IsObjectJson(json));
+  TRI_ASSERT(slice.isObject());
 
   if (idx != nullptr) {
     *idx = nullptr;
   }
 
   // extract the type
-  TRI_json_t const* type = TRI_LookupObjectJson(json, "type");
+  VPackSlice type = slice.get("type");
 
-  if (!TRI_IsStringJson(type)) {
+  if (!type.isString()) {
     return TRI_ERROR_INTERNAL;
   }
-
-  char const* typeStr = type->_value._string.data;
+  std::string typeStr = type.copyString();
 
   // extract the index identifier
-  TRI_json_t const* iis = TRI_LookupObjectJson(json, "id");
+  VPackSlice iis = slice.get("id");
 
   TRI_idx_iid_t iid;
-  if (TRI_IsNumberJson(iis)) {
-    iid = static_cast<TRI_idx_iid_t>(iis->_value._number);
-  } else if (TRI_IsStringJson(iis)) {
-    iid = (TRI_idx_iid_t)TRI_UInt64String2(iis->_value._string.data,
-                                           iis->_value._string.length - 1);
+  if (iis.isNumber()) {
+    iid = iis.getNumericValue<TRI_idx_iid_t>();
+  } else if (iis.isString()) {
+    std::string tmp = iis.copyString();
+    iid = static_cast<TRI_idx_iid_t>(TRI_UInt64String(tmp.c_str()));
   } else {
     LOG_ERROR("ignoring index, index identifier could not be located");
 
@@ -2710,49 +2696,42 @@ int TRI_FromJsonIndexDocumentCollection(triagens::arango::Transaction* trx,
   // ...........................................................................
   // CAP CONSTRAINT
   // ...........................................................................
-
-  if (TRI_EqualString(typeStr, "cap")) {
-    return CapConstraintFromJson(trx, document, json, iid, idx);
+  if (typeStr == "cap") {
+    return CapConstraintFromVelocyPack(trx, document, slice, iid, idx);
   }
 
   // ...........................................................................
   // GEO INDEX (list or attribute)
   // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "geo1") ||
-           TRI_EqualString(typeStr, "geo2")) {
-    return GeoIndexFromJson(trx, document, json, iid, idx);
+  if (typeStr == "geo1" || typeStr == "geo2") {
+    return GeoIndexFromVelocyPack(trx, document, slice, iid, idx);
   }
 
   // ...........................................................................
   // HASH INDEX
   // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "hash")) {
-    return HashIndexFromJson(trx, document, json, iid, idx);
+  if (typeStr == "hash") {
+    return HashIndexFromVelocyPack(trx, document, slice, iid, idx);
   }
 
   // ...........................................................................
   // SKIPLIST INDEX
   // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "skiplist")) {
-    return SkiplistIndexFromJson(trx, document, json, iid, idx);
+  if (typeStr == "skiplist") {
+    return SkiplistIndexFromVelocyPack(trx, document, slice, iid, idx);
   }
 
   // ...........................................................................
   // FULLTEXT INDEX
   // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "fulltext")) {
-    return FulltextIndexFromJson(trx, document, json, iid, idx);
+  if (typeStr == "fulltext") {
+    return FulltextIndexFromVelocyPack(trx, document, slice, iid, idx);
   }
 
   // ...........................................................................
   // EDGES INDEX
   // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "edge")) {
+  if (typeStr == "edge") {
     // we should never get here, as users cannot create their own edge indexes
     LOG_ERROR(
         "logic error. there should never be a JSON file describing an edges "
@@ -2760,10 +2739,12 @@ int TRI_FromJsonIndexDocumentCollection(triagens::arango::Transaction* trx,
     return TRI_ERROR_INTERNAL;
   }
 
+  // default:
   LOG_WARNING(
       "index type '%s' is not supported in this version of ArangoDB and is "
       "ignored",
-      typeStr);
+      typeStr.c_str());
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3089,14 +3070,13 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   // check if we can generate the key generator
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> buffer =
       collection->_info.keyOptions();
-  std::unique_ptr<TRI_json_t> json;
 
+  VPackSlice slice;
   if (buffer.get() != nullptr) {
-    VPackSlice const slice(buffer->data());
-    json.reset(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+    slice = VPackSlice(buffer->data());
   }
 
-  KeyGenerator* keyGenerator = KeyGenerator::factory(json.get());
+  KeyGenerator* keyGenerator = KeyGenerator::factory(slice);
 
   if (keyGenerator == nullptr) {
     TRI_CloseCollection(collection);
@@ -3182,8 +3162,6 @@ int TRI_CloseDocumentCollection(TRI_document_collection_t* document,
   return res;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pid name structure
 ////////////////////////////////////////////////////////////////////////////////
@@ -3193,39 +3171,28 @@ typedef struct pid_name_s {
   char* _name;
 } pid_name_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts extracts a field list from a json object
+/// @brief converts extracts a field list from a VelocyPack object
+///        Does not copy any data, caller has to make sure that data
+///        in slice stays valid until this return value is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* ExtractFields(TRI_json_t const* json, size_t* fieldCount,
-                                 TRI_idx_iid_t iid) {
-  TRI_json_t* fld = TRI_LookupObjectJson(json, "fields");
-
-  if (!TRI_IsArrayJson(fld)) {
+static VPackSlice ExtractFields(VPackSlice const& slice, TRI_idx_iid_t iid) {
+  VPackSlice fld = slice.get("fields");
+  if (!fld.isArray()) {
     LOG_ERROR("ignoring index %llu, 'fields' must be an array",
               (unsigned long long)iid);
-
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  *fieldCount = TRI_LengthArrayJson(fld);
-
-  for (size_t j = 0; j < *fieldCount; ++j) {
-    TRI_json_t* sub =
-        static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, j));
-
-    if (!TRI_IsStringJson(sub)) {
+  for (auto const& sub : VPackArrayIterator(fld)) {
+    if (!sub.isString()) {
       LOG_ERROR(
           "ignoring index %llu, 'fields' must be an array of attribute paths",
           (unsigned long long)iid);
-
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-      return nullptr;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
   }
-
   return fld;
 }
 
@@ -3528,9 +3495,9 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection(
 /// @brief restores a path based index (template)
 ////////////////////////////////////////////////////////////////////////////////
 
-static int PathBasedIndexFromJson(
+static int PathBasedIndexFromVelocyPack(
     triagens::arango::Transaction* trx, TRI_document_collection_t* document,
-    TRI_json_t const* definition, TRI_idx_iid_t iid,
+    VPackSlice const& definition, TRI_idx_iid_t iid,
     triagens::arango::Index* (*creator)(triagens::arango::Transaction*,
                                         TRI_document_collection_t*,
                                         std::vector<std::string> const&,
@@ -3541,12 +3508,13 @@ static int PathBasedIndexFromJson(
   }
 
   // extract fields
-  size_t fieldCount;
-  TRI_json_t const* fld = ExtractFields(definition, &fieldCount, iid);
-
-  if (fld == nullptr) {
-    return TRI_errno();
+  VPackSlice fld;
+  try {
+    fld = ExtractFields(definition, iid);
+  } catch (triagens::basics::Exception const& e) {
+    return TRI_set_errno(e.code());
   }
+  VPackValueLength fieldCount = fld.length();
 
   // extract the list of fields
   if (fieldCount < 1) {
@@ -3557,32 +3525,32 @@ static int PathBasedIndexFromJson(
   }
 
   // determine if the index is unique or non-unique
-  TRI_json_t const* bv = TRI_LookupObjectJson(definition, "unique");
+  VPackSlice bv = definition.get("unique");
 
-  if (!TRI_IsBooleanJson(bv)) {
+  if (!bv.isBoolean()) {
     LOG_ERROR(
         "ignoring index %llu, could not determine if unique or non-unique",
         (unsigned long long)iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  bool unique = bv->_value._boolean;
+  bool unique = bv.getBoolean();
 
   // determine sparsity
   bool sparse = false;
 
-  bv = TRI_LookupObjectJson(definition, "sparse");
+  bv = definition.get("sparse");
 
-  if (TRI_IsBooleanJson(bv)) {
-    sparse = bv->_value._boolean;
+  if (bv.isBoolean()) {
+    sparse = bv.getBoolean();
   } else {
     // no sparsity information given for index
     // now use pre-2.5 defaults: unique hash indexes were sparse, all other
     // indexes were non-sparse
     bool isHashIndex = false;
-    TRI_json_t const* typeJson = TRI_LookupObjectJson(definition, "type");
-    if (TRI_IsStringJson(typeJson)) {
-      isHashIndex = (strcmp(typeJson->_value._string.data, "hash") == 0);
+    VPackSlice typeSlice = definition.get("type");
+    if (typeSlice.isString()) {
+      isHashIndex = typeSlice.copyString() == "hash";
     }
 
     if (isHashIndex && unique) {
@@ -3596,13 +3564,8 @@ static int PathBasedIndexFromJson(
   attributes.reserve(fieldCount);
 
   // find fields
-  for (size_t j = 0; j < fieldCount; ++j) {
-    auto fieldStr =
-        static_cast<TRI_json_t const*>(TRI_AtVector(&fld->_value._objects, j));
-
-    attributes.emplace_back(std::string(fieldStr->_value._string.data,
-                                        fieldStr->_value._string.length - 1));
-    ;
+  for (auto const& fieldStr : VPackArrayIterator(fld)) {
+    attributes.emplace_back(fieldStr.copyString());
   }
 
   // create the index
@@ -3621,7 +3584,6 @@ static int PathBasedIndexFromJson(
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update statistics for a collection
@@ -3844,8 +3806,9 @@ static int PidNamesByAttributeNames(
 
     // sort according to pid
     std::sort(pidNames.begin(), pidNames.end(),
-              [](PidNameType const& l, PidNameType const& r)
-                  -> bool { return l.second < r.second; });
+              [](PidNameType const& l, PidNameType const& r) -> bool {
+                return l.second < r.second;
+              });
 
     for (auto const& it : pidNames) {
       pids.emplace_back(it.second);
@@ -3886,8 +3849,6 @@ static int PidNamesByAttributeNames(
 
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a cap constraint to a collection
@@ -3951,19 +3912,19 @@ static triagens::arango::Index* CreateCapConstraintDocumentCollection(
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CapConstraintFromJson(triagens::arango::Transaction* trx,
-                                 TRI_document_collection_t* document,
-                                 TRI_json_t const* definition,
-                                 TRI_idx_iid_t iid,
-                                 triagens::arango::Index** dst) {
+static int CapConstraintFromVelocyPack(triagens::arango::Transaction* trx,
+                                       TRI_document_collection_t* document,
+                                       VPackSlice const& definition,
+                                       TRI_idx_iid_t iid,
+                                       triagens::arango::Index** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
 
-  TRI_json_t const* val1 = TRI_LookupObjectJson(definition, "size");
-  TRI_json_t const* val2 = TRI_LookupObjectJson(definition, "byteSize");
+  VPackSlice val1 = definition.get("size");
+  VPackSlice val2 = definition.get("byteSize");
 
-  if (!TRI_IsNumberJson(val1) && !TRI_IsNumberJson(val2)) {
+  if (!val1.isNumber() && !val2.isNumber()) {
     LOG_ERROR("ignoring cap constraint %llu, 'size' and 'byteSize' missing",
               (unsigned long long)iid);
 
@@ -3971,15 +3932,30 @@ static int CapConstraintFromJson(triagens::arango::Transaction* trx,
   }
 
   size_t count = 0;
-  if (TRI_IsNumberJson(val1) && val1->_value._number > 0.0) {
-    count = static_cast<size_t>(val1->_value._number);
+  if (val1.isNumber()) {
+    if (val1.isDouble()) {
+      double tmp = val1.getDouble();
+      if (tmp > 0.0) {
+        count = static_cast<size_t>(tmp);
+      }
+    } else {
+      count = val1.getNumericValue<size_t>();
+    }
   }
 
   int64_t size = 0;
-  if (TRI_IsNumberJson(val2) &&
-      val2->_value._number >
-          static_cast<double>(triagens::arango::CapConstraint::MinSize)) {
-    size = static_cast<int64_t>(val2->_value._number);
+  if (val2.isNumber()) {
+    if (val2.isDouble()) {
+      double tmp = val2.getDouble();
+      if (tmp > triagens::arango::CapConstraint::MinSize) {
+        size = static_cast<int64_t>(tmp);
+      }
+    } else {
+      int64_t tmp = val2.getNumericValue<int64_t>();
+      if (tmp > triagens::arango::CapConstraint::MinSize) {
+        size = static_cast<int64_t>(tmp);
+      }
+    }
   }
 
   if (count == 0 && size == 0) {
@@ -4002,7 +3978,6 @@ static int CapConstraintFromJson(triagens::arango::Transaction* trx,
 
   return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a cap constraint
@@ -4042,8 +4017,6 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection(
 
   return idx;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a geo index to a collection
@@ -4171,52 +4144,48 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection(
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int GeoIndexFromJson(triagens::arango::Transaction* trx,
-                            TRI_document_collection_t* document,
-                            TRI_json_t const* definition, TRI_idx_iid_t iid,
-                            triagens::arango::Index** dst) {
+static int GeoIndexFromVelocyPack(triagens::arango::Transaction* trx,
+                                  TRI_document_collection_t* document,
+                                  VPackSlice const& definition,
+                                  TRI_idx_iid_t iid,
+                                  triagens::arango::Index** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
 
-  TRI_json_t const* type = TRI_LookupObjectJson(definition, "type");
+  VPackSlice const type = definition.get("type");
 
-  if (!TRI_IsStringJson(type)) {
+  if (!type.isString()) {
     return TRI_ERROR_INTERNAL;
   }
 
-  char const* typeStr = type->_value._string.data;
+  std::string typeStr = type.copyString();
 
   // extract fields
-  size_t fieldCount;
-  TRI_json_t* fld = ExtractFields(definition, &fieldCount, iid);
-
-  if (fld == nullptr) {
-    return TRI_errno();
+  VPackSlice fld;
+  try {
+    fld = ExtractFields(definition, iid);
+  } catch (triagens::basics::Exception const& e) {
+    return TRI_set_errno(e.code());
   }
+  VPackValueLength fieldCount = fld.length();
 
   triagens::arango::Index* idx = nullptr;
 
   // list style
-  if (TRI_EqualString(typeStr, "geo1")) {
+  if (typeStr == "geo1") {
     // extract geo json
-    bool geoJson = false;
-    TRI_json_t const* bv = TRI_LookupObjectJson(definition, "geoJson");
-
-    if (TRI_IsBooleanJson(bv)) {
-      geoJson = bv->_value._boolean;
-    }
+    bool geoJson = triagens::basics::VelocyPackHelper::getBooleanValue(
+        definition, "geoJson", false);
 
     // need just one field
     if (fieldCount == 1) {
-      auto loc = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&fld->_value._objects, 0));
+      VPackSlice loc = fld.at(0);
       bool created;
 
-      idx = CreateGeoIndexDocumentCollection(
-          trx, document,
-          std::string(loc->_value._string.data, loc->_value._string.length - 1),
-          std::string(), std::string(), geoJson, iid, created);
+      idx = CreateGeoIndexDocumentCollection(trx, document, loc.copyString(),
+                                             std::string(), std::string(),
+                                             geoJson, iid, created);
 
       if (dst != nullptr) {
         *dst = idx;
@@ -4226,26 +4195,23 @@ static int GeoIndexFromJson(triagens::arango::Transaction* trx,
     } else {
       LOG_ERROR(
           "ignoring %s-index %llu, 'fields' must be a list with 1 entries",
-          typeStr, (unsigned long long)iid);
+          typeStr.c_str(), (unsigned long long)iid);
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
   }
 
   // attribute style
-  else if (TRI_EqualString(typeStr, "geo2")) {
+  else if (typeStr == "geo2") {
     if (fieldCount == 2) {
-      auto lat = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&fld->_value._objects, 0));
-      auto lon = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&fld->_value._objects, 1));
+      VPackSlice lat = fld.at(0);
+      VPackSlice lon = fld.at(1);
+
       bool created;
 
-      idx = CreateGeoIndexDocumentCollection(
-          trx, document, std::string(),
-          std::string(lat->_value._string.data, lat->_value._string.length - 1),
-          std::string(lon->_value._string.data, lon->_value._string.length - 1),
-          false, iid, created);
+      idx = CreateGeoIndexDocumentCollection(trx, document, std::string(),
+                                             lat.copyString(), lon.copyString(),
+                                             false, iid, created);
 
       if (dst != nullptr) {
         *dst = idx;
@@ -4255,19 +4221,16 @@ static int GeoIndexFromJson(triagens::arango::Transaction* trx,
     } else {
       LOG_ERROR(
           "ignoring %s-index %llu, 'fields' must be a list with 2 entries",
-          typeStr, (unsigned long long)iid);
+          typeStr.c_str(), (unsigned long long)iid);
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
-  }
-
-  else {
+  } else {
     TRI_ASSERT(false);
   }
 
   return TRI_ERROR_NO_ERROR;  // shut the vc++ up
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, list style
@@ -4387,8 +4350,6 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection(
   return idx;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a hash index to the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -4467,14 +4428,14 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection(
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int HashIndexFromJson(triagens::arango::Transaction* trx,
-                             TRI_document_collection_t* document,
-                             TRI_json_t const* definition, TRI_idx_iid_t iid,
-                             triagens::arango::Index** dst) {
-  return PathBasedIndexFromJson(trx, document, definition, iid,
-                                CreateHashIndexDocumentCollection, dst);
+static int HashIndexFromVelocyPack(triagens::arango::Transaction* trx,
+                                   TRI_document_collection_t* document,
+                                   VPackSlice const& definition,
+                                   TRI_idx_iid_t iid,
+                                   triagens::arango::Index** dst) {
+  return PathBasedIndexFromVelocyPack(trx, document, definition, iid,
+                                      CreateHashIndexDocumentCollection, dst);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index (unique or non-unique)
@@ -4531,8 +4492,6 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection(
 
   return idx;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a skiplist index to the collection
@@ -4609,15 +4568,15 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection(
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SkiplistIndexFromJson(triagens::arango::Transaction* trx,
-                                 TRI_document_collection_t* document,
-                                 TRI_json_t const* definition,
-                                 TRI_idx_iid_t iid,
-                                 triagens::arango::Index** dst) {
-  return PathBasedIndexFromJson(trx, document, definition, iid,
-                                CreateSkiplistIndexDocumentCollection, dst);
+static int SkiplistIndexFromVelocyPack(triagens::arango::Transaction* trx,
+                                       TRI_document_collection_t* document,
+                                       VPackSlice const& definition,
+                                       TRI_idx_iid_t iid,
+                                       triagens::arango::Index** dst) {
+  return PathBasedIndexFromVelocyPack(trx, document, definition, iid,
+                                      CreateSkiplistIndexDocumentCollection,
+                                      dst);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a skiplist index (unique or non-unique)
@@ -4674,8 +4633,6 @@ triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection(
 
   return idx;
 }
-
-
 
 static triagens::arango::Index* LookupFulltextIndexDocumentCollection(
     TRI_document_collection_t* document, std::string const& attribute,
@@ -4755,22 +4712,23 @@ static triagens::arango::Index* CreateFulltextIndexDocumentCollection(
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FulltextIndexFromJson(triagens::arango::Transaction* trx,
-                                 TRI_document_collection_t* document,
-                                 TRI_json_t const* definition,
-                                 TRI_idx_iid_t iid,
-                                 triagens::arango::Index** dst) {
+static int FulltextIndexFromVelocyPack(triagens::arango::Transaction* trx,
+                                       TRI_document_collection_t* document,
+                                       VPackSlice const& definition,
+                                       TRI_idx_iid_t iid,
+                                       triagens::arango::Index** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
 
   // extract fields
-  size_t fieldCount;
-  TRI_json_t* fld = ExtractFields(definition, &fieldCount, iid);
-
-  if (fld == nullptr) {
-    return TRI_errno();
+  VPackSlice fld;
+  try {
+    fld = ExtractFields(definition, iid);
+  } catch (triagens::basics::Exception const& e) {
+    return TRI_set_errno(e.code());
   }
+  VPackValueLength fieldCount = fld.length();
 
   // extract the list of fields
   if (fieldCount != 1) {
@@ -4780,26 +4738,20 @@ static int FulltextIndexFromJson(triagens::arango::Transaction* trx,
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  auto value =
-      static_cast<TRI_json_t const*>(TRI_AtVector(&fld->_value._objects, 0));
+  VPackSlice value = fld.at(0);
 
-  if (!TRI_IsStringJson(value)) {
+  if (!value.isString()) {
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  std::string const attribute(value->_value._string.data,
-                              value->_value._string.length - 1);
+  std::string const attribute = value.copyString();
 
   // 2013-01-17: deactivated substring indexing
   // indexSubstrings = TRI_LookupObjectJson(definition, "indexSubstrings");
 
-  int minWordLengthValue = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-  TRI_json_t const* minWordLength =
-      TRI_LookupObjectJson(definition, "minLength");
-
-  if (minWordLength != nullptr && minWordLength->_type == TRI_JSON_NUMBER) {
-    minWordLengthValue = (int)minWordLength->_value._number;
-  }
+  int minWordLengthValue =
+      triagens::basics::VelocyPackHelper::getNumericValue<int>(
+          definition, "minLength", TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT);
 
   // create the index
   auto idx = LookupFulltextIndexDocumentCollection(document, attribute,
@@ -4822,7 +4774,6 @@ static int FulltextIndexFromJson(triagens::arango::Transaction* trx,
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a fulltext index (unique or non-unique)
@@ -4865,9 +4816,6 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection(
 
   return idx;
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a select-by-example query
@@ -4929,7 +4877,6 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an element from the document collection
@@ -5755,5 +5702,3 @@ int TRI_document_collection_t::postInsertIndexes(
   // post-insert will never return an error
   return TRI_ERROR_NO_ERROR;
 }
-
-

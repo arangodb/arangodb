@@ -58,6 +58,7 @@
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
+#include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDebugHelperHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
@@ -261,6 +262,14 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<WorkMonitorHandler>::createNoData,
       nullptr);
 
+// This handler is to activate SYS_DEBUG_FAILAT on DB servers
+#ifdef TRI_ENABLE_FAILURE_TESTS
+  factory->addPrefixHandler(
+      "/_admin/debug",
+      RestHandlerCreator<RestDebugHandler>::createNoData,
+      nullptr);
+#endif
+
   factory->addPrefixHandler(
       "/_admin/shutdown",
       RestHandlerCreator<triagens::admin::RestShutdownHandler>::createData<
@@ -433,9 +442,6 @@ ArangoServer::~ArangoServer() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer() {
   _applicationServer =
@@ -858,9 +864,6 @@ void ArangoServer::buildApplicationServer() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer() {
   TRI_InitializeStatistics();

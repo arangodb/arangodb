@@ -23,11 +23,15 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/logging.h"
 #include "Basics/files.h"
+#include "Basics/tri-strings.h"
+#include "Basics/VPackStringBufferAdapter.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/velocypack-aliases.h>
 
 using VelocyPackHelper = triagens::basics::VelocyPackHelper;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default if it is does not exist
@@ -106,4 +110,128 @@ std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
+static bool PrintVelocyPack(int fd, VPackSlice const& slice,
+                            bool appendNewline) {
+  if (slice.isNone()) {
+    // sanity check
+    return false;
+  }
 
+  TRI_string_buffer_t buffer;
+  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  triagens::basics::VPackStringBufferAdapter bufferAdapter(&buffer);
+  try {
+    VPackDumper dumper(&bufferAdapter);
+    dumper.dump(slice);
+  } catch (...) {
+    // Writing failed
+    TRI_AnnihilateStringBuffer(&buffer);
+    return false;
+  }
+
+  if (TRI_LengthStringBuffer(&buffer) == 0) {
+    // should not happen
+    return false;
+  }
+
+  if (appendNewline) {
+    // add the newline here so we only need one write operation in the ideal
+    // case
+    TRI_AppendCharStringBuffer(&buffer, '\n');
+  }
+
+  char const* p = TRI_BeginStringBuffer(&buffer);
+  size_t n = TRI_LengthStringBuffer(&buffer);
+
+  while (0 < n) {
+    ssize_t m = TRI_WRITE(fd, p, (TRI_write_t)n);
+
+    if (m <= 0) {
+      TRI_AnnihilateStringBuffer(&buffer);
+      return false;
+    }
+
+    n -= m;
+    p += m;
+  }
+
+  TRI_AnnihilateStringBuffer(&buffer);
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief writes a VelocyPack to a file
+//////////////////////////////////////////////////////////////////////////////
+
+bool VelocyPackHelper::velocyPackToFile(char const* filename,
+                                        VPackSlice const& slice,
+                                        bool syncFile) {
+  char* tmp = TRI_Concatenate2String(filename, ".tmp");
+
+  if (tmp == nullptr) {
+    return false;
+  }
+
+  // remove a potentially existing temporary file
+  if (TRI_ExistsFile(tmp)) {
+    TRI_UnlinkFile(tmp);
+  }
+
+  int fd = TRI_CREATE(tmp, O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+
+  if (fd < 0) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    LOG_ERROR("cannot create json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+    return false;
+  }
+
+  if (!PrintVelocyPack(fd, slice, true)) {
+    TRI_CLOSE(fd);
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    LOG_ERROR("cannot write to json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
+    TRI_UnlinkFile(tmp);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+    return false;
+  }
+
+  if (syncFile) {
+    LOG_TRACE("syncing tmp file '%s'", tmp);
+
+    if (!TRI_fsync(fd)) {
+      TRI_CLOSE(fd);
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_ERROR("cannot sync saved json '%s': %s", tmp, TRI_LAST_ERROR_STR);
+      TRI_UnlinkFile(tmp);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+      return false;
+    }
+  }
+
+  int res = TRI_CLOSE(fd);
+
+  if (res < 0) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    LOG_ERROR("cannot close saved file '%s': %s", tmp, TRI_LAST_ERROR_STR);
+    TRI_UnlinkFile(tmp);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+    return false;
+  }
+
+  res = TRI_RenameFile(tmp, filename);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+    LOG_ERROR("cannot rename saved file '%s' to '%s': %s", tmp, filename,
+              TRI_LAST_ERROR_STR);
+    TRI_UnlinkFile(tmp);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+
+    return false;
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+
+  return true;
+}

@@ -21,7 +21,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestVersionHandler.h"
+#include "RestDebugHandler.h"
 
 #include "Rest/AnyServer.h"
 #include "Rest/HttpRequest.h"
@@ -40,34 +40,38 @@ using namespace triagens::admin;
 extern AnyServer* ArangoInstance;
 
 
-RestVersionHandler::RestVersionHandler(HttpRequest* request)
-    : RestBaseHandler(request) {}
+RestDebugHandler::RestDebugHandler(HttpRequest* request)
+    : RestVocbaseBaseHandler(request) {}
 
 
-bool RestVersionHandler::isDirect() const { return true; }
+bool RestDebugHandler::isDirect() const { return false; }
 
 
-HttpHandler::status_t RestVersionHandler::execute() {
+HttpHandler::status_t RestDebugHandler::execute() {
+  // extract the sub-request type
+  HttpRequest::HttpRequestType type = _request->requestType();
+  size_t const len = _request->suffix().size();
+  if (len != 2 || !(_request->suffix()[0] == "failat")) {
+    generateNotImplemented("ILLEGAL /_admin/debug/failat");
+    return status_t(HANDLER_DONE);
+  }
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  // execute one of the CRUD methods
+  switch (type) {
+    case HttpRequest::HTTP_REQUEST_DELETE:
+      TRI_RemoveFailurePointDebugging(suffix[1].c_str());
+      break;
+    case HttpRequest::HTTP_REQUEST_PUT:
+      TRI_AddFailurePointDebugging(suffix[1].c_str());
+      break;
+    default:
+      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      return status_t(HANDLER_DONE);
+  }
   try {
     VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("server", VPackValue("arango"));
-    result.add("version", VPackValue(TRI_VERSION));
-
-    bool found;
-    char const* detailsStr = _request->value("details", found);
-
-    if (found && StringUtils::boolean(detailsStr)) {
-      result.add("details", VPackValue(VPackValueType::Object));
-
-      Version::getVPack(result);
-
-      if (ArangoInstance != nullptr) {
-        result.add("mode", VPackValue(ArangoInstance->modeString()));
-      }
-      result.close();
-    }
-    result.close();
+    result.add(VPackValue(true));
     VPackSlice s = result.slice();
     generateResult(s);
   } catch (...) {

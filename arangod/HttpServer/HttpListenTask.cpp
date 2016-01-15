@@ -38,9 +38,6 @@ HttpListenTask::HttpListenTask(HttpServer* server, Endpoint* endpoint)
     : Task("HttpListenTask"), ListenTask(endpoint), _server(server) {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool HttpListenTask::handleConnected(TRI_socket_t s,
                                      const ConnectionInfo& info) {

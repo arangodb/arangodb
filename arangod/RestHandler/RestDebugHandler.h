@@ -18,37 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_ACTIONS_H
-#define ARANGOD_V8_SERVER_V8_ACTIONS_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_DEBUG_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_DEBUG_HANDLER_H 1
 
-#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-#include "V8/v8-globals.h"
+namespace arangodb {
 
-#include "VocBase/vocbase.h"
+////////////////////////////////////////////////////////////////////////////////
+/// @brief version request handler
+////////////////////////////////////////////////////////////////////////////////
+
+class RestDebugHandler : public triagens::arango::RestVocbaseBaseHandler {
+ public:
+
+  explicit RestDebugHandler(triagens::rest::HttpRequest*);
+
+ public:
+
+  bool isDirect() const override;
 
 
-namespace triagens {
-namespace arango {
-class ApplicationV8;
+  status_t execute() override;
+};
 }
-}
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 actions function inside the global variable
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                       TRI_vocbase_t* vocbase,
-                       triagens::arango::ApplicationV8*);
-
-void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          std::string const& startupPath,
-                          std::string const& modules);
 #endif
-
-

@@ -96,7 +96,7 @@ static v8::Handle<v8::Value> EmptyResult(v8::Isolate* isolate) {
 /// @brief extracts skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractSkipAndLimit(const v8::FunctionCallbackInfo<v8::Value>& args,
+static void ExtractSkipAndLimit(v8::FunctionCallbackInfo<v8::Value> const& args,
                                 size_t pos, int64_t& skip, uint64_t& limit) {
   skip = 0;
   limit = UINT64_MAX;
@@ -409,7 +409,7 @@ static int SetupSearchValue(
     std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths,
     v8::Handle<v8::Object> example, VocShaper* shaper,
     TRI_hash_index_search_value_t& result, std::string& errorMessage,
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
 
   // extract attribute paths
@@ -459,7 +459,7 @@ static int SetupSearchValue(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExecuteSkiplistQuery(
-    const v8::FunctionCallbackInfo<v8::Value>& args,
+    v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& signature, query_t type) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -704,7 +704,7 @@ static int StoreGeoResult(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EdgesQuery(TRI_edge_direction_e direction,
-                       const v8::FunctionCallbackInfo<v8::Value>& args) {
+                       v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -853,7 +853,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 /// @brief selects all documents from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_AllQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -937,7 +937,7 @@ static void JS_AllQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @LIT{null} if the collection is empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_AnyQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -987,7 +987,7 @@ static void JS_AnyQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief selects documents by example (not using any index)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ByExampleQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1122,7 +1122,7 @@ static void JS_ByExampleQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 static void ByExampleHashIndexQuery(
     SingleCollectionReadOnlyTransaction& trx,
     TRI_vocbase_col_t const* collection,
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1232,7 +1232,7 @@ static void ByExampleHashIndexQuery(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByExampleHashIndex(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1276,7 +1276,7 @@ static void JS_ByExampleHashIndex(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByConditionSkiplist(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   std::string const signature(
       "BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>, "
@@ -1291,7 +1291,7 @@ static void JS_ByConditionSkiplist(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByExampleSkiplist(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   std::string const signature(
       "BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>, <reverse>)");
@@ -1403,7 +1403,7 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ChecksumCollection(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1497,7 +1497,7 @@ static void JS_ChecksumCollection(
 /// @brief was docuBlock edgeCollectionEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_EdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_ANY, args);
   TRI_V8_TRY_CATCH_END
@@ -1507,7 +1507,7 @@ static void JS_EdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock edgeCollectionInEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_InEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_IN, args);
   TRI_V8_TRY_CATCH_END
@@ -1517,7 +1517,7 @@ static void JS_InEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock edgeCollectionOutEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_OutEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_OUT, args);
   TRI_V8_TRY_CATCH_END
@@ -1527,7 +1527,7 @@ static void JS_OutEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief selects the n first documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_FirstQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_FirstQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1615,7 +1615,7 @@ static void JS_FirstQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
                           TRI_vocbase_col_t const* collection,
-                          const v8::FunctionCallbackInfo<v8::Value>& args) {
+                          v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1713,7 +1713,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
 /// @brief was docuBlock collectionFulltext
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_FulltextQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1756,7 +1756,7 @@ static void JS_FulltextQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief selects the n last documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LastQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_LastQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1845,7 +1845,7 @@ static void JS_LastQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
                       TRI_vocbase_col_t const* collection,
-                      const v8::FunctionCallbackInfo<v8::Value>& args) {
+                      v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1900,7 +1900,7 @@ static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
 /// @brief selects points near a given coordinate
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_NearQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1947,7 +1947,7 @@ static void JS_NearQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
                         TRI_vocbase_col_t const* collection,
-                        const v8::FunctionCallbackInfo<v8::Value>& args) {
+                        v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2002,7 +2002,7 @@ static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
 /// @brief selects points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_WithinQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_WithinQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2044,7 +2044,7 @@ static void JS_WithinQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock collectionLookupByKeys
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LookupByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2098,7 +2098,7 @@ static void JS_LookupByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock collectionRemoveByKeys
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RemoveByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

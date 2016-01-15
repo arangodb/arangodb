@@ -914,9 +914,6 @@ void ApplicationV8::prepareServer() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::setupOptions(
     std::map<std::string, basics::ProgramOptionsDescription>& options) {
@@ -947,9 +944,6 @@ void ApplicationV8::setupOptions(
           "one or more directories separated by semi-colons (deprecated)");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare() {
   // check the startup path
@@ -1006,9 +1000,6 @@ bool ApplicationV8::prepare() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare2() {
   size_t nrInstances = _nrInstances;
@@ -1040,9 +1031,6 @@ bool ApplicationV8::prepare2() {
   return _ok;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::start() {
   TRI_ASSERT(_gcThread == nullptr);
@@ -1053,9 +1041,6 @@ bool ApplicationV8::start() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::close() {
   _stopping = true;
@@ -1082,9 +1067,6 @@ void ApplicationV8::close() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::stop() {
   // send all busy contexts a termate signal
@@ -1291,6 +1273,9 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     TRI_InitV8Buffer(isolate, localContext);
     TRI_InitV8Conversions(localContext);
     TRI_InitV8Utils(isolate, localContext, _startupPath, modulesPath);
+#ifdef TRI_ENABLE_FAILURE_TESTS
+    TRI_InitV8DebugUtils(isolate, localContext, _startupPath, modulesPath);
+#endif
     TRI_InitV8Shell(isolate, localContext);
 
     {

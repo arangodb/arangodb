@@ -151,7 +151,7 @@ static bool AllocateSlotList(TRI_fulltext_handles_t* const handles,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex(
-    const uint32_t slotSize) {
+    uint32_t slotSize) {
   TRI_fulltext_handles_t* handles =
       static_cast<TRI_fulltext_handles_t*>(TRI_Allocate(
           TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false));

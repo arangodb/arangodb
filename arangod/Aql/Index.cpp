@@ -27,10 +27,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 
-using namespace std;
-using namespace triagens::basics;
 using namespace triagens::aql;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the index

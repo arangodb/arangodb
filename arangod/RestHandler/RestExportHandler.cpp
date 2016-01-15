@@ -47,9 +47,6 @@ RestExportHandler::RestExportHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request), _restrictions() {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {

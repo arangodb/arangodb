@@ -379,7 +379,7 @@ static int EnhanceJsonIndexCap(v8::Isolate* isolate,
 /// @brief enhances the json of an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceIndexJson(const v8::FunctionCallbackInfo<v8::Value>& args,
+static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
                             TRI_json_t*& json, bool create) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -501,7 +501,7 @@ static int EnhanceIndexJson(const v8::FunctionCallbackInfo<v8::Value>& args,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EnsureIndexCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args,
+    v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_vocbase_col_t const* collection, TRI_json_t const* json, bool create) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -543,7 +543,7 @@ static void EnsureIndexCoordinator(
 /// @brief ensures an index, locally
 ////////////////////////////////////////////////////////////////////////////////
 
-static void EnsureIndexLocal(const v8::FunctionCallbackInfo<v8::Value>& args,
+static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
                              TRI_vocbase_col_t const* collection,
                              TRI_json_t const* json, bool create) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -828,7 +828,7 @@ static void EnsureIndexLocal(const v8::FunctionCallbackInfo<v8::Value>& args,
 /// @brief ensures an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static void EnsureIndex(const v8::FunctionCallbackInfo<v8::Value>& args,
+static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
                         bool create, char const* functionName) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -916,7 +916,7 @@ static void EnsureIndex(const v8::FunctionCallbackInfo<v8::Value>& args,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CreateCollectionCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args,
+    v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_col_type_e collectionType, std::string const& databaseName,
     VocbaseCollectionInfo& parameters, TRI_vocbase_t* vocbase) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1144,7 +1144,7 @@ static void CreateCollectionCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_EnsureIndexVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1159,7 +1159,7 @@ static void JS_EnsureIndexVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LookupIndexVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1171,7 +1171,7 @@ static void JS_LookupIndexVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DropIndexCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args,
+    v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -1225,7 +1225,7 @@ static void DropIndexCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DropIndexVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1297,7 +1297,7 @@ static void JS_DropIndexVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void GetIndexesCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args,
+    v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_vocbase_col_t const* collection) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -1338,7 +1338,7 @@ static void GetIndexesCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetIndexesVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1458,7 +1458,7 @@ triagens::arango::Index* TRI_LookupIndexByHandle(
 /// @brief create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CreateVocBase(const v8::FunctionCallbackInfo<v8::Value>& args,
+static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
                           TRI_col_type_e collectionType) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -1541,7 +1541,7 @@ static void CreateVocBase(const v8::FunctionCallbackInfo<v8::Value>& args,
 /// @brief was docuBlock collectionDatabaseCreate
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CreateVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CreateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   CreateVocBase(args, TRI_COL_TYPE_DOCUMENT);
   TRI_V8_TRY_CATCH_END
@@ -1552,7 +1552,7 @@ static void JS_CreateVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDocumentCollectionVocbase(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   CreateVocBase(args, TRI_COL_TYPE_DOCUMENT);
   TRI_V8_TRY_CATCH_END
@@ -1563,7 +1563,7 @@ static void JS_CreateDocumentCollectionVocbase(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateEdgeCollectionVocbase(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   CreateVocBase(args, TRI_COL_TYPE_EDGE);
   TRI_V8_TRY_CATCH_END

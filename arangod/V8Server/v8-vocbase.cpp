@@ -141,7 +141,7 @@ static v8::Handle<v8::Object> WrapClass(
 /// @brief executes a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -399,7 +399,7 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock walPropertiesSet
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_PropertiesWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -473,7 +473,7 @@ static void JS_PropertiesWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock walFlush
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_FlushWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -537,7 +537,7 @@ static void JS_FlushWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_WaitCollectorWal(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -586,7 +586,7 @@ static void JS_WaitCollectorWal(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TransactionsWal(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -629,7 +629,7 @@ static void JS_TransactionsWal(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NormalizeString(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -646,7 +646,7 @@ static void JS_NormalizeString(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_EnableNativeBacktraces(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -666,7 +666,7 @@ extern V8LineEditor* theConsole;
 /// @brief starts a debugging console
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Debug(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Debug(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
 
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING("debug loop"));
@@ -718,7 +718,7 @@ static void JS_Debug(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief compare two UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CompareString(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CompareString(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -747,7 +747,7 @@ static void JS_CompareString(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetIcuTimezones(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -780,7 +780,7 @@ static void JS_GetIcuTimezones(
 /// @brief get list of locales
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_GetIcuLocales(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_GetIcuLocales(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -809,7 +809,7 @@ static void JS_GetIcuLocales(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief format datetime
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_FormatDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -869,7 +869,7 @@ static void JS_FormatDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief parse datetime
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ParseDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -956,7 +956,7 @@ static bool ReloadAuthCoordinator(TRI_vocbase_t* vocbase) {
 /// @brief reloads the authentication info from collection _users
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ReloadAuth(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -988,7 +988,7 @@ static void JS_ReloadAuth(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief parses an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ParseAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1062,7 +1062,7 @@ static void JS_ParseAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// this function is called from aql.js
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_WarningAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1096,7 +1096,7 @@ static void JS_WarningAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief explains an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExplainAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1193,7 +1193,7 @@ static void JS_ExplainAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief executes an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExecuteAqlJson(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1269,7 +1269,7 @@ static void JS_ExecuteAqlJson(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief executes an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExecuteAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1370,7 +1370,7 @@ static void JS_ExecuteAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesPropertiesAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1442,7 +1442,7 @@ static void JS_QueriesPropertiesAql(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesCurrentAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1489,7 +1489,7 @@ static void JS_QueriesCurrentAql(
 /// @brief returns the list of slow running queries or clears the list
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_QueriesSlowAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1541,7 +1541,7 @@ static void JS_QueriesSlowAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief kills an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_QueriesKillAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_QueriesKillAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1575,7 +1575,7 @@ static void JS_QueriesKillAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryIsKilledAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1594,7 +1594,7 @@ static void JS_QueryIsKilledAql(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryCachePropertiesAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1644,7 +1644,7 @@ static void JS_QueryCachePropertiesAql(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryCacheInvalidateAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1667,7 +1667,7 @@ static void JS_QueryCacheInvalidateAql(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ThrowCollectionNotLoaded(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2082,7 +2082,7 @@ class AttributeWeightCalculator {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryShortestPath(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2410,7 +2410,7 @@ static v8::Handle<v8::Value> VertexIdsToV8(
 /// @brief Executes a Neighbors computation
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2644,7 +2644,7 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief sleeps and checks for query abortion in between
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_QuerySleepAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_QuerySleepAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2864,7 +2864,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 /// @brief was docuBlock databaseVersion
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_VersionServer(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2875,7 +2875,7 @@ static void JS_VersionServer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock databasePath
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_PathDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2892,7 +2892,7 @@ static void JS_PathDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock databaseId
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_IdDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2909,7 +2909,7 @@ static void JS_IdDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock databaseName
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_NameDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2927,7 +2927,7 @@ static void JS_NameDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsSystemDatabase(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2944,7 +2944,7 @@ static void JS_IsSystemDatabase(
 /// @brief was docuBlock databaseUseDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_UseDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3005,7 +3005,7 @@ static void JS_UseDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ListDatabasesCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3075,7 +3075,7 @@ static void ListDatabasesCoordinator(
 /// @brief was docuBlock databaseListDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListDatabases(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ListDatabases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3142,7 +3142,7 @@ static void JS_ListDatabases(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CreateDatabaseCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3256,7 +3256,7 @@ static void CreateDatabaseCoordinator(
 /// @brief was docuBlock databaseCreateDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CreateDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3399,7 +3399,7 @@ static void JS_CreateDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DropDatabaseCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3453,7 +3453,7 @@ static void DropDatabaseCoordinator(
 /// @brief was docuBlock databaseDropDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_DropDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3508,7 +3508,7 @@ static void JS_DropDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @FUN{LIST_ENDPOINTS}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListEndpoints(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3565,7 +3565,7 @@ static void JS_ListEndpoints(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseVertex(const v8::FunctionCallbackInfo<v8::Value>& args,
+int TRI_ParseVertex(v8::FunctionCallbackInfo<v8::Value> const& args,
                     CollectionNameResolver const* resolver, TRI_voc_cid_t& cid,
                     std::unique_ptr<char[]>& key,
                     v8::Handle<v8::Value> const val) {

@@ -29,12 +29,10 @@
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
 using namespace triagens::arango;
 using namespace triagens::aql;
 
 using Json = triagens::basics::Json;
-
 
 CalculationBlock::CalculationBlock(ExecutionEngine* engine,
                                    CalculationNode const* en)

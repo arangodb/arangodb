@@ -7191,18 +7191,41 @@ function AQL_NEIGHBORS (vertexCollection,
       });
     }
   }
-  let edges = AQL_EDGES(edgeCollection, vertex, direction);
+  let edges = AQL_EDGES(edgeCollection, vertex, direction, undefined, { includeVertices: options.includeData });
   let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
   let vertices = [];
   let distinct = new Set();
-  for (let i = 0; i < tmp.length; ++i) {
-    let v = tmp[i].vertex;
-    if (!distinct.has(v._id)) {
-      distinct.add(v._id);
-      if (options.includeData) {
+  if (options.includeData) {
+    for (let i = 0; i < tmp.length; ++i) {
+      let v = tmp[i].vertex;
+      if (!distinct.has(v._id)) {
+        distinct.add(v._id);
         vertices.push(v);
-      } else {
-        vertices.push(v._id);
+      }
+    }
+  }
+  else {
+    for (let i = 0; i < tmp.length; ++i) {
+      let id;
+      if (direction === "outbound") {
+        id = tmp[i].edge._to;
+      }
+      else if (direction === "inbound") {
+        id = tmp[i].edge._from;
+      }
+      else {
+        // any
+        if (tmp[i].edge._from === vertex) {
+          id = tmp[i].edge._to;
+        }
+        else {
+          id = tmp[i].edge._from;
+        }
+      }
+
+      if (!distinct.has(id)) {
+        distinct.add(id);
+        vertices.push(id);
       }
     }
   }

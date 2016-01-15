@@ -24,8 +24,6 @@
 #include "index-operator.h"
 #include "VocBase/VocShaper.h"
 
-
-
 TRI_relation_index_operator_t::~TRI_relation_index_operator_t() {
   if (_parameters != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);

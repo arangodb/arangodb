@@ -39,7 +39,7 @@ using namespace triagens::rest;
 /// @brief generates a general cursor from an array
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CreateCursor(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -109,7 +109,7 @@ static void JS_CreateCursor(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief generates a JSON object from the specified cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_JsonCursor(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

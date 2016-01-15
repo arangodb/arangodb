@@ -298,9 +298,6 @@ SchedulerLibev::~SchedulerLibev() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::eventLoop(EventLoop loop) {
   struct ev_loop* l = (struct ev_loop*)lookupLoop(loop);
@@ -308,9 +305,6 @@ void SchedulerLibev::eventLoop(EventLoop loop) {
   ev_loop(l, 0);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::wakeupLoop(EventLoop loop) {
   if (size_t(loop) >= nrThreads) {
@@ -320,9 +314,6 @@ void SchedulerLibev::wakeupLoop(EventLoop loop) {
   ev_async_send(((struct ev_loop**)_loops)[loop], ((ev_async**)_wakers)[loop]);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::uninstallEvent(EventToken watcher) {
   if (watcher == nullptr) {
@@ -366,9 +357,6 @@ void SchedulerLibev::uninstallEvent(EventToken watcher) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 EventToken SchedulerLibev::installPeriodicEvent(EventLoop loop, Task* task,
                                                 double offset,
@@ -383,9 +371,6 @@ EventToken SchedulerLibev::installPeriodicEvent(EventLoop loop, Task* task,
   return watcher;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::rearmPeriodic(EventToken token, double offset,
                                    double interval) {
@@ -400,9 +385,6 @@ void SchedulerLibev::rearmPeriodic(EventToken token, double offset,
   ev_periodic_again(watcher->loop, w);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 EventToken SchedulerLibev::installSignalEvent(EventLoop loop, Task* task,
                                               int signal) {
@@ -416,9 +398,6 @@ EventToken SchedulerLibev::installSignalEvent(EventLoop loop, Task* task,
   return watcher;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 // ..........................................................................
 // Windows likes to operate on SOCKET types (sort of handles) while libev
@@ -451,9 +430,6 @@ EventToken SchedulerLibev::installSocketEvent(EventLoop loop, EventType type,
   return watcher;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::startSocketEvents(EventToken token) {
   SocketWatcher* watcher = (SocketWatcher*)token;
@@ -469,9 +445,6 @@ void SchedulerLibev::startSocketEvents(EventToken token) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::stopSocketEvents(EventToken token) {
   SocketWatcher* watcher = (SocketWatcher*)token;
@@ -487,9 +460,6 @@ void SchedulerLibev::stopSocketEvents(EventToken token) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 EventToken SchedulerLibev::installTimerEvent(EventLoop loop, Task* task,
                                              double timeout) {
@@ -503,9 +473,6 @@ EventToken SchedulerLibev::installTimerEvent(EventLoop loop, Task* task,
   return watcher;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::clearTimer(EventToken token) {
   TimerWatcher* watcher = (TimerWatcher*)token;
@@ -518,9 +485,6 @@ void SchedulerLibev::clearTimer(EventToken token) {
   ev_timer_stop(watcher->loop, w);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::rearmTimer(EventToken token, double timeout) {
   TimerWatcher* watcher = (TimerWatcher*)token;
@@ -534,9 +498,6 @@ void SchedulerLibev::rearmTimer(EventToken token, double timeout) {
   ev_timer_again(watcher->loop, w);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::signalTask(std::unique_ptr<TaskData>& data) {
   size_t loop = size_t(data->_loop);

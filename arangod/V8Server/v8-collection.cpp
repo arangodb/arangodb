@@ -104,14 +104,13 @@ struct RemoveOptions {
   bool waitForSync = false;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the forceSync flag from the arguments
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool ExtractWaitForSync(
-    const v8::FunctionCallbackInfo<v8::Value>& args, int index) {
+    v8::FunctionCallbackInfo<v8::Value> const& args, int index) {
   TRI_ASSERT(index > 0);
 
   return (args.Length() >= index && TRI_ObjectToBoolean(args[index - 1]));
@@ -306,7 +305,7 @@ static int ParseKeyAndRef(v8::Isolate* isolate, v8::Handle<v8::Value> const arg,
 
 static void DocumentVocbaseColCoordinator(
     TRI_vocbase_col_t const* collection,
-    const v8::FunctionCallbackInfo<v8::Value>& args, bool generateDocument) {
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool generateDocument) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -342,53 +341,39 @@ static void DocumentVocbaseColCoordinator(
   // For the error processing we have to distinguish whether we are in
   // the ".exists" case (generateDocument==false) or the ".document" case
   // (generateDocument==true).
-  TRI_json_t* json = nullptr;
+  VPackBuilder builder;
   if (generateDocument) {
-    json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+    try {
+      VPackParser parser(builder);
+      parser.parse(resultBody);
+    } catch (...) {
+      // Do Nothing with the error
+      // Just make sure the builder is clear
+      builder.clear();
+    }
   }
+  VPackSlice slice = builder.slice();
+
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (!TRI_IsObjectJson(json)) {
+    if (!slice.isObject()) {
       if (generateDocument) {
-        if (nullptr != json) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-        }
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      } else {
-        TRI_V8_RETURN_FALSE();
       }
+      TRI_V8_RETURN_FALSE();
     }
     if (generateDocument) {
-      int errorNum = 0;
-      std::string errorMessage;
-      if (nullptr != json) {
-        TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
-        if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
-          errorNum = static_cast<int>(subjson->_value._number);
-        }
-        subjson = TRI_LookupObjectJson(json, "errorMessage");
-        if (nullptr != subjson && TRI_IsStringJson(subjson)) {
-          errorMessage = std::string(subjson->_value._string.data,
-                                subjson->_value._string.length - 1);
-        }
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
+      int errorNum = triagens::basics::VelocyPackHelper::getNumericValue<int>(slice, "errorNum", 0);
+      std::string errorMessage = triagens::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
       TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
     } else {
       TRI_V8_RETURN_FALSE();
     }
   }
   if (generateDocument) {
-    v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json);
-
-    if (nullptr != json) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
+    v8::Handle<v8::Value> ret = TRI_VPackToV8(isolate, slice);
     TRI_V8_RETURN(ret);
   } else {
     // Note that for this case we will never get a 304 "NOT_MODIFIED"
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
     TRI_V8_RETURN_TRUE();
   }
 }
@@ -398,7 +383,7 @@ static void DocumentVocbaseColCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DocumentVocbaseCol(
-    bool useCollection, const v8::FunctionCallbackInfo<v8::Value>& args) {
+    bool useCollection, v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -502,7 +487,7 @@ static void DocumentVocbaseCol(
 
 static TRI_vocbase_col_t const* UseCollection(
     v8::Handle<v8::Object> collection,
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   int res = TRI_ERROR_INTERNAL;
   TRI_vocbase_col_t* col =
@@ -576,7 +561,7 @@ static std::vector<std::string> GetCollectionNamesCluster(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExistsVocbaseCol(bool useCollection,
-                             const v8::FunctionCallbackInfo<v8::Value>& args) {
+                             v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -678,9 +663,9 @@ static void ExistsVocbaseCol(bool useCollection,
 static void ModifyVocbaseColCoordinator(
     TRI_vocbase_col_t const* collection, TRI_doc_update_policy_e policy,
     bool waitForSync, bool isPatch,
-    bool keepNull,  // only counts if isPatch==true
+    bool keepNull,      // only counts if isPatch==true
     bool mergeObjects,  // only counts if isPatch==true bool silent,
-    bool silent, const v8::FunctionCallbackInfo<v8::Value>& args) {
+    bool silent, v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -733,7 +718,7 @@ static void ModifyVocbaseColCoordinator(
     subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (TRI_IsStringJson(subjson)) {
       errorMessage = std::string(subjson->_value._string.data,
-                            subjson->_value._string.length - 1);
+                                 subjson->_value._string.length - 1);
     }
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
   }
@@ -751,7 +736,7 @@ static void ModifyVocbaseColCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ReplaceVocbaseCol(bool useCollection,
-                              const v8::FunctionCallbackInfo<v8::Value>& args) {
+                              v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   UpdateOptions options;
@@ -965,9 +950,8 @@ static void ReplaceVocbaseCol(bool useCollection,
 /// @brief inserts a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InsertVocbaseCol(TRI_vocbase_col_t* col,
-                             uint32_t argOffset,
-                             const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void InsertVocbaseCol(TRI_vocbase_col_t* col, uint32_t argOffset,
+                             v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1236,7 +1220,7 @@ static void InsertVocbaseVPack(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void UpdateVocbaseCol(bool useCollection,
-                             const v8::FunctionCallbackInfo<v8::Value>& args) {
+                             v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   UpdateOptions options;
@@ -1462,7 +1446,7 @@ static void UpdateVocbaseCol(bool useCollection,
 
 static void RemoveVocbaseColCoordinator(
     TRI_vocbase_col_t const* collection, TRI_doc_update_policy_e policy,
-    bool waitForSync, const v8::FunctionCallbackInfo<v8::Value>& args) {
+    bool waitForSync, v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1510,7 +1494,7 @@ static void RemoveVocbaseColCoordinator(
     subjson = TRI_LookupObjectJson(json, "errorMessage");
     if (TRI_IsStringJson(subjson)) {
       errorMessage = std::string(subjson->_value._string.data,
-                            subjson->_value._string.length - 1);
+                                 subjson->_value._string.length - 1);
     }
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1535,7 +1519,7 @@ static void RemoveVocbaseColCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveVocbaseCol(bool useCollection,
-                             const v8::FunctionCallbackInfo<v8::Value>& args) {
+                             v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   RemoveOptions options;
@@ -1651,7 +1635,7 @@ static void RemoveVocbaseCol(bool useCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveVocbaseVPack(
-    bool useCollection, const v8::FunctionCallbackInfo<v8::Value>& args) {
+    bool useCollection, v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   RemoveOptions options;
@@ -1813,7 +1797,7 @@ static void RemoveVocbaseVPack(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DocumentVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   DocumentVocbaseCol(true, args);
   TRI_V8_TRY_CATCH_END
@@ -1824,7 +1808,7 @@ static void JS_DocumentVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DropVocbaseColCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args,
+    v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_vocbase_col_t* collection) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -1854,7 +1838,7 @@ static void DropVocbaseColCoordinator(
 /// @brief was docuBlock collectionDrop
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_DropVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1888,7 +1872,7 @@ static void JS_DropVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExistsVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ExistsVocbaseCol(true, args);
   TRI_V8_TRY_CATCH_END
@@ -1951,7 +1935,7 @@ static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FiguresVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2089,7 +2073,7 @@ static void JS_FiguresVocbaseCol(
 /// @brief was docuBlock collectionLoad
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LoadVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2135,7 +2119,7 @@ static void JS_LoadVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns the name of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_NameVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2174,7 +2158,7 @@ static void JS_NameVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PlanIdVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2198,7 +2182,7 @@ static void JS_PlanIdVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PropertiesVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
@@ -2420,15 +2404,16 @@ static void JS_PropertiesVocbaseCol(
   result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
               v8::Number::New(isolate, document->_info.indexBuckets()));
 
-  TRI_json_t* keyOptions =
-      document->_keyGenerator->toJson(TRI_UNKNOWN_MEM_ZONE);
-
   TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-  if (keyOptions != nullptr) {
-    result->Set(KeyOptionsKey, TRI_ObjectJson(isolate, keyOptions)->ToObject());
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-  } else {
+  try {
+    VPackBuilder optionsBuilder;
+    optionsBuilder.openObject();
+    document->_keyGenerator->toVelocyPack(optionsBuilder);
+    optionsBuilder.close();
+    result->Set(KeyOptionsKey,
+                TRI_VPackToV8(isolate, optionsBuilder.slice())->ToObject());
+  } catch (...) {
+    // Could not build the VPack
     result->Set(KeyOptionsKey, v8::Array::New(isolate));
   }
   TRI_GET_GLOBAL_STRING(WaitForSyncKey);
@@ -2445,14 +2430,14 @@ static void JS_PropertiesVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return RemoveVocbaseCol(true, args);
   TRI_V8_TRY_CATCH_END
 }
 
 static void JS_RemoveVocbaseVPack(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return RemoveVocbaseVPack(true, args);
   TRI_V8_TRY_CATCH_END
@@ -2487,7 +2472,7 @@ static int RenameGraphCollections(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RenameVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2549,7 +2534,7 @@ static void JS_RenameVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReplaceVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ReplaceVocbaseCol(true, args);
   TRI_V8_TRY_CATCH_END
@@ -2601,7 +2586,7 @@ static int GetRevisionCoordinator(TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RevisionVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2634,7 +2619,7 @@ static void JS_RevisionVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RotateVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2672,7 +2657,7 @@ static void JS_RotateVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UpdateVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return UpdateVocbaseCol(true, args);
   TRI_V8_TRY_CATCH_END
@@ -2683,9 +2668,8 @@ static void JS_UpdateVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InsertVocbaseColCoordinator(
-    TRI_vocbase_col_t* collection,
-    uint32_t argOffset,
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    TRI_vocbase_col_t* collection, uint32_t argOffset,
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2752,7 +2736,7 @@ static void InsertVocbaseColCoordinator(
     subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
       errorMessage = std::string(subjson->_value._string.data,
-                            subjson->_value._string.length - 1);
+                                 subjson->_value._string.length - 1);
     }
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
   }
@@ -2769,8 +2753,8 @@ static void InsertVocbaseColCoordinator(
 /// @brief extract a key from a v8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string GetId(const v8::FunctionCallbackInfo<v8::Value>& args,
-                    int which) {
+static std::string GetId(v8::FunctionCallbackInfo<v8::Value> const& args,
+                         int which) {
   v8::Isolate* isolate = args.GetIsolate();  // used in TRI_GET_GLOBALS
 
   if (args[which]->IsObject() && !args[which]->IsArray()) {
@@ -2808,9 +2792,8 @@ static TRI_vocbase_col_t* GetCollectionFromArgument(
 /// @brief was docuBlock InsertEdgeCol
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InsertEdgeCol(TRI_vocbase_col_t* col,
-                          uint32_t argOffset,
-                          const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void InsertEdgeCol(TRI_vocbase_col_t* col, uint32_t argOffset,
+                          v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2829,7 +2812,8 @@ static void InsertEdgeCol(TRI_vocbase_col_t* col,
 
   // set document key
   std::unique_ptr<char[]> key;
-  int res = ExtractDocumentKey(isolate, v8g, args[2 + argOffset]->ToObject(), key);
+  int res =
+      ExtractDocumentKey(isolate, v8g, args[2 + argOffset]->ToObject(), key);
 
   if (res != TRI_ERROR_NO_ERROR &&
       res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
@@ -2865,7 +2849,8 @@ static void InsertEdgeCol(TRI_vocbase_col_t* col,
                                           col->_vocbase, col->_cid);
 
   // extract from
-  res = TRI_ParseVertex(args, trx.resolver(), edge._fromCid, fromKey, args[argOffset]);
+  res = TRI_ParseVertex(args, trx.resolver(), edge._fromCid, fromKey,
+                        args[argOffset]);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2873,7 +2858,8 @@ static void InsertEdgeCol(TRI_vocbase_col_t* col,
   edge._fromKey = fromKey.get();
 
   // extract to
-  res = TRI_ParseVertex(args, trx.resolver(), edge._toCid, toKey, args[argOffset + 1]);
+  res = TRI_ParseVertex(args, trx.resolver(), edge._toCid, toKey,
+                        args[argOffset + 1]);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2900,7 +2886,8 @@ static void InsertEdgeCol(TRI_vocbase_col_t* col,
 
   // extract shaped data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(
-      isolate, args[2 + argOffset], document->getShaper(), true);  // PROTECTED by trx here
+      isolate, args[2 + argOffset], document->getShaper(),
+      true);  // PROTECTED by trx here
 
   if (shaped == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -2946,9 +2933,8 @@ static void InsertEdgeCol(TRI_vocbase_col_t* col,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InsertEdgeColCoordinator(
-    TRI_vocbase_col_t* collection,
-    uint32_t argOffset,
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    TRI_vocbase_col_t* collection, uint32_t argOffset,
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2967,7 +2953,8 @@ static void InsertEdgeColCoordinator(
   std::string _from = GetId(args, argOffset);
   std::string _to = GetId(args, 1 + argOffset);
 
-  std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[2 + argOffset]));
+  std::unique_ptr<TRI_json_t> json(
+      TRI_ObjectToJson(isolate, args[2 + argOffset]));
 
   if (!TRI_IsObjectJson(json.get())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -3017,7 +3004,7 @@ static void InsertEdgeColCoordinator(
     subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
       errorMessage = std::string(subjson->_value._string.data,
-                            subjson->_value._string.length - 1);
+                                 subjson->_value._string.length - 1);
     }
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
   }
@@ -3030,7 +3017,7 @@ static void InsertEdgeColCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InsertVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3066,7 +3053,7 @@ static void JS_InsertVocbaseCol(
 /// part of the public API
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_SaveVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3090,8 +3077,8 @@ static void JS_SaveVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   if (ServerState::instance()->isCoordinator()) {
     string const name = TRI_ObjectToString(val);
-    shared_ptr<CollectionInfo> const& ci
-        = ClusterInfo::instance()->getCollection(vocbase->_name, name);
+    shared_ptr<CollectionInfo> const& ci =
+        ClusterInfo::instance()->getCollection(vocbase->_name, name);
 
     if ((*ci).id() == 0 || (*ci).empty()) {
       // not found
@@ -3099,8 +3086,7 @@ static void JS_SaveVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
 
     collection = CoordinatorCollection(vocbase, *ci);
-  }
-  else {
+  } else {
     collection = GetCollectionFromArgument(vocbase, val);
   }
 
@@ -3110,7 +3096,7 @@ static void JS_SaveVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   if (ServerState::instance()->isCoordinator()) {
     // coordinator case
-    if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
+    if ((TRI_col_type_e)collection->_type == TRI_COL_TYPE_DOCUMENT) {
       InsertVocbaseColCoordinator(collection, 1, args);
       return;
     }
@@ -3118,12 +3104,11 @@ static void JS_SaveVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
     InsertEdgeColCoordinator(collection, 1, args);
     return;
   }
-    
+
   // single server case
-  if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
+  if ((TRI_col_type_e)collection->_type == TRI_COL_TYPE_DOCUMENT) {
     InsertVocbaseCol(collection, 1, args);
-  }
-  else {
+  } else {
     InsertEdgeCol(collection, 1, args);
   }
   TRI_V8_TRY_CATCH_END
@@ -3134,7 +3119,7 @@ static void JS_SaveVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InsertVocbaseVPack(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3170,7 +3155,7 @@ static void JS_InsertVocbaseVPack(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StatusVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3208,7 +3193,7 @@ static void JS_StatusVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TruncateVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3251,7 +3236,7 @@ static void JS_TruncateVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TruncateDatafileVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3296,7 +3281,7 @@ static void JS_TruncateDatafileVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TryRepairDatafileVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3339,7 +3324,7 @@ static void JS_TryRepairDatafileVocbaseCol(
 /// @brief was docuBlock collectionType
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_TypeVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3378,7 +3363,7 @@ static void JS_TypeVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnloadVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3414,7 +3399,7 @@ static void JS_UnloadVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_VersionVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3453,7 +3438,7 @@ static void JS_VersionVocbaseCol(
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 static void JS_CheckPointersVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3492,7 +3477,7 @@ static void JS_CheckPointersVocbaseCol(
 #endif
 
 static void JS_ChangeOperationModeVocbase(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3547,7 +3532,7 @@ static void JS_ChangeOperationModeVocbase(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionVocbase(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3603,7 +3588,7 @@ static void JS_CollectionVocbase(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionsVocbase(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3655,7 +3640,7 @@ static void JS_CollectionsVocbase(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CompletionsVocbase(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3713,12 +3698,11 @@ static void JS_CompletionsVocbase(
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock documentsDocumentRemove
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RemoveVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return RemoveVocbaseCol(false, args);
   TRI_V8_TRY_CATCH_END
@@ -3729,7 +3713,7 @@ static void JS_RemoveVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DocumentVocbase(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   DocumentVocbaseCol(false, args);
   TRI_V8_TRY_CATCH_END
@@ -3739,7 +3723,7 @@ static void JS_DocumentVocbase(
 /// @brief was docuBlock documentsDocumentExists
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExistsVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ExistsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ExistsVocbaseCol(false, args);
   TRI_V8_TRY_CATCH_END
@@ -3749,7 +3733,7 @@ static void JS_ExistsVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock documentsDocumentReplace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ReplaceVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ReplaceVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ReplaceVocbaseCol(false, args);
   TRI_V8_TRY_CATCH_END
@@ -3759,19 +3743,18 @@ static void JS_ReplaceVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock documentsDocumentUpdate
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_UpdateVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return UpdateVocbaseCol(false, args);
   TRI_V8_TRY_CATCH_END
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionCount
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CountVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3834,7 +3817,7 @@ static void JS_CountVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DatafilesVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3896,8 +3879,6 @@ static void JS_DatafilesVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the datafiles
 ///
@@ -3907,7 +3888,7 @@ static void JS_DatafilesVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DatafileScanVocbaseCol(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -4023,8 +4004,10 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_update"),
                        JS_UpdateVocbase);
 
-  // an internal API used for storing a document without wrapping a V8 collection object
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("__save"), JS_SaveVocbase, true);
+  // an internal API used for storing a document without wrapping a V8
+  // collection object
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("__save"),
+                       JS_SaveVocbase, true);
 
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
