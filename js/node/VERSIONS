@@ -35,5 +35,5 @@ tty:                  compatibility
 url:                  4.1.0
 util:                 4.1.0 (modified)
 v8:                   not supported
-vm:                   not supported
+vm:                   compatibility (see bootstrap/modules/vm)
 zlib:                 not supported
