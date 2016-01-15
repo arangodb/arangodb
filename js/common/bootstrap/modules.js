@@ -375,7 +375,7 @@ Module._resolveDbModule = function (request) {
     request = '/' + request;
   }
   var dbModule = Module._dbCache[request];
-  if (!dbModule) {
+  if (!dbModule && internal.db._modules !== undefined) {
     dbModule = internal.db._modules.firstExample({path: request});
     if (!dbModule) {
       // try again, but prefix module with '/db' as some modules seem
