@@ -366,6 +366,8 @@ void WorkMonitor::run() {
         VPackBuilder b;
 
         b.add(VPackValue(VPackValueType::Object));
+
+        b.add("time", VPackValue(TRI_microtime()));
         b.add("work", VPackValue(VPackValueType::Array));
 
         {
