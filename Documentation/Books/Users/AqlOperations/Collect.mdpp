@@ -227,7 +227,7 @@ are used, it must follow the `COLLECT` keyword directly:
 
 ```
 FOR u IN users
-  AGGREGATE minAge = MIN(u.age), maxAge = MAX(u.age)
+  COLLECT AGGREGATE minAge = MIN(u.age), maxAge = MAX(u.age)
   RETURN {
     minAge, 
     maxAge 
