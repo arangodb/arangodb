@@ -33,8 +33,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "VocBase/server.h"
 
 #ifdef _WIN32
@@ -2438,7 +2438,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int tries = 0;
   std::shared_ptr<std::vector<std::string>> shardKeysPtr;
-  char const** shardKeys = nullptr;
+  std::unique_ptr<char const*[]> shardKeys;
   std::shared_ptr<std::vector<ShardID>> shards;
   bool found = false;
 
@@ -2455,18 +2455,16 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
         auto it2 = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
-          shardKeys = new char const* [shardKeysPtr->size()];
-          if (shardKeys != nullptr) {
-            size_t i;
-            for (i = 0; i < shardKeysPtr->size(); ++i) {
-              shardKeys[i] = shardKeysPtr->at(i).c_str();
-            }
-            usesDefaultShardingAttributes =
-                shardKeysPtr->size() == 1 &&
-                shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
-            found = true;
-            break;  // all OK
+          shardKeys.reset(new char const*[shardKeysPtr->size()]);
+          size_t i;
+          for (i = 0; i < shardKeysPtr->size(); ++i) {
+            shardKeys[i] = shardKeysPtr->at(i).c_str();
           }
+          usesDefaultShardingAttributes =
+              shardKeysPtr->size() == 1 &&
+              shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
+          found = true;
+          break;  // all OK
         }
       }
     }
@@ -2482,14 +2480,12 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int error;
   uint64_t hash = TRI_HashJsonByAttributes(
-      json, shardKeys, (int)shardKeysPtr->size(), docComplete, &error);
+      json, shardKeys.get(), (int)shardKeysPtr->size(), docComplete, &error);
   static char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static size_t const len = 52;
   // To improve our hash function:
   hash = TRI_FnvHashBlock(hash, magicPhrase, len);
-
-  delete[] shardKeys;
 
   shardID = shards->at(hash % shards->size());
   return error;
