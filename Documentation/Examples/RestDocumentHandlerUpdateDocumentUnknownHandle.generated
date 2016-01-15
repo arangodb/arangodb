@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/743572727 &lt;&lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/738930547 &lt;&lt;EOF
 {}
 EOF
 

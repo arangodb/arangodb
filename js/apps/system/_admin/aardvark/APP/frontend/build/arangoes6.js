@@ -2125,6 +2125,7 @@ return exports;
     "ERROR_QUERY_FULLTEXT_INDEX_MISSING" : { "code" : 1571, "message" : "no suitable fulltext index found for fulltext query on '%s'" },
     "ERROR_QUERY_INVALID_DATE_VALUE" : { "code" : 1572, "message" : "invalid date value" },
     "ERROR_QUERY_MULTI_MODIFY"     : { "code" : 1573, "message" : "multi-modify query" },
+    "ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION" : { "code" : 1574, "message" : "invalid aggregate expression" },
     "ERROR_QUERY_COMPILE_TIME_OPTIONS" : { "code" : 1575, "message" : "query options must be readable at query compile time" },
     "ERROR_QUERY_EXCEPTION_OPTIONS" : { "code" : 1576, "message" : "query options expected" },
     "ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION" : { "code" : 1577, "message" : "collection '%s' used as expression operand" },
@@ -9168,7 +9169,7 @@ function processQuery (query, explain) {
         return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");
       case "FilterNode":
         return keyword("FILTER") + " " + variableName(node.inVariable);
-      case "AggregateNode":
+      case "AggregateNode": /* old-style COLLECT node */
         return keyword("COLLECT") + " " + node.aggregates.map(function(node) {
           return variableName(node.outVariable) + " = " + variableName(node.inVariable);
         }).join(", ") + 
@@ -9176,6 +9177,27 @@ function processQuery (query, explain) {
                  (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
                  (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
                  "   " + annotation("/* " + node.aggregationOptions.method + "*/");
+      case "CollectNode":
+        var collect = keyword("COLLECT") + " " + 
+          node.groups.map(function(node) {
+            return variableName(node.outVariable) + " = " + variableName(node.inVariable);
+          }).join(", ");
+
+        if (node.hasOwnProperty("aggregates") && node.aggregates.length > 0) {
+          if (node.groups.length > 0) {
+            collect += " ";
+          }
+          collect += keyword("AGGREGATE") + " " + 
+          node.aggregates.map(function(node) {
+            return variableName(node.outVariable) + " = " + func(node.type) + "(" + variableName(node.inVariable) + ")";
+          }).join(", ");
+        }
+        collect += 
+          (node.count ? " " + keyword("WITH COUNT") : "") + 
+          (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
+          (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") +
+          "   " + annotation("/* " + node.collectOptions.method + "*/");
+        return collect;
       case "SortNode":
         return keyword("SORT") + " " + node.elements.map(function(node) {
           return variableName(node.inVariable) + " " + keyword(node.ascending ? "ASC" : "DESC"); 
@@ -12800,45 +12822,6 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
 ////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_how_to_create
-///
-/// * Create a graph
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo1}
-///   var graph_module = require("org/arangodb/general-graph");
-///   var graph = graph_module._create("myGraph");
-///   graph;
-/// ~ graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// * Add some vertex collections
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo2}
-/// ~ var graph_module = require("org/arangodb/general-graph");
-/// ~ var graph = graph_module._create("myGraph");
-///   graph._addVertexCollection("shop");
-///   graph._addVertexCollection("customer");
-///   graph._addVertexCollection("pet");
-///   graph;
-/// ~ graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// * Define relations on the
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo3}
-/// ~ var graph_module = require("org/arangodb/general-graph");
-/// ~ var graph = graph_module._create("myGraph");
-///   var rel = graph_module._relation("isCustomer", ["shop"], ["customer"]);
-///   graph._extendEdgeDefinitions(rel);
-///   graph;
-/// ~ graph_module._drop("myGraph", true);
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-///
-////////////////////////////////////////////////////////////////////////////////
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create
 /// @brief Create a graph

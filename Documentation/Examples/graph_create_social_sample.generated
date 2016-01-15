@@ -5,13 +5,13 @@ arangosh&gt; db.female.toArray()
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2334852343"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2332831603"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2334131447"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2332110707"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span> 
   } 
 ]
@@ -20,13 +20,13 @@ arangosh&gt; db.male.toArray()
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2334459127"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2332438387"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2334655735"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2332634995"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span> 
   } 
 ]
@@ -35,7 +35,7 @@ arangosh&gt; db.relation.toArray()
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndDiana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2335835383"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2333814643"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bobAndDiana"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span> 
@@ -43,7 +43,7 @@ arangosh&gt; db.relation.toArray()
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2335638775"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2333618035"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlyAndDiana"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span> 
@@ -51,7 +51,7 @@ arangosh&gt; db.relation.toArray()
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2335442167"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2333421427"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndCharly"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span> 
@@ -59,7 +59,7 @@ arangosh&gt; db.relation.toArray()
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2335180023"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2333159283"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span> 

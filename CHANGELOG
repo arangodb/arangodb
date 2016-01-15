@@ -1,5 +1,7 @@
-v2.8.0 (2016-01-06)
+v2.8.0-beta7 (2016-01-06)
 -------------------
+
+* added vm.runInThisContext
 
 * added AQL keyword `AGGREGATE` for use in AQL `COLLECT` statement
 
