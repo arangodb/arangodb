@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/* global arango */
+/* global arango, print */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +130,7 @@ const outputWorkDescription = function(desc, opts) {
   if (desc.level === 0) {
     line += fillR(desc.thread, opts.width);
   } else {
-    line += fillR("", opts.width);;
+    line += fillR("", opts.width);
   }
 
   line += RESET + fillR("", 2 * desc.level + 1) + desc.name;
