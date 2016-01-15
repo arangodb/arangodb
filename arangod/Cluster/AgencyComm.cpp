@@ -685,7 +685,7 @@ bool AgencyComm::hasEndpoint(std::string const& endpointSpecification) {
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<std::string> AgencyComm::getEndpoints() {
+std::vector<std::string> AgencyComm::getEndpoints() {
   std::vector<std::string> result;
 
   {
@@ -712,7 +712,7 @@ const std::vector<std::string> AgencyComm::getEndpoints() {
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const AgencyComm::getEndpointsString() {
+std::string AgencyComm::getEndpointsString() {
   std::string result;
 
   {

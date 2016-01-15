@@ -49,7 +49,7 @@ class JSLoader;
 /// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseVertex(const v8::FunctionCallbackInfo<v8::Value>& args,
+int TRI_ParseVertex(v8::FunctionCallbackInfo<v8::Value> const& args,
                     triagens::arango::CollectionNameResolver const*,
                     TRI_voc_cid_t&, std::unique_ptr<char[]>&,
                     v8::Handle<v8::Value> const);

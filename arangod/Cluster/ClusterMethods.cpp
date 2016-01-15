@@ -140,7 +140,7 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<CollectionInfo> c = ci->getCollection(dbname, collname);
-  const std::vector<std::string>& shardKeys = c->shardKeys();
+  std::vector<std::string> const& shardKeys = c->shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {
     if (shardKeys[i] == TRI_VOC_ATTRIBUTE_KEY) {

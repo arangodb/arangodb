@@ -133,10 +133,6 @@ typedef long suseconds_t;
 #include "Basics/make_unique.h"
 #include "Basics/memory.h"
 #include "Basics/structures.h"
-#undef TRI_WITHIN_COMMON
-
-
-#define TRI_WITHIN_COMMON 1
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON

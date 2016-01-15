@@ -41,7 +41,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StateLoggerReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -76,7 +76,7 @@ static void JS_StateLoggerReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TickRangesLoggerReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -106,7 +106,7 @@ static void JS_TickRangesLoggerReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FirstTickLoggerReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -137,7 +137,7 @@ static void JS_FirstTickLoggerReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LastLoggerReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -182,7 +182,7 @@ static void JS_LastLoggerReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SynchronizeReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -227,7 +227,7 @@ static void JS_SynchronizeReplication(
     v8::Handle<v8::Array> a = v8::Handle<v8::Array>::Cast(
         object->Get(TRI_V8_ASCII_STRING("restrictCollections")));
 
-    const uint32_t n = a->Length();
+    uint32_t const n = a->Length();
 
     for (uint32_t i = 0; i < n; ++i) {
       v8::Handle<v8::Value> cname = a->Get(i);
@@ -352,7 +352,7 @@ static void JS_SynchronizeReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ServerIdReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -366,7 +366,7 @@ static void JS_ServerIdReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ConfigureApplierReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -682,7 +682,7 @@ static void JS_ConfigureApplierReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StartApplierReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -723,7 +723,7 @@ static void JS_StartApplierReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ShutdownApplierReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -756,7 +756,7 @@ static void JS_ShutdownApplierReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StateApplierReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -792,7 +792,7 @@ static void JS_StateApplierReplication(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ForgetApplierReplication(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

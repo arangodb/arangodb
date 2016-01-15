@@ -251,22 +251,22 @@ class ProgramOptionsDescription {
   /// @brief computes all names
   //////////////////////////////////////////////////////////////////////////////
 
-  void fillAllNames(const std::set<std::string>& help,
+  void fillAllNames(std::set<std::string> const& help,
                     std::map<std::string, std::string>& names) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the usage message for given sections
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string usageString(const std::set<std::string>& help,
-                          const std::map<std::string, std::string>& names,
+  std::string usageString(std::set<std::string> const& help,
+                          std::map<std::string, std::string> const& names,
                           size_t oWidth) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs the usage string
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string usageString(const std::map<std::string, std::string>& names,
+  std::string usageString(std::map<std::string, std::string> const& names,
                           size_t oWidth) const;
 
   //////////////////////////////////////////////////////////////////////////////

@@ -151,16 +151,10 @@ static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
     : _type(type), _destroy(true), _prev(prev) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 WorkMonitor::WorkMonitor() : Thread("Work Monitor"), _stopping(false) {}
 
@@ -341,13 +335,10 @@ void WorkMonitor::requestWorkOverview(uint64_t taskId) {
   WORK_OVERVIEW.push(taskId);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::run() {
-  const uint32_t maxSleep = 100 * 1000;
-  const uint32_t minSleep = 100;
+  uint32_t const maxSleep = 100 * 1000;
+  uint32_t const minSleep = 100;
   uint32_t s = minSleep;
 
   // clean old entries and create summary if requested
@@ -375,6 +366,8 @@ void WorkMonitor::run() {
         VPackBuilder b;
 
         b.add(VPackValue(VPackValueType::Object));
+
+        b.add("time", VPackValue(TRI_microtime()));
         b.add("work", VPackValue(VPackValueType::Array));
 
         {
@@ -434,26 +427,17 @@ void WorkMonitor::run() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 CustomWorkStack::CustomWorkStack(char const* type, char const* text,
                                  size_t length) {
   WorkMonitor::pushCustom(type, text, length);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 CustomWorkStack::CustomWorkStack(char const* type, uint64_t id) {
   WorkMonitor::pushCustom(type, id);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 CustomWorkStack::~CustomWorkStack() { WorkMonitor::popCustom(); }
 

@@ -280,7 +280,7 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
 /// @brief returns the program options
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Options(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -311,7 +311,7 @@ static void JS_Options(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Base64-decodes the string @FA{value}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Base64Decode(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Base64Decode(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -340,7 +340,7 @@ static void JS_Base64Decode(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Base64-encodes the string @FA{value}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Base64Encode(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Base64Encode(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -371,7 +371,7 @@ static void JS_Base64Encode(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// an exception otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Parse(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -428,7 +428,7 @@ static void JS_Parse(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// an exception otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ParseFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -528,7 +528,7 @@ static std::string GetEndpointFromUrl(std::string const& url) {
 /// @LIT{body} attribute of the result object.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Download(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -903,7 +903,7 @@ static void JS_Download(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// If @FA{sandbox} is undefined, then @FN{execute} uses the current context.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Execute(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1040,7 +1040,7 @@ static void JS_Execute(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_Exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Exists(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1067,7 +1067,7 @@ static void JS_Exists(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_Chmod
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ChMod(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1123,7 +1123,7 @@ static void JS_ChMod(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_Size
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_SizeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_SizeFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1156,7 +1156,7 @@ static void JS_SizeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief reads in a line from stdin
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Getline(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Getline(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1171,7 +1171,7 @@ static void JS_Getline(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_GetTempPath
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_GetTempPath(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1196,7 +1196,7 @@ static void JS_GetTempPath(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_GetTempFile
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_GetTempFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1237,7 +1237,7 @@ static void JS_GetTempFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_IsDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_IsDirectory(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1265,7 +1265,7 @@ static void JS_IsDirectory(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_IsFile
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_IsFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1293,7 +1293,7 @@ static void JS_IsFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_MakeAbsolute
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_MakeAbsolute(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1333,7 +1333,7 @@ static void JS_MakeAbsolute(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_List
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_List(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1367,7 +1367,7 @@ static void JS_List(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_ListTree
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListTree(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1404,7 +1404,7 @@ static void JS_ListTree(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_MakeDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_MakeDirectory(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1437,7 +1437,7 @@ static void JS_MakeDirectory(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MakeDirectoryRecursive(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1469,7 +1469,7 @@ static void JS_MakeDirectoryRecursive(
 /// @brief was docuBlock JS_Unzip
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_UnzipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1515,7 +1515,7 @@ static void JS_UnzipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_Zip
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ZipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1584,7 +1584,7 @@ static void JS_ZipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Reads in a files and executes the contents in the current context.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Load(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1671,7 +1671,7 @@ static void JS_Load(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// - trace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Log(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1734,7 +1734,7 @@ static void JS_Log(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @verbinclude fluent38
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LogLevel(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1756,7 +1756,7 @@ static void JS_LogLevel(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Computes an md5 for the @FA{text}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Md5(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Md5(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1799,7 +1799,7 @@ static void JS_Md5(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Generates a string of a given @FA{length} containing numbers.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RandomNumbers(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RandomNumbers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1827,7 +1827,7 @@ static void JS_RandomNumbers(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Generates a string of a given @FA{length} containing numbers and characters.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RandomAlphaNum(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RandomAlphaNum(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1854,7 +1854,7 @@ static void JS_RandomAlphaNum(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Generates a string of a given @FA{length} containing ASCII characters.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RandomSalt(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RandomSalt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1881,7 +1881,7 @@ static void JS_RandomSalt(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Generates a base64 encoded nonce string. (length of the string is 16)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CreateNonce(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CreateNonce(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -1903,7 +1903,7 @@ static void JS_CreateNonce(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Checks and marks a @FA{nonce}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_MarkNonce(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_MarkNonce(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1934,7 +1934,7 @@ static void JS_MarkNonce(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_MTime
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_MTime(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1960,7 +1960,7 @@ static void JS_MTime(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_MoveFile
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_MoveFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2007,7 +2007,7 @@ static void JS_MoveFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_CopyDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CopyRecursive(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2061,7 +2061,7 @@ static void JS_CopyRecursive(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_CopyFile
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CopyFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2112,7 +2112,7 @@ static void JS_CopyFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @verbinclude fluent39
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Output(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2186,7 +2186,7 @@ static void JS_Output(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ProcessStatistics(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2231,7 +2231,7 @@ static void JS_ProcessStatistics(
 /// Generates a random number
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Rand(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Rand(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2269,7 +2269,7 @@ static void JS_Rand(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_Read
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2305,7 +2305,7 @@ static void JS_Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_ReadBuffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ReadBuffer(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2338,7 +2338,7 @@ static void JS_ReadBuffer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_Read64
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Read64(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2369,7 +2369,7 @@ static void JS_Read64(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_Save
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Save(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Save(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2428,7 +2428,7 @@ static void JS_Save(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock JS_Remove
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Remove(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2458,7 +2458,7 @@ static void JS_Remove(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveDirectory(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2495,7 +2495,7 @@ static void JS_RemoveDirectory(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveRecursiveDirectory(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2572,7 +2572,7 @@ static void JS_RemoveRecursiveDirectory(
 /// Formats the arguments according to the format string @FA{format}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_SPrintF(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_SPrintF(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2689,7 +2689,7 @@ static void JS_SPrintF(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Computes an sha512 for the @FA{text}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Sha512(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2731,7 +2731,7 @@ static void JS_Sha512(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Computes an sha384 for the @FA{text}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Sha384(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2773,7 +2773,7 @@ static void JS_Sha384(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Computes an sha256 for the @FA{text}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Sha256(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2815,7 +2815,7 @@ static void JS_Sha256(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Computes an sha224 for the @FA{text}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Sha224(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2857,7 +2857,7 @@ static void JS_Sha224(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Computes an sha1 for the @FA{text}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Sha1(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2899,7 +2899,7 @@ static void JS_Sha1(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Wait for @FA{seconds}, without calling the garbage collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Sleep(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2941,7 +2941,7 @@ static void JS_Sleep(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @verbinclude fluent36
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Time(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Time(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2958,7 +2958,7 @@ static void JS_Time(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Wait for @FA{seconds}, call the garbage collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Wait(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2989,90 +2989,6 @@ static void JS_Wait(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief intentionally causes a segfault
-///
-/// @FUN{internal.debugSegfault(@FA{message})}
-///
-/// intentionally cause a segmentation violation
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugSegfault(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugSegfault(<message>)");
-  }
-
-  std::string const message = TRI_ObjectToString(args[0]);
-
-  TRI_SegfaultDebugging(message.c_str());
-
-  // we may get here if we are in non-maintainer mode
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a failure point
-///
-/// @FUN{internal.debugSetFailAt(@FA{point})}
-///
-/// Set a point for an intentional system failure
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugSetFailAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugSetFailAt(<point>)");
-  }
-
-  std::string const point = TRI_ObjectToString(args[0]);
-
-  TRI_AddFailurePointDebugging(point.c_str());
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a failure point
-///
-/// @FUN{internal.debugRemoveFailAt(@FA{point})}
-///
-/// Remove a point for an intentional system failure
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugRemoveFailAt(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugRemoveFailAt(<point>)");
-  }
-
-  std::string const point = TRI_ObjectToString(args[0]);
-
-  TRI_RemoveFailurePointDebugging(point.c_str());
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clears all failure points
 ///
 /// @FUN{internal.debugClearFailAt()}
@@ -3081,7 +2997,7 @@ static void JS_DebugRemoveFailAt(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DebugClearFailAt(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3108,7 +3024,7 @@ static void JS_DebugClearFailAt(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DebugCanUseFailAt(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3133,7 +3049,7 @@ static void JS_DebugCanUseFailAt(
 /// Computes the PBKDF2 HMAC SHA1 derived key for the @FA{password}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_PBKDF2(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_PBKDF2(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -3164,7 +3080,7 @@ static void JS_PBKDF2(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// Computes the HMAC for the @FA{message}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_HMAC(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3209,7 +3125,7 @@ static void JS_HMAC(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExecuteExternal(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3317,7 +3233,7 @@ static void JS_ExecuteExternal(
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_StatusExternal(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   v8::Handle<v8::String> pidname = TRI_V8_ASCII_STRING("pid");
@@ -3406,7 +3322,7 @@ static void JS_StatusExternal(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExecuteAndWaitExternal(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3567,7 +3483,7 @@ static void JS_ExecuteAndWaitExternal(
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KillExternal(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3605,7 +3521,7 @@ static void JS_KillExternal(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief checks if a port is available
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_TestPort(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_TestPort(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3642,7 +3558,7 @@ static void JS_TestPort(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ArangoError(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3699,7 +3615,7 @@ static void JS_ArangoError(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief isIP
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_IsIP(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_IsIP(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3994,7 +3910,7 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 /// @brief normalizes a v8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_normalize_V8_Obj(const v8::FunctionCallbackInfo<v8::Value>& args,
+void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
                           v8::Handle<v8::Value> obj) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -4333,18 +4249,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_WAIT"), JS_Wait);
 
-// debugging functions
-#ifdef TRI_ENABLE_FAILURE_TESTS
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),
-                               JS_DebugSegfault);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_DEBUG_SET_FAILAT"),
-                               JS_DebugSetFailAt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_DEBUG_REMOVE_FAILAT"),
-                               JS_DebugRemoveFailAt);
-#endif
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);

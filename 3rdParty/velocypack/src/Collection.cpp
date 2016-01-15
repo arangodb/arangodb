@@ -204,6 +204,16 @@ void Collection::keys(Slice const& slice,
   }
 }
 
+void Collection::keys(Slice const& slice,
+                      std::set<std::string>& result) {
+  ObjectIterator it(slice);
+
+  while (it.valid()) {
+    result.emplace(std::move(it.key().copyString()));
+    it.next();
+  }
+}
+
 Builder Collection::values(Slice const& slice) {
   Builder b;
   b.add(Value(ValueType::Array));

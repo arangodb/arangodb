@@ -91,7 +91,7 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ServerStatistics(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -113,7 +113,7 @@ static void JS_ServerStatistics(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ClientStatistics(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -163,7 +163,7 @@ static void JS_ClientStatistics(
 /// @brief returns the current http statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_HttpStatistics(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

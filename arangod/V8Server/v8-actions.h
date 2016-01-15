@@ -46,6 +46,9 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        TRI_vocbase_t* vocbase,
                        triagens::arango::ApplicationV8*);
 
+void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+                          std::string const& startupPath,
+                          std::string const& modules);
 #endif
 
 

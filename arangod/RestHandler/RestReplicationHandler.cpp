@@ -71,9 +71,6 @@ RestReplicationHandler::RestReplicationHandler(HttpRequest* request)
 RestReplicationHandler::~RestReplicationHandler() {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestReplicationHandler::execute() {
   // extract the request type

@@ -116,7 +116,7 @@ static inline uint32_t GetNumEntries(const TRI_fulltext_list_t* const list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void SetNumEntries(TRI_fulltext_list_t* const list,
-                                 const uint32_t value) {
+                                 uint32_t value) {
   uint32_t* head = (uint32_t*)list;
 
   *(++head) = value;
@@ -168,7 +168,7 @@ static void SortList(TRI_fulltext_list_t* list) {
 /// @brief get the memory usage for a list of the specified size
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t MemoryList(const uint32_t size) {
+static inline size_t MemoryList(uint32_t size) {
   return sizeof(uint32_t) +                         // numAllocated
          sizeof(uint32_t) +                         // numEntries
          size * sizeof(TRI_fulltext_list_entry_t);  // entries
@@ -179,7 +179,7 @@ static inline size_t MemoryList(const uint32_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_fulltext_list_t* IncreaseList(TRI_fulltext_list_t* list,
-                                         const uint32_t size) {
+                                         uint32_t size) {
   TRI_fulltext_list_t* copy =
       TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, list, MemoryList(size));
 
@@ -222,7 +222,7 @@ TRI_fulltext_list_t* TRI_CloneListFulltextIndex(
 /// @brief create a new list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_CreateListFulltextIndex(const uint32_t size) {
+TRI_fulltext_list_t* TRI_CreateListFulltextIndex(uint32_t size) {
   TRI_fulltext_list_t* list =
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, MemoryList(size), false);
 

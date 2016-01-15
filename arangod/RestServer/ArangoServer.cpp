@@ -58,7 +58,7 @@
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
-#include "RestHandler/RestDebugHelperHandler.h"
+#include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
@@ -228,11 +228,6 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<RestVersionHandler>::createNoData,
       nullptr);
 
-  factory->addHandler(
-      "/_api/debug-helper",
-      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData,
-      nullptr);
-
   // And now the _admin handlers
   factory->addPrefixHandler(
       "/_admin/job",
@@ -245,11 +240,6 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<RestVersionHandler>::createNoData,
       nullptr);
 
-  factory->addHandler(
-      "/_admin/debug-helper",
-      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData,
-      nullptr);
-
   // further admin handlers
   factory->addHandler(
       "/_admin/log",
@@ -260,6 +250,14 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       "/_admin/work-monitor",
       RestHandlerCreator<WorkMonitorHandler>::createNoData,
       nullptr);
+
+// This handler is to activate SYS_DEBUG_FAILAT on DB servers
+#ifdef TRI_ENABLE_FAILURE_TESTS
+  factory->addPrefixHandler(
+      "/_admin/debug",
+      RestHandlerCreator<RestDebugHandler>::createNoData,
+      nullptr);
+#endif
 
   factory->addPrefixHandler(
       "/_admin/shutdown",
@@ -433,9 +431,6 @@ ArangoServer::~ArangoServer() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer() {
   _applicationServer =
@@ -858,9 +853,6 @@ void ArangoServer::buildApplicationServer() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer() {
   TRI_InitializeStatistics();

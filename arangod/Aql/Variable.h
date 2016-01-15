@@ -31,15 +31,15 @@
 namespace triagens {
 namespace aql {
 
-
 struct Variable {
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the variable
   //////////////////////////////////////////////////////////////////////////////
 
   Variable(std::string const&, VariableId);
 
-  Variable(basics::Json const& json);
+  explicit Variable(basics::Json const& json);
 
   Variable* clone() const { return new Variable(name, id); }
 
@@ -49,7 +49,6 @@ struct Variable {
 
   ~Variable();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief registers a constant value for the variable
   /// this constant value is used for constant propagation in optimizations

@@ -367,10 +367,10 @@ void RestVocbaseBaseHandler::generateDocument(
 
     TRI_DestroyStringBuffer(&buffer);
 
-  } catch (arangodb::velocypack::Exception e) {
+  } catch (arangodb::velocypack::Exception const&) {
     // TODO What should happen on error here?
     // Failed to build the object
-    // All other Exception where not catched before
+    // All other Exceptions were not catched before
   }
 }
 

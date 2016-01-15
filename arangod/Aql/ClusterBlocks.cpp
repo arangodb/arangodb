@@ -21,19 +21,18 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ClusterBlocks.h"
+#include "ClusterBlocks.h"
 #include "Aql/ExecutionEngine.h"
+#include "Basics/Exceptions.h"
+#include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/json-utilities.h"
-#include "Basics/Exceptions.h"
 #include "Cluster/ClusterMethods.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "V8/v8-globals.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
 using namespace triagens::arango;
 using namespace triagens::aql;
 
@@ -70,7 +69,7 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
       auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
       TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      _sortRegisters.emplace_back(make_pair(it->second.registerId, p.second));
+      _sortRegisters.emplace_back(std::make_pair(it->second.registerId, p.second));
     }
   }
 }
@@ -164,7 +163,7 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     _gatherBlockPos.reserve(_dependencies.size());
     for (size_t i = 0; i < _dependencies.size(); i++) {
       _gatherBlockBuffer.emplace_back();
-      _gatherBlockPos.emplace_back(make_pair(i, 0));
+      _gatherBlockPos.emplace_back(std::make_pair(i, 0));
     }
   }
 
@@ -231,7 +230,7 @@ bool GatherBlock::hasMore() {
       if (!_gatherBlockBuffer.at(i).empty()) {
         return true;
       } else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
-        _gatherBlockPos.at(i) = make_pair(i, 0);
+        _gatherBlockPos.at(i) = std::make_pair(i, 0);
         return true;
       }
     }
@@ -273,7 +272,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
         index = i;
-        _gatherBlockPos.at(i) = make_pair(i, 0);
+        _gatherBlockPos.at(i) = std::make_pair(i, 0);
       }
     } else {
       index = i;
@@ -352,7 +351,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
       delete cur;
       _gatherBlockBuffer.at(val.first).pop_front();
-      _gatherBlockPos.at(val.first) = make_pair(val.first, 0);
+      _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
     }
   }
 
@@ -393,7 +392,7 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
         index = i;
-        _gatherBlockPos.at(i) = make_pair(i, 0);
+        _gatherBlockPos.at(i) = std::make_pair(i, 0);
       }
     } else {
       index = i;
@@ -438,7 +437,7 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
       delete cur;
       _gatherBlockBuffer.at(val.first).pop_front();
-      _gatherBlockPos.at(val.first) = make_pair(val.first, 0);
+      _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
     }
   }
 
@@ -811,6 +810,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
                                  Collection const* collection)
     : BlockWithClients(engine, ep, shardIds),
       _collection(collection),
+      _index(0),
       _regId(ExecutionNode::MaxRegisterId),
       _alternativeRegId(ExecutionNode::MaxRegisterId) {
   // get the variable to inspect . . .
@@ -1032,7 +1032,7 @@ bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
       // this may modify the input item buffer in place
       size_t id = sendToClient(cur);
 
-      buf.at(id).emplace_back(make_pair(_index, _pos++));
+      buf.at(id).emplace_back(std::make_pair(_index, _pos++));
     }
 
     if (_pos == cur->size()) {

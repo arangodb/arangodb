@@ -441,7 +441,7 @@ Task* Scheduler::lookupTaskById(uint64_t taskId) {
 /// @brief returns the loop for a task id
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t Scheduler::lookupLoopById(uint64_t taskId) {
+EventLoop Scheduler::lookupLoopById(uint64_t taskId) {
   MUTEX_LOCKER(schedulerLock);
 
   auto&& task = taskRegistered.find(taskId);

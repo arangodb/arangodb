@@ -132,7 +132,7 @@ static void FreeFollowers(index_t* const, node_t*);
 
 static void FreeNode(index_t* const, node_t*);
 
-static size_t MemorySubNodeList(const uint32_t);
+static size_t MemorySubNodeList(uint32_t);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +140,7 @@ static size_t MemorySubNodeList(const uint32_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 #if TRI_FULLTEXT_DEBUG
-void Indent(const uint32_t level) {
+void Indent(uint32_t level) {
   uint32_t i;
 
   for (i = 0; i < level; ++i) {
@@ -212,7 +212,7 @@ void DumpNode(const node_t* const node, uint32_t level) {
 /// "good" boundary
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t Padding(const uint32_t numEntries) {
+static inline size_t Padding(uint32_t numEntries) {
 #ifdef FULLTEXT_PADDING
   size_t offset = sizeof(uint8_t) +                    // numAllocated
                   sizeof(uint8_t) +                    // numUsed
@@ -357,8 +357,8 @@ static uint32_t NodeNumAllocated(const node_t* const node) {
 /// @brief initialize a sub-node list with length information
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitializeSubNodeList(void* data, const uint32_t numAllocated,
-                                  const uint32_t numFollowers) {
+static void InitializeSubNodeList(void* data, uint32_t numAllocated,
+                                  uint32_t numFollowers) {
   uint8_t* head = (uint8_t*)data;
 
   *(head++) = (uint8_t)numAllocated;
@@ -426,7 +426,7 @@ static inline node_t** NodeFollowersNodes(const node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline node_t** FollowersNodesPos(void* data,
-                                         const uint32_t numAllocated) {
+                                         uint32_t numAllocated) {
   uint8_t* head = (uint8_t*)data;
   uint8_t* keys = (uint8_t*)(head + 2);  // numAllocated + numEntries
 
@@ -438,7 +438,7 @@ static inline node_t** FollowersNodesPos(void* data,
 /// specific length
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t MemorySubNodeList(const uint32_t numEntries) {
+static size_t MemorySubNodeList(uint32_t numEntries) {
   return sizeof(uint8_t) +  // numAllocated
          sizeof(uint8_t) +  // numEntries
          ((sizeof(node_char_t) + sizeof(node_t*)) *
@@ -452,8 +452,8 @@ static size_t MemorySubNodeList(const uint32_t numEntries) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ExtendSubNodeList(index_t* const idx, node_t* const node,
-                              const uint32_t numFollowers,
-                              const uint32_t numAllocated) {
+                              uint32_t numFollowers,
+                              uint32_t numAllocated) {
   size_t nextSize;
   uint32_t nextAllocated;
 
@@ -939,7 +939,7 @@ static inline TRI_fulltext_list_t* GetSubNodeHandles(const node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static node_t* InsertSubNode(index_t* const idx, node_t* const node,
-                             const uint32_t position, const node_char_t key) {
+                             uint32_t position, const node_char_t key) {
   node_t** followerNodes;
   node_char_t* followerKeys;
   node_t* subNode;

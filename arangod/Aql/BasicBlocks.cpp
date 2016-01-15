@@ -26,7 +26,6 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
 using namespace triagens::arango;
 using namespace triagens::aql;
 

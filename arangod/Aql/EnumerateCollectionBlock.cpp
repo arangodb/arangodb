@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/EnumerateCollectionBlock.h"
+#include "EnumerateCollectionBlock.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/CollectionScanner.h"
@@ -29,7 +29,6 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
 using namespace triagens::arango;
 using namespace triagens::aql;
 

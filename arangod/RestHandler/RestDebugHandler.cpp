@@ -18,68 +18,64 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestDebugHelperHandler.h"
+#include "RestDebugHandler.h"
 
-#include "Basics/conversions.h"
-#include "Basics/json.h"
-#include "Basics/tri-strings.h"
-#include "Dispatcher/DispatcherThread.h"
+#include "Rest/AnyServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
+
+using namespace arangodb;
 
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
-using namespace std;
-
-
-
-RestDebugHelperHandler::RestDebugHelperHandler(HttpRequest* request)
-    : RestBaseHandler(request) {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDebugHelperHandler::isDirect() const { return false; }
+extern AnyServer* ArangoInstance;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the server version number
-///
-/// Parameters:
-/// - sleep: sleep for X seconds
-////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestDebugHelperHandler::execute() {
-  requestStatisticsAgentSetIgnore();
+RestDebugHandler::RestDebugHandler(HttpRequest* request)
+    : RestVocbaseBaseHandler(request) {}
 
-  bool found;
-  char const* sleepStr = _request->value("sleep", found);
-  auto s = static_cast<unsigned long>(StringUtils::doubleDecimal(sleepStr) *
-                                      1000.0 * 1000.0);
 
-  if (0 < s) {
-    usleep(s);
+bool RestDebugHandler::isDirect() const { return false; }
+
+
+HttpHandler::status_t RestDebugHandler::execute() {
+  // extract the sub-request type
+  HttpRequest::HttpRequestType type = _request->requestType();
+  size_t const len = _request->suffix().size();
+  if (len != 2 || !(_request->suffix()[0] == "failat")) {
+    generateNotImplemented("ILLEGAL /_admin/debug/failat");
+    return status_t(HANDLER_DONE);
   }
+  std::vector<std::string> const& suffix = _request->suffix();
 
+  // execute one of the CRUD methods
+  switch (type) {
+    case HttpRequest::HTTP_REQUEST_DELETE:
+      TRI_RemoveFailurePointDebugging(suffix[1].c_str());
+      break;
+    case HttpRequest::HTTP_REQUEST_PUT:
+      TRI_AddFailurePointDebugging(suffix[1].c_str());
+      break;
+    default:
+      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      return status_t(HANDLER_DONE);
+  }
   try {
     VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("server", VPackValue("arango"));
-    result.add("version", VPackValue(TRI_VERSION));
-    result.add("sleep", VPackValue(s / 1000000.0));
-    result.close();
-    VPackSlice slice(result.start());
-    generateResult(slice);
+    result.add(VPackValue(true));
+    VPackSlice s = result.slice();
+    generateResult(s);
   } catch (...) {
-    // Ignore the error
+    // Ignore this error
   }
-
   return status_t(HANDLER_DONE);
 }
-
-

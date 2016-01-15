@@ -18,47 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_DEBUG_HELPER_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_DEBUG_HELPER_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_DEBUG_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_DEBUG_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "Rest/HttpResponse.h"
-#include "RestHandler/RestBaseHandler.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-namespace triagens {
-namespace admin {
-
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestDebugHelperHandler : public RestBaseHandler {
-  
+class RestDebugHandler : public triagens::arango::RestVocbaseBaseHandler {
  public:
 
-  explicit RestDebugHelperHandler(rest::HttpRequest*);
+  explicit RestDebugHandler(triagens::rest::HttpRequest*);
 
-  
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   bool isDirect() const override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the server version number
-  //////////////////////////////////////////////////////////////////////////////
 
   status_t execute() override;
 };
 }
-}
 
 #endif
-
-
