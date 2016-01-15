@@ -24,7 +24,8 @@ endif ()
 
 project(arangodb)
 
-
+set(CMAKE_CXX_STANDARD 11)
+option(AR_USE_SYSTEM_LIBS "use libraries provided by the system" OFF)
 add_subdirectory(3rdParty)
 
 
