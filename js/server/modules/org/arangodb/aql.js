@@ -7552,35 +7552,50 @@ function AQL_NEIGHBORS (vertexCollection,
       });
     }
   }
-  let edges = AQL_EDGES(edgeCollection, vertex, direction, undefined, { includeVertices: options.includeData });
-  let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
+  let edges = AQL_EDGES(edgeCollection, vertex, direction, examples, { includeVertices: options.includeData });
   let vertices = [];
   let distinct = new Set();
   if (options.includeData) {
-    for (let i = 0; i < tmp.length; ++i) {
-      let v = tmp[i].vertex;
-      if (!distinct.has(v._id)) {
-        distinct.add(v._id);
-        vertices.push(v);
+    for (let i = 0; i < edges.length; ++i) {
+      let id;
+      if (direction === "outbound") {
+        id = edges[i].edge._to;
+      }
+      else if (direction === "inbound") {
+        id = edges[i].edge._from;
+      }
+      else {
+        // any
+        if (edges[i].edge._from === vertex) {
+          id = edges[i].edge._to;
+        }
+        else {
+          id = edges[i].edge._from;
+        }
+      }
+      
+      if (!distinct.has(id)) {
+        distinct.add(id);
+        vertices.push(edges[i].vertex);
       }
     }
   }
   else {
-    for (let i = 0; i < tmp.length; ++i) {
+    for (let i = 0; i < edges.length; ++i) {
       let id;
       if (direction === "outbound") {
-        id = tmp[i].edge._to;
+        id = edges[i]._to;
       }
       else if (direction === "inbound") {
-        id = tmp[i].edge._from;
+        id = edges[i]._from;
       }
       else {
         // any
-        if (tmp[i].edge._from === vertex) {
-          id = tmp[i].edge._to;
+        if (edges[i]._from === vertex) {
+          id = edges[i]._to;
         }
         else {
-          id = tmp[i].edge._from;
+          id = edges[i]._from;
         }
       }
 

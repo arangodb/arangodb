@@ -2328,6 +2328,9 @@ static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
   int res = trx->readSingle(collection, &mptr, id.key); 
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      return Json(Json::Null);
+    }
     THROW_ARANGO_EXCEPTION(res);
   }
 
