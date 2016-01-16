@@ -2989,33 +2989,6 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clears all failure points
-///
-/// @FUN{internal.debugClearFailAt()}
-///
-/// Remove all points for intentional system failures
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_DebugClearFailAt(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugClearFailAt()");
-  }
-
-// if failure testing is not enabled, this is a no-op
-#ifdef TRI_ENABLE_FAILURE_TESTS
-  TRI_ClearFailurePointsDebugging();
-#endif
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether failure points can be used
 ///
 /// @FUN{internal.debugCanUseFailAt()}
@@ -4248,14 +4221,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING("SYS_TIME"), JS_Time);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_WAIT"), JS_Wait);
-
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
-                               JS_DebugClearFailAt);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CAN_USE_FAILAT"),
                                JS_DebugCanUseFailAt);
-
   // .............................................................................
   // create the global variables
   // .............................................................................
