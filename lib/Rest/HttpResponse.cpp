@@ -134,6 +134,8 @@ std::string HttpResponse::responseString(HttpResponseCode code) {
       return "429 Too Many Requests";
     case REQUEST_HEADER_FIELDS_TOO_LARGE:
       return "431 Request Header Fields Too Large";
+    case UNAVAILABLE_FOR_LEGAL_REASONS:
+      return "451 Unavailable For Legal Reasons";
 
     case SERVER_ERROR:
       return "500 Internal Server Error";
@@ -264,6 +266,8 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode(
       return TOO_MANY_REQUESTS;
     case 431:
       return REQUEST_HEADER_FIELDS_TOO_LARGE;
+    case 451:
+      return UNAVAILABLE_FOR_LEGAL_REASONS;
 
     case 500:
       return SERVER_ERROR;
