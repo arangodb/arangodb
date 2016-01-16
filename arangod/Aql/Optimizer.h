@@ -165,7 +165,7 @@ class Optimizer {
     removeSortRandRule_pass5 = 720,
 
     // remove INTO for COLLECT if appropriate
-    removeCollectIntoRule_pass5 = 740,
+    removeCollectVariablesRule_pass5 = 740,
 
     // propagate constant attributes in FILTERs
     propagateConstantAttributesRule_pass5 = 750,

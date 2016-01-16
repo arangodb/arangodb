@@ -58,10 +58,10 @@ void removeUnnecessaryFiltersRule(Optimizer*, ExecutionPlan*,
                                   Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove INTO of a COLLECT if not used
+/// @brief remove unused INTO variable from COLLECT, or unused aggregates
 ////////////////////////////////////////////////////////////////////////////////
 
-void removeCollectIntoRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeCollectVariablesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief propagate constant attributes in FILTERs

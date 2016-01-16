@@ -438,8 +438,8 @@ void triagens::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
 /// additionally remove all unused aggregate calculations from a COLLECT
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeCollectIntoRule(Optimizer* opt, ExecutionPlan* plan,
-                                          Optimizer::Rule const* rule) {
+void triagens::aql::removeCollectVariablesRule(Optimizer* opt, ExecutionPlan* plan,
+                                               Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::COLLECT, true));
 
