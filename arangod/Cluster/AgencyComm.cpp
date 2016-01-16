@@ -26,6 +26,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/json.h"
 #include "Basics/logging.h"
@@ -108,23 +109,19 @@ int AgencyCommResult::httpCode() const { return _statusCode; }
 ////////////////////////////////////////////////////////////////////////////////
 
 int AgencyCommResult::errorCode() const {
-  int result = 0;
-
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str()));
-
-  if (!TRI_IsObjectJson(json.get())) {
-    return result;
+  try {
+    std::shared_ptr<VPackBuilder> bodyBuilder =
+        VPackParser::fromJson(_body.c_str());
+    VPackSlice body = bodyBuilder->slice();
+    if (!body.isObject()) {
+      return 0;
+    }
+    // get "errorCode" attribute (0 if not exist)
+    return triagens::basics::VelocyPackHelper::getNumericValue<int>(
+        body, "errorCode", 0);
+  } catch (VPackException const&) {
+    return 0;
   }
-
-  // get "errorCode" attribute
-  TRI_json_t const* errorCode = TRI_LookupObjectJson(json.get(), "errorCode");
-
-  if (TRI_IsNumberJson(errorCode)) {
-    result = (int)errorCode->_value._number;
-  }
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,8 +130,6 @@ int AgencyCommResult::errorCode() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyCommResult::errorMessage() const {
-  std::string result;
-
   if (!_message.empty()) {
     // return stored message first if set
     return _message;
@@ -144,25 +139,19 @@ std::string AgencyCommResult::errorMessage() const {
     return std::string("unable to connect to agency");
   }
 
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str()));
-
-  if (json == nullptr) {
+  try {
+    std::shared_ptr<VPackBuilder> bodyBuilder =
+        VPackParser::fromJson(_body.c_str());
+    VPackSlice body = bodyBuilder->slice();
+    if (!body.isObject()) {
+      return "";
+    }
+    // get "message" attribute ("" if not exist)
+    return triagens::basics::VelocyPackHelper::getStringValue(
+        body, "message", "");
+  } catch (VPackException const&) {
     return std::string("Out of memory");
   }
-
-  if (!TRI_IsObjectJson(json.get())) {
-    return result;
-  }
-
-  // get "message" attribute
-  TRI_json_t const* message = TRI_LookupObjectJson(json.get(), "message");
-
-  if (TRI_IsStringJson(message)) {
-    result = std::string(message->_value._string.data,
-                         message->_value._string.length - 1);
-  }
-
   return result;
 }
 
