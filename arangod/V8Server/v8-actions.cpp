@@ -1437,10 +1437,60 @@ static void JS_DebugRemoveFailAt(
 }
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears all failure points
+///
+/// @FUN{internal.debugClearFailAt()}
+///
+/// Remove all points for intentional system failures
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_DebugClearFailAt(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("debugClearFailAt()");
+  }
+
+// if failure testing is not enabled, this is a no-op
+#ifdef TRI_ENABLE_FAILURE_TESTS
+  TRI_ClearFailurePointsDebugging();
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_GET_GLOBALS();
+
+    if (v8g->_vocbase == nullptr) {
+      TRI_V8_THROW_EXCEPTION_MEMORY();
+    }
+    std::string dbname(v8g->_vocbase->_name);
+
+    int res = clusterSendToAllServers(
+        dbname, "_admin/debug/failat",
+        triagens::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE,
+        "");
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
+#endif
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+
+
 void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           std::string const& startupPath,
                           std::string const& modules) {
 // debugging functions
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
+                               JS_DebugClearFailAt);
 #ifdef TRI_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),

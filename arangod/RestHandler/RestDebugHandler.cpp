@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDebugHandler.h"
@@ -51,7 +51,7 @@ HttpHandler::status_t RestDebugHandler::execute() {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
   size_t const len = _request->suffix().size();
-  if (len != 2 || !(_request->suffix()[0] == "failat")) {
+  if (len == 0 || len > 2 || !(_request->suffix()[0] == "failat")) {
     generateNotImplemented("ILLEGAL /_admin/debug/failat");
     return status_t(HANDLER_DONE);
   }
@@ -60,13 +60,21 @@ HttpHandler::status_t RestDebugHandler::execute() {
   // execute one of the CRUD methods
   switch (type) {
     case HttpRequest::HTTP_REQUEST_DELETE:
-      TRI_RemoveFailurePointDebugging(suffix[1].c_str());
+      if (len == 1) {
+        TRI_ClearFailurePointsDebugging();
+      } else {
+        TRI_RemoveFailurePointDebugging(suffix[1].c_str());
+      }
       break;
     case HttpRequest::HTTP_REQUEST_PUT:
-      TRI_AddFailurePointDebugging(suffix[1].c_str());
+      if (len == 2) {
+        TRI_AddFailurePointDebugging(suffix[1].c_str());
+      } else {
+        generateNotImplemented("ILLEGAL /_admin/debug/failat");
+      }
       break;
     default:
-      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      generateNotImplemented("ILLEGAL /_admin/debug/failat");
       return status_t(HANDLER_DONE);
   }
   try {
