@@ -55,6 +55,7 @@ struct Aggregator {
                               char const*);
 
   static bool isSupported(std::string const&);
+  static bool requiresInput(std::string const&);
   
   triagens::arango::AqlTransaction* trx;
 };

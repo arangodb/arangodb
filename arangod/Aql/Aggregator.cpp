@@ -87,7 +87,16 @@ bool Aggregator::isSupported(std::string const& type) {
   );
 }
 
-  
+bool Aggregator::requiresInput(std::string const& type) {
+  if (type == "LENGTH" || type == "COUNT") {
+    // LENGTH/COUNT do not require its input parameter, so 
+    // it can be optimized away
+    return false;
+  }
+  // all other functions require their input
+  return true;
+}
+
 void AggregatorLength::reset() {
   count = 0;
 }
