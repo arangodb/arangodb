@@ -49,6 +49,7 @@ function UniqueHashIndexFailuresSuite () {
 
     setUp : function () {
       internal.db._drop(cn);
+      internal.debugClearFailAt();
       collection = internal.db._create(cn);
       collection.ensureUniqueConstraint("a");
     },
@@ -57,7 +58,8 @@ function UniqueHashIndexFailuresSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDrop : function () {
+    tearDown : function () {
+      internal.debugClearFailAt();
       internal.db._drop(cn);
     },
 
@@ -137,8 +139,9 @@ function HashIndexMultiFailuresSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDrop : function () {
+    tearDown : function () {
       internal.db._drop(cn);
+      internal.debugClearFailAt();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
