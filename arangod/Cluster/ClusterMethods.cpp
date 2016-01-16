@@ -45,38 +45,6 @@ using namespace triagens::arango;
 namespace triagens {
 namespace arango {
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a numeric value from an hierarchical JSON
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static T ExtractFigure(TRI_json_t const* json, char const* name) {
-  TRI_json_t const* value = TRI_LookupObjectJson(json, name);
-
-  if (!TRI_IsNumberJson(value)) {
-    return static_cast<T>(0);
-  }
-
-  return static_cast<T>(value->_value._number);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a numeric value from an hierarchical JSON
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static T ExtractFigure(TRI_json_t const* json, char const* group,
-                       char const* name) {
-  TRI_json_t const* g = TRI_LookupObjectJson(json, group);
-
-  if (!TRI_IsObjectJson(g)) {
-    return static_cast<T>(0);
-  }
-
-  return ExtractFigure<T>(g, name);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a numeric value from an hierarchical VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +60,11 @@ static T ExtractFigure(VPackSlice const& slice, char const* group,
   return triagens::basics::VelocyPackHelper::getNumericValue<T>(g, name, 0);
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts answer from response into a VPackBuilder.
+///        If there was an error extracting the answer the builder will be empty.
+///        No Error can be thrown.
+////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<VPackBuilder> ExtractAnswer(
     ClusterCommResult const& res) {
