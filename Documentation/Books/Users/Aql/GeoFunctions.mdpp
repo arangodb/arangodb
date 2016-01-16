@@ -57,9 +57,7 @@ with an error.
       RETURN IS_IN_POLYGON([ [ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 10 ] ], [ 7, 4 ], true)
 
 
-!SUBSECTION Related topics
+!SUBSUBSECTION Related topics
 
-Other ArangoDB geographic features are described in: 
-- [Geo queries](../SimpleQueries/GeoQueries.md)  
-- [Geo indexes](../IndexHandling/Geo.md)  
+ArangoDB geographic indexing feature is described in [Geo indexes](../IndexHandling/Geo.md)  
 
