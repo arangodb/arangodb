@@ -54,9 +54,9 @@
 #include "unicode/timezone.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
 
 struct LocalCollectionGuard {
   explicit LocalCollectionGuard(TRI_vocbase_col_t* collection)
@@ -322,13 +322,13 @@ static void DocumentVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(error);
   }
 
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  error = triagens::arango::getDocumentOnCoordinator(
+  error = arangodb::arango::getDocumentOnCoordinator(
       dbname, collname, key, rev, headers, generateDocument, responseCode,
       resultHeaders, resultBody);
 
@@ -354,7 +354,7 @@ static void DocumentVocbaseColCoordinator(
   }
   VPackSlice slice = builder.slice();
 
-  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
     if (!slice.isObject()) {
       if (generateDocument) {
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -362,8 +362,8 @@ static void DocumentVocbaseColCoordinator(
       TRI_V8_RETURN_FALSE();
     }
     if (generateDocument) {
-      int errorNum = triagens::basics::VelocyPackHelper::getNumericValue<int>(slice, "errorNum", 0);
-      std::string errorMessage = triagens::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+      int errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice, "errorNum", 0);
+      std::string errorMessage = arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
       TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
     } else {
       TRI_V8_RETURN_FALSE();
@@ -688,13 +688,13 @@ static void ModifyVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  error = triagens::arango::modifyDocumentOnCoordinator(
+  error = arangodb::arango::modifyDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
       mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
 
@@ -705,7 +705,7 @@ static void ModifyVocbaseColCoordinator(
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
   json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
-  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
     if (!TRI_IsObjectJson(json.get())) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -1462,13 +1462,13 @@ static void RemoveVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(error);
   }
 
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
 
-  error = triagens::arango::deleteDocumentOnCoordinator(
+  error = arangodb::arango::deleteDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, headers, responseCode,
       resultHeaders, resultBody);
 
@@ -1478,7 +1478,7 @@ static void RemoveVocbaseColCoordinator(
   // report what the DBserver told us: this could now be 200/202 or
   // 404/412
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
-  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
     if (!TRI_IsObjectJson(json)) {
       if (nullptr != json) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -2196,7 +2196,7 @@ static void JS_PropertiesVocbaseCol(
 
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
-    triagens::arango::VocbaseCollectionInfo info =
+    arangodb::arango::VocbaseCollectionInfo info =
         ClusterInfo::instance()->getCollectionProperties(
             databaseName, StringUtils::itoa(collection->_cid));
 
@@ -2224,7 +2224,7 @@ static void JS_PropertiesVocbaseCol(
           }
         }
         if (info.isVolatile() !=
-            triagens::basics::VelocyPackHelper::getBooleanValue(
+            arangodb::basics::VelocyPackHelper::getBooleanValue(
                 slice, "isVolatile", info.isVolatile())) {
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "isVolatile option cannot be changed at runtime");
@@ -2234,7 +2234,7 @@ static void JS_PropertiesVocbaseCol(
               "volatile collections do not support the waitForSync option");
         }
         uint32_t tmp =
-            triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+            arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
                 slice, "indexBuckets",
                 2 /*Just for validation, this default Value passes*/);
         if (tmp == 0 || tmp > 1024) {
@@ -2314,14 +2314,14 @@ static void JS_PropertiesVocbaseCol(
       {
         // only work under the lock
         TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-        triagens::basics::ScopeGuard guard{
+        arangodb::basics::ScopeGuard guard{
             []() -> void {},
             [&document]() -> void {
               TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
             }};
 
         if (base->_info.isVolatile() &&
-            triagens::basics::VelocyPackHelper::getBooleanValue(
+            arangodb::basics::VelocyPackHelper::getBooleanValue(
                 slice, "waitForSync", base->_info.waitForSync())) {
           ReleaseCollection(collection);
           // the combination of waitForSync and isVolatile makes no sense
@@ -2330,14 +2330,14 @@ static void JS_PropertiesVocbaseCol(
         }
 
         if (base->_info.isVolatile() !=
-            triagens::basics::VelocyPackHelper::getBooleanValue(
+            arangodb::basics::VelocyPackHelper::getBooleanValue(
                 slice, "isVolatile", base->_info.isVolatile())) {
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "isVolatile option cannot be changed at runtime");
         }
 
         uint32_t tmp =
-            triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+            arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
                 slice, "indexBuckets",
                 2 /*Just for validation, this default Value passes*/);
         if (tmp == 0 || tmp > 1024) {
@@ -2363,16 +2363,16 @@ static void JS_PropertiesVocbaseCol(
       res = TRI_ERROR_NO_ERROR;
 
       try {
-        triagens::wal::ChangeCollectionMarker marker(
+        arangodb::wal::ChangeCollectionMarker marker(
             base->_vocbase->_id, base->_info.id(), JsonHelper::toString(json));
-        triagens::wal::SlotInfoCopy slotInfo =
-            triagens::wal::LogfileManager::instance()->allocateAndWrite(marker,
+        arangodb::wal::SlotInfoCopy slotInfo =
+            arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                         false);
 
         if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
         }
-      } catch (triagens::basics::Exception const& ex) {
+      } catch (arangodb::basics::Exception const& ex) {
         res = ex.code();
       } catch (...) {
         res = TRI_ERROR_INTERNAL;
@@ -2707,12 +2707,12 @@ static void InsertVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> headers;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  int error = triagens::arango::createDocumentOnCoordinator(
+  int error = arangodb::arango::createDocumentOnCoordinator(
       dbname, collname, options.waitForSync, json, headers, responseCode,
       resultHeaders, resultBody);
 
@@ -2722,7 +2722,7 @@ static void InsertVocbaseColCoordinator(
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
   json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
-  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
     if (!TRI_IsObjectJson(json.get())) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -2977,11 +2977,11 @@ static void InsertEdgeColCoordinator(
     options.waitForSync = ExtractWaitForSync(args, 4 + argOffset);
   }
 
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  int error = triagens::arango::createEdgeOnCoordinator(
+  int error = arangodb::arango::createEdgeOnCoordinator(
       dbname, collname, options.waitForSync, json, _from.c_str(), _to.c_str(),
       responseCode, resultHeaders, resultBody);
 
@@ -2991,7 +2991,7 @@ static void InsertEdgeColCoordinator(
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
   json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
-  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
     if (!TRI_IsObjectJson(json.get())) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -3421,7 +3421,7 @@ static void JS_VersionVocbaseCol(
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     TRI_V8_RETURN(v8::Number::New(isolate, (int)info.version()));
-  } catch (triagens::basics::Exception const& e) {
+  } catch (arangodb::basics::Exception const& e) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     TRI_V8_THROW_EXCEPTION_MESSAGE(e.code(), "cannot fetch collection info");
   } catch (...) {
@@ -3777,7 +3777,7 @@ static void JS_CountVocbaseCol(
     std::string const collname(collection->_name);
 
     uint64_t count = 0;
-    int error = triagens::arango::countOnCoordinator(dbname, collname, count);
+    int error = arangodb::arango::countOnCoordinator(dbname, collname, count);
 
     if (error != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(error);

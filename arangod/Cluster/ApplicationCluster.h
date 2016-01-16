@@ -31,7 +31,7 @@
 
 struct TRI_server_t;
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class ApplicationDispatcher;
 }
@@ -52,8 +52,8 @@ class ApplicationCluster : public rest::ApplicationFeature {
 
  public:
 
-  ApplicationCluster(TRI_server_t*, triagens::rest::ApplicationDispatcher*,
-                     triagens::arango::ApplicationV8*);
+  ApplicationCluster(TRI_server_t*, arangodb::rest::ApplicationDispatcher*,
+                     arangodb::arango::ApplicationV8*);
 
 
   ~ApplicationCluster();
@@ -104,13 +104,13 @@ class ApplicationCluster : public rest::ApplicationFeature {
   /// @brief dispatcher
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::ApplicationDispatcher* _dispatcher;
+  arangodb::rest::ApplicationDispatcher* _dispatcher;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief v8 dispatcher
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::ApplicationV8* _applicationV8;
+  arangodb::arango::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief thread for heartbeat

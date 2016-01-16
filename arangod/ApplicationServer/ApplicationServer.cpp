@@ -43,8 +43,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 using namespace std;
 
 static std::string DeprecatedParameter;

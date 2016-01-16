@@ -48,7 +48,7 @@ class TRI_headers_t;
 
 class VocShaper;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class CapConstraint;
 class EdgeIndex;
@@ -185,7 +185,7 @@ struct TRI_doc_mptr_t {
     } else if (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
                marker->_type == TRI_WAL_MARKER_EDGE) {
       auto offset =
-          (reinterpret_cast<triagens::wal::document_marker_t const*>(marker))
+          (reinterpret_cast<arangodb::wal::document_marker_t const*>(marker))
               ->_offsetJson;
       return reinterpret_cast<char const*>(marker) + offset;
     }
@@ -310,12 +310,12 @@ struct TRI_document_collection_t : public TRI_collection_t {
   // ...........................................................................
 
   // TRI_read_write_lock_t        _lock;
-  triagens::basics::ReadWriteLockCPP11 _lock;
+  arangodb::basics::ReadWriteLockCPP11 _lock;
 
  private:
   VocShaper* _shaper;
 
-  triagens::basics::Mutex _compactionStatusLock;
+  arangodb::basics::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
   char _lastCompactionStamp[21];
@@ -346,25 +346,25 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   void setShaper(VocShaper* s) { _shaper = s; }
 
-  void addIndex(triagens::arango::Index*);
-  triagens::arango::Index* removeIndex(TRI_idx_iid_t);
-  std::vector<triagens::arango::Index*> allIndexes() const;
-  triagens::arango::Index* lookupIndex(TRI_idx_iid_t) const;
-  triagens::arango::PrimaryIndex* primaryIndex();
-  triagens::arango::EdgeIndex* edgeIndex();
-  triagens::arango::CapConstraint* capConstraint();
+  void addIndex(arangodb::arango::Index*);
+  arangodb::arango::Index* removeIndex(TRI_idx_iid_t);
+  std::vector<arangodb::arango::Index*> allIndexes() const;
+  arangodb::arango::Index* lookupIndex(TRI_idx_iid_t) const;
+  arangodb::arango::PrimaryIndex* primaryIndex();
+  arangodb::arango::EdgeIndex* edgeIndex();
+  arangodb::arango::CapConstraint* capConstraint();
 
-  triagens::arango::CapConstraint* _capConstraint;
+  arangodb::arango::CapConstraint* _capConstraint;
 
-  triagens::arango::Ditches* ditches() { return &_ditches; }
+  arangodb::arango::Ditches* ditches() { return &_ditches; }
 
-  mutable triagens::arango::Ditches _ditches;
+  mutable arangodb::arango::Ditches _ditches;
   TRI_associative_pointer_t _datafileInfo;
 
   class TRI_headers_t* _headersPtr;
   KeyGenerator* _keyGenerator;
 
-  std::vector<triagens::arango::Index*> _indexes;
+  std::vector<arangodb::arango::Index*> _indexes;
 
   std::set<TRI_voc_tid_t>* _failedTransactions;
 
@@ -405,28 +405,28 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   ~TRI_document_collection_t();
 
-  int insert(triagens::arango::Transaction*, VPackSlice const*,
+  int insert(arangodb::arango::Transaction*, VPackSlice const*,
              TRI_doc_mptr_copy_t*, bool, bool);
-  int remove(triagens::arango::Transaction*, VPackSlice const*,
+  int remove(arangodb::arango::Transaction*, VPackSlice const*,
              TRI_doc_update_policy_t const*, bool, bool);
 
  private:
-  triagens::wal::Marker* createVPackInsertMarker(triagens::arango::Transaction*,
+  arangodb::wal::Marker* createVPackInsertMarker(arangodb::arango::Transaction*,
                                                  VPackSlice const*);
-  triagens::wal::Marker* createVPackRemoveMarker(triagens::arango::Transaction*,
+  arangodb::wal::Marker* createVPackRemoveMarker(arangodb::arango::Transaction*,
                                                  VPackSlice const*);
-  int lookupDocument(triagens::arango::Transaction*, VPackSlice const*,
+  int lookupDocument(arangodb::arango::Transaction*, VPackSlice const*,
                      TRI_doc_update_policy_t const*, TRI_doc_mptr_t*&);
-  int insertDocument(triagens::arango::Transaction*, TRI_doc_mptr_t*,
-                     triagens::wal::DocumentOperation&, TRI_doc_mptr_copy_t*,
+  int insertDocument(arangodb::arango::Transaction*, TRI_doc_mptr_t*,
+                     arangodb::wal::DocumentOperation&, TRI_doc_mptr_copy_t*,
                      bool&);
-  int insertPrimaryIndex(triagens::arango::Transaction*, TRI_doc_mptr_t*);
-  int insertSecondaryIndexes(triagens::arango::Transaction*,
+  int insertPrimaryIndex(arangodb::arango::Transaction*, TRI_doc_mptr_t*);
+  int insertSecondaryIndexes(arangodb::arango::Transaction*,
                              TRI_doc_mptr_t const*, bool);
-  int deletePrimaryIndex(triagens::arango::Transaction*, TRI_doc_mptr_t const*);
-  int deleteSecondaryIndexes(triagens::arango::Transaction*,
+  int deletePrimaryIndex(arangodb::arango::Transaction*, TRI_doc_mptr_t const*);
+  int deleteSecondaryIndexes(arangodb::arango::Transaction*,
                              TRI_doc_mptr_t const*, bool);
-  int postInsertIndexes(triagens::arango::Transaction*, TRI_doc_mptr_t*);
+  int postInsertIndexes(arangodb::arango::Transaction*, TRI_doc_mptr_t*);
 };
 
 
@@ -456,7 +456,7 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_DocumentIteratorDocumentCollection(
-    triagens::arango::Transaction*, TRI_document_collection_t*, void*,
+    arangodb::arango::Transaction*, TRI_document_collection_t*, void*,
     bool (*callback)(TRI_doc_mptr_t const*, TRI_document_collection_t*, void*));
 
 
@@ -538,7 +538,7 @@ static inline char const* TRI_EXTRACT_MARKER_FROM_KEY(
            ((TRI_doc_edge_key_marker_t const*)marker)->_offsetFromKey;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
     return ((char const*)marker) +
-           ((triagens::wal::edge_marker_t const*)marker)->_offsetFromKey;
+           ((arangodb::wal::edge_marker_t const*)marker)->_offsetFromKey;
   }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -571,7 +571,7 @@ static inline char const* TRI_EXTRACT_MARKER_TO_KEY(
            ((TRI_doc_edge_key_marker_t const*)marker)->_offsetToKey;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
     return ((char const*)marker) +
-           ((triagens::wal::edge_marker_t const*)marker)->_offsetToKey;
+           ((arangodb::wal::edge_marker_t const*)marker)->_offsetToKey;
   }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -602,7 +602,7 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID(
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     return ((TRI_doc_edge_key_marker_t const*)marker)->_fromCid;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((triagens::wal::edge_marker_t const*)marker)->_fromCid;
+    return ((arangodb::wal::edge_marker_t const*)marker)->_fromCid;
   }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -633,7 +633,7 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID(
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     return ((TRI_doc_edge_key_marker_t const*)marker)->_toCid;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((triagens::wal::edge_marker_t const*)marker)->_toCid;
+    return ((arangodb::wal::edge_marker_t const*)marker)->_toCid;
   }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -666,7 +666,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
     return ((TRI_doc_document_key_marker_t const*)marker)->_rid;
   } else if (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
              marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((triagens::wal::document_marker_t const*)marker)->_revisionId;
+    return ((arangodb::wal::document_marker_t const*)marker)->_revisionId;
   }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -700,7 +700,7 @@ static inline char const* TRI_EXTRACT_MARKER_KEY(
   } else if (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
              marker->_type == TRI_WAL_MARKER_EDGE) {
     return ((char const*)marker) +
-           ((triagens::wal::document_marker_t const*)marker)->_offsetKey;
+           ((arangodb::wal::document_marker_t const*)marker)->_offsetKey;
   }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -738,7 +738,7 @@ static inline char const* TRI_EXTRACT_MARKER_KEY(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* TRI_CreateDocumentCollection(
-    TRI_vocbase_t*, char const*, triagens::arango::VocbaseCollectionInfo&,
+    TRI_vocbase_t*, char const*, arangodb::arango::VocbaseCollectionInfo&,
     TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -774,16 +774,16 @@ bool TRI_IsFullyCollectedDocumentCollection(TRI_document_collection_t*);
 /// @brief create an index, based on a VelocyPack description
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FromVelocyPackIndexDocumentCollection(triagens::arango::Transaction*,
+int TRI_FromVelocyPackIndexDocumentCollection(arangodb::arango::Transaction*,
                                               TRI_document_collection_t*,
                                               VPackSlice const&,
-                                              triagens::arango::Index**);
+                                              arangodb::arango::Index**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rolls back a document operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RollbackOperationDocumentCollection(triagens::arango::Transaction*,
+int TRI_RollbackOperationDocumentCollection(arangodb::arango::Transaction*,
                                             TRI_document_collection_t*,
                                             TRI_voc_document_operation_e,
                                             TRI_doc_mptr_t*,
@@ -808,7 +808,7 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t*, size_t,
 /// @brief fill the additional (non-primary) indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillIndexesDocumentCollection(triagens::arango::Transaction*,
+int TRI_FillIndexesDocumentCollection(arangodb::arango::Transaction*,
                                       TRI_vocbase_col_t*,
                                       TRI_document_collection_t*);
 
@@ -831,7 +831,7 @@ int TRI_CloseDocumentCollection(TRI_document_collection_t*, bool);
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex(TRI_document_collection_t*, triagens::arango::Index*,
+int TRI_SaveIndex(TRI_document_collection_t*, arangodb::arango::Index*,
                   bool writeMarker);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -840,7 +840,7 @@ int TRI_SaveIndex(TRI_document_collection_t*, triagens::arango::Index*,
 /// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection(
+std::vector<arangodb::basics::Json> TRI_IndexesDocumentCollection(
     TRI_document_collection_t*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -856,15 +856,15 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t*, TRI_idx_iid_t,
 /// @brief looks up a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupCapConstraintDocumentCollection(
+arangodb::arango::Index* TRI_LookupCapConstraintDocumentCollection(
     TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection(
-    triagens::arango::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
+arangodb::arango::Index* TRI_EnsureCapConstraintDocumentCollection(
+    arangodb::arango::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
     size_t, int64_t, bool&);
 
 
@@ -875,7 +875,7 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection(
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupGeoIndex1DocumentCollection(
+arangodb::arango::Index* TRI_LookupGeoIndex1DocumentCollection(
     TRI_document_collection_t*, std::string const&, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -884,23 +884,23 @@ triagens::arango::Index* TRI_LookupGeoIndex1DocumentCollection(
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupGeoIndex2DocumentCollection(
+arangodb::arango::Index* TRI_LookupGeoIndex2DocumentCollection(
     TRI_document_collection_t*, std::string const&, std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection(
-    triagens::arango::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
+arangodb::arango::Index* TRI_EnsureGeoIndex1DocumentCollection(
+    arangodb::arango::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
     std::string const&, bool, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection(
-    triagens::arango::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
+arangodb::arango::Index* TRI_EnsureGeoIndex2DocumentCollection(
+    arangodb::arango::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
     std::string const&, std::string const&, bool&);
 
 
@@ -913,15 +913,15 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection(
 /// @note The @FA{paths} must be sorted.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupHashIndexDocumentCollection(
+arangodb::arango::Index* TRI_LookupHashIndexDocumentCollection(
     TRI_document_collection_t*, std::vector<std::string> const&, int, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection(
-    triagens::arango::Transaction* trx, TRI_document_collection_t*,
+arangodb::arango::Index* TRI_EnsureHashIndexDocumentCollection(
+    arangodb::arango::Transaction* trx, TRI_document_collection_t*,
     TRI_idx_iid_t, std::vector<std::string> const&, bool, bool, bool&);
 
 
@@ -932,15 +932,15 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection(
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupSkiplistIndexDocumentCollection(
+arangodb::arango::Index* TRI_LookupSkiplistIndexDocumentCollection(
     TRI_document_collection_t*, std::vector<std::string> const&, int, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection(
-    triagens::arango::Transaction* trx, TRI_document_collection_t*,
+arangodb::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection(
+    arangodb::arango::Transaction* trx, TRI_document_collection_t*,
     TRI_idx_iid_t, std::vector<std::string> const&, bool, bool, bool&);
 
 
@@ -951,15 +951,15 @@ triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection(
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupFulltextIndexDocumentCollection(
+arangodb::arango::Index* TRI_LookupFulltextIndexDocumentCollection(
     TRI_document_collection_t*, std::string const&, int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection(
-    triagens::arango::Transaction* trx, TRI_document_collection_t*,
+arangodb::arango::Index* TRI_EnsureFulltextIndexDocumentCollection(
+    arangodb::arango::Transaction* trx, TRI_document_collection_t*,
     TRI_idx_iid_t, std::string const&, int, bool&);
 
 
@@ -969,7 +969,7 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection(
 
 std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample(
     struct TRI_transaction_collection_s*,
-    triagens::arango::ExampleMatcher const& matcher);
+    arangodb::arango::ExampleMatcher const& matcher);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a select-by-example query
@@ -1001,7 +1001,7 @@ struct ShapedJsonEq {
 /// @brief deletes a documet given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DeleteDocumentDocumentCollection(triagens::arango::Transaction*,
+int TRI_DeleteDocumentDocumentCollection(arangodb::arango::Transaction*,
                                          struct TRI_transaction_collection_s*,
                                          TRI_doc_update_policy_t const*,
                                          TRI_doc_mptr_t*);
@@ -1018,7 +1018,7 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t*);
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReadShapedJsonDocumentCollection(triagens::arango::Transaction*,
+int TRI_ReadShapedJsonDocumentCollection(arangodb::arango::Transaction*,
                                          TRI_transaction_collection_t*,
                                          const TRI_voc_key_t,
                                          TRI_doc_mptr_copy_t*, bool);
@@ -1027,10 +1027,10 @@ int TRI_ReadShapedJsonDocumentCollection(triagens::arango::Transaction*,
 /// @brief removes a shaped-json document (or edge)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveShapedJsonDocumentCollection(triagens::arango::Transaction*,
+int TRI_RemoveShapedJsonDocumentCollection(arangodb::arango::Transaction*,
                                            TRI_transaction_collection_t*,
                                            const TRI_voc_key_t, TRI_voc_rid_t,
-                                           triagens::wal::Marker*,
+                                           arangodb::wal::Marker*,
                                            TRI_doc_update_policy_t const*, bool,
                                            bool);
 
@@ -1040,8 +1040,8 @@ int TRI_RemoveShapedJsonDocumentCollection(triagens::arango::Transaction*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertShapedJsonDocumentCollection(
-    triagens::arango::Transaction*, TRI_transaction_collection_t*,
-    const TRI_voc_key_t, TRI_voc_rid_t, triagens::wal::Marker*,
+    arangodb::arango::Transaction*, TRI_transaction_collection_t*,
+    const TRI_voc_key_t, TRI_voc_rid_t, arangodb::wal::Marker*,
     TRI_doc_mptr_copy_t*, TRI_shaped_json_t const*, TRI_document_edge_t const*,
     bool, bool, bool);
 
@@ -1050,8 +1050,8 @@ int TRI_InsertShapedJsonDocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UpdateShapedJsonDocumentCollection(
-    triagens::arango::Transaction*, TRI_transaction_collection_t*,
-    const TRI_voc_key_t, TRI_voc_rid_t, triagens::wal::Marker*,
+    arangodb::arango::Transaction*, TRI_transaction_collection_t*,
+    const TRI_voc_key_t, TRI_voc_rid_t, arangodb::wal::Marker*,
     TRI_doc_mptr_copy_t*, TRI_shaped_json_t const*,
     TRI_doc_update_policy_t const*, bool, bool);
 

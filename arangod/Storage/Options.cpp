@@ -68,7 +68,7 @@ struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
 
 struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
   explicit CustomTypeHandlerImpl(
-      triagens::arango::CollectionNameResolver const* resolver)
+      arangodb::arango::CollectionNameResolver const* resolver)
       : resolver(resolver) {}
 
   void toJson(VPackSlice const& value, VPackDumper* dumper,
@@ -133,7 +133,7 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
     throw "unknown type!";
   }
 
-  triagens::arango::CollectionNameResolver const* resolver;
+  arangodb::arango::CollectionNameResolver const* resolver;
   TRI_voc_cid_t cid;
 };
 
@@ -196,7 +196,7 @@ VPackOptions StorageOptions::getNonDocumentTemplate() {
 }
 
 VPackCustomTypeHandler* StorageOptions::createCustomHandler(
-    triagens::arango::CollectionNameResolver const* resolver) {
+    arangodb::arango::CollectionNameResolver const* resolver) {
   return new CustomTypeHandlerImpl(resolver);
 }
 

@@ -30,7 +30,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
-namespace triagens {
+namespace arangodb {
 namespace utils {
 class AqlTransaction;
 }
@@ -181,13 +181,13 @@ class HashedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   struct GroupKeyHash {
-    GroupKeyHash(triagens::arango::AqlTransaction* trx,
+    GroupKeyHash(arangodb::arango::AqlTransaction* trx,
                  std::vector<TRI_document_collection_t const*>& colls)
         : _trx(trx), _colls(colls), _num(colls.size()) {}
 
     size_t operator()(std::vector<AqlValue> const& value) const;
 
-    triagens::arango::AqlTransaction* _trx;
+    arangodb::arango::AqlTransaction* _trx;
     std::vector<TRI_document_collection_t const*>& _colls;
     size_t const _num;
   };
@@ -197,20 +197,20 @@ class HashedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   struct GroupKeyEqual {
-    GroupKeyEqual(triagens::arango::AqlTransaction* trx,
+    GroupKeyEqual(arangodb::arango::AqlTransaction* trx,
                   std::vector<TRI_document_collection_t const*>& colls)
         : _trx(trx), _colls(colls) {}
 
     bool operator()(std::vector<AqlValue> const&,
                     std::vector<AqlValue> const&) const;
 
-    triagens::arango::AqlTransaction* _trx;
+    arangodb::arango::AqlTransaction* _trx;
     std::vector<TRI_document_collection_t const*>& _colls;
   };
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

@@ -39,7 +39,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class SingleCollectionTransaction : public Transaction {
@@ -136,14 +136,14 @@ class SingleCollectionTransaction : public Transaction {
   /// is called in two different ways
   //////////////////////////////////////////////////////////////////////////////
 
-  inline triagens::arango::DocumentDitch* ditch() {
+  inline arangodb::arango::DocumentDitch* ditch() {
     TRI_transaction_collection_t* trxCollection = this->trxCollection();
     TRI_ASSERT(trxCollection->_ditch != nullptr);
 
     return trxCollection->_ditch;
   }
 
-  inline triagens::arango::DocumentDitch* ditch(TRI_voc_cid_t) {
+  inline arangodb::arango::DocumentDitch* ditch(TRI_voc_cid_t) {
     return ditch();
   }
 

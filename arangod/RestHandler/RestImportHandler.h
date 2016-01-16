@@ -30,10 +30,10 @@
 #include "Utils/transactions.h"
 
 #define RestImportTransaction \
-  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX>
+  arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX>
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 

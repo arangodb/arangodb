@@ -29,9 +29,9 @@
 
 using namespace arangodb;
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::admin;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::admin;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server

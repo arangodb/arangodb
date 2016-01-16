@@ -33,7 +33,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 
-namespace triagens {
+namespace arangodb {
 namespace admin {
 
 ////////////////////////////////////////////////////////////////////////////////

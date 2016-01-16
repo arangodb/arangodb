@@ -33,7 +33,7 @@
 #include "Basics/StringUtils.h"
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // helper
@@ -45,7 +45,7 @@ static Random::UniformCharacter SaltGenerator(
     "[]:;<>,.?/|");
 }
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 namespace SslInterface {
 

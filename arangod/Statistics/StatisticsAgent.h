@@ -29,7 +29,7 @@
 #include "Statistics/statistics.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,7 +149,7 @@ class StatisticsAgent {
 }
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,7 +346,7 @@ class RequestStatisticsAgent
 }
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////

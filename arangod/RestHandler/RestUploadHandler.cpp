@@ -31,9 +31,9 @@
 #include "Rest/HttpRequest.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 
@@ -79,7 +79,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
   char const* value = _request->value("multipart", found);
 
   if (found) {
-    bool multiPart = triagens::basics::StringUtils::boolean(value);
+    bool multiPart = arangodb::basics::StringUtils::boolean(value);
 
     if (multiPart) {
       if (!parseMultiPart(body, bodySize)) {

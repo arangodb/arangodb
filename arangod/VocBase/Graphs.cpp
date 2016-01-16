@@ -26,8 +26,8 @@
 #include "VocBase/Graphs.h"
 #include "Utils/transactions.h"
 #include "Cluster/ClusterMethods.h"
-using namespace triagens::basics;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
 
 std::string const graphs = "_graphs";
 
@@ -36,17 +36,17 @@ std::string const graphs = "_graphs";
 /// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::Graph* triagens::arango::lookupGraphByName(
+arangodb::aql::Graph* arangodb::arango::lookupGraphByName(
     TRI_vocbase_t* vocbase, std::string const& name) {
   if (ServerState::instance()->isCoordinator()) {
-    triagens::rest::HttpResponse::HttpResponseCode responseCode;
+    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
     auto headers = std::make_unique<std::map<std::string, std::string>>();
     std::map<std::string, std::string> resultHeaders;
     std::string resultBody;
 
     TRI_voc_rid_t rev = 0;
 
-    int error = triagens::arango::getDocumentOnCoordinator(
+    int error = arangodb::arango::getDocumentOnCoordinator(
         vocbase->_name, graphs, name, rev, headers, true, responseCode,
         resultHeaders, resultBody);
 
@@ -64,7 +64,7 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName(
                                     name.c_str(), resultBody.c_str());
     }
 
-    return new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
+    return new arangodb::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
   }
 
   CollectionNameResolver resolver(vocbase);
@@ -98,5 +98,5 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName(
                                   name.c_str());
   }
 
-  return new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
+  return new arangodb::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
 }

@@ -28,7 +28,7 @@
 #include "Basics/JsonHelper.h"
 #include "Aql/types.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 struct Variable {
@@ -85,7 +85,7 @@ struct Variable {
   /// @brief return a JSON representation of the variable
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson() const;
+  arangodb::basics::Json toJson() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief replace a variable by another

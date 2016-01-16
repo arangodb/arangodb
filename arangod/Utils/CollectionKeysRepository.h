@@ -31,7 +31,7 @@
 
 struct TRI_json_t;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class CollectionKeys;
@@ -98,7 +98,7 @@ class CollectionKeysRepository {
   /// @brief mutex for the repository
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _lock;
+  arangodb::basics::Mutex _lock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of current keys

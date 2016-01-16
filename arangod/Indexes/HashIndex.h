@@ -57,7 +57,7 @@ struct TRI_hash_index_search_value_t {
 };
 
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class SortCondition;
 }
@@ -66,7 +66,7 @@ class Transaction;
 
 class HashIndexIterator final : public IndexIterator {
  public:
-  HashIndexIterator(triagens::arango::Transaction* trx, HashIndex const* index,
+  HashIndexIterator(arangodb::arango::Transaction* trx, HashIndex const* index,
                     std::vector<TRI_hash_index_search_value_t*>& keys)
       : _trx(trx),
         _index(index),
@@ -86,7 +86,7 @@ class HashIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  triagens::arango::Transaction* _trx;
+  arangodb::arango::Transaction* _trx;
   HashIndex const* _index;
   std::vector<TRI_hash_index_search_value_t*> _keys;
   size_t _position;
@@ -100,7 +100,7 @@ class HashIndex final : public PathBasedIndex {
   HashIndex() = delete;
 
   HashIndex(TRI_idx_iid_t, struct TRI_document_collection_t*,
-            std::vector<std::vector<triagens::basics::AttributeName>> const&,
+            std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             bool, bool);
 
   explicit HashIndex(struct TRI_json_t const*);
@@ -121,20 +121,20 @@ class HashIndex final : public PathBasedIndex {
 
   size_t memory() const override final;
 
-  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
 
-  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int batchInsert(triagens::arango::Transaction*,
+  int batchInsert(arangodb::arango::Transaction*,
                   std::vector<TRI_doc_mptr_t const*> const*,
                   size_t) override final;
 
-  int sizeHint(triagens::arango::Transaction*, size_t) override final;
+  int sizeHint(arangodb::arango::Transaction*, size_t) override final;
 
   bool hasBatchInsert() const override final { return true; }
 
@@ -147,60 +147,60 @@ class HashIndex final : public PathBasedIndex {
   /// @brief locates entries in the hash index given shaped json objects
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookup(triagens::arango::Transaction*, TRI_hash_index_search_value_t*,
+  int lookup(arangodb::arango::Transaction*, TRI_hash_index_search_value_t*,
              std::vector<TRI_doc_mptr_t*>&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief locates entries in the hash index given shaped json objects
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookup(triagens::arango::Transaction*, TRI_hash_index_search_value_t*,
+  int lookup(arangodb::arango::Transaction*, TRI_hash_index_search_value_t*,
              std::vector<TRI_doc_mptr_copy_t>&, TRI_index_element_t*&,
              size_t batchSize) const;
 
-  bool supportsFilterCondition(triagens::aql::AstNode const*,
-                               triagens::aql::Variable const*, size_t, size_t&,
+  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+                               arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(triagens::arango::Transaction*,
+  IndexIterator* iteratorForCondition(arangodb::arango::Transaction*,
                                       IndexIteratorContext*,
-                                      triagens::aql::Ast*,
-                                      triagens::aql::AstNode const*,
-                                      triagens::aql::Variable const*,
+                                      arangodb::aql::Ast*,
+                                      arangodb::aql::AstNode const*,
+                                      arangodb::aql::Variable const*,
                                       bool) const override;
 
-  triagens::aql::AstNode* specializeCondition(
-      triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
   
  private:
-  int insertUnique(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insertUnique(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
                    bool);
 
-  int batchInsertUnique(triagens::arango::Transaction*,
+  int batchInsertUnique(arangodb::arango::Transaction*,
                         std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-  int insertMulti(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insertMulti(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
                   bool);
 
-  int batchInsertMulti(triagens::arango::Transaction*,
+  int batchInsertMulti(arangodb::arango::Transaction*,
                        std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-  int removeUniqueElement(triagens::arango::Transaction*, TRI_index_element_t*,
+  int removeUniqueElement(arangodb::arango::Transaction*, TRI_index_element_t*,
                           bool);
 
-  int removeUnique(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int removeUnique(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
                    bool);
 
-  int removeMultiElement(triagens::arango::Transaction*, TRI_index_element_t*,
+  int removeMultiElement(arangodb::arango::Transaction*, TRI_index_element_t*,
                          bool);
 
-  int removeMulti(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int removeMulti(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
                   bool);
 
-  bool accessFitsIndex(triagens::aql::AstNode const* access,
-                       triagens::aql::AstNode const* other,
-                       triagens::aql::Variable const* reference,
+  bool accessFitsIndex(arangodb::aql::AstNode const* access,
+                       arangodb::aql::AstNode const* other,
+                       arangodb::aql::Variable const* reference,
                        std::unordered_set<size_t>& found) const;
 
   
@@ -294,7 +294,7 @@ class HashIndex final : public PathBasedIndex {
   /// @brief the actual hash index (unique type)
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef triagens::basics::AssocUnique<TRI_hash_index_search_value_t,
+  typedef arangodb::basics::AssocUnique<TRI_hash_index_search_value_t,
                                         TRI_index_element_t> TRI_HashArray_t;
 
   struct UniqueArray {
@@ -313,7 +313,7 @@ class HashIndex final : public PathBasedIndex {
   /// @brief the actual hash index (multi type)
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef triagens::basics::AssocMulti<TRI_hash_index_search_value_t,
+  typedef arangodb::basics::AssocMulti<TRI_hash_index_search_value_t,
                                        TRI_index_element_t, uint32_t,
                                        true> TRI_HashArrayMulti_t;
 

@@ -31,7 +31,7 @@
 
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class ApplicationV8;
 class JSLoader;
@@ -60,7 +60,7 @@ static const uint32_t V8DataSlot = 0;
 
 #define TRI_V8_TRY_CATCH_END                                       \
   }                                                                \
-  catch (triagens::basics::Exception const& ex) {                  \
+  catch (arangodb::basics::Exception const& ex) {                  \
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());          \
   }                                                                \
   catch (std::exception const& ex) {                               \
@@ -1016,13 +1016,13 @@ typedef struct TRI_v8_global_s {
   /// @brief pointer to the context dealer (ApplicationV8*)
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::ApplicationV8* _applicationV8;
+  arangodb::arango::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to the startup loader (JSLoader*)
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::JSLoader* _loader;
+  arangodb::arango::JSLoader* _loader;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel has been caught

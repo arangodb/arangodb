@@ -38,8 +38,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
 
 
 
@@ -227,20 +227,20 @@ void RestExportHandler::createCursor() {
     VPackSlice options = optionsBuilder.slice();
 
     uint64_t waitTime = 0;
-    bool flush = triagens::basics::VelocyPackHelper::getBooleanValue(
+    bool flush = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "flush", false);
 
     if (flush) {
       // flush the logfiles so the export can fetch all documents
       int res =
-          triagens::wal::LogfileManager::instance()->flush(true, true, false);
+          arangodb::wal::LogfileManager::instance()->flush(true, true, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
 
       double flushWait =
-          triagens::basics::VelocyPackHelper::getNumericValue<double>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<double>(
               options, "flushWait", 10.0);
 
       waitTime = static_cast<uint64_t>(
@@ -248,7 +248,7 @@ void RestExportHandler::createCursor() {
           1000);  // flushWait is specified in s, but we need ns
     }
 
-    size_t limit = triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+    size_t limit = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
         options, "limit", 0);
 
     // this may throw!
@@ -258,22 +258,22 @@ void RestExportHandler::createCursor() {
 
     {
       size_t batchSize =
-          triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
               options, "batchSize", 1000);
-      double ttl = triagens::basics::VelocyPackHelper::getNumericValue<double>(
+      double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
           options, "ttl", 30);
-      bool count = triagens::basics::VelocyPackHelper::getBooleanValue(
+      bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
           options, "count", false);
 
       createResponse(HttpResponse::CREATED);
       _response->setContentType("application/json; charset=utf-8");
 
-      auto cursors = static_cast<triagens::arango::CursorRepository*>(
+      auto cursors = static_cast<arangodb::arango::CursorRepository*>(
           _vocbase->_cursorRepository);
       TRI_ASSERT(cursors != nullptr);
 
       // create a cursor from the result
-      triagens::arango::ExportCursor* cursor = cursors->createFromExport(
+      arangodb::arango::ExportCursor* cursor = cursors->createFromExport(
           collectionExport.get(), batchSize, ttl, count);
       collectionExport.release();
 
@@ -291,7 +291,7 @@ void RestExportHandler::createCursor() {
         throw;
       }
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
@@ -309,12 +309,12 @@ void RestExportHandler::modifyCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<triagens::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::arango::CursorRepository*>(
       _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<triagens::arango::CursorId>(
-      triagens::basics::StringUtils::uint64(id));
+  auto cursorId = static_cast<arangodb::arango::CursorId>(
+      arangodb::basics::StringUtils::uint64(id));
   bool busy;
   auto cursor = cursors->find(cursorId, busy);
 
@@ -341,7 +341,7 @@ void RestExportHandler::modifyCursor() {
     _response->body().appendChar('}');
 
     cursors->release(cursor);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     cursors->release(cursor);
 
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
@@ -363,12 +363,12 @@ void RestExportHandler::deleteCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<triagens::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::arango::CursorRepository*>(
       _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<triagens::arango::CursorId>(
-      triagens::basics::StringUtils::uint64(id));
+  auto cursorId = static_cast<arangodb::arango::CursorId>(
+      arangodb::basics::StringUtils::uint64(id));
   bool found = cursors->remove(cursorId);
 
   if (!found) {
@@ -385,7 +385,7 @@ void RestExportHandler::deleteCursor() {
   result.add("code", VPackValue(_response->responseCode()));
   result.close();
   VPackSlice s = result.slice();
-  triagens::basics::VPackStringBufferAdapter buffer(
+  arangodb::basics::VPackStringBufferAdapter buffer(
       _response->body().stringBuffer());
   VPackDumper dumper(&buffer);
   dumper.dump(s);

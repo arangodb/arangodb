@@ -30,9 +30,9 @@
 #include "V8Server/v8-voccursor.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,11 +86,11 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create a cursor
-  auto cursors = static_cast<triagens::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::arango::CursorRepository*>(
       vocbase->_cursorRepository);
 
   try {
-    triagens::arango::Cursor* cursor = cursors->createFromJson(
+    arangodb::arango::Cursor* cursor = cursors->createFromJson(
         json.get(), static_cast<size_t>(batchSize), nullptr, ttl, true, false);
     json.release();
 
@@ -124,11 +124,11 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const id = TRI_ObjectToString(args[0]);
-  auto cursorId = static_cast<triagens::arango::CursorId>(
-      triagens::basics::StringUtils::uint64(id));
+  auto cursorId = static_cast<arangodb::arango::CursorId>(
+      arangodb::basics::StringUtils::uint64(id));
 
   // find the cursor
-  auto cursors = static_cast<triagens::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::arango::CursorRepository*>(
       vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 

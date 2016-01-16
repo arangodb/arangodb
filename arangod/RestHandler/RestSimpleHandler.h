@@ -30,7 +30,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class Query;
 class QueryRegistry;
@@ -48,8 +48,8 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
  public:
 
   RestSimpleHandler(rest::HttpRequest*,
-                    std::pair<triagens::arango::ApplicationV8*,
-                              triagens::aql::QueryRegistry*>*);
+                    std::pair<arangodb::arango::ApplicationV8*,
+                              arangodb::aql::QueryRegistry*>*);
 
   
  public:
@@ -65,7 +65,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
   /// @brief register the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerQuery(triagens::aql::Query*);
+  void registerQuery(arangodb::aql::Query*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the currently running query
@@ -103,25 +103,25 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
   /// @brief _applicationV8
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::ApplicationV8* _applicationV8;
+  arangodb::arango::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our query registry
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::QueryRegistry* _queryRegistry;
+  arangodb::aql::QueryRegistry* _queryRegistry;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _queryLock;
+  arangodb::basics::Mutex _queryLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::Query* _query;
+  arangodb::aql::Query* _query;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query was killed

@@ -39,7 +39,7 @@ struct TRI_df_marker_s;
 struct TRI_document_collection_t;
 struct TRI_server_t;
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 class LogfileManager;
@@ -97,7 +97,7 @@ struct CollectorCache {
   /// @brief add a ditch
   //////////////////////////////////////////////////////////////////////////////
 
-  void addDitch(triagens::arango::DocumentDitch* ditch) {
+  void addDitch(arangodb::arango::DocumentDitch* ditch) {
     TRI_ASSERT(ditch != nullptr);
     ditches.emplace_back(ditch);
   }
@@ -148,7 +148,7 @@ struct CollectorCache {
   /// @brief ditches held by the operations
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<triagens::arango::DocumentDitch*> ditches;
+  std::vector<arangodb::arango::DocumentDitch*> ditches;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief datafile info cache, updated when the collector transfers markers
@@ -285,7 +285,7 @@ class CollectorThread : public basics::Thread {
   /// @brief transfer markers into a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int transferMarkers(triagens::wal::Logfile*, TRI_voc_cid_t, TRI_voc_tick_t,
+  int transferMarkers(arangodb::wal::Logfile*, TRI_voc_cid_t, TRI_voc_tick_t,
                       int64_t, OperationsType const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -299,7 +299,7 @@ class CollectorThread : public basics::Thread {
   /// @brief insert the collect operations into a per-collection queue
   //////////////////////////////////////////////////////////////////////////////
 
-  int queueOperations(triagens::wal::Logfile*, CollectorCache*&);
+  int queueOperations(arangodb::wal::Logfile*, CollectorCache*&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update a collection's datafile information
@@ -359,7 +359,7 @@ class CollectorThread : public basics::Thread {
   /// @brief operations lock
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _operationsQueueLock;
+  arangodb::basics::Mutex _operationsQueueLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief operations to collect later

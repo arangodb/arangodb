@@ -29,7 +29,7 @@
 #include "HttpServer/HttpHandler.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////

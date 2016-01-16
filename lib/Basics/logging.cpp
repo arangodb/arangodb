@@ -174,7 +174,7 @@ static std::vector<TRI_log_appender_t*> Appenders;
 /// @brief log appenders
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex AppendersLock;
+static arangodb::basics::Mutex AppendersLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal output length
@@ -216,7 +216,7 @@ static TRI_log_buffer_t BufferOutput[OUTPUT_LOG_LEVELS][OUTPUT_BUFFER_SIZE];
 /// @brief buffer lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex BufferLock;
+static arangodb::basics::Mutex BufferLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable for the logger
@@ -228,7 +228,7 @@ static TRI_condition_t LogCondition;
 /// @brief message queue lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex LogMessageQueueLock;
+static arangodb::basics::Mutex LogMessageQueueLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief message queue
@@ -1495,7 +1495,7 @@ struct log_appender_syslog_t : public TRI_log_appender_t {
   char const* typeName() override final { return "syslog"; }
 
  private:
-  triagens::basics::Mutex _lock;
+  arangodb::basics::Mutex _lock;
   bool _opened;
 };
 

@@ -62,8 +62,8 @@ static inline bool IsLocked(TRI_transaction_collection_t const* trxCollection) {
 /// @brief return the logfile manager
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline triagens::wal::LogfileManager* GetLogfileManager() {
-  return triagens::wal::LogfileManager::instance();
+static inline arangodb::wal::LogfileManager* GetLogfileManager() {
+  return arangodb::wal::LogfileManager::instance();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,13 +132,13 @@ void ClearQueryCache(TRI_transaction_t* trx) {
     }
 
     if (!collections.empty()) {
-      triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase,
+      arangodb::aql::QueryCache::instance()->invalidate(trx->_vocbase,
                                                         collections);
     }
   } catch (...) {
     // in case something goes wrong, we have to remove all queries from the
     // cache
-    triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase);
+    arangodb::aql::QueryCache::instance()->invalidate(trx->_vocbase);
   }
 }
 
@@ -190,7 +190,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
       // revert all operations
       for (auto it = trxCollection->_operations->rbegin();
            it != trxCollection->_operations->rend(); ++it) {
-        triagens::wal::DocumentOperation* op = (*it);
+        arangodb::wal::DocumentOperation* op = (*it);
 
         op->revert();
       }
@@ -201,7 +201,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
 
       for (auto it = trxCollection->_operations->rbegin();
            it != trxCollection->_operations->rend(); ++it) {
-        triagens::wal::DocumentOperation* op = (*it);
+        arangodb::wal::DocumentOperation* op = (*it);
 
         if (op->type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
             op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
@@ -245,7 +245,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
 
     for (auto it = trxCollection->_operations->rbegin();
          it != trxCollection->_operations->rend(); ++it) {
-      triagens::wal::DocumentOperation* op = (*it);
+      arangodb::wal::DocumentOperation* op = (*it);
 
       delete op;
     }
@@ -373,10 +373,10 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
 
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+  if (arangodb::arango::Transaction::_makeNolockHeaders != nullptr) {
     std::string collName(trxCollection->_collection->_name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+    auto it = arangodb::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "LockCollection blocked: " << collName << std::endl;
@@ -429,10 +429,10 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
 
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+  if (arangodb::arango::Transaction::_makeNolockHeaders != nullptr) {
     std::string collName(trxCollection->_collection->_name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+    auto it = arangodb::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "UnlockCollection blocked: " << collName << std::endl;
@@ -663,13 +663,13 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    arangodb::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
 
     if (res == TRI_ERROR_NO_ERROR) {
       trx->_beginWritten = true;
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -703,9 +703,9 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    arangodb::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -735,9 +735,9 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    arangodb::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -825,7 +825,7 @@ void TRI_FreeTransaction(TRI_transaction_t* trx) {
   // release the marker protector
   bool const hasFailedOperations =
       (trx->_hasOperations && trx->_status == TRI_TRANSACTION_ABORTED);
-  triagens::wal::LogfileManager::instance()->unregisterTransaction(
+  arangodb::wal::LogfileManager::instance()->unregisterTransaction(
       trx->_id, hasFailedOperations);
 
   ReleaseCollections(trx, 0);
@@ -1076,7 +1076,7 @@ bool TRI_IsLockedCollectionTransaction(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AddOperationTransaction(TRI_transaction_t* trx,
-                                triagens::wal::DocumentOperation& operation,
+                                arangodb::wal::DocumentOperation& operation,
                                 bool& waitForSync) {
   TRI_ASSERT(operation.header != nullptr);
 
@@ -1116,10 +1116,10 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   if (operation.marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
     char* oldmarker = static_cast<char*>(operation.marker->mem());
-    auto oldm = reinterpret_cast<triagens::wal::document_marker_t*>(oldmarker);
+    auto oldm = reinterpret_cast<arangodb::wal::document_marker_t*>(oldmarker);
     if ((oldm->_type == TRI_WAL_MARKER_DOCUMENT ||
          oldm->_type == TRI_WAL_MARKER_EDGE) &&
-        !triagens::wal::LogfileManager::instance()
+        !arangodb::wal::LogfileManager::instance()
              ->suppressShapeInformation()) {
       // In this case we have to take care of the legend, we know that the
       // marker does not have a legend so far, so first try to get away
@@ -1128,13 +1128,13 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       TRI_voc_cid_t cid = oldm->_collectionId;
       TRI_shape_sid_t sid = oldm->_shape;
       void* oldLegend;
-      triagens::wal::SlotInfoCopy slotInfo =
-          triagens::wal::LogfileManager::instance()->allocateAndWrite(
+      arangodb::wal::SlotInfoCopy slotInfo =
+          arangodb::wal::LogfileManager::instance()->allocateAndWrite(
               oldmarker, operation.marker->size(), false, cid, sid, 0,
               oldLegend);
       if (slotInfo.errorCode == TRI_ERROR_LEGEND_NOT_IN_WAL_FILE) {
         // Oh dear, we have to build a legend and patch the marker:
-        triagens::basics::JsonLegend legend(
+        arangodb::basics::JsonLegend legend(
             document->getShaper());  // PROTECTED by trx
         int res = legend.addShape(sid, oldmarker + oldm->_offsetJson,
                                   oldm->_size - oldm->_offsetJson);
@@ -1156,12 +1156,12 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 
           // And fix its entries:
           auto newm =
-              reinterpret_cast<triagens::wal::document_marker_t*>(newmarker);
+              reinterpret_cast<arangodb::wal::document_marker_t*>(newmarker);
           newm->_size = newMarkerSize;
           newm->_offsetJson =
               (uint32_t)(oldm->_offsetLegend + legend.getSize());
-          triagens::wal::SlotInfoCopy slotInfo2 =
-              triagens::wal::LogfileManager::instance()->allocateAndWrite(
+          arangodb::wal::SlotInfoCopy slotInfo2 =
+              arangodb::wal::LogfileManager::instance()->allocateAndWrite(
                   newmarker, newMarkerSize, false, cid, sid,
                   newm->_offsetLegend, oldLegend);
           delete[] newmarker;
@@ -1188,8 +1188,8 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 
     } else {
       // No document or edge marker, just append it to the WAL:
-      triagens::wal::SlotInfoCopy slotInfo =
-          triagens::wal::LogfileManager::instance()->allocateAndWrite(
+      arangodb::wal::SlotInfoCopy slotInfo =
+          arangodb::wal::LogfileManager::instance()->allocateAndWrite(
               operation.marker->mem(), operation.marker->size(), false);
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
         // some error occurred
@@ -1230,7 +1230,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     // operation is directly executed
     operation.handle();
 
-    triagens::aql::QueryCache::instance()->invalidate(
+    arangodb::aql::QueryCache::instance()->invalidate(
         trx->_vocbase, document->_info.namec_str());
 
     ++document->_uncollectedLogfileEntries;
@@ -1264,11 +1264,11 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
         trx, document->_info.id(), TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations =
-          new std::vector<triagens::wal::DocumentOperation*>;
+          new std::vector<arangodb::wal::DocumentOperation*>;
       trx->_hasOperations = true;
     }
 
-    triagens::wal::DocumentOperation* copy = operation.swap();
+    arangodb::wal::DocumentOperation* copy = operation.swap();
     trxCollection->_operations->push_back(copy);
     copy->handle();
   }
@@ -1292,7 +1292,7 @@ int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
   if (nestingLevel == 0) {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
 
-    auto logfileManager = triagens::wal::LogfileManager::instance();
+    auto logfileManager = arangodb::wal::LogfileManager::instance();
 
     if (!HasHint(trx, TRI_TRANSACTION_HINT_NO_THROTTLING) &&
         trx->_type == TRI_TRANSACTION_WRITE &&
@@ -1376,7 +1376,7 @@ int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
 
     // if a write query, clear the query cache for the participating collections
     if (trx->_type == TRI_TRANSACTION_WRITE && trx->_collections._length > 0 &&
-        triagens::aql::QueryCache::instance()->mayBeActive()) {
+        arangodb::aql::QueryCache::instance()->mayBeActive()) {
       ClearQueryCache(trx);
     }
 

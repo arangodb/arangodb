@@ -31,9 +31,9 @@
 #include "VocBase/replication-dump.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,8 +45,8 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  triagens::wal::LogfileManagerState s =
-      triagens::wal::LogfileManager::instance()->state();
+  arangodb::wal::LogfileManagerState s =
+      arangodb::wal::LogfileManager::instance()->state();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -80,7 +80,7 @@ static void JS_TickRangesLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)ranges.size());
   uint32_t i = 0;
@@ -110,7 +110,7 @@ static void JS_FirstTickLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
 
   TRI_voc_tick_t tick = UINT64_MAX;
 

@@ -33,8 +33,8 @@
 #include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////

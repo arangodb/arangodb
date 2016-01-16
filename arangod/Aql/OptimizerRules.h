@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 #include "Aql/Optimizer.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -268,7 +268,7 @@ void mergeFilterIntoTraversalRule(Optimizer* opt, ExecutionPlan* plan,
                                   Optimizer::Rule const* rule);
 
 }  // namespace aql
-}  // namespace triagens
+}  // namespace arangodb
 
 #endif
 

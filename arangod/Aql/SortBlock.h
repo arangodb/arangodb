@@ -28,7 +28,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/SortNode.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class AqlTransaction;
 }
@@ -63,7 +63,7 @@ class SortBlock : public ExecutionBlock {
 
   class OurLessThan {
    public:
-    OurLessThan(triagens::arango::AqlTransaction* trx,
+    OurLessThan(arangodb::arango::AqlTransaction* trx,
                 std::deque<AqlItemBlock*>& buffer,
                 std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                 std::vector<TRI_document_collection_t const*>& colls)
@@ -76,7 +76,7 @@ class SortBlock : public ExecutionBlock {
                     std::pair<size_t, size_t> const& b);
 
    private:
-    triagens::arango::AqlTransaction* _trx;
+    arangodb::arango::AqlTransaction* _trx;
     std::deque<AqlItemBlock*>& _buffer;
     std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
     std::vector<TRI_document_collection_t const*>& _colls;
@@ -96,8 +96,8 @@ class SortBlock : public ExecutionBlock {
   bool _stable;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

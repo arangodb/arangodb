@@ -33,7 +33,7 @@
 #include "Utils/AqlTransaction.h"
 #include "VocBase/document-collection.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
@@ -66,7 +66,7 @@ struct AqlValue {
 
   AqlValue() : _json(nullptr), _type(EMPTY) {}
 
-  explicit AqlValue(triagens::basics::Json* json) : _json(json), _type(JSON) {}
+  explicit AqlValue(arangodb::basics::Json* json) : _json(json), _type(JSON) {}
 
   explicit AqlValue(TRI_df_marker_t const* marker)
       : _marker(marker), _type(SHAPED) {}
@@ -223,7 +223,7 @@ struct AqlValue {
   /// @brief returns the array member at position i
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json at(triagens::arango::AqlTransaction*, size_t i) const;
+  arangodb::basics::Json at(arangodb::arango::AqlTransaction*, size_t i) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the length of an AqlValue containing an array
@@ -255,7 +255,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
-                             triagens::arango::AqlTransaction*,
+                             arangodb::arango::AqlTransaction*,
                              TRI_document_collection_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -264,7 +264,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   v8::Handle<v8::Value> toV8Partial(v8::Isolate* isolate,
-                                    triagens::arango::AqlTransaction*,
+                                    arangodb::arango::AqlTransaction*,
                                     std::unordered_set<std::string> const&,
                                     TRI_document_collection_t const*) const;
 
@@ -272,14 +272,14 @@ struct AqlValue {
   /// @brief toJson method
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson(triagens::arango::AqlTransaction*,
+  arangodb::basics::Json toJson(arangodb::arango::AqlTransaction*,
                                 TRI_document_collection_t const*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a hash value for the AqlValue
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t hash(triagens::arango::AqlTransaction*,
+  uint64_t hash(arangodb::arango::AqlTransaction*,
                 TRI_document_collection_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -287,9 +287,9 @@ struct AqlValue {
   /// this will return null if the value is not an object
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json extractObjectMember(
-      triagens::arango::AqlTransaction*, TRI_document_collection_t const*,
-      char const*, bool, triagens::basics::StringBuffer&) const;
+  arangodb::basics::Json extractObjectMember(
+      arangodb::arango::AqlTransaction*, TRI_document_collection_t const*,
+      char const*, bool, arangodb::basics::StringBuffer&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract a value from an array AqlValue
@@ -299,7 +299,7 @@ struct AqlValue {
   /// not be freed)
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json extractArrayMember(triagens::arango::AqlTransaction*,
+  arangodb::basics::Json extractArrayMember(arangodb::arango::AqlTransaction*,
                                             TRI_document_collection_t const*,
                                             int64_t, bool) const;
 
@@ -307,7 +307,7 @@ struct AqlValue {
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
   //////////////////////////////////////////////////////////////////////////////
 
-  static AqlValue CreateFromBlocks(triagens::arango::AqlTransaction*,
+  static AqlValue CreateFromBlocks(arangodb::arango::AqlTransaction*,
                                    std::vector<AqlItemBlock*> const&,
                                    std::vector<std::string> const&);
 
@@ -315,15 +315,15 @@ struct AqlValue {
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
   //////////////////////////////////////////////////////////////////////////////
 
-  static AqlValue CreateFromBlocks(triagens::arango::AqlTransaction*,
+  static AqlValue CreateFromBlocks(arangodb::arango::AqlTransaction*,
                                    std::vector<AqlItemBlock*> const&,
-                                   triagens::aql::RegisterId);
+                                   arangodb::aql::RegisterId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief 3-way comparison for AqlValue objects
   //////////////////////////////////////////////////////////////////////////////
 
-  static int Compare(triagens::arango::AqlTransaction*, AqlValue const&,
+  static int Compare(arangodb::arango::AqlTransaction*, AqlValue const&,
                      TRI_document_collection_t const*, AqlValue const&,
                      TRI_document_collection_t const*, bool compareUtf8);
   
@@ -332,7 +332,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   union {
-    triagens::basics::Json* _json;
+    arangodb::basics::Json* _json;
     TRI_df_marker_t const* _marker;
     std::vector<AqlItemBlock*>* _vector;
     Range const* _range;
@@ -345,8 +345,8 @@ struct AqlValue {
   AqlValueType _type;
 };
 
-}  // closes namespace triagens::aql
-}  // closes namespace triagens
+}  // closes namespace arangodb::aql
+}  // closes namespace arangodb
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,25 +356,25 @@ struct AqlValue {
 namespace std {
 
 template <>
-struct hash<triagens::aql::AqlValue> {
-  size_t operator()(triagens::aql::AqlValue const& x) const {
+struct hash<arangodb::aql::AqlValue> {
+  size_t operator()(arangodb::aql::AqlValue const& x) const {
     std::hash<uint32_t> intHash;
     std::hash<void const*> ptrHash;
     size_t res = intHash(static_cast<uint32_t>(x._type));
     switch (x._type) {
-      case triagens::aql::AqlValue::JSON: {
+      case arangodb::aql::AqlValue::JSON: {
         return res ^ ptrHash(x._json);
       }
-      case triagens::aql::AqlValue::SHAPED: {
+      case arangodb::aql::AqlValue::SHAPED: {
         return res ^ ptrHash(x._marker);
       }
-      case triagens::aql::AqlValue::DOCVEC: {
+      case arangodb::aql::AqlValue::DOCVEC: {
         return res ^ ptrHash(x._vector);
       }
-      case triagens::aql::AqlValue::RANGE: {
+      case arangodb::aql::AqlValue::RANGE: {
         return res ^ ptrHash(x._range);
       }
-      case triagens::aql::AqlValue::EMPTY: {
+      case arangodb::aql::AqlValue::EMPTY: {
         return res;
       }
     }
@@ -385,26 +385,26 @@ struct hash<triagens::aql::AqlValue> {
 };
 
 template <>
-struct equal_to<triagens::aql::AqlValue> {
-  bool operator()(triagens::aql::AqlValue const& a,
-                  triagens::aql::AqlValue const& b) const {
+struct equal_to<arangodb::aql::AqlValue> {
+  bool operator()(arangodb::aql::AqlValue const& a,
+                  arangodb::aql::AqlValue const& b) const {
     if (a._type != b._type) {
       return false;
     }
     switch (a._type) {
-      case triagens::aql::AqlValue::JSON: {
+      case arangodb::aql::AqlValue::JSON: {
         return a._json == b._json;
       }
-      case triagens::aql::AqlValue::SHAPED: {
+      case arangodb::aql::AqlValue::SHAPED: {
         return a._marker == b._marker;
       }
-      case triagens::aql::AqlValue::DOCVEC: {
+      case arangodb::aql::AqlValue::DOCVEC: {
         return a._vector == b._vector;
       }
-      case triagens::aql::AqlValue::RANGE: {
+      case arangodb::aql::AqlValue::RANGE: {
         return a._range == b._range;
       }
-      // case triagens::aql::AqlValue::EMPTY intentionally not handled here!
+      // case arangodb::aql::AqlValue::EMPTY intentionally not handled here!
       // (should fall through and fail!)
 
       default: {

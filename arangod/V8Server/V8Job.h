@@ -31,7 +31,7 @@
 struct TRI_vocbase_t;
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class ApplicationV8;
 

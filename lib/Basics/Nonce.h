@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 namespace Nonce {
 

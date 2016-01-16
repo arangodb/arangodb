@@ -28,9 +28,9 @@
 #include "V8/v8-conv.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "collection"

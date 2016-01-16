@@ -26,16 +26,16 @@
 #include "Rest/HttpRequest.h"
 
 using namespace std;
-using namespace triagens::admin;
-using namespace triagens::rest;
+using namespace arangodb::admin;
+using namespace arangodb::rest;
 
 
 
-RestShutdownHandler::RestShutdownHandler(triagens::rest::HttpRequest* request,
+RestShutdownHandler::RestShutdownHandler(arangodb::rest::HttpRequest* request,
                                          void* applicationServer)
     : RestBaseHandler(request),
       _applicationServer(
-          static_cast<triagens::rest::ApplicationServer*>(applicationServer)) {}
+          static_cast<arangodb::rest::ApplicationServer*>(applicationServer)) {}
 
 
 

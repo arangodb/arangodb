@@ -30,7 +30,7 @@
 #include <iterator>
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 

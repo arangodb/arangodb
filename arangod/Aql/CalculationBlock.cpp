@@ -29,10 +29,10 @@
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
-using namespace triagens::aql;
+using namespace arangodb::arango;
+using namespace arangodb::aql;
 
-using Json = triagens::basics::Json;
+using Json = arangodb::basics::Json;
 
 CalculationBlock::CalculationBlock(ExecutionEngine* engine,
                                    CalculationNode const* en)
@@ -186,10 +186,10 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     }
   } else {
     bool const isRunningInCluster =
-        triagens::arango::ServerState::instance()->isRunningInCluster();
+        arangodb::arango::ServerState::instance()->isRunningInCluster();
 
     // must have a V8 context here to protect Expression::execute()
-    triagens::basics::ScopeGuard guard{
+    arangodb::basics::ScopeGuard guard{
         [&]() -> void { _engine->getQuery()->enterContext(); },
         [&]() -> void {
           if (isRunningInCluster) {

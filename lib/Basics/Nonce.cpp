@@ -32,7 +32,7 @@
 #include "Basics/StringUtils.h"
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // statistic nonce buffer
@@ -79,7 +79,7 @@ uint32_t StatisticsNonces[32][5] = {{0, 0, 0, 0, 0},
                                     {0, 0, 0, 0, 0}};
 }
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 namespace Nonce {
 

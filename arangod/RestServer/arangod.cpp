@@ -34,9 +34,9 @@
 #include <iostream>
 #endif
 
-using namespace triagens;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////

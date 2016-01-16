@@ -33,7 +33,7 @@
 
 struct TRI_json_t;
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class Scheduler;
 class HttpResponse;

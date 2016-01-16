@@ -47,10 +47,10 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,13 +63,13 @@ ArangoClient BaseClient("arangorestore");
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::GeneralClientConnection* Connection = nullptr;
+arangodb::httpclient::GeneralClientConnection* Connection = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP client
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::SimpleHttpClient* Client = nullptr;
+arangodb::httpclient::SimpleHttpClient* Client = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief chunk size
@@ -278,10 +278,10 @@ static std::string GetHttpErrorMessage(SimpleHttpResult* result) {
     VPackSlice const body = parsedBody->slice();
 
     std::string const& errorMessage =
-        triagens::basics::VelocyPackHelper::getStringValue(body, "errorMessage",
+        arangodb::basics::VelocyPackHelper::getStringValue(body, "errorMessage",
                                                            "");
     int const errorNum =
-        triagens::basics::VelocyPackHelper::getNumericValue<int>(body,
+        arangodb::basics::VelocyPackHelper::getNumericValue<int>(body,
                                                                  "errorNum", 0);
     if (errorMessage != "" && errorNum > 0) {
       details =
@@ -301,18 +301,18 @@ static std::string GetHttpErrorMessage(SimpleHttpResult* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int TryCreateDatabase(std::string const& name) {
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json("name", triagens::basics::Json(name));
+  arangodb::basics::Json json(arangodb::basics::Json::Object);
+  json("name", arangodb::basics::Json(name));
 
-  triagens::basics::Json user(triagens::basics::Json::Object);
-  user("username", triagens::basics::Json(BaseClient.username()));
-  user("passwd", triagens::basics::Json(BaseClient.password()));
+  arangodb::basics::Json user(arangodb::basics::Json::Object);
+  user("username", arangodb::basics::Json(BaseClient.username()));
+  user("passwd", arangodb::basics::Json(BaseClient.password()));
 
-  triagens::basics::Json users(triagens::basics::Json::Array);
+  arangodb::basics::Json users(arangodb::basics::Json::Array);
   users.add(user);
   json("users", users);
 
-  std::string const body(triagens::basics::JsonHelper::toString(json.json()));
+  std::string const body(arangodb::basics::JsonHelper::toString(json.json()));
 
   std::unique_ptr<SimpleHttpResult> response(
       Client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/database",
@@ -364,13 +364,13 @@ static std::string GetArangoVersion() {
 
       // look up "server" value
       std::string const server =
-          triagens::basics::VelocyPackHelper::getStringValue(body, "server",
+          arangodb::basics::VelocyPackHelper::getStringValue(body, "server",
                                                              "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
         // look up "version" value
-        version = triagens::basics::VelocyPackHelper::getStringValue(
+        version = arangodb::basics::VelocyPackHelper::getStringValue(
             body, "version", "");
       }
     } catch (...) {
@@ -406,7 +406,7 @@ static bool GetArangoIsCluster() {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();
-      role = triagens::basics::VelocyPackHelper::getStringValue(body, "role",
+      role = arangodb::basics::VelocyPackHelper::getStringValue(body, "role",
                                                                 "UNDEFINED");
     } catch (...) {
       // No action
@@ -539,8 +539,8 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
   VPackSlice const& right = r.get("parameters");
 
   int leftType =
-      triagens::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
-  int rightType = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
+  int rightType = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
       right, "type", 0);
 
   if (leftType != rightType) {
@@ -548,9 +548,9 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
   }
 
   std::string leftName =
-      triagens::basics::VelocyPackHelper::getStringValue(left, "name", "");
+      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
   std::string rightName =
-      triagens::basics::VelocyPackHelper::getStringValue(right, "name", "");
+      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
 
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
@@ -593,7 +593,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
 
         std::string const fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + file;
         std::shared_ptr<VPackBuilder> fileContentBuilder =
-            triagens::basics::VelocyPackHelper::velocyPackFromFile(fqn);
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(fqn);
         VPackSlice const fileContent = fileContentBuilder->slice();
 
         if (!fileContent.isObject()) {
@@ -610,14 +610,14 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         }
 
         std::string const cname =
-            triagens::basics::VelocyPackHelper::getStringValue(parameters,
+            arangodb::basics::VelocyPackHelper::getStringValue(parameters,
                                                                "name", "");
 
         bool overwriteName = false;
 
         if (cname != name &&
             name !=
-                (cname + "_" + triagens::rest::SslInterface::sslMD5(cname))) {
+                (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname))) {
           // file has a different name than found in structure file
           if (ImportStructure) {
             // we cannot go on if there is a mismatch
@@ -667,9 +667,9 @@ static int ProcessInputDirectory(std::string& errorMsg) {
       VPackSlice const parameters = collection.get("parameters");
       VPackSlice const indexes = collection.get("indexes");
       std::string const cname =
-          triagens::basics::VelocyPackHelper::getStringValue(parameters, "name",
+          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
-      int type = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+      int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           parameters, "type", 2);
 
       std::string const collectionType(type == 2 ? "document" : "edge");
@@ -702,7 +702,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         // import data. check if we have a datafile
         std::string datafile =
             InputDirectory + TRI_DIR_SEPARATOR_STR + cname + "_" +
-            triagens::rest::SslInterface::sslMD5(cname) + ".data.json";
+            arangodb::rest::SslInterface::sslMD5(cname) + ".data.json";
         if (!TRI_ExistsFile(datafile.c_str())) {
           datafile =
               InputDirectory + TRI_DIR_SEPARATOR_STR + cname + ".data.json";

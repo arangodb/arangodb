@@ -104,7 +104,7 @@ uint64_t TRI_HashJsonByAttributes(TRI_json_t const* json,
 /// @brief hasher for JSON value
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 struct JsonHash {

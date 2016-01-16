@@ -32,8 +32,8 @@
 #include "VocBase/VocShaper.h"
 
 using namespace std;
-using namespace triagens::arango;
-using namespace triagens::basics;
+using namespace arangodb::arango;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up shaped json values
@@ -313,7 +313,7 @@ ExampleMatcher::ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
         ExampleMatcher::fillExampleDefinition(TRI_LookupArrayJson(example, i),
                                               resolver, def);
         definitions.emplace_back(std::move(def));
-      } catch (triagens::basics::Exception& e) {
+      } catch (arangodb::basics::Exception& e) {
         if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
           CleanupShapes(def._values);
           ExampleMatcher::cleanup();
@@ -354,7 +354,7 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       // Match _rev
       it = def._internal.find(internalAttr::rev);
       if (it != def._internal.end()) {
-        if (triagens::basics::StringUtils::uint64(it->second.key) !=
+        if (arangodb::basics::StringUtils::uint64(it->second.key) !=
             mptr->_rid) {
           goto nextExample;
         }

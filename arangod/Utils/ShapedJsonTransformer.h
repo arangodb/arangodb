@@ -36,8 +36,8 @@ class VocShaper;
 ///        This json object contains all internal attributes.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json TRI_ExpandShapedJson(
-    VocShaper* shaper, triagens::arango::CollectionNameResolver const* resolver,
+arangodb::basics::Json TRI_ExpandShapedJson(
+    VocShaper* shaper, arangodb::arango::CollectionNameResolver const* resolver,
     TRI_voc_cid_t const& cid, TRI_df_marker_t const* marker);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,8 +45,8 @@ triagens::basics::Json TRI_ExpandShapedJson(
 ///        This json object contains all internal attributes.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json TRI_ExpandShapedJson(
-    VocShaper* shaper, triagens::arango::CollectionNameResolver const* resolver,
+arangodb::basics::Json TRI_ExpandShapedJson(
+    VocShaper* shaper, arangodb::arango::CollectionNameResolver const* resolver,
     TRI_voc_cid_t const& cid, TRI_doc_mptr_t const* mptr);
 
 #endif

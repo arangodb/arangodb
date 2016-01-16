@@ -37,7 +37,7 @@
 struct TRI_vocbase_t;
 
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +142,7 @@ class RestAqlHandler : public arango::RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleUseQuery(std::string const&, Query*,
-                      triagens::basics::Json const&);
+                      arangodb::basics::Json const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parseJsonBody, returns a nullptr and produces an error response if

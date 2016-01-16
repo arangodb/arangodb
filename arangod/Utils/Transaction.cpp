@@ -25,7 +25,7 @@
 #include "Basics/random.h"
 #include "Indexes/PrimaryIndex.h"
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief if this pointer is set to an actual set, then for each request
@@ -44,7 +44,7 @@ thread_local std::unordered_set<std::string>* Transaction::_makeNolockHeaders =
 
 int Transaction::readIncremental(TRI_transaction_collection_t* trxCollection,
                                  std::vector<TRI_doc_mptr_copy_t>& docs,
-                                 triagens::basics::BucketPosition& internalSkip,
+                                 arangodb::basics::BucketPosition& internalSkip,
                                  uint64_t batchSize, uint64_t& skip,
                                  uint64_t limit, uint64_t& total) {
   TRI_document_collection_t* document = documentCollection(trxCollection);
@@ -106,8 +106,8 @@ int Transaction::readIncremental(TRI_transaction_collection_t* trxCollection,
 
 int Transaction::readRandom(TRI_transaction_collection_t* trxCollection,
                             std::vector<TRI_doc_mptr_copy_t>& docs,
-                            triagens::basics::BucketPosition& initialPosition,
-                            triagens::basics::BucketPosition& position,
+                            arangodb::basics::BucketPosition& initialPosition,
+                            arangodb::basics::BucketPosition& position,
                             uint64_t batchSize, uint64_t& step,
                             uint64_t& total) {
   TRI_document_collection_t* document = documentCollection(trxCollection);
@@ -158,8 +158,8 @@ int Transaction::readAny(TRI_transaction_collection_t* trxCollection,
   }
 
   auto idx = document->primaryIndex();
-  triagens::basics::BucketPosition intPos;
-  triagens::basics::BucketPosition pos;
+  arangodb::basics::BucketPosition intPos;
+  arangodb::basics::BucketPosition pos;
   uint64_t step = 0;
   uint64_t total = 0;
 
@@ -195,7 +195,7 @@ int Transaction::readAll(TRI_transaction_collection_t* trxCollection,
   size_t used = idx->size();
 
   if (used > 0) {
-    triagens::basics::BucketPosition step;
+    arangodb::basics::BucketPosition step;
     uint64_t total = 0;
 
     while (true) {
@@ -246,7 +246,7 @@ int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
   TRI_doc_mptr_t const* mptr = nullptr;
 
   if (skip < 0) {
-    triagens::basics::BucketPosition position;
+    arangodb::basics::BucketPosition position;
     do {
       mptr = idx->lookupSequentialReverse(this, position);
       ++skip;
@@ -271,7 +271,7 @@ int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
     this->unlock(trxCollection, TRI_TRANSACTION_READ);
     return TRI_ERROR_NO_ERROR;
   }
-  triagens::basics::BucketPosition position;
+  arangodb::basics::BucketPosition position;
 
   while (skip > 0) {
     mptr = idx->lookupSequential(this, position, total);
@@ -315,7 +315,7 @@ int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  triagens::basics::BucketPosition position;
+  arangodb::basics::BucketPosition position;
   uint64_t total = 0;
   auto idx = document->primaryIndex();
   docs.reserve(idx->size());

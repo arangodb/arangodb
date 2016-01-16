@@ -24,7 +24,7 @@
 #include "AqlItemBlockManager.h"
 #include "Aql/AqlItemBlock.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////

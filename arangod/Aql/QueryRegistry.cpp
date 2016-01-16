@@ -26,8 +26,8 @@
 #include "Basics/ReadLocker.h"
 #include "Aql/ExecutionEngine.h"
 
-using namespace triagens::aql;
-using namespace triagens::arango;
+using namespace arangodb::aql;
+using namespace arangodb::arango;
 
 
 

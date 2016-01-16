@@ -33,7 +33,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -1022,7 +1022,7 @@ class Json {
   /// @brief appends JSON to a string buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  void dump(triagens::basics::StringBuffer& buffer) const {
+  void dump(arangodb::basics::StringBuffer& buffer) const {
     if (_json != nullptr) {
       int res = TRI_StringifyJson(buffer.stringBuffer(), _json);
 
@@ -1055,8 +1055,8 @@ class Json {
 }
 }
 
-std::ostream& operator<<(std::ostream&, triagens::basics::Json const*);
-std::ostream& operator<<(std::ostream&, triagens::basics::Json const&);
+std::ostream& operator<<(std::ostream&, arangodb::basics::Json const*);
+std::ostream& operator<<(std::ostream&, arangodb::basics::Json const&);
 std::ostream& operator<<(std::ostream&, TRI_json_t const*);
 std::ostream& operator<<(std::ostream&, TRI_json_t const&);
 

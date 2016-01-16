@@ -39,7 +39,7 @@
 struct TRI_json_t;
 struct TRI_memory_zone_s;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class ClusterInfo;
 
@@ -84,7 +84,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_cid_t id() const {
-    return triagens::basics::JsonHelper::stringUInt64(_json, "id");
+    return arangodb::basics::JsonHelper::stringUInt64(_json, "id");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -92,7 +92,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string id_as_string() const {
-    return triagens::basics::JsonHelper::getStringValue(_json, "id", "");
+    return arangodb::basics::JsonHelper::getStringValue(_json, "id", "");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -100,7 +100,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string name() const {
-    return triagens::basics::JsonHelper::getStringValue(_json, "name", "");
+    return arangodb::basics::JsonHelper::getStringValue(_json, "name", "");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -108,7 +108,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_col_type_e type() const {
-    return (TRI_col_type_e)triagens::basics::JsonHelper::getNumericValue<int>(
+    return (TRI_col_type_e)arangodb::basics::JsonHelper::getNumericValue<int>(
         _json, "type", (int)TRI_COL_TYPE_UNKNOWN);
   }
 
@@ -118,7 +118,7 @@ class CollectionInfo {
 
   TRI_vocbase_col_status_e status() const {
     return (TRI_vocbase_col_status_e)
-        triagens::basics::JsonHelper::getNumericValue<int>(
+        arangodb::basics::JsonHelper::getNumericValue<int>(
             _json, "status", (int)TRI_VOC_COL_STATUS_CORRUPTED);
   }
 
@@ -135,7 +135,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool deleted() const {
-    return triagens::basics::JsonHelper::getBooleanValue(_json, "deleted",
+    return arangodb::basics::JsonHelper::getBooleanValue(_json, "deleted",
                                                          false);
   }
 
@@ -144,7 +144,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool doCompact() const {
-    return triagens::basics::JsonHelper::getBooleanValue(_json, "doCompact",
+    return arangodb::basics::JsonHelper::getBooleanValue(_json, "doCompact",
                                                          false);
   }
 
@@ -153,7 +153,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isSystem() const {
-    return triagens::basics::JsonHelper::getBooleanValue(_json, "isSystem",
+    return arangodb::basics::JsonHelper::getBooleanValue(_json, "isSystem",
                                                          false);
   }
 
@@ -162,7 +162,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isVolatile() const {
-    return triagens::basics::JsonHelper::getBooleanValue(_json, "isVolatile",
+    return arangodb::basics::JsonHelper::getBooleanValue(_json, "isVolatile",
                                                          false);
   }
 
@@ -171,7 +171,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_json_t const* getIndexes() const {
-    return triagens::basics::JsonHelper::getObjectElement(_json, "indexes");
+    return arangodb::basics::JsonHelper::getObjectElement(_json, "indexes");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -181,7 +181,7 @@ class CollectionInfo {
 
   TRI_json_t* keyOptions() const {
     TRI_json_t const* keyOptions =
-        triagens::basics::JsonHelper::getObjectElement(_json, "keyOptions");
+        arangodb::basics::JsonHelper::getObjectElement(_json, "keyOptions");
 
     if (keyOptions != nullptr) {
       return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
@@ -196,10 +196,10 @@ class CollectionInfo {
 
   bool allowUserKeys() const {
     TRI_json_t const* keyOptions =
-        triagens::basics::JsonHelper::getObjectElement(_json, "keyOptions");
+        arangodb::basics::JsonHelper::getObjectElement(_json, "keyOptions");
 
     if (keyOptions != nullptr) {
-      return triagens::basics::JsonHelper::getBooleanValue(
+      return arangodb::basics::JsonHelper::getBooleanValue(
           keyOptions, "allowUserKeys", true);
     }
 
@@ -211,7 +211,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool waitForSync() const {
-    return triagens::basics::JsonHelper::getBooleanValue(_json, "waitForSync",
+    return arangodb::basics::JsonHelper::getBooleanValue(_json, "waitForSync",
                                                          false);
   }
 
@@ -220,7 +220,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_size_t journalSize() const {
-    return triagens::basics::JsonHelper::getNumericValue<TRI_voc_size_t>(
+    return arangodb::basics::JsonHelper::getNumericValue<TRI_voc_size_t>(
         _json, "journalSize", 0);
   }
 
@@ -229,7 +229,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   uint32_t indexBuckets() const {
-    return triagens::basics::JsonHelper::getNumericValue<uint32_t>(
+    return arangodb::basics::JsonHelper::getNumericValue<uint32_t>(
         _json, "indexBuckets", 1);
   }
 
@@ -239,8 +239,8 @@ class CollectionInfo {
 
   std::vector<std::string> shardKeys() const {
     TRI_json_t* const node =
-        triagens::basics::JsonHelper::getObjectElement(_json, "shardKeys");
-    return triagens::basics::JsonHelper::stringArray(node);
+        arangodb::basics::JsonHelper::getObjectElement(_json, "shardKeys");
+    return arangodb::basics::JsonHelper::stringArray(node);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -249,14 +249,14 @@ class CollectionInfo {
 
   bool usesDefaultShardKeys() const {
     TRI_json_t* const node =
-        triagens::basics::JsonHelper::getObjectElement(_json, "shardKeys");
+        arangodb::basics::JsonHelper::getObjectElement(_json, "shardKeys");
     if (TRI_LengthArrayJson(node) != 1) {
       return false;
     }
     TRI_json_t* firstKey = TRI_LookupArrayJson(node, 0);
     TRI_ASSERT(TRI_IsStringJson(firstKey));
     std::string shardKey =
-        triagens::basics::JsonHelper::getStringValue(firstKey, "");
+        arangodb::basics::JsonHelper::getStringValue(firstKey, "");
     return shardKey == TRI_VOC_ATTRIBUTE_KEY;
   }
 
@@ -277,7 +277,7 @@ class CollectionInfo {
     }
     res.reset(new ShardMap());
     TRI_json_t* const node =
-        triagens::basics::JsonHelper::getObjectElement(_json, "shards");
+        arangodb::basics::JsonHelper::getObjectElement(_json, "shards");
     if (node != nullptr && TRI_IsObjectJson(node)) {
       size_t len = TRI_LengthVector(&node->_value._objects);
       for (size_t i = 0; i < len; i += 2) {
@@ -286,9 +286,9 @@ class CollectionInfo {
         auto value = static_cast<TRI_json_t*>(
             TRI_AtVector(&node->_value._objects, i + 1));
         if (TRI_IsStringJson(key) && TRI_IsArrayJson(value)) {
-          ShardID shard = triagens::basics::JsonHelper::getStringValue(key, "");
+          ShardID shard = arangodb::basics::JsonHelper::getStringValue(key, "");
           std::vector<ServerID> servers =
-              triagens::basics::JsonHelper::stringArray(value);
+              arangodb::basics::JsonHelper::stringArray(value);
           if (shard != "") {
             (*res).insert(make_pair(shard, servers));
           }
@@ -308,7 +308,7 @@ class CollectionInfo {
 
   int numberOfShards() const {
     TRI_json_t* const node =
-        triagens::basics::JsonHelper::getObjectElement(_json, "shards");
+        arangodb::basics::JsonHelper::getObjectElement(_json, "shards");
 
     if (TRI_IsObjectJson(node)) {
       return (int)(TRI_LengthVector(&node->_value._objects) / 2);
@@ -384,7 +384,7 @@ class CollectionInfoCurrent {
     auto it = _jsons.find(shardID);
     if (it != _jsons.end()) {
       TRI_json_t* json = it->second;
-      return triagens::basics::JsonHelper::getObjectElement(json, "indexes");
+      return arangodb::basics::JsonHelper::getObjectElement(json, "indexes");
     }
     return nullptr;
   }
@@ -409,7 +409,7 @@ class CollectionInfoCurrent {
     auto it = _jsons.find(shardID);
     if (it != _jsons.end()) {
       TRI_json_t* json = it->second;
-      return triagens::basics::JsonHelper::getNumericValue<int>(json,
+      return arangodb::basics::JsonHelper::getNumericValue<int>(json,
                                                                 "errorNum", 0);
     }
     return 0;
@@ -424,7 +424,7 @@ class CollectionInfoCurrent {
     TRI_voc_size_t s;
     for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
       TRI_json_t* json = it->second;
-      s = triagens::basics::JsonHelper::getNumericValue<int>(json, "errorNum",
+      s = arangodb::basics::JsonHelper::getNumericValue<int>(json, "errorNum",
                                                              0);
       m.insert(std::make_pair(it->first, s));
     }
@@ -440,9 +440,9 @@ class CollectionInfoCurrent {
     auto it = _jsons.find(shardID);
     if (it != _jsons.end()) {
       TRI_json_t const* json =
-          triagens::basics::JsonHelper::getObjectElement(it->second, "servers");
+          arangodb::basics::JsonHelper::getObjectElement(it->second, "servers");
       if (json != nullptr) {
-        v = triagens::basics::JsonHelper::stringArray(json);
+        v = arangodb::basics::JsonHelper::stringArray(json);
       }
     }
     return v;
@@ -456,7 +456,7 @@ class CollectionInfoCurrent {
     auto it = _jsons.find(shardID);
     if (it != _jsons.end()) {
       TRI_json_t* json = it->second;
-      return triagens::basics::JsonHelper::getStringValue(json, "errorMessage",
+      return arangodb::basics::JsonHelper::getStringValue(json, "errorMessage",
                                                           "");
     }
     return std::string();
@@ -472,7 +472,7 @@ class CollectionInfoCurrent {
     auto it = _jsons.find(shardID);
     if (it != _jsons.end()) {
       TRI_json_t* json = it->second;
-      return triagens::basics::JsonHelper::getBooleanValue(json, name, false);
+      return arangodb::basics::JsonHelper::getBooleanValue(json, name, false);
     }
     return false;
   }
@@ -486,7 +486,7 @@ class CollectionInfoCurrent {
     bool b;
     for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
       TRI_json_t* json = it->second;
-      b = triagens::basics::JsonHelper::getBooleanValue(json, name, false);
+      b = arangodb::basics::JsonHelper::getBooleanValue(json, name, false);
       m.insert(std::make_pair(it->first, b));
     }
     return m;
@@ -899,9 +899,9 @@ class ClusterInfo {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    triagens::basics::Mutex mutex;
+    arangodb::basics::Mutex mutex;
     std::atomic<uint64_t> version;
-    triagens::basics::ReadWriteLock lock;
+    arangodb::basics::ReadWriteLock lock;
 
     ProtectionData() : isValid(false), version(0) {}
   };
@@ -975,7 +975,7 @@ class ClusterInfo {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _idLock;
+  arangodb::basics::Mutex _idLock;
 
   
   //////////////////////////////////////////////////////////////////////////////
@@ -1004,7 +1004,7 @@ class ClusterInfo {
 };
 
 }  // end namespace arango
-}  // end namespace triagens
+}  // end namespace arangodb
 
 #endif
 

@@ -34,7 +34,7 @@
 #include "Statistics/StatisticsAgent.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class Dispatcher;
 class HttpHandlerFactory;

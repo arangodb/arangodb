@@ -33,7 +33,7 @@ struct TRI_doc_mptr_t;
 class VocShaper;
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class ExampleMatcher {
@@ -61,7 +61,7 @@ class ExampleMatcher {
 
   void fillExampleDefinition(
       TRI_json_t const* example,
-      triagens::arango::CollectionNameResolver const* resolver,
+      arangodb::arango::CollectionNameResolver const* resolver,
       ExampleDefinition& def);
 
   void fillExampleDefinition(v8::Isolate* isolate,
@@ -77,7 +77,7 @@ class ExampleMatcher {
                  VocShaper* shaper, std::string& errorMessage);
 
   ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
-                 triagens::arango::CollectionNameResolver const* resolver);
+                 arangodb::arango::CollectionNameResolver const* resolver);
 
   ~ExampleMatcher() { cleanup(); }
 

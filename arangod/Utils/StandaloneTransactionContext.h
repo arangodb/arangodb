@@ -35,7 +35,7 @@
 
 struct TRI_transaction_s;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class StandaloneTransactionContext final : public TransactionContext {

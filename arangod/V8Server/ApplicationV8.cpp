@@ -57,10 +57,10 @@
 #include <libplatform/libplatform.h>
 #include <thread>
 
-using namespace triagens;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
 using namespace std;
 
 
@@ -247,7 +247,7 @@ void ApplicationV8::V8Context::handleCancelationCleanup() {
 
 
 ApplicationV8::ApplicationV8(TRI_server_t* server,
-                             triagens::aql::QueryRegistry* queryRegistry,
+                             arangodb::aql::QueryRegistry* queryRegistry,
                              ApplicationScheduler* scheduler,
                              ApplicationDispatcher* dispatcher)
     : ApplicationFeature("V8"),
@@ -375,14 +375,14 @@ ApplicationV8::V8Context* ApplicationV8::enterContext(TRI_vocbase_t* vocbase,
         _dirtyContexts.pop_back();
       } else {
         auto currentThread =
-            triagens::rest::DispatcherThread::currentDispatcherThread;
+            arangodb::rest::DispatcherThread::currentDispatcherThread;
 
         if (currentThread != nullptr) {
-          triagens::rest::DispatcherThread::currentDispatcherThread->block();
+          arangodb::rest::DispatcherThread::currentDispatcherThread->block();
         }
         guard.wait();
         if (currentThread != nullptr) {
-          triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
+          arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
         }
       }
     }

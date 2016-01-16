@@ -37,7 +37,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 
@@ -46,8 +46,8 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyEndpoint::AgencyEndpoint(
-    triagens::rest::Endpoint* endpoint,
-    triagens::httpclient::GeneralClientConnection* connection)
+    arangodb::rest::Endpoint* endpoint,
+    arangodb::httpclient::GeneralClientConnection* connection)
     : _endpoint(endpoint), _connection(connection), _busy(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,8 +283,8 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
 
         // get "modifiedIndex"
         entry._index =
-            triagens::basics::JsonHelper::stringUInt64(node, "modifiedIndex");
-        entry._json = triagens::basics::JsonHelper::fromString(
+            arangodb::basics::JsonHelper::stringUInt64(node, "modifiedIndex");
+        entry._json = arangodb::basics::JsonHelper::fromString(
             value->_value._string.data, value->_value._string.length - 1);
         entry._isDir = false;
 
@@ -338,7 +338,7 @@ std::string AgencyComm::_globalPrefix = "";
 /// @brief lock for the global endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::ReadWriteLock AgencyComm::_globalLock;
+arangodb::basics::ReadWriteLock AgencyComm::_globalLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list of global endpoints
@@ -421,7 +421,7 @@ bool AgencyCommLocker::fetchVersion(AgencyComm& comm) {
 
   AgencyCommResult result = comm.getValues(_key + "/Version", false);
   if (!result.successful()) {
-    if (result.httpCode() != (int)triagens::rest::HttpResponse::NOT_FOUND) {
+    if (result.httpCode() != (int)arangodb::rest::HttpResponse::NOT_FOUND) {
       return false;
     }
 
@@ -436,7 +436,7 @@ bool AgencyCommLocker::fetchVersion(AgencyComm& comm) {
     return false;
   }
 
-  _version = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+  _version = arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
   return true;
 }
 
@@ -451,7 +451,7 @@ bool AgencyCommLocker::updateVersion(AgencyComm& comm) {
 
   if (_version == 0) {
     TRI_json_t* json =
-        triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1);
+        arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1);
 
     if (json == nullptr) {
       return false;
@@ -466,14 +466,14 @@ bool AgencyCommLocker::updateVersion(AgencyComm& comm) {
     return result.successful();
   } else {
     // Version key found, now update it
-    TRI_json_t* oldJson = triagens::basics::JsonHelper::uint64String(
+    TRI_json_t* oldJson = arangodb::basics::JsonHelper::uint64String(
         TRI_UNKNOWN_MEM_ZONE, _version);
 
     if (oldJson == nullptr) {
       return false;
     }
 
-    TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(
+    TRI_json_t* newJson = arangodb::basics::JsonHelper::uint64String(
         TRI_UNKNOWN_MEM_ZONE, _version + 1);
 
     if (newJson == nullptr) {
@@ -792,16 +792,16 @@ std::string AgencyComm::generateStamp() {
 
 AgencyEndpoint* AgencyComm::createAgencyEndpoint(
     std::string const& endpointSpecification) {
-  std::unique_ptr<triagens::rest::Endpoint> endpoint(
-      triagens::rest::Endpoint::clientFactory(endpointSpecification));
+  std::unique_ptr<arangodb::rest::Endpoint> endpoint(
+      arangodb::rest::Endpoint::clientFactory(endpointSpecification));
 
   if (endpoint == nullptr) {
     // could not create endpoint...
     return nullptr;
   }
 
-  std::unique_ptr<triagens::httpclient::GeneralClientConnection> connection(
-      triagens::httpclient::GeneralClientConnection::factory(
+  std::unique_ptr<arangodb::httpclient::GeneralClientConnection> connection(
+      arangodb::httpclient::GeneralClientConnection::factory(
           endpoint.get(), _globalConnectionOptions._requestTimeout,
           _globalConnectionOptions._connectTimeout,
           _globalConnectionOptions._connectRetries, 0));
@@ -857,7 +857,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 std::string AgencyComm::getVersion() {
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
                    _globalConnectionOptions._requestTimeout, result, "version",
                    "", false);
 
@@ -877,13 +877,13 @@ bool AgencyComm::increaseVersion(std::string const& key) {
   AgencyCommResult result = getValues(key, false);
 
   if (!result.successful()) {
-    if (result.httpCode() != (int)triagens::rest::HttpResponse::NOT_FOUND) {
+    if (result.httpCode() != (int)arangodb::rest::HttpResponse::NOT_FOUND) {
       return false;
     }
 
     // no version key found, now set it
     std::unique_ptr<TRI_json_t> json(
-        triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1));
+        arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1));
 
     if (json == nullptr) {
       return false;
@@ -904,11 +904,11 @@ bool AgencyComm::increaseVersion(std::string const& key) {
   }
 
   uint64_t version =
-      triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+      arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
 
   // version key found, now update it
   std::unique_ptr<TRI_json_t> oldJson(
-      triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
+      arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
                                                  version));
 
   if (oldJson == nullptr) {
@@ -916,7 +916,7 @@ bool AgencyComm::increaseVersion(std::string const& key) {
   }
 
   std::unique_ptr<TRI_json_t> newJson(
-      triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
+      arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
                                                  version + 1));
 
   if (newJson == nullptr) {
@@ -955,7 +955,7 @@ void AgencyComm::increaseVersionRepeated(std::string const& key) {
 AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                    _globalConnectionOptions._requestTimeout, result,
                    buildUrl(key) + "?dir=true", "", false);
 
@@ -970,11 +970,11 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       TRI_json_t const* json, double ttl) {
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                    _globalConnectionOptions._requestTimeout, result,
                    buildUrl(key) + ttlParam(ttl, true),
-                   "value=" + triagens::basics::StringUtils::urlEncode(
-                                  triagens::basics::JsonHelper::toString(json)),
+                   "value=" + arangodb::basics::StringUtils::urlEncode(
+                                  arangodb::basics::JsonHelper::toString(json)),
                    false);
 
   return result;
@@ -990,10 +990,10 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
       _globalConnectionOptions._requestTimeout, result,
       buildUrl(key) + ttlParam(ttl, true),
-      "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
+      "value=" + arangodb::basics::StringUtils::urlEncode(json.toJson()),
       false);
 
   return result;
@@ -1008,7 +1008,7 @@ bool AgencyComm::exists(std::string const& key) {
 
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
                    _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
@@ -1027,7 +1027,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
 
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
                    _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
@@ -1055,7 +1055,7 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 
   AgencyCommResult result;
 
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_DELETE,
+  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE,
                    _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
@@ -1073,12 +1073,12 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, buildUrl(key) + "?prevExist=" + (prevExist ? "true" : "false") +
                   ttlParam(ttl, false),
-      "value=" + triagens::basics::StringUtils::urlEncode(
-                     triagens::basics::JsonHelper::toString(json)),
+      "value=" + arangodb::basics::StringUtils::urlEncode(
+                     arangodb::basics::JsonHelper::toString(json)),
       false);
 
   return result;
@@ -1097,11 +1097,11 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, buildUrl(key) + "?prevExist=" + (prevExist ? "true" : "false") +
                   ttlParam(ttl, false),
-      "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
+      "value=" + arangodb::basics::StringUtils::urlEncode(json.toJson()),
       false);
 
   return result;
@@ -1120,14 +1120,14 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, buildUrl(key) + "?prevValue=" +
-                  triagens::basics::StringUtils::urlEncode(
-                      triagens::basics::JsonHelper::toString(oldJson)) +
+                  arangodb::basics::StringUtils::urlEncode(
+                      arangodb::basics::JsonHelper::toString(oldJson)) +
                   ttlParam(ttl, false),
-      "value=" + triagens::basics::StringUtils::urlEncode(
-                     triagens::basics::JsonHelper::toString(newJson)),
+      "value=" + arangodb::basics::StringUtils::urlEncode(
+                     arangodb::basics::JsonHelper::toString(newJson)),
       false);
 
   return result;
@@ -1143,7 +1143,7 @@ AgencyCommResult AgencyComm::watchValue(std::string const& key,
   std::string url(buildUrl(key) + "?wait=true");
 
   if (waitIndex > 0) {
-    url += "&waitIndex=" + triagens::basics::StringUtils::itoa(waitIndex);
+    url += "&waitIndex=" + arangodb::basics::StringUtils::itoa(waitIndex);
   }
 
   if (recursive) {
@@ -1153,7 +1153,7 @@ AgencyCommResult AgencyComm::watchValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+      arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, url, "", true);
 
@@ -1235,7 +1235,7 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
     result.clear();
     result = getValues(key, false);
 
-    if (result.httpCode() == (int)triagens::rest::HttpResponse::NOT_FOUND) {
+    if (result.httpCode() == (int)arangodb::rest::HttpResponse::NOT_FOUND) {
       std::unique_ptr<TRI_json_t> json(
           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
 
@@ -1273,10 +1273,10 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
     }
 
     uint64_t const oldValue =
-        triagens::basics::JsonHelper::stringUInt64(oldJson.get()) + count;
+        arangodb::basics::JsonHelper::stringUInt64(oldJson.get()) + count;
     uint64_t const newValue = oldValue + count;
     std::unique_ptr<TRI_json_t> newJson(
-        triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
+        arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
                                                    newValue));
 
     if (newJson == nullptr) {
@@ -1306,7 +1306,7 @@ std::string AgencyComm::ttlParam(double ttl, bool isFirst) {
   }
 
   return (isFirst ? "?ttl=" : "&ttl=") +
-         triagens::basics::StringUtils::itoa((int)ttl);
+         arangodb::basics::StringUtils::itoa((int)ttl);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1338,7 +1338,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
         casValue(key + "/Lock", oldJson.get(), json, ttl, timeout);
 
     if (!result.successful() &&
-        result.httpCode() == (int)triagens::rest::HttpResponse::NOT_FOUND) {
+        result.httpCode() == (int)arangodb::rest::HttpResponse::NOT_FOUND) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", json, false, ttl, timeout);
     }
@@ -1516,7 +1516,7 @@ std::string AgencyComm::buildUrl() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::sendWithFailover(
-    triagens::rest::HttpRequest::HttpRequestType method, double const timeout,
+    arangodb::rest::HttpRequest::HttpRequestType method, double const timeout,
     AgencyCommResult& result, std::string const& url, std::string const& body,
     bool isWatch) {
   size_t numEndpoints;
@@ -1555,7 +1555,7 @@ bool AgencyComm::sendWithFailover(
     }
 
     if (result._statusCode ==
-        (int)triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
+        (int)arangodb::rest::HttpResponse::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
       // in this case we have to pick it up and use the new location returned
 
@@ -1642,15 +1642,15 @@ bool AgencyComm::sendWithFailover(
 /// @brief sends data to the URL
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::send(triagens::httpclient::GeneralClientConnection* connection,
-                      triagens::rest::HttpRequest::HttpRequestType method,
+bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
+                      arangodb::rest::HttpRequest::HttpRequestType method,
                       double timeout, AgencyCommResult& result,
                       std::string const& url, std::string const& body) {
   TRI_ASSERT(connection != nullptr);
 
-  if (method == triagens::rest::HttpRequest::HTTP_REQUEST_GET ||
-      method == triagens::rest::HttpRequest::HTTP_REQUEST_HEAD ||
-      method == triagens::rest::HttpRequest::HTTP_REQUEST_DELETE) {
+  if (method == arangodb::rest::HttpRequest::HTTP_REQUEST_GET ||
+      method == arangodb::rest::HttpRequest::HTTP_REQUEST_HEAD ||
+      method == arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE) {
     TRI_ASSERT(body.empty());
   }
 
@@ -1660,24 +1660,24 @@ bool AgencyComm::send(triagens::httpclient::GeneralClientConnection* connection,
   result._statusCode = 0;
 
   LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s",
-            triagens::rest::HttpRequest::translateMethod(method).c_str(),
+            arangodb::rest::HttpRequest::translateMethod(method).c_str(),
             connection->getEndpoint()->getSpecification().c_str(), url.c_str(),
             body.c_str());
 
-  triagens::httpclient::SimpleHttpClient client(connection, timeout, false);
+  arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
 
   client.keepConnectionOnDestruction(true);
 
   // set up headers
   std::map<std::string, std::string> headers;
-  if (method == triagens::rest::HttpRequest::HTTP_REQUEST_PUT ||
-      method == triagens::rest::HttpRequest::HTTP_REQUEST_POST) {
+  if (method == arangodb::rest::HttpRequest::HTTP_REQUEST_PUT ||
+      method == arangodb::rest::HttpRequest::HTTP_REQUEST_POST) {
     // the agency needs this content-type for the body
     headers["content-type"] = "application/x-www-form-urlencoded";
   }
 
   // send the actual request
-  std::unique_ptr<triagens::httpclient::SimpleHttpResult> response(
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(method, url, body.c_str(), body.size(), headers));
 
   if (response == nullptr) {
@@ -1699,7 +1699,7 @@ bool AgencyComm::send(triagens::httpclient::GeneralClientConnection* connection,
   result._connected = true;
 
   if (response->getHttpReturnCode() ==
-      (int)triagens::rest::HttpResponse::TEMPORARY_REDIRECT) {
+      (int)arangodb::rest::HttpResponse::TEMPORARY_REDIRECT) {
     // temporary redirect. now save location header
 
     bool found = false;
@@ -1725,7 +1725,7 @@ bool AgencyComm::send(triagens::httpclient::GeneralClientConnection* connection,
   bool found = false;
   std::string lastIndex = response->getHeaderField("x-etcd-index", found);
   if (found) {
-    result._index = triagens::basics::StringUtils::uint64(lastIndex);
+    result._index = arangodb::basics::StringUtils::uint64(lastIndex);
   }
 
   LOG_TRACE(

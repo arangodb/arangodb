@@ -25,7 +25,7 @@
 #include "Storage/Options.h"
 #include "Utils/CollectionNameResolver.h"
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////

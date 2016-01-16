@@ -33,7 +33,7 @@
 struct TRI_json_t;
 struct TRI_memory_zone_s;
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 

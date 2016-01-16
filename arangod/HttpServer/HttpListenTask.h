@@ -28,7 +28,7 @@
 #include "Scheduler/ListenTask.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class HttpServer;
 class Endpoint;

@@ -37,7 +37,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,7 +163,7 @@ static VocbaseAuthInfo* AuthFromVelocyPack(VPackSlice const& slice) {
   active = activeSlice.getBool();
 
   // extract "changePassword" attribute
-  bool mustChange = triagens::basics::VelocyPackHelper::getBooleanValue(
+  bool mustChange = arangodb::basics::VelocyPackHelper::getBooleanValue(
       slice, "changePassword", false);
   auto result = std::make_unique<VocbaseAuthInfo>(
       userSlice.copyString(), methodSlice.copyString(), saltSlice.copyString(),
@@ -202,7 +202,7 @@ static VocbaseAuthInfo* ConvertAuthInfo(TRI_vocbase_t* vocbase,
   }
 
   std::shared_ptr<VPackBuilder> parsed =
-      triagens::basics::JsonHelper::toVelocyPack(json.get());
+      arangodb::basics::JsonHelper::toVelocyPack(json.get());
   std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(parsed->slice()));
   return auth.release();  // maybe a nullptr
 }
@@ -528,22 +528,22 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
 
   try {
     if (strcmp(passwordMethod, "sha1") == 0) {
-      triagens::rest::SslInterface::sslSHA1(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA1(salted, n + p, crypted,
                                             cryptedLength);
     } else if (strcmp(passwordMethod, "sha512") == 0) {
-      triagens::rest::SslInterface::sslSHA512(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA512(salted, n + p, crypted,
                                               cryptedLength);
     } else if (strcmp(passwordMethod, "sha384") == 0) {
-      triagens::rest::SslInterface::sslSHA384(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA384(salted, n + p, crypted,
                                               cryptedLength);
     } else if (strcmp(passwordMethod, "sha256") == 0) {
-      triagens::rest::SslInterface::sslSHA256(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA256(salted, n + p, crypted,
                                               cryptedLength);
     } else if (strcmp(passwordMethod, "sha224") == 0) {
-      triagens::rest::SslInterface::sslSHA224(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA224(salted, n + p, crypted,
                                               cryptedLength);
     } else if (strcmp(passwordMethod, "md5") == 0) {
-      triagens::rest::SslInterface::sslMD5(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslMD5(salted, n + p, crypted,
                                            cryptedLength);
     } else {
       // invalid algorithm...

@@ -34,7 +34,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-using VelocyPackHelper = triagens::basics::VelocyPackHelper;
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 struct AttributeSorter {
   bool operator() (std::string const& l, std::string const& r) const {
@@ -160,7 +160,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
 
   TRI_string_buffer_t buffer;
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-  triagens::basics::VPackStringBufferAdapter bufferAdapter(&buffer);
+  arangodb::basics::VPackStringBufferAdapter bufferAdapter(&buffer);
   try {
     VPackDumper dumper(&bufferAdapter);
     dumper.dump(slice);

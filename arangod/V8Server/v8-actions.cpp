@@ -48,9 +48,9 @@
 #include "VocBase/vocbase.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 static TRI_action_result_t ExecuteActionVocbase(
@@ -726,7 +726,7 @@ static TRI_action_result_t ExecuteActionVocbase(
   try {
     callback->Call(callback, 2, args);
     errorCode = TRI_ERROR_NO_ERROR;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     errorCode = ex.code();
     errorMessage = ex.what();
   } catch (std::bad_alloc const&) {
@@ -923,7 +923,7 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> property = obj->Get(TRI_V8_ASCII_STRING("internals"));
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
-      auto request = static_cast<triagens::rest::HttpRequest*>(e->Value());
+      auto request = static_cast<arangodb::rest::HttpRequest*>(e->Value());
 
       if (request != nullptr) {
         V8Buffer* buffer =
@@ -958,7 +958,7 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> property = obj->Get(TRI_V8_ASCII_STRING("internals"));
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
-      auto request = static_cast<triagens::rest::HttpRequest*>(e->Value());
+      auto request = static_cast<arangodb::rest::HttpRequest*>(e->Value());
 
       char const* beg = request->body();
       char const* end = beg + request->bodySize();
@@ -1284,7 +1284,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 static bool clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path, // Note: Has to be properly encoded!
-    triagens::rest::HttpRequest::HttpRequestType const& method,
+    arangodb::rest::HttpRequest::HttpRequestType const& method,
     std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1383,7 +1383,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      triagens::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
+                                      arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1426,7 +1426,7 @@ static void JS_DebugRemoveFailAt(
 
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      triagens::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+                                      arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1469,7 +1469,7 @@ static void JS_DebugClearFailAt(
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",
-        triagens::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE,
+        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE,
         "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);

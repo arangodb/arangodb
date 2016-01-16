@@ -29,7 +29,7 @@
 #include "RestHandler/RestDocumentHandler.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////

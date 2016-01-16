@@ -31,7 +31,7 @@
 
 #undef TRI_READ_WRITE_LOCK_COUNTER
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 

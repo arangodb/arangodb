@@ -45,7 +45,7 @@ struct TRI_server_t;
 class TRI_vocbase_col_t;
 struct TRI_vocbase_defaults_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class QueryList;
 }
@@ -255,10 +255,10 @@ struct TRI_vocbase_t {
   TRI_server_t* _server;
   TRI_vocbase_defaults_t _settings;
 
-  triagens::basics::DeadlockDetector<TRI_document_collection_t>
+  arangodb::basics::DeadlockDetector<TRI_document_collection_t>
       _deadlockDetector;
 
-  triagens::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
+  arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
   std::vector<TRI_vocbase_col_t*> _collections;  // pointers to ALL collections
   std::vector<TRI_vocbase_col_t*> _deadCollections;  // pointers to collections
                                                      // dropped that can be
@@ -267,15 +267,15 @@ struct TRI_vocbase_t {
   TRI_associative_pointer_t _collectionsByName;  // collections by name
   TRI_associative_pointer_t _collectionsById;    // collections by id
 
-  triagens::basics::ReadWriteLock _inventoryLock;  // object lock needed when
+  arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
 
   // structures for user-defined volatile data
   void* _userStructures;
-  triagens::aql::QueryList* _queries;
-  triagens::arango::CursorRepository* _cursorRepository;
-  triagens::arango::CollectionKeysRepository* _collectionKeys;
+  arangodb::aql::QueryList* _queries;
+  arangodb::arango::CursorRepository* _cursorRepository;
+  arangodb::arango::CollectionKeysRepository* _collectionKeys;
 
   TRI_associative_pointer_t _authInfo;
   TRI_associative_pointer_t _authCache;
@@ -289,7 +289,7 @@ struct TRI_vocbase_t {
 
   class TRI_replication_applier_t* _replicationApplier;
 
-  triagens::basics::ReadWriteLock _replicationClientsLock;
+  arangodb::basics::ReadWriteLock _replicationClientsLock;
   std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
       _replicationClients;
 
@@ -507,7 +507,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
-    TRI_vocbase_t*, triagens::arango::VocbaseCollectionInfo&, TRI_voc_cid_t cid,
+    TRI_vocbase_t*, arangodb::arango::VocbaseCollectionInfo&, TRI_voc_cid_t cid,
     bool);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -42,18 +42,18 @@
 #ifdef TRI_SHOW_LOCK_TIME
 
 #define MUTEX_LOCKER(b)                                                    \
-  triagens::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b, __FILE__, \
+  arangodb::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b, __FILE__, \
                                                              __LINE__)
 
 #else
 
 #define MUTEX_LOCKER(b) \
-  triagens::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b)
+  arangodb::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b)
 
 #endif
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////

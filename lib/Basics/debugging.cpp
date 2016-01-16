@@ -51,7 +51,7 @@ static char* FailurePoints = nullptr;
 /// @brief a read-write lock for thread-safe access to the failure-points list
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::ReadWriteLock FailurePointsLock;
+arangodb::basics::ReadWriteLock FailurePointsLock;
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 

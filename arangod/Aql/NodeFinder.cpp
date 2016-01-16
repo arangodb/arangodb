@@ -23,7 +23,7 @@
 
 #include "Aql/NodeFinder.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -108,7 +108,7 @@ bool EndNodeFinder::before(ExecutionNode* en) {
   return (!_enterSubqueries);
 }
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 

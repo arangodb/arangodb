@@ -35,7 +35,7 @@ namespace arangodb {
 class V8LineEditor;
 }
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class ApplicationServer;
 }
@@ -64,12 +64,12 @@ class ConsoleThread : public basics::Thread {
   /// @brief mutex for console access
   //////////////////////////////////////////////////////////////////////////////
 
-  static triagens::basics::Mutex serverConsoleMutex;
+  static arangodb::basics::Mutex serverConsoleMutex;
 
   
  public:
 
-  ConsoleThread(triagens::rest::ApplicationServer*, ApplicationV8*,
+  ConsoleThread(arangodb::rest::ApplicationServer*, ApplicationV8*,
                 TRI_vocbase_t*);
 
 

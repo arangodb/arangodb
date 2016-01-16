@@ -43,7 +43,7 @@
 #include "GeoIndex/GeoIndex.h"
 #include "Basics/StringUtils.h"
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -30,8 +30,8 @@
 #include "Cluster/ClusterInfo.h"
 
 using namespace std;
-using namespace triagens::arango;
-using namespace triagens::basics;
+using namespace arangodb::arango;
+using namespace arangodb::basics;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -854,12 +854,12 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
       if (it != result._values.end()) {
         TRI_json_t const* json = it->second._json;
         Json j(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE);
-        id = triagens::basics::JsonHelper::getStringValue(json, "ID", "");
+        id = arangodb::basics::JsonHelper::getStringValue(json, "ID", "");
         if (id.empty()) {
           LOG_ERROR("ID not set!");
           return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
         }
-        std::string description = triagens::basics::JsonHelper::getStringValue(
+        std::string description = arangodb::basics::JsonHelper::getStringValue(
             json, "Description", "");
         if (!description.empty()) {
           setDescription(description);
@@ -921,7 +921,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
 
     while (it != result._values.end()) {
       std::string const name =
-          triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
+          arangodb::basics::JsonHelper::getStringValue((*it).second._json, "");
 
       if (name == id) {
         role = ServerState::ROLE_SECONDARY;

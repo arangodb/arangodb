@@ -28,7 +28,7 @@
 #include "Aql/TraversalNode.h"
 #include "VocBase/Traverser.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -76,19 +76,19 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief vertices buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<triagens::aql::AqlValue> _vertices;
+  std::vector<arangodb::aql::AqlValue> _vertices;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief edges buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<triagens::aql::AqlValue> _edges;
+  std::vector<arangodb::aql::AqlValue> _edges;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief path buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<triagens::aql::AqlValue> _paths;
+  std::vector<arangodb::aql::AqlValue> _paths;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current position in _paths, _edges, _vertices
@@ -100,14 +100,14 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief Depth first Traverser object
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<triagens::arango::traverser::Traverser> _traverser;
+  std::unique_ptr<arangodb::arango::traverser::Traverser> _traverser;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The information to get the starting point, when a register id is
   /// used
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::RegisterId _reg;
+  arangodb::aql::RegisterId _reg;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Keep a copy of the start vertex id-string. Can be freed if this
@@ -172,7 +172,7 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief A collection name resolver required to identify vertex collections
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::CollectionNameResolver* _resolver;
+  arangodb::arango::CollectionNameResolver* _resolver;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reference to the conditions that might be executed locally
@@ -180,7 +180,7 @@ class TraversalBlock : public ExecutionBlock {
 
   std::unordered_map<
       size_t,
-      std::vector<triagens::arango::traverser::TraverserExpression*>> const*
+      std::vector<arangodb::arango::traverser::TraverserExpression*>> const*
       _expressions;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -253,7 +253,7 @@ class TraversalBlock : public ExecutionBlock {
 
   void executeFilterExpressions();
 };
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif

@@ -36,8 +36,8 @@
 #include "Scheduler/SignalTask.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 namespace {
@@ -403,7 +403,7 @@ void ApplicationScheduler::setupOptions(
 
 
 bool ApplicationScheduler::afterOptionParsing(
-    triagens::basics::ProgramOptions& options) {
+    arangodb::basics::ProgramOptions& options) {
   // show io backends
   if (options.has("show-io-backends")) {
     std::cout << "available io backends are: "

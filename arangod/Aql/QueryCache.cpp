@@ -31,14 +31,14 @@
 #include "Basics/WriteLocker.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief singleton instance of the query cache
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::aql::QueryCache Instance;
+static arangodb::aql::QueryCache Instance;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum number of results in each per-database cache
@@ -50,7 +50,7 @@ static size_t MaxResults = 128;  // default value. can be changed later
 /// @brief whether or not the cache is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::atomic<triagens::aql::QueryCacheMode> Mode(CACHE_ON_DEMAND);
+static std::atomic<arangodb::aql::QueryCacheMode> Mode(CACHE_ON_DEMAND);
 
 
 ////////////////////////////////////////////////////////////////////////////////

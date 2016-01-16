@@ -29,7 +29,7 @@
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/Traverser.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class Transaction;
 }
@@ -61,13 +61,13 @@ struct EdgeInfo {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct VertexFilterInfo {
-  triagens::arango::ExplicitTransaction* trx;
+  arangodb::arango::ExplicitTransaction* trx;
   TRI_transaction_collection_t* col;
-  triagens::arango::ExampleMatcher* matcher;
+  arangodb::arango::ExampleMatcher* matcher;
 
-  VertexFilterInfo(triagens::arango::ExplicitTransaction* trx,
+  VertexFilterInfo(arangodb::arango::ExplicitTransaction* trx,
                    TRI_transaction_collection_t* col,
-                   triagens::arango::ExampleMatcher* matcher)
+                   arangodb::arango::ExampleMatcher* matcher)
       : trx(trx), col(col), matcher(matcher) {}
 };
 
@@ -75,15 +75,15 @@ struct VertexFilterInfo {
 /// @brief typedef the template instantiation of the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef triagens::basics::PathFinder<triagens::arango::traverser::VertexId,
-                                     triagens::arango::traverser::EdgeId,
+typedef arangodb::basics::PathFinder<arangodb::arango::traverser::VertexId,
+                                     arangodb::arango::traverser::EdgeId,
                                      double> ArangoDBPathFinder;
 
-typedef triagens::basics::ConstDistanceFinder<
-    triagens::arango::traverser::VertexId, triagens::arango::traverser::EdgeId>
+typedef arangodb::basics::ConstDistanceFinder<
+    arangodb::arango::traverser::VertexId, arangodb::arango::traverser::EdgeId>
     ArangoDBConstDistancePathFinder;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 namespace traverser {
 
@@ -91,7 +91,7 @@ namespace traverser {
 // Should not be used directly, use specialization instead.
 struct BasicOptions {
  protected:
-  std::unordered_map<TRI_voc_cid_t, triagens::arango::ExampleMatcher*>
+  std::unordered_map<TRI_voc_cid_t, arangodb::arango::ExampleMatcher*>
       _edgeFilter;
   std::unordered_map<TRI_voc_cid_t, VertexFilterInfo> _vertexFilter;
 
@@ -117,13 +117,13 @@ struct BasicOptions {
                      VocShaper* shaper, TRI_voc_cid_t const& cid,
                      std::string& errorMessage);
 
-  void addEdgeFilter(triagens::basics::Json const& example, VocShaper* shaper,
+  void addEdgeFilter(arangodb::basics::Json const& example, VocShaper* shaper,
                      TRI_voc_cid_t const& cid,
-                     triagens::arango::CollectionNameResolver const* resolver);
+                     arangodb::arango::CollectionNameResolver const* resolver);
 
   void addVertexFilter(v8::Isolate* isolate,
                        v8::Handle<v8::Value> const& example,
-                       triagens::arango::ExplicitTransaction* trx,
+                       arangodb::arango::ExplicitTransaction* trx,
                        TRI_transaction_collection_t* col, VocShaper* shaper,
                        TRI_voc_cid_t const& cid, std::string& errorMessage);
 
@@ -174,35 +174,35 @@ class SingleServerTraversalPath : public TraversalPath {
   
  public:
   explicit SingleServerTraversalPath(
-      triagens::basics::EnumeratedPath<EdgeInfo, VertexId> const& path)
+      arangodb::basics::EnumeratedPath<EdgeInfo, VertexId> const& path)
       : _path(path) {}
 
   ~SingleServerTraversalPath() {}
 
-  triagens::basics::Json* pathToJson(
-      triagens::arango::Transaction*,
-      triagens::arango::CollectionNameResolver*) override;
+  arangodb::basics::Json* pathToJson(
+      arangodb::arango::Transaction*,
+      arangodb::arango::CollectionNameResolver*) override;
 
-  triagens::basics::Json* lastEdgeToJson(
-      triagens::arango::Transaction*,
-      triagens::arango::CollectionNameResolver*) override;
+  arangodb::basics::Json* lastEdgeToJson(
+      arangodb::arango::Transaction*,
+      arangodb::arango::CollectionNameResolver*) override;
 
-  triagens::basics::Json* lastVertexToJson(
-      triagens::arango::Transaction*,
-      triagens::arango::CollectionNameResolver*) override;
+  arangodb::basics::Json* lastVertexToJson(
+      arangodb::arango::Transaction*,
+      arangodb::arango::CollectionNameResolver*) override;
 
  private:
   
-  triagens::basics::Json* edgeToJson(Transaction* trx,
+  arangodb::basics::Json* edgeToJson(Transaction* trx,
                                      CollectionNameResolver* resolver,
                                      EdgeInfo const& e);
 
-  triagens::basics::Json* vertexToJson(Transaction* trx,
+  arangodb::basics::Json* vertexToJson(Transaction* trx,
                                        CollectionNameResolver* resolver,
                                        VertexId const& v);
 
   
-  triagens::basics::EnumeratedPath<EdgeInfo, VertexId> _path;
+  arangodb::basics::EnumeratedPath<EdgeInfo, VertexId> _path;
 };
 
 
@@ -218,7 +218,7 @@ class DepthFirstTraverser : public Traverser {
   /// @brief internal cursor to enumerate the paths of a graph
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<triagens::basics::PathEnumerator<
+  std::unique_ptr<arangodb::basics::PathEnumerator<
       EdgeInfo, VertexId, TRI_doc_mptr_copy_t>> _enumerator;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -300,7 +300,7 @@ class EdgeCollectionInfo {
   /// @brief the underlying transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::Transaction* _trx;
+  arangodb::arango::Transaction* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief edge collection
@@ -321,7 +321,7 @@ class EdgeCollectionInfo {
   WeightCalculatorFunction _weighter;
 
  public:
-  EdgeCollectionInfo(triagens::arango::Transaction* trx,
+  EdgeCollectionInfo(arangodb::arango::Transaction* trx,
                      TRI_voc_cid_t& edgeCollectionCid,
                      TRI_document_collection_t* edgeCollection,
                      WeightCalculatorFunction weighter)
@@ -330,14 +330,14 @@ class EdgeCollectionInfo {
         _edgeCollection(edgeCollection),
         _weighter(weighter) {}
 
-  triagens::arango::traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
-    return triagens::arango::traverser::EdgeId(_edgeCollectionCid,
+  arangodb::arango::traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
+    return arangodb::arango::traverser::EdgeId(_edgeCollectionCid,
                                                TRI_EXTRACT_MARKER_KEY(&ptr));
   }
 
   std::vector<TRI_doc_mptr_copy_t> getEdges(
       TRI_edge_direction_e direction,
-      triagens::arango::traverser::VertexId const& vertexId) const {
+      arangodb::arango::traverser::VertexId const& vertexId) const {
     return TRI_LookupEdgesDocumentCollection(_trx, _edgeCollection, direction,
                                              vertexId.cid,
                                              const_cast<char*>(vertexId.key));
@@ -390,12 +390,12 @@ class VertexCollectionInfo {
 
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
     std::vector<EdgeCollectionInfo*>& collectionInfos,
-    triagens::arango::traverser::ShortestPathOptions& opts);
+    arangodb::arango::traverser::ShortestPathOptions& opts);
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
 TRI_RunSimpleShortestPathSearch(
     std::vector<EdgeCollectionInfo*>& collectionInfos,
-    triagens::arango::traverser::ShortestPathOptions& opts);
+    arangodb::arango::traverser::ShortestPathOptions& opts);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Wrapper for the neighbors computation
@@ -403,7 +403,7 @@ TRI_RunSimpleShortestPathSearch(
 
 void TRI_RunNeighborsSearch(
     std::vector<EdgeCollectionInfo*>& collectionInfos,
-    triagens::arango::traverser::NeighborsOptions& opts,
-    std::unordered_set<triagens::arango::traverser::VertexId>& distinct);
+    arangodb::arango::traverser::NeighborsOptions& opts,
+    std::unordered_set<arangodb::arango::traverser::VertexId>& distinct);
 
 #endif

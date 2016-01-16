@@ -37,7 +37,7 @@ struct TRI_transaction_collection_s;
 class TRI_vocbase_col_t;
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class Transaction;
 
@@ -211,7 +211,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(triagens::arango::Transaction*,
+  int applyCollectionDumpMarker(arangodb::arango::Transaction*,
                                 CollectionNameResolver const&,
                                 struct TRI_transaction_collection_s*,
                                 TRI_replication_operation_e,
@@ -222,7 +222,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreDataBatch(triagens::arango::Transaction*,
+  int processRestoreDataBatch(arangodb::arango::Transaction*,
                               CollectionNameResolver const&,
                               struct TRI_transaction_collection_s*, bool, bool,
                               std::string&);

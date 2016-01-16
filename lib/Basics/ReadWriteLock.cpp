@@ -24,7 +24,7 @@
 
 #include "ReadWriteLock.h"
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 ////////////////////////////////////////////////////////////////////////////////

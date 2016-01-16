@@ -31,7 +31,7 @@
 #include "Basics/logging.h"
 #include "Rest/HttpRequest.h"
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 
 class SimpleHttpResult;
@@ -340,13 +340,13 @@ class SimpleHttpClient {
   /// @brief write buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::StringBuffer _writeBuffer;
+  arangodb::basics::StringBuffer _writeBuffer;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::StringBuffer _readBuffer;
+  arangodb::basics::StringBuffer _readBuffer;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read buffer offset

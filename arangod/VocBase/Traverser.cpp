@@ -26,7 +26,7 @@
 #include "Basics/json-utilities.h"
 #include "VocBase/KeyGenerator.h"
 
-using TraverserExpression = triagens::arango::traverser::TraverserExpression;
+using TraverserExpression = arangodb::arango::traverser::TraverserExpression;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper to transform a vertex _id string to VertexId struct.
@@ -34,8 +34,8 @@ using TraverserExpression = triagens::arango::traverser::TraverserExpression;
 ///        VertexId is in use
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::traverser::VertexId
-triagens::arango::traverser::IdStringToVertexId(
+arangodb::arango::traverser::VertexId
+arangodb::arango::traverser::IdStringToVertexId(
     CollectionNameResolver const* resolver, std::string const& vertex) {
   size_t split;
   char const* str = vertex.c_str();
@@ -75,15 +75,15 @@ TraverserExpression::TraverserExpression(VPackSlice const& slice) {
                         // grows/shrinks
   };
 
-  triagens::basics::Json varNode(
+  arangodb::basics::Json varNode(
       TRI_UNKNOWN_MEM_ZONE,
       basics::VelocyPackHelper::velocyPackToJson(slice.get("varAccess")),
-      triagens::basics::Json::AUTOFREE);
+      arangodb::basics::Json::AUTOFREE);
 
-  compareTo.reset(new triagens::basics::Json(
+  compareTo.reset(new arangodb::basics::Json(
       TRI_UNKNOWN_MEM_ZONE,
       basics::VelocyPackHelper::velocyPackToJson(slice.get("compareTo")),
-      triagens::basics::Json::AUTOFREE));
+      arangodb::basics::Json::AUTOFREE));
 
   if (compareTo->json() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -97,11 +97,11 @@ TraverserExpression::TraverserExpression(VPackSlice const& slice) {
 /// @brief transforms the expression into json
 ////////////////////////////////////////////////////////////////////////////////
 
-void TraverserExpression::toJson(triagens::basics::Json& json,
+void TraverserExpression::toJson(arangodb::basics::Json& json,
                                  TRI_memory_zone_t* zone) const {
-  json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))(
+  json("isEdgeAccess", arangodb::basics::Json(isEdgeAccess))(
       "comparisonType",
-      triagens::basics::Json(static_cast<int32_t>(comparisonType)))(
+      arangodb::basics::Json(static_cast<int32_t>(comparisonType)))(
       "varAccess", varAccess->toJson(zone, true));
 
   if (compareTo.get() != nullptr) {
@@ -115,13 +115,13 @@ void TraverserExpression::toJson(triagens::basics::Json& json,
 ///        Returns false whenever the document does not have the required format
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraverserExpression::recursiveCheck(triagens::aql::AstNode const* node,
+bool TraverserExpression::recursiveCheck(arangodb::aql::AstNode const* node,
                                          DocumentAccessor& accessor) const {
   switch (node->type) {
-    case triagens::aql::NODE_TYPE_REFERENCE:
+    case arangodb::aql::NODE_TYPE_REFERENCE:
       // We are on the variable access
       return true;
-    case triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
+    case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
       char const* attributeName = node->getStringValue();
       TRI_ASSERT(attributeName != nullptr);
       std::string name(attributeName, node->getStringLength());
@@ -134,7 +134,7 @@ bool TraverserExpression::recursiveCheck(triagens::aql::AstNode const* node,
       accessor.get(name);
       break;
     }
-    case triagens::aql::NODE_TYPE_INDEXED_ACCESS: {
+    case arangodb::aql::NODE_TYPE_INDEXED_ACCESS: {
       auto index = node->getMember(1);
       if (!index->isIntValue()) {
         return false;
@@ -160,7 +160,7 @@ bool TraverserExpression::recursiveCheck(triagens::aql::AstNode const* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraverserExpression::matchesCheck(DocumentAccessor& accessor) const {
-  triagens::basics::Json result(triagens::basics::Json::Null);
+  arangodb::basics::Json result(arangodb::basics::Json::Null);
   if (recursiveCheck(varAccess, accessor)) {
     result = accessor.toJson();
   }
@@ -169,19 +169,19 @@ bool TraverserExpression::matchesCheck(DocumentAccessor& accessor) const {
   TRI_ASSERT(compareTo->json() != nullptr);
 
   switch (comparisonType) {
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) ==
              0;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_NE:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) !=
              0;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), true) < 0;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), true) <= 0;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), true) >= 0;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), true) > 0;
     default:
       TRI_ASSERT(false);
@@ -213,7 +213,7 @@ bool TraverserExpression::matchesCheck(VPackSlice const& element) const {
 
 bool TraverserExpression::matchesCheck(
     TRI_doc_mptr_t& element, TRI_document_collection_t* collection,
-    triagens::arango::CollectionNameResolver const* resolver) const {
+    arangodb::arango::CollectionNameResolver const* resolver) const {
   DocumentAccessor accessor(resolver, collection, &element);
   return matchesCheck(accessor);
 }

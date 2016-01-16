@@ -34,7 +34,7 @@
 #include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
-using namespace triagens::rest;
+using namespace arangodb::rest;
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,6 +113,6 @@ void HttpServerJob::cleanup(DispatcherQueue* queue) {
 }
 
 
-void HttpServerJob::handleError(triagens::basics::Exception const& ex) {
+void HttpServerJob::handleError(arangodb::basics::Exception const& ex) {
   _handler->handleError(ex);
 }

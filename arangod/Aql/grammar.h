@@ -122,7 +122,7 @@ union YYSTYPE
 {
 #line 18 "arangod/Aql/grammar.y" /* yacc.c:1909  */
 
-  triagens::aql::AstNode*  node;
+  arangodb::aql::AstNode*  node;
   struct {
     char*                  value;
     size_t                 length;
@@ -152,6 +152,6 @@ struct YYLTYPE
 
 
 
-int Aqlparse (triagens::aql::Parser* parser);
+int Aqlparse (arangodb::aql::Parser* parser);
 
 #endif /* !YY_AQL_ARANGOD_AQL_GRAMMAR_HPP_INCLUDED  */

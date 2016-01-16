@@ -29,7 +29,7 @@
 #include "V8/v8-globals.h"
 #include <v8.h>
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////

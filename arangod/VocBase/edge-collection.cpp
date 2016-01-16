@@ -50,7 +50,7 @@ static bool IsReflexive(TRI_doc_mptr_t const* mptr) {
       return strcmp(fromKey, toKey) == 0;
     }
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    auto const* edge = reinterpret_cast<triagens::wal::edge_marker_t const*>(
+    auto const* edge = reinterpret_cast<arangodb::wal::edge_marker_t const*>(
         marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (edge->_toCid == edge->_fromCid) {
@@ -74,9 +74,9 @@ static bool IsReflexive(TRI_doc_mptr_t const* mptr) {
 /// opposite direction (with matchType 2 or 3) to find all counterparts
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FindEdges(triagens::arango::Transaction* trx,
+static bool FindEdges(arangodb::arango::Transaction* trx,
                       TRI_edge_direction_e direction,
-                      triagens::arango::EdgeIndex* edgeIndex,
+                      arangodb::arango::EdgeIndex* edgeIndex,
                       std::vector<TRI_doc_mptr_copy_t>& result,
                       TRI_edge_header_t const* entry, int matchType) {
   std::unique_ptr<std::vector<TRI_doc_mptr_t*>> found;
@@ -133,7 +133,7 @@ static bool FindEdges(triagens::arango::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
-    triagens::arango::Transaction* trx, TRI_document_collection_t* document,
+    arangodb::arango::Transaction* trx, TRI_document_collection_t* document,
     TRI_edge_direction_e direction, TRI_voc_cid_t cid,
     TRI_voc_key_t const key) {
   // search criteria

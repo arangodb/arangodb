@@ -32,12 +32,12 @@
 #include "Rest/HttpResponse.h"
 
 using namespace std;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
 
 
 
-RestShardHandler::RestShardHandler(triagens::rest::HttpRequest* request,
+RestShardHandler::RestShardHandler(arangodb::rest::HttpRequest* request,
                                    Dispatcher* data)
     : RestBaseHandler(request), _dispatcher(data) {
   TRI_ASSERT(_dispatcher != nullptr);
@@ -48,14 +48,14 @@ RestShardHandler::RestShardHandler(triagens::rest::HttpRequest* request,
 bool RestShardHandler::isDirect() const { return true; }
 
 
-triagens::rest::HttpHandler::status_t RestShardHandler::execute() {
+arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
 // Deactivated to allow for asynchronous cluster internal communication
 // between two DBservers. 30.7.2014 Max.
 #if 0
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_COORDINATOR) {
-    generateError(triagens::rest::HttpResponse::BAD,
-                  (int) triagens::rest::HttpResponse::BAD,
+    generateError(arangodb::rest::HttpResponse::BAD,
+                  (int) arangodb::rest::HttpResponse::BAD,
                   "this API is meant to be called on a coordinator node");
     return status_t(HANDLER_DONE);
   }
@@ -65,8 +65,8 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute() {
   char const* _coordinator = _request->header("x-arango-coordinator", found);
 
   if (!found) {
-    generateError(triagens::rest::HttpResponse::BAD,
-                  (int)triagens::rest::HttpResponse::BAD,
+    generateError(arangodb::rest::HttpResponse::BAD,
+                  (int)arangodb::rest::HttpResponse::BAD,
                   "header 'X-Arango-Coordinator' is missing");
     return status_t(HANDLER_DONE);
   }
@@ -76,10 +76,10 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute() {
       ClusterComm::instance()->processAnswer(coordinatorHeader, stealRequest());
 
   if (result == "") {
-    createResponse(triagens::rest::HttpResponse::ACCEPTED);
+    createResponse(arangodb::rest::HttpResponse::ACCEPTED);
   } else {
-    generateError(triagens::rest::HttpResponse::BAD,
-                  (int)triagens::rest::HttpResponse::BAD, result.c_str());
+    generateError(arangodb::rest::HttpResponse::BAD,
+                  (int)arangodb::rest::HttpResponse::BAD, result.c_str());
   }
 
   return status_t(HANDLER_DONE);

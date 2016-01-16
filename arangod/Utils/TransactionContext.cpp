@@ -23,7 +23,7 @@
 
 #include "Utils/TransactionContext.h"
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////

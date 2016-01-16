@@ -37,7 +37,7 @@
 
 #include "Rest/Endpoint.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 

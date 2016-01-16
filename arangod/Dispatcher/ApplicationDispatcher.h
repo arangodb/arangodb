@@ -31,7 +31,7 @@
 #include "Scheduler/ApplicationScheduler.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class ApplicationScheduler;
 class Dispatcher;

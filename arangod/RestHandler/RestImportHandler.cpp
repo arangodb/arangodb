@@ -37,9 +37,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 
@@ -225,11 +225,11 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
     std::string to;
 
     try {
-      from = triagens::basics::VelocyPackHelper::checkAndGetStringValue(
+      from = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
           slice, TRI_VOC_ATTRIBUTE_FROM);
-      to = triagens::basics::VelocyPackHelper::checkAndGetStringValue(
+      to = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
           slice, TRI_VOC_ATTRIBUTE_TO);
-    } catch (triagens::basics::Exception const&) {
+    } catch (arangodb::basics::Exception const&) {
       std::string part = VPackDumper::toString(slice);
       if (part.size() > 255) {
         // UTF-8 chars in string will be escaped so we can truncate it at any
@@ -308,7 +308,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 
           if (old != nullptr) {
             std::unique_ptr<TRI_json_t> json(
-                triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+                arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
             std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(
                 TRI_UNKNOWN_MEM_ZONE, old.get(), json.get(), false, true));
 

@@ -26,7 +26,7 @@
 
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class Graph;
 }
@@ -39,10 +39,10 @@ namespace arango {
 ///  The caller has to take care for the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::Graph* lookupGraphByName(TRI_vocbase_t*, std::string const&);
+arangodb::aql::Graph* lookupGraphByName(TRI_vocbase_t*, std::string const&);
 
 }  // namespace arango
-}  // namespace triagens
+}  // namespace arangodb
 
 #endif
 

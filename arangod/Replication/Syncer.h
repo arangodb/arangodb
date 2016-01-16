@@ -41,7 +41,7 @@ struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
 
-namespace triagens {
+namespace arangodb {
 
 namespace httpclient {
 class GeneralClientConnection;
@@ -119,7 +119,7 @@ class Syncer {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(triagens::arango::Transaction*,
+  int applyCollectionDumpMarker(arangodb::arango::Transaction*,
                                 struct TRI_transaction_collection_s*,
                                 TRI_replication_operation_e,
                                 const TRI_voc_key_t, const TRI_voc_rid_t,

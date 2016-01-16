@@ -28,7 +28,7 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 size_t const CollectionKeysRepository::MaxCollectCount = 32;
@@ -86,7 +86,7 @@ CollectionKeysRepository::~CollectionKeysRepository() {
 /// @brief stores collection keys in the repository
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectionKeysRepository::store(triagens::arango::CollectionKeys* keys) {
+void CollectionKeysRepository::store(arangodb::arango::CollectionKeys* keys) {
   MUTEX_LOCKER(_lock);
   _keys.emplace(keys->id(), keys);
 }
@@ -96,7 +96,7 @@ void CollectionKeysRepository::store(triagens::arango::CollectionKeys* keys) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectionKeysRepository::remove(CollectionKeysId id) {
-  triagens::arango::CollectionKeys* collectionKeys = nullptr;
+  arangodb::arango::CollectionKeys* collectionKeys = nullptr;
 
   {
     MUTEX_LOCKER(_lock);
@@ -138,7 +138,7 @@ bool CollectionKeysRepository::remove(CollectionKeysId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionKeys* CollectionKeysRepository::find(CollectionKeysId id) {
-  triagens::arango::CollectionKeys* collectionKeys = nullptr;
+  arangodb::arango::CollectionKeys* collectionKeys = nullptr;
 
   {
     MUTEX_LOCKER(_lock);
@@ -207,7 +207,7 @@ bool CollectionKeysRepository::containsUsed() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectionKeysRepository::garbageCollect(bool force) {
-  std::vector<triagens::arango::CollectionKeys*> found;
+  std::vector<arangodb::arango::CollectionKeys*> found;
   found.reserve(MaxCollectCount);
 
   auto const now = TRI_microtime();

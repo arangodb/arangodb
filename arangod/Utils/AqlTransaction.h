@@ -35,7 +35,7 @@
 #include "VocBase/vocbase.h"
 #include <v8.h>
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class AqlTransaction : public Transaction {
@@ -49,7 +49,7 @@ class AqlTransaction : public Transaction {
 
   AqlTransaction(
       TransactionContext* transactionContext, TRI_vocbase_t* vocbase,
-      std::map<std::string, triagens::aql::Collection*> const* collections,
+      std::map<std::string, arangodb::aql::Collection*> const* collections,
       bool isMainTransaction)
       : Transaction(transactionContext, vocbase, 0),
         _collections(*collections) {
@@ -77,7 +77,7 @@ class AqlTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int addCollectionList(
-      std::map<std::string, triagens::aql::Collection*>* collections) {
+      std::map<std::string, arangodb::aql::Collection*>* collections) {
     int ret = TRI_ERROR_NO_ERROR;
     for (auto it : *collections) {
       ret = processCollection(it.second);
@@ -92,7 +92,7 @@ class AqlTransaction : public Transaction {
   /// @brief add a collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int processCollection(triagens::aql::Collection* collection) {
+  int processCollection(arangodb::aql::Collection* collection) {
     if (ServerState::instance()->isCoordinator()) {
       return processCollectionCoordinator(collection);
     }
@@ -103,7 +103,7 @@ class AqlTransaction : public Transaction {
   /// @brief add a coordinator collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int processCollectionCoordinator(triagens::aql::Collection* collection) {
+  int processCollectionCoordinator(arangodb::aql::Collection* collection) {
     TRI_voc_cid_t cid =
         this->resolver()->getCollectionIdCluster(collection->getName());
 
@@ -115,7 +115,7 @@ class AqlTransaction : public Transaction {
   /// @brief add a regular collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int processCollectionNormal(triagens::aql::Collection* collection) {
+  int processCollectionNormal(arangodb::aql::Collection* collection) {
     TRI_vocbase_col_t const* col =
         this->resolver()->getCollectionStruct(collection->getName());
     TRI_voc_cid_t cid = 0;
@@ -138,7 +138,7 @@ class AqlTransaction : public Transaction {
   /// @brief ditch
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::DocumentDitch* ditch(TRI_voc_cid_t cid) {
+  arangodb::arango::DocumentDitch* ditch(TRI_voc_cid_t cid) {
     TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
     TRI_ASSERT(trxColl != nullptr);
     return trxColl->_ditch;
@@ -160,9 +160,9 @@ class AqlTransaction : public Transaction {
   /// AQL query running on the coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::AqlTransaction* clone() const {
-    return new triagens::arango::AqlTransaction(
-        new triagens::arango::StandaloneTransactionContext(), this->_vocbase,
+  arangodb::arango::AqlTransaction* clone() const {
+    return new arangodb::arango::AqlTransaction(
+        new arangodb::arango::StandaloneTransactionContext(), this->_vocbase,
         &_collections, false);
   }
 
@@ -196,7 +196,7 @@ class AqlTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-  std::map<std::string, triagens::aql::Collection*> _collections;
+  std::map<std::string, arangodb::aql::Collection*> _collections;
 };
 }
 }

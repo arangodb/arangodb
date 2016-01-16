@@ -30,8 +30,8 @@
 #include "Basics/StringUtils.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////

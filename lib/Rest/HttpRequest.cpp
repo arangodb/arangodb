@@ -36,8 +36,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 static char const* EMPTY_STR = "";

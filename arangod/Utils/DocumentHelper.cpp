@@ -27,8 +27,8 @@
 #include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
-using namespace triagens::basics;
+using namespace arangodb::arango;
+using namespace arangodb::basics;
 
 
 

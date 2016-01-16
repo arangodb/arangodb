@@ -141,7 +141,7 @@ typedef struct compaction_blocker_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct compaction_initial_context_t {
-  triagens::arango::Transaction* _trx;
+  arangodb::arango::Transaction* _trx;
   TRI_document_collection_t* _document;
   int64_t _targetSize;
   TRI_voc_fid_t _fid;
@@ -154,7 +154,7 @@ struct compaction_initial_context_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct compaction_context_t {
-  triagens::arango::Transaction* _trx;
+  arangodb::arango::Transaction* _trx;
   TRI_document_collection_t* _document;
   TRI_datafile_t* _compactor;
   TRI_doc_datafile_info_t _dfi;
@@ -741,7 +741,7 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 static compaction_initial_context_t InitCompaction(
-    triagens::arango::Transaction* trx, TRI_document_collection_t* document,
+    arangodb::arango::Transaction* trx, TRI_document_collection_t* document,
     TRI_vector_t const* compactions) {
   compaction_initial_context_t context;
 
@@ -810,8 +810,8 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
   size_t const n = TRI_LengthVector(compactions);
   TRI_ASSERT(n > 0);
 
-  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-      new triagens::arango::StandaloneTransactionContext(), document->_vocbase,
+  arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
+      new arangodb::arango::StandaloneTransactionContext(), document->_vocbase,
       document->_info.id());
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);

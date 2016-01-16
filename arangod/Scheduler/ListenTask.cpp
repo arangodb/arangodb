@@ -48,8 +48,8 @@
 #include "Basics/StringUtils.h"
 #include "Scheduler/Scheduler.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors

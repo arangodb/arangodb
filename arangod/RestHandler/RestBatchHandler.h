@@ -29,7 +29,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 

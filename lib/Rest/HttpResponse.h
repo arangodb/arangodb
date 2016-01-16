@@ -30,7 +30,7 @@
 #include "Basics/Dictionary.h"
 #include "Basics/StringBuffer.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////

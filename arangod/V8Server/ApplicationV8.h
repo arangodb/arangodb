@@ -35,7 +35,7 @@
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class QueryRegistry;
 }
@@ -266,7 +266,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
   
  public:
 
-  ApplicationV8(TRI_server_t*, triagens::aql::QueryRegistry*,
+  ApplicationV8(TRI_server_t*, arangodb::aql::QueryRegistry*,
                 rest::ApplicationScheduler*, rest::ApplicationDispatcher*);
 
 
@@ -420,7 +420,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
   /// @brief query registry object
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::QueryRegistry* _queryRegistry;
+  arangodb::aql::QueryRegistry* _queryRegistry;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a buffer allocator for V8

@@ -29,7 +29,7 @@
 
 #include <deque>
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class AqlTransaction;
 }
@@ -260,7 +260,7 @@ class ExecutionBlock {
   /// @brief the transaction for this query
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::AqlTransaction* _trx;
+  arangodb::arango::AqlTransaction* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our corresponding ExecutionNode node
@@ -309,8 +309,8 @@ class ExecutionBlock {
   static size_t const DefaultBatchSize;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

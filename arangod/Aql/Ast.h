@@ -35,7 +35,7 @@
 
 #include <functional>
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 class Query;

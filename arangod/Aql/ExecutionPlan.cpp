@@ -40,10 +40,10 @@
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
 
-using namespace triagens::aql;
-using namespace triagens::basics;
+using namespace arangodb::aql;
+using namespace arangodb::basics;
 
-using JsonHelper = triagens::basics::JsonHelper;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the plan
@@ -99,10 +99,10 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::getCollectionsFromJson(Ast* ast,
-                                           triagens::basics::Json const& json) {
+                                           arangodb::basics::Json const& json) {
   TRI_ASSERT(ast != nullptr);
 
-  triagens::basics::Json jsonCollections = json.get("collections");
+  arangodb::basics::Json jsonCollections = json.get("collections");
 
   if (!jsonCollections.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -113,16 +113,16 @@ void ExecutionPlan::getCollectionsFromJson(Ast* ast,
   auto const size = jsonCollections.size();
 
   for (size_t i = 0; i < size; i++) {
-    triagens::basics::Json oneJsonCollection =
+    arangodb::basics::Json oneJsonCollection =
         jsonCollections.at(static_cast<int>(i));
-    auto typeStr = triagens::basics::JsonHelper::checkAndGetStringValue(
+    auto typeStr = arangodb::basics::JsonHelper::checkAndGetStringValue(
         oneJsonCollection.json(), "type");
 
     ast->query()->collections()->add(
-        triagens::basics::JsonHelper::checkAndGetStringValue(
+        arangodb::basics::JsonHelper::checkAndGetStringValue(
             oneJsonCollection.json(), "name"),
         TRI_GetTransactionTypeFromStr(
-            triagens::basics::JsonHelper::checkAndGetStringValue(
+            arangodb::basics::JsonHelper::checkAndGetStringValue(
                 oneJsonCollection.json(), "type").c_str()));
   }
 }
@@ -132,7 +132,7 @@ void ExecutionPlan::getCollectionsFromJson(Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionPlan* ExecutionPlan::instantiateFromJson(
-    Ast* ast, triagens::basics::Json const& json) {
+    Ast* ast, arangodb::basics::Json const& json) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
@@ -212,38 +212,38 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
+arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
                                              bool verbose) const {
-  triagens::basics::Json result = _root->toJson(zone, verbose);
+  arangodb::basics::Json result = _root->toJson(zone, verbose);
 
   // set up rules
   auto appliedRules(std::move(Optimizer::translateRules(_appliedRules)));
-  triagens::basics::Json rules(triagens::basics::Json::Array,
+  arangodb::basics::Json rules(arangodb::basics::Json::Array,
                                appliedRules.size());
 
   for (auto const& r : appliedRules) {
-    rules.add(triagens::basics::Json(r));
+    rules.add(arangodb::basics::Json(r));
   }
   result.set("rules", rules);
 
   auto usedCollections = *ast->query()->collections()->collections();
-  triagens::basics::Json jsonCollectionList(triagens::basics::Json::Array,
+  arangodb::basics::Json jsonCollectionList(arangodb::basics::Json::Array,
                                             usedCollections.size());
 
   for (auto const& c : usedCollections) {
-    triagens::basics::Json json(triagens::basics::Json::Object);
+    arangodb::basics::Json json(arangodb::basics::Json::Object);
 
-    jsonCollectionList(json("name", triagens::basics::Json(c.first))(
-        "type", triagens::basics::Json(
+    jsonCollectionList(json("name", arangodb::basics::Json(c.first))(
+        "type", arangodb::basics::Json(
                     TRI_TransactionTypeGetStr(c.second->accessType))));
   }
 
   result.set("collections", jsonCollectionList);
   result.set("variables", ast->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
   size_t nrItems = 0;
-  result.set("estimatedCost", triagens::basics::Json(_root->getCost(nrItems)));
+  result.set("estimatedCost", arangodb::basics::Json(_root->getCost(nrItems)));
   result.set("estimatedNrItems",
-             triagens::basics::Json(static_cast<double>(nrItems)));
+             arangodb::basics::Json(static_cast<double>(nrItems)));
 
   return result;
 }
@@ -1807,9 +1807,9 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
 /// @brief create a plan from the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
+ExecutionNode* ExecutionPlan::fromJson(arangodb::basics::Json const& json) {
   ExecutionNode* ret = nullptr;
-  triagens::basics::Json nodes = json.get("nodes");
+  arangodb::basics::Json nodes = json.get("nodes");
 
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not an array");
@@ -1820,7 +1820,7 @@ ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
   auto const size = nodes.size();
 
   for (size_t i = 0; i < size; i++) {
-    triagens::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
+    arangodb::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (!oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1832,9 +1832,9 @@ ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
 
     TRI_ASSERT(ret != nullptr);
 
-    if (ret->getType() == triagens::aql::ExecutionNode::SUBQUERY) {
+    if (ret->getType() == arangodb::aql::ExecutionNode::SUBQUERY) {
       // found a subquery node. now do magick here
-      triagens::basics::Json subquery = oneJsonNode.get("subquery");
+      arangodb::basics::Json subquery = oneJsonNode.get("subquery");
       // create the subquery nodes from the "subquery" sub-node
       auto subqueryNode = fromJson(subquery);
 
@@ -1846,7 +1846,7 @@ ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
   // all nodes have been created. now add the dependencies
 
   for (size_t i = 0; i < size; i++) {
-    triagens::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
+    arangodb::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (!oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1854,19 +1854,19 @@ ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
     }
 
     // read the node's own id
-    auto thisId = triagens::basics::JsonHelper::checkAndGetNumericValue<size_t>(
+    auto thisId = arangodb::basics::JsonHelper::checkAndGetNumericValue<size_t>(
         oneJsonNode.json(), "id");
     auto thisNode = getNodeById(thisId);
 
     // now re-link the dependencies
-    triagens::basics::Json dependencies = oneJsonNode.get("dependencies");
-    if (triagens::basics::JsonHelper::isArray(dependencies.json())) {
+    arangodb::basics::Json dependencies = oneJsonNode.get("dependencies");
+    if (arangodb::basics::JsonHelper::isArray(dependencies.json())) {
       size_t const nDependencies = dependencies.size();
 
       for (size_t j = 0; j < nDependencies; j++) {
-        if (triagens::basics::JsonHelper::isNumber(
+        if (arangodb::basics::JsonHelper::isNumber(
                 dependencies.at(static_cast<int>(j)).json())) {
-          auto depId = triagens::basics::JsonHelper::getNumericValue<size_t>(
+          auto depId = arangodb::basics::JsonHelper::getNumericValue<size_t>(
               dependencies.at(static_cast<int>(j)).json(), 0);
           thisNode->addDependency(getNodeById(depId));
         }

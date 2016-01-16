@@ -28,7 +28,7 @@
 #include "RestHandler/RestCursorHandler.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class QueryRegistry;
 }
@@ -45,8 +45,8 @@ class RestSimpleQueryHandler : public RestCursorHandler {
  public:
 
   RestSimpleQueryHandler(rest::HttpRequest*,
-                         std::pair<triagens::arango::ApplicationV8*,
-                                   triagens::aql::QueryRegistry*>*);
+                         std::pair<arangodb::arango::ApplicationV8*,
+                                   arangodb::aql::QueryRegistry*>*);
 
   
  public:

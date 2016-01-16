@@ -31,8 +31,8 @@
 #include "VocBase/server.h"
 
 using namespace std;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 

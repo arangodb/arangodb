@@ -33,16 +33,16 @@
 #include "VocBase/vocbase.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex SidLock;
+static arangodb::basics::Mutex SidLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid cache

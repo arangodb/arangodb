@@ -34,7 +34,7 @@ struct TRI_json_t;
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 
 namespace httpclient {
 class SimpleHttpResult;

@@ -29,7 +29,7 @@
 
 struct TRI_doc_mptr_copy_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class AqlItemBlock;
 struct Collection;
@@ -127,8 +127,8 @@ class EnumerateCollectionBlock : public ExecutionBlock {
   bool _mustStoreResult;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

@@ -53,9 +53,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 uint64_t const RestReplicationHandler::defaultChunkSize = 128 * 1024;
@@ -387,8 +387,8 @@ void RestReplicationHandler::handleCommandLoggerState() {
     VPackBuilder json;
     json.add(VPackValue(VPackValueType::Object));  // Base
 
-    triagens::wal::LogfileManagerState const&& s =
-        triagens::wal::LogfileManager::instance()->state();
+    arangodb::wal::LogfileManagerState const&& s =
+        arangodb::wal::LogfileManager::instance()->state();
     std::string const lastTickString(StringUtils::itoa(s.lastTick));
 
     // "state" part
@@ -443,7 +443,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerTickRanges() {
-  auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
   try {
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Array));
@@ -477,7 +477,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerFirstTick() {
-  auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
 
   try {
     VPackBuilder b;
@@ -624,7 +624,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   std::string const& dbname = _request->databaseName();
 
   auto headers = std::make_shared<std::map<std::string, std::string>>(
-      triagens::arango::getForwardableRequestHeaders(_request));
+      arangodb::arango::getForwardableRequestHeaders(_request));
   std::map<std::string, std::string> values = _request->values();
   std::string params;
   for (auto const& i : values) {
@@ -687,8 +687,8 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
 void RestReplicationHandler::handleCommandLoggerFollow() {
   // determine start and end tick
-  triagens::wal::LogfileManagerState state =
-      triagens::wal::LogfileManager::instance()->state();
+  arangodb::wal::LogfileManagerState state =
+      arangodb::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = state.lastDataTick;
   TRI_voc_tick_t firstRegularTick = 0;
@@ -724,7 +724,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   std::unordered_set<TRI_voc_tid_t> transactionIds;
 
   if (_request->requestType() ==
-      triagens::rest::HttpRequest::HTTP_REQUEST_PUT) {
+      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT) {
     value = _request->value("firstRegularTick", found);
     if (found) {
       firstRegularTick =
@@ -813,7 +813,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
       insertClient(dump._lastFoundTick);
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -833,8 +833,8 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
 void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // determine start and end tick
-  triagens::wal::LogfileManagerState state =
-      triagens::wal::LogfileManager::instance()->state();
+  arangodb::wal::LogfileManagerState state =
+      arangodb::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = state.lastDataTick;
 
@@ -894,7 +894,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
         TRI_StealStringBuffer(dump._buffer);
       }
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -940,8 +940,8 @@ void RestReplicationHandler::handleCommandInventory() {
     // "state"
     builder.add("state", VPackValue(VPackValueType::Object));
 
-    triagens::wal::LogfileManagerState const&& s =
-        triagens::wal::LogfileManager::instance()->state();
+    arangodb::wal::LogfileManagerState const&& s =
+        arangodb::wal::LogfileManager::instance()->state();
 
     builder.add("running", VPackValue(true));
     auto logTickString = std::to_string(s.lastTick);
@@ -1011,7 +1011,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
                 VPackSlice const subResultSlice = parsedSubResult->slice();
                 if (subResultSlice.isObject()) {
                   if (includeSystem ||
-                      !triagens::basics::VelocyPackHelper::getBooleanValue(
+                      !arangodb::basics::VelocyPackHelper::getBooleanValue(
                           subResultSlice, "isSystem", true)) {
                     VPackObjectBuilder b3(&resultBuilder);
                     resultBuilder.add("indexes", subResultSlice.get("indexes"));
@@ -1065,7 +1065,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   }
 
   std::string const name =
-      triagens::basics::VelocyPackHelper::getStringValue(slice, "name", "");
+      arangodb::basics::VelocyPackHelper::getStringValue(slice, "name", "");
 
   if (name.empty()) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -1082,7 +1082,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   }
 
   const TRI_col_type_e type = static_cast<TRI_col_type_e>(
-      triagens::basics::VelocyPackHelper::getNumericValue<int>(
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           slice, "type", (int)TRI_COL_TYPE_DOCUMENT));
 
   TRI_vocbase_col_t* col = nullptr;
@@ -1099,17 +1099,17 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   VocbaseCollectionInfo params(_vocbase, name.c_str(), slice);
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(params.doCompact() ==
-             triagens::basics::VelocyPackHelper::getBooleanValue(
+             arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "doCompact", true));
   TRI_ASSERT(params.waitForSync() ==
-             triagens::basics::VelocyPackHelper::getBooleanValue(
+             arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "waitForSync", _vocbase->_settings.defaultWaitForSync));
   TRI_ASSERT(params.isVolatile() ==
-             triagens::basics::VelocyPackHelper::getBooleanValue(
+             arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "isVolatile", false));
   TRI_ASSERT(params.isSystem() == (name[0] == '_'));
   TRI_ASSERT(params.indexBuckets() ==
-             triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+             arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
                  slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS));
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");
@@ -1318,7 +1318,7 @@ int RestReplicationHandler::processRestoreCollection(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  std::string const name = triagens::basics::VelocyPackHelper::getStringValue(
+  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
 
   if (name.empty()) {
@@ -1327,7 +1327,7 @@ int RestReplicationHandler::processRestoreCollection(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
@@ -1429,7 +1429,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  std::string const name = triagens::basics::VelocyPackHelper::getStringValue(
+  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
 
   if (name.empty()) {
@@ -1438,7 +1438,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
@@ -1547,8 +1547,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     // create a dummy primary index
     {
       TRI_document_collection_t* doc = nullptr;
-      std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(
-          new triagens::arango::PrimaryIndex(doc));
+      std::unique_ptr<arangodb::arango::PrimaryIndex> primaryIndex(
+          new arangodb::arango::PrimaryIndex(doc));
       std::shared_ptr<VPackBuilder> idxVPack =
           primaryIndex->toVelocyPack(false, true);
       toMerge.add(idxVPack->slice());
@@ -1565,8 +1565,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
     if (collectionType == TRI_COL_TYPE_EDGE) {
       // create a dummy edge index
-      std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(
-          new triagens::arango::EdgeIndex(newIdTick, nullptr));
+      std::unique_ptr<arangodb::arango::EdgeIndex> edgeIndex(
+          new arangodb::arango::EdgeIndex(newIdTick, nullptr));
       std::shared_ptr<VPackBuilder> idxVPack =
           edgeIndex->toVelocyPack(false, true);
       toMerge.add(idxVPack->slice());
@@ -1632,7 +1632,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string const name = triagens::basics::VelocyPackHelper::getStringValue(
+  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
 
   if (name.empty()) {
@@ -1641,7 +1641,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
@@ -1667,7 +1667,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     }
 
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
-      triagens::arango::Index* idx = nullptr;
+      arangodb::arango::Index* idx = nullptr;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
@@ -1688,7 +1688,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
         }
       }
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     errorMsg = "could not create index: " + string(TRI_errno_string(ex.code()));
   } catch (...) {
     errorMsg = "could not create index: unknown error";
@@ -1731,7 +1731,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string name = triagens::basics::VelocyPackHelper::getStringValue(
+  std::string name = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
 
   if (name.empty()) {
@@ -1740,7 +1740,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
@@ -1761,7 +1761,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
     TRI_json_t* res_json = nullptr;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
-                                     triagens::arango::Index::Compare, res_json,
+                                     arangodb::arango::Index::Compare, res_json,
                                      errorMsg, 3600.0);
     if (res_json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, res_json);
@@ -1780,7 +1780,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::applyCollectionDumpMarker(
-    triagens::arango::Transaction* trx, CollectionNameResolver const& resolver,
+    arangodb::arango::Transaction* trx, CollectionNameResolver const& resolver,
     TRI_transaction_collection_t* trxCollection,
     TRI_replication_operation_e type, const TRI_voc_key_t key,
     const TRI_voc_rid_t rid, VPackSlice const& slice, std::string& errorMsg) {
@@ -1821,10 +1821,10 @@ int RestReplicationHandler::applyCollectionDumpMarker(
             res = TRI_ERROR_NO_ERROR;
 
             std::string const from =
-                triagens::basics::VelocyPackHelper::getStringValue(
+                arangodb::basics::VelocyPackHelper::getStringValue(
                     slice, TRI_VOC_ATTRIBUTE_FROM, "");
             std::string const to =
-                triagens::basics::VelocyPackHelper::getStringValue(
+                arangodb::basics::VelocyPackHelper::getStringValue(
                     slice, TRI_VOC_ATTRIBUTE_TO, "");
 
             // parse _from
@@ -1875,7 +1875,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
       TRI_FreeShapedJson(zone, shaped);
 
       return res;
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       TRI_FreeShapedJson(zone, shaped);
       return ex.code();
     } catch (...) {
@@ -1900,7 +1900,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
         // ignore this error
         res = TRI_ERROR_NO_ERROR;
       }
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
@@ -2004,7 +2004,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::processRestoreDataBatch(
-    triagens::arango::Transaction* trx, CollectionNameResolver const& resolver,
+    arangodb::arango::Transaction* trx, CollectionNameResolver const& resolver,
     TRI_transaction_collection_t* trxCollection, bool useRevision, bool force,
     std::string& errorMsg) {
   std::string const invalidMsg = "received invalid JSON data for collection " +
@@ -2229,7 +2229,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
         ShardID responsibleShard;
         bool usesDefaultSharding;
         std::unique_ptr<TRI_json_t> tmp(
-            triagens::basics::VelocyPackHelper::velocyPackToJson(doc));
+            arangodb::basics::VelocyPackHelper::velocyPackToJson(doc));
         res = ci->getResponsibleShard(col->id_as_string(), tmp.get(), true,
                                       responsibleShard, usesDefaultSharding);
         if (res != TRI_ERROR_NO_ERROR) {
@@ -2293,7 +2293,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
         auto body =
             make_shared<std::string const>(bufs[j]->c_str(), bufs[j]->length());
         cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                         triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                         arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                          "/_db/" + StringUtils::urlEncode(dbName) +
                              "/_api/replication/restore-data?collection=" +
                              p.first + forceopt,
@@ -2307,8 +2307,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
     for (count = (int)(*shardIdsMap).size(); count > 0; count--) {
       auto result = cc->wait("", coordTransactionID, 0, "", 0.0);
       if (result.status == CL_COMM_RECEIVED) {
-        if (result.answer_code == triagens::rest::HttpResponse::OK ||
-            result.answer_code == triagens::rest::HttpResponse::CREATED) {
+        if (result.answer_code == arangodb::rest::HttpResponse::OK ||
+            result.answer_code == arangodb::rest::HttpResponse::CREATED) {
           VPackOptions options;
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
@@ -2340,7 +2340,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
             LOG_ERROR("result body is no object");
           }
         } else if (result.answer_code ==
-                   triagens::rest::HttpResponse::SERVER_ERROR) {
+                   arangodb::rest::HttpResponse::SERVER_ERROR) {
           VPackOptions options;
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
@@ -2443,7 +2443,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::arango::CollectionGuard guard(_vocbase, c->_cid, false);
+    arangodb::arango::CollectionGuard guard(_vocbase, c->_cid, false);
 
     TRI_vocbase_col_t* col = guard.collection();
     TRI_ASSERT(col != nullptr);
@@ -2466,7 +2466,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     size_t const count = keys->count();
 
     auto keysRepository =
-        static_cast<triagens::arango::CollectionKeysRepository*>(
+        static_cast<arangodb::arango::CollectionKeysRepository*>(
             _vocbase->_collectionKeys);
 
     try {
@@ -2483,7 +2483,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     result.close();
     VPackSlice s = result.slice();
     generateResult(s);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -2529,12 +2529,12 @@ void RestReplicationHandler::handleCommandGetKeys() {
 
   try {
     auto keysRepository =
-        static_cast<triagens::arango::CollectionKeysRepository*>(
+        static_cast<arangodb::arango::CollectionKeysRepository*>(
             _vocbase->_collectionKeys);
     TRI_ASSERT(keysRepository != nullptr);
 
-    auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(
-        triagens::basics::StringUtils::uint64(id));
+    auto collectionKeysId = static_cast<arangodb::arango::CollectionKeysId>(
+        arangodb::basics::StringUtils::uint64(id));
 
     auto collectionKeys = keysRepository->find(collectionKeysId);
 
@@ -2575,7 +2575,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
       collectionKeys->release();
       throw;
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -2642,12 +2642,12 @@ void RestReplicationHandler::handleCommandFetchKeys() {
 
   try {
     auto keysRepository =
-        static_cast<triagens::arango::CollectionKeysRepository*>(
+        static_cast<arangodb::arango::CollectionKeysRepository*>(
             _vocbase->_collectionKeys);
     TRI_ASSERT(keysRepository != nullptr);
 
-    auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(
-        triagens::basics::StringUtils::uint64(id));
+    auto collectionKeysId = static_cast<arangodb::arango::CollectionKeysId>(
+        arangodb::basics::StringUtils::uint64(id));
 
     auto collectionKeys = keysRepository->find(collectionKeysId);
 
@@ -2658,7 +2658,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
     }
 
     try {
-      triagens::basics::Json json(triagens::basics::Json::Array, chunkSize);
+      arangodb::basics::Json json(arangodb::basics::Json::Array, chunkSize);
 
       if (keys) {
         collectionKeys->dumpKeys(json, chunk, chunkSize);
@@ -2681,7 +2681,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
       collectionKeys->release();
       throw;
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -2703,12 +2703,12 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 
   std::string const& id = suffix[1];
 
-  auto keys = static_cast<triagens::arango::CollectionKeysRepository*>(
+  auto keys = static_cast<arangodb::arango::CollectionKeysRepository*>(
       _vocbase->_collectionKeys);
   TRI_ASSERT(keys != nullptr);
 
-  auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(
-      triagens::basics::StringUtils::uint64(id));
+  auto collectionKeysId = static_cast<arangodb::arango::CollectionKeysId>(
+      arangodb::basics::StringUtils::uint64(id));
   bool found = keys->remove(collectionKeysId);
 
   if (!found) {
@@ -2719,10 +2719,10 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
   createResponse(HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
 
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json.set("id", triagens::basics::Json(id));  // id as a string!
-  json.set("error", triagens::basics::Json(false));
-  json.set("code", triagens::basics::Json(
+  arangodb::basics::Json json(arangodb::basics::Json::Object);
+  json.set("id", arangodb::basics::Json(id));  // id as a string!
+  json.set("error", arangodb::basics::Json(false));
+  json.set("code", arangodb::basics::Json(
                        static_cast<double>(_response->responseCode())));
 
   json.dump(_response->body());
@@ -2834,16 +2834,16 @@ void RestReplicationHandler::handleCommandDump() {
 
   try {
     if (flush) {
-      triagens::wal::LogfileManager::instance()->flush(true, true, false);
+      arangodb::wal::LogfileManager::instance()->flush(true, true, false);
 
       // additionally wait for the collector
       if (flushWait > 0) {
-        triagens::wal::LogfileManager::instance()->waitForCollectorQueue(
+        arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
             c->_cid, static_cast<double>(flushWait));
       }
     }
 
-    triagens::arango::CollectionGuard guard(_vocbase, c->_cid, false);
+    arangodb::arango::CollectionGuard guard(_vocbase, c->_cid, false);
 
     TRI_vocbase_col_t* col = guard.collection();
     TRI_ASSERT(col != nullptr);
@@ -2886,7 +2886,7 @@ void RestReplicationHandler::handleCommandDump() {
 
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;

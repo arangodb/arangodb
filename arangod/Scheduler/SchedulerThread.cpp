@@ -38,8 +38,8 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/Task.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 #ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
 #define SCHEDULER_LOCKER(a) SPIN_LOCKER(a)

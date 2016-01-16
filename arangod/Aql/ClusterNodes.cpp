@@ -26,14 +26,14 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 
-using namespace triagens::basics;
-using namespace triagens::aql;
+using namespace arangodb::basics;
+using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for RemoteNode from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-RemoteNode::RemoteNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
@@ -48,21 +48,21 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, triagens::basics::Json const& base)
 /// @brief toJson, for RemoteNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void RemoteNode::toJsonHelper(triagens::basics::Json& nodes,
+void RemoteNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
 
-  json("database", triagens::basics::Json(_vocbase->_name))(
-      "collection", triagens::basics::Json(_collection->getName()))(
-      "server", triagens::basics::Json(_server))(
-      "ownName", triagens::basics::Json(_ownName))(
-      "queryId", triagens::basics::Json(_queryId))(
+  json("database", arangodb::basics::Json(_vocbase->_name))(
+      "collection", arangodb::basics::Json(_collection->getName()))(
+      "server", arangodb::basics::Json(_server))(
+      "ownName", arangodb::basics::Json(_ownName))(
+      "queryId", arangodb::basics::Json(_queryId))(
       "isResponsibleForInitCursor",
-      triagens::basics::Json(_isResponsibleForInitCursor));
+      arangodb::basics::Json(_isResponsibleForInitCursor));
 
   // And add it:
   nodes(json);
@@ -91,7 +91,7 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 ScatterNode::ScatterNode(ExecutionPlan* plan,
-                         triagens::basics::Json const& base)
+                         arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
@@ -101,16 +101,16 @@ ScatterNode::ScatterNode(ExecutionPlan* plan,
 /// @brief toJson, for ScatterNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void ScatterNode::toJsonHelper(triagens::basics::Json& nodes,
+void ScatterNode::toJsonHelper(arangodb::basics::Json& nodes,
                                TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
 
-  json("database", triagens::basics::Json(_vocbase->_name))(
-      "collection", triagens::basics::Json(_collection->getName()));
+  json("database", arangodb::basics::Json(_vocbase->_name))(
+      "collection", arangodb::basics::Json(_collection->getName()));
 
   // And add it:
   nodes(json);
@@ -133,7 +133,7 @@ double ScatterNode::estimateCost(size_t& nrItems) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 DistributeNode::DistributeNode(ExecutionPlan* plan,
-                               triagens::basics::Json const& base)
+                               arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
@@ -147,23 +147,23 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _allowKeyConversionToObject(JsonHelper::checkAndGetBooleanValue(
           base.json(), "allowKeyConversionToObject")) {}
 
-void DistributeNode::toJsonHelper(triagens::basics::Json& nodes,
+void DistributeNode::toJsonHelper(arangodb::basics::Json& nodes,
                                   TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
 
-  json("database", triagens::basics::Json(_vocbase->_name))(
-      "collection", triagens::basics::Json(_collection->getName()))(
-      "varId", triagens::basics::Json(static_cast<int>(_varId)))(
+  json("database", arangodb::basics::Json(_vocbase->_name))(
+      "collection", arangodb::basics::Json(_collection->getName()))(
+      "varId", arangodb::basics::Json(static_cast<int>(_varId)))(
       "alternativeVarId",
-      triagens::basics::Json(static_cast<int>(_alternativeVarId)))(
-      "createKeys", triagens::basics::Json(_createKeys))(
+      arangodb::basics::Json(static_cast<int>(_alternativeVarId)))(
+      "createKeys", arangodb::basics::Json(_createKeys))(
       "allowKeyConversionToObject",
-      triagens::basics::Json(_allowKeyConversionToObject));
+      arangodb::basics::Json(_allowKeyConversionToObject));
 
   // And add it:
   nodes(json);
@@ -183,7 +183,7 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
 /// @brief construct a gather node from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-GatherNode::GatherNode(ExecutionPlan* plan, triagens::basics::Json const& base,
+GatherNode::GatherNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
                        SortElementVector const& elements)
     : ExecutionNode(plan, base),
       _elements(elements),
@@ -195,23 +195,23 @@ GatherNode::GatherNode(ExecutionPlan* plan, triagens::basics::Json const& base,
 /// @brief toJson, for GatherNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void GatherNode::toJsonHelper(triagens::basics::Json& nodes,
+void GatherNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
 
-  json("database", triagens::basics::Json(_vocbase->_name))(
-      "collection", triagens::basics::Json(_collection->getName()));
+  json("database", arangodb::basics::Json(_vocbase->_name))(
+      "collection", arangodb::basics::Json(_collection->getName()));
 
-  triagens::basics::Json values(triagens::basics::Json::Array,
+  arangodb::basics::Json values(arangodb::basics::Json::Array,
                                 _elements.size());
   for (auto it = _elements.begin(); it != _elements.end(); ++it) {
-    triagens::basics::Json element(triagens::basics::Json::Object);
+    arangodb::basics::Json element(arangodb::basics::Json::Object);
     element("inVariable", (*it).first->toJson())(
-        "ascending", triagens::basics::Json((*it).second));
+        "ascending", arangodb::basics::Json((*it).second));
     values(element);
   }
   json("elements", values);

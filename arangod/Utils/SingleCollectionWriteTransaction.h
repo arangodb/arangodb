@@ -32,7 +32,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 template <uint64_t N>
@@ -217,7 +217,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
                      bool forceSync, TRI_voc_rid_t expectedRevision,
                      TRI_voc_rid_t* actualRevision) {
     std::unique_ptr<TRI_json_t> json(
-        triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
     return updateDocument(key, mptr, json.get(), policy, forceSync,
                           expectedRevision, actualRevision);
   }

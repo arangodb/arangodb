@@ -37,7 +37,7 @@
 
 struct TRI_server_t;
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 class AllocatorThread;
@@ -113,7 +113,7 @@ class LogfileManager : public rest::ApplicationFeature {
  public:
 
   void setupOptions(
-      std::map<std::string, triagens::basics::ProgramOptionsDescription>&);
+      std::map<std::string, arangodb::basics::ProgramOptionsDescription>&);
 
 
   bool prepare();

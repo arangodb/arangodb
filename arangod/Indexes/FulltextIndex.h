@@ -34,7 +34,7 @@
 struct TRI_fulltext_wordlist_s;
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class FulltextIndex final : public Index {
@@ -61,13 +61,13 @@ class FulltextIndex final : public Index {
 
   size_t memory() const override final;
 
-  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
 
-  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
   int cleanup() override final;

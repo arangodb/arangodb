@@ -28,7 +28,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Utils/AqlTransaction.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
@@ -250,8 +250,8 @@ class NoResultsBlock : public ExecutionBlock {
                     AqlItemBlock*& result, size_t& skipped) override;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class Dispatcher;
 }

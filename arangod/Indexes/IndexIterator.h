@@ -28,7 +28,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class CollectionNameResolver;
 

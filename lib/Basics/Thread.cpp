@@ -39,7 +39,7 @@
 #include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 ////////////////////////////////////////////////////////////////////////////////

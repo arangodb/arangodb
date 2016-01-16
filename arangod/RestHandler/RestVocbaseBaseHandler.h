@@ -38,7 +38,7 @@ struct TRI_vocbase_t;
 class VocShaper;
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class VocbaseContext;
@@ -175,7 +175,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   /// @brief generates message for a saved document
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateSaved(triagens::arango::SingleCollectionWriteTransaction<1>& trx,
+  void generateSaved(arangodb::arango::SingleCollectionWriteTransaction<1>& trx,
                      TRI_voc_cid_t cid, TRI_doc_mptr_copy_t const& mptr) {
     TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
 
@@ -197,7 +197,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDeleted(
-      triagens::arango::SingleCollectionWriteTransaction<1>& trx,
+      arangodb::arango::SingleCollectionWriteTransaction<1>& trx,
       TRI_voc_cid_t cid, TRI_voc_key_t key, TRI_voc_rid_t rid) {
     rest::HttpResponse::HttpResponseCode statusCode;
     if (trx.synchronous()) {
@@ -216,7 +216,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDocumentNotFound(
-      triagens::arango::SingleCollectionReadOnlyTransaction& trx,
+      arangodb::arango::SingleCollectionReadOnlyTransaction& trx,
       TRI_voc_cid_t cid, TRI_voc_key_t key) {
     generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
   }
@@ -226,7 +226,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDocumentNotFound(
-      triagens::arango::SingleCollectionWriteTransaction<1>& trx,
+      arangodb::arango::SingleCollectionWriteTransaction<1>& trx,
       TRI_voc_cid_t cid, TRI_voc_key_t key) {
     generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
   }
@@ -340,7 +340,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   /// cluster-wide collection ID in `cid`.
   //////////////////////////////////////////////////////////////////////////////
 
-  int parseDocumentId(triagens::arango::CollectionNameResolver const*,
+  int parseDocumentId(arangodb::arango::CollectionNameResolver const*,
                       std::string const&, TRI_voc_cid_t&, TRI_voc_key_t&);
 
   

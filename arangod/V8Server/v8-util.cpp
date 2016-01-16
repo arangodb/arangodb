@@ -28,8 +28,8 @@
 #include "Utils/DocumentHelper.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the vocbase pointer from the current V8 context

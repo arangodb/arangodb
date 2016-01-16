@@ -32,7 +32,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/v8-shape-conv.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +65,7 @@ V8Expression::~V8Expression() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
-                               triagens::arango::AqlTransaction* trx,
+                               arangodb::arango::AqlTransaction* trx,
                                AqlItemBlock const* argv, size_t startPos,
                                std::vector<Variable const*> const& vars,
                                std::vector<RegisterId> const& regs) {
@@ -191,7 +191,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto j = new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json.get());
+  auto j = new arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, json.get());
   json.release();
   return AqlValue(j);
 }

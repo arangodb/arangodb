@@ -49,8 +49,8 @@
 #include "VocBase/Graphs.h"
 
 using namespace arangodb;
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,10 +149,10 @@ VPackBuilder Profile::toVelocyPack() {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* Profile::toJson(TRI_memory_zone_t*) {
-  triagens::basics::Json result(triagens::basics::Json::Object);
+  arangodb::basics::Json result(arangodb::basics::Json::Object);
   for (auto const& it : results) {
     result.set(StateNames[static_cast<int>(it.first)].c_str(),
-               triagens::basics::Json(it.second));
+               arangodb::basics::Json(it.second));
   }
   return result.steal();
 }
@@ -169,7 +169,7 @@ bool Query::DoDisableQueryTracking = false;
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query(triagens::arango::ApplicationV8* applicationV8,
+Query::Query(arangodb::arango::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
              TRI_json_t* bindParameters, TRI_json_t* options, QueryPart part)
@@ -209,9 +209,9 @@ Query::Query(triagens::arango::ApplicationV8* applicationV8,
 /// @brief creates a query from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query(triagens::arango::ApplicationV8* applicationV8,
+Query::Query(arangodb::arango::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
-             triagens::basics::Json queryStruct, TRI_json_t* options,
+             arangodb::basics::Json queryStruct, TRI_json_t* options,
              QueryPart part)
     : _id(0),
       _applicationV8(applicationV8),
@@ -270,7 +270,7 @@ Query::~Query() {
     // unregister transaction and resolver in context
     ISOLATE;
     TRI_GET_GLOBALS();
-    auto ctx = static_cast<triagens::arango::V8TransactionContext*>(
+    auto ctx = static_cast<arangodb::arango::V8TransactionContext*>(
         v8g->_transactionContext);
     if (ctx != nullptr) {
       ctx->unregisterTransaction();
@@ -488,7 +488,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
     _isModificationQuery = parser->isModificationQuery();
 
     // create the transaction object, but do not start it yet
-    _trx = new triagens::arango::AqlTransaction(
+    _trx = new arangodb::arango::AqlTransaction(
         createTransactionContext(), _vocbase, _collections.collections(),
         _part == PART_MAIN);
 
@@ -507,7 +507,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 
       parser->ast()->validateAndOptimize();
       // std::cout << "AST: " <<
-      // triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE,
+      // arangodb::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE,
       // false)) << "\n";
 
       enterState(PLAN_INSTANTIATION);
@@ -521,7 +521,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 
       // Run the query optimizer:
       enterState(PLAN_OPTIMIZATION);
-      triagens::aql::Optimizer opt(maxNumberOfPlans());
+      arangodb::aql::Optimizer opt(maxNumberOfPlans());
       // getenabled/disabled rules
       opt.createPlans(plan.release(), getRulesFromOptions(),
                       inspectSimplePlans());
@@ -590,7 +590,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
     _parser = parser.release();
     _engine = engine;
     return QueryResult();
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), ex.message() + getStateString());
   } catch (std::bad_alloc const&) {
@@ -633,9 +633,9 @@ QueryResult Query::execute(QueryRegistry* registry) {
       queryStringHash = hash();
 
       // check the query cache for an existing result
-      auto cacheEntry = triagens::aql::QueryCache::instance()->lookup(
+      auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
           _vocbase, queryStringHash, _queryString, _queryLength);
-      triagens::aql::QueryCacheResultEntryGuard guard(cacheEntry);
+      arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
@@ -659,7 +659,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
       useQueryCache = false;
     }
 
-    triagens::basics::Json jsonResult(triagens::basics::Json::Array, 16);
+    arangodb::basics::Json jsonResult(arangodb::basics::Json::Array, 16);
 
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
@@ -739,7 +739,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     }
 
     return result;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), ex.message() + getStateString());
   } catch (std::bad_alloc const&) {
@@ -774,9 +774,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       queryStringHash = hash();
 
       // check the query cache for an existing result
-      auto cacheEntry = triagens::aql::QueryCache::instance()->lookup(
+      auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
           _vocbase, queryStringHash, _queryString, _queryLength);
-      triagens::aql::QueryCacheResultEntryGuard guard(cacheEntry);
+      arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
@@ -882,7 +882,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     }
 
     return result;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
     return QueryResultV8(ex.code(), ex.message() + getStateString());
   } catch (std::bad_alloc const&) {
@@ -909,7 +909,7 @@ QueryResult Query::parse() {
     init();
     Parser parser(this);
     return parser.parse(true);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   } catch (std::bad_alloc const&) {
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
@@ -943,11 +943,11 @@ QueryResult Query::explain() {
     // optimize and validate the ast
     parser.ast()->validateAndOptimize();
     // std::cout << "AST: " <<
-    // triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE))
+    // arangodb::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE))
     // << "\n";
 
     // create the transaction object, but do not start it yet
-    _trx = new triagens::arango::AqlTransaction(
+    _trx = new arangodb::arango::AqlTransaction(
         createTransactionContext(), _vocbase, _collections.collections(), true);
 
     // we have an AST
@@ -967,7 +967,7 @@ QueryResult Query::explain() {
 
     // Run the query optimizer:
     enterState(PLAN_OPTIMIZATION);
-    triagens::aql::Optimizer opt(maxNumberOfPlans());
+    arangodb::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
     opt.createPlans(plan, getRulesFromOptions(), inspectSimplePlans());
 
@@ -977,7 +977,7 @@ QueryResult Query::explain() {
     QueryRegistry localRegistry;
 
     if (allPlans()) {
-      triagens::basics::Json out(Json::Array);
+      arangodb::basics::Json out(Json::Array);
 
       auto plans = opt.getPlans();
       for (auto& it : plans) {
@@ -1015,7 +1015,7 @@ QueryResult Query::explain() {
     result.stats = opt._stats.toVelocyPack();
 
     return result;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message() + getStateString());
   } catch (std::bad_alloc const&) {
     return QueryResult(
@@ -1138,7 +1138,7 @@ void Query::enterContext() {
 
       ISOLATE;
       TRI_GET_GLOBALS();
-      auto ctx = static_cast<triagens::arango::V8TransactionContext*>(
+      auto ctx = static_cast<arangodb::arango::V8TransactionContext*>(
           v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->registerTransaction(_trx->getInternals());
@@ -1159,7 +1159,7 @@ void Query::exitContext() {
       // unregister transaction and resolver in context
       ISOLATE;
       TRI_GET_GLOBALS();
-      auto ctx = static_cast<triagens::arango::V8TransactionContext*>(
+      auto ctx = static_cast<arangodb::arango::V8TransactionContext*>(
           v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->unregisterTransaction();
@@ -1176,7 +1176,7 @@ void Query::exitContext() {
 /// @brief returns statistics for current query.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json Query::getStats() {
+arangodb::basics::Json Query::getStats() {
   if (_engine) {
     return _engine->_stats.toJson();
   }
@@ -1264,7 +1264,7 @@ void Query::init() {
 
 uint64_t Query::hash() const {
   // hash the query string first
-  uint64_t hash = triagens::aql::QueryCache::instance()->hashQueryString(
+  uint64_t hash = arangodb::aql::QueryCache::instance()->hashQueryString(
       _queryString, _queryLength);
 
   // handle "fullCount" option. if this option is set, the query result will
@@ -1303,14 +1303,14 @@ bool Query::canUseQueryCache() const {
     // setting `cache` attribute to false.
 
     // cannot use query cache on a coordinator at the moment
-    return !triagens::arango::ServerState::instance()->isRunningInCluster();
+    return !arangodb::arango::ServerState::instance()->isRunningInCluster();
   } else if (queryCacheMode == CACHE_ON_DEMAND &&
              getBooleanOption("cache", false)) {
     // cache mode is set to demand... query will only be cached if `cache`
     // attribute is set to false
 
     // cannot use query cache on a coordinator at the moment
-    return !triagens::arango::ServerState::instance()->isRunningInCluster();
+    return !arangodb::arango::ServerState::instance()->isRunningInCluster();
   }
 
   return false;
@@ -1483,13 +1483,13 @@ void Query::setPlan(ExecutionPlan* plan) {
 /// @brief create a TransactionContext
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::TransactionContext* Query::createTransactionContext() {
+arangodb::arango::TransactionContext* Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
-    return new triagens::arango::V8TransactionContext(true);
+    return new arangodb::arango::V8TransactionContext(true);
   }
 
-  return new triagens::arango::StandaloneTransactionContext();
+  return new arangodb::arango::StandaloneTransactionContext();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1504,8 +1504,8 @@ Graph const* Query::lookupGraphByName(std::string const& name) {
     return it->second;
   }
 
-  std::unique_ptr<triagens::aql::Graph> g(
-      triagens::arango::lookupGraphByName(_vocbase, name));
+  std::unique_ptr<arangodb::aql::Graph> g(
+      arangodb::arango::lookupGraphByName(_vocbase, name));
 
   if (g == nullptr) {
     return nullptr;

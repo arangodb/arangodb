@@ -59,7 +59,7 @@
 struct TRI_json_t;
 class TRI_vocbase_col_t;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class CollectionInfo;
 }
@@ -161,7 +161,7 @@ typedef enum {
   TRI_COL_TYPE_EDGE = 3
 } TRI_col_type_e;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,14 +314,14 @@ class VocbaseCollectionInfo {
 };
 
 }  // namespace arango
-}  // namespace triagens
+}  // namespace arangodb
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_collection_t {
-  triagens::arango::VocbaseCollectionInfo _info;
+  arangodb::arango::VocbaseCollectionInfo _info;
 
   TRI_vocbase_t* _vocbase;
   TRI_voc_tick_t _tickMax;
@@ -341,7 +341,7 @@ struct TRI_collection_t {
                                // ClusterInfo quickly
   TRI_collection_t() : _followerInfoIndex(-1) {}
 
-  explicit TRI_collection_t(triagens::arango::VocbaseCollectionInfo const& info)
+  explicit TRI_collection_t(arangodb::arango::VocbaseCollectionInfo const& info)
       : _info(info) {}
 
   ~TRI_collection_t() {}
@@ -364,7 +364,7 @@ char* TRI_GetDirectoryCollection(char const*, char const*, TRI_col_type_e,
 
 TRI_collection_t* TRI_CreateCollection(
     TRI_vocbase_t*, TRI_collection_t*, char const*,
-    triagens::arango::VocbaseCollectionInfo const&);
+    arangodb::arango::VocbaseCollectionInfo const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
@@ -407,14 +407,14 @@ int TRI_IterateJsonIndexesCollectionInfo(
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_json_t* TRI_CreateJsonCollectionInfo(
-    triagens::arango::VocbaseCollectionInfo const&);
+    arangodb::arango::VocbaseCollectionInfo const&);
 
 std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
-    triagens::arango::VocbaseCollectionInfo const&);
+    arangodb::arango::VocbaseCollectionInfo const&);
 
 // Expects the builder to be in an open Object state
 void TRI_CreateVelocyPackCollectionInfo(
-    triagens::arango::VocbaseCollectionInfo const&, VPackBuilder&);
+    arangodb::arango::VocbaseCollectionInfo const&, VPackBuilder&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
@@ -483,7 +483,7 @@ void TRI_DestroyFileStructureCollection(TRI_col_file_structure_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UpgradeCollection20(TRI_vocbase_t*, char const*,
-                            triagens::arango::VocbaseCollectionInfo&);
+                            arangodb::arango::VocbaseCollectionInfo&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the markers in the collection's journals

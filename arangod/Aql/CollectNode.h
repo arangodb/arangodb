@@ -34,7 +34,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
@@ -78,7 +78,7 @@ class CollectNode : public ExecutionNode {
   }
 
   CollectNode(
-      ExecutionPlan*, triagens::basics::Json const& base,
+      ExecutionPlan*, arangodb::basics::Json const& base,
       Variable const* expressionVariable, Variable const* outVariable,
       std::vector<Variable const*> const& keepVariables,
       std::unordered_map<VariableId, std::string const> const& variableMap,
@@ -146,7 +146,7 @@ class CollectNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -346,8 +346,8 @@ class CollectNode : public ExecutionNode {
   bool _specialized;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

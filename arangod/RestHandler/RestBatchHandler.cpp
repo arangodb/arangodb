@@ -30,9 +30,9 @@
 #include "Rest/HttpRequest.h"
 
 using namespace arangodb;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 using namespace std;
 
 
@@ -202,7 +202,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
       // append the boundary for this subpart
       _response->body().appendText(boundary + "\r\nContent-Type: ");
       _response->body().appendText(
-          triagens::rest::HttpRequest::BatchContentType);
+          arangodb::rest::HttpRequest::BatchContentType);
 
       // append content-id if it is present
       if (helper.contentId != 0) {
@@ -458,14 +458,14 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         std::string value(colon, eol - colon);
         StringUtils::trimInPlace(value);
 
-        if (triagens::rest::HttpRequest::BatchContentType == value) {
+        if (arangodb::rest::HttpRequest::BatchContentType == value) {
           hasTypeHeader = true;
         } else {
           LOG_WARNING(
               "unexpected content-type '%s' for multipart-message. expected: "
               "'%s'",
               value.c_str(),
-              triagens::rest::HttpRequest::BatchContentType.c_str());
+              arangodb::rest::HttpRequest::BatchContentType.c_str());
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;

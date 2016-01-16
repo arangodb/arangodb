@@ -29,7 +29,7 @@
 
 #include "Basics/locks.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 

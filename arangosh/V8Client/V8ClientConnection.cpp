@@ -38,10 +38,10 @@
 #include "V8/v8-json.h"
 #include "V8/v8-globals.h"
 
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
-using namespace triagens::v8client;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
+using namespace arangodb::v8client;
 using namespace std;
 
 
@@ -94,13 +94,13 @@ V8ClientConnection::V8ClientConnection(
         std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
         VPackSlice const body = parsedBody->slice();
         std::string const server =
-            triagens::basics::VelocyPackHelper::getStringValue(body, "server",
+            arangodb::basics::VelocyPackHelper::getStringValue(body, "server",
                                                                "");
 
         // "server" value is a string and content is "arango"
         if (server == "arango") {
           // look up "version" value
-          _version = triagens::basics::VelocyPackHelper::getStringValue(
+          _version = arangodb::basics::VelocyPackHelper::getStringValue(
               body, "version", "");
           VPackSlice const details = body.get("details");
           if (details.isObject()) {
@@ -222,7 +222,7 @@ std::string const& V8ClientConnection::getErrorMessage() {
 /// @brief get the simple http client
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::SimpleHttpClient* V8ClientConnection::getHttpClient() {
+arangodb::httpclient::SimpleHttpClient* V8ClientConnection::getHttpClient() {
   return _client;
 }
 

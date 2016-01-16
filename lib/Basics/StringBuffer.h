@@ -365,7 +365,7 @@ int TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d);
 
 #endif
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,7 +503,7 @@ class StringBuffer {
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
   //////////////////////////////////////////////////////////////////////////////
 
-  int inflate(triagens::basics::StringBuffer& out, size_t bufferSize = 16384,
+  int inflate(arangodb::basics::StringBuffer& out, size_t bufferSize = 16384,
               size_t skip = 0) {
     z_stream strm;
 

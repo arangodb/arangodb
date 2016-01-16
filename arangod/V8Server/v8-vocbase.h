@@ -32,7 +32,7 @@
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class QueryRegistry;
 }
@@ -50,7 +50,7 @@ class JSLoader;
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ParseVertex(v8::FunctionCallbackInfo<v8::Value> const& args,
-                    triagens::arango::CollectionNameResolver const*,
+                    arangodb::arango::CollectionNameResolver const*,
                     TRI_voc_cid_t&, std::unique_ptr<char[]>&,
                     v8::Handle<v8::Value> const);
 
@@ -64,7 +64,7 @@ int32_t TRI_GetVocBaseColType();
 /// @brief run version check
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_UpgradeDatabase(TRI_vocbase_t*, triagens::arango::JSLoader*,
+bool TRI_UpgradeDatabase(TRI_vocbase_t*, arangodb::arango::JSLoader*,
                          v8::Handle<v8::Context>);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +72,7 @@ bool TRI_UpgradeDatabase(TRI_vocbase_t*, triagens::arango::JSLoader*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase,
-                             triagens::arango::JSLoader* startupLoader,
+                             arangodb::arango::JSLoader* startupLoader,
                              v8::Handle<v8::Context> context);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,10 +85,10 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate);
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge(v8::Isolate* isolate, triagens::arango::ApplicationV8*,
-                         v8::Handle<v8::Context>, triagens::aql::QueryRegistry*,
+void TRI_InitV8VocBridge(v8::Isolate* isolate, arangodb::arango::ApplicationV8*,
+                         v8::Handle<v8::Context>, arangodb::aql::QueryRegistry*,
                          TRI_server_t*, TRI_vocbase_t*,
-                         triagens::arango::JSLoader*, size_t);
+                         arangodb::arango::JSLoader*, size_t);
 
 #endif
 

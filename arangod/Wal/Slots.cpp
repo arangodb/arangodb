@@ -30,7 +30,7 @@
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 
 ////////////////////////////////////////////////////////////////////////////////

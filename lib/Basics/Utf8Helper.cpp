@@ -36,7 +36,7 @@
 #include "Basics/win-utils.h"
 #endif
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 using namespace std;
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper;

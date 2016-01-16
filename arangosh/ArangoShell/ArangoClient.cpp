@@ -36,9 +36,9 @@
 #include <sstream>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 5.0;
 double const ArangoClient::DEFAULT_REQUEST_TIMEOUT = 1200.0;

@@ -34,7 +34,7 @@
 #include <boost/lockfree/queue.hpp>
 
 using namespace arangodb;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief singleton

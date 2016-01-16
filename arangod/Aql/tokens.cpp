@@ -680,7 +680,7 @@ static yyconst flex_int32_t yy_rule_can_match_eol[89] =
 // introduce the namespace here, otherwise following references to 
 // the namespace in auto-generated headers might fail
 
-namespace triagens {
+namespace arangodb {
   namespace aql {
     class Query;
     class Parser;
@@ -691,7 +691,7 @@ namespace triagens {
 #include "Aql/grammar.h"
 #include "Aql/Parser.h"
 
-#define YY_EXTRA_TYPE triagens::aql::Parser*
+#define YY_EXTRA_TYPE arangodb::aql::Parser*
 
 #define YY_USER_ACTION yylloc->first_line = (int) yylineno; yylloc->first_column = (int) yycolumn; yylloc->last_column = (int) (yycolumn + yyleng - 1); yycolumn += (int) yyleng; yyextra->increaseOffset(yyleng);
 
@@ -1549,7 +1549,7 @@ case 74:
 YY_RULE_SETUP
 {  
   /* a numeric integer value */
-  triagens::aql::AstNode* node = nullptr;
+  arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
 
   int64_t value = TRI_Int64String2(yytext, yyleng);
@@ -1577,7 +1577,7 @@ YY_RULE_SETUP
 { 
   /* a numeric double value */
       
-  triagens::aql::AstNode* node = nullptr;
+  arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
   double value = TRI_DoubleString(yytext);
 

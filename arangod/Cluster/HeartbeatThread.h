@@ -34,7 +34,7 @@
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class ApplicationDispatcher;
 }
@@ -54,7 +54,7 @@ class HeartbeatThread : public basics::Thread {
   /// @brief constructs a heartbeat thread
   //////////////////////////////////////////////////////////////////////////////
 
-  HeartbeatThread(TRI_server_t*, triagens::rest::ApplicationDispatcher*,
+  HeartbeatThread(TRI_server_t*, arangodb::rest::ApplicationDispatcher*,
                   ApplicationV8*, uint64_t, uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -192,7 +192,7 @@ class HeartbeatThread : public basics::Thread {
   /// @brief Job dispatcher
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::ApplicationDispatcher* _dispatcher;
+  arangodb::rest::ApplicationDispatcher* _dispatcher;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief v8 dispatcher
@@ -204,7 +204,7 @@ class HeartbeatThread : public basics::Thread {
   /// @brief status lock
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _statusLock;
+  arangodb::basics::Mutex _statusLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyComm instance
@@ -216,7 +216,7 @@ class HeartbeatThread : public basics::Thread {
   /// @brief condition variable for heartbeat
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::ConditionVariable _condition;
+  arangodb::basics::ConditionVariable _condition;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief users for these databases will be re-fetched the next time the

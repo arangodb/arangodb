@@ -26,10 +26,10 @@
 #include "Rest/HttpRequest.h"
 
 using namespace arangodb;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
-using triagens::rest::HttpRequest;
-using triagens::rest::HttpHandler;
+using arangodb::rest::HttpRequest;
+using arangodb::rest::HttpHandler;
 
 
 WorkMonitorHandler::WorkMonitorHandler(HttpRequest* request)

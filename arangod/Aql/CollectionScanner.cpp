@@ -23,12 +23,12 @@
 
 #include "CollectionScanner.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 
 CollectionScanner::CollectionScanner(
-    triagens::arango::AqlTransaction* trx,
+    arangodb::arango::AqlTransaction* trx,
     TRI_transaction_collection_t* trxCollection)
     : trx(trx), trxCollection(trxCollection), totalCount(0) {}
 
@@ -37,7 +37,7 @@ CollectionScanner::~CollectionScanner() {}
 
 
 RandomCollectionScanner::RandomCollectionScanner(
-    triagens::arango::AqlTransaction* trx,
+    arangodb::arango::AqlTransaction* trx,
     TRI_transaction_collection_t* trxCollection)
     : CollectionScanner(trx, trxCollection), step(0) {}
 
@@ -68,7 +68,7 @@ void RandomCollectionScanner::reset() {
 
 
 LinearCollectionScanner::LinearCollectionScanner(
-    triagens::arango::AqlTransaction* trx,
+    arangodb::arango::AqlTransaction* trx,
     TRI_transaction_collection_t* trxCollection)
     : CollectionScanner(trx, trxCollection) {}
 

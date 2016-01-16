@@ -29,7 +29,7 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 size_t const CursorRepository::MaxCollectCount = 32;
@@ -97,10 +97,10 @@ JsonCursor* CursorRepository::createFromJson(TRI_json_t* json, size_t batchSize,
   TRI_ASSERT(json != nullptr);
 
   CursorId const id = TRI_NewTickServer();
-  triagens::arango::JsonCursor* cursor = nullptr;
+  arangodb::arango::JsonCursor* cursor = nullptr;
 
   try {
-    cursor = new triagens::arango::JsonCursor(_vocbase, id, json, batchSize,
+    cursor = new arangodb::arango::JsonCursor(_vocbase, id, json, batchSize,
                                               extra, ttl, count, cached);
   } catch (...) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -127,12 +127,12 @@ JsonCursor* CursorRepository::createFromJson(TRI_json_t* json, size_t batchSize,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExportCursor* CursorRepository::createFromExport(
-    triagens::arango::CollectionExport* ex, size_t batchSize, double ttl,
+    arangodb::arango::CollectionExport* ex, size_t batchSize, double ttl,
     bool count) {
   TRI_ASSERT(ex != nullptr);
 
   CursorId const id = TRI_NewTickServer();
-  triagens::arango::ExportCursor* cursor = new triagens::arango::ExportCursor(
+  arangodb::arango::ExportCursor* cursor = new arangodb::arango::ExportCursor(
       _vocbase, id, ex, batchSize, ttl, count);
 
   cursor->use();
@@ -152,7 +152,7 @@ ExportCursor* CursorRepository::createFromExport(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CursorRepository::remove(CursorId id) {
-  triagens::arango::Cursor* cursor = nullptr;
+  arangodb::arango::Cursor* cursor = nullptr;
 
   {
     MUTEX_LOCKER(_lock);
@@ -193,7 +193,7 @@ bool CursorRepository::remove(CursorId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Cursor* CursorRepository::find(CursorId id, bool& busy) {
-  triagens::arango::Cursor* cursor = nullptr;
+  arangodb::arango::Cursor* cursor = nullptr;
   busy = false;
 
   {
@@ -267,7 +267,7 @@ bool CursorRepository::containsUsedCursor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CursorRepository::garbageCollect(bool force) {
-  std::vector<triagens::arango::Cursor*> found;
+  std::vector<arangodb::arango::Cursor*> found;
   found.reserve(MaxCollectCount);
 
   auto const now = TRI_microtime();

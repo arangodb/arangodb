@@ -43,7 +43,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 
@@ -853,7 +853,7 @@ char* TRI_GetDirectoryCollection(char const* path, char const* name,
 
 TRI_collection_t* TRI_CreateCollection(
     TRI_vocbase_t* vocbase, TRI_collection_t* collection, char const* path,
-    triagens::arango::VocbaseCollectionInfo const& parameters) {
+    arangodb::arango::VocbaseCollectionInfo const& parameters) {
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
       parameters.maximalSize()) {
@@ -1056,7 +1056,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
   std::unique_ptr<TRI_json_t> otherOpts(other.keyOptions());
   if (otherOpts != nullptr) {
     std::shared_ptr<arangodb::velocypack::Builder> builder =
-        triagens::basics::JsonHelper::toVelocyPack(otherOpts.get());
+        arangodb::basics::JsonHelper::toVelocyPack(otherOpts.get());
     _keyOptions = builder->steal();
   }
 }
@@ -1128,11 +1128,11 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
     TRI_voc_size_t maximalSize;
     if (options.hasKey("journalSize")) {
       maximalSize =
-          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               options, "journalSize", vocbase->_settings.defaultMaximalSize);
     } else {
       maximalSize =
-          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               options, "maximalSize", vocbase->_settings.defaultMaximalSize);
     }
 
@@ -1142,27 +1142,27 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
     }
 
-    _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "doCompact", true);
-    _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "waitForSync", vocbase->_settings.defaultWaitForSync);
-    _isVolatile = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _isVolatile = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "isVolatile", false);
     _indexBuckets =
-        triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
             options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     _type = static_cast<TRI_col_type_e>(
-        triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
             options, "type", _type));
 
     std::string cname =
-        triagens::basics::VelocyPackHelper::getStringValue(options, "name", "");
+        arangodb::basics::VelocyPackHelper::getStringValue(options, "name", "");
     if (!cname.empty()) {
       TRI_CopyString(_name, cname.c_str(), sizeof(_name) - 1);
     }
 
     std::string cidString =
-        triagens::basics::VelocyPackHelper::getStringValue(options, "cid", "");
+        arangodb::basics::VelocyPackHelper::getStringValue(options, "cid", "");
     if (!cidString.empty()) {
       // note: this may throw
       _cid = std::stoull(cidString);
@@ -1274,7 +1274,7 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
 
   std::string filePath(filename, strlen(filename));
   std::shared_ptr<VPackBuilder> content =
-      triagens::basics::VelocyPackHelper::velocyPackFromFile(filePath);
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filePath);
   VPackSlice slice = content->slice();
   if (!slice.isObject()) {
     LOG_ERROR("cannot open '%s', collection parameters are not readable",
@@ -1431,57 +1431,57 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
 
   if (preferDefaults) {
     if (vocbase != nullptr) {
-      _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(
+      _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "doCompact", true);
-      _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
+      _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync", vocbase->_settings.defaultWaitForSync);
       if (slice.hasKey("journalSize")) {
-        _maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+        _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "journalSize", vocbase->_settings.defaultMaximalSize);
       }
       else {
-        _maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+        _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
       }
       _indexBuckets =
-          triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
               slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     } else {
-      _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(
+      _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "doCompact", true);
-      _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
+      _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync", false);
       if (slice.hasKey("journalSize")) {
         _maximalSize =
-            triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+            arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
       }
       else {
         _maximalSize =
-            triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+            arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
       }
       _indexBuckets =
-          triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
               slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     }
   } else {
-    _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
         slice, "doCompact", _doCompact);
-    _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
         slice, "waitForSync", _waitForSync);
     if (slice.hasKey("journalSize")) {
       _maximalSize =
-          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               slice, "journalSize", _maximalSize);
     }
     else {
       _maximalSize =
-          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               slice, "maximalSize", _maximalSize);
     }
     _indexBuckets =
-        triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
             slice, "indexBuckets", _indexBuckets);
   }
 }
@@ -1583,13 +1583,13 @@ int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
 
 // Only temporary
 TRI_json_t* TRI_CreateJsonCollectionInfo(
-    triagens::arango::VocbaseCollectionInfo const& info) {
+    arangodb::arango::VocbaseCollectionInfo const& info) {
   try {
     VPackBuilder builder;
     builder.openObject();
     TRI_CreateVelocyPackCollectionInfo(info, builder);
     builder.close();
-    return triagens::basics::VelocyPackHelper::velocyPackToJson(
+    return arangodb::basics::VelocyPackHelper::velocyPackToJson(
         builder.slice());
   } catch (...) {
     return nullptr;
@@ -1597,7 +1597,7 @@ TRI_json_t* TRI_CreateJsonCollectionInfo(
 }
 
 std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
-    triagens::arango::VocbaseCollectionInfo const& info) {
+    arangodb::arango::VocbaseCollectionInfo const& info) {
   // This function might throw
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
@@ -1607,7 +1607,7 @@ std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
 }
 
 void TRI_CreateVelocyPackCollectionInfo(
-    triagens::arango::VocbaseCollectionInfo const& info,
+    arangodb::arango::VocbaseCollectionInfo const& info,
     VPackBuilder& builder) {
   // This function might throw
   //

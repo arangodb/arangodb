@@ -28,7 +28,7 @@
 #include "Rest/Endpoint.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class ProgramOptionsDescription;
 class ProgramOptions;
@@ -121,52 +121,52 @@ class ArangoClient {
   /// @brief sets up the general and logging options
   //////////////////////////////////////////////////////////////////////////////
 
-  void setupGeneral(triagens::basics::ProgramOptionsDescription& description);
+  void setupGeneral(arangodb::basics::ProgramOptionsDescription& description);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets up the color options
   //////////////////////////////////////////////////////////////////////////////
 
-  void setupColors(triagens::basics::ProgramOptionsDescription& description);
+  void setupColors(arangodb::basics::ProgramOptionsDescription& description);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets up the auto-complete options
   //////////////////////////////////////////////////////////////////////////////
 
   void setupAutoComplete(
-      triagens::basics::ProgramOptionsDescription& description);
+      arangodb::basics::ProgramOptionsDescription& description);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets up the pretty-printing options
   //////////////////////////////////////////////////////////////////////////////
 
   void setupPrettyPrint(
-      triagens::basics::ProgramOptionsDescription& description);
+      arangodb::basics::ProgramOptionsDescription& description);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets up the pager options
   //////////////////////////////////////////////////////////////////////////////
 
-  void setupPager(triagens::basics::ProgramOptionsDescription& description);
+  void setupPager(arangodb::basics::ProgramOptionsDescription& description);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets up the log options
   //////////////////////////////////////////////////////////////////////////////
 
-  void setupLog(triagens::basics::ProgramOptionsDescription& description);
+  void setupLog(arangodb::basics::ProgramOptionsDescription& description);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets up the server options
   //////////////////////////////////////////////////////////////////////////////
 
-  void setupServer(triagens::basics::ProgramOptionsDescription& description);
+  void setupServer(arangodb::basics::ProgramOptionsDescription& description);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses command line and config file and prepares logging
   //////////////////////////////////////////////////////////////////////////////
 
-  void parse(triagens::basics::ProgramOptions&,
-             triagens::basics::ProgramOptionsDescription& description,
+  void parse(arangodb::basics::ProgramOptions&,
+             arangodb::basics::ProgramOptionsDescription& description,
              std::string const& example, int argc, char* argv[],
              std::string const& initFilename);
 
@@ -325,7 +325,7 @@ class ArangoClient {
   /// @brief endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::Endpoint* endpointServer() const;
+  arangodb::rest::Endpoint* endpointServer() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief database name
@@ -521,7 +521,7 @@ class ArangoClient {
   /// @brief endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::Endpoint* _endpointServer;
+  arangodb::rest::Endpoint* _endpointServer;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief database name

@@ -33,7 +33,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace triagens::rest;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pushes a handler

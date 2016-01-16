@@ -31,7 +31,7 @@
 #include "Basics/WorkMonitor.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class HttpHandler;
 class HttpServer;

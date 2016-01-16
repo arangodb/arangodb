@@ -126,7 +126,7 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
 
   if (readOptions) {
     // Change allowUserKeys only if it is a boolean value, otherwise use default
-    allowUserKeys = triagens::basics::VelocyPackHelper::getBooleanValue(
+    allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "allowUserKeys", allowUserKeys);
   }
 
@@ -257,7 +257,7 @@ bool TraditionalKeyGenerator::validateKey(char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TraditionalKeyGenerator::generate(TRI_voc_tick_t tick) {
-  return std::move(triagens::basics::StringUtils::itoa(tick));
+  return std::move(arangodb::basics::StringUtils::itoa(tick));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,7 +368,7 @@ std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
     _lastValue = keyValue;
   }
 
-  return std::move(triagens::basics::StringUtils::itoa(keyValue));
+  return std::move(arangodb::basics::StringUtils::itoa(keyValue));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,7 +388,7 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
-  uint64_t intValue = triagens::basics::StringUtils::uint64(key);
+  uint64_t intValue = arangodb::basics::StringUtils::uint64(key);
 
   if (intValue > _lastValue) {
     MUTEX_LOCKER(_lock);

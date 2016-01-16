@@ -27,8 +27,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -759,8 +759,8 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              int lifeTimeSeconds, std::string const& path,
                              std::string const& domain, bool secure,
                              bool httpOnly) {
-  triagens::basics::StringBuffer* buffer =
-      new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer* buffer =
+      new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
   std::string tmp = StringUtils::trim(name);
   buffer->appendText(tmp.c_str(), tmp.length());

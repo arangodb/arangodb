@@ -29,7 +29,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 
@@ -106,7 +106,7 @@ size_t JsonCursor::count() const { return _size; }
 /// @brief dump the cursor contents into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void JsonCursor::dump(triagens::basics::StringBuffer& buffer) {
+void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
   buffer.appendText("\"result\":[");
 
   size_t const n = batchSize();
@@ -192,7 +192,7 @@ void JsonCursor::freeJson() {
 
 
 ExportCursor::ExportCursor(TRI_vocbase_t* vocbase, CursorId id,
-                           triagens::arango::CollectionExport* ex,
+                           arangodb::arango::CollectionExport* ex,
                            size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
       _vocbase(vocbase),
@@ -238,7 +238,7 @@ size_t ExportCursor::count() const { return _size; }
 /// @brief dump the cursor contents into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExportCursor::dump(triagens::basics::StringBuffer& buffer) {
+void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
   TRI_ASSERT(_ex != nullptr);
 
   auto shaper = _ex->_document->getShaper();
@@ -262,7 +262,7 @@ void ExportCursor::dump(triagens::basics::StringBuffer& buffer) {
 
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
-    triagens::basics::Json json(shaper->memoryZone(),
+    arangodb::basics::Json json(shaper->memoryZone(),
                                 TRI_JsonShapedJson(shaper, &shaped));
 
     // append the internal attributes
@@ -274,11 +274,11 @@ void ExportCursor::dump(triagens::basics::StringBuffer& buffer) {
     id.push_back('/');
     id.append(key);
 
-    json(TRI_VOC_ATTRIBUTE_ID, triagens::basics::Json(id));
+    json(TRI_VOC_ATTRIBUTE_ID, arangodb::basics::Json(id));
     json(
         TRI_VOC_ATTRIBUTE_REV,
-        triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
-    json(TRI_VOC_ATTRIBUTE_KEY, triagens::basics::Json(key));
+        arangodb::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+    json(TRI_VOC_ATTRIBUTE_KEY, arangodb::basics::Json(key));
 
     if (TRI_IS_EDGE_MARKER(marker)) {
       // _from
@@ -286,14 +286,14 @@ void ExportCursor::dump(triagens::basics::StringBuffer& buffer) {
           TRI_EXTRACT_MARKER_FROM_CID(marker)));
       from.push_back('/');
       from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
-      json(TRI_VOC_ATTRIBUTE_FROM, triagens::basics::Json(from));
+      json(TRI_VOC_ATTRIBUTE_FROM, arangodb::basics::Json(from));
 
       // _to
       std::string to(_ex->_resolver.getCollectionNameCluster(
           TRI_EXTRACT_MARKER_TO_CID(marker)));
       to.push_back('/');
       to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
-      json(TRI_VOC_ATTRIBUTE_TO, triagens::basics::Json(to));
+      json(TRI_VOC_ATTRIBUTE_TO, arangodb::basics::Json(to));
     }
 
     if (restrictionType ==

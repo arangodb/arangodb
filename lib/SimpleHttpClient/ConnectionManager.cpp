@@ -26,8 +26,8 @@
 #include "Basics/WriteLocker.h"
 
 using namespace std;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global options for connections

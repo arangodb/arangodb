@@ -31,7 +31,7 @@
 struct TRI_document_collection_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class CollectionGuard;
@@ -65,11 +65,11 @@ class CollectionExport {
 
   
  private:
-  triagens::arango::CollectionGuard* _guard;
+  arangodb::arango::CollectionGuard* _guard;
   struct TRI_document_collection_t* _document;
-  triagens::arango::DocumentDitch* _ditch;
+  arangodb::arango::DocumentDitch* _ditch;
   std::string const _name;
-  triagens::arango::CollectionNameResolver _resolver;
+  arangodb::arango::CollectionNameResolver _resolver;
   Restrictions _restrictions;
   std::vector<void const*>* _documents;
 };

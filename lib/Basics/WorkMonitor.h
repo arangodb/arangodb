@@ -28,7 +28,7 @@
 
 #include "Basics/WorkItem.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class HttpHandler;
 }
@@ -62,8 +62,8 @@ struct WorkDescription {
     ~data() {}
 
     char text[256];
-    triagens::basics::Thread* thread;
-    triagens::rest::HttpHandler* handler;
+    arangodb::basics::Thread* thread;
+    arangodb::rest::HttpHandler* handler;
   } _data;
 
   WorkDescription* _prev;
@@ -73,7 +73,7 @@ struct WorkDescription {
 /// @brief work monitor class
 ////////////////////////////////////////////////////////////////////////////////
 
-class WorkMonitor : public triagens::basics::Thread {
+class WorkMonitor : public arangodb::basics::Thread {
  public:
 
   WorkMonitor();
@@ -107,13 +107,13 @@ class WorkMonitor : public triagens::basics::Thread {
   /// @brief pushes a threads
   //////////////////////////////////////////////////////////////////////////////
 
-  static void pushThread(triagens::basics::Thread* thread);
+  static void pushThread(arangodb::basics::Thread* thread);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pops a threads
   //////////////////////////////////////////////////////////////////////////////
 
-  static void popThread(triagens::basics::Thread* thread);
+  static void popThread(arangodb::basics::Thread* thread);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pushes a custom task
@@ -137,13 +137,13 @@ class WorkMonitor : public triagens::basics::Thread {
   /// @brief pushes a handler
   //////////////////////////////////////////////////////////////////////////////
 
-  static void pushHandler(triagens::rest::HttpHandler*);
+  static void pushHandler(arangodb::rest::HttpHandler*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pops and releases a handler
   //////////////////////////////////////////////////////////////////////////////
 
-  static WorkDescription* popHandler(triagens::rest::HttpHandler*, bool free);
+  static WorkDescription* popHandler(arangodb::rest::HttpHandler*, bool free);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler deleter
@@ -198,10 +198,10 @@ class HandlerWorkStack {
 
  public:
 
-  explicit HandlerWorkStack(triagens::rest::HttpHandler*);
+  explicit HandlerWorkStack(arangodb::rest::HttpHandler*);
 
 
-  explicit HandlerWorkStack(WorkItem::uptr<triagens::rest::HttpHandler>&);
+  explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::HttpHandler>&);
 
 
   ~HandlerWorkStack();
@@ -211,14 +211,14 @@ class HandlerWorkStack {
   /// @brief returns the handler
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::HttpHandler* handler() const { return _handler; }
+  arangodb::rest::HttpHandler* handler() const { return _handler; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::HttpHandler* _handler;
+  arangodb::rest::HttpHandler* _handler;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

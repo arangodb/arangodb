@@ -25,7 +25,7 @@
 
 #include "HttpServer/HttpsCommTask.h"
 
-using namespace triagens::rest;
+using namespace arangodb::rest;
 
 
 

@@ -28,10 +28,10 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 using namespace std;
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 
 ////////////////////////////////////////////////////////////////////////////////

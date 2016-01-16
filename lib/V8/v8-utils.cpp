@@ -60,10 +60,10 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
-using namespace triagens::arango;
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
+using namespace arangodb::arango;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,7 +288,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
 
-  auto json = triagens::basics::ProgramOptions::getJson();
+  auto json = arangodb::basics::ProgramOptions::getJson();
 
   if (json != nullptr) {
     auto result = TRI_ObjectJson(isolate, json);
@@ -542,7 +542,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!url.empty() && url[0] == '/') {
     // a relative url. now make this an absolute URL if possible
-    auto json = triagens::basics::ProgramOptions::getJson();
+    auto json = arangodb::basics::ProgramOptions::getJson();
 
     if (json != nullptr) {
       // check if there are endpoints defined in the server options
@@ -1309,7 +1309,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   int err = 0;
-  std::string cwd = triagens::basics::FileUtils::currentDirectory(&err);
+  std::string cwd = arangodb::basics::FileUtils::currentDirectory(&err);
   if (0 != err) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(err, "cannot get current working directory");
   }

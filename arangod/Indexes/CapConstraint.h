@@ -30,7 +30,7 @@
 #include "VocBase/voc-types.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class CapConstraint final : public Index {
@@ -69,16 +69,16 @@ class CapConstraint final : public Index {
 
   size_t memory() const override final;
 
-  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
 
-  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int postInsert(triagens::arango::Transaction*,
+  int postInsert(arangodb::arango::Transaction*,
                  struct TRI_transaction_collection_s*,
                  struct TRI_doc_mptr_t const*) override final;
 
@@ -86,7 +86,7 @@ class CapConstraint final : public Index {
   /// @brief initialize the cap constraint
   //////////////////////////////////////////////////////////////////////////////
 
-  int initialize(triagens::arango::Transaction*);
+  int initialize(arangodb::arango::Transaction*);
 
   
  private:
@@ -94,7 +94,7 @@ class CapConstraint final : public Index {
   /// @brief apply the cap constraint for the collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int apply(triagens::arango::Transaction*, TRI_document_collection_t*,
+  int apply(arangodb::arango::Transaction*, TRI_document_collection_t*,
             struct TRI_transaction_collection_s*);
 
   

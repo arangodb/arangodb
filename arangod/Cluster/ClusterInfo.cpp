@@ -44,8 +44,8 @@
 #endif
 
 using namespace std;
-using namespace triagens::arango;
-using triagens::basics::JsonHelper;
+using namespace arangodb::arango;
+using arangodb::basics::JsonHelper;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,7 +93,7 @@ static std::string extractErrorMessage(std::string const& shardId,
   // add error number
   TRI_json_t const* errorNum = TRI_LookupObjectJson(json, "errorNum");
   if (TRI_IsNumberJson(errorNum)) {
-    msg += " (errNum=" + triagens::basics::StringUtils::itoa(
+    msg += " (errNum=" + arangodb::basics::StringUtils::itoa(
                              static_cast<uint32_t>(errorNum->_value._number)) +
            ")";
   }
@@ -594,7 +594,7 @@ void ClusterInfo::loadCurrentDatabases() {
       // each entry consists of a database id and a collection id, separated by
       // '/'
       std::vector<std::string> parts =
-          triagens::basics::StringUtils::split(key, '/');
+          arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.empty()) {
         ++it;
@@ -685,7 +685,7 @@ void ClusterInfo::loadPlannedCollections() {
       // each entry consists of a database id and a collection id, separated by
       // '/'
       std::vector<std::string> parts =
-          triagens::basics::StringUtils::split(key, '/');
+          arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.size() != 2) {
         // invalid entry
@@ -801,9 +801,9 @@ std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
 /// @brief get properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
+arangodb::arango::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
     CollectionInfo const& collection) {
-  triagens::arango::VocbaseCollectionInfo info(collection);
+  arangodb::arango::VocbaseCollectionInfo info(collection);
   return info;
 }
 
@@ -893,7 +893,7 @@ void ClusterInfo::loadCurrentCollections() {
       // each entry consists of a database id, a collection id, and a shardID,
       // separated by '/'
       std::vector<std::string> parts =
-          triagens::basics::StringUtils::split(key, '/');
+          arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.size() != 3) {
         // invalid entry
@@ -1032,7 +1032,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
     res = ac.casValue("Plan/Databases/" + name, json, false, 0.0, realTimeout);
     if (!res.successful()) {
       if (res._statusCode ==
-          triagens::rest::HttpResponse::PRECONDITION_FAILED) {
+          arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
         return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
       }
 
@@ -1514,7 +1514,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
     }
 
     TRI_vocbase_col_status_e old = (TRI_vocbase_col_status_e)
-        triagens::basics::JsonHelper::getNumericValue<int>(
+        arangodb::basics::JsonHelper::getNumericValue<int>(
             json, "status", (int)TRI_VOC_COL_STATUS_CORRUPTED);
 
     if (old == status) {
@@ -1556,7 +1556,7 @@ int ClusterInfo::ensureIndexCoordinator(
     bool (*compare)(TRI_json_t const*, TRI_json_t const*),
     TRI_json_t*& resultJson, std::string& errorMsg, double timeout) {
   std::unique_ptr<TRI_json_t> json(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   return ensureIndexCoordinator(databaseName, collectionID, json.get(), create,
                                 compare, resultJson, errorMsg, timeout);
 }
@@ -1586,7 +1586,7 @@ int ClusterInfo::ensureIndexCoordinator(
   TRI_json_t const* idxJson = TRI_LookupObjectJson(json, "id");
   if (TRI_IsStringJson(idxJson)) {
     // use predefined index id
-    iid = triagens::basics::StringUtils::uint64(idxJson->_value._string.data);
+    iid = arangodb::basics::StringUtils::uint64(idxJson->_value._string.data);
   }
 
   if (iid == 0) {
@@ -1594,7 +1594,7 @@ int ClusterInfo::ensureIndexCoordinator(
     iid = uniqid();
   }
 
-  std::string const idString = triagens::basics::StringUtils::itoa(iid);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   std::string const key = "Plan/Collections/" + databaseName + "/" + collectionID;
   AgencyCommResult previous = ac.getValues(key, false);
@@ -1843,7 +1843,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   double const interval = getPollInterval();
 
   int numberOfShards = 0;
-  std::string const idString = triagens::basics::StringUtils::itoa(iid);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   std::string const key = "Plan/Collections/" + databaseName + "/" + collectionID;
   AgencyCommResult previous = ac.getValues(key, false);
@@ -2053,11 +2053,11 @@ void ClusterInfo::loadServers() {
         result._values.begin();
 
     while (it != result._values.end()) {
-      TRI_json_t const* sub = triagens::basics::JsonHelper::getObjectElement(
+      TRI_json_t const* sub = arangodb::basics::JsonHelper::getObjectElement(
           (*it).second._json, "endpoint");
       if (nullptr != sub) {
         std::string server =
-            triagens::basics::JsonHelper::getStringValue(sub, "");
+            arangodb::basics::JsonHelper::getStringValue(sub, "");
 
         newServers.emplace(std::make_pair((*it).first, server));
       }
@@ -2187,7 +2187,7 @@ void ClusterInfo::loadCurrentCoordinators() {
 
     for (; it != result._values.end(); ++it) {
       newCoordinators.emplace(std::make_pair(
-          (*it).first, triagens::basics::JsonHelper::getStringValue(
+          (*it).first, arangodb::basics::JsonHelper::getStringValue(
                            (*it).second._json, "")));
     }
 
@@ -2243,7 +2243,7 @@ void ClusterInfo::loadCurrentDBServers() {
 
     for (; it != result._values.end(); ++it) {
       newDBServers.emplace(std::make_pair(
-          (*it).first, triagens::basics::JsonHelper::getStringValue(
+          (*it).first, arangodb::basics::JsonHelper::getStringValue(
                            (*it).second._json, "")));
     }
 
@@ -2330,7 +2330,7 @@ std::string ClusterInfo::getTargetServerEndpoint(ServerID const& serverID) {
         result._values.find(serverID);
 
     if (it != result._values.end()) {
-      return triagens::basics::JsonHelper::getStringValue((*it).second._json,
+      return arangodb::basics::JsonHelper::getStringValue((*it).second._json,
                                                           "");
     }
   }

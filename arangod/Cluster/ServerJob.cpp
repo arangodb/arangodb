@@ -34,10 +34,10 @@
 #include "VocBase/vocbase.h"
 
 
-static triagens::basics::Mutex ExecutorLock;
+static arangodb::basics::Mutex ExecutorLock;
 
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general server job

@@ -36,8 +36,8 @@
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 /* EV_TIMER is an alias for EV_TIMEOUT */

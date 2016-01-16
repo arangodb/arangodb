@@ -794,14 +794,14 @@ class KeySpace {
   }
 
  private:
-  triagens::basics::ReadWriteLock _lock;
+  arangodb::basics::ReadWriteLock _lock;
   TRI_associative_pointer_t _hash;
 };
 
 
 struct UserStructures {
   struct {
-    triagens::basics::ReadWriteLock lock;
+    arangodb::basics::ReadWriteLock lock;
     std::unordered_map<std::string, KeySpace*> data;
   } hashes;
 };

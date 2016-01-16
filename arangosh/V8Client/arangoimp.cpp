@@ -43,10 +43,10 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,7 @@ int main(int argc, char* argv[]) {
 
   // create a connection
   {
-    std::unique_ptr<triagens::httpclient::GeneralClientConnection> connection;
+    std::unique_ptr<arangodb::httpclient::GeneralClientConnection> connection;
 
     connection.reset(GeneralClientConnection::factory(
         BaseClient.endpointServer(), BaseClient.requestTimeout(),
@@ -347,7 +347,7 @@ int main(int argc, char* argv[]) {
       cout << "request timeout:  " << BaseClient.requestTimeout() << endl;
       cout << "----------------------------------------" << endl;
 
-      triagens::v8client::ImportHelper ih(&client, ChunkSize);
+      arangodb::v8client::ImportHelper ih(&client, ChunkSize);
 
       // create colletion
       if (CreateCollection) {
@@ -426,7 +426,7 @@ int main(int argc, char* argv[]) {
         if (TypeImport == "csv") {
           cout << "Starting CSV import..." << endl;
           ok = ih.importDelimited(CollectionName, FileName,
-                                  triagens::v8client::ImportHelper::CSV);
+                                  arangodb::v8client::ImportHelper::CSV);
         }
 
         else if (TypeImport == "tsv") {
@@ -434,7 +434,7 @@ int main(int argc, char* argv[]) {
           ih.setQuote("");
           ih.setSeparator("\\t");
           ok = ih.importDelimited(CollectionName, FileName,
-                                  triagens::v8client::ImportHelper::TSV);
+                                  arangodb::v8client::ImportHelper::TSV);
         }
 
         else if (TypeImport == "json") {

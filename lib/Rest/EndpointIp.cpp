@@ -30,8 +30,8 @@
 
 #include "Rest/Endpoint.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 #ifdef _WIN32
 #define STR_ERROR()                                                  \

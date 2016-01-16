@@ -32,7 +32,7 @@
 
 struct TRI_transaction_s;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class TransactionContext {

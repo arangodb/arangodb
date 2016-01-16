@@ -34,7 +34,7 @@
 #include "Basics/win-utils.h"
 #endif
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
@@ -45,7 +45,7 @@ class SimpleHttpResult;
 /// @brief class for http requests
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace triagens {
+namespace arangodb {
 namespace v8client {
 
 class ImportHelper {
@@ -223,8 +223,8 @@ class ImportHelper {
 
   std::string _onDuplicateAction;
   std::string _collectionName;
-  triagens::basics::StringBuffer _lineBuffer;
-  triagens::basics::StringBuffer _outputBuffer;
+  arangodb::basics::StringBuffer _lineBuffer;
+  arangodb::basics::StringBuffer _outputBuffer;
   std::string _firstLine;
 
   bool _hasError;

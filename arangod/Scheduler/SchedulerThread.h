@@ -40,7 +40,7 @@
 // #define TRI_USE_SPIN_LOCK_SCHEDULER_THREAD 1
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class Scheduler;
 
@@ -175,9 +175,9 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
-  triagens::basics::SpinLock _queueLock;
+  arangodb::basics::SpinLock _queueLock;
 #else
-  triagens::basics::Mutex _queueLock;
+  arangodb::basics::Mutex _queueLock;
 #endif
 
   //////////////////////////////////////////////////////////////////////////////

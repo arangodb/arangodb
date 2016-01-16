@@ -37,7 +37,7 @@ class Builder;
 }
 }
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class ConditionVariable;
 

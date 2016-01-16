@@ -36,9 +36,9 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/shaped-json.h"
 
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,12 +67,12 @@ TRI_json_t const Expression::FalseJson = {TRI_JSON_BOOLEAN, {false}};
 /// @brief register warning
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RegisterWarning(triagens::aql::Ast const* ast,
+static void RegisterWarning(arangodb::aql::Ast const* ast,
                             char const* functionName, int code) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = triagens::basics::Exception::FillExceptionString(code, functionName);
+    msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
   } else {
     msg.append("in function '");
     msg.append(functionName);
@@ -109,7 +109,7 @@ Expression::Expression(Ast* ast, AstNode* node)
 /// @brief create an expression from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-Expression::Expression(Ast* ast, triagens::basics::Json const& json)
+Expression::Expression(Ast* ast, arangodb::basics::Json const& json)
     : Expression(ast, new AstNode(ast, json.get("expression"))) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +156,7 @@ void Expression::variables(std::unordered_set<Variable const*>& result) const {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::execute(triagens::arango::AqlTransaction* trx,
+AqlValue Expression::execute(arangodb::arango::AqlTransaction* trx,
                              AqlItemBlock const* argv, size_t startPos,
                              std::vector<Variable const*> const& vars,
                              std::vector<RegisterId> const& regs,
@@ -190,17 +190,17 @@ AqlValue Expression::execute(triagens::arango::AqlTransaction* trx,
       try {
         ISOLATE;
         // Dump the expression in question
-        // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+        // std::cout << arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
         // _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
         return _func->execute(isolate, _ast->query(), trx, argv, startPos, vars,
                               regs);
-      } catch (triagens::basics::Exception& ex) {
+      } catch (arangodb::basics::Exception& ex) {
         if (_ast->query()->verboseErrors()) {
           ex.addToMessage(" while evaluating expression ");
           auto json = _node->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
           if (json != nullptr) {
-            ex.addToMessage(triagens::basics::JsonHelper::toString(json));
+            ex.addToMessage(arangodb::basics::JsonHelper::toString(json));
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
           }
         }
@@ -291,7 +291,7 @@ void Expression::invalidate() {
 bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
                              TRI_document_collection_t const* leftCollection,
                              TRI_document_collection_t const* rightCollection,
-                             triagens::arango::AqlTransaction* trx,
+                             arangodb::arango::AqlTransaction* trx,
                              AstNode const* node) const {
   TRI_ASSERT_EXPENSIVE(right.isArray());
 
@@ -462,7 +462,7 @@ void Expression::buildExpression() {
 
 AqlValue Expression::executeSimpleExpression(
     AstNode const* node, TRI_document_collection_t const** collection,
-    triagens::arango::AqlTransaction* trx, AqlItemBlock const* argv,
+    arangodb::arango::AqlTransaction* trx, AqlItemBlock const* argv,
     size_t startPos, std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs, bool doCopy) {
   switch (node->type) {
@@ -543,7 +543,7 @@ bool Expression::isAttributeAccess() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Expression::isReference() const {
-  return (_node->type == triagens::aql::NODE_TYPE_REFERENCE);
+  return (_node->type == arangodb::aql::NODE_TYPE_REFERENCE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,7 +557,7 @@ bool Expression::isConstant() const { return _node->isConstant(); }
 /// note that currently stringification is only supported for certain node types
 ////////////////////////////////////////////////////////////////////////////////
 
-void Expression::stringify(triagens::basics::StringBuffer* buffer) const {
+void Expression::stringify(arangodb::basics::StringBuffer* buffer) const {
   _node->stringify(buffer, true, false);
 }
 
@@ -567,7 +567,7 @@ void Expression::stringify(triagens::basics::StringBuffer* buffer) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::stringifyIfNotTooLong(
-    triagens::basics::StringBuffer* buffer) const {
+    arangodb::basics::StringBuffer* buffer) const {
   _node->stringify(buffer, true, true);
 }
 
@@ -576,7 +576,7 @@ void Expression::stringifyIfNotTooLong(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionAttributeAccess(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -600,7 +600,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionIndexedAccess(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -688,7 +688,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionArray(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -724,7 +724,7 @@ AqlValue Expression::executeSimpleExpressionArray(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionObject(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -823,7 +823,7 @@ AqlValue Expression::executeSimpleExpressionReference(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionRange(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -848,7 +848,7 @@ AqlValue Expression::executeSimpleExpressionRange(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionFCall(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -902,7 +902,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionNot(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -923,7 +923,7 @@ AqlValue Expression::executeSimpleExpressionNot(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionAndOr(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -966,7 +966,7 @@ AqlValue Expression::executeSimpleExpressionAndOr(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionComparison(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -1001,7 +1001,7 @@ AqlValue Expression::executeSimpleExpressionComparison(
     left.destroy();
     right.destroy();
 
-    return AqlValue(new triagens::basics::Json(result));
+    return AqlValue(new arangodb::basics::Json(result));
   }
 
   // all other comparison operators...
@@ -1052,7 +1052,7 @@ AqlValue Expression::executeSimpleExpressionComparison(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionTernary(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -1079,7 +1079,7 @@ AqlValue Expression::executeSimpleExpressionTernary(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionExpansion(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -1108,7 +1108,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Array));
+    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Array));
   }
 
   // FILTER
@@ -1123,7 +1123,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     } else {
       // filter expression is always false
       return AqlValue(
-          new triagens::basics::Json(triagens::basics::Json::Array));
+          new arangodb::basics::Json(arangodb::basics::Json::Array));
     }
   }
 
@@ -1146,7 +1146,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     if (!value.isArray()) {
       value.destroy();
       return AqlValue(
-          new triagens::basics::Json(triagens::basics::Json::Array));
+          new arangodb::basics::Json(arangodb::basics::Json::Array));
     }
 
     std::function<void(TRI_json_t const*, int64_t)> flatten =
@@ -1185,7 +1185,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       // must cast value to array first
       value.destroy();
       return AqlValue(
-          new triagens::basics::Json(triagens::basics::Json::Array));
+          new arangodb::basics::Json(arangodb::basics::Json::Array));
     }
   }
 
@@ -1258,7 +1258,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
 AqlValue Expression::executeSimpleExpressionIterator(
     AstNode const* node, TRI_document_collection_t const** collection,
-    triagens::arango::AqlTransaction* trx, AqlItemBlock const* argv,
+    arangodb::arango::AqlTransaction* trx, AqlItemBlock const* argv,
     size_t startPos, std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
   TRI_ASSERT(node != nullptr);
@@ -1274,7 +1274,7 @@ AqlValue Expression::executeSimpleExpressionIterator(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionArithmetic(
-    AstNode const* node, triagens::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::arango::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {

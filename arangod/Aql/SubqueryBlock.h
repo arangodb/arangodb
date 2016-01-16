@@ -28,7 +28,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Utils/AqlTransaction.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
@@ -93,8 +93,8 @@ class SubqueryBlock : public ExecutionBlock {
   ExecutionBlock* _subquery;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

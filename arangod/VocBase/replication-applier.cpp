@@ -323,13 +323,13 @@ static std::unique_ptr<TRI_json_t> JsonApplyState(
   }
 
   std::string const safeResumeTick =
-      triagens::basics::StringUtils::itoa(state->_safeResumeTick);
+      arangodb::basics::StringUtils::itoa(state->_safeResumeTick);
   std::string const lastProcessedContinuousTick =
-      triagens::basics::StringUtils::itoa(state->_lastProcessedContinuousTick);
+      arangodb::basics::StringUtils::itoa(state->_lastProcessedContinuousTick);
   std::string const lastAppliedContinuousTick =
-      triagens::basics::StringUtils::itoa(state->_lastAppliedContinuousTick);
+      arangodb::basics::StringUtils::itoa(state->_lastAppliedContinuousTick);
   std::string const serverId =
-      triagens::basics::StringUtils::itoa(state->_serverId);
+      arangodb::basics::StringUtils::itoa(state->_serverId);
 
   TRI_Insert3ObjectJson(
       TRI_UNKNOWN_MEM_ZONE, json.get(), "serverId",
@@ -361,7 +361,7 @@ static std::unique_ptr<TRI_json_t> JsonApplyState(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ApplyThread(void* data) {
-  auto syncer = static_cast<triagens::arango::ContinuousSyncer*>(data);
+  auto syncer = static_cast<arangodb::arango::ContinuousSyncer*>(data);
 
   try {
     syncer->run();
@@ -648,7 +648,7 @@ TRI_json_t* TRI_JsonConfigurationReplicationApplier(
     TRI_replication_applier_configuration_t const* config) {
   try {
     std::shared_ptr<VPackBuilder> tmp = config->toVelocyPack(false);
-    return triagens::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
+    return arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
   } catch (...) {
     return nullptr;
   }
@@ -747,7 +747,7 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
 TRI_json_t* TRI_JsonReplicationApplier(TRI_replication_applier_t* applier) {
   try {
     std::shared_ptr<VPackBuilder> builder = applier->toVelocyPack();
-    return triagens::basics::VelocyPackHelper::velocyPackToJson(
+    return arangodb::basics::VelocyPackHelper::velocyPackToJson(
         builder->slice());
   } catch (...) {
     return nullptr;
@@ -1038,7 +1038,7 @@ int TRI_SaveConfigurationReplicationApplier(
   TRI_json_t* json;
   try {
     std::shared_ptr<VPackBuilder> tmp = config->toVelocyPack(false);
-    json = triagens::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
+    json = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1120,7 +1120,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
                       "no database configured");
   }
 
-  auto syncer = std::make_unique<triagens::arango::ContinuousSyncer>(
+  auto syncer = std::make_unique<arangodb::arango::ContinuousSyncer>(
       _server, _vocbase, &_configuration, initialTick, useTick);
 
   // reset error
@@ -1463,14 +1463,14 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
     throw;
   }
 
-  triagens::basics::ScopeGuard guard{
+  arangodb::basics::ScopeGuard guard{
       []() -> void {},
       [&state, &config]()
           -> void { TRI_DestroyStateReplicationApplier(&state); }};
 
   std::unique_ptr<TRI_json_t> stateJson(JsonState(&state));
   std::shared_ptr<arangodb::velocypack::Builder> b =
-      triagens::basics::JsonHelper::toVelocyPack(stateJson.get());
+      arangodb::basics::JsonHelper::toVelocyPack(stateJson.get());
   builder.add("state", b->slice());
 
   // add server info

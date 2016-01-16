@@ -26,11 +26,11 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
-using namespace triagens::aql;
+using namespace arangodb::arango;
+using namespace arangodb::aql;
 
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)

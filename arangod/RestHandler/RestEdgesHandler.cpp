@@ -29,8 +29,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 
@@ -74,11 +74,11 @@ bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id,
     std::vector<traverser::TraverserExpression*> const& expressions,
     TRI_edge_direction_e direction, SingleCollectionReadOnlyTransaction& trx,
-    triagens::basics::Json& result, size_t& scannedIndex, size_t& filtered) {
-  triagens::arango::traverser::VertexId start;
+    arangodb::basics::Json& result, size_t& scannedIndex, size_t& filtered) {
+  arangodb::arango::traverser::VertexId start;
   try {
-    start = triagens::arango::traverser::IdStringToVertexId(trx.resolver(), id);
-  } catch (triagens::basics::Exception& e) {
+    start = arangodb::arango::traverser::IdStringToVertexId(trx.resolver(), id);
+  } catch (arangodb::basics::Exception& e) {
     handleError(e);
     return false;
   }
@@ -179,9 +179,9 @@ bool RestEdgesHandler::readEdges(
 
   if (ServerState::instance()->isCoordinator()) {
     std::string vertexString(startVertex);
-    triagens::rest::HttpResponse::HttpResponseCode responseCode;
+    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
     std::string contentType;
-    triagens::basics::Json resultDocument(triagens::basics::Json::Object, 3);
+    arangodb::basics::Json resultDocument(arangodb::basics::Json::Object, 3);
     int res = getFilteredEdgesOnCoordinator(
         _vocbase->_name, collectionName, vertexString, direction, expressions,
         responseCode, contentType, resultDocument);
@@ -190,8 +190,8 @@ bool RestEdgesHandler::readEdges(
       return false;
     }
 
-    resultDocument.set("error", triagens::basics::Json(false));
-    resultDocument.set("code", triagens::basics::Json(200));
+    resultDocument.set("error", arangodb::basics::Json(false));
+    resultDocument.set("code", arangodb::basics::Json(200));
     generateResult(resultDocument.json());
     return true;
   }
@@ -219,7 +219,7 @@ bool RestEdgesHandler::readEdges(
   size_t filtered = 0;
   size_t scannedIndex = 0;
 
-  triagens::basics::Json documents(triagens::basics::Json::Array);
+  arangodb::basics::Json documents(arangodb::basics::Json::Array);
   bool ok = getEdgesForVertex(startVertex, expressions, direction, trx,
                               documents, scannedIndex, filtered);
   res = trx.finish(res);
@@ -233,15 +233,15 @@ bool RestEdgesHandler::readEdges(
     return false;
   }
 
-  triagens::basics::Json result(triagens::basics::Json::Object, 4);
+  arangodb::basics::Json result(arangodb::basics::Json::Object, 4);
   result("edges", documents);
-  result("error", triagens::basics::Json(false));
-  result("code", triagens::basics::Json(200));
-  triagens::basics::Json stats(triagens::basics::Json::Object, 2);
+  result("error", arangodb::basics::Json(false));
+  result("code", arangodb::basics::Json(200));
+  arangodb::basics::Json stats(arangodb::basics::Json::Object, 2);
 
   stats("scannedIndex",
-        triagens::basics::Json(static_cast<int32_t>(scannedIndex)));
-  stats("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
+        arangodb::basics::Json(static_cast<int32_t>(scannedIndex)));
+  stats("filtered", arangodb::basics::Json(static_cast<int32_t>(filtered)));
   result("stats", stats);
 
   // and generate a response
@@ -349,7 +349,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   size_t scannedIndex = 0;
   std::vector<traverser::TraverserExpression*> const expressions;
 
-  triagens::basics::Json documents(triagens::basics::Json::Array);
+  arangodb::basics::Json documents(arangodb::basics::Json::Array);
   for (auto const& vertexSlice : VPackArrayIterator(body)) {
     if (vertexSlice.isString()) {
       std::string vertex = vertexSlice.copyString();
@@ -367,15 +367,15 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
-  triagens::basics::Json result(triagens::basics::Json::Object, 4);
+  arangodb::basics::Json result(arangodb::basics::Json::Object, 4);
   result("edges", documents);
-  result("error", triagens::basics::Json(false));
-  result("code", triagens::basics::Json(200));
-  triagens::basics::Json stats(triagens::basics::Json::Object, 2);
+  result("error", arangodb::basics::Json(false));
+  result("code", arangodb::basics::Json(200));
+  arangodb::basics::Json stats(arangodb::basics::Json::Object, 2);
 
   stats("scannedIndex",
-        triagens::basics::Json(static_cast<int32_t>(scannedIndex)));
-  stats("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
+        arangodb::basics::Json(static_cast<int32_t>(scannedIndex)));
+  stats("filtered", arangodb::basics::Json(static_cast<int32_t>(filtered)));
   result("stats", stats);
 
   // and generate a response
@@ -404,7 +404,7 @@ bool RestEdgesHandler::readFilteredEdges() {
     return readEdges(expressions);
   }
   VPackSlice body = parsedBody->slice();
-  triagens::basics::ScopeGuard guard{[]() -> void {},
+  arangodb::basics::ScopeGuard guard{[]() -> void {},
                                      [&expressions]() -> void {
                                        for (auto& e : expressions) {
                                          delete e;

@@ -33,8 +33,8 @@
 #include "VocBase/server.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -832,7 +832,7 @@ static void JS_GetCollectionInfoClusterInfo(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  std::string const cid = triagens::basics::StringUtils::itoa(ci->id());
+  std::string const cid = arangodb::basics::StringUtils::itoa(ci->id());
   std::string const& name = ci->name();
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
@@ -905,7 +905,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   // First some stuff from Plan for which Current does not make sense:
-  std::string const cid = triagens::basics::StringUtils::itoa(ci->id());
+  std::string const cid = arangodb::basics::StringUtils::itoa(ci->id());
   std::string const& name = ci->name();
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
@@ -1637,7 +1637,7 @@ static void JS_GetClusterAuthentication(
 
 static void PrepareClusterCommRequest(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    triagens::rest::HttpRequest::HttpRequestType& reqType,
+    arangodb::rest::HttpRequest::HttpRequestType& reqType,
     std::string& destination, std::string& path, std::string& body,
     std::map<std::string, std::string>& headerFields,
     ClientTransactionID& clientTransactionID,
@@ -1647,13 +1647,13 @@ static void PrepareClusterCommRequest(
 
   TRI_ASSERT(args.Length() >= 4);
 
-  reqType = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
+  reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_GET;
   if (args[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, args[0]);
     std::string methstring = *UTF8;
-    reqType = triagens::rest::HttpRequest::translateMethod(methstring);
-    if (reqType == triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) {
-      reqType = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
+    reqType = arangodb::rest::HttpRequest::translateMethod(methstring);
+    if (reqType == arangodb::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) {
+      reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_GET;
     }
   }
 
@@ -1784,7 +1784,7 @@ static void Return_PrepareClusterCommResultForJS(
       r->Set(TRI_V8_ASCII_STRING("headers"), h);
 
       // The body:
-      triagens::basics::StringBuffer& body = res.result->getBody();
+      arangodb::basics::StringBuffer& body = res.result->getBody();
       if (body.length() != 0) {
         r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
       }
@@ -1869,7 +1869,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  triagens::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::rest::HttpRequest::HttpRequestType reqType;
   std::string destination;
   std::string path;
   auto body = make_shared<std::string>();
@@ -1931,7 +1931,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  triagens::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::rest::HttpRequest::HttpRequestType reqType;
   std::string destination;
   std::string path;
   std::string body;

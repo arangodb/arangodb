@@ -30,7 +30,7 @@
 
 struct TRI_json_t;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 
@@ -62,7 +62,7 @@ class DocumentHelper {
   /// @brief extract the collection id and document key from an id
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool parseDocumentId(triagens::arango::CollectionNameResolver const&,
+  static bool parseDocumentId(arangodb::arango::CollectionNameResolver const&,
                               char const*, TRI_voc_cid_t&, char**);
 
   //////////////////////////////////////////////////////////////////////////////

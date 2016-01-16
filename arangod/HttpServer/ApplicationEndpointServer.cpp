@@ -42,8 +42,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 using namespace std;
 
 
@@ -283,7 +283,7 @@ bool ApplicationEndpointServer::loadEndpoints() {
 
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = triagens::basics::VelocyPackHelper::velocyPackFromFile(filename);
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
   } catch (...) {
     // Silently fail
     return false;

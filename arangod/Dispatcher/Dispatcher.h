@@ -30,7 +30,7 @@
 #include "Basics/Mutex.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class DispatcherQueue;
 class DispatcherThread;

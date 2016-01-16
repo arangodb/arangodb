@@ -43,7 +43,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define THROW_ARANGO_EXCEPTION(code) \
-  throw triagens::basics::Exception(code, __FILE__, __LINE__)
+  throw arangodb::basics::Exception(code, __FILE__, __LINE__)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief throws an arango exception with an error code and arbitrary
@@ -51,9 +51,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                           \
-  throw triagens::basics::Exception(                                       \
+  throw arangodb::basics::Exception(                                       \
       code,                                                                \
-      triagens::basics::Exception::FillExceptionString(code, __VA_ARGS__), \
+      arangodb::basics::Exception::FillExceptionString(code, __VA_ARGS__), \
       __FILE__, __LINE__)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,8 +62,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)             \
-  throw triagens::basics::Exception(                                 \
-      code, triagens::basics::Exception::FillFormatExceptionString(  \
+  throw arangodb::basics::Exception(                                 \
+      code, arangodb::basics::Exception::FillFormatExceptionString(  \
                 "%s: " format, TRI_errno_string(code), __VA_ARGS__), \
       __FILE__, __LINE__)
 
@@ -73,10 +73,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
-  throw triagens::basics::Exception(code, message, __FILE__, __LINE__)
+  throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 

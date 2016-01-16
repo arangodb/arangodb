@@ -25,8 +25,8 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
-using Json = triagens::basics::Json;
-using CollectionNameResolver = triagens::arango::CollectionNameResolver;
+using Json = arangodb::basics::Json;
+using CollectionNameResolver = arangodb::arango::CollectionNameResolver;
 
 Json TRI_ExpandShapedJson(VocShaper* shaper,
                           CollectionNameResolver const* resolver,

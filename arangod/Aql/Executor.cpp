@@ -34,7 +34,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/v8-shape-conv.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ using namespace triagens::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 static ExecutionCondition const NotInCluster = [] {
-  return !triagens::arango::ServerState::instance()->isRunningInCluster();
+  return !arangodb::arango::ServerState::instance()->isRunningInCluster();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1457,9 +1457,9 @@ void Executor::generateCodeNode(AstNode const* node) {
 /// @brief create the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::StringBuffer* Executor::initializeBuffer() {
+arangodb::basics::StringBuffer* Executor::initializeBuffer() {
   if (_buffer == nullptr) {
-    _buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+    _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
     if (_buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

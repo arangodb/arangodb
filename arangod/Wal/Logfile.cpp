@@ -25,7 +25,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 
 ////////////////////////////////////////////////////////////////////////////////

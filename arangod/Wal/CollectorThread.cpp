@@ -40,7 +40,7 @@
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -444,7 +444,7 @@ void CollectorThread::run() {
         _operationsQueueInUse = false;
         throw;
       }
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
       LOG_ERROR("got unexpected error in collectorThread::run: %s",
                 TRI_errno_string(res));
@@ -551,7 +551,7 @@ int CollectorThread::collectLogfiles(bool& worked) {
     }
 
     return res;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     _logfileManager->forceStatus(logfile, Logfile::StatusType::SEALED);
 
     int res = ex.code();
@@ -610,7 +610,7 @@ int CollectorThread::processQueuedOperations(bool& worked) {
 
       try {
         res = processCollectionOperations((*it2));
-      } catch (triagens::basics::Exception const& ex) {
+      } catch (arangodb::basics::Exception const& ex) {
         res = ex.code();
       }
 
@@ -702,11 +702,11 @@ size_t CollectorThread::numQueuedOperations() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::processCollectionOperations(CollectorCache* cache) {
-  triagens::arango::DatabaseGuard dbGuard(_server, cache->databaseId);
+  arangodb::arango::DatabaseGuard dbGuard(_server, cache->databaseId);
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 
-  triagens::arango::CollectionGuard collectionGuard(vocbase,
+  arangodb::arango::CollectionGuard collectionGuard(vocbase,
                                                     cache->collectionId, true);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
 
@@ -722,8 +722,8 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
 
-  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-      new triagens::arango::StandaloneTransactionContext(), document->_vocbase,
+  arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
+      new arangodb::arango::StandaloneTransactionContext(), document->_vocbase,
       document->_info.id());
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
@@ -863,7 +863,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
     }
 
     res = TRI_ERROR_NO_ERROR;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -981,7 +981,7 @@ int CollectorThread::collect(Logfile* logfile) {
       try {
         res = transferMarkers(logfile, cid, state.collections[cid],
                               state.operationsCount[cid], sortedOperations);
-      } catch (triagens::basics::Exception const& ex) {
+      } catch (arangodb::basics::Exception const& ex) {
         res = ex.code();
       } catch (...) {
         res = TRI_ERROR_INTERNAL;
@@ -1030,11 +1030,11 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   TRI_ASSERT(!operations.empty());
 
   // prepare database and collection
-  triagens::arango::DatabaseGuard dbGuard(_server, databaseId);
+  arangodb::arango::DatabaseGuard dbGuard(_server, databaseId);
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 
-  triagens::arango::CollectionGuard collectionGuard(vocbase, collectionId,
+  arangodb::arango::CollectionGuard collectionGuard(vocbase, collectionId,
                                                     true);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
@@ -1068,7 +1068,7 @@ int CollectorThread::transferMarkers(Logfile* logfile,
       // (i.e. set to nullptr!)
       queueOperations(logfile, cache);
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -1320,7 +1320,7 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
 /// @brief insert the collect operations into a per-collection queue
 ////////////////////////////////////////////////////////////////////////////////
 
-int CollectorThread::queueOperations(triagens::wal::Logfile* logfile,
+int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
                                      CollectorCache*& cache) {
   TRI_voc_cid_t cid = cache->collectionId;
   uint64_t maxNumPendingOperations = _logfileManager->throttleWhenPending();

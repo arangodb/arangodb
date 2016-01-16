@@ -33,9 +33,9 @@
 #include "VocBase/VocShaper.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::arango::traverser;
+using namespace arangodb::basics;
+using namespace arangodb::arango;
+using namespace arangodb::arango::traverser;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _from Id out of mptr, we return an RValue reference
@@ -805,7 +805,7 @@ bool DepthFirstTraverser::vertexMatchesConditions(VertexId const& v,
           if (res != TRI_ERROR_NO_ERROR) {
             if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
               // Vertex does not exist. Do not try filter
-              triagens::basics::Json tmp(triagens::basics::Json::Null);
+              arangodb::basics::Json tmp(arangodb::basics::Json::Null);
               // This needs a different check method now.
               // Innerloop here
               for (auto const& exp2 : it->second) {
@@ -852,7 +852,7 @@ void DepthFirstTraverser::_defInternalFunctions() {
                    TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
       std::vector<TRI_doc_mptr_copy_t> tmp;
       TRI_ASSERT(eColIdx < _edgeCols.size());
-      triagens::arango::EdgeIndex* edgeIndex =
+      arangodb::arango::EdgeIndex* edgeIndex =
           _edgeCols.at(eColIdx)->edgeIndex();
       if (dir) {
         TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid,
@@ -940,7 +940,7 @@ void DepthFirstTraverser::_defInternalFunctions() {
       // encountered nullptr is final
       TRI_edge_index_iterator_t it(_opts.direction, startVertex.cid,
                                    startVertex.key);
-      triagens::arango::EdgeIndex* edgeIndex =
+      arangodb::arango::EdgeIndex* edgeIndex =
           _edgeCols.at(eColIdx)->edgeIndex();
       edgeIndex->lookup(_trx, &it, tmp, last, 1);
       while (last == nullptr) {
@@ -986,7 +986,7 @@ void DepthFirstTraverser::_defInternalFunctions() {
 }
 
 void DepthFirstTraverser::setStartVertex(
-    triagens::arango::traverser::VertexId const& v) {
+    arangodb::arango::traverser::VertexId const& v) {
   auto it = _expressions->find(0);
   if (it != _expressions->end()) {
     if (!it->second.empty()) {

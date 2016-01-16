@@ -31,7 +31,7 @@
 #include "ProgramOptions/program-options.h"
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 ////////////////////////////////////////////////////////////////////////////////

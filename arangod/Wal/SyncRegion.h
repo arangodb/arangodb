@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Wal/Logfile.h"
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 class Slots;
 

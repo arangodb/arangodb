@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arangob {
 
 
@@ -52,7 +52,7 @@ struct BenchmarkOperation {
   /// @brief setup
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual bool setUp(triagens::httpclient::SimpleHttpClient*) = 0;
+  virtual bool setUp(arangodb::httpclient::SimpleHttpClient*) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief teardown
@@ -70,7 +70,7 @@ struct BenchmarkOperation {
   /// @brief return the HTTP method of the operation to execute
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual triagens::rest::HttpRequest::HttpRequestType type(int const,
+  virtual arangodb::rest::HttpRequest::HttpRequestType type(int const,
                                                             size_t const,
                                                             size_t const) = 0;
 

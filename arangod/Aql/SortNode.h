@@ -33,7 +33,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class StringBuffer;
 }
@@ -59,7 +59,7 @@ class SortNode : public ExecutionNode {
            bool stable)
       : ExecutionNode(plan, id), _elements(elements), _stable(stable) {}
 
-  SortNode(ExecutionPlan* plan, triagens::basics::Json const& base,
+  SortNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
            SortElementVector const& elements, bool stable);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -78,7 +78,7 @@ class SortNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -136,7 +136,7 @@ class SortNode : public ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   SortInformation getSortInformation(ExecutionPlan*,
-                                     triagens::basics::StringBuffer*) const;
+                                     arangodb::basics::StringBuffer*) const;
 
   std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs();
 
@@ -165,8 +165,8 @@ class SortNode : public ExecutionNode {
   bool _stable;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

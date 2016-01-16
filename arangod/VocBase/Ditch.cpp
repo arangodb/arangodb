@@ -26,7 +26,7 @@
 #include "Basics/MutexLocker.h"
 #include "VocBase/document-collection.h"
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 

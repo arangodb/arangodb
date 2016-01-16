@@ -34,14 +34,14 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/server.h"
 
-using namespace triagens::arango;
-using namespace triagens::rest;
-using namespace triagens::aql;
+using namespace arangodb::arango;
+using namespace arangodb::rest;
+using namespace arangodb::aql;
 
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
 
-RestAqlHandler::RestAqlHandler(triagens::rest::HttpRequest* request,
+RestAqlHandler::RestAqlHandler(arangodb::rest::HttpRequest* request,
                                std::pair<ApplicationV8*, QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
@@ -70,14 +70,14 @@ bool RestAqlHandler::isDirect() const { return false; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQueryFromJson() {
-  triagens::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  arangodb::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     LOG_ERROR("invalid JSON plan in query");
     return;
   }
 
-  triagens::basics::Json plan;
-  triagens::basics::Json options;
+  arangodb::basics::Json plan;
+  arangodb::basics::Json options;
 
   plan = queryJson.get("plan").copy();  // cannot throw
   if (plan.isEmpty()) {
@@ -108,7 +108,7 @@ void RestAqlHandler::createQueryFromJson() {
   bool found;
   char const* ttlstring = _request->header("ttl", found);
   if (found) {
-    ttl = triagens::basics::StringUtils::doubleDecimal(ttlstring);
+    ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
   }
 
   // query id not set, now generate a new one
@@ -125,11 +125,11 @@ void RestAqlHandler::createQueryFromJson() {
     return;
   }
 
-  createResponse(triagens::rest::HttpResponse::ACCEPTED);
+  createResponse(arangodb::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-  triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
-  answerBody("queryId", triagens::basics::Json(triagens::basics::StringUtils::itoa(_qId)))(
-      "ttl", triagens::basics::Json(ttl));
+  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 2);
+  answerBody("queryId", arangodb::basics::Json(arangodb::basics::StringUtils::itoa(_qId)))(
+      "ttl", arangodb::basics::Json(ttl));
 
   _response->body().appendText(answerBody.toString());
 }
@@ -169,24 +169,24 @@ void RestAqlHandler::parseQuery() {
   }
 
   // Now prepare the answer:
-  triagens::basics::Json answerBody(triagens::basics::Json::Object, 4);
-  answerBody("parsed", triagens::basics::Json(true));
-  triagens::basics::Json collections(triagens::basics::Json::Array,
+  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 4);
+  answerBody("parsed", arangodb::basics::Json(true));
+  arangodb::basics::Json collections(arangodb::basics::Json::Array,
                                      res.collectionNames.size());
   for (auto const& c : res.collectionNames) {
-    collections(triagens::basics::Json(c));
+    collections(arangodb::basics::Json(c));
   }
   answerBody("collections", collections);
-  triagens::basics::Json bindVars(triagens::basics::Json::Array,
+  arangodb::basics::Json bindVars(arangodb::basics::Json::Array,
                                   res.bindParameters.size());
   for (auto const& p : res.bindParameters) {
-    bindVars(triagens::basics::Json(p));
+    bindVars(arangodb::basics::Json(p));
   }
   answerBody("parameters", bindVars);
-  answerBody("ast", triagens::basics::Json(res.zone, res.json));
+  answerBody("ast", arangodb::basics::Json(res.zone, res.json));
   res.json = nullptr;
 
-  createResponse(triagens::rest::HttpResponse::OK);
+  createResponse(arangodb::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText(answerBody.toString());
 }
@@ -200,7 +200,7 @@ void RestAqlHandler::parseQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::explainQuery() {
-  triagens::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  arangodb::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     return;
   }
@@ -214,9 +214,9 @@ void RestAqlHandler::explainQuery() {
     return;
   }
 
-  triagens::basics::Json parameters;
+  arangodb::basics::Json parameters;
   parameters = queryJson.get("parameters").copy();  // cannot throw
-  triagens::basics::Json options;
+  arangodb::basics::Json options;
   options = queryJson.get("options").copy();  // cannot throw
 
   auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(),
@@ -231,17 +231,17 @@ void RestAqlHandler::explainQuery() {
   }
 
   // Now prepare the answer:
-  triagens::basics::Json answerBody(triagens::basics::Json::Object, 1);
+  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 1);
   if (res.json != nullptr) {
     if (query->allPlans()) {
-      answerBody("plans", triagens::basics::Json(res.zone, res.json));
+      answerBody("plans", arangodb::basics::Json(res.zone, res.json));
     } else {
-      answerBody("plan", triagens::basics::Json(res.zone, res.json));
+      answerBody("plan", arangodb::basics::Json(res.zone, res.json));
     }
   }
   res.json = nullptr;
 
-  createResponse(triagens::rest::HttpResponse::OK);
+  createResponse(arangodb::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText(answerBody.toString());
 }
@@ -256,7 +256,7 @@ void RestAqlHandler::explainQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQueryFromString() {
-  triagens::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  arangodb::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     return;
   }
@@ -279,9 +279,9 @@ void RestAqlHandler::createQueryFromString() {
     return;
   }
 
-  triagens::basics::Json parameters;
+  arangodb::basics::Json parameters;
   parameters = queryJson.get("parameters").copy();  // cannot throw
-  triagens::basics::Json options;
+  arangodb::basics::Json options;
   options = queryJson.get("options").copy();  // cannot throw
 
   auto query =
@@ -302,7 +302,7 @@ void RestAqlHandler::createQueryFromString() {
   bool found;
   char const* ttlstring = _request->header("ttl", found);
   if (found) {
-    ttl = triagens::basics::StringUtils::doubleDecimal(ttlstring);
+    ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
   }
 
   _qId = TRI_NewTickServer();
@@ -316,11 +316,11 @@ void RestAqlHandler::createQueryFromString() {
     return;
   }
 
-  createResponse(triagens::rest::HttpResponse::ACCEPTED);
+  createResponse(arangodb::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-  triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
-  answerBody("queryId", triagens::basics::Json(triagens::basics::StringUtils::itoa(_qId)))(
-      "ttl", triagens::basics::Json(ttl));
+  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 2);
+  answerBody("queryId", arangodb::basics::Json(arangodb::basics::StringUtils::itoa(_qId)))(
+      "ttl", arangodb::basics::Json(ttl));
   _response->body().appendText(answerBody.toString());
 }
 
@@ -386,8 +386,8 @@ void RestAqlHandler::useQuery(std::string const& operation,
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
 
-  triagens::basics::Json queryJson =
-      triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  arangodb::basics::Json queryJson =
+      arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     _queryRegistry->close(_vocbase, _qId);
     return;
@@ -403,7 +403,7 @@ void RestAqlHandler::useQuery(std::string const& operation,
         // an error might occur if "shutdown" is called
       }
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
     generateError(HttpResponse::SERVER_ERROR, ex.code(), ex.message());
   } catch (std::exception const& ex) {
@@ -456,7 +456,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 
   TRI_ASSERT(_qId > 0);
 
-  triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
+  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 2);
 
   TRI_ASSERT(query->engine() != nullptr);
 
@@ -465,10 +465,10 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
     if (operation == "count") {
       number = query->engine()->count();
       if (number == -1) {
-        answerBody("count", triagens::basics::Json("unknown"));
+        answerBody("count", arangodb::basics::Json("unknown"));
       } else {
         answerBody("count",
-                   triagens::basics::Json(static_cast<double>(number)));
+                   arangodb::basics::Json(static_cast<double>(number)));
       }
     } else if (operation == "remaining") {
       if (shardId.empty()) {
@@ -482,10 +482,10 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
         number = block->remainingForShard(shardId);
       }
       if (number == -1) {
-        answerBody("remaining", triagens::basics::Json("unknown"));
+        answerBody("remaining", arangodb::basics::Json("unknown"));
       } else {
         answerBody("remaining",
-                   triagens::basics::Json(static_cast<double>(number)));
+                   arangodb::basics::Json(static_cast<double>(number)));
       }
     } else if (operation == "hasMore") {
       bool hasMore;
@@ -500,14 +500,14 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
         hasMore = block->hasMoreForShard(shardId);
       }
 
-      answerBody("hasMore", triagens::basics::Json(hasMore));
+      answerBody("hasMore", arangodb::basics::Json(hasMore));
     } else {
       _queryRegistry->close(_vocbase, _qId);
       LOG_ERROR("referenced query not found");
       generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return;
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
     LOG_ERROR("failed during use of query: %s", ex.message().c_str());
     generateError(HttpResponse::SERVER_ERROR, ex.code(), ex.message());
@@ -529,9 +529,9 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 
   _queryRegistry->close(_vocbase, _qId);
 
-  createResponse(triagens::rest::HttpResponse::OK);
+  createResponse(arangodb::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  answerBody("error", triagens::basics::Json(false));
+  answerBody("error", arangodb::basics::Json(false));
   _response->body().appendText(answerBody.toString());
 }
 
@@ -539,10 +539,10 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 /// @brief executes the handler
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::rest::HttpHandler::status_t RestAqlHandler::execute() {
+arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
   // std::cout << "GOT INCOMING REQUEST: " <<
-  // triagens::rest::HttpRequest::translateMethod(_request->requestType()) << ",
-  // " << triagens::arango::ServerState::instance()->getId() << ": " <<
+  // arangodb::rest::HttpRequest::translateMethod(_request->requestType()) << ",
+  // " << arangodb::arango::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _request->body() << "\n\n";
 
   std::vector<std::string> const& suffix = _request->suffix();
@@ -599,7 +599,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute() {
   }
 
   // std::cout << "REQUEST HANDLING DONE: " <<
-  // triagens::arango::ServerState::instance()->getId() << ": " <<
+  // arangodb::arango::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _response->responseCode() << ",
   // CONTENT-LENGTH: " << _response->contentLength() << "\n";
 
@@ -611,7 +611,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
-  _qId = triagens::basics::StringUtils::uint64(idString);
+  _qId = arangodb::basics::StringUtils::uint64(idString);
   query = nullptr;
 
   // sleep for 10ms each time, wait for at most 30 seconds...
@@ -652,7 +652,7 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
-                                    triagens::basics::Json const& queryJson) {
+                                    arangodb::basics::Json const& queryJson) {
   bool found;
   std::string shardId;
   char const* shardIdCharP = _request->header("shard-id", found);
@@ -660,15 +660,15 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     shardId = shardIdCharP;
   }
 
-  triagens::basics::Json answerBody(triagens::basics::Json::Object, 3);
+  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 3);
 
   if (operation == "lock") {
     // Mark current thread as potentially blocking:
     auto currentThread =
-        triagens::rest::DispatcherThread::currentDispatcherThread;
+        arangodb::rest::DispatcherThread::currentDispatcherThread;
 
     if (currentThread != nullptr) {
-      triagens::rest::DispatcherThread::currentDispatcherThread->block();
+      arangodb::rest::DispatcherThread::currentDispatcherThread->block();
     }
     int res = TRI_ERROR_INTERNAL;
     try {
@@ -676,19 +676,19 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     } catch (...) {
       LOG_ERROR("lock lead to an exception");
       if (currentThread != nullptr) {
-        triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
+        arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
       }
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "lock lead to an exception");
       return;
     }
     if (currentThread != nullptr) {
-      triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
+      arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
     }
     answerBody("error", res == TRI_ERROR_NO_ERROR
-                            ? triagens::basics::Json(false)
-                            : triagens::basics::Json(true))(
-        "code", triagens::basics::Json(static_cast<double>(res)));
+                            ? arangodb::basics::Json(false)
+                            : arangodb::basics::Json(true))(
+        "code", arangodb::basics::Json(static_cast<double>(res)));
   } else if (operation == "getSome") {
     auto atLeast =
         JsonHelper::getNumericValue<size_t>(queryJson.json(), "atLeast", 1);
@@ -706,8 +706,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       items.reset(block->getSomeForShard(atLeast, atMost, shardId));
     }
     if (items.get() == nullptr) {
-      answerBody("exhausted", triagens::basics::Json(true))(
-          "error", triagens::basics::Json(false))("stats", query->getStats());
+      answerBody("exhausted", arangodb::basics::Json(true))(
+          "error", arangodb::basics::Json(false))("stats", query->getStats());
     } else {
       try {
         answerBody = items->toJson(query->trx());
@@ -744,8 +744,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                     "skipSome lead to an exception");
       return;
     }
-    answerBody("skipped", triagens::basics::Json(static_cast<double>(skipped)))(
-        "error", triagens::basics::Json(false));
+    answerBody("skipped", arangodb::basics::Json(static_cast<double>(skipped)))(
+        "error", arangodb::basics::Json(false));
     answerBody.set("stats", query->getStats());
   } else if (operation == "skip") {
     auto number =
@@ -763,8 +763,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         exhausted = block->skipForShard(number, shardId);
       }
 
-      answerBody("exhausted", triagens::basics::Json(exhausted))(
-          "error", triagens::basics::Json(false));
+      answerBody("exhausted", arangodb::basics::Json(exhausted))(
+          "error", arangodb::basics::Json(false));
       answerBody.set("stats", query->getStats());
     } catch (...) {
       LOG_ERROR("skip lead to an exception");
@@ -789,8 +789,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                     "initializeCursor lead to an exception");
       return;
     }
-    answerBody("error", triagens::basics::Json(res != TRI_ERROR_NO_ERROR))(
-        "code", triagens::basics::Json(static_cast<double>(res)));
+    answerBody("error", arangodb::basics::Json(res != TRI_ERROR_NO_ERROR))(
+        "code", arangodb::basics::Json(static_cast<double>(res)));
     answerBody.set("stats", query->getStats());
   } else if (operation == "shutdown") {
     int res = TRI_ERROR_INTERNAL;
@@ -807,7 +807,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       auto warnings = query->warningsToJson(TRI_UNKNOWN_MEM_ZONE);
       if (warnings != nullptr) {
         answerBody("warnings",
-                   triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, warnings));
+                   arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, warnings));
       }
 
       // delete the query from the registry
@@ -820,16 +820,16 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       return;
     }
     answerBody("error", res == TRI_ERROR_NO_ERROR
-                            ? triagens::basics::Json(false)
-                            : triagens::basics::Json(true))(
-        "code", triagens::basics::Json(static_cast<double>(res)));
+                            ? arangodb::basics::Json(false)
+                            : arangodb::basics::Json(true))(
+        "code", arangodb::basics::Json(static_cast<double>(res)));
   } else {
     LOG_ERROR("Unknown operation!");
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }
 
-  createResponse(triagens::rest::HttpResponse::OK);
+  createResponse(arangodb::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText(answerBody.toString());
 }

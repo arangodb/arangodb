@@ -47,10 +47,10 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,13 +63,13 @@ ArangoClient BaseClient("arangodump");
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::GeneralClientConnection* Connection = nullptr;
+arangodb::httpclient::GeneralClientConnection* Connection = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP client
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::SimpleHttpClient* Client = nullptr;
+arangodb::httpclient::SimpleHttpClient* Client = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief chunk size
@@ -270,9 +270,9 @@ static std::string GetHttpErrorMessage(SimpleHttpResult* result) {
     VPackSlice const body = parsedBody->slice();
 
     std::string const& errorMessage =
-        triagens::basics::VelocyPackHelper::getStringValue(body, "errorMessage",
+        arangodb::basics::VelocyPackHelper::getStringValue(body, "errorMessage",
                                                            "");
-    int errorNum = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+    int errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
         body, "errorNum", 0);
 
     if (errorMessage != "" && errorNum > 0) {
@@ -310,13 +310,13 @@ static std::string GetArangoVersion() {
 
       // look up "server" value
       std::string const server =
-          triagens::basics::VelocyPackHelper::getStringValue(body, "server",
+          arangodb::basics::VelocyPackHelper::getStringValue(body, "server",
                                                              "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
         // look up "version" value
-        version = triagens::basics::VelocyPackHelper::getStringValue(
+        version = arangodb::basics::VelocyPackHelper::getStringValue(
             body, "version", "");
       }
 
@@ -352,7 +352,7 @@ static bool GetArangoIsCluster() {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();
-      role = triagens::basics::VelocyPackHelper::getStringValue(body, "role",
+      role = arangodb::basics::VelocyPackHelper::getStringValue(body, "role",
                                                                 "UNDEFINED");
     } catch (...) {
       // No Action
@@ -412,7 +412,7 @@ static int StartBatch(std::string DBserver, std::string& errorMsg) {
 
   // look up "id" value
   std::string const id =
-      triagens::basics::VelocyPackHelper::getStringValue(resBody, "id", "");
+      arangodb::basics::VelocyPackHelper::getStringValue(resBody, "id", "");
 
   BatchId = StringUtils::uint64(id);
 
@@ -643,7 +643,7 @@ static int RunDump(std::string& errorMsg) {
 
   // read the server's max tick value
   std::string const tickString =
-      triagens::basics::VelocyPackHelper::getStringValue(body, "tick", "");
+      arangodb::basics::VelocyPackHelper::getStringValue(body, "tick", "");
 
   if (tickString == "") {
     errorMsg = "got malformed JSON response from server";
@@ -722,13 +722,13 @@ static int RunDump(std::string& errorMsg) {
       return TRI_ERROR_INTERNAL;
     }
 
-    std::string const cid = triagens::basics::VelocyPackHelper::getStringValue(
+    std::string const cid = arangodb::basics::VelocyPackHelper::getStringValue(
         parameters, "cid", "");
-    std::string const name = triagens::basics::VelocyPackHelper::getStringValue(
+    std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
         parameters, "name", "");
-    bool const deleted = triagens::basics::VelocyPackHelper::getBooleanValue(
+    bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
         parameters, "deleted", false);
-    int type = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+    int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
         parameters, "type", 2);
     std::string const collectionType(type == 2 ? "document" : "edge");
 
@@ -752,7 +752,7 @@ static int RunDump(std::string& errorMsg) {
       continue;
     }
 
-    std::string const hexString(triagens::rest::SslInterface::sslMD5(name));
+    std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 
     // found a collection!
     if (Progress) {
@@ -1010,11 +1010,11 @@ static int RunClusterDump(std::string& errorMsg) {
       return TRI_ERROR_INTERNAL;
     }
 
-    std::string const id = triagens::basics::VelocyPackHelper::getStringValue(
+    std::string const id = arangodb::basics::VelocyPackHelper::getStringValue(
         parameters, "id", "");
-    std::string const name = triagens::basics::VelocyPackHelper::getStringValue(
+    std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
         parameters, "name", "");
-    bool const deleted = triagens::basics::VelocyPackHelper::getBooleanValue(
+    bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
         parameters, "deleted", false);
 
     if (id == "" || name == "") {
@@ -1085,7 +1085,7 @@ static int RunClusterDump(std::string& errorMsg) {
       // save the actual data
 
       // Now set up the output file:
-      std::string const hexString(triagens::rest::SslInterface::sslMD5(name));
+      std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
       std::string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" +
                         hexString + ".data.json";
 

@@ -29,8 +29,8 @@
 #include "HttpServer/HttpServerJob.h"
 #include "Rest/HttpRequest.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 namespace {

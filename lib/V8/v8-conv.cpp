@@ -33,7 +33,7 @@
 #include "V8/v8-utils.h"
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 

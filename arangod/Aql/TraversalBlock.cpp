@@ -32,11 +32,11 @@
 #include "V8/v8-globals.h"
 #include "V8Server/V8Traverser.h"
 
-using namespace triagens::arango;
-using namespace triagens::aql;
+using namespace arangodb::arango;
+using namespace arangodb::aql;
 
-using Json = triagens::basics::Json;
-using VertexId = triagens::arango::traverser::VertexId;
+using Json = arangodb::basics::Json;
+using VertexId = arangodb::arango::traverser::VertexId;
 
 
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
@@ -49,7 +49,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _pathReg(0),
       _expressions(ep->expressions()),
       _hasV8Expression(false) {
-  triagens::arango::traverser::TraverserOptions opts;
+  arangodb::arango::traverser::TraverserOptions opts;
   ep->fillTraversalOptions(opts);
   auto ast = ep->_plan->getAst();
 
@@ -85,8 +85,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 
   _resolver = new CollectionNameResolver(_trx->vocbase());
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
-    _traverser.reset(new triagens::arango::traverser::ClusterTraverser(
+  if (arangodb::arango::ServerState::instance()->isCoordinator()) {
+    _traverser.reset(new arangodb::arango::traverser::ClusterTraverser(
         ep->edgeColls(), opts,
         std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
         _resolver, _expressions));
@@ -101,7 +101,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
         _trx->orderDitch(trxCollection);
       }
     }
-    _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(
+    _traverser.reset(new arangodb::arango::traverser::DepthFirstTraverser(
         edgeCollections, opts, _resolver, _trx, _expressions));
   }
   if (!ep->usesInVariable()) {
@@ -198,11 +198,11 @@ void TraversalBlock::executeFilterExpressions() {
   if (!_expressions->empty()) {
     if (_hasV8Expression) {
       bool const isRunningInCluster =
-          triagens::arango::ServerState::instance()->isRunningInCluster();
+          arangodb::arango::ServerState::instance()->isRunningInCluster();
 
       // must have a V8 context here to protect Expression::execute()
       auto engine = _engine;
-      triagens::basics::ScopeGuard guard{
+      arangodb::basics::ScopeGuard guard{
           [&engine]() -> void { engine->getQuery()->enterContext(); },
           [&]() -> void {
             if (isRunningInCluster) {
@@ -265,7 +265,7 @@ bool TraversalBlock::morePaths(size_t hint) {
   auto en = static_cast<TraversalNode const*>(getPlanNode());
 
   for (size_t j = 0; j < hint; ++j) {
-    std::unique_ptr<triagens::arango::traverser::TraversalPath> p(
+    std::unique_ptr<arangodb::arango::traverser::TraversalPath> p(
         _traverser->next());
 
     if (p == nullptr) {
@@ -331,7 +331,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                              "Only id strings or objects with "
                                              "_id are allowed");
       } else {
-        auto v(triagens::arango::traverser::VertexId(
+        auto v(arangodb::arango::traverser::VertexId(
             _resolver->getCollectionIdCluster(_vertexId.substr(0, pos).c_str()),
             _vertexId.c_str() + pos + 1));
 
@@ -349,8 +349,8 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
       if (input.has(TRI_VOC_ATTRIBUTE_ID)) {
         Json _idJson = input.get(TRI_VOC_ATTRIBUTE_ID);
         if (_idJson.isString()) {
-          _vertexId = triagens::basics::JsonHelper::getStringValue(_idJson.json(), "");
-          VertexId v = triagens::arango::traverser::IdStringToVertexId(
+          _vertexId = arangodb::basics::JsonHelper::getStringValue(_idJson.json(), "");
+          VertexId v = arangodb::arango::traverser::IdStringToVertexId(
               _resolver, _vertexId);
           _traverser->setStartVertex(v);
         }
@@ -358,7 +358,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
     } else if (in.isString()) {
       _vertexId = in.toString();
       VertexId v =
-          triagens::arango::traverser::IdStringToVertexId(_resolver, _vertexId);
+          arangodb::arango::traverser::IdStringToVertexId(_resolver, _vertexId);
       _traverser->setStartVertex(v);
     } else {
       _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,

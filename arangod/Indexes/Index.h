@@ -43,7 +43,7 @@ struct TRI_json_t;
 struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class Ast;
 struct AstNode;
@@ -123,7 +123,7 @@ struct TRI_index_element_t {
   }
 };
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class IndexIterator;
 struct IndexIteratorContext;
@@ -137,7 +137,7 @@ class Index {
   Index& operator=(Index const&) = delete;
 
   Index(TRI_idx_iid_t, struct TRI_document_collection_t*,
-        std::vector<std::vector<triagens::basics::AttributeName>> const&,
+        std::vector<std::vector<arangodb::basics::AttributeName>> const&,
         bool unique, bool sparse);
 
   explicit Index(struct TRI_json_t const*);
@@ -175,7 +175,7 @@ class Index {
   /// @brief return the index fields
   //////////////////////////////////////////////////////////////////////////////
 
-  inline std::vector<std::vector<triagens::basics::AttributeName>> const&
+  inline std::vector<std::vector<arangodb::basics::AttributeName>> const&
   fields() const {
     return _fields;
   }
@@ -213,9 +213,9 @@ class Index {
   //////////////////////////////////////////////////////////////////////////////
 
   inline bool isAttributeExpanded(
-      std::vector<triagens::basics::AttributeName> const& attribute) const {
+      std::vector<arangodb::basics::AttributeName> const& attribute) const {
     for (auto const& it : _fields) {
-      if (!triagens::basics::AttributeName::namesMatch(attribute, it)) {
+      if (!arangodb::basics::AttributeName::namesMatch(attribute, it)) {
         continue;
       }
       return TRI_AttributeNamesHaveExpansion(it);
@@ -228,9 +228,9 @@ class Index {
   //////////////////////////////////////////////////////////////////////////////
 
   inline bool attributeMatches(
-      std::vector<triagens::basics::AttributeName> const& attribute) const {
+      std::vector<arangodb::basics::AttributeName> const& attribute) const {
     for (auto const& it : _fields) {
-      if (triagens::basics::AttributeName::isIdentical(attribute, it, true)) {
+      if (arangodb::basics::AttributeName::isIdentical(attribute, it, true)) {
         return true;
       }
     }
@@ -333,54 +333,54 @@ class Index {
   virtual bool hasSelectivityEstimate() const = 0;
   virtual double selectivityEstimate() const;
   virtual size_t memory() const = 0;
-  virtual triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const;
-  virtual triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const;
+  virtual arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
+  virtual arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const;
 
   virtual std::shared_ptr<VPackBuilder> toVelocyPack(bool, bool) const;
   virtual std::shared_ptr<VPackBuilder> toVelocyPackFigures(bool) const;
 
   virtual bool dumpFields() const = 0;
 
-  virtual int insert(triagens::arango::Transaction*,
+  virtual int insert(arangodb::arango::Transaction*,
                      struct TRI_doc_mptr_t const*, bool) = 0;
-  virtual int remove(triagens::arango::Transaction*,
+  virtual int remove(arangodb::arango::Transaction*,
                      struct TRI_doc_mptr_t const*, bool) = 0;
-  virtual int postInsert(triagens::arango::Transaction*,
+  virtual int postInsert(arangodb::arango::Transaction*,
                          struct TRI_transaction_collection_s*,
                          struct TRI_doc_mptr_t const*);
-  virtual int batchInsert(triagens::arango::Transaction*,
+  virtual int batchInsert(arangodb::arango::Transaction*,
                           std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
   // a garbage collection function for the index
   virtual int cleanup();
 
   // give index a hint about the expected size
-  virtual int sizeHint(triagens::arango::Transaction*, size_t);
+  virtual int sizeHint(arangodb::arango::Transaction*, size_t);
 
   virtual bool hasBatchInsert() const;
 
-  virtual bool supportsFilterCondition(triagens::aql::AstNode const*,
-                                       triagens::aql::Variable const*, size_t,
+  virtual bool supportsFilterCondition(arangodb::aql::AstNode const*,
+                                       arangodb::aql::Variable const*, size_t,
                                        size_t&, double&) const;
 
-  virtual bool supportsSortCondition(triagens::aql::SortCondition const*,
-                                     triagens::aql::Variable const*, size_t,
+  virtual bool supportsSortCondition(arangodb::aql::SortCondition const*,
+                                     arangodb::aql::Variable const*, size_t,
                                      double&) const;
 
-  virtual IndexIterator* iteratorForCondition(triagens::arango::Transaction*,
+  virtual IndexIterator* iteratorForCondition(arangodb::arango::Transaction*,
                                               IndexIteratorContext*,
-                                              triagens::aql::Ast*,
-                                              triagens::aql::AstNode const*,
-                                              triagens::aql::Variable const*,
+                                              arangodb::aql::Ast*,
+                                              arangodb::aql::AstNode const*,
+                                              arangodb::aql::Variable const*,
                                               bool) const;
 
-  virtual triagens::aql::AstNode* specializeCondition(
-      triagens::aql::AstNode*, triagens::aql::Variable const*) const;
+  virtual arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
 
-  bool canUseConditionPart(triagens::aql::AstNode const* access,
-                           triagens::aql::AstNode const* other,
-                           triagens::aql::AstNode const* op,
-                           triagens::aql::Variable const* reference,
+  bool canUseConditionPart(arangodb::aql::AstNode const* access,
+                           arangodb::aql::AstNode const* other,
+                           arangodb::aql::AstNode const* op,
+                           arangodb::aql::Variable const* reference,
                            bool) const;
 
   
@@ -389,7 +389,7 @@ class Index {
 
   struct TRI_document_collection_t* _collection;
 
-  std::vector<std::vector<triagens::basics::AttributeName>> _fields;
+  std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
 
   bool const _unique;
 
@@ -400,8 +400,8 @@ class Index {
 }
 }
 
-std::ostream& operator<<(std::ostream&, triagens::arango::Index const*);
-std::ostream& operator<<(std::ostream&, triagens::arango::Index const&);
+std::ostream& operator<<(std::ostream&, arangodb::arango::Index const*);
+std::ostream& operator<<(std::ostream&, arangodb::arango::Index const&);
 
 #endif
 

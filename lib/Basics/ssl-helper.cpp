@@ -26,7 +26,7 @@
 
 #include <openssl/err.h>
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 using namespace std;
 
 
@@ -34,7 +34,7 @@ using namespace std;
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-SSL_CTX* triagens::basics::sslContext(protocol_e protocol,
+SSL_CTX* arangodb::basics::sslContext(protocol_e protocol,
                                       std::string const& keyfile) {
   // create our context
   SSL_METHOD SSL_CONST* meth = nullptr;
@@ -67,13 +67,13 @@ SSL_CTX* triagens::basics::sslContext(protocol_e protocol,
   // load our keys and certificates
   if (!SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
     LOG_ERROR("cannot read certificate from '%s': %s", keyfile.c_str(),
-              triagens::basics::lastSSLError().c_str());
+              arangodb::basics::lastSSLError().c_str());
     return nullptr;
   }
 
   if (!SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
     LOG_ERROR("cannot read key from '%s': %s", keyfile.c_str(),
-              triagens::basics::lastSSLError().c_str());
+              arangodb::basics::lastSSLError().c_str());
     return nullptr;
   }
 
@@ -88,7 +88,7 @@ SSL_CTX* triagens::basics::sslContext(protocol_e protocol,
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string triagens::basics::protocolName(protocol_e protocol) {
+std::string arangodb::basics::protocolName(protocol_e protocol) {
   switch (protocol) {
     case SSL_V2:
       return "SSLv2";
@@ -111,7 +111,7 @@ std::string triagens::basics::protocolName(protocol_e protocol) {
 /// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string triagens::basics::lastSSLError() {
+std::string arangodb::basics::lastSSLError() {
   char buf[122];
   memset(buf, 0, sizeof(buf));
 

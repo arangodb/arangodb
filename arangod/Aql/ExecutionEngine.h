@@ -33,7 +33,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Utils/AqlTransaction.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -101,9 +101,9 @@ class ExecutionEngine {
     if (_root != nullptr && !_wasShutdown) {
       // Take care of locking prevention measures in the cluster:
       if (_lockedShards != nullptr) {
-        if (triagens::arango::Transaction::_makeNolockHeaders ==
+        if (arangodb::arango::Transaction::_makeNolockHeaders ==
             _lockedShards) {
-          triagens::arango::Transaction::_makeNolockHeaders =
+          arangodb::arango::Transaction::_makeNolockHeaders =
               _previouslyLockedShards;
         }
         delete _lockedShards;

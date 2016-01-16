@@ -35,7 +35,7 @@
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -373,13 +373,13 @@ class QueryCache {
   /// @brief protect mode changes with a mutex
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _propertiesLock;
+  arangodb::basics::Mutex _propertiesLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read-write lock for the cache
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::ReadWriteLock _entriesLock[NumberOfParts];
+  arangodb::basics::ReadWriteLock _entriesLock[NumberOfParts];
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cached query entries, organized per database

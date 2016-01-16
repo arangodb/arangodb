@@ -36,9 +36,9 @@
 #include "VocBase/vocbase.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 
 
@@ -187,13 +187,13 @@ bool RestDocumentHandler::createDocumentCoordinator(
     char const* collection, bool waitForSync, VPackSlice const& document) {
   std::string const& dbname = _request->databaseName();
   std::string const collname(collection);
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> headers =
-      triagens::arango::getForwardableRequestHeaders(_request);
+      arangodb::arango::getForwardableRequestHeaders(_request);
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  int res = triagens::arango::createDocumentOnCoordinator(
+  int res = arangodb::arango::createDocumentOnCoordinator(
       dbname, collname, waitForSync, document, headers, responseCode,
       resultHeaders, resultBody);
 
@@ -205,9 +205,9 @@ bool RestDocumentHandler::createDocumentCoordinator(
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= triagens::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::HttpResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,10 +353,10 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
                                                  std::string const& key,
                                                  bool generateBody) {
   std::string const& dbname = _request->databaseName();
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
-          triagens::arango::getForwardableRequestHeaders(_request)));
+          arangodb::arango::getForwardableRequestHeaders(_request)));
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -367,7 +367,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
     rev = StringUtils::uint64(revstr);
   }
 
-  int error = triagens::arango::getDocumentOnCoordinator(
+  int error = arangodb::arango::getDocumentOnCoordinator(
       dbname, collname, key, rev, headers, generateBody, responseCode,
       resultHeaders, resultBody);
 
@@ -378,7 +378,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::arango::mergeResponseHeaders(_response, resultHeaders);
 
   if (!generateBody) {
     // a head request...
@@ -387,7 +387,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
   } else {
     _response->body().appendText(resultBody.c_str(), resultBody.size());
   }
-  return responseCode >= triagens::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::HttpResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,11 +489,11 @@ bool RestDocumentHandler::getAllDocumentsCoordinator(std::string const& collname
                                                      std::string const& returnType) {
   std::string const& dbname = _request->databaseName();
 
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::string contentType;
   std::string resultBody;
 
-  int error = triagens::arango::getAllDocumentsOnCoordinator(
+  int error = arangodb::arango::getAllDocumentsOnCoordinator(
       dbname, collname, returnType, responseCode, contentType, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
@@ -504,7 +504,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator(std::string const& collname
   createResponse(responseCode);
   _response->setContentType(contentType);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= triagens::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::HttpResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -685,7 +685,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     }
 
     std::unique_ptr<TRI_json_t> json(
-        triagens::basics::VelocyPackHelper::velocyPackToJson(body));
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
     if (ServerState::instance()->isDBServer()) {
       // compare attributes in shardKeys
       if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(),
@@ -749,7 +749,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
       std::unique_ptr<TRI_json_t> json(
-          triagens::basics::VelocyPackHelper::velocyPackToJson(body));
+          arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
       if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(),
                            false)) {
         TRI_FreeJson(shaper->memoryZone(), old);
@@ -768,7 +768,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     }
 
     std::unique_ptr<TRI_json_t> json(
-        triagens::basics::VelocyPackHelper::velocyPackToJson(body));
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
     res = trx.updateDocument(key, &mptr, json.get(), policy, waitForSync,
                              revision, &rid);
   }
@@ -802,8 +802,8 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
   std::string const& dbname = _request->databaseName();
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
-          triagens::arango::getForwardableRequestHeaders(_request)));
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+          arangodb::arango::getForwardableRequestHeaders(_request)));
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -816,7 +816,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
     mergeObjects = false;
   }
 
-  int error = triagens::arango::modifyDocumentOnCoordinator(
+  int error = arangodb::arango::modifyDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
       mergeObjects, document, headers, responseCode, resultHeaders, resultBody);
 
@@ -828,9 +828,9 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= triagens::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::HttpResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -928,14 +928,14 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
     std::string const& collname, std::string const& key, TRI_voc_rid_t const rev,
     TRI_doc_update_policy_e policy, bool waitForSync) {
   std::string const& dbname = _request->databaseName();
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
-          triagens::arango::getForwardableRequestHeaders(_request)));
+          arangodb::arango::getForwardableRequestHeaders(_request)));
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  int error = triagens::arango::deleteDocumentOnCoordinator(
+  int error = arangodb::arango::deleteDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, headers, responseCode,
       resultHeaders, resultBody);
 
@@ -946,9 +946,9 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= triagens::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::HttpResponse::BAD;
 }
 
 

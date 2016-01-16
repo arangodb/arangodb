@@ -29,7 +29,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 class RestUploadHandler : public RestVocbaseBaseHandler {

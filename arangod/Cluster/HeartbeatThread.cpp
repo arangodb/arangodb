@@ -40,7 +40,7 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
+using namespace arangodb::arango;
 
 
 volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
@@ -51,7 +51,7 @@ volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::HeartbeatThread(
-    TRI_server_t* server, triagens::rest::ApplicationDispatcher* dispatcher,
+    TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
     ApplicationV8* applicationV8, uint64_t interval,
     uint64_t maxFailsBeforeWarning)
     : Thread("heartbeat"),
@@ -205,7 +205,7 @@ void HeartbeatThread::runDBServer() {
         if (it != result._values.end()) {
           // there is a plan version
           uint64_t planVersion =
-              triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+              arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
 
           if (planVersion > lastPlanVersionNoticed) {
             lastPlanVersionNoticed = planVersion;
@@ -314,7 +314,7 @@ void HeartbeatThread::runCoordinator() {
       if (it != result._values.end()) {
         // there is a plan version
         uint64_t planVersion =
-            triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
 
         if (planVersion > lastPlanVersionNoticed) {
           if (handlePlanChangeCoordinator(planVersion)) {
@@ -334,7 +334,7 @@ void HeartbeatThread::runCoordinator() {
       if (it != result._values.end()) {
         // there is a UserVersion
         uint64_t userVersion =
-            triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
         if (userVersion != oldUserVersion) {
           // reload user cache for all databases
           std::vector<DatabaseID> dbs =
@@ -526,7 +526,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       TRI_voc_tick_t id = 0;
       TRI_json_t const* v = TRI_LookupObjectJson(options, "id");
       if (TRI_IsStringJson(v)) {
-        id = triagens::basics::StringUtils::uint64(v->_value._string.data);
+        id = arangodb::basics::StringUtils::uint64(v->_value._string.data);
       }
 
       if (id > 0) {
@@ -622,7 +622,7 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
   }
 
   // schedule a job for the change
-  std::unique_ptr<triagens::rest::Job> job(
+  std::unique_ptr<arangodb::rest::Job> job(
       new ServerJob(this, _server, _applicationV8));
 
   if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {
@@ -657,7 +657,7 @@ bool HeartbeatThread::handleStateChange(AgencyCommResult& result,
     lastCommandIndex = (*it).second._index;
 
     std::string const command =
-        triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
+        arangodb::basics::JsonHelper::getStringValue((*it).second._json, "");
     ServerState::StateEnum newState = ServerState::stringToState(command);
 
     if (newState != ServerState::STATE_UNDEFINED) {

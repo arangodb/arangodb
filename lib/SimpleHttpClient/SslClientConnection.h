@@ -34,7 +34,7 @@
 #include "openssl/err.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +52,7 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  SslClientConnection(triagens::rest::Endpoint* endpoint, double, double,
+  SslClientConnection(arangodb::rest::Endpoint* endpoint, double, double,
                       size_t, uint32_t);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -91,7 +91,7 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  bool readClientConnection(triagens::basics::StringBuffer&,
+  bool readClientConnection(arangodb::basics::StringBuffer&,
                             bool& connectionClosed) override;
 
   //////////////////////////////////////////////////////////////////////////////

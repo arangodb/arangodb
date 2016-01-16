@@ -43,7 +43,7 @@
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 class TransactionContext;
 }
@@ -117,11 +117,11 @@ struct Profile {
 class Query {
   
  public:
-  Query(triagens::arango::ApplicationV8*, bool, TRI_vocbase_t*, char const*,
+  Query(arangodb::arango::ApplicationV8*, bool, TRI_vocbase_t*, char const*,
         size_t, struct TRI_json_t*, struct TRI_json_t*, QueryPart);
 
-  Query(triagens::arango::ApplicationV8*, bool, TRI_vocbase_t*,
-        triagens::basics::Json queryStruct, struct TRI_json_t*, QueryPart);
+  Query(arangodb::arango::ApplicationV8*, bool, TRI_vocbase_t*,
+        arangodb::basics::Json queryStruct, struct TRI_json_t*, QueryPart);
 
   ~Query();
 
@@ -348,7 +348,7 @@ class Query {
   /// @brief return the transaction, if prepared
   //////////////////////////////////////////////////////////////////////////////
 
-  inline triagens::arango::AqlTransaction* trx() { return _trx; }
+  inline arangodb::arango::AqlTransaction* trx() { return _trx; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the plan for the query
@@ -386,7 +386,7 @@ class Query {
   /// @brief returns statistics for current query.
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json getStats();
+  arangodb::basics::Json getStats();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fetch a boolean value from the options
@@ -486,7 +486,7 @@ class Query {
   /// @brief create a TransactionContext
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::TransactionContext* createTransactionContext();
+  arangodb::arango::TransactionContext* createTransactionContext();
 
   
  private:
@@ -501,7 +501,7 @@ class Query {
   /// access
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::ApplicationV8* _applicationV8;
+  arangodb::arango::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief all nodes created in the AST - will be used for freeing them later
@@ -525,7 +525,7 @@ class Query {
   /// @brief the currently used V8 context
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::ApplicationV8::V8Context* _context;
+  arangodb::arango::ApplicationV8::V8Context* _context;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief warnings collected during execution
@@ -549,7 +549,7 @@ class Query {
   /// @brief query in a JSON structure
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json const _queryJson;
+  arangodb::basics::Json const _queryJson;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bind parameters for the query
@@ -620,7 +620,7 @@ class Query {
   /// created in the prepare method.
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::AqlTransaction* _trx;
+  arangodb::arango::AqlTransaction* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the ExecutionEngine object, if the query is prepared

@@ -34,7 +34,7 @@
 struct TRI_document_collection_t;
 class VocShaper;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
@@ -67,7 +67,7 @@ class AttributeAccessor {
   /// @brief execute the accessor
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue get(triagens::arango::AqlTransaction* trx, AqlItemBlock const*,
+  AqlValue get(arangodb::arango::AqlTransaction* trx, AqlItemBlock const*,
                size_t, std::vector<Variable const*> const&,
                std::vector<RegisterId> const&);
 
@@ -83,26 +83,26 @@ class AttributeAccessor {
   /// @brief extract the _id attribute from a ShapedJson marker
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue extractId(AqlValue const&, triagens::arango::AqlTransaction*,
+  AqlValue extractId(AqlValue const&, arangodb::arango::AqlTransaction*,
                      struct TRI_document_collection_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _from attribute from a ShapedJson marker
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue extractFrom(AqlValue const&, triagens::arango::AqlTransaction*);
+  AqlValue extractFrom(AqlValue const&, arangodb::arango::AqlTransaction*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _to attribute from a ShapedJson marker
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue extractTo(AqlValue const&, triagens::arango::AqlTransaction*);
+  AqlValue extractTo(AqlValue const&, arangodb::arango::AqlTransaction*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract any other attribute from a ShapedJson marker
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue extractRegular(AqlValue const&, triagens::arango::AqlTransaction*,
+  AqlValue extractRegular(AqlValue const&, arangodb::arango::AqlTransaction*,
                           struct TRI_document_collection_t const*);
 
   
@@ -129,7 +129,7 @@ class AttributeAccessor {
   /// @brief buffer for temporary strings
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::StringBuffer _buffer;
+  arangodb::basics::StringBuffer _buffer;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shaper
@@ -159,8 +159,8 @@ class AttributeAccessor {
   AttributeType _attributeType;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

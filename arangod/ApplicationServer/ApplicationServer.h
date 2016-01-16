@@ -30,7 +30,7 @@
 #include "Basics/ConditionVariable.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class ProgramOptionsDescription;
 }
@@ -112,7 +112,7 @@ class ApplicationServer {
 
   bool parse(
       int argc, char* argv[],
-      std::map<std::string, triagens::basics::ProgramOptionsDescription>);
+      std::map<std::string, arangodb::basics::ProgramOptionsDescription>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares the server
@@ -380,7 +380,7 @@ class ApplicationServer {
   /// @brief condition variable for done
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::ConditionVariable _finishedCondition;
+  arangodb::basics::ConditionVariable _finishedCondition;
 };
 }
 }

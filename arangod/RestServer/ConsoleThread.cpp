@@ -36,9 +36,9 @@
 #include "V8/v8-utils.h"
 #include <v8.h>
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 using namespace arangodb;
 using namespace std;
 

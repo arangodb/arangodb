@@ -33,7 +33,7 @@
 
 #include <deque>
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class HttpCommTask;
 class HttpHandler;

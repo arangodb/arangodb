@@ -44,10 +44,10 @@
 #include "VocBase/voc-types.h"
 
 using namespace std;
-using namespace triagens::arango;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::httpclient;
+using namespace arangodb::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::httpclient;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base url of the replication API
@@ -158,7 +158,7 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
 TRI_voc_cid_t Syncer::getCid(TRI_json_t const* json) const {
   // Only temporary
   std::shared_ptr<VPackBuilder> builder =
-      triagens::basics::JsonHelper::toVelocyPack(json);
+      arangodb::basics::JsonHelper::toVelocyPack(json);
   return getCid(builder->slice());
 }
 
@@ -190,7 +190,7 @@ TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
 std::string Syncer::getCName(TRI_json_t const* json) const {
   // Only temporary
   std::shared_ptr<VPackBuilder> builder =
-      triagens::basics::JsonHelper::toVelocyPack(json);
+      arangodb::basics::JsonHelper::toVelocyPack(json);
   return getCName(builder->slice());
 }
 
@@ -199,7 +199,7 @@ std::string Syncer::getCName(TRI_json_t const* json) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Syncer::getCName(VPackSlice const& slice) const {
-  return triagens::basics::VelocyPackHelper::getStringValue(slice, "cname", "");
+  return arangodb::basics::VelocyPackHelper::getStringValue(slice, "cname", "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +207,7 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::applyCollectionDumpMarker(
-    triagens::arango::Transaction* trx,
+    arangodb::arango::Transaction* trx,
     TRI_transaction_collection_t* trxCollection,
     TRI_replication_operation_e type, const TRI_voc_key_t key,
     const TRI_voc_rid_t rid, TRI_json_t const* json, std::string& errorMsg) {
@@ -294,7 +294,7 @@ int Syncer::applyCollectionDumpMarker(
       TRI_FreeShapedJson(zone, shaped);
 
       return res;
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       TRI_FreeShapedJson(zone, shaped);
       return ex.code();
     } catch (...) {
@@ -318,7 +318,7 @@ int Syncer::applyCollectionDumpMarker(
         // ignore this error
         res = TRI_ERROR_NO_ERROR;
       }
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
@@ -393,7 +393,7 @@ int Syncer::createCollection(TRI_json_t const* json, TRI_vocbase_col_t** dst) {
   }
 
   std::shared_ptr<VPackBuilder> builder =
-      triagens::basics::JsonHelper::toVelocyPack(json);
+      arangodb::basics::JsonHelper::toVelocyPack(json);
 
   VocbaseCollectionInfo params(_vocbase, name.c_str(), builder->slice());
 
@@ -464,7 +464,7 @@ int Syncer::dropCollection(TRI_json_t const* json, bool reportError) {
 int Syncer::createIndex(TRI_json_t const* json) {
   // Only temporary
   std::shared_ptr<VPackBuilder> builder =
-      triagens::basics::JsonHelper::toVelocyPack(json);
+      arangodb::basics::JsonHelper::toVelocyPack(json);
   return createIndex(builder->slice());
 }
 
@@ -507,7 +507,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
       return res;
     }
 
-    triagens::arango::Index* idx = nullptr;
+    arangodb::arango::Index* idx = nullptr;
     res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document, indexSlice,
                                                     &idx);
 
@@ -518,7 +518,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
     res = trx.finish(res);
 
     return res;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
     return TRI_ERROR_INTERNAL;
@@ -565,7 +565,7 @@ int Syncer::dropIndex(TRI_json_t const* json) {
     }
 
     return TRI_ERROR_NO_ERROR;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
     return TRI_ERROR_INTERNAL;

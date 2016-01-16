@@ -58,11 +58,11 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::httpclient;
-using namespace triagens::v8client;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::httpclient;
+using namespace arangodb::v8client;
+using namespace arangodb::arango;
 using namespace arangodb;
 
 
@@ -1636,7 +1636,7 @@ static int RunShell(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
     BaseClient.log("%s%s\n", dynamicPrompt, input);
 
-    std::string i = triagens::basics::StringUtils::trim(input);
+    std::string i = arangodb::basics::StringUtils::trim(input);
 
     if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
       break;
@@ -2070,7 +2070,7 @@ static bool PrintHelo(bool useServer) {
     BaseClient.printLine("");
 
     ostringstream s;
-    s << "arangosh (" << triagens::rest::Version::getVerboseVersionString()
+    s << "arangosh (" << arangodb::rest::Version::getVerboseVersionString()
       << ")" << std::endl;
     s << "Copyright (c) ArangoDB GmbH";
 

@@ -28,7 +28,7 @@
 
 #include "VocBase/document-collection.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arango {
 
 

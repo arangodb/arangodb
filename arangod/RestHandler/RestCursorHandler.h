@@ -34,7 +34,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class Query;
 class QueryRegistry;
@@ -53,8 +53,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
 
   RestCursorHandler(rest::HttpRequest*,
-                    std::pair<triagens::arango::ApplicationV8*,
-                              triagens::aql::QueryRegistry*>*);
+                    std::pair<arangodb::arango::ApplicationV8*,
+                              arangodb::aql::QueryRegistry*>*);
 
   
  public:
@@ -79,7 +79,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief register the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerQuery(triagens::aql::Query*);
+  void registerQuery(arangodb::aql::Query*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the currently running query
@@ -111,13 +111,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// several values
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json buildExtra(triagens::aql::QueryResult&) const;
+  arangodb::basics::Json buildExtra(arangodb::aql::QueryResult&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpCursor(triagens::arango::Cursor*);
+  void dumpCursor(arangodb::arango::Cursor*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursor and return the first results
@@ -143,25 +143,25 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief _applicationV8
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::ApplicationV8* _applicationV8;
+  arangodb::arango::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our query registry
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::QueryRegistry* _queryRegistry;
+  arangodb::aql::QueryRegistry* _queryRegistry;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _queryLock;
+  arangodb::basics::Mutex _queryLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::Query* _query;
+  arangodb::aql::Query* _query;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query was killed

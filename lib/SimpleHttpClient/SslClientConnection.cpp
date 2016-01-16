@@ -58,9 +58,9 @@
 #include <sys/poll.h>
 #endif
 
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
 using namespace std;
 
 

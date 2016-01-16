@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Aql/types.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;

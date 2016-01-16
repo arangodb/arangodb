@@ -42,10 +42,10 @@
 #include "VocBase/voc-types.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-using namespace triagens::httpclient;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
+using namespace arangodb::httpclient;
 
 
 
@@ -793,13 +793,13 @@ int ContinuousSyncer::changeCollection(TRI_json_t const* json) {
   try {
     TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
     std::shared_ptr<arangodb::velocypack::Builder> tmp =
-        triagens::basics::JsonHelper::toVelocyPack(collectionJson);
-    triagens::arango::CollectionGuard guard(_vocbase, cid);
+        arangodb::basics::JsonHelper::toVelocyPack(collectionJson);
+    arangodb::arango::CollectionGuard guard(_vocbase, cid);
     bool doSync = _vocbase->_settings.forceSyncProperties;
 
     return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
                                     tmp->slice(), doSync);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
     return TRI_ERROR_INTERNAL;

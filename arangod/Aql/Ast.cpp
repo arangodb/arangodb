@@ -32,7 +32,7 @@
 #include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1000,10 +1000,10 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash,
-                     triagens::basics::JsonEqual>
-      cache(nl + nr, triagens::basics::JsonHash(),
-            triagens::basics::JsonEqual());
+  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
+                     arangodb::basics::JsonEqual>
+      cache(nl + nr, arangodb::basics::JsonHash(),
+            arangodb::basics::JsonEqual());
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
@@ -1039,10 +1039,10 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash,
-                     triagens::basics::JsonEqual>
-      cache(nl + nr, triagens::basics::JsonHash(),
-            triagens::basics::JsonEqual());
+  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
+                     arangodb::basics::JsonEqual>
+      cache(nl + nr, arangodb::basics::JsonHash(),
+            arangodb::basics::JsonEqual());
 
   for (size_t i = 0; i < nl + nr; ++i) {
     AstNode* member;
@@ -1939,9 +1939,9 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
 
   // TODO: sort values in place first and compare two adjacent members each
 
-  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash,
-                     triagens::basics::JsonEqual>
-      cache(n, triagens::basics::JsonHash(), triagens::basics::JsonEqual());
+  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
+                     arangodb::basics::JsonEqual>
+      cache(n, arangodb::basics::JsonHash(), arangodb::basics::JsonEqual());
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);

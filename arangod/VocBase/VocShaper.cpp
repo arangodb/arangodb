@@ -51,7 +51,7 @@ static inline TRI_shape_aid_t GetAttributeId(void const* marker) {
       return reinterpret_cast<TRI_df_attribute_marker_t const*>(p)->_aid;
     }
     if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
-      return reinterpret_cast<triagens::wal::attribute_marker_t const*>(p)
+      return reinterpret_cast<arangodb::wal::attribute_marker_t const*>(p)
           ->_attributeId;
     }
   }
@@ -73,7 +73,7 @@ static inline char const* GetAttributeName(void const* marker) {
     }
     if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
       return reinterpret_cast<char const*>(p) +
-             sizeof(triagens::wal::attribute_marker_t);
+             sizeof(arangodb::wal::attribute_marker_t);
     }
   }
 
@@ -500,7 +500,7 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
   TRI_document_collection_t* document = _collection;
 
   try {
-    triagens::wal::AttributeMarker marker(
+    arangodb::wal::AttributeMarker marker(
         document->_vocbase->_id, document->_info.id(), aid, std::string(name));
 
     // lock the index and check that the element is still missing
@@ -523,8 +523,8 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
       }
 
       // write marker into wal
-      triagens::wal::SlotInfoCopy slotInfo =
-          triagens::wal::LogfileManager::instance()->allocateAndWrite(marker,
+      arangodb::wal::SlotInfoCopy slotInfo =
+          arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                       false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -550,7 +550,7 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
     }
 
     return aid;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -600,7 +600,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::ShapeMarker marker(document->_vocbase->_id,
+    arangodb::wal::ShapeMarker marker(document->_vocbase->_id,
                                       document->_info.id(), shape);
 
     // lock the index and check the element is still missing
@@ -623,8 +623,8 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
     }
 
     // write marker into wal
-    triagens::wal::SlotInfoCopy slotInfo =
-        triagens::wal::LogfileManager::instance()->allocateAndWrite(marker,
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -632,7 +632,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
     }
 
     char const* m = static_cast<char const*>(slotInfo.mem) +
-                    sizeof(triagens::wal::shape_marker_t);
+                    sizeof(arangodb::wal::shape_marker_t);
 
     TRI_ASSERT(m != nullptr);
     TRI_shape_t const* result = reinterpret_cast<TRI_shape_t const*>(m);
@@ -663,7 +663,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     return result;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -697,7 +697,7 @@ int VocShaper::moveMarker(TRI_df_marker_t* marker, void* expectedOldPosition) {
 
       if (found != nullptr) {
         if (old + sizeof(TRI_df_shape_marker_t) != found &&
-            old + sizeof(triagens::wal::shape_marker_t) != found) {
+            old + sizeof(arangodb::wal::shape_marker_t) != found) {
           LOG_TRACE("got unexpected shape position");
           // do not insert if position doesn't match the expectation
           // this is done to ensure that the WAL collector doesn't insert a
@@ -808,7 +808,7 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
   if (marker->_type == TRI_DF_MARKER_SHAPE) {
     p += sizeof(TRI_df_shape_marker_t);
   } else if (marker->_type == TRI_WAL_MARKER_SHAPE) {
-    p += sizeof(triagens::wal::shape_marker_t);
+    p += sizeof(arangodb::wal::shape_marker_t);
   } else {
     return TRI_ERROR_INTERNAL;
   }
@@ -893,8 +893,8 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
     name = ((char*)marker) + sizeof(TRI_df_attribute_marker_t);
     aid = reinterpret_cast<TRI_df_attribute_marker_t const*>(marker)->_aid;
   } else if (marker->_type == TRI_WAL_MARKER_ATTRIBUTE) {
-    name = ((char*)marker) + sizeof(triagens::wal::attribute_marker_t);
-    aid = reinterpret_cast<triagens::wal::attribute_marker_t const*>(marker)
+    name = ((char*)marker) + sizeof(arangodb::wal::attribute_marker_t);
+    aid = reinterpret_cast<arangodb::wal::attribute_marker_t const*>(marker)
               ->_attributeId;
   } else {
     return TRI_ERROR_INTERNAL;

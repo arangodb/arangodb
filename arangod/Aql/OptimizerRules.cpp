@@ -40,16 +40,16 @@
 #include "Aql/types.h"
 #include "Basics/json-utilities.h"
 
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
-using EN = triagens::aql::ExecutionNode;
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
+using EN = arangodb::aql::ExecutionNode;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a SORT operation for IN right-hand side operands
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
                                      Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::FILTER, true));
@@ -222,7 +222,7 @@ void triagens::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
 /// - sorts that are covered by earlier sorts will be removed
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeRedundantSortsRule(Optimizer* opt,
+void arangodb::aql::removeRedundantSortsRule(Optimizer* opt,
                                              ExecutionPlan* plan,
                                              Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::SORT, true));
@@ -235,7 +235,7 @@ void triagens::aql::removeRedundantSortsRule(Optimizer* opt,
 
   std::unordered_set<ExecutionNode*> toUnlink;
 
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -373,7 +373,7 @@ void triagens::aql::removeRedundantSortsRule(Optimizer* opt,
 /// - filters that are always false will be replaced by a NoResults node
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
+void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
                                                  ExecutionPlan* plan,
                                                  Optimizer::Rule const* rule) {
   bool modified = false;
@@ -438,7 +438,7 @@ void triagens::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
 /// additionally remove all unused aggregate calculations from a COLLECT
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeCollectVariablesRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::removeCollectVariablesRule(Optimizer* opt, ExecutionPlan* plan,
                                                Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::COLLECT, true));
@@ -703,7 +703,7 @@ class PropagateConstantAttributesHelper {
 /// @brief propagate constant attributes in FILTERs
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::propagateConstantAttributesRule(
+void arangodb::aql::propagateConstantAttributesRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   PropagateConstantAttributesHelper helper;
   helper.propagateConstants(plan);
@@ -715,7 +715,7 @@ void triagens::aql::propagateConstantAttributesRule(
 /// @brief remove SORT RAND() if appropriate
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeSortRandRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::removeSortRandRule(Optimizer* opt, ExecutionPlan* plan,
                                        Optimizer::Rule const* rule) {
   bool modified = false;
   // should we enter subqueries??
@@ -846,7 +846,7 @@ void triagens::aql::removeSortRandRule(Optimizer* opt, ExecutionPlan* plan,
 /// avoid redundant calculations in inner loops
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::moveCalculationsUpRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::moveCalculationsUpRule(Optimizer* opt, ExecutionPlan* plan,
                                            Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(
       plan->findNodesOfType(EN::CALCULATION, true));
@@ -914,7 +914,7 @@ void triagens::aql::moveCalculationsUpRule(Optimizer* opt, ExecutionPlan* plan,
 /// FILTER and LIMIT operations
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::moveCalculationsDownRule(Optimizer* opt,
+void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
                                              ExecutionPlan* plan,
                                              Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(
@@ -1000,7 +1000,7 @@ void triagens::aql::moveCalculationsDownRule(Optimizer* opt,
 /// this rule modifies the plan in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::fuseCalculationsRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::fuseCalculationsRule(Optimizer* opt, ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(
       plan->findNodesOfType(EN::CALCULATION, true));
@@ -1116,7 +1116,7 @@ void triagens::aql::fuseCalculationsRule(Optimizer* opt, ExecutionPlan* plan,
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
                                           Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::COLLECT, true));
   bool modified = false;
@@ -1221,7 +1221,7 @@ void triagens::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
 /// @brief split and-combined filters and break them into smaller parts
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::splitFiltersRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::splitFiltersRule(Optimizer* opt, ExecutionPlan* plan,
                                      Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::FILTER, true));
   bool modified = false;
@@ -1292,7 +1292,7 @@ void triagens::aql::splitFiltersRule(Optimizer* opt, ExecutionPlan* plan,
 /// filters are not pushed beyond limits
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::moveFiltersUpRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::moveFiltersUpRule(Optimizer* opt, ExecutionPlan* plan,
                                       Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::FILTER, true));
   bool modified = false;
@@ -1363,7 +1363,7 @@ void triagens::aql::moveFiltersUpRule(Optimizer* opt, ExecutionPlan* plan,
   opt->addPlan(plan, rule, modified);
 }
 
-class triagens::aql::RedundantCalculationsReplacer final
+class arangodb::aql::RedundantCalculationsReplacer final
     : public WalkerWorker<ExecutionNode> {
  public:
   explicit RedundantCalculationsReplacer(
@@ -1449,7 +1449,7 @@ class triagens::aql::RedundantCalculationsReplacer final
 /// (i.e. common expressions)
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeRedundantCalculationsRule(
+void arangodb::aql::removeRedundantCalculationsRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(
       plan->findNodesOfType(EN::CALCULATION, true));
@@ -1460,7 +1460,7 @@ void triagens::aql::removeRedundantCalculationsRule(
     return;
   }
 
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   std::unordered_map<VariableId, Variable const*> replacements;
 
   for (auto const& n : nodes) {
@@ -1581,7 +1581,7 @@ void triagens::aql::removeRedundantCalculationsRule(
 /// this modifies an existing plan in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeUnnecessaryCalculationsRule(
+void arangodb::aql::removeUnnecessaryCalculationsRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   std::vector<ExecutionNode::NodeType> const types = {EN::CALCULATION,
                                                       EN::SUBQUERY};
@@ -1634,7 +1634,7 @@ void triagens::aql::removeUnnecessaryCalculationsRule(
 /// @brief useIndex, try to use an index for filtering
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::useIndexesRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::useIndexesRule(Optimizer* opt, ExecutionPlan* plan,
                                    Optimizer::Rule const* rule) {
   // These are all the nodes where we start traversing (including all
   // subqueries)
@@ -1705,7 +1705,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
       auto const& indexes = enumerateCollectionNode->collection()->getIndexes();
-      triagens::aql::Index const* bestIndex = nullptr;
+      arangodb::aql::Index const* bestIndex = nullptr;
       double bestCost = 0.0;
       size_t bestNumCovered = 0;
 
@@ -1791,7 +1791,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         return true;
       }
 
-      std::vector<std::vector<triagens::basics::AttributeName>> seen;
+      std::vector<std::vector<arangodb::basics::AttributeName>> seen;
 
       for (auto& index : indexes) {
         if (index->sparse) {
@@ -1799,7 +1799,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           return true;
         }
 
-        if (!seen.empty() && triagens::basics::AttributeName::isIdentical(
+        if (!seen.empty() && arangodb::basics::AttributeName::isIdentical(
                                  index->fields, seen, true)) {
           // different attributes
           return true;
@@ -1931,7 +1931,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-void triagens::aql::useIndexForSortRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::useIndexForSortRule(Optimizer* opt, ExecutionPlan* plan,
                                         Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::SORT, true));
@@ -1954,7 +1954,7 @@ void triagens::aql::useIndexForSortRule(Optimizer* opt, ExecutionPlan* plan,
 /// @brief try to remove filters which are covered by indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeFiltersCoveredByIndexRule(
+void arangodb::aql::removeFiltersCoveredByIndexRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   std::unordered_set<ExecutionNode*> toUnlink;
   bool modified = false;
@@ -2093,7 +2093,7 @@ static bool NextPermutationTuple(std::vector<size_t>& data,
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::interchangeAdjacentEnumerationsRule(
+void arangodb::aql::interchangeAdjacentEnumerationsRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(
       plan->findNodesOfType(EN::ENUMERATE_COLLECTION, true));
@@ -2213,11 +2213,11 @@ void triagens::aql::interchangeAdjacentEnumerationsRule(
 /// it will change plans in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (arangodb::arango::ServerState::instance()->isCoordinator()) {
     // find subqueries
     std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
 
@@ -2344,11 +2344,11 @@ void triagens::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
 /// it will change plans in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
                                             Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (arangodb::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator, we replace the root if it is a modification node
 
     // only replace if it is the last node in the plan
@@ -2534,7 +2534,7 @@ void triagens::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
 /// as small as possible as early as possible
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::distributeFilternCalcToClusterRule(
+void arangodb::aql::distributeFilternCalcToClusterRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   bool modified = false;
 
@@ -2639,7 +2639,7 @@ void triagens::aql::distributeFilternCalcToClusterRule(
 /// filters are not pushed beyond limits
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::distributeSortToClusterRule(Optimizer* opt,
+void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
                                                 ExecutionPlan* plan,
                                                 Optimizer::Rule const* rule) {
   bool modified = false;
@@ -2721,7 +2721,7 @@ void triagens::aql::distributeSortToClusterRule(Optimizer* opt,
 /// only a SingletonNode and possibly some CalculationNodes as dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeUnnecessaryRemoteScatterRule(
+void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::REMOTE, true));
   std::unordered_set<ExecutionNode*> toUnlink;
@@ -2964,7 +2964,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
 /// @brief recognizes that a RemoveNode can be moved to the shards.
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::undistributeRemoveAfterEnumCollRule(
+void arangodb::aql::undistributeRemoveAfterEnumCollRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::REMOVE, true));
   std::unordered_set<ExecutionNode*> toUnlink;
@@ -3182,7 +3182,7 @@ struct OrToInConverter {
 //  same (single) attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::replaceOrWithInRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::replaceOrWithInRule(Optimizer* opt, ExecutionPlan* plan,
                                         Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::FILTER, true));
 
@@ -3362,7 +3362,7 @@ struct RemoveRedundantOr {
   }
 };
 
-void triagens::aql::removeRedundantOrRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::removeRedundantOrRule(Optimizer* opt, ExecutionPlan* plan,
                                           Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::FILTER, true));
 
@@ -3418,7 +3418,7 @@ void triagens::aql::removeRedundantOrRule(Optimizer* opt, ExecutionPlan* plan,
 /// if not required
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::removeDataModificationOutVariablesRule(
+void arangodb::aql::removeDataModificationOutVariablesRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode::NodeType> const types = {
@@ -3452,7 +3452,7 @@ void triagens::aql::removeDataModificationOutVariablesRule(
 /// entire collection to operate in batches
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::patchUpdateStatementsRule(Optimizer* opt,
+void arangodb::aql::patchUpdateStatementsRule(Optimizer* opt,
                                               ExecutionPlan* plan,
                                               Optimizer::Rule const* rule) {
   bool modified = false;
@@ -3521,7 +3521,7 @@ void triagens::aql::patchUpdateStatementsRule(Optimizer* opt,
 /// @brief merges filter nodes into graph traversal nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::mergeFilterIntoTraversalRule(Optimizer* opt,
+void arangodb::aql::mergeFilterIntoTraversalRule(Optimizer* opt,
                                                  ExecutionPlan* plan,
                                                  Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> tNodes(

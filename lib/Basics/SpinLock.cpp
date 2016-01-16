@@ -24,7 +24,7 @@
 
 #include "SpinLock.h"
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 ////////////////////////////////////////////////////////////////////////////////

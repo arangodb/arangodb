@@ -32,7 +32,7 @@
 #include "Aql/types.h"
 #include "Basics/json.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 class Ast;
@@ -70,14 +70,14 @@ class ExecutionPlan {
   //////////////////////////////////////////////////////////////////////////////
 
   static void getCollectionsFromJson(Ast* ast,
-                                     triagens::basics::Json const& Json);
+                                     arangodb::basics::Json const& Json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create an execution plan from JSON
   //////////////////////////////////////////////////////////////////////////////
 
   static ExecutionPlan* instantiateFromJson(Ast* ast,
-                                            triagens::basics::Json const& Json);
+                                            arangodb::basics::Json const& Json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone the plan by recursively cloning starting from the root
@@ -96,7 +96,7 @@ class ExecutionPlan {
   /// @brief export to JSON, returns an AUTOFREE Json object
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson(Ast* ast, TRI_memory_zone_t* zone,
+  arangodb::basics::Json toJson(Ast* ast, TRI_memory_zone_t* zone,
                                 bool verbose) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -458,7 +458,7 @@ class ExecutionPlan {
   /// @brief create an execution plan from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  ExecutionNode* fromJson(triagens::basics::Json const& Json);
+  ExecutionNode* fromJson(arangodb::basics::Json const& Json);
 
   
  private:

@@ -29,7 +29,7 @@
 
 #include <boost/lockfree/queue.hpp>
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 using namespace std;
 
 
@@ -39,7 +39,7 @@ static size_t const QUEUE_SIZE = 1000;
 /// @brief lock for request statistics data
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex RequestDataLock;
+static arangodb::basics::Mutex RequestDataLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the request statistics queue
@@ -199,7 +199,7 @@ void TRI_FillRequestStatistics(StatisticsDistribution& totalTime,
 /// @brief lock for connection data
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex ConnectionDataLock;
+static arangodb::basics::Mutex ConnectionDataLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free list
@@ -525,7 +525,7 @@ void TRI_InitializeStatistics() {
   TRI_MethodRequestsStatistics.clear();
 
   for (int i = 0;
-       i < ((int)triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
+       i < ((int)arangodb::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
     StatisticsCounter c;
     TRI_MethodRequestsStatistics.emplace_back(c);
   }

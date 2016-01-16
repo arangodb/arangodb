@@ -35,7 +35,7 @@
 #include <openssl/ssl.h>
 #include <sstream>
 
-using namespace triagens::rest;
+using namespace arangodb::rest;
 
 
 
@@ -60,9 +60,9 @@ void Version::initialize() {
   Values["env"] = getConfigureEnvironment();
   Values["build-date"] = getBuildDate();
   Values["repository-version"] = getRepositoryVersion();
-  Values["sizeof int"] = triagens::basics::StringUtils::itoa(sizeof(int));
-  Values["sizeof void*"] = triagens::basics::StringUtils::itoa(sizeof(void*));
-  Values["fd-setsize"] = triagens::basics::StringUtils::itoa(FD_SETSIZE);
+  Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
+  Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
+  Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   Values["maintainer-mode"] = "true";
 #else
@@ -262,7 +262,7 @@ std::string Version::getDetailed() {
 
   for (auto& it : Values) {
     std::string value = it.second;
-    triagens::basics::StringUtils::trimInPlace(value);
+    arangodb::basics::StringUtils::trimInPlace(value);
 
     if (!value.empty()) {
       result.append(it.first);
@@ -286,7 +286,7 @@ std::string Version::getDetailed() {
 void Version::getJson(TRI_memory_zone_t* zone, TRI_json_t* dst) {
   for (auto& it : Values) {
     std::string value = it.second;
-    triagens::basics::StringUtils::trimInPlace(value);
+    arangodb::basics::StringUtils::trimInPlace(value);
 
     if (!value.empty()) {
       std::string const& key = it.first;
@@ -305,7 +305,7 @@ void Version::getJson(TRI_memory_zone_t* zone, TRI_json_t* dst) {
 void Version::getVPack(VPackBuilder& dst) {
   for (auto& it : Values) {
     std::string value = it.second;
-    triagens::basics::StringUtils::trimInPlace(value);
+    arangodb::basics::StringUtils::trimInPlace(value);
 
     if (!value.empty()) {
       dst.add(it.first, VPackValue(value));

@@ -28,12 +28,12 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
-using namespace triagens::aql;
+using namespace arangodb::arango;
+using namespace arangodb::aql;
 
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
-using StringBuffer = triagens::basics::StringBuffer;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
+using StringBuffer = arangodb::basics::StringBuffer;
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an empty AQL value that we may return references to in reduce()
@@ -527,7 +527,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
       res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
     }
     else {
-      res->setValue(row, _aggregateRegisters[j].first, AqlValue(new triagens::basics::Json(triagens::basics::Json::Null)));
+      res->setValue(row, _aggregateRegisters[j].first, AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null)));
     }
     ++j;
   }

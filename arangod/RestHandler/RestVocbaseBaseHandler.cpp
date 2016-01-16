@@ -39,9 +39,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
@@ -323,8 +323,8 @@ void RestVocbaseBaseHandler::generateDocument(
           std::string((char*)marker + marker->_offsetToKey))));
       builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
     } else if (type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* marker =
-          static_cast<triagens::wal::edge_marker_t const*>(
+      arangodb::wal::edge_marker_t const* marker =
+          static_cast<arangodb::wal::edge_marker_t const*>(
               mptr.getDataPtr());  // PROTECTED by trx passed from above
       std::string from(std::move(DocumentHelper::assembleDocumentId(
           resolver->getCollectionNameCluster(marker->_fromCid),
@@ -349,7 +349,7 @@ void RestVocbaseBaseHandler::generateDocument(
         shapedJson, mptr.getDataPtr());  // PROTECTED by trx passed from above
 
     std::unique_ptr<TRI_json_t> augmented(
-        triagens::basics::VelocyPackHelper::velocyPackToJson(builder.slice()));
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(builder.slice()));
     TRI_StringifyAugmentedShapedJson(shaper, &buffer, &shapedJson,
                                      augmented.get());
 
@@ -624,7 +624,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   if (found) {
     _nolockHeaderSet = new std::unordered_set<std::string>();
     _nolockHeaderSet->insert(std::string(shardId));
-    triagens::arango::Transaction::_makeNolockHeaders = _nolockHeaderSet;
+    arangodb::arango::Transaction::_makeNolockHeaders = _nolockHeaderSet;
   }
 }
 
@@ -634,7 +634,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    triagens::arango::Transaction::_makeNolockHeaders = nullptr;
+    arangodb::arango::Transaction::_makeNolockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }
