@@ -210,8 +210,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
     }
     // Now depth is set correct for this node.
     if (depth >= mindepth) {
-      auto const& vars = en->getVariablesSetHere();
-      for (auto const& v : vars) {
+      for (auto const& v : en->getVariablesSetHere()) {
         if (v->isUserDefined()) {
           userVars.emplace_back(v);
         }

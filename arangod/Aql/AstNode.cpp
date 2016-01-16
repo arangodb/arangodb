@@ -147,7 +147,6 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_RANGE), "range"},
     {static_cast<int>(NODE_TYPE_NOP), "no-op"},
     {static_cast<int>(NODE_TYPE_COLLECT_COUNT), "collect with count"},
-    {static_cast<int>(NODE_TYPE_COLLECT_EXPRESSION), "collect with expression"},
     {static_cast<int>(NODE_TYPE_CALCULATED_OBJECT_ELEMENT),
      "calculated object element"},
     {static_cast<int>(NODE_TYPE_EXAMPLE), "example"},
@@ -572,7 +571,6 @@ AstNode::AstNode(Ast* ast, triagens::basics::Json const& json)
     case NODE_TYPE_UPSERT:
     case NODE_TYPE_COLLECT:
     case NODE_TYPE_COLLECT_COUNT:
-    case NODE_TYPE_COLLECT_EXPRESSION:
     case NODE_TYPE_COLLECT_AGGREGATE:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
@@ -722,7 +720,6 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_UPSERT:
     case NODE_TYPE_COLLECT:
     case NODE_TYPE_COLLECT_COUNT:
-    case NODE_TYPE_COLLECT_EXPRESSION:
     case NODE_TYPE_COLLECT_AGGREGATE:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
@@ -2439,7 +2436,6 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_COLLECT_COUNT:
-    case NODE_TYPE_COLLECT_EXPRESSION:
     case NODE_TYPE_COLLECT_AGGREGATE:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
@@ -2582,7 +2578,6 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_COLLECT_COUNT:
-    case NODE_TYPE_COLLECT_EXPRESSION:
     case NODE_TYPE_COLLECT_AGGREGATE:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:

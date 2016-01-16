@@ -298,15 +298,8 @@ class Ast {
   /// @brief create an AST collect node
   //////////////////////////////////////////////////////////////////////////////
 
-  AstNode* createNodeCollect(AstNode const*, char const*, size_t,
+  AstNode* createNodeCollect(AstNode const*, AstNode const*, AstNode const*,
                              AstNode const*, AstNode const*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create an AST collect node
-  //////////////////////////////////////////////////////////////////////////////
-
-  AstNode* createNodeCollectExpression(AstNode const*, char const*, size_t,
-                                       AstNode const*, AstNode const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create an AST collect node, COUNT INTO
@@ -319,7 +312,8 @@ class Ast {
   /// @brief create an AST collect node, AGGREGATE
   //////////////////////////////////////////////////////////////////////////////
   
-  AstNode* createNodeCollectAggregate(AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeCollectAggregate(AstNode const*, AstNode const*, AstNode const*,
+                                      char const*, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create an AST sort node

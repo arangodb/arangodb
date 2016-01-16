@@ -492,10 +492,11 @@ AstNode* Ast::createNodeDistinct(AstNode const* value) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node
+/// TODO: use this to replace all other styles
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeCollect(AstNode const* list, char const* name,
-                                size_t nameLength, AstNode const* keepVariables,
+AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates,
+                                AstNode const* into, AstNode const* keepVariables,
                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
 
@@ -505,47 +506,11 @@ AstNode* Ast::createNodeCollect(AstNode const* list, char const* name,
   }
 
   node->addMember(options);
-  node->addMember(list);
+  node->addMember(groups); // may be an empty array
+  node->addMember(aggregates); // may be an empty array
 
-  // INTO
-  if (name != nullptr) {
-    AstNode* variable = createNodeVariable(name, nameLength, true);
-    node->addMember(variable);
-
-    // KEEP
-    if (keepVariables != nullptr) {
-      node->addMember(keepVariables);
-    }
-  } else {
-    TRI_ASSERT(keepVariables == nullptr);
-    TRI_ASSERT(nameLength == 0);
-  }
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST collect node, INTO var = expr
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeCollectExpression(AstNode const* list, char const* name,
-                                          size_t nameLength,
-                                          AstNode const* expression,
-                                          AstNode const* options) {
-  AstNode* node = createNode(NODE_TYPE_COLLECT_EXPRESSION);
-
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &NopNode;
-  }
-
-  node->addMember(options);
-  node->addMember(list);
-
-  AstNode* variable = createNodeVariable(name, nameLength, true);
-  node->addMember(variable);
-
-  node->addMember(expression);
+  node->addMember(into != nullptr ? into : &NopNode);
+  node->addMember(keepVariables != nullptr ? keepVariables : &NopNode);
 
   return node;
 }
@@ -578,7 +543,8 @@ AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeCollectAggregate(AstNode const* list, AstNode const* aggregations, 
-                                AstNode const* options) {
+                                         AstNode const* options, char const* name,
+                                         size_t nameLength) {
   AstNode* node = createNode(NODE_TYPE_COLLECT_AGGREGATE);
 
   if (options == nullptr) {
@@ -593,6 +559,11 @@ AstNode* Ast::createNodeCollectAggregate(AstNode const* list, AstNode const* agg
   auto agg = createNode(NODE_TYPE_AGGREGATIONS);
   agg->addMember(aggregations);
   node->addMember(agg);
+
+  if (name != nullptr) {
+    AstNode* variable = createNodeVariable(name, nameLength, true);
+    node->addMember(variable);
+  }
 
   return node;
 }
