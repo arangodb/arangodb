@@ -38,6 +38,9 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace triagens::arango;
 
 
@@ -152,7 +155,6 @@ std::string AgencyCommResult::errorMessage() const {
   } catch (VPackException const&) {
     return std::string("Out of memory");
   }
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,22 +202,21 @@ void AgencyCommResult::clear() {
 /// stripKeyPrefix is decoded, as is the _globalPrefix
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
-                                     std::string const& stripKeyPrefix,
-                                     bool withDirs) {
-  if (!TRI_IsObjectJson(node)) {
+bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
+                                           std::string const& stripKeyPrefix,
+                                           bool withDirs) {
+  if (!node.isObject()) {
     return true;
   }
 
   // get "key" attribute
-  TRI_json_t const* key = TRI_LookupObjectJson(node, "key");
+  VPackSlice const key = node.get("key");
 
-  if (!TRI_IsStringJson(key)) {
+  if (!key.isString()) {
     return false;
   }
 
-  std::string keydecoded = std::move(AgencyComm::decodeKey(
-      std::string(key->_value._string.data, key->_value._string.length - 1)));
+  std::string keydecoded = std::move(AgencyComm::decodeKey(key.copyString()));
 
   // make sure we don't strip more bytes than the key is long
   size_t const offset =
@@ -230,8 +231,8 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
   }
 
   // get "dir" attribute
-  TRI_json_t const* dir = TRI_LookupObjectJson(node, "dir");
-  bool isDir = (TRI_IsBooleanJson(dir) && dir->_value._boolean);
+  bool isDir =
+      triagens::basics::VelocyPackHelper::getBooleanValue(node, "dir", false);
 
   if (isDir) {
     if (withDirs) {
@@ -244,19 +245,15 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
     }
 
     // is a directory, so there may be a "nodes" attribute
-    TRI_json_t const* nodes = TRI_LookupObjectJson(node, "nodes");
+    VPackSlice const nodes = node.get("nodes");
 
-    if (!TRI_IsArrayJson(nodes)) {
+    if (!nodes.isArray()) {
       // if directory is empty...
       return true;
     }
 
-    size_t const n = TRI_LengthVector(&nodes->_value._objects);
-
-    for (size_t i = 0; i < n; ++i) {
-      if (!parseJsonNode(
-              (TRI_json_t const*)TRI_AtVector(&nodes->_value._objects, i),
-              stripKeyPrefix, withDirs)) {
+    for (auto const& subNode : VPackArrayIterator(nodes)) {
+      if (!parseVelocyPackNode(subNode, stripKeyPrefix, withDirs)) {
         return false;
       }
     }
@@ -264,17 +261,18 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
     // not a directory
 
     // get "value" attribute
-    TRI_json_t const* value = TRI_LookupObjectJson(node, "value");
+    VPackSlice const value = node.get("value");
 
-    if (TRI_IsStringJson(value)) {
+    if (value.isString()) {
       if (!prefix.empty()) {
         AgencyCommResultEntry entry;
 
         // get "modifiedIndex"
         entry._index =
-            triagens::basics::JsonHelper::stringUInt64(node, "modifiedIndex");
-        entry._json = triagens::basics::JsonHelper::fromString(
-            value->_value._string.data, value->_value._string.length - 1);
+            triagens::basics::VelocyPackHelper::stringUInt64(node.get("value"));
+        std::string tmp = value.copyString();
+        entry._json =
+            triagens::basics::JsonHelper::fromString(tmp.c_str(), tmp.size());
         entry._isDir = false;
 
         _values.emplace(prefix, entry);
@@ -291,20 +289,23 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = VPackParser::fromJson(_body.c_str());
+  } catch (...) {
+    return false;
+  }
 
-  if (!TRI_IsObjectJson(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
+  VPackSlice slice = parsedBody->slice();
+
+  if(!slice.isObject()) {
     return false;
   }
 
   // get "node" attribute
-  TRI_json_t const* node = TRI_LookupObjectJson(json, "node");
+  VPackSlice const node = slice.get("node");
 
-  bool const result = parseJsonNode(node, stripKeyPrefix, withDirs);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  bool const result = parseVelocyPackNode(node, stripKeyPrefix, withDirs);
 
   return result;
 }

@@ -177,12 +177,12 @@ struct AgencyCommResult {
   void clear();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief recursively flatten the JSON response into a map
+  /// @brief recursively flatten the VelocyPack response into a map
   ///
   /// stripKeyPrefix is decoded, as is the _globalPrefix
   //////////////////////////////////////////////////////////////////////////////
 
-  bool parseJsonNode(TRI_json_t const*, std::string const&, bool);
+  bool parseVelocyPackNode(VPackSlice const&, std::string const&, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// parse an agency result
