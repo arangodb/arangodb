@@ -802,28 +802,22 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint(
 
 AgencyCommResult AgencyComm::sendServerState(double ttl) {
   // construct JSON value { "status": "...", "time": "..." }
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 2));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.openObject();
+    std::string const status =
+        ServerState::stateToString(ServerState::instance()->getState());
+    builder.add("status", VPackValue(status));
+    std::string const stamp = std::move(AgencyComm::generateStamp());
+    builder.add("time", VPackValue(stamp));
+    builder.close();
+  } catch (...) {
     return AgencyCommResult();
   }
 
-  std::string const status =
-      ServerState::stateToString(ServerState::instance()->getState());
-  std::string const stamp = std::move(AgencyComm::generateStamp());
-
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "status",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(),
-                               status.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "time",
-                        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                                 stamp.c_str(), stamp.size()));
-
   AgencyCommResult result(
       setValue("Sync/ServerStates/" + ServerState::instance()->getId(),
-               json.get(), ttl));
+               builder.slice(), ttl));
 
   return result;
 }
