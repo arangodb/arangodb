@@ -436,42 +436,34 @@ bool AgencyCommLocker::updateVersion(AgencyComm& comm) {
   }
 
   if (_version == 0) {
-    TRI_json_t* json =
-        triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1);
-
-    if (json == nullptr) {
+    VPackBuilder builder;
+    try {
+      builder.add(VPackValue(1));
+    } catch (...) {
       return false;
     }
 
     // no Version key found, now set it
     AgencyCommResult result =
-        comm.casValue(_key + "/Version", json, false, 0.0, 0.0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        comm.casValue(_key + "/Version", builder.slice(), false, 0.0, 0.0);
 
     return result.successful();
   } else {
     // Version key found, now update it
-    TRI_json_t* oldJson = triagens::basics::JsonHelper::uint64String(
-        TRI_UNKNOWN_MEM_ZONE, _version);
-
-    if (oldJson == nullptr) {
+    VPackBuilder oldBuilder;
+    try {
+      oldBuilder.add(VPackValue(_version));
+    } catch (...) {
       return false;
     }
-
-    TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(
-        TRI_UNKNOWN_MEM_ZONE, _version + 1);
-
-    if (newJson == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+    VPackBuilder newBuilder;
+    try {
+      newBuilder.add(VPackValue(_version + 1));
+    } catch (...) {
       return false;
     }
-
     AgencyCommResult result =
-        comm.casValue(_key + "/Version", oldJson, newJson, 0.0, 0.0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+        comm.casValue(_key + "/Version", oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
 
     return result.successful();
   }
