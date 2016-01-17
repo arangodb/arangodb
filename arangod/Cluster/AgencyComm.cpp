@@ -854,15 +854,15 @@ bool AgencyComm::increaseVersion(std::string const& key) {
     }
 
     // no version key found, now set it
-    std::unique_ptr<TRI_json_t> json(
-        triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1));
-
-    if (json == nullptr) {
+    VPackBuilder builder;
+    try {
+      builder.add(VPackValue(1));
+    } catch (...) {
       return false;
     }
 
     result.clear();
-    result = casValue(key, json.get(), false, 0.0, 0.0);
+    result = casValue(key, builder.slice(), false, 0.0, 0.0);
 
     return result.successful();
   }
@@ -879,25 +879,21 @@ bool AgencyComm::increaseVersion(std::string const& key) {
       triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
   // version key found, now update it
-  std::unique_ptr<TRI_json_t> oldJson(
-      triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
-                                                 version));
-
-  if (oldJson == nullptr) {
+  VPackBuilder oldBuilder;
+  try {
+    oldBuilder.add(VPackValue(version));
+  } catch (...) {
     return false;
   }
-
-  std::unique_ptr<TRI_json_t> newJson(
-      triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
-                                                 version + 1));
-
-  if (newJson == nullptr) {
+  VPackBuilder newBuilder;
+  try {
+    newBuilder.add(VPackValue(version + 1));
+  } catch (...) {
     return false;
   }
-
   result.clear();
 
-  result = casValue(key, oldJson.get(), newJson.get(), 0.0, 0.0);
+  result = casValue(key, oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
 
   return result.successful();
 }
