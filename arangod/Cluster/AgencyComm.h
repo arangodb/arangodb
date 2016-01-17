@@ -253,7 +253,7 @@ class AgencyCommLocker {
  private:
   std::string const _key;
   std::string const _type;
-  TRI_json_t* _json;
+  std::shared_ptr<VPackBuilder> _vpack;
   uint64_t _version;
   bool _isLocked;
 };
@@ -435,6 +435,16 @@ class AgencyComm {
                             TRI_json_t const*, double, double);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief compares and swaps a single value in the back end
+  /// the CAS condition is whether or not the previous value for the key was
+  /// identical to `oldValue`
+  /// velocypack variant
+  //////////////////////////////////////////////////////////////////////////////
+
+  AgencyCommResult casValue(std::string const&, VPackSlice const&,
+                            VPackSlice const&, double, double);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief get unique id
   //////////////////////////////////////////////////////////////////////////////
 
@@ -510,13 +520,13 @@ class AgencyComm {
   /// @brief acquire a lock
   //////////////////////////////////////////////////////////////////////////////
 
-  bool lock(std::string const&, double, double, TRI_json_t const*);
+  bool lock(std::string const&, double, double, VPackSlice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief release a lock
   //////////////////////////////////////////////////////////////////////////////
 
-  bool unlock(std::string const&, TRI_json_t const*, double);
+  bool unlock(std::string const&, VPackSlice const&, double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pop an endpoint from the queue

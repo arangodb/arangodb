@@ -355,17 +355,17 @@ AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
 
 AgencyCommLocker::AgencyCommLocker(std::string const& key,
                                    std::string const& type, double ttl)
-    : _key(key), _type(type), _json(nullptr), _version(0), _isLocked(false) {
+    : _key(key), _type(type), _version(0), _isLocked(false) {
   AgencyComm comm;
 
-  _json =
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, type.c_str(), type.size());
-
-  if (_json == nullptr) {
+  _vpack = std::make_shared<VPackBuilder>();
+  try {
+    _vpack->add(VPackValue(type));
+  } catch (...) {
     return;
   }
 
-  if (comm.lock(key, ttl, 0.0, _json)) {
+  if (comm.lock(key, ttl, 0.0, _vpack->slice())) {
     fetchVersion(comm);
     _isLocked = true;
   }
@@ -377,10 +377,6 @@ AgencyCommLocker::AgencyCommLocker(std::string const& key,
 
 AgencyCommLocker::~AgencyCommLocker() {
   unlock();
-
-  if (_json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
-  }
 }
 
 
@@ -393,7 +389,7 @@ void AgencyCommLocker::unlock() {
     AgencyComm comm;
 
     updateVersion(comm);
-    if (comm.unlock(_key, _json, 0.0)) {
+    if (comm.unlock(_key, _vpack->slice(), 0.0)) {
       _isLocked = false;
     }
   }
@@ -1124,6 +1120,31 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compares and swaps a single value in the backend
+/// the CAS condition is whether or not the previous value for the key was
+/// identical to `oldValue`
+/// velocypack variant
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult AgencyComm::casValue(std::string const& key,
+                                      VPackSlice const& oldJson,
+                                      VPackSlice const& newJson, double ttl,
+                                      double timeout) {
+  AgencyCommResult result;
+
+  sendWithFailover(
+      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
+      result, buildUrl(key) + "?prevValue=" +
+                  triagens::basics::StringUtils::urlEncode(oldJson.toJson()) +
+                  ttlParam(ttl, false),
+      "value=" + triagens::basics::StringUtils::urlEncode(newJson.toJson()),
+      false);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief blocks on a change of a single value in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1155,14 +1176,13 @@ AgencyCommResult AgencyComm::watchValue(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ")));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("READ"));
+  } catch (...) {
     return false;
   }
-
-  return lock(key, ttl, timeout, json.get());
+  return lock(key, ttl, timeout, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1170,14 +1190,13 @@ bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE")));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("WRITE"));
+  } catch (...) {
     return false;
   }
-
-  return lock(key, ttl, timeout, json.get());
+  return lock(key, ttl, timeout, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1185,14 +1204,13 @@ bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::unlockRead(std::string const& key, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ")));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("READ"));
+  } catch (...) {
     return false;
   }
-
-  return unlock(key, json.get(), timeout);
+  return unlock(key, builder.slice(), timeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1200,14 +1218,13 @@ bool AgencyComm::unlockRead(std::string const& key, double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE")));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("WRITE"));
+  } catch (...) {
     return false;
   }
-
-  return unlock(key, json.get(), timeout);
+  return unlock(key, builder.slice(), timeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1304,7 +1321,7 @@ std::string AgencyComm::ttlParam(double ttl, bool isFirst) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
-                      TRI_json_t const* json) {
+                      VPackSlice const& slice) {
   if (ttl == 0.0) {
     ttl = _globalConnectionOptions._lockTimeout;
   }
@@ -1316,21 +1333,22 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
   unsigned long sleepTime = InitialSleepTime;
   double const end = TRI_microtime() + timeout;
 
-  std::unique_ptr<TRI_json_t> oldJson(TRI_CreateStringCopyJson(
-      TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED")));
-
-  if (oldJson == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("UNLOCKED"));
+  } catch (...) {
     return false;
   }
+  VPackSlice oldSlice = builder.slice();
 
   while (true) {
     AgencyCommResult result =
-        casValue(key + "/Lock", oldJson.get(), json, ttl, timeout);
+        casValue(key + "/Lock", oldSlice, slice, ttl, timeout);
 
     if (!result.successful() &&
         result.httpCode() == (int)triagens::rest::HttpResponse::NOT_FOUND) {
       // key does not yet exist. create it now
-      result = casValue(key + "/Lock", json, false, ttl, timeout);
+      result = casValue(key + "/Lock", slice, false, ttl, timeout);
     }
 
     if (result.successful()) {
@@ -1356,7 +1374,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
 /// @brief releases a lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::unlock(std::string const& key, TRI_json_t const* json,
+bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
                         double timeout) {
   if (timeout == 0.0) {
     timeout = _globalConnectionOptions._lockTimeout;
@@ -1365,16 +1383,18 @@ bool AgencyComm::unlock(std::string const& key, TRI_json_t const* json,
   unsigned long sleepTime = InitialSleepTime;
   double const end = TRI_microtime() + timeout;
 
-  std::unique_ptr<TRI_json_t> newJson(TRI_CreateStringCopyJson(
-      TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED")));
-
-  if (newJson == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("UNLOCKED"));
+  } catch (...) {
+    // Out of Memory
     return false;
   }
+  VPackSlice newSlice = builder.slice();
 
   while (true) {
     AgencyCommResult result =
-        casValue(key + "/Lock", json, newJson.get(), 0.0, timeout);
+        casValue(key + "/Lock", slice, newSlice, 0.0, timeout);
 
     if (result.successful()) {
       return true;
