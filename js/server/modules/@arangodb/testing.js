@@ -70,6 +70,9 @@ var optionsDocumentation = [
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
   '   - `skipNightly`: omit the nightly tests',
   '   - `onlyNightly`: execute only the nightly tests',
+  '   - `loopEternal`: to loop one test over and over.',
+  '   - `loopSleepWhen`: sleep every nth iteration',
+  '   - `loopSleepSec`: sleep seconds between iterations',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -100,6 +103,7 @@ var cleanupDirectories = [];
 var testFuncs = {'all': function(){}};
 var print = require("internal").print;
 var time = require("internal").time;
+var sleep = require("internal").sleep;
 var fs = require("fs");
 var download = require("internal").download;
 var wait = require("internal").wait;
@@ -145,7 +149,10 @@ var optionsDefaults = {
   "extraargs": [],
   "coreDirectory": "/var/tmp",
   "writeXmlReport": true,
-  "extremeVerbosity": false
+  "extremeVerbosity": false,
+  "loopEternal": false,
+  "loopSleepWhen": 1,
+  "loopSleepSec": 1
 };
 
 var allTests = [
@@ -1056,39 +1063,53 @@ function performTests(options, testList, testname, remote) {
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     if (filterTestcaseByOptions(te, options, filtered)) {
-      if (! continueTesting) {
-        print('oops!');
-        print("Skipping, " + te + " server is gone.");
-        results[te] = {status: false, message: instanceInfo.exitStatus};
-        instanceInfo.exitStatus = "server is gone.";
-        break;
-      }
+      var first = true;
+      var loopCount = 0;
 
-      print("\n" + Date() + " arangod: Trying",te,"...");
-      var reply;
-      if (remote) {
-        reply = runThere(options, instanceInfo, te);
-      }
-      else {
-        reply = runHere(options, instanceInfo, te);
-      }
-      if (reply.hasOwnProperty('status')) {
-        results[te] = reply;
-        if (results[te].status === false) {
-          options.cleanup = false;
-        }
-        if (! reply.status && ! options.force) {
+      while (first || options.loopEternal) {
+        if (! continueTesting) {
+          print('oops!');
+          print("Skipping, " + te + " server is gone.");
+          results[te] = {status: false, message: instanceInfo.exitStatus};
+          instanceInfo.exitStatus = "server is gone.";
           break;
         }
-      }
-      else {
-        results[te] = {status: false, message: reply};
-        if (! options.force) {
-          break;
+        print("\n" + Date() + " arangod: Trying",te,"...");
+        var reply;
+        if (remote) {
+          reply = runThere(options, instanceInfo, te);
         }
-      }
-      if (remote) {
-        continueTesting = checkInstanceAlive(instanceInfo, options);
+        else {
+          reply = runHere(options, instanceInfo, te);
+        }
+        if (reply.hasOwnProperty('status')) {
+          results[te] = reply;
+          if (results[te].status === false) {
+            options.cleanup = false;
+          }
+          if (! reply.status && ! options.force) {
+            break;
+          }
+        }
+        else {
+          results[te] = {status: false, message: reply};
+          if (! options.force) {
+            break;
+          }
+        }
+        if (remote) {
+          continueTesting = checkInstanceAlive(instanceInfo, options);
+        }
+
+        first = false;
+        if (options.loopEternal) {
+          if (options.loopSleepWhen % loopCount == 0) {
+            print("sleeping...")
+            internal.sleep(options.loopSleepSec);
+            print("continuing.")
+          }
+          loopCount++;
+        }
       }
     }
     else {
