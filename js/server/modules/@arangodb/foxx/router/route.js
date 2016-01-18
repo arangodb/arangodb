@@ -41,7 +41,7 @@ module.exports = class Route extends SwaggerContext {
     this._methods = methods;
     this._handler = handler;
     this.name = name;
-    this.response(200, 'json');
+    this.response(200, SwaggerContext.DEFAULT_BODY_SCHEMA);
     if (methods.some(function (method) {
       return actions.BODYFREE_METHODS.indexOf(method) === -1;
     })) {
