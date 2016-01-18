@@ -411,7 +411,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<TRI_voc_ssize_t>(figures, "alive", "count");
             result->_numberDead +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "count");
-            result->_numberDeletion +=
+            result->_numberDeletions +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "deletion");
             result->_numberShapes +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "shapes", "count");

@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "VocBase/datafile.h"
+#include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-types.h"
@@ -154,7 +155,7 @@ struct CollectorCache {
   /// @brief datafile info cache, updated when the collector transfers markers
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<TRI_voc_fid_t, TRI_doc_datafile_info_t> dfi;
+  std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer> dfi;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief id of last datafile handled
