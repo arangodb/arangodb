@@ -497,5 +497,15 @@ describe('Tree#buildSwaggerPaths', function () {
     .that.is.eql([mimeType, 'application/json']);
   });
 
-  // TODO test all the other swagger path object properties
+  it.skip('sets the path parameters');
+  it.skip('sets the query parameters');
+  it.skip('sets the header parameters');
+  it.skip('sets the body parameter');
+  it.skip('uses the default body parameter if body is implied');
+  it.skip('omits the body parameter if no body is set');
+  it.skip('omits the body parameter if body is explicitly disabled');
+  it.skip('sets the default response');
+  it.skip('sets the response bodies');
+  it.skip('omits the response body if body is explicitly disabled');
+
 });
