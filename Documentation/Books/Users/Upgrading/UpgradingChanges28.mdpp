@@ -111,6 +111,10 @@ from `use-index-range` to `use-indexes`. Again this affects explain output
 that can be retrieved via `require("org/arangodb/aql/explainer").explain(query)`,
 `db._explain(query)`, and the HTTP query explain API.
 
+The query optimizer rule `remove-collect-into` was renamed to `remove-collect-variables`.
+This affects explain output that can be retrieved via `require("org/arangodb/aql/explainer").explain(query)`,
+`db._explain(query)`, and the HTTP query explain API.
+
 
 !SECTION HTTP API
 
