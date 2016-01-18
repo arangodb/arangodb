@@ -30,15 +30,23 @@ const _ = require('lodash');
 const fs = require('fs');
 const vary = require('vary');
 const statuses = require('statuses');
+const mediaTyper = require('media-typer');
+const mimeTypes = require('mime-types');
+const typeIs = require('type-is');
 const contentDisposition = require('content-disposition');
 const guessContentType = require('@arangodb').guessContentType;
 const addCookie = require('@arangodb/actions').addCookie;
 const crypto = require('@arangodb/crypto');
 
+const MIME_BINARY = 'application/octet-stream';
+const MIME_JSON = 'application/json; charset=utf-8';
+
 
 module.exports = class SyntheticResponse {
-  constructor(res) {
+  constructor(res, context) {
     this._raw = res;
+    this._responses = new Map();
+    this.context = context;
   }
 
   // Node compat
@@ -85,26 +93,27 @@ module.exports = class SyntheticResponse {
     return this;
   }
 
-  write(body) {
-    const bodyIsBuffer = body && body instanceof Buffer;
-    if (!body) {
-      body = '';
-    } else if (!bodyIsBuffer) {
-      if (typeof body === 'object') {
-        body = JSON.stringify(body);
+  write(data) {
+    const bodyIsBuffer = this.body instanceof Buffer;
+    const dataIsBuffer = data instanceof Buffer;
+    if (!data) {
+      data = '';
+    } else if (!dataIsBuffer) {
+      if (typeof data === 'object') {
+        data = JSON.stringify(data);
       } else {
-        body = String(body);
+        data = String(data);
       }
     }
-    if (!this._raw.body) {
-      this._raw.body = body;
-    } else if (this._raw.body instanceof Buffer) {
+    if (!this.body) {
+      this._raw.body = data;
+    } else if (bodyIsBuffer || dataIsBuffer) {
       this._raw.body = Buffer.concat(
-        this._raw.body,
-        bodyIsBuffer ? body : new Buffer(body)
+        bodyIsBuffer ? this.body : new Buffer(this.body),
+        dataIsBuffer ? data : new Buffer(data)
       );
     } else {
-      this._raw.body += body;
+      this.body += data;
     }
     return this;
   }
@@ -127,7 +136,7 @@ module.exports = class SyntheticResponse {
 
   json(value) {
     if (!this._raw.contentType) {
-      this._raw.contentType = 'application/json';
+      this._raw.contentType = MIME_JSON;
     }
     this._raw.body = JSON.stringify(value);
     return this;
@@ -141,30 +150,10 @@ module.exports = class SyntheticResponse {
     if (status === 'permanent') {
       status = 301;
     }
-    if (status || !this._raw.responseCode) {
-      this._raw.responseCode = status || 302;
+    if (status || !this.statusCode) {
+      this.statusCode = status || 302;
     }
     this.setHeader('location', path);
-    return this;
-  }
-
-  send(body) {
-    if (!body) {
-      body = '';
-    }
-    let impliedType = 'text/html';
-    if (body instanceof Buffer) {
-      impliedType = 'application/octet-stream';
-    } else if (body && typeof body === 'object') {
-      body = JSON.stringify(body);
-      impliedType = 'application/json';
-    } else if (typeof body !== 'string') {
-      body = String(body);
-    }
-    if (impliedType && !this._raw.contentType) {
-      this._raw.contentType = impliedType;
-    }
-    this._raw.body = body;
     return this;
   }
 
@@ -178,7 +167,7 @@ module.exports = class SyntheticResponse {
       this.headers['last-modified'] = lastModified.toUTCString();
     }
     if (!this._raw.contentType) {
-      this._raw.contentType = guessContentType(filename, 'application/octet-stream');
+      this._raw.contentType = guessContentType(filename, MIME_BINARY);
     }
     return this;
   }
@@ -188,7 +177,7 @@ module.exports = class SyntheticResponse {
       (Number(status) !== 306 && statuses[status])
       || String(status)
     );
-    this._raw.responseCode = status;
+    this.statusCode = status;
     this.send(message);
     return this;
   }
@@ -205,7 +194,7 @@ module.exports = class SyntheticResponse {
   }
 
   status(statusCode) {
-    this._raw.responseCode = statusCode;
+    this.statusCode = statusCode;
     return this;
   }
 
@@ -255,6 +244,71 @@ module.exports = class SyntheticResponse {
         opts.httpOnly
       );
     }
+    return this;
+  }
+
+  send(body, type) {
+    if (!type) {
+      type = 'auto';
+    }
+
+    let contentType;
+    const status = this.statusCode || 200;
+    const response = this._responses.get(status);
+
+    if (response) {
+      if (response.model && response.model.forClient) {
+        body = response.model.forClient(body);
+      }
+      if (type === 'auto' && response.contentTypes) {
+        type = response.contentTypes[0];
+        contentType = type;
+      }
+    }
+
+    if (type === 'auto') {
+      if (body instanceof Buffer) {
+        type = MIME_BINARY;
+      } else if (body && typeof body === 'object') {
+        type = 'json';
+      } else {
+        type = 'html';
+      }
+    }
+
+    type = mimeTypes.lookup(type) || type;
+
+    let handler;
+    for (const entry of this.context.service.types.entries()) {
+      const key = entry[0];
+      const value = entry[1];
+      let match;
+      if (key instanceof RegExp) {
+        match = type.test(key);
+      } else if (typeof key === 'function') {
+        match = key(type);
+      } else {
+        match = typeIs.is(key, type);
+      }
+      if (match && value.fromClient) {
+        handler = value;
+        break;
+      }
+    }
+
+    if (handler) {
+      const result = handler.forClient(body, this, mediaTyper.parse(contentType));
+      if (result.headers || result.data) {
+        this.set(result.headers);
+        body = result.data;
+      } else {
+        body = result;
+      }
+    }
+
+    this._raw.body = body;
+    this._raw.contentType = contentType || this._raw.contentType;
+
     return this;
   }
 };

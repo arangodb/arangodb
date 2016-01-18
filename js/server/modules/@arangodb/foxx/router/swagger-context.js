@@ -26,12 +26,16 @@
 /// @author Copyright 2015-2016, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const _ = require('lodash');
 const joi = require('joi');
+const assert = require('assert');
 const mimeTypes = require('mime-types');
 const mediaTyper = require('media-typer');
-const joi2schema = require('joi-to-json-schema');
+const joiToJsonSchema = require('joi-to-json-schema');
 const tokenize = require('@arangodb/foxx/router/tokenize');
 
+const MIME_JSON = 'application/json; charset=utf-8';
+const MIME_BINARY = 'application/octet-stream';
 const DEFAULT_BODY_SCHEMA = joi.object().optional().meta({allowInvalid: true});
 const DEFAULT_ERROR_SCHEMA = joi.object().keys({
   error: joi.allow(true).required(),
@@ -68,89 +72,186 @@ module.exports = exports = class SwaggerContext {
     this._pathTokens = tokenize(path, this);
   }
 
-  header(name, type, description) {
-    this._headers.set(name, {type: type, description: description});
+  header(name, schema, description) {
+    this._headers.set(name, {schema: schema, description: description});
     return this;
   }
 
-  pathParam(name, type, description) {
-    this._pathParams.set(name, {type: type, description: description});
+  pathParam(name, schema, description) {
+    this._pathParams.set(name, {schema: schema, description: description});
     return this;
   }
 
-  queryParam(name, type, description) {
-    this._queryParams.set(name, {type: type, description: description});
+  queryParam(name, schema, description) {
+    this._queryParams.set(name, {schema: schema, description: description});
     return this;
   }
 
-  body(type, description) {
-    if (type === null) {
+  body(model, mimes, description) {
+    if (model === null) {
       this._bodyParam = {};
     } else {
-      let contentType = 'application/json; charset=utf-8';
-      if (type === 'binary') {
-        contentType = 'application/octet-stream';
-      } else if (typeof type !== 'object') {
-        contentType = mimeTypes.contentType(type) || type;
+      let multiple = false;
+      if (
+        typeof model === 'string'
+        || (Array.isArray(model) && typeof model[0] === 'string')
+      ) {
+        description = mimes;
+        mimes = model;
+        model = undefined;
       }
-      const parsed = mediaTyper.parse(contentType);
-      this._bodyParam = {
-        type: type,
-        description: description,
-        contentType: {
-          header: contentType,
-          parsed: parsed,
-          mime: mediaTyper.format({
-            type: parsed.type,
-            subtype: parsed.subtype,
-            suffix: parsed.suffix
-          })
+      if (!Array.isArray(mimes)) {
+        mimes = mimes ? [mimes] : [];
+      }
+      if (Array.isArray(model)) {
+        if (model.length !== 1) {
+          throw new Error(
+            'Model must be a model or schema'
+            + ' or an array containing exactly one model or schema.'
+            + ' If you are trying to use multiple schemas'
+            + ' try using joi.alternatives.'
+          );
         }
+        model = model[0];
+        multiple = true;
+      }
+      if (!mimes.length && model) {
+        mimes.push(MIME_JSON);
+      }
+      const contentTypes = mimes.map(function (mime) {
+        if (mime === 'binary') {
+          mime = MIME_BINARY;
+        }
+        const contentType = mimeTypes.contentType(mime) || mime;
+        const parsed = mediaTyper.parse(contentType);
+        return mediaTyper.format(_.pick(parsed, [
+          'type',
+          'subtype',
+          'suffix'
+        ]));
+      });
+
+      if (model) {
+        assert(
+          !model.forClient || typeof model.forClient === 'function',
+          `Request body model forClient handler must be a function, not ${typeof model.forClient}`
+        );
+        assert(
+          !model.fromClient || typeof model.fromClient === 'function',
+          `Request body model fromClient handler must be a function, not ${typeof model.fromClient}`
+        );
+        if (!model.fromClient && typeof model.toClient === 'function') {
+          console.log(
+            `Found unexpected "toClient" method on request body model.`
+            + ' Did you mean "forClient"?'
+          );
+        }
+      }
+
+      this._bodyParam = {
+        model: model,
+        multiple: multiple,
+        contentTypes: contentTypes,
+        description: description
       };
     }
     return this;
   }
 
-  response(status, type, description) {
+  response(status, model, mimes, description) {
     let statusCode = Number(status);
     if (!statusCode || Number.isNaN(statusCode)) {
-      description = type;
-      type = status;
+      description = mimes;
+      mimes = model;
+      model = status;
       statusCode = 200;
     }
-    if (type === null) {
+
+    if (model === null) {
       if (statusCode === 200) {
         this._responses.remove(200);
         statusCode = 204;
       }
       this._responses.set(statusCode, {});
     } else {
-      let contentType = 'application/json; charset=utf-8';
-      if (type === 'binary') {
-        contentType = 'application/octet-stream';
-      } else if (typeof type !== 'object') {
-        contentType = mimeTypes.contentType(type) || type;
+      let multiple = false;
+      if (
+        typeof model === 'string'
+        || (Array.isArray(model) && typeof model[0] === 'string')
+      ) {
+        description = mimes;
+        mimes = model;
+        model = undefined;
       }
-      const parsed = mediaTyper.parse(contentType);
-      this._responses.set(statusCode, {
-        type: type,
-        description: description,
-        contentType: {
-          header: contentType,
-          parsed: parsed,
-          mime: mediaTyper.format({
-            type: parsed.type,
-            subtype: parsed.subtype,
-            suffix: parsed.suffix
-          })
+
+      if (!Array.isArray(mimes)) {
+        mimes = mimes ? [mimes] : [];
+      }
+
+      if (Array.isArray(model)) {
+        if (model.length !== 1) {
+          throw new Error(
+            'Model must be a model or schema'
+            + ' or an array containing exactly one model or schema.'
+            + ' If you are trying to use multiple schemas'
+            + ' try using joi.alternatives.'
+          );
         }
+        model = model[0];
+        multiple = true;
+      }
+
+      if (!mimes.length && model) {
+        mimes.push(MIME_JSON);
+      }
+
+      const contentTypes = mimes.map(function (mime) {
+        if (mime === 'binary') {
+          mime = MIME_BINARY;
+        }
+        const contentType = mimeTypes.contentType(mime) || mime;
+        const parsed = mediaTyper.parse(contentType);
+        return mediaTyper.format(_.pick(parsed, [
+          'type',
+          'subtype',
+          'suffix'
+        ]));
+      });
+
+      if (model) {
+        assert(
+          !model.forClient || typeof model.forClient === 'function',
+          `Response body model forClient handler at ${statusCode} must be a function, not ${typeof model.forClient}`
+        );
+        assert(
+          !model.fromClient || typeof model.fromClient === 'function',
+          `Response body model fromClient handler at ${statusCode} must be a function, not ${typeof model.fromClient}`
+        );
+        if (!model.fromClient && typeof model.toClient === 'function') {
+          console.log(
+            `Found unexpected "toClient" method on response body model at ${statusCode}.`
+            + ' Did you mean "forClient"?'
+          );
+        }
+      }
+
+      this._responses.set(statusCode, {
+        multiple: multiple,
+        model: model,
+        contentTypes: contentTypes,
+        description: description
       });
     }
     return this;
   }
 
   error(status, description) {
-    return this.response(status, undefined, description);
+    return this.response(
+      status,
+      DEFAULT_ERROR_SCHEMA,
+      null,
+      description
+    );
   }
 
   summary(text) {
@@ -234,14 +335,19 @@ module.exports = exports = class SwaggerContext {
     }
     if (this._bodyParam) {
       operation.consumes = (
-        this._bodyParam.contentType
-        ? [this._bodyParam.contentType.mime]
+        this._bodyParam.contentTypes
+        ? this._bodyParam.contentTypes.slice()
         : []
       );
     }
     for (const response of this._responses.values()) {
-      if (operation.produces.indexOf(response.contentType.mime) === -1) {
-        operation.produces.push(response.contentType.mime);
+      if (!response.contentTypes) {
+        continue;
+      }
+      for (const contentType of response.contentTypes) {
+        if (operation.produces.indexOf(contentType) === -1) {
+          operation.produces.push(contentType);
+        }
       }
     }
     if (operation.produces.indexOf('application/json') === -1) {
@@ -253,8 +359,8 @@ module.exports = exports = class SwaggerContext {
       const name = param[0];
       const def = param[1];
       const parameter = (
-        def.type && def.type.isJoi
-        ? swaggerifyParam(def.type)
+        def.schema
+        ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
         : {type: 'string'}
       );
       parameter.name = name;
@@ -270,8 +376,8 @@ module.exports = exports = class SwaggerContext {
       const name = param[0];
       const def = param[1];
       const parameter = (
-        def.type && def.type.isJoi
-        ? swaggerifyParam(def.type)
+        def.schema
+        ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
         : {type: 'string'}
       );
       parameter.name = name;
@@ -286,8 +392,8 @@ module.exports = exports = class SwaggerContext {
       const name = param[0];
       const def = param[1];
       const parameter = (
-        def.type && def.type.isJoi
-        ? swaggerifyParam(def.type)
+        def.schema
+        ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
         : {type: 'string'}
       );
       parameter.name = name;
@@ -298,17 +404,16 @@ module.exports = exports = class SwaggerContext {
       operation.parameters.push(parameter);
     }
 
-    if (this._bodyParam && this._bodyParam.contentType) {
-      // TODO handle multipart and form-urlencoded
+    if (this._bodyParam && this._bodyParam.contentTypes) {
       const def = this._bodyParam;
       const schema = (
-        def.type
-        ? (def.type.schema || def.type)
+        def.model
+        ? (def.model.isJoi ? def.model : def.model.schema)
         : null
       );
       const parameter = (
-        schema && schema.isJoi
-        ? swaggerifyBody(schema)
+        schema
+        ? swaggerifyBody(schema, def.multiple)
         : {schema: {type: 'string'}}
       );
       parameter.name = 'body';
@@ -330,19 +435,19 @@ module.exports = exports = class SwaggerContext {
       const code = entry[0];
       const def = entry[1];
       const schema = (
-        def.type
-        ? (def.type.schema || def.type)
+        def.model
+        ? (def.model.isJoi ? def.model : def.model.schema)
         : null
       );
       const response = {};
-      if (def.contentType) {
+      if (def.contentTypes) {
         response.schema = (
-          schema && schema.isJoi
-          ? joi2schema(schema)
+          schema
+          ? joi2schema(schema.isJoi ? schema : joi.object(schema), def.multiple)
           : {type: 'string'}
         );
       }
-      if (schema && schema.isJoi && schema._description) {
+      if (schema && schema._description) {
         response.description = schema._description;
       }
       if (def.description) {
@@ -354,6 +459,7 @@ module.exports = exports = class SwaggerContext {
     return operation;
   }
 };
+
 
 exports.DEFAULT_BODY_SCHEMA = DEFAULT_BODY_SCHEMA;
 
@@ -391,6 +497,7 @@ function swaggerifyType(joi) {
   }
 }
 
+
 function swaggerifyParam(joi) {
   const param = {
     required: joi._presence === 'required',
@@ -419,10 +526,19 @@ function swaggerifyParam(joi) {
   return param;
 }
 
-function swaggerifyBody(joi) {
+
+function swaggerifyBody(joi, multiple) {
   return {
     required: joi._presence === 'required',
     description: joi._description,
-    schema: joi2schema(joi)
+    schema: joi2schema(joi, multiple)
   };
+}
+
+
+function joi2schema(schema, multiple) {
+  if (multiple) {
+    schema = joi.array().items(schema);
+  }
+  return joiToJsonSchema(schema);
 }

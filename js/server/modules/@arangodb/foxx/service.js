@@ -1,7 +1,7 @@
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief FoxxService and FoxxContext types
+/// @brief FoxxService type
 ///
 /// @file
 ///
@@ -24,7 +24,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Alan Plum
-/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2015-2016, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
@@ -35,9 +35,11 @@ const Module = require('module');
 const semver = require('semver');
 const path = require('path');
 const fs = require('fs');
+const defaultTypes = require('@arangodb/foxx/types');
+const FoxxContext = require('@arangodb/foxx/context');
 const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
 const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
-const createRouter = require('@arangodb/foxx/router');
+const Router = require('@arangodb/foxx/router/router');
 const Tree = require('@arangodb/foxx/router/tree');
 
 const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
@@ -47,119 +49,8 @@ const APP_PATH = internal.appPath ? path.resolve(internal.appPath) : undefined;
 const STARTUP_PATH = internal.startupPath ? path.resolve(internal.startupPath) : undefined;
 const DEV_APP_PATH = internal.devAppPath ? path.resolve(internal.devAppPath) : undefined;
 
-class FoxxContext {
-  constructor(service) {
-    this.service = service;
-    this.argv = [];
-  }
 
-  use(path, router) {
-    this.service.router.use(path, router);
-  }
-
-  fileName(filename) {
-    return fs.safeJoin(this.basePath, filename);
-  }
-
-  file(filename, encoding) {
-    return fs.readFileSync(this.fileName(filename), encoding);
-  }
-
-  path(name) {
-    return path.join(this.basePath, name);
-  }
-
-  collectionName(name) {
-    let fqn = (
-      this.collectionPrefix
-      + name.replace(/[^a-z0-9]/ig, '_').replace(/(^_+|_+$)/g, '').substr(0, 64)
-    );
-    if (!fqn.length) {
-      throw new Error(`Cannot derive collection name from "${name}"`);
-    }
-    return fqn;
-  }
-
-  collection(name) {
-    return internal.db._collection(this.collectionName(name));
-  }
-
-  get basePath() {
-    return this.service.basePath;
-  }
-
-  get baseUrl() {
-    return `/_db/${encodeURIComponent(internal.db._name())}/${this.service.mount.slice(1)}`;
-  }
-
-  get collectionPrefix() {
-    return this.service.collectionPrefix;
-  }
-
-  get mount() {
-    return this.service.mount;
-  }
-
-  get name() {
-    return this.service.name;
-  }
-
-  get version() {
-    return this.service.version;
-  }
-
-  get manifest() {
-    return this.service.manifest;
-  }
-
-  get isDevelopment() {
-    return this.service.isDevelopment;
-  }
-
-  get isProduction() {
-    return !this.isDevelopment;
-  }
-
-  get options() {
-    return this.service.options;
-  }
-
-  get configuration() {
-    return this.service.configuration;
-  }
-
-  get dependencies() {
-    return this.service.dependencies;
-  }
-}
-
-function createConfiguration(definitions) {
-  const config = {};
-  Object.keys(definitions).forEach(function (name) {
-    const def = definitions[name];
-    if (def.default !== undefined) {
-      config[name] = def.default;
-    }
-  });
-  return config;
-}
-
-function createDependencies(definitions, options) {
-  const deps = {};
-  Object.keys(definitions).forEach(function (name) {
-    Object.defineProperty(deps, name, {
-      configurable: true,
-      enumerable: true,
-      get() {
-        const mount = options[name];
-        return mount ? require('@arangodb/foxx').getExports(mount) : null;
-      }
-    });
-  });
-  return deps;
-}
-
-class FoxxService {
+module.exports = class FoxxService {
   constructor(data) {
     assert(data, 'no arguments');
     assert(data.mount, 'mount path required');
@@ -214,26 +105,15 @@ class FoxxService {
       this.thumbnail = null;
     }
 
-    this.requireCache = {};
-    const lib = this.manifest.lib || '.';
-    const moduleRoot = path.resolve(this.root, this.path, lib);
-    const foxxConsole = require('@arangodb/foxx/console')(this.mount);
-    this.main = new Module(`foxx:${data.mount}`);
-    this.main.filename = path.resolve(moduleRoot, '.foxx');
-    this.main[$_MODULE_ROOT] = moduleRoot;
-    this.main[$_MODULE_CONTEXT].console = foxxConsole;
-    this.main.require.cache = this.requireCache;
-    this.main.context = new FoxxContext(this);
-    this.router = createRouter();
-
-    let range = this.manifest.engines && this.manifest.engines.arangodb;
+    const range = this.manifest.engines && this.manifest.engines.arangodb;
     this.legacy = range ? semver.gtr('3.0.0', range) : false;
     if (this.legacy) {
       console.debug(
-        `Running ${data.mount} in 2.x compatibility mode (requested version ${range} pre-dates 3.0.0)`
+        `Running ${this.mount} in 2.x compatibility mode (requested version ${range} pre-dates 3.0.0)`
       );
-      this.main.context.foxxFilename = this.main.context.fileName;
     }
+
+    this._reset();
   }
 
   applyConfiguration(config) {
@@ -341,8 +221,8 @@ class FoxxService {
   }
 
   applyDependencies(deps) {
-    var definitions = this.manifest.dependencies;
-    var warnings = [];
+    const definitions = this.manifest.dependencies;
+    const warnings = [];
 
     _.each(deps, function (mount, name) {
       const dfn = definitions[name];
@@ -400,11 +280,11 @@ class FoxxService {
   }
 
   getConfiguration(simple) {
-    var config = {};
-    var definitions = this.manifest.configuration;
-    var options = this.options.configuration;
+    const config = {};
+    const definitions = this.manifest.configuration;
+    const options = this.options.configuration;
     _.each(definitions, function (dfn, name) {
-      var value = options[name] === undefined ? dfn.default : options[name];
+      const value = options[name] === undefined ? dfn.default : options[name];
       config[name] = simple ? value : _.extend({}, dfn, {
         title: getReadableName(name),
         current: value
@@ -414,9 +294,9 @@ class FoxxService {
   }
 
   getDependencies(simple) {
-    var deps = {};
-    var definitions = this.manifest.dependencies;
-    var options = this.options.dependencies;
+    const deps = {};
+    const definitions = this.manifest.dependencies;
+    const options = this.options.dependencies;
     _.each(definitions, function (dfn, name) {
       deps[name] = simple ? options[name] : {
         definition: dfn,
@@ -428,8 +308,8 @@ class FoxxService {
   }
 
   needsConfiguration() {
-    var config = this.getConfiguration();
-    var deps = this.getDependencies();
+    const config = this.getConfiguration();
+    const deps = this.getDependencies();
     return _.any(config, function (cfg) {
       return cfg.current === undefined && cfg.required !== false;
     }) || _.any(deps, function (dep) {
@@ -441,7 +321,7 @@ class FoxxService {
     options = options || {};
     filename = path.resolve(this.main[$_MODULE_CONTEXT].__dirname, filename);
 
-    var module = new Module(filename, this.main);
+    const module = new Module(filename, this.main);
     module[$_MODULE_CONTEXT].console = this.main[$_MODULE_CONTEXT].console;
     module.context = _.extend(
       new FoxxContext(this),
@@ -461,6 +341,26 @@ class FoxxService {
 
     module.load(filename);
     return module.exports;
+  }
+
+  _reset() {
+    this.requireCache = {};
+    const lib = this.manifest.lib || '.';
+    const moduleRoot = path.resolve(this.root, this.path, lib);
+    const foxxConsole = require('@arangodb/foxx/console')(this.mount);
+    this.main = new Module(`foxx:${this.mount}`);
+    this.main.filename = path.resolve(moduleRoot, '.foxx');
+    this.main[$_MODULE_ROOT] = moduleRoot;
+    this.main[$_MODULE_CONTEXT].console = foxxConsole;
+    this.main.require.cache = this.requireCache;
+    this.main.context = new FoxxContext(this);
+    this.router = new Router();
+    this.types = new Map(defaultTypes);
+
+
+    if (this.legacy) {
+      this.main.context.foxxFilename = this.main.context.fileName;
+    }
   }
 
   get exports() {
@@ -517,6 +417,32 @@ class FoxxService {
       path.join(DEV_APP_PATH, 'databases', internal.db._name())
     ) : undefined;
   }
+};
+
+
+function createConfiguration(definitions) {
+  const config = {};
+  Object.keys(definitions).forEach(function (name) {
+    const def = definitions[name];
+    if (def.default !== undefined) {
+      config[name] = def.default;
+    }
+  });
+  return config;
 }
 
-module.exports = FoxxService;
+
+function createDependencies(definitions, options) {
+  const deps = {};
+  Object.keys(definitions).forEach(function (name) {
+    Object.defineProperty(deps, name, {
+      configurable: true,
+      enumerable: true,
+      get() {
+        const mount = options[name];
+        return mount ? require('@arangodb/foxx').getExports(mount) : null;
+      }
+    });
+  });
+  return deps;
+}

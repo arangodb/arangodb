@@ -26,6 +26,13 @@
 /// @author Copyright 2016, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const _ = require('lodash');
+const assert = require('assert');
+const typeIs = require('type-is');
+const mediaTyper = require('media-typer');
+const requestParts = require('internal').requestParts;
+
+
 exports.validateParams = function validateParams(typeDefs, rawParams) {
   const params = {};
   for (let entry of typeDefs) {
@@ -42,47 +49,75 @@ exports.validateParams = function validateParams(typeDefs, rawParams) {
   return params;
 };
 
-exports.validateRequestBody = function validateRequestBody(def, rawBody) {
-  if (def.type === null) {
-    if (rawBody && rawBody.length) {
-      throw new Error('Unexpected request body');
-    }
+
+exports.validateRequestBody = function validateRequestBody(def, req) {
+  let body = req.body;
+
+  if (!def.contentTypes) {
+    assert(!body, 'Unexpected request body');
     return null;
   }
 
-  const isJson = def.mime.subtype === 'json' || def.mime.suffix === 'json';
-  const charset = def.mime.parameters.charset;
+  let indicatedType = req.get('content-type');
+  let actualType;
 
-  if (
-    (def.mime.type !== 'text' && !isJson) ||
-    (charset && charset.toLowerCase() !== 'utf-8')
-  ) {
-    return rawBody;
+  if (indicatedType) {
+    for (const candidate of def.contentTypes) {
+      if (typeIs.is(indicatedType, candidate)) {
+        actualType = candidate;
+        break;
+      }
+    }
   }
 
-  const textBody = rawBody.toString('utf-8');
-
-  if (!isJson) {
-    return textBody;
+  if (!actualType) {
+    actualType = def.contentTypes[0];
   }
 
-  const jsonBody = JSON.parse(textBody);
-  const schema = def.type.schema || def.type;
+  const parsedType = mediaTyper.parse(actualType);
+  actualType = mediaTyper.format(_.pick(actualType, ['type', 'subtype', 'suffix']));
 
-  if (!schema.isJoi) {
-    return jsonBody;
+  if (parsedType.type === 'multipart') {
+    body = requestParts(req._raw);
   }
 
-  const result = schema.validate(jsonBody);
-
-  if (result.error) {
-    result.error.message = result.error.message.replace(/^"value"/, '"request body"');
-    throw result.error;
+  let handler;
+  for (const entry of req.context.service.types.entries()) {
+    const key = entry[0];
+    const value = entry[1];
+    let match;
+    if (key instanceof RegExp) {
+      match = actualType.test(key);
+    } else if (typeof key === 'function') {
+      match = key(actualType);
+    } else {
+      match = typeIs.is(key, actualType);
+    }
+    if (match && value.fromClient) {
+      handler = value;
+      break;
+    }
   }
 
-  if (schema === def.type || typeof def.type.fromClient !== 'function') {
-    return result.value;
+  if (handler) {
+    body = handler.fromClient(body, req, parsedType);
   }
 
-  return def.type.fromClient(result.value);
+  const schema = def.model && (def.model.schema || def.model);
+  if (schema.isJoi) {
+    const result = schema.validate(body);
+
+    if (result.error) {
+      result.error.message = result.error.message.replace(/^"value"/, '"request body"');
+      throw result.error;
+    }
+
+    body = result.value;
+  }
+
+  if (def.model && def.model.fromClient) {
+    body = def.model.fromClient(body);
+  }
+
+  return body;
 };

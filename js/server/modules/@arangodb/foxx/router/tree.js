@@ -205,12 +205,22 @@ function dispatch(route, req, res) {
   let pathParams = {};
   let queryParams = _.clone(req.queryParams);
 
+  let responses = res._responses;
+  for (const item of route) {
+    item._responses = union(responses, item._responses);
+    responses = item._responses;
+  }
+
   function next(err) {
     if (err) {
       throw err;
     }
 
     const item = route.shift();
+    if (!item) {
+      return;
+    }
+
     const context = (
       item.router
       ? (item.router.router || item.router)
@@ -221,7 +231,7 @@ function dispatch(route, req, res) {
       try {
         req.body = validation.validateRequestBody(
           context._bodyParam,
-          req.body
+          req
         );
       } catch (e) {
         throw httpError(415, e.message);
@@ -239,31 +249,35 @@ function dispatch(route, req, res) {
       }
     }
 
-    if (item.router) {
-      pathParams = _.extend(pathParams, item.pathParams);
-      queryParams = _.extend(queryParams, item.queryParams);
-      next();
-      return;
-    }
-
     let tempPathParams = req.pathParams;
     let tempQueryParams = req.queryParams;
     let tempSuffix = req.suffix;
     let tempPath = req.path;
+    let tempResponses = res._responses;
 
     req.suffix = item.suffix.join('/');
     req.path = '/' + item.path.join('/');
+    res._responses = item._responses;
 
-    if (item.endpoint) {
-      req.pathParams = _.extend(pathParams, item.pathParams);
-      req.queryParams = _.extend(queryParams, item.queryParams);
-      item.endpoint._handler(req, res);
-    } else if (item.middleware) {
+    if (item.endpoint || item.router) {
+      pathParams = _.extend(pathParams, item.pathParams);
+      queryParams = _.extend(queryParams, item.queryParams);
+      req.pathParams = pathParams;
+      req.queryParams = queryParams;
+    } else {
       req.pathParams = _.extend(_.clone(pathParams), item.pathParams);
       req.queryParams = _.extend(_.clone(queryParams), item.queryParams);
-      item.middleware._handler(req, res, next);
     }
 
+    if (!context._handler) {
+      next();
+    } else if (item.endpoint) {
+      context._handler(req, res);
+    } else {
+      context._handler(req, res, _.once(next));
+    }
+
+    res._responses = tempResponses;
     req.path = tempPath;
     req.suffix = tempSuffix;
     req.queryParams = tempQueryParams;
@@ -271,6 +285,15 @@ function dispatch(route, req, res) {
   }
 
   next();
+
+  if (res.body && typeof res.body !== 'string' && !(res.body instanceof Buffer)) {
+    require('console').warn(`Coercing response body to string for ${req.method} ${req.originalUrl}`);
+    res.body = String(res.body);
+  }
+
+  if (!res.statusCode) {
+    res.statusCode = res.body ? 200 : 204;
+  }
 }
 
 

@@ -434,7 +434,7 @@ describe('Tree#buildSwaggerPaths', function () {
     const mimeType = 'banana';
     const router = new Router();
     const route = router.post('/data', function () {});
-    route._bodyParam.contentType.mime = mimeType;
+    route._bodyParam.contentTypes[0] = mimeType;
     const tree = new Tree({}, router);
     const docs = tree.buildSwaggerPaths();
     expect(docs).to.have.a.property('/data')
@@ -476,7 +476,7 @@ describe('Tree#buildSwaggerPaths', function () {
     const mimeType = 'banana';
     const router = new Router();
     const route = router.get('/body', function () {});
-    route._responses.set(200, {contentType: {mime: mimeType}});
+    route._responses.set(200, {contentTypes: [mimeType]});
     const tree = new Tree({}, router);
     const docs = tree.buildSwaggerPaths();
     expect(docs).to.have.a.property('/body')
@@ -488,8 +488,8 @@ describe('Tree#buildSwaggerPaths', function () {
     const mimeType = 'banana';
     const router = new Router();
     const route = router.get('/body', function () {});
-    route._responses.set(200, {contentType: {mime: mimeType}});
-    route._responses.set(400, {contentType: {mime: mimeType}});
+    route._responses.set(200, {contentTypes: [mimeType]});
+    route._responses.set(400, {contentTypes: [mimeType]});
     const tree = new Tree({}, router);
     const docs = tree.buildSwaggerPaths();
     expect(docs).to.have.a.property('/body')
@@ -507,5 +507,6 @@ describe('Tree#buildSwaggerPaths', function () {
   it.skip('sets the default response');
   it.skip('sets the response bodies');
   it.skip('omits the response body if body is explicitly disabled');
+  it.skip('sets the form parameters if route consumes form type but not json');
 
 });

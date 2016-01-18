@@ -138,18 +138,12 @@ exports.routeApp = function (service, throwOnErrors) {
     };
   }
 
-  Object.keys(service.requireCache).forEach(function (key) {
-    // Clear the module cache to force re-evaluation
-    delete service.requireCache[key];
-  });
-
-  service.main.exports = {};
+  service._reset();
 
   let error = null;
   if (service.legacy) {
     error = routeLegacyService(service, throwOnErrors);
   } else {
-    service.router = createRouter();
     service.routes = {
       name: `foxx("${service.mount}")`,
       routes: []
@@ -182,7 +176,7 @@ exports.routeApp = function (service, throwOnErrors) {
         service.main.exports = service.run(service.manifest.main);
         // TODO mount routes
       } catch (e) {
-        console.errorLines(`Cannot execute Foxx service: ${e.stack}`);
+        console.errorLines(`Cannot execute Foxx service at ${service.mount}: ${e.stack}`);
         error = e;
         if (throwOnErrors) {
           throw e;
