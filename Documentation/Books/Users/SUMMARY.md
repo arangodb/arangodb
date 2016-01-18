@@ -103,6 +103,8 @@
     * [Named Operations](Aql/GraphOperations.md)
     * [Other](Aql/GraphFunctions.md)
   * [Advanced Features](Aql/Advanced.md)
+    * [Combining Queries](Aql/CombiningQueries.md)
+    * [Array Operators](Aql/ArrayOperators.md)
   * [Extending AQL](AqlExtending/README.md)
     * [Conventions](AqlExtending/Conventions.md)
     * [Registering Functions](AqlExtending/Functions.md)

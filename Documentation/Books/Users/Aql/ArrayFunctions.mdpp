@@ -254,5 +254,7 @@ AQL supports the following functions to operate on array values:
       /* [ "a", "b", "c", "e" ] */
       REMOVE_NTH([ "a", "b", "c", "d", "e" ], -2)
 
-Apart from these functions, AQL also offers several language constructs (e.g.
-[FOR](../AqlOperations/For.md), [SORT](../AqlOperations/Sort.md), [LIMIT](../AqlOperations/Limit.md), [COLLECT](../AqlOperations/Collect.md)) to operate on arrays.
+
+Apart from these functions, AQL also offers several language constructs: 
+- [array operators](ArrayOperators.md) for array expansion and contraction, 
+- operations for array manipulations like [FOR](../AqlOperations/For.md), [SORT](../AqlOperations/Sort.md), [LIMIT](../AqlOperations/Limit.md), [COLLECT](../AqlOperations/Collect.md). 

@@ -8,7 +8,7 @@ Which collections are used within a named graph is defined via *edge definitions
 A named graph can contain more than one *edge definition*, at least one is needed.
 Graphs allow you to structure your models in line with your domain and group them logically in collections and giving you the power to query them in the same graph queries.
 
-!SUBSECTION Comming from a relational background - whats a graph?
+!SUBSECTION Coming from a relational background - what's a graph?
 
 In SQL you commonly have the construct of a relation table to store *n:m* relations between two data tables.
 An *edge collection* is somewhat similar to these *relation tables*; *vertex collections* resemble the data tables with the objects to connect.
@@ -64,7 +64,7 @@ We offer [blueprints support via an api compatible java driver](https://github.c
 
 !SUBSECTION Example Graphs
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
-You can use the `add samles` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
+You can use the `add samples` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
 Once you've created them, you can [inspect them in the webinterface](../WebInterface/README.md#graphs-tab) - which was used to create the pictures below.
 
 !SUBSUBSECTION The Knows\_Graph
@@ -151,7 +151,7 @@ Circles have uniq numeric labels. Edges have two boolean attributes (*theFalse* 
     @endDocuBlock graph_create_traversal_sample
 
 !SUBSUBSECTION The World Graph
-The world contry graph structures its nodes like that: world -> continet -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
+The world contry graph structures its nodes like that: world -> continent -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
 It is used to demonstrate raw traversal operations.
 
     @startDocuBlockInline graph_create_world_sample

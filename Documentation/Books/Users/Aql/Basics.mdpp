@@ -509,7 +509,7 @@ compared objects / documents are considered equal.
 
 Collection data can be accessed by specifying a collection name in a query.  A
 collection can be understood as an array of documents, and that is how they are
-treated in AQL. Documents from collections are normally accessing using the
+treated in AQL. Documents from collections are normally accessed using the
 *FOR* keyword. Note that when iterating over documents from a collection, the
 order of documents is undefined. To traverse documents in an explicit and
 deterministic order, the *SORT* keyword should be used in addition.
