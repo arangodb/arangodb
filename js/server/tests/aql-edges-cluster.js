@@ -511,12 +511,12 @@ function ahuacatlQueryEdgesTestSuite () {
       assertEqual([
         "Fred->Jacob",
         "John->Fred",
-        "Multi2->Mulit3"
+        "Multi2->Multi3"
       ], AQL_EXECUTE(query, bindParams).json);
       query = "FOR x IN @list FOR i IN " + relations.name() + " FILTER i._to == x SORT i.what RETURN i.what";
       assertEqual([
         "John->Fred",
-        "Multi->Mulit2"
+        "Multi->Multi2"
       ], AQL_EXECUTE(query, bindParams).json);
     }
 
