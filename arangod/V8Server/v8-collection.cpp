@@ -1976,7 +1976,7 @@ static void JS_FiguresVocbaseCol(
   dead->Set(TRI_V8_ASCII_STRING("size"),
             v8::Number::New(isolate, (double)info->_sizeDead));
   dead->Set(TRI_V8_ASCII_STRING("deletion"),
-            v8::Number::New(isolate, (double)info->_numberDeletion));
+            v8::Number::New(isolate, (double)info->_numberDeletions));
 
   // datafile info
   v8::Handle<v8::Object> dfs = v8::Object::New(isolate);
