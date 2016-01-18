@@ -292,6 +292,7 @@ DatafileStatisticsContainer DatafileStatistics::get(TRI_voc_fid_t fid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 DatafileStatisticsContainer DatafileStatistics::all() {
+  size_t count;
   DatafileStatisticsContainer result;
   {
     READ_LOCKER(_lock);
@@ -299,7 +300,11 @@ DatafileStatisticsContainer DatafileStatistics::all() {
     for (auto& it : _stats) {
       result.update(*(it.second));
     }
+
+    count = _stats.size();
   }
+
+  LOG_INFO("DEBUGGING FIGURES: NUMBER OF FILES MAPPED: %llu, UNCOLLECTED: %llu", (unsigned long long) count, (unsigned long long) result.numberUncollected);
 
   return result;
 }
