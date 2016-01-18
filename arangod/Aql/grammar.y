@@ -2,7 +2,7 @@
 %name-prefix "Aql"
 %locations 
 %defines
-%parse-param { triagens::aql::Parser* parser }
+%parse-param { arangodb::aql::Parser* parser }
 %lex-param { void* scanner } 
 %error-verbose
 
@@ -16,7 +16,7 @@
 %}
 
 %union {
-  triagens::aql::AstNode*  node;
+  arangodb::aql::AstNode*  node;
   struct {
     char*                  value;
     size_t                 length;
@@ -27,7 +27,7 @@
 
 %{
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut macro for signaling out of memory
@@ -52,7 +52,7 @@ int Aqllex (YYSTYPE*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Aqlerror (YYLTYPE* locp, 
-               triagens::aql::Parser* parser,
+               arangodb::aql::Parser* parser,
                char const* message) {
   parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
 }
@@ -61,7 +61,7 @@ void Aqlerror (YYLTYPE* locp,
 /// @brief register variables in the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RegisterAssignVariables(triagens::aql::Scopes* scopes, AstNode const* vars) { 
+static void RegisterAssignVariables(arangodb::aql::Scopes* scopes, AstNode const* vars) { 
   size_t const n = vars->numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = vars->getMember(i);
@@ -94,7 +94,7 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
         isValid = false;
       }
       else {
-        auto f = static_cast<triagens::aql::Function*>(func->getData());
+        auto f = static_cast<arangodb::aql::Function*>(func->getData());
         if (! Aggregator::isSupported(f->externalName)) {
           // aggregate expression must be a call to MIN|MAX|LENGTH...
           isValid = false;
@@ -115,16 +115,16 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
 /// @brief start a new scope for the collect
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool StartCollectScope(triagens::aql::Scopes* scopes) { 
+static bool StartCollectScope(arangodb::aql::Scopes* scopes) { 
   // check if we are in the main scope
-  if (scopes->type() == triagens::aql::AQL_SCOPE_MAIN) {
+  if (scopes->type() == arangodb::aql::AQL_SCOPE_MAIN) {
     return false;
   } 
 
   // end the active scopes
   scopes->endNested();
   // start a new scope
-  scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+  scopes->start(arangodb::aql::AQL_SCOPE_COLLECT);
   return true;
 }
 
@@ -385,23 +385,23 @@ statement_block_statement:
 
 for_statement:
     T_FOR variable_name T_IN expression {
-      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
      
       auto node = parser->ast()->createNodeFor($2.value, $2.length, $4, true);
       parser->ast()->addOperation(node);
     }
     | T_FOR variable_name T_IN graph_direction_steps expression graph_subject {
-      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto node = parser->ast()->createNodeTraversal($2.value, $2.length, $4, $5, $6);
       parser->ast()->addOperation(node);
     }
     | T_FOR variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject {
-      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto node = parser->ast()->createNodeTraversal($2.value, $2.length, $4.value, $4.length, $6, $7, $8);
       parser->ast()->addOperation(node);
     }
     | T_FOR variable_name T_COMMA variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject {
-      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto node = parser->ast()->createNodeTraversal($2.value, $2.length, $4.value, $4.length, $6.value, $6.length, $8, $9, $10);
       parser->ast()->addOperation(node);
     }
@@ -829,10 +829,10 @@ upsert_statement:
       
       auto scopes = parser->ast()->scopes();
       
-      scopes->start(triagens::aql::AQL_SCOPE_SUBQUERY);
+      scopes->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
       
-      scopes->start(triagens::aql::AQL_SCOPE_FOR);
+      scopes->start(arangodb::aql::AQL_SCOPE_FOR);
       std::string const variableName = std::move(parser->ast()->variables()->nextName());
       auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), $8, false);
       parser->ast()->addOperation(forNode);
@@ -1012,7 +1012,7 @@ expression_or_query:
       $$ = $1;
     }
   | {
-      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query {
       AstNode* node = parser->ast()->endSubQuery();
@@ -1308,7 +1308,7 @@ reference:
       }
     }
   | T_OPEN {
-      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query T_CLOSE {
       AstNode* node = parser->ast()->endSubQuery();
