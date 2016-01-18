@@ -465,10 +465,6 @@ void ArangoServer::buildApplicationServer() {
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
 
-  if (_applicationScheduler == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
   _applicationScheduler->allowMultiScheduler(true);
   _applicationDispatcher->setApplicationScheduler(_applicationScheduler);
 
