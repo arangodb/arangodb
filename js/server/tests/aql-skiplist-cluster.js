@@ -1160,7 +1160,27 @@ function ahuacatlSkiplistTestSuite () {
       assertEqual(expected, actual);
         
       assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+    testInvalidValuesinList : function () {
+      var query = "FOR x IN @list FOR i IN " + skiplist.name() + " FILTER i.a == x SORT i.a RETURN i.a";
+      var bindParams = {
+        list: [
+          null,
+          1, // Find this
+          "blub/bla",
+          "noKey",
+          2, // And this
+          123456,
+          { "the": "foxx", "is": "wrapped", "in":"objects"},
+          [15, "man", "on", "the", "dead", "mans", "chest"],
+          3 // And this
+        ]
+      };
+      assertEqual([ 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3], AQL_EXECUTE(query, bindParams).json);
     }
+
+
 
   };
 }
