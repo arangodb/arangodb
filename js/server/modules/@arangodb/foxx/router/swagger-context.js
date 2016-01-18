@@ -119,6 +119,10 @@ module.exports = exports = class SwaggerContext {
       statusCode = 200;
     }
     if (type === null) {
+      if (statusCode === 200) {
+        this._responses.remove(200);
+        statusCode = 204;
+      }
       this._responses.set(statusCode, {});
     } else {
       let contentType = 'application/json; charset=utf-8';
