@@ -492,7 +492,6 @@ AstNode* Ast::createNodeDistinct(AstNode const* value) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node
-/// TODO: use this to replace all other styles
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates,
