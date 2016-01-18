@@ -3,6 +3,10 @@ v2.8.0 (XXXX-XX-XX)
 
 * renamed AQL optimizer rule `remove-collect-into` to `remove-collect-variables`
 
+* fixed primary and edge index lookups prematurely aborting searches when the
+  specified id search value contained a different collection than the collection
+  the index was created for
+
 
 v2.8.0-beta7 (2016-01-06)
 -------------------------
