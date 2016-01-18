@@ -334,13 +334,14 @@ module.exports = exports = class SwaggerContext {
         ? (def.type.schema || def.type)
         : null
       );
-      const response = {
-        schema: (
+      const response = {};
+      if (def.contentType) {
+        response.schema = (
           schema && schema.isJoi
           ? joi2schema(schema)
           : {type: 'string'}
-        )
-      };
+        );
+      }
       if (schema && schema.isJoi && schema._description) {
         response.description = schema._description;
       }
