@@ -643,7 +643,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-down.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
-			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-collect-variables.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-filter-covered-by-index.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-calculations.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-or.js \

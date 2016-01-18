@@ -447,11 +447,12 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove INTO of a COLLECT if not used
+/// additionally remove all unused aggregate calculations from a COLLECT
 ////////////////////////////////////////////////////////////////////////////////
 
-int triagens::aql::removeCollectIntoRule (Optimizer* opt, 
-                                          ExecutionPlan* plan, 
-                                          Optimizer::Rule const* rule) {
+int triagens::aql::removeCollectVariablesRule (Optimizer* opt, 
+                                               ExecutionPlan* plan, 
+                                               Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode*> nodes(std::move(plan->findNodesOfType(EN::COLLECT, true)));
   
@@ -459,22 +460,24 @@ int triagens::aql::removeCollectIntoRule (Optimizer* opt,
     auto collectNode = static_cast<CollectNode*>(n);
     TRI_ASSERT(collectNode != nullptr);
 
+    auto varsUsedLater = n->getVarsUsedLater();
     auto outVariable = collectNode->outVariable();
 
-    if (outVariable == nullptr) {
-      // no out variable. nothing to do
-      continue;
+    if (outVariable != nullptr &&
+        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+      // outVariable not used later
+      collectNode->clearOutVariable();
+      modified = true;
     }
 
-    auto varsUsedLater = n->getVarsUsedLater();
-    if (varsUsedLater.find(outVariable) != varsUsedLater.end()) {
-      // outVariable is used later
-      continue;
-    }
-
-    // outVariable is not used later. remove it!
-    collectNode->clearOutVariable();
-    modified = true;
+    collectNode->clearAggregates([&varsUsedLater, &modified] (std::pair<Variable const*, std::pair<Variable const*, std::string>> const& aggregate) -> bool {
+      if (varsUsedLater.find(aggregate.first) == varsUsedLater.end()) {
+        // result of aggregate function not used later
+        modified = true;
+        return true;
+      }
+      return false;
+    });
   }
   
   if (modified) {

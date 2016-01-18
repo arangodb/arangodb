@@ -63,10 +63,10 @@ namespace triagens {
     int removeUnnecessaryFiltersRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove INTO of a COLLECT if not used
+/// @brief remove unused INTO variable from COLLECT, or unused aggregates
 ////////////////////////////////////////////////////////////////////////////////
     
-    int removeCollectIntoRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int removeCollectVariablesRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief propagate constant attributes in FILTERs

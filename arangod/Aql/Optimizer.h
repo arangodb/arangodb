@@ -158,7 +158,7 @@ namespace triagens {
         specializeCollectVariables_pass5              = 735,
 
         // remove INTO for COLLECT if appropriate
-        removeCollectIntoRule_pass5                   = 750,
+        removeCollectVariablesRule_pass5              = 750,
 
         // propagate constant attributes in FILTERs
         propagateConstantAttributesRule_pass5         = 760,

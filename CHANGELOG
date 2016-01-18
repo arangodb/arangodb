@@ -1,5 +1,11 @@
-v2.8.0-beta7 (2016-01-06)
+v2.8.0 (XXXX-XX-XX)
 -------------------
+
+* renamed AQL optimizer rule `remove-collect-into` to `remove-collect-variables`
+
+
+v2.8.0-beta7 (2016-01-06)
+-------------------------
 
 * added vm.runInThisContext
 

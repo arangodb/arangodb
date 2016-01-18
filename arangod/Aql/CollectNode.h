@@ -189,6 +189,21 @@ class CollectNode : public ExecutionNode {
     _outVariable = nullptr;
     _count = false;
   }
+   
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief clear one of the aggregates
+  //////////////////////////////////////////////////////////////////////////////
+
+  void clearAggregates(std::function<bool(std::pair<Variable const*, std::pair<Variable const*, std::string>> const&)> cb) {
+    for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end(); /* no hoisting */) {
+      if (cb(*it)) {
+        it = _aggregateVariables.erase(it);
+      }
+      else {
+        ++it;
+      } 
+    }
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the node has an expression variable (i.e. INTO ...
@@ -217,12 +232,21 @@ class CollectNode : public ExecutionNode {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get all aggregate variables (out, in)
+  /// @brief get all group variables (out, in)
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::pair<Variable const*, Variable const*>> const&
   groupVariables() const {
     return _groupVariables;
+  }
+   
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get all aggregate variables (out, in)
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const&
+  aggregateVariables() const {
+    return _aggregateVariables;
   }
 
   //////////////////////////////////////////////////////////////////////////////

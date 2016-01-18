@@ -526,10 +526,10 @@ void Optimizer::setupRules () {
                removeSortRandRule_pass5,
                true);
 
-  // remove INTO from COLLECT
-  registerRule("remove-collect-into",
-               removeCollectIntoRule,
-               removeCollectIntoRule_pass5,
+  // remove unused INTO variable from COLLECT, or unused aggregates
+  registerRule("remove-collect-variables",
+               removeCollectVariablesRule,
+               removeCollectVariablesRule_pass5,
                true);
   
   // remove unused out variables for data-modification queries

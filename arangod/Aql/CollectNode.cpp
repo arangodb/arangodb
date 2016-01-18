@@ -212,8 +212,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
     }
     // Now depth is set correct for this node.
     if (depth >= mindepth) {
-      auto const& vars = en->getVariablesSetHere();
-      for (auto const& v : vars) {
+      for (auto const& v : en->getVariablesSetHere()) {
         if (v->isUserDefined()) {
           userVars.emplace_back(v);
         }
@@ -247,7 +246,9 @@ void CollectNode::getVariablesUsedHere(
     vars.emplace(p.second);
   }
   for (auto const& p : _aggregateVariables) {
-    vars.emplace(p.second.first);
+    if (Aggregator::requiresInput(p.second.second)) {
+      vars.emplace(p.second.first);
+    }
   }
 
   if (_expressionVariable != nullptr) {

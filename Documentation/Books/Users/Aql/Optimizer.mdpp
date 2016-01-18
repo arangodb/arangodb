@@ -366,8 +366,9 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   performed because it may enable further optimizations by other rules.
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
   moving the random iteration into an *EnumerateCollectionNode*.
-* `remove-collect-into`: will appear if an *INTO* clause was removed from a *COLLECT*
-  statement because the result of *INTO* is not used.
+* `remove-collect-variables`: will appear if an *INTO* clause was removed from a *COLLECT*
+  statement because the result of *INTO* is not used. May also appear if a result
+  of a *COLLECT* statement's *AGGREGATE* variables is not used.
 * `propagate-constant-attributes`: will appear when a constant value was inserted
   into a filter condition, replacing a dynamic attribute value.
 * `replace-or-with-in`: will appear if multiple *OR*-combined equality conditions 

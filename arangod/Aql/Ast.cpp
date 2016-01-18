@@ -498,62 +498,28 @@ AstNode* Ast::createNodeDistinct (AstNode const* value) {
 /// @brief create an AST collect node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeCollect (AstNode const* list,
-                                 char const* name,
-                                 size_t nameLength,
+AstNode* Ast::createNodeCollect (AstNode const* groups, AstNode const* aggregates,
+                                 AstNode const* into, AstNode const* intoExpression,
                                  AstNode const* keepVariables,
                                  AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
-  
+
   if (options == nullptr) {
     // no options given. now use default options
     options = &NopNode;
   }
 
   node->addMember(options);
-  node->addMember(list);
-
-  // INTO
-  if (name != nullptr) {
-    AstNode* variable = createNodeVariable(name, nameLength, true);
-    node->addMember(variable);
-
-    // KEEP
-    if (keepVariables != nullptr) {
-      node->addMember(keepVariables);
-    }
-  }
-  else {
-    TRI_ASSERT(keepVariables == nullptr);
-    TRI_ASSERT(nameLength == 0);
-  }
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST collect node, INTO var = expr
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeCollectExpression (AstNode const* list,
-                                           char const* name,
-                                           size_t nameLength,
-                                           AstNode const* expression,
-                                           AstNode const* options) {
-  AstNode* node = createNode(NODE_TYPE_COLLECT_EXPRESSION);
+  node->addMember(groups); // may be an empty array
   
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &NopNode;
-  }
+  // wrap aggregates again
+  auto agg = createNode(NODE_TYPE_AGGREGATIONS);
+  agg->addMember(aggregates); // may be an empty array
+  node->addMember(agg);
 
-  node->addMember(options);
-  node->addMember(list);
-
-  AstNode* variable = createNodeVariable(name, nameLength, true);
-  node->addMember(variable);
-
-  node->addMember(expression);
+  node->addMember(into != nullptr ? into : &NopNode);
+  node->addMember(intoExpression != nullptr ? intoExpression : &NopNode);
+  node->addMember(keepVariables != nullptr ? keepVariables : &NopNode);
 
   return node;
 }
@@ -578,31 +544,6 @@ AstNode* Ast::createNodeCollectCount (AstNode const* list,
 
   AstNode* variable = createNodeVariable(name, nameLength, true);
   node->addMember(variable);
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST collect node, AGGREGATE
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeCollectAggregate (AstNode const* list, 
-                                          AstNode const* aggregations, 
-                                          AstNode const* options) {
-  AstNode* node = createNode(NODE_TYPE_COLLECT_AGGREGATE);
-
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &NopNode;
-  }
-
-  node->addMember(options);
-  node->addMember(list);
-
-  // wrap aggregations again
-  auto agg = createNode(NODE_TYPE_AGGREGATIONS);
-  agg->addMember(aggregations);
-  node->addMember(agg);
 
   return node;
 }
