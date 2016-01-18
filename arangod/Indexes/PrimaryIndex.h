@@ -62,6 +62,7 @@ namespace triagens {
           : _index(index),
             _keys(std::move(keys)),
             _position(0) {
+
         }
 
         ~PrimaryIndexIterator () {
