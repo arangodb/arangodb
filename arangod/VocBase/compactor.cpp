@@ -48,7 +48,7 @@ static char const* ReasonCompactionBlocked =
 static char const* ReasonDatafileSmall =
     "compacting datafile because it's small and will be merged with next";
 static char const* ReasonEmpty =
-    "compacting datafile because it collection is empty";
+    "compacting datafile because collection is empty";
 static char const* ReasonOnlyDeletions =
     "compacting datafile because it contains only deletion markers";
 static char const* ReasonDeadSize =
