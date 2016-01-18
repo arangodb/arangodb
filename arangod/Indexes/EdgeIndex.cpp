@@ -801,7 +801,7 @@ IndexIterator* EdgeIndex::createIterator(
 
   if (keys.empty()) {
     // nothing to do. still need to return an empty iterator
-    return new EdgeIndexIterator(isFrom ? _edgesFrom : _edgesTo, keys);
+    return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
   }
 
   TRI_IF_FAILURE("EdgeIndex::noIterator") {

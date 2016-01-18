@@ -475,7 +475,7 @@ IndexIterator* PrimaryIndex::createIterator(
 
   if (keys.empty()) {
     // nothing to do: still new to return an empty iterator
-    return new PrimaryIndexIterator(this, keys);
+    return new PrimaryIndexIterator(trx, this, keys);
   }
 
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
