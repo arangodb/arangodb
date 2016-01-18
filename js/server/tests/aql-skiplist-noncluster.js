@@ -1177,7 +1177,26 @@ function ahuacatlSkiplistTestSuite () {
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 100 SORT a.a DESC, a.b DESC RETURN [ a.a, a.b ]";
       actual = getQueryResults(query);
       assertEqual([ ], actual);
+    },
+
+    testInvalidValuesinList : function () {
+      var query = "FOR x IN @list FOR i IN " + skiplist.name() + " FILTER i.a == x SORT i.a RETURN i.a";
+      var bindParams = {
+        list: [
+          null,
+          1, // Find this
+          "blub/bla",
+          "noKey",
+          2, // And this
+          123456,
+          { "the": "foxx", "is": "wrapped", "in":"objects"},
+          [15, "man", "on", "the", "dead", "mans", "chest"],
+          3 // And this
+        ]
+      };
+      assertEqual([ 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3], AQL_EXECUTE(query, bindParams).json);
     }
+
 
   };
 }

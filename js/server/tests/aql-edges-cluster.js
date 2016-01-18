@@ -487,7 +487,40 @@ function ahuacatlQueryEdgesTestSuite () {
     testFromToQueryLinkedMulti3 : function () {
       var actual = getQueryResults("FOR u IN UnitTestsAhuacatlUsers FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["Multi1"]._id +"\" && r._to == \"" + docs["Multi2"]._id + "\" && r._to == u._id SORT u.id RETURN { \"from\" : r._from, \"to\" : r._to, \"link\" : u.name }");
       assertEqual(0, actual.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks for correct continuation on bad values
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidValuesinList : function () {
+      var query = "FOR x IN @list FOR i IN " + relations.name() + " FILTER i._from == x SORT i.what RETURN i.what";
+      var bindParams = {
+        list: [
+          null,
+          docs["Fred"]._id, // Find this
+          "blub/bla",
+          "noKey",
+          docs["Multi2"]._id, // And this
+          123456,
+          { "the": "foxx", "is": "wrapped", "in":"objects"},
+          [15, "man", "on", "the", "dead", "mans", "chest"],
+          docs["John"]._id // And this
+        ]
+      };
+      assertEqual([
+        "Fred->Jacob",
+        "John->Fred",
+        "Multi2->Mulit3"
+      ], AQL_EXECUTE(query, bindParams).json);
+      query = "FOR x IN @list FOR i IN " + relations.name() + " FILTER i._to == x SORT i.what RETURN i.what";
+      assertEqual([
+        "John->Fred",
+        "Multi->Mulit2"
+      ], AQL_EXECUTE(query, bindParams).json);
     }
+
+
 
   };
 }
