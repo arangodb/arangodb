@@ -360,7 +360,7 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
     case VPackValueType::Array: {
       VPackValueLength const nl = lhs.length();
       VPackValueLength const nr = rhs.length();
-      VPackValueLength const n = std::max(nr, nl);
+      VPackValueLength const n = (std::max)(nr, nl);
       for (VPackValueLength i = 0; i < n; ++i) {
         VPackSlice lhsValue;
         if (i < nl) {
