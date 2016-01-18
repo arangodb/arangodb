@@ -93,7 +93,6 @@ module.exports = class Tree {
 
   resolve(req) {
     const method = req.requestType;
-    const ignoreRequestBody = BODYFREE_METHODS.indexOf(method) !== -1;
     let error;
 
     for (const route of this.findRoutes(req.suffix)) {
@@ -110,36 +109,6 @@ module.exports = class Tree {
         error = httpError(405);
         error.methods = endpoint._methods;
         continue;
-      }
-
-      for (const item of route) {
-        const context = (
-          item.router
-          ? (item.router.router || item.router)
-          : (item.middleware || item.endpoint)
-        );
-
-        if (!ignoreRequestBody && context._bodyParam) {
-          try {
-            item.requestBody = validation.validateRequestBody(
-              context._bodyParam,
-              req.body
-            );
-          } catch (e) {
-            throw httpError(415, e.message);
-          }
-        }
-
-        if (context._queryParams.size) {
-          try {
-            item.queryParams = validation.validateParams(
-              context._queryParams,
-              req.queryParams
-            );
-          } catch (e) {
-            throw httpError(400, e.message);
-          }
-        }
       }
 
       return route;
@@ -232,6 +201,7 @@ function applyPathParams(route) {
 
 
 function dispatch(route, req, res) {
+  const ignoreRequestBody = BODYFREE_METHODS.indexOf(req.method) !== -1;
   let pathParams = {};
   let queryParams = _.clone(req.queryParams);
 
@@ -241,24 +211,48 @@ function dispatch(route, req, res) {
     }
 
     const item = route.shift();
+    const context = (
+      item.router
+      ? (item.router.router || item.router)
+      : (item.middleware || item.endpoint)
+    );
+
+    if (!ignoreRequestBody && context._bodyParam) {
+      try {
+        req.body = validation.validateRequestBody(
+          context._bodyParam,
+          req.body
+        );
+      } catch (e) {
+        throw httpError(415, e.message);
+      }
+    }
+
+    if (context._queryParams.size) {
+      try {
+        item.queryParams = validation.validateParams(
+          context._queryParams,
+          req.queryParams
+        );
+      } catch (e) {
+        throw httpError(400, e.message);
+      }
+    }
 
     if (item.router) {
       pathParams = _.extend(pathParams, item.pathParams);
       queryParams = _.extend(queryParams, item.queryParams);
-      req.body = item.requestBody || req.body;
       next();
       return;
     }
 
     let tempPathParams = req.pathParams;
     let tempQueryParams = req.queryParams;
-    let tempRequestBody = req.body;
     let tempSuffix = req.suffix;
     let tempPath = req.path;
 
     req.suffix = item.suffix.join('/');
     req.path = '/' + item.path.join('/');
-    req.body = item.requestBody || req.body;
 
     if (item.endpoint) {
       req.pathParams = _.extend(pathParams, item.pathParams);
@@ -270,11 +264,10 @@ function dispatch(route, req, res) {
       item.middleware._handler(req, res, next);
     }
 
-    req.suffix = tempSuffix;
     req.path = tempPath;
-    req.pathParams = tempPathParams;
+    req.suffix = tempSuffix;
     req.queryParams = tempQueryParams;
-    req.body = tempRequestBody;
+    req.pathParams = tempPathParams;
   }
 
   next();
