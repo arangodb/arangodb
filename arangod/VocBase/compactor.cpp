@@ -1037,7 +1037,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     DatafileStatisticsContainer dfi = document->_datafileStatistics.get(df->_fid);
     
     if (dfi.numberUncollected > 0) {
-      LOG_INFO("cannot compact file %llu because it still has uncollected entries", (unsigned long long) df->_fid);
+      LOG_TRACE("cannot compact file %llu because it still has uncollected entries", (unsigned long long) df->_fid);
       start = i + 1;
       break;
     }
@@ -1094,7 +1094,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
 
     TRI_ASSERT(reason != nullptr);
 
-    LOG_INFO(
+    LOG_TRACE(
         "found datafile eligible for compaction. fid: %llu, size: %llu, "
         "reason: %s, "
         "numberDead: %llu, numberAlive: %llu, numberDeletions: %llu, "

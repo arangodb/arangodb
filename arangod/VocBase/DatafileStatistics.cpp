@@ -239,9 +239,9 @@ void DatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, int64_t
   }
 
   auto& dst = (*it).second;
-  dst->numberDead++;
+  dst->numberDead += number;
   dst->sizeDead += size; 
-  dst->numberAlive--;
+  dst->numberAlive -= number;
   dst->sizeAlive -= size; 
 }
 
@@ -292,7 +292,6 @@ DatafileStatisticsContainer DatafileStatistics::get(TRI_voc_fid_t fid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 DatafileStatisticsContainer DatafileStatistics::all() {
-  size_t count;
   DatafileStatisticsContainer result;
   {
     READ_LOCKER(_lock);
@@ -300,11 +299,7 @@ DatafileStatisticsContainer DatafileStatistics::all() {
     for (auto& it : _stats) {
       result.update(*(it.second));
     }
-
-    count = _stats.size();
   }
-
-  LOG_INFO("DEBUGGING FIGURES: NUMBER OF FILES MAPPED: %llu, UNCOLLECTED: %llu", (unsigned long long) count, (unsigned long long) result.numberUncollected);
 
   return result;
 }
