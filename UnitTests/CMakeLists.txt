@@ -85,6 +85,7 @@ add_executable(
     ${TEST_GEO_SUITE}
     Geo/Runner.cpp
     Geo/georeg.cpp
+    ../lib/Basics/WorkMonitorDummy.cpp
     ../arangod/GeoIndex/GeoIndex.cpp
 )
 
