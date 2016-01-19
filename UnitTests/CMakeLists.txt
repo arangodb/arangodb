@@ -61,6 +61,7 @@ add_executable(
     Basics/EndpointTest.cpp
     Basics/StringBufferTest.cpp
     Basics/StringUtilsTest.cpp
+    lib/Basics/WorkMonitorDummy.cpp
 )
 
 target_link_libraries(
