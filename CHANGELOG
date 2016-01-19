@@ -1,5 +1,5 @@
-v2.8.0 (XXXX-XX-XX)
--------------------
+v2.8.0-beta8 (2016-01-19)
+-------------------------
 
 * renamed AQL optimizer rule `remove-collect-into` to `remove-collect-variables`
 

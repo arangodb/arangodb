@@ -455,6 +455,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/VocBase/arangod_libarangod_a-collection.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-compactor.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-datafile.$(OBJEXT) \
+	arangod/VocBase/arangod_libarangod_a-DatafileStatistics.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-Ditch.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-document-collection.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-DocumentAccessor.$(OBJEXT) \
@@ -1613,6 +1614,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/collection.cpp \
 	arangod/VocBase/compactor.cpp \
 	arangod/VocBase/datafile.cpp \
+	arangod/VocBase/DatafileStatistics.cpp \
 	arangod/VocBase/Ditch.cpp \
 	arangod/VocBase/document-collection.cpp \
 	arangod/VocBase/DocumentAccessor.cpp \
@@ -2000,7 +2002,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-down.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
-			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-collect-variables.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-filter-covered-by-index.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-calculations.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-or.js \
@@ -2917,6 +2919,9 @@ arangod/VocBase/arangod_libarangod_a-compactor.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-datafile.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/arangod_libarangod_a-DatafileStatistics.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-Ditch.$(OBJEXT):  \
@@ -4049,6 +4054,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-voccursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-vocindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/arangod_libarangod_a-v8-wrapshapedjson.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-DatafileStatistics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-DocumentAccessor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-ExampleMatcher.Po@am__quote@
@@ -6870,6 +6876,20 @@ arangod/VocBase/arangod_libarangod_a-datafile.obj: arangod/VocBase/datafile.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/datafile.cpp' object='arangod/VocBase/arangod_libarangod_a-datafile.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-datafile.obj `if test -f 'arangod/VocBase/datafile.cpp'; then $(CYGPATH_W) 'arangod/VocBase/datafile.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/datafile.cpp'; fi`
+
+arangod/VocBase/arangod_libarangod_a-DatafileStatistics.o: arangod/VocBase/DatafileStatistics.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-DatafileStatistics.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-DatafileStatistics.Tpo -c -o arangod/VocBase/arangod_libarangod_a-DatafileStatistics.o `test -f 'arangod/VocBase/DatafileStatistics.cpp' || echo '$(srcdir)/'`arangod/VocBase/DatafileStatistics.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-DatafileStatistics.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-DatafileStatistics.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/DatafileStatistics.cpp' object='arangod/VocBase/arangod_libarangod_a-DatafileStatistics.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-DatafileStatistics.o `test -f 'arangod/VocBase/DatafileStatistics.cpp' || echo '$(srcdir)/'`arangod/VocBase/DatafileStatistics.cpp
+
+arangod/VocBase/arangod_libarangod_a-DatafileStatistics.obj: arangod/VocBase/DatafileStatistics.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-DatafileStatistics.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-DatafileStatistics.Tpo -c -o arangod/VocBase/arangod_libarangod_a-DatafileStatistics.obj `if test -f 'arangod/VocBase/DatafileStatistics.cpp'; then $(CYGPATH_W) 'arangod/VocBase/DatafileStatistics.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/DatafileStatistics.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-DatafileStatistics.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-DatafileStatistics.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/DatafileStatistics.cpp' object='arangod/VocBase/arangod_libarangod_a-DatafileStatistics.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-DatafileStatistics.obj `if test -f 'arangod/VocBase/DatafileStatistics.cpp'; then $(CYGPATH_W) 'arangod/VocBase/DatafileStatistics.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/DatafileStatistics.cpp'; fi`
 
 arangod/VocBase/arangod_libarangod_a-Ditch.o: arangod/VocBase/Ditch.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-Ditch.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-Ditch.Tpo -c -o arangod/VocBase/arangod_libarangod_a-Ditch.o `test -f 'arangod/VocBase/Ditch.cpp' || echo '$(srcdir)/'`arangod/VocBase/Ditch.cpp

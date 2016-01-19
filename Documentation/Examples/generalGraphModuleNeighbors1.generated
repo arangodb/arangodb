@@ -5,7 +5,7 @@ arangosh&gt; graph._neighbors({isCapital : <span class="hljs-literal">true</span
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1692282739"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1691491387"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
     <span class="hljs-string">"loc"</span> : [ 
@@ -16,7 +16,7 @@ arangosh&gt; graph._neighbors({isCapital : <span class="hljs-literal">true</span
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1692086131"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1691294779"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
     <span class="hljs-string">"loc"</span> : [ 
@@ -27,7 +27,7 @@ arangosh&gt; graph._neighbors({isCapital : <span class="hljs-literal">true</span
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1693003635"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1692212283"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">4000000</span>, 
     <span class="hljs-string">"loc"</span> : [ 
@@ -38,7 +38,7 @@ arangosh&gt; graph._neighbors({isCapital : <span class="hljs-literal">true</span
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1692807027"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1692015675"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span>, 
     <span class="hljs-string">"loc"</span> : [ 
@@ -49,7 +49,7 @@ arangosh&gt; graph._neighbors({isCapital : <span class="hljs-literal">true</span
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1692807027"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1692015675"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span>, 
     <span class="hljs-string">"loc"</span> : [ 
@@ -58,20 +58,9 @@ arangosh&gt; graph._neighbors({isCapital : <span class="hljs-literal">true</span
     ] 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1692282739"</span>, 
-    <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
-    <span class="hljs-string">"loc"</span> : [ 
-      <span class="hljs-number">53.5653</span>, 
-      <span class="hljs-number">10.0014</span> 
-    ] 
-  }, 
-  { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1692086131"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1691294779"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
     <span class="hljs-string">"loc"</span> : [ 
@@ -80,9 +69,20 @@ arangosh&gt; graph._neighbors({isCapital : <span class="hljs-literal">true</span
     ] 
   }, 
   { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1691491387"</span>, 
+    <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
+    <span class="hljs-string">"loc"</span> : [ 
+      <span class="hljs-number">53.5653</span>, 
+      <span class="hljs-number">10.0014</span> 
+    ] 
+  }, 
+  { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Berlin"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1691889523"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1691098171"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">3000000</span>, 
     <span class="hljs-string">"loc"</span> : [ 

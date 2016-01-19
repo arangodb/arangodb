@@ -5,10 +5,10 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
   <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
-  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.8.0-beta7"</span>, 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.8.0-beta8"</span>, 
   <span class="hljs-string">"details"</span> : { 
     <span class="hljs-string">"architecture"</span> : <span class="hljs-string">"64bit"</span>, 
-    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2016-01-15 13:07:40"</span>, 
+    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2016-01-19 13:17:56"</span>, 
     <span class="hljs-string">"configure"</span> : <span class="hljs-string">"'./configure' '--enable-maintainer-mode' 'CPPFLAGS=-I/usr/local/include -I/usr/local/opt/openssl/include' 'LDFLAGS=-L/usr/local/opt/openssl/lib -L/usr/local/Cellar/boost/1.58.0/lib'"</span>, 
     <span class="hljs-string">"env"</span> : <span class="hljs-string">"CPPFLAGS='-I/usr/local/include -I/usr/local/opt/openssl/include' LDFLAGS='-L/usr/local/opt/openssl/lib -L/usr/local/Cellar/boost/1.58.0/lib'"</span>, 
     <span class="hljs-string">"fd-client-event-handler"</span> : <span class="hljs-string">"poll"</span>, 
@@ -17,8 +17,8 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"libev-version"</span> : <span class="hljs-string">"4.11"</span>, 
     <span class="hljs-string">"maintainer-mode"</span> : <span class="hljs-string">"true"</span>, 
     <span class="hljs-string">"openssl-version"</span> : <span class="hljs-string">"OpenSSL 1.0.2e 3 Dec 2015"</span>, 
-    <span class="hljs-string">"repository-version"</span> : <span class="hljs-string">"heads/2.8-0-g4d6b488c00255f4ef406b30418cdf076d1d06a88-dirty"</span>, 
-    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"2.8.0-beta7"</span>, 
+    <span class="hljs-string">"repository-version"</span> : <span class="hljs-string">"heads/2.8-0-g5415a87b110fc1c606d1a768dd7962a17347f7b0-dirty"</span>, 
+    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"2.8.0-beta8"</span>, 
     <span class="hljs-string">"sizeof int"</span> : <span class="hljs-string">"4"</span>, 
     <span class="hljs-string">"sizeof void*"</span> : <span class="hljs-string">"8"</span>, 
     <span class="hljs-string">"tcmalloc"</span> : <span class="hljs-string">"false"</span>, 

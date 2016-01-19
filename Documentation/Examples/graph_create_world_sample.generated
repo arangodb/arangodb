@@ -6,7 +6,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Andorra la Vella"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-andorra-la-vella"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351705971"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350914619"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-andorra-la-vella"</span> 
   }, 
   { 
@@ -14,7 +14,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bolivia"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-bolivia"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346594163"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345802811"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-bolivia"</span> 
   }, 
   { 
@@ -22,14 +22,14 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Finland"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-finland"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350722931"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349931579"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-finland"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bandar Seri Begawan"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-bandar-seri-begawan"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352099187"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351307835"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-bandar-seri-begawan"</span> 
   }, 
   { 
@@ -37,7 +37,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Cameroon"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-cameroon"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348363635"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347572283"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-cameroon"</span> 
   }, 
   { 
@@ -45,28 +45,28 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Albania"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-albania"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2343776115"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2342984763"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-albania"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Canberra"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-canberra"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354065267"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353273915"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-canberra"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Beijing"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-beijing"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352295795"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351504443"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-beijing"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Santiago"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-santiago"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357604211"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356812859"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-santiago"</span> 
   }, 
   { 
@@ -74,28 +74,28 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bulgaria"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-bulgaria"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347577203"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346785851"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-bulgaria"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Tirana"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-tirana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2358390643"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357599291"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-tirana"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Brasilia"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-brasilia"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352885619"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352094267"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-brasilia"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Algiers"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-algiers"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351509363"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350718011"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-algiers"</span> 
   }, 
   { 
@@ -103,7 +103,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bosnia and Herzegovina"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-bosnia-and-herzegovina"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346790771"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345999419"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-bosnia-and-herzegovina"</span> 
   }, 
   { 
@@ -111,7 +111,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bahrain"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-bahrain"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345611123"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2344819771"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-bahrain"</span> 
   }, 
   { 
@@ -119,14 +119,14 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bahamas"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-bahamas"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345414515"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2344623163"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-bahamas"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bujumbura"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-bujumbura"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353672051"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352880699"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-bujumbura"</span> 
   }, 
   { 
@@ -134,7 +134,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bangladesh"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-bangladesh"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345807731"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345016379"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-bangladesh"</span> 
   }, 
   { 
@@ -142,7 +142,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Andorra"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-andorra"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2344169331"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2343377979"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-andorra"</span> 
   }, 
   { 
@@ -150,14 +150,14 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"code"</span> : <span class="hljs-string">"BRN"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-brunei"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347380595"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346589243"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-brunei"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Vienna"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-vienna"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2358587251"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357795899"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-vienna"</span> 
   }, 
   { 
@@ -165,21 +165,21 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Belgium"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-belgium"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346200947"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345409595"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-belgium"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Dhaka"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-dhaka"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354458483"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353667131"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-dhaka"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Yamoussoukro"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-yamoussoukro"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2358783859"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357992507"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-yamoussoukro"</span> 
   }, 
   { 
@@ -187,7 +187,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Burundi"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-burundi"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347970419"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347179067"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-burundi"</span> 
   }, 
   { 
@@ -195,7 +195,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Cote d'Ivoire"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-cote-d-ivoire"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349346675"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348555323"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-cote-d-ivoire"</span> 
   }, 
   { 
@@ -203,14 +203,14 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"People's Republic of China"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-people-s-republic-of-china"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351312755"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350521403"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-people-s-republic-of-china"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Phnom Penh"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-phnom-penh"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356817779"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356026427"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-phnom-penh"</span> 
   }, 
   { 
@@ -218,7 +218,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Czech Republic"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-czech-republic"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349739891"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348948539"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-czech-republic"</span> 
   }, 
   { 
@@ -226,7 +226,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"code"</span> : <span class="hljs-string">"TCD"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-chad"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348756851"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347965499"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-chad"</span> 
   }, 
   { 
@@ -234,21 +234,21 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"code"</span> : <span class="hljs-string">"AGO"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-angola"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2344431475"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2343640123"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-angola"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Berlin"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-berlin"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352492403"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351701051"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-berlin"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Quito"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-quito"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357210995"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356419643"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-quito"</span> 
   }, 
   { 
@@ -256,14 +256,14 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Australia"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-australia"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345021299"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2344229947"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-australia"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Ottawa"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-ottawa"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356227955"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355436603"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-ottawa"</span> 
   }, 
   { 
@@ -271,7 +271,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Afghanistan"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-afghanistan"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2343579507"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2342788155"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-afghanistan"</span> 
   }, 
   { 
@@ -279,7 +279,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Austria"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-austria"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345217907"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2344426555"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-austria"</span> 
   }, 
   { 
@@ -287,35 +287,35 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Botswana"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-botswana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346987379"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346196027"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-botswana"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helsinki"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-helsinki"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354851699"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354060347"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-helsinki"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"World"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"root"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/world"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2341941107"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2341149755"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"world"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Nassau"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-nassau"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355834739"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355043387"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-nassau"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Manama"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-manama"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355638131"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354846779"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-manama"</span> 
   }, 
   { 
@@ -323,28 +323,28 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"code"</span> : <span class="hljs-string">"EGY"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-egypt"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350329715"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349538363"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-egypt"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Europe"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"continent"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2342858611"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2342067259"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"continent-europe"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"North America"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"continent"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2343055219"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2342263867"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"continent-north-america"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Africa"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"continent"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2342203251"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2341411899"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"continent-africa"</span> 
   }, 
   { 
@@ -352,28 +352,28 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Burkina Faso"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-burkina-faso"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347773811"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346982459"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-burkina-faso"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bogota"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-bogota"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352689011"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351897659"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-bogota"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Ouagadougou"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-ouagadougou"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356424563"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355633211"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-ouagadougou"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Australia"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"continent"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/continent-australia"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2342662003"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2341870651"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"continent-australia"</span> 
   }, 
   { 
@@ -381,21 +381,21 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"code"</span> : <span class="hljs-string">"BTN"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-bhutan"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346397555"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345606203"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-bhutan"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Sofia"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-sofia"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357997427"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357206075"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-sofia"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Asia"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"continent"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2342399859"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2341608507"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"continent-asia"</span> 
   }, 
   { 
@@ -403,7 +403,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Argentina"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-argentina"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2344824691"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2344033339"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-argentina"</span> 
   }, 
   { 
@@ -411,28 +411,28 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Antigua and Barbuda"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-antigua-and-barbuda"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2344628083"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2343836731"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-antigua-and-barbuda"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Sarajevo"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-sarajevo"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357800819"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357009467"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-sarajevo"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Asmara"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-asmara"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351902579"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351111227"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-asmara"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Kabul"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-kabul"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355048307"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354256955"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-kabul"</span> 
   }, 
   { 
@@ -440,7 +440,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Germany"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-germany"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2351116147"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350324795"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-germany"</span> 
   }, 
   { 
@@ -448,28 +448,28 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"code"</span> : <span class="hljs-string">"CHL"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-chile"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348953459"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348162107"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-chile"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Paris"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-paris"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356621171"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355829819"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-paris"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Luanda"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-luanda"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355441523"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354650171"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-luanda"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Yaounde"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-yaounde"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2358980467"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2358189115"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-yaounde"</span> 
   }, 
   { 
@@ -477,21 +477,21 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Croatia"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-croatia"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349543283"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348751931"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-croatia"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Zagreb"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-zagreb"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2359177075"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2358385723"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-zagreb"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Cairo"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-cairo"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353868659"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353077307"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-cairo"</span> 
   }, 
   { 
@@ -499,21 +499,21 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Denmark"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-denmark"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349936499"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349145147"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-denmark"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Copenhagen"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-copenhagen"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354261875"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353470523"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-copenhagen"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Prague"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-prague"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357014387"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356223035"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-prague"</span> 
   }, 
   { 
@@ -521,7 +521,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"code"</span> : <span class="hljs-string">"CAN"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-canada"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348560243"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347768891"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-canada"</span> 
   }, 
   { 
@@ -529,7 +529,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eritrea"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-eritrea"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350526323"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349734971"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-eritrea"</span> 
   }, 
   { 
@@ -537,7 +537,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Cambodia"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-cambodia"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348167027"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347375675"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-cambodia"</span> 
   }, 
   { 
@@ -545,7 +545,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"code"</span> : <span class="hljs-string">"BRA"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-brazil"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2347183987"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346392635"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-brazil"</span> 
   }, 
   { 
@@ -553,14 +553,14 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Barbados"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-barbados"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2346004339"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2345212987"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-barbados"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"South America"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"continent"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2343251827"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2342460475"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"continent-south-america"</span> 
   }, 
   { 
@@ -568,14 +568,14 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Colombia"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-colombia"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349150067"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2348358715"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-colombia"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"N'Djamena"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-n-djamena"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356031347"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355239995"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-n-djamena"</span> 
   }, 
   { 
@@ -583,49 +583,49 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Algeria"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-algeria"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2343972723"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2343181371"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-algeria"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Brussels"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-brussels"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353278835"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352487483"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-brussels"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"La Paz"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-la-paz"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2355244915"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354453563"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-la-paz"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Buenos Aires"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-buenos-aires"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353475443"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352684091"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-buenos-aires"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Thimphu"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-thimphu"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2358194035"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357402683"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-thimphu"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bridgetown"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-bridgetown"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353082227"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2352290875"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-bridgetown"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Saint John's"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-saint-john-s"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2357407603"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2356616251"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-saint-john-s"</span> 
   }, 
   { 
@@ -633,7 +633,7 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"code"</span> : <span class="hljs-string">"FRA"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-france"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350919539"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350128187"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-france"</span> 
   }, 
   { 
@@ -641,14 +641,14 @@ arangosh&gt; db.worldVertices.toArray();
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Ecuador"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"country"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/country-ecuador"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2350133107"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2349341755"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"country-ecuador"</span> 
   }, 
   { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gaborone"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"capital"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldVertices/capital-gaborone"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2354655091"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2353863739"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"capital-gaborone"</span> 
   } 
 ]
@@ -656,691 +656,691 @@ arangosh&gt; db.worldEdges.toArray();
 [ 
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360094579"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360094579"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360094579"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373267315"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373267315"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373267315"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-ottawa"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-canada"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372874099"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372874099"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372874099"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-nassau"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bahamas"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370318195"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370318195"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370318195"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-brussels"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-belgium"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367172467"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367172467"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367172467"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-ecuador"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369531763"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369531763"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369531763"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-berlin"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-germany"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2375626611"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2375626611"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2375626611"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-vienna"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-austria"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360487795"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360487795"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360487795"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2376216435"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2376216435"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2376216435"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-zagreb"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-croatia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2359701363"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2359701363"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2359701363"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366975859"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366975859"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366975859"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-denmark"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365992819"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365992819"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365992819"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-chile"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373070707"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373070707"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373070707"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-n-djamena"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-chad"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2375233395"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2375233395"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2375233395"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-thimphu"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bhutan"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372677491"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372677491"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372677491"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-manama"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bahrain"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372087667"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372087667"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372087667"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-kabul"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-afghanistan"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368155507"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368155507"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368155507"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-germany"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361667443"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361667443"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361667443"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-antigua-and-barbuda"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367958899"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367958899"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367958899"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-france"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370121587"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370121587"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370121587"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-bridgetown"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-barbados"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364026739"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364026739"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364026739"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-botswana"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361077619"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361077619"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361077619"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-algeria"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2376019827"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2376019827"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2376019827"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-yaounde"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-cameroon"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374840179"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374840179"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374840179"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-sarajevo"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bosnia-and-herzegovina"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360291187"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360291187"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360291187"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370514803"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370514803"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370514803"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-buenos-aires"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-argentina"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371104627"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371104627"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371104627"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-canberra"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-australia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362453875"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362453875"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362453875"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bahamas"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361470835"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361470835"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361470835"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-angola"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2375430003"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2375430003"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2375430003"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-tirana"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-albania"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370908019"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370908019"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370908019"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-cairo"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-egypt"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362650483"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362650483"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362650483"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bahrain"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362847091"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362847091"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362847091"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bangladesh"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364616563"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364616563"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364616563"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bulgaria"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372284275"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372284275"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372284275"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-la-paz"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bolivia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364419955"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364419955"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364419955"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-brunei"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368941939"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368941939"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368941939"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368150587"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368150587"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368150587"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-asmara"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-eritrea"</span> 
   }, 
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361864051"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361864051"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361864051"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-argentina"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2375823219"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2375823219"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2375823219"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-yamoussoukro"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-cote-d-ivoire"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369924979"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369924979"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369924979"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-brasilia"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-brazil"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374643571"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374643571"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374643571"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-santiago"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-chile"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365206387"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365206387"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365206387"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-cambodia"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368352115"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368352115"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368352115"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-people-s-republic-of-china"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365402995"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365402995"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365402995"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-cameroon"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362060659"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362060659"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362060659"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-australia"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-australia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367565683"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367565683"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367565683"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-eritrea"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369335155"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369335155"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369335155"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-beijing"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-people-s-republic-of-china"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373463923"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373463923"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373463923"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-ouagadougou"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-burkina-faso"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2375036787"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2375036787"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2375036787"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-sofia"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bulgaria"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371694451"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371694451"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371694451"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-gaborone"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-botswana"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369138547"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369138547"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369138547"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-bandar-seri-begawan"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-brunei"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363633523"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363633523"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363633523"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bolivia"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366779251"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366779251"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366779251"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-czech-republic"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374053747"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374053747"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374053747"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-prague"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-czech-republic"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361274227"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361274227"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361274227"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-andorra"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362257267"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362257267"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362257267"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-austria"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367369075"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367369075"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367369075"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-egypt"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366189427"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366189427"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366189427"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-colombia"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365796211"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365796211"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365796211"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-chad"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2359504755"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2359504755"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2359504755"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371891059"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371891059"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371891059"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-helsinki"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-finland"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370711411"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370711411"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370711411"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-bujumbura"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-burundi"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372480883"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372480883"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372480883"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-luanda"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-angola"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367762291"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367762291"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367762291"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-finland"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371301235"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371301235"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371301235"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-copenhagen"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-denmark"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366582643"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366582643"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366582643"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-croatia"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363043699"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363043699"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363043699"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-barbados"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360881011"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360881011"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360881011"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-albania"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360684403"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360684403"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360684403"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-afghanistan"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364813171"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364813171"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364813171"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-burkina-faso"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368548723"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368548723"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368548723"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-algiers"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-algeria"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2359897971"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2359897971"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2359897971"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-australia"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369728371"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369728371"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369728371"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-bogota"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-colombia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373660531"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373660531"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373660531"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-paris"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-france"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364223347"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364223347"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364223347"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-brazil"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368745331"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368745331"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368745331"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-andorra-la-vella"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-andorra"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365009779"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365009779"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365009779"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-burundi"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363240307"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363240307"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363240307"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-belgium"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374250355"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374250355"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374250355"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-quito"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-ecuador"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363436915"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363436915"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363436915"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bhutan"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374446963"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374446963"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374446963"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-saint-john-s"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-antigua-and-barbuda"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365599603"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365599603"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365599603"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364808251"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364808251"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364808251"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-canada"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span> 
   }, 
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373857139"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373857139"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373857139"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-phnom-penh"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-cambodia"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363431995"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363431995"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363431995"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-brazil"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
   }, 
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363830131"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363830131"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363830131"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370509883"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370509883"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370509883"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-copenhagen"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-denmark"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2375425083"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2375425083"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2375425083"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-zagreb"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-croatia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367560763"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367560763"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367560763"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-people-s-republic-of-china"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372082747"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372082747"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372082747"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-nassau"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bahamas"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2375031867"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2375031867"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2375031867"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-yamoussoukro"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-cote-d-ivoire"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364021819"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364021819"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364021819"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-burkina-faso"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367364155"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367364155"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367364155"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-germany"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361465915"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361465915"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361465915"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-austria"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363038779"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363038779"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363038779"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bosnia-and-herzegovina"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
   }, 
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371497843"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371497843"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371497843"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366184507"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366184507"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366184507"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-denmark"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360876091"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360876091"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360876091"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-antigua-and-barbuda"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370903099"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370903099"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370903099"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-gaborone"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-botswana"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373262395"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373262395"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373262395"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-prague"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-czech-republic"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362645563"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362645563"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362645563"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bhutan"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360089659"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360089659"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360089659"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-albania"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2359499835"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2359499835"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2359499835"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374638651"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374638651"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374638651"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-tirana"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-albania"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364415035"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364415035"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364415035"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-cambodia"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363825211"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363825211"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363825211"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bulgaria"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361859131"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361859131"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361859131"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bahrain"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363628603"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363628603"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363628603"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-brunei"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2375228475"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2375228475"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2375228475"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-yaounde"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-cameroon"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374442043"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374442043"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374442043"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-thimphu"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bhutan"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364218427"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364218427"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364218427"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-burundi"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369920059"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369920059"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369920059"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-bujumbura"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-burundi"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371689531"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371689531"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371689531"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-luanda"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-angola"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373065787"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373065787"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373065787"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-phnom-penh"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-cambodia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365398075"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365398075"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365398075"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-colombia"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367953979"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367953979"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367953979"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-andorra-la-vella"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-andorra"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360679483"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360679483"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360679483"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-angola"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365201467"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365201467"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365201467"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-chile"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369330235"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369330235"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369330235"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-bridgetown"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-barbados"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2363235387"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2363235387"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2363235387"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-botswana"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369526843"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369526843"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369526843"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-brussels"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-belgium"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368543803"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368543803"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368543803"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-beijing"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-people-s-republic-of-china"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367757371"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367757371"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367757371"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-algiers"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-algeria"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373459003"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373459003"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373459003"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-quito"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-ecuador"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2367167547"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2367167547"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2367167547"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-france"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2364611643"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2364611643"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2364611643"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-cameroon"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2358910011"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2358910011"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2358910011"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362842171"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362842171"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362842171"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bolivia"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370313275"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370313275"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370313275"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-canberra"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-australia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370116667"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370116667"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370116667"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-cairo"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-egypt"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361072699"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361072699"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361072699"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-argentina"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371099707"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371099707"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371099707"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-helsinki"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-finland"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373655611"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373655611"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373655611"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-saint-john-s"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-antigua-and-barbuda"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362055739"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362055739"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362055739"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bangladesh"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2359303227"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2359303227"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2359303227"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361662523"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361662523"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361662523"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-bahamas"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2373852219"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2373852219"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2373852219"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-santiago"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-chile"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366970939"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366970939"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366970939"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-finland"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366381115"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366381115"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366381115"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-ecuador"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372672571"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372672571"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372672571"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-ouagadougou"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-burkina-faso"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368347195"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368347195"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368347195"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-bandar-seri-begawan"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-brunei"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360286267"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360286267"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360286267"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-algeria"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362252347"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362252347"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362252347"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-barbados"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-north-america"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369133627"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369133627"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369133627"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-brasilia"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-brazil"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374835259"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374835259"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374835259"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-vienna"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-austria"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2358713403"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2358713403"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2358713403"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366774331"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366774331"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366774331"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-eritrea"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368740411"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368740411"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368740411"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-berlin"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-germany"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365004859"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365004859"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365004859"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-chad"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2368937019"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2368937019"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2368937019"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-bogota"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-colombia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2359696443"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2359696443"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2359696443"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-south-america"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2360482875"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2360482875"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2360482875"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-andorra"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372279355"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372279355"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372279355"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-n-djamena"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-chad"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374048827"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374048827"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374048827"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-sarajevo"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bosnia-and-herzegovina"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2370706491"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2370706491"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2370706491"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-dhaka"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bangladesh"</span> 
   }, 
   { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366386035"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366386035"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366386035"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2359893051"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2359893051"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2359893051"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-afghanistan"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-asia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365791291"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365791291"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365791291"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-croatia"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371296315"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371296315"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371296315"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-kabul"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-afghanistan"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2374245435"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2374245435"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2374245435"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-sofia"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bulgaria"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365594683"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365594683"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365594683"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-cote-d-ivoire"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2361269307"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2361269307"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2361269307"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-australia"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-australia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2359106619"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2359106619"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2359106619"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/continent-australia"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/world"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2369723451"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2369723451"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2369723451"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-buenos-aires"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-argentina"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2366577723"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2366577723"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2366577723"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-egypt"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-africa"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371886139"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371886139"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371886139"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-manama"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bahrain"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2371492923"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2371492923"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2371492923"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-la-paz"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-bolivia"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2365987899"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2365987899"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2365987899"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-czech-republic"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372869179"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372869179"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372869179"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-paris"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-france"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2362448955"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2362448955"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2362448955"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/country-belgium"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/continent-europe"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"is-in"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"worldEdges/2372475963"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"2372475963"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2372475963"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"worldVertices/capital-ottawa"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"worldVertices/country-canada"</span> 
   } 
 ]
 arangosh&gt; examples.dropGraph(<span class="hljs-string">"worldCountry"</span>);
