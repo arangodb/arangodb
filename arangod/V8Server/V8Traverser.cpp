@@ -827,7 +827,7 @@ bool DepthFirstTraverser::vertexMatchesConditions (VertexId const& v, size_t dep
   auto it = _expressions->find(depth);
   if (it != _expressions->end()) {
     TRI_doc_mptr_copy_t mptr;
-    TRI_document_collection_t* docCol;
+    TRI_document_collection_t* docCol = nullptr;
     bool fetchVertex = true;
     for (auto const& exp : it->second) {
       if (! exp->isEdgeAccess) {
@@ -874,6 +874,7 @@ bool DepthFirstTraverser::vertexMatchesConditions (VertexId const& v, size_t dep
           }
           docCol = collection->_collection->_collection;
         }
+        TRI_ASSERT(docCol != nullptr);
         if (! exp->matchesCheck(mptr, docCol, _resolver)) {
           ++_filteredPaths;
           return false;
@@ -1034,7 +1035,7 @@ void DepthFirstTraverser::setStartVertex (triagens::arango::traverser::VertexId 
   if (it != _expressions->end()) {
     if (! it->second.empty()) {
       TRI_doc_mptr_copy_t mptr;
-      TRI_document_collection_t* docCol;
+      TRI_document_collection_t* docCol = nullptr;
       bool fetchVertex = true;
       for (auto const& exp : it->second) {
         if (! exp->isEdgeAccess) {
@@ -1068,6 +1069,7 @@ void DepthFirstTraverser::setStartVertex (triagens::arango::traverser::VertexId 
             }
             docCol = collection->_collection->_collection;
           }
+          TRI_ASSERT(docCol != nullptr);
           if (! exp->matchesCheck(mptr, docCol, _resolver)) {
             ++_filteredPaths;
             _done = true;
