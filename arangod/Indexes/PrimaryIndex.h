@@ -99,11 +99,8 @@ class PrimaryIndex final : public Index {
 
   size_t memory() const override final;
 
-  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
-
-  std::shared_ptr<VPackBuilder> toVelocyPack(bool, bool) const override final;
-  std::shared_ptr<VPackBuilder> toVelocyPackFigures(bool) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override final;
+  void toVelocyPackFigures(VPackBuilder&) const override final;
 
   int insert(triagens::arango::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;

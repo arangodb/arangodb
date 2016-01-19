@@ -343,33 +343,27 @@ size_t HashIndex::memory() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
+/// @brief return a velocypack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json HashIndex::toJson(TRI_memory_zone_t* zone,
-                                         bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  json("unique", triagens::basics::Json(zone, _unique))(
-      "sparse", triagens::basics::Json(zone, _sparse));
-
-  return json;
+void HashIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
+  builder.add("unique", VPackValue(_unique));
+  builder.add("sparse", VPackValue(_sparse));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
+/// @brief return a velocypack representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json HashIndex::toJsonFigures(TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(zone, triagens::basics::Json::Object);
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
-
+void HashIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("memory", VPackValue(memory()));
   if (_unique) {
-    _uniqueArray->_hashArray->appendToJson(zone, json);
+    _uniqueArray->_hashArray->appendToVelocyPack(builder);
   } else {
-    _multiArray->_hashArray->appendToJson(zone, json);
+    _multiArray->_hashArray->appendToVelocyPack(builder);
   }
-  return json;
 }
 
 int HashIndex::insert(triagens::arango::Transaction* trx,

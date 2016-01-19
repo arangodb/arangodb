@@ -30,6 +30,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
 #include "Basics/json-utilities.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
@@ -379,36 +380,56 @@ std::string Index::context() const {
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures,
-                                                  bool closeToplevel) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
-  builder->add("id", VPackValue(std::to_string(_iid)));
-  builder->add("type", VPackValue(typeName()));
+  toVelocyPack(*builder, withFigures);
+  builder->close();
+  return builder;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VelocyPack representation of the index
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+void Index::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("id", VPackValue(std::to_string(_iid)));
+  builder.add("type", VPackValue(typeName()));
 
   if (dumpFields()) {
-    builder->add(VPackValue("fields"));
-    VPackArrayBuilder b1(builder.get());
+    builder.add(VPackValue("fields"));
+    VPackArrayBuilder b1(&builder);
 
     for (auto const& field : fields()) {
       std::string fieldString;
       TRI_AttributeNamesToString(field, fieldString);
-      builder->add(VPackValue(fieldString));
+      builder.add(VPackValue(fieldString));
     }
   }
 
   if (hasSelectivityEstimate()) {
-    builder->add("selectivityEstimate", VPackValue(selectivityEstimate()));
+    builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
   if (withFigures) {
-    std::shared_ptr<VPackBuilder> figuresBuilder = toVelocyPackFigures(true);
-    VPackSlice const figures = figuresBuilder->slice();
-    builder->add("figures", figures);
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
   }
-  if (closeToplevel) {
-    builder->close();
-  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VelocyPack representation of the index figures
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures() const {
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openObject();
+  toVelocyPackFigures(*builder);
+  builder->close();
   return builder;
 }
 
@@ -417,15 +438,9 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures,
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures(
-    bool closeToplevel) const {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  builder->add("memory", VPackValue(memory()));
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
+void Index::toVelocyPackFigures(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("memory", VPackValue(memory()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -435,32 +450,11 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures(
 
 triagens::basics::Json Index::toJson(TRI_memory_zone_t* zone,
                                      bool withFigures) const {
-  triagens::basics::Json json(zone, triagens::basics::Json::Object, 4);
-
-  json("id", triagens::basics::Json(zone, std::to_string(_iid)))(
-      "type", triagens::basics::Json(zone, typeName()));
-
-  if (dumpFields()) {
-    triagens::basics::Json f(zone, triagens::basics::Json::Array,
-                             fields().size());
-
-    for (auto const& field : fields()) {
-      std::string fieldString;
-      TRI_AttributeNamesToString(field, fieldString);
-      f.add(triagens::basics::Json(zone, fieldString));
-    }
-
-    json("fields", f);
-  }
-
-  if (hasSelectivityEstimate()) {
-    json("selectivityEstimate", triagens::basics::Json(selectivityEstimate()));
-  }
-
-  if (withFigures) {
-    json("figures", toJsonFigures(zone));
-  }
-
+  // Only compatibility
+  auto builder = toVelocyPack(withFigures);
+  triagens::basics::Json json(
+      zone,
+      triagens::basics::VelocyPackHelper::velocyPackToJson(builder->slice()));
   return json;
 }
 
@@ -470,8 +464,10 @@ triagens::basics::Json Index::toJson(TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::basics::Json Index::toJsonFigures(TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(zone, triagens::basics::Json::Object);
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
+  auto builder = toVelocyPackFigures();
+  triagens::basics::Json json(
+      zone,
+      triagens::basics::VelocyPackHelper::velocyPackToJson(builder->slice()));
   return json;
 }
 

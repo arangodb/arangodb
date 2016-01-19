@@ -51,30 +51,15 @@ CapConstraint::~CapConstraint() {}
 size_t CapConstraint::memory() const { return 0; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
+/// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json CapConstraint::toJson(TRI_memory_zone_t* zone,
-                                             bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  json("size", triagens::basics::Json(zone, static_cast<double>(_count)))(
-      "byteSize", triagens::basics::Json(zone, static_cast<double>(_size)))(
-      "unique", triagens::basics::Json(zone, false));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-triagens::basics::Json CapConstraint::toJsonFigures(
-    TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
-
-  return json;
+void CapConstraint::toVelocyPack(VPackBuilder& builder,
+                                 bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
+  builder.add("size", VPackValue(_count));
+  builder.add("byteSize", VPackValue(_size));
+  builder.add("unique", VPackValue(false));
 }
 
 int CapConstraint::insert(triagens::arango::Transaction*,

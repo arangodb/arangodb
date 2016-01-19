@@ -95,8 +95,7 @@ size_t GeoIndex2::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json GeoIndex2::toJson(TRI_memory_zone_t* zone,
-                                         bool withDetails) const {
+void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   std::vector<std::string> f;
 
   auto shaper = _collection->getShaper();
@@ -127,15 +126,16 @@ triagens::basics::Json GeoIndex2::toJson(TRI_memory_zone_t* zone,
   }
 
   if (f.empty()) {
-    return triagens::basics::Json();
+    // No info to provide
+    return;
   }
 
-  // create json
-  auto json = Index::toJson(zone, withDetails);
+  // Basic index 
+  Index::toVelocyPack(builder, withFigures);
 
   if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
       _variant == INDEX_GEO_COMBINED_LON_LAT) {
-    json("geoJson", triagens::basics::Json(zone, _geoJson));
+    builder.add("geoJson", VPackValue(_geoJson));
   }
 
   // geo indexes are always non-unique
@@ -144,23 +144,10 @@ triagens::basics::Json GeoIndex2::toJson(TRI_memory_zone_t* zone,
   // backwards compatibility
   // the "constraint" attribute has no meaning since ArangoDB 2.5 and is only
   // returned for backwards compatibility
-  json("constraint", triagens::basics::Json(zone, false))(
-      "unique", triagens::basics::Json(zone, false))(
-      "ignoreNull", triagens::basics::Json(zone, true))(
-      "sparse", triagens::basics::Json(zone, true));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-triagens::basics::Json GeoIndex2::toJsonFigures(TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
-
-  return json;
+  builder.add("constraint", VPackValue(false));
+  builder.add("unique", VPackValue(false));
+  builder.add("ignoreNull", VPackValue(true));
+  builder.add("sparse", VPackValue(true));
 }
 
 int GeoIndex2::insert(triagens::arango::Transaction*, TRI_doc_mptr_t const* doc,

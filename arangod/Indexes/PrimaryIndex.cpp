@@ -136,59 +136,22 @@ size_t PrimaryIndex::memory() const { return _primaryIndex->memoryUsage(); }
 /// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> PrimaryIndex::toVelocyPack(
-    bool withFigures, bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder =
-      Index::toVelocyPack(withFigures, false);
-
+void PrimaryIndex::toVelocyPack(
+    VPackBuilder& builder, bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
   // hard-coded
-  builder->add("unique", VPackValue(true));
-  builder->add("sparse", VPackValue(false));
-
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
+  builder.add("unique", VPackValue(true));
+  builder.add("sparse", VPackValue(false));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> PrimaryIndex::toVelocyPackFigures(
-    bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPackFigures(false);
+void PrimaryIndex::toVelocyPackFigures(
+    VPackBuilder& builder) const {
+  Index::toVelocyPackFigures(builder);
   _primaryIndex->appendToVelocyPack(builder);
-  return builder;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
-triagens::basics::Json PrimaryIndex::toJson(TRI_memory_zone_t* zone,
-                                            bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  // hard-coded
-  json("unique", triagens::basics::Json(true))("sparse",
-                                               triagens::basics::Json(false));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-triagens::basics::Json PrimaryIndex::toJsonFigures(
-    TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(zone, triagens::basics::Json::Object);
-
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
-  _primaryIndex->appendToJson(zone, json);
-
-  return json;
 }
 
 int PrimaryIndex::insert(triagens::arango::Transaction*, TRI_doc_mptr_t const*,
