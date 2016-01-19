@@ -928,16 +928,9 @@ AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
 
 AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       TRI_json_t const* json, double ttl) {
-  AgencyCommResult result;
-
-  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                   _globalConnectionOptions._requestTimeout, result,
-                   buildUrl(key) + ttlParam(ttl, true),
-                   "value=" + triagens::basics::StringUtils::urlEncode(
-                                  triagens::basics::JsonHelper::toString(json)),
-                   false);
-
-  return result;
+  // Only temporary
+  auto builder = triagens::basics::JsonHelper::toVelocyPack(json);
+  return setValue(key, builder->slice(), ttl);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
