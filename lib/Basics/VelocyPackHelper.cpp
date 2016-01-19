@@ -69,6 +69,10 @@ static int TypeWeight(VPackSlice const& slice) {
 
 bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
                                        char const* name, bool defaultValue) {
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    return defaultValue;
+  }
   VPackSlice const& sub = slice.get(name);
 
   if (sub.isBoolean()) {
@@ -86,10 +90,15 @@ bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
 std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
                                                      char const* name) {
   TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    std::string msg = "The attribute '" + std::string(name) +
+                      "' was not found.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+  }
   VPackSlice const sub = slice.get(name);
   if (!sub.isString()) {
     std::string msg = "The attribute '" + std::string(name) +
-                      "' was not found or is not a string.";
+                      "' is not a string.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
   return sub.copyString();
@@ -105,6 +114,9 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
                                              char const* name,
                                              std::string const& defaultValue) {
   TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    return defaultValue;
+  }
   VPackSlice const sub = slice.get(name);
   if (!sub.isString()) {
     return defaultValue;
@@ -114,8 +126,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 
 uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
   if (slice.isString()) {
-    std::string tmp = slice.copyString();
-    return TRI_UInt64String(tmp.c_str()); 
+    return triagens::basics::StringUtils::uint64(slice.copyString());
   }
   if (slice.isNumber()) {
     return slice.getNumericValue<uint64_t>();
@@ -360,7 +371,7 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
     case VPackValueType::Array: {
       VPackValueLength const nl = lhs.length();
       VPackValueLength const nr = rhs.length();
-      VPackValueLength const n = std::max(nr, nl);
+      VPackValueLength const n = (std::max)(nr, nl);
       for (VPackValueLength i = 0; i < n; ++i) {
         VPackSlice lhsValue;
         if (i < nl) {
@@ -383,8 +394,14 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       VPackCollection::keys(lhs, keys);
       VPackCollection::keys(rhs, keys);
       for (auto const& key : keys) {
-        VPackSlice lhsValue = lhs.get(key);
-        VPackSlice rhsValue = rhs.get(key);
+        VPackSlice lhsValue;
+        if (lhs.hasKey(key)) {
+          lhsValue = lhs.get(key);
+        }
+        VPackSlice rhsValue;
+        if (rhs.hasKey(key)) {
+          rhsValue = rhs.get(key);
+        }
 
         int result = compare(lhsValue, rhsValue, useUTF8);
         if (result != 0) {

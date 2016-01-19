@@ -57,6 +57,10 @@ class VelocyPackHelper {
   template <typename T>
   static T getNumericValue(VPackSlice const& slice, char const* name,
                            T defaultValue) {
+    TRI_ASSERT(slice.isObject());
+    if (!slice.hasKey(name)) {
+      return defaultValue;
+    }
     VPackSlice sub = slice.get(name);
     if (sub.isNumber()) {
       return sub.getNumber<T>();
