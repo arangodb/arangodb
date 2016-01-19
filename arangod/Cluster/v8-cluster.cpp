@@ -30,6 +30,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "VocBase/server.h"
 
 using namespace std;
@@ -246,13 +247,13 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     while (it != result._values.end()) {
       std::string const key = (*it).first;
-      TRI_json_t const* json = (*it).second._json;
+      VPackSlice const slice = it->second._vpack->slice();
       std::string const idx = StringUtils::itoa((*it).second._index);
 
-      if (json != nullptr) {
+      if (!slice.isNone()) {
         v8::Handle<v8::Object> sub = v8::Object::New(isolate);
 
-        sub->Set(TRI_V8_ASCII_STRING("value"), TRI_ObjectJson(isolate, json));
+        sub->Set(TRI_V8_ASCII_STRING("value"), TRI_VPackToV8(isolate, slice));
         sub->Set(TRI_V8_ASCII_STRING("index"), TRI_V8_STD_STRING(idx));
 
         l->Set(TRI_V8_STD_STRING(key), sub);
@@ -267,10 +268,10 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     while (it != result._values.end()) {
       std::string const key = (*it).first;
-      TRI_json_t const* json = (*it).second._json;
+      VPackSlice const slice = it->second._vpack->slice();
 
-      if (json != nullptr) {
-        l->ForceSet(TRI_V8_STD_STRING(key), TRI_ObjectJson(isolate, json));
+      if (!slice.isNone()) {
+        l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
       }
 
       ++it;
@@ -595,10 +596,10 @@ static void JS_WatchAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   while (it != result._values.end()) {
     std::string const key = (*it).first;
-    TRI_json_t* json = (*it).second._json;
+    VPackSlice const slice = it->second._vpack->slice();
 
-    if (json != nullptr) {
-      l->Set(TRI_V8_STD_STRING(key), TRI_ObjectJson(isolate, json));
+    if (!slice.isNone()) {
+      l->Set(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
     }
 
     ++it;

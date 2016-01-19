@@ -92,7 +92,7 @@ struct AgencyConnectionOptions {
 
 struct AgencyCommResultEntry {
   uint64_t _index;
-  TRI_json_t* _json;
+  std::shared_ptr<VPackBuilder> _vpack;
   bool _isDir;
 };
 

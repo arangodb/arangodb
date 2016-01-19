@@ -52,6 +52,7 @@ namespace arango {
 template <typename T>
 static T ExtractFigure(VPackSlice const& slice, char const* group,
                        char const* name) {
+  TRI_ASSERT(slice.isObject());
   VPackSlice g = slice.get(group);
 
   if (!g.isObject()) {

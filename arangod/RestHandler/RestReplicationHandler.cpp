@@ -1005,10 +1005,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
             {
               VPackArrayBuilder b2(&resultBuilder);
               for (auto const& it : result._values) {
-                // Only temporary until AgencyResult has _velocy
-                std::shared_ptr<VPackBuilder> parsedSubResult =
-                    JsonHelper::toVelocyPack(it.second._json);
-                VPackSlice const subResultSlice = parsedSubResult->slice();
+                VPackSlice const subResultSlice = it.second._vpack->slice();
                 if (subResultSlice.isObject()) {
                   if (includeSystem ||
                       !triagens::basics::VelocyPackHelper::getBooleanValue(

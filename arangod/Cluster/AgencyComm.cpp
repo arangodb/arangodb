@@ -83,15 +83,7 @@ AgencyCommResult::AgencyCommResult()
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult::~AgencyCommResult() {
-  // free all JSON data
-  std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
-
-  while (it != _values.end()) {
-    if ((*it).second._json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, (*it).second._json);
-    }
-    ++it;
-  }
+  // All elements free themselves
 }
 
 
@@ -177,16 +169,7 @@ std::string AgencyCommResult::errorDetails() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AgencyCommResult::clear() {
-  // free existing values if any
-  std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
-
-  while (it != _values.end()) {
-    if ((*it).second._json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, (*it).second._json);
-    }
-    ++it;
-  }
-
+  // clear existing values. They free themselves
   _values.clear();
 
   _location = "";
@@ -239,12 +222,16 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
       AgencyCommResultEntry entry;
 
       entry._index = 0;
-      entry._json = 0;
+      entry._vpack = std::make_shared<VPackBuilder>();
       entry._isDir = true;
       _values.emplace(prefix, entry);
     }
 
     // is a directory, so there may be a "nodes" attribute
+    if (!node.hasKey("nodes")) {
+      // if directory is empty...
+      return true;
+    }
     VPackSlice const nodes = node.get("nodes");
 
     if (!nodes.isArray()) {
@@ -269,10 +256,9 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
 
         // get "modifiedIndex"
         entry._index =
-            triagens::basics::VelocyPackHelper::stringUInt64(node.get("value"));
+            triagens::basics::VelocyPackHelper::stringUInt64(value);
         std::string tmp = value.copyString();
-        entry._json =
-            triagens::basics::JsonHelper::fromString(tmp.c_str(), tmp.size());
+        entry._vpack = VPackParser::fromJson(tmp);
         entry._isDir = false;
 
         _values.emplace(prefix, entry);
@@ -422,7 +408,8 @@ bool AgencyCommLocker::fetchVersion(AgencyComm& comm) {
     return false;
   }
 
-  _version = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+  VPackSlice const versionSlice = it->second._vpack->slice();
+  _version = triagens::basics::VelocyPackHelper::stringUInt64(versionSlice);
   return true;
 }
 
@@ -875,13 +862,18 @@ bool AgencyComm::increaseVersion(std::string const& key) {
     return false;
   }
 
+  VPackSlice const versionSlice = it->second._vpack->slice();
   uint64_t version =
-      triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+      triagens::basics::VelocyPackHelper::stringUInt64(versionSlice);
 
   // version key found, now update it
   VPackBuilder oldBuilder;
   try {
-    oldBuilder.add(VPackValue(version));
+    if (versionSlice.isString()) {
+      oldBuilder.add(VPackValue(std::to_string(version)));
+    } else {
+      oldBuilder.add(VPackValue(version));
+    }
   } catch (...) {
     return false;
   }
@@ -1038,18 +1030,8 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       TRI_json_t const* json, bool prevExist,
                                       double ttl, double timeout) {
-  AgencyCommResult result;
-
-  sendWithFailover(
-      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-      timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
-      result, buildUrl(key) + "?prevExist=" + (prevExist ? "true" : "false") +
-                  ttlParam(ttl, false),
-      "value=" + triagens::basics::StringUtils::urlEncode(
-                     triagens::basics::JsonHelper::toString(json)),
-      false);
-
-  return result;
+  auto oldBuilder = triagens::basics::JsonHelper::toVelocyPack(json);
+  return casValue(key, oldBuilder->slice(), prevExist, ttl, timeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1085,20 +1067,10 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       TRI_json_t const* oldJson,
                                       TRI_json_t const* newJson, double ttl,
                                       double timeout) {
-  AgencyCommResult result;
-
-  sendWithFailover(
-      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-      timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
-      result, buildUrl(key) + "?prevValue=" +
-                  triagens::basics::StringUtils::urlEncode(
-                      triagens::basics::JsonHelper::toString(oldJson)) +
-                  ttlParam(ttl, false),
-      "value=" + triagens::basics::StringUtils::urlEncode(
-                     triagens::basics::JsonHelper::toString(newJson)),
-      false);
-
-  return result;
+  // Only temporary
+  auto oldBuilder = triagens::basics::JsonHelper::toVelocyPack(oldJson);
+  auto newBuilder = triagens::basics::JsonHelper::toVelocyPack(newJson);
+  return casValue(key, oldBuilder->slice(), newBuilder->slice(), ttl, timeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1225,15 +1197,17 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
     result = getValues(key, false);
 
     if (result.httpCode() == (int)triagens::rest::HttpResponse::NOT_FOUND) {
-      std::unique_ptr<TRI_json_t> json(
-          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
+      try {
+        VPackBuilder builder;
+        builder.add(VPackValue(0));
 
-      if (json != nullptr) {
         // create the key on the fly
-        setValue(key, json.get(), 0.0);
+        setValue(key, builder.slice(), 0.0);
         tries--;
 
         continue;
+      } catch (...) {
+        // Could not build local key. Try again
       }
     }
 
@@ -1243,37 +1217,36 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
 
     result.parse("", false);
 
-    std::unique_ptr<TRI_json_t> oldJson;
+    std::shared_ptr<VPackBuilder> oldBuilder;
 
     std::map<std::string, AgencyCommResultEntry>::iterator it =
         result._values.begin();
 
-    if (it != result._values.end()) {
-      // steal the json
-      oldJson.reset((*it).second._json);
-      (*it).second._json = nullptr;
-    } else {
-      oldJson.reset(
-          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
-    }
-
-    if (oldJson == nullptr) {
+    try {
+      if (it != result._values.end()) {
+        // steal the velocypack
+        oldBuilder.swap((*it).second._vpack);
+      } else {
+        oldBuilder->add(VPackValue(0));
+      }
+    } catch (...) {
       return AgencyCommResult();
     }
 
+    VPackSlice oldSlice = oldBuilder->slice();
     uint64_t const oldValue =
-        triagens::basics::JsonHelper::stringUInt64(oldJson.get()) + count;
+        triagens::basics::VelocyPackHelper::stringUInt64(oldSlice) + count;
     uint64_t const newValue = oldValue + count;
-    std::unique_ptr<TRI_json_t> newJson(
-        triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
-                                                   newValue));
 
-    if (newJson == nullptr) {
+    VPackBuilder newBuilder;
+    try {
+      newBuilder.add(VPackValue(newValue));
+    } catch (...) {
       return AgencyCommResult();
     }
 
     result.clear();
-    result = casValue(key, oldJson.get(), newJson.get(), 0.0, timeout);
+    result = casValue(key, oldSlice, newBuilder.slice(), 0.0, timeout);
 
     if (result.successful()) {
       result._index = oldValue + 1;
