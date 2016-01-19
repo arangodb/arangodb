@@ -144,17 +144,14 @@ void WorkMonitor::SEND_WORK_OVERVIEW(uint64_t taskId, std::string const& data) {
   Scheduler::SCHEDULER->signalTask(answer);
 }
 
-
 HandlerWorkStack::HandlerWorkStack(HttpHandler* handler) : _handler(handler) {
   WorkMonitor::pushHandler(_handler);
 }
-
 
 HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<HttpHandler>& handler) {
   _handler = handler.release();
   WorkMonitor::pushHandler(_handler);
 }
-
 
 HandlerWorkStack::~HandlerWorkStack() {
   WorkMonitor::popHandler(_handler, true);

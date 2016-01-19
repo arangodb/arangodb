@@ -75,10 +75,11 @@ const workDescription = function(level, w, desc, now) {
   desc.level = level;
 
   if (t === "thread") {
-    desc.root.thread = w.name;
+    desc.root.thread = desc;
 
     desc.type = "thread";
-    desc.name = "";
+    desc.name = w.name;
+    desc.number = String(w.number);
     desc.info = "";
   } else if (t === "AQL query") {
     desc.type = "aql";
@@ -88,19 +89,16 @@ const workDescription = function(level, w, desc, now) {
     desc.type = "request";
     desc.name = GREEN + "REQUEST" + RESET;
     desc.info = w.method + " " + w.url + " (" + w.protocol + ")";
+    desc.runtime = "" + (now - w.startTime).toFixed(2);
 
     desc = desc.child = {
-      root: desc.root, level: desc.level, type: "variable",
-      name: CYAN + "runtime" + RESET,
-      info: (now - w.startTime).toFixed(2) + " sec"
-    };
-
-    desc = desc.child = {
-      root: desc.root, level: desc.level, type: "variable",
+      root: desc.root,
+      level: desc.level,
+      type: "variable",
       name: CYAN + "client " + RESET,
       info: w.client.address + ":" + w.client.port
     };
-} else {
+  } else {
     desc.type = "unknown";
     desc.name = RED + t + RESET;
     desc.info = "";
@@ -119,21 +117,34 @@ const workDescription = function(level, w, desc, now) {
 ////////////////////////////////////////////////////////////////////////////////
 
 const outputWorkDescription = function(desc, opts) {
-  let line = "";
-
-  if (desc.level > 0 && desc.type === "thread") {
-    return;
+  if (desc.type === "thread") {
+    if (desc.level > 0 || desc.name === "Work Monitor") {
+      return;
+    }
   }
-
-  line += BLUE;
 
   if (desc.level === 0) {
-    line += fillR(desc.thread, opts.width);
-  } else {
-    line += fillR("", opts.width);
+    let hdr = BLUE;
+    hdr += fillL(desc.thread.number, opts.threadNumberWidth);
+    hdr += " " + fillR(desc.thread.name, opts.threadWidth);
+    hdr += RESET;
+
+    print(hdr);
+
+    if (desc.type === "thread") {
+      return;
+    }
   }
 
-  line += RESET + fillR("", 2 * desc.level + 1) + desc.name;
+  let line = fillR("", opts.threadNumberWidth + 2);
+
+  if (desc.hasOwnProperty("runtime")) {
+    line += " " + fillL(desc.runtime, opts.runtimeWidth) + "s ";
+  } else {
+    line += fillL("", opts.runtimeWidth + 3);
+  }
+
+  line += fillR("", 2 * desc.level + 1) + desc.name;
   line += " " + desc.info;
 
   print(line);
@@ -155,6 +166,8 @@ const workOverview = function() {
 
   let descs = [];
   let w1 = 0;
+  let w2 = 0;
+  let w3 = 0;
   const now = res.time;
 
   work.forEach(function(w) {
@@ -163,12 +176,23 @@ const workOverview = function() {
     workDescription(0, w, desc, now);
     descs.push(desc);
 
-    w1 = Math.max(w1, desc.thread.length);
+    w1 = Math.max(w1, desc.root.thread.name.length);
+    w3 = Math.max(w3, desc.root.thread.number.length);
+
+    while (desc !== undefined) {
+      if (desc.hasOwnProperty("runtime")) {
+        w2 = Math.max(w2, desc.runtime.length);
+      }
+
+      desc = desc.child;
+    }
   });
 
   descs.forEach(function(d) {
     outputWorkDescription(d, {
-      width: w1
+      threadWidth: w1,
+      runtimeWidth: w2,
+      threadNumberWidth: w3
     });
   });
 };

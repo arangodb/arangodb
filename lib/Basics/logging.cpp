@@ -40,11 +40,11 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/shell-colors.h"
-#include "Basics/threads.h"
+#include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 
-
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log appenders type
@@ -144,7 +144,6 @@ TRI_log_appender_t::TRI_log_appender_t(char const* contentFilter,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_log_appender_t::~TRI_log_appender_t() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief already initialized
@@ -350,7 +349,6 @@ static bool UseFileBasedLogging = false;
 
 static bool FilesToLog[FilesToLogSize];
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores output in a buffer
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,8 +422,7 @@ static int LidCompare(void const* l, void const* r) {
 static int GenerateMessage(char* buffer, size_t size, int* offset,
                            char const* func, char const* file, int line,
                            TRI_log_level_e level, TRI_pid_t currentProcessId,
-                           TRI_tid_t currentThreadId, char const* fmt,
-                           va_list ap) {
+                           uint64_t threadNumber, char const* fmt, va_list ap) {
   int m;
   int n;
 
@@ -461,7 +458,7 @@ static int GenerateMessage(char* buffer, size_t size, int* offset,
   if (ShowThreadIdentifier) {
     n = snprintf(buffer + m, size - m, "[%llu-%llu] ",
                  (unsigned long long)currentProcessId,
-                 (unsigned long long)currentThreadId);
+                 (unsigned long long)threadNumber);
   } else {
     n = snprintf(buffer + m, size - m, "[%llu] ",
                  (unsigned long long)currentProcessId);
@@ -756,8 +753,8 @@ static void DisarmFormatString(std::string& dangerousString) {
 
 static void LogThread(char const* func, char const* file, int line,
                       TRI_log_level_e level, TRI_log_severity_e severity,
-                      TRI_pid_t processId, TRI_tid_t threadId, char const* fmt,
-                      va_list ap) {
+                      TRI_pid_t processId, uint64_t threadNumber,
+                      char const* fmt, va_list ap) {
   static int const maxSize = 100 * 1024;
   va_list ap2;
   char buffer[2048];  // try a static buffer first
@@ -786,7 +783,7 @@ static void LogThread(char const* func, char const* file, int line,
   errno = TRI_ERROR_NO_ERROR;
   va_copy(ap2, ap);
   n = GenerateMessage(buffer + len, sizeof(buffer) - len, &offset, func, file,
-                      line, level, processId, threadId, fmt, ap2);
+                      line, level, processId, threadNumber, fmt, ap2);
   va_end(ap2);
 
   if (n == -1) {
@@ -835,7 +832,7 @@ static void LogThread(char const* func, char const* file, int line,
     errno = TRI_ERROR_NO_ERROR;
     va_copy(ap2, ap);
     m = GenerateMessage(p + len, n + 1, &offset, func, file, line, level,
-                        processId, threadId, fmt, ap2);
+                        processId, threadNumber, fmt, ap2);
     va_end(ap2);
 
     if (m == -1) {
@@ -896,7 +893,6 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR() {
   TRI_ShutdownLogging(true);
   TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the log level
@@ -1140,9 +1136,10 @@ void TRI_Log(char const* func, char const* file, int line,
   }
 
   TRI_pid_t processId = TRI_CurrentProcessId();
-  TRI_tid_t threadId = TRI_CurrentThreadId();
+  uint64_t threadNumber = Thread::currentThreadNumber();
 
-  LogThread(func, file, line, level, severity, processId, threadId, fmt, ap);
+  LogThread(func, file, line, level, severity, processId, threadNumber, fmt,
+            ap);
   va_end(ap);
 }
 
@@ -1211,7 +1208,6 @@ void TRI_FreeBufferLogging(TRI_vector_t* buffer) {
 
   TRI_FreeVector(TRI_UNKNOWN_MEM_ZONE, buffer);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief structure for file log appenders
@@ -1428,7 +1424,6 @@ void log_appender_file_t::writeLogFile(int fd, char const* buffer,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log appender for file output
 ////////////////////////////////////////////////////////////////////////////////
@@ -1469,8 +1464,6 @@ int TRI_CreateLogAppenderFile(char const* filename, char const* contentFilter,
   // and return base structure
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief structure for syslog appenders
@@ -1644,7 +1637,6 @@ char* log_appender_syslog_t::details() {
 
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a syslog appender
 ////////////////////////////////////////////////////////////////////////////////
@@ -1683,8 +1675,6 @@ int TRI_CreateLogAppenderSyslog(char const* name, char const* facility,
 }
 
 #endif
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return global log file name
@@ -1845,5 +1835,3 @@ void TRI_FlushLogging() {
     }
   }
 }
-
-
