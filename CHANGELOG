@@ -1,6 +1,10 @@
 v2.8.0-beta8 (2016-01-19)
 -------------------------
 
+* improved internal datafile statistics for compaction and compaction triggering
+  conditions, preventing excessive growth of collection datafiles under some
+  workloads
+
 * renamed AQL optimizer rule `remove-collect-into` to `remove-collect-variables`
 
 * fixed primary and edge index lookups prematurely aborting searches when the
