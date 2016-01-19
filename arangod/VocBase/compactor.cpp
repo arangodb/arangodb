@@ -684,7 +684,7 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
 
 static compaction_initial_context_t InitCompaction(
     arangodb::arango::Transaction* trx, TRI_document_collection_t* document,
-    TRI_vector_t const* compactions) {
+    std::vector<compaction_info_t> const& toCompact) {
   compaction_initial_context_t context;
 
   memset(&context, 0, sizeof(compaction_initial_context_t));
@@ -697,12 +697,11 @@ static compaction_initial_context_t InitCompaction(
       sizeof(TRI_df_header_marker_t) + sizeof(TRI_col_header_marker_t) +
       sizeof(TRI_df_footer_marker_t) + 256;  // allow for some overhead
 
-  size_t const n = TRI_LengthVector(compactions);
+  size_t const n = toCompact.size();
 
   for (size_t i = 0; i < n; ++i) {
-    compaction_info_t* compaction =
-        static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
-    TRI_datafile_t* df = compaction->_datafile;
+    auto compaction = toCompact[i];
+    TRI_datafile_t* df = compaction._datafile;
 
     // We will sequentially scan the logfile for collection:
     if (df->isPhysical(df)) {
@@ -712,10 +711,10 @@ static compaction_initial_context_t InitCompaction(
 
     if (i == 0) {
       // extract and store fid
-      context._fid = compaction->_datafile->_fid;
+      context._fid = compaction._datafile->_fid;
     }
 
-    context._keepDeletions = compaction->_keepDeletions;
+    context._keepDeletions = compaction._keepDeletions;
 
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     bool ok;
@@ -744,12 +743,12 @@ static compaction_initial_context_t InitCompaction(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CompactifyDatafiles(TRI_document_collection_t* document,
-                                TRI_vector_t const* compactions) {
+                                std::vector<compaction_info_t> const& toCompact) {
   TRI_datafile_t* compactor;
   compaction_context_t context;
   size_t i, j;
 
-  size_t const n = TRI_LengthVector(compactions);
+  size_t const n = toCompact.size();
   TRI_ASSERT(n > 0);
 
   arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
@@ -760,7 +759,7 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
 
   compaction_initial_context_t initial =
-      InitCompaction(&trx, document, compactions);
+      InitCompaction(&trx, document, toCompact);
 
   if (initial._failed) {
     LOG_ERROR("could not create initialize compaction");
@@ -801,19 +800,18 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
 
   // now compact all datafiles
   for (i = 0; i < n; ++i) {
-    compaction_info_t* compaction =
-        static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
-    TRI_datafile_t* df = compaction->_datafile;
+    auto compaction = toCompact[i];
+    TRI_datafile_t* df = compaction._datafile;
 
     LOG_TRACE(
         "compacting datafile '%s' into '%s', number: %d, keep deletions: %d",
         df->getName(df), compactor->getName(compactor), (int)i,
-        (int)compaction->_keepDeletions);
+        (int)compaction._keepDeletions);
 
     // if this is the first datafile in the list of datafiles, we can also
     // collect
     // deletion markers
-    context._keepDeletions = compaction->_keepDeletions;
+    context._keepDeletions = compaction._keepDeletions;
 
     // run the actual compaction of a single datafile
     bool ok = TRI_IterateDatafile(df, Compactifier, &context);
@@ -834,9 +832,8 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
   
   // remove all datafile statistics that we don't need anymore
   for (i = 1; i < n; ++i) {
-    compaction_info_t* compaction =
-        static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
-    document->_datafileStatistics.remove(compaction->_datafile->_fid);
+    auto compaction = toCompact[i];
+    document->_datafileStatistics.remove(compaction._datafile->_fid);
   }
 
   // locate the compactor
@@ -867,9 +864,8 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
     if (n > 1) {
       // create .dead files for all collected files
       for (i = 0; i < n; ++i) {
-        compaction_info_t* compaction =
-            static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
-        TRI_datafile_t* datafile = compaction->_datafile;
+        auto compaction = toCompact[i];
+        TRI_datafile_t* datafile = compaction._datafile;
 
         if (datafile->isPhysical(datafile)) {
           char* filename =
@@ -887,15 +883,14 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
     RemoveCompactor(document, compactor);
 
     for (i = 0; i < n; ++i) {
-      compaction_info_t* compaction =
-          static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
-
+      auto compaction = toCompact[i];
+      
       // datafile is also empty after compaction and thus useless
-      RemoveDatafile(document, compaction->_datafile);
+      RemoveDatafile(document, compaction._datafile);
 
       // add a deletion ditch to the collection
       auto b = document->ditches()->createDropDatafileDitch(
-          compaction->_datafile, document, DropDatafileCallback, __FILE__,
+          compaction._datafile, document, DropDatafileCallback, __FILE__,
           __LINE__);
 
       if (b == nullptr) {
@@ -906,9 +901,8 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
     if (n > 1) {
       // create .dead files for all collected files but the first
       for (i = 1; i < n; ++i) {
-        compaction_info_t* compaction =
-            static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
-        TRI_datafile_t* datafile = compaction->_datafile;
+        auto compaction = toCompact[i];
+        TRI_datafile_t* datafile = compaction._datafile;
 
         if (datafile->isPhysical(datafile)) {
           char* filename =
@@ -923,8 +917,7 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
     }
       
     for (i = 0; i < n; ++i) {
-      compaction_info_t* compaction =
-          static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
+      auto compaction = toCompact[i];
 
       if (i == 0) {
         // add a rename marker
@@ -934,7 +927,7 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
         memcpy(copy, &context, sizeof(compaction_context_t));
 
         auto b = document->ditches()->createRenameDatafileDitch(
-            compaction->_datafile, copy, RenameDatafileCallback, __FILE__,
+            compaction._datafile, copy, RenameDatafileCallback, __FILE__,
             __LINE__);
 
         if (b == nullptr) {
@@ -943,11 +936,11 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
         }
       } else {
         // datafile is empty after compaction and thus useless
-        RemoveDatafile(document, compaction->_datafile);
+        RemoveDatafile(document, compaction._datafile);
 
         // add a drop datafile marker
         auto b = document->ditches()->createDropDatafileDitch(
-            compaction->_datafile, document, DropDatafileCallback, __FILE__,
+            compaction._datafile, document, DropDatafileCallback, __FILE__,
             __LINE__);
 
         if (b == nullptr) {
@@ -967,6 +960,9 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
   //  if (! TRI_IsFullyCollectedDocumentCollection(document)) {
   //    return false;
   //  }
+  
+  std::vector<compaction_info_t> toCompact;
+  toCompact.reserve(COMPACTOR_MAX_FILES); 
 
   // if we cannot acquire the read lock instantly, we will exit directly.
   // otherwise we'll risk a multi-thread deadlock between synchronizer,
@@ -977,7 +973,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
 
   size_t const n = document->_datafiles._length;
 
-  if (document->_compactors._length > 0 || n == 0) {
+  if (n == 0 || document->_compactors._length > 0) {
     // we already have created a compactor file in progress.
     // if this happens, then a previous compaction attempt for this collection
     // failed
@@ -1007,10 +1003,6 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
   if (maxSize >= COMPACTOR_MAX_RESULT_FILESIZE) {
     maxSize = COMPACTOR_MAX_RESULT_FILESIZE;
   }
-
-  // copy datafile information
-  TRI_vector_t vector;
-  TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(compaction_info_t));
 
   if (start >= n || numDocuments == 0) {
     start = 0;
@@ -1087,7 +1079,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     start = i + 1;
 
     if (totalSize + (uint64_t)df->_maximalSize >= maxSize &&
-        TRI_LengthVector(&vector) >= 1) {
+        ! toCompact.empty()) {
       // found enough files to compact
       break;
     }
@@ -1118,7 +1110,15 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     compaction._keepDeletions = (numAlive > 0 && i > 0);
     // TODO: verify that keepDeletions actually works with wrong numAlive stats
 
-    TRI_PushBackVector(&vector, &compaction);
+    try {
+      toCompact.push_back(compaction);
+    }
+    catch (...) {
+      // silently fail. either we had found something to compact or not
+      // if not, then we can try again next time. if yes, then we'll simply forget
+      // about it and also try again next time
+      break;
+    }
 
     // we stop at the first few datafiles.
     // this is better than going over all datafiles in a collection in one go
@@ -1133,7 +1133,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     }
 
     if (totalSize >= COMPACTOR_MIN_SIZE &&
-        TRI_LengthVector(&vector) >= COMPACTOR_MAX_FILES) {
+        toCompact.size() >= COMPACTOR_MAX_FILES) {
       // found enough files to compact
       break;
     }
@@ -1144,26 +1144,22 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
   // can now continue without the lock
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
-  if (TRI_LengthVector(&vector) == 0) {
+  if (toCompact.empty()) {
     // nothing to compact. now reset start index
     document->setNextCompactionStartIndex(0);
     
     // cleanup local variables
-    TRI_DestroyVector(&vector);
     document->setCompactionStatus(ReasonNothingToCompact);
     return false;
   }
 
   // handle datafiles with dead objects
-  TRI_ASSERT(TRI_LengthVector(&vector) >= 1);
+  TRI_ASSERT(toCompact.size() >= 1);
   TRI_ASSERT(reason != nullptr);
   document->setCompactionStatus(reason);
 
   document->setNextCompactionStartIndex(start);
-  CompactifyDatafiles(document, &vector);
-
-  // cleanup local variables
-  TRI_DestroyVector(&vector);
+  CompactifyDatafiles(document, toCompact);
 
   return true;
 }
