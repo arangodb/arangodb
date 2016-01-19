@@ -72,7 +72,10 @@ with the option *includeVertices* set to true.
       NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ], {includeData: true})
 
 
-!SECTION General-purpose traversals
+!SECTION General Purpose Traversals
+
+General purpose traversals with its extendability by visitor functions offer more possibilities over the newer [AQL graph traversals](../Aql/GraphTraversals.md),
+however unless you need some of these features you should [prefer AQL graph traversals](../Aql/GraphTraversals.md).
 
 !SUBSECTION Traversal
 *TRAVERSAL(vertexcollection, edgecollection, startVertex, direction, options)*: 
@@ -529,7 +532,7 @@ In order to keep the result set consistent between *includeData* enabled or disa
 
 When using any of AQL's general purpose traversal functions, please make sure that the graph 
 does not contain cycles, or that you at least specify some maximum depth or uniqueness 
-criteria for a traversal. 
+criteria for a traversal. In contrast [AQL graph traversals](../Aql/GraphTraversals.md) won't trap on cycles.
 
 If no bounds are set, a traversal may run into an endless loop in a cyclic graph or sub-graph.
 Even in a non-cyclic graph, traversing far into the graph may consume a lot of processing
@@ -541,6 +544,4 @@ abort or consume lots of resources. The maximum number of vertices that a traver
 process is specified by the optional *maxIterations* configuration value. If the number of
 vertices processed in a traversal reaches this cap will, the traversal will abort and throw
 a *too many iterations* exception.
-
-
 
