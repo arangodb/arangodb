@@ -36,6 +36,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadWriteLockCPP11.h"
 #include "VocBase/collection.h"
+#include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
@@ -293,28 +294,6 @@ struct TRI_doc_mptr_copy_t final : public TRI_doc_mptr_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile info
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_datafile_info_s {
-  TRI_voc_fid_t   _fid;
-
-  TRI_voc_ssize_t _numberAlive;
-  TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _numberDeletion;
-  TRI_voc_ssize_t _numberShapes;
-  TRI_voc_ssize_t _numberAttributes;
-  TRI_voc_ssize_t _numberTransactions; // used only during compaction
-
-  int64_t         _sizeAlive;
-  int64_t         _sizeDead;
-  int64_t         _sizeShapes;
-  int64_t         _sizeAttributes;
-  int64_t         _sizeTransactions; // used only during compaction
-}
-TRI_doc_datafile_info_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection info
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -326,7 +305,7 @@ typedef struct TRI_doc_collection_info_s {
 
   TRI_voc_ssize_t _numberAlive;
   TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _numberDeletion;
+  TRI_voc_ssize_t _numberDeletions;
   TRI_voc_ssize_t _numberShapes;
   TRI_voc_ssize_t _numberAttributes;
   TRI_voc_ssize_t _numberTransactions;
@@ -381,6 +360,8 @@ private:
   bool                                 _useSecondaryIndexes;
 
 public:
+  triagens::DatafileStatistics _datafileStatistics;
+
   // We do some assertions with barriers and transactions in maintainer mode:
 #ifndef TRI_ENABLE_MAINTAINER_MODE
   VocShaper* getShaper () const {
@@ -426,7 +407,6 @@ public:
   }
 
   mutable triagens::arango::Ditches      _ditches;
-  TRI_associative_pointer_t              _datafileInfo;
 
   class TRI_headers_t*                   _headersPtr;
   KeyGenerator*                          _keyGenerator;
@@ -476,21 +456,6 @@ public:
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a datafile description
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_RemoveDatafileInfoDocumentCollection (TRI_document_collection_t*,
-                                              TRI_voc_fid_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a datafile description
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocumentCollection (TRI_document_collection_t*,
-                                                                TRI_voc_fid_t,
-                                                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over all documents in the collection, using a user-defined

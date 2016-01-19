@@ -39,12 +39,14 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/transactions.h"
+#include "VocBase/DatafileStatistics.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
+using namespace triagens;
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
@@ -55,8 +57,8 @@ using namespace triagens::wal;
 /// @brief return a reference to an existing datafile statistics struct
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_doc_datafile_info_t& getDfi (CollectorCache* cache,
-                                               TRI_voc_fid_t fid) {
+static inline DatafileStatisticsContainer& getDfi(CollectorCache* cache,
+                                                  TRI_voc_fid_t fid) {
   return cache->dfi[fid];
 }
 
@@ -65,17 +67,14 @@ static inline TRI_doc_datafile_info_t& getDfi (CollectorCache* cache,
 /// create it if it does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_doc_datafile_info_t& createDfi (CollectorCache* cache,
-                                                  TRI_voc_fid_t fid) {
+static inline DatafileStatisticsContainer& createDfi(CollectorCache* cache,
+                                                     TRI_voc_fid_t fid) {
   auto it = cache->dfi.find(fid);
   if (it != cache->dfi.end()) {
     return (*it).second;
   }
 
-  TRI_doc_datafile_info_t dfi;
-  memset(&dfi, 0, sizeof(TRI_doc_datafile_info_t));
-  cache->dfi.emplace(fid, dfi);
-
+  cache->dfi.emplace(fid, DatafileStatisticsContainer());
   return getDfi(cache, fid);
 }
 
@@ -774,6 +773,9 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
       TRI_ASSERT(marker != nullptr);
 
       if (walMarker->_type == TRI_WAL_MARKER_DOCUMENT) {
+        auto& dfi = createDfi(cache, fid);
+        dfi.numberUncollected--;
+
         wal::document_marker_t const* m = reinterpret_cast<wal::document_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
 
@@ -781,11 +783,8 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
         if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
           // somebody inserted a new revision of the document or the revision was already moved by the compactor
-          auto& dfi = createDfi(cache, fid);
-          dfi._numberDead++;
-          dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
-          dfi._numberAlive--;
-          dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+          dfi.numberDead++;
+          dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
         }
         else {
           // update cap constraint info
@@ -795,9 +794,15 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
           // we can safely update the master pointer's dataptr value
           found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
           found->_fid = fid;
+
+          dfi.numberAlive++;
+          dfi.sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
         }
       }
       else if (walMarker->_type == TRI_WAL_MARKER_EDGE) {
+        auto& dfi = createDfi(cache, fid);
+        dfi.numberUncollected--;
+
         wal::edge_marker_t const* m = reinterpret_cast<wal::edge_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
 
@@ -805,11 +810,8 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
         if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
           // somebody inserted a new revision of the document or the revision was already moved by the compactor
-          auto& dfi = createDfi(cache, fid);
-          dfi._numberDead++;
-          dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
-          dfi._numberAlive--;
-          dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+          dfi.numberDead++;
+          dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
         }
         else {
           // update cap constraint info
@@ -819,9 +821,16 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
           // we can safely update the master pointer's dataptr value
           found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
           found->_fid = fid;
+
+          dfi.numberAlive++;
+          dfi.sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
         }
       }
       else if (walMarker->_type == TRI_WAL_MARKER_REMOVE) {
+        auto& dfi = createDfi(cache, fid);
+        dfi.numberUncollected--;
+        dfi.numberDeletions++;
+
         wal::remove_marker_t const* m = reinterpret_cast<wal::remove_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + sizeof(wal::remove_marker_t);
 
@@ -829,23 +838,25 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
         if (found != nullptr && found->_rid > m->_revisionId) {
           // somebody re-created the document with a newer revision
-          auto& dfi = createDfi(cache, fid);
-          dfi._numberDead++;
-          dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
-          dfi._numberAlive--;
-          dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+          dfi.numberDead++;
+          dfi.sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
         }
       }
       else if (walMarker->_type == TRI_WAL_MARKER_ATTRIBUTE) {
         // move the pointer to the attribute from WAL to the datafile
         document->getShaper()->moveMarker(const_cast<TRI_df_marker_t*>(marker), (void*) walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
+        auto& dfi = createDfi(cache, fid);
+        dfi.numberUncollected--;
+        dfi.numberAttributes++;
+        dfi.sizeAttributes += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
       }
       else if (walMarker->_type == TRI_WAL_MARKER_SHAPE) {
         // move the pointer to the shape from WAL to the datafile
         document->getShaper()->moveMarker(const_cast<TRI_df_marker_t*>(marker), (void*) walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
-      }
-      else {
-        // a marker we won't care about
+        auto& dfi = createDfi(cache, fid);
+        dfi.numberUncollected--;
+        dfi.numberShapes++;
+        dfi.sizeShapes += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
       }
     }
 
@@ -1118,6 +1129,9 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi.numberUncollected++;
+
         // set attribute id
         TRI_df_attribute_marker_t* m = reinterpret_cast<TRI_df_attribute_marker_t*>(dst);
         m->_aid = reinterpret_cast<attribute_marker_t const*>(source)->_attributeId;
@@ -1126,11 +1140,6 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         memcpy(dst + sizeof(TRI_df_attribute_marker_t), name, n);
 
         finishMarker(base, dst, document, source->_tick, cache);
-
-        // update statistics
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi._numberAttributes++;
-        dfi._sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
         break;
       }
 
@@ -1145,15 +1154,13 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi.numberUncollected++;
+
         // copy shape into marker
         memcpy(dst + sizeof(TRI_df_shape_marker_t), shape, shapeLength);
 
         finishMarker(base, dst, document, source->_tick, cache);
-
-        // update statistics
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi._numberShapes++;
-        dfi._sizeShapes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
         break;
       }
 
@@ -1172,6 +1179,9 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi.numberUncollected++;
+
         TRI_doc_document_key_marker_t* m = reinterpret_cast<TRI_doc_document_key_marker_t*>(dst);
         m->_rid        = orig->_revisionId;
         m->_tid        = 0; // convert into standalone transaction
@@ -1186,11 +1196,6 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         memcpy(dst + m->_offsetJson, shape, shapeLength);
 
         finishMarker(base, dst, document, source->_tick, cache);
-
-        // update statistics
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi._numberAlive++;
-        dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
         break;
       }
 
@@ -1213,6 +1218,9 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi.numberUncollected++;
+
         size_t offsetKey = sizeof(TRI_doc_edge_key_marker_t);
         TRI_doc_edge_key_marker_t* m = reinterpret_cast<TRI_doc_edge_key_marker_t*>(dst);
         m->base._rid           = orig->_revisionId;
@@ -1234,11 +1242,6 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         memcpy(dst + m->base._offsetJson, shape, shapeLength);
 
         finishMarker(base, dst, document, source->_tick, cache);
-
-        // update statistics
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi._numberAlive++;
-        dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
         break;
       }
 
@@ -1255,6 +1258,9 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi.numberUncollected++;
+
         TRI_doc_deletion_key_marker_t* m = reinterpret_cast<TRI_doc_deletion_key_marker_t*>(dst);
         m->_rid       = orig->_revisionId;
         m->_tid       = 0; // convert into standalone transaction
@@ -1264,10 +1270,6 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         memcpy(dst + m->_offsetKey, key, n);
 
         finishMarker(base, dst, document, source->_tick, cache);
-
-        // update statistics
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi._numberDeletion++;
         break;
       }
     }
@@ -1345,34 +1347,13 @@ int CollectorThread::queueOperations (triagens::wal::Logfile* logfile,
 
 int CollectorThread::updateDatafileStatistics (TRI_document_collection_t* document,
                                                CollectorCache* cache) {
-  // iterate over all datafile infos and update the collection's datafile stats
-  for (auto it = cache->dfi.begin(); it != cache->dfi.end(); ++it) {
-    TRI_voc_fid_t fid = (*it).first;
-
-    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-    TRI_doc_datafile_info_t* dst = TRI_FindDatafileInfoDocumentCollection(document, fid, true);
-
-    if (dst != nullptr) {
-      auto& dfi = (*it).second;
-
-      dst->_numberAttributes   += dfi._numberAttributes;
-      dst->_sizeAttributes     += dfi._sizeAttributes;
-      dst->_numberShapes       += dfi._numberShapes;
-      dst->_sizeShapes         += dfi._sizeShapes;
-      dst->_numberAlive        += dfi._numberAlive;
-      dst->_sizeAlive          += dfi._sizeAlive;
-      dst->_numberDead         += dfi._numberDead;
-      dst->_sizeDead           += dfi._sizeDead;
-      dst->_numberTransactions += dfi._numberTransactions;
-      dst->_sizeTransactions   += dfi._sizeTransactions;
-      dst->_numberDeletion     += dfi._numberDeletion;
-
-      // flush the local datafile info so we don't update the statistics twice
-      // with the same values
-      memset(&dfi, 0, sizeof(TRI_doc_datafile_info_t));
-    }
-  
-    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+  for (auto it = cache->dfi.begin(); it != cache->dfi.end(); /* no hoisting */) {
+    document->_datafileStatistics.update((*it).first, (*it).second);
+    
+    // flush the local datafile info so we don't update the statistics twice
+    // with the same values
+    (*it).second.reset();
+    it = cache->dfi.erase(it);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1487,6 +1468,14 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
       // journal is full, close it and sync
       LOG_DEBUG("closing full journal '%s'", datafile->getName(datafile));
       TRI_CloseDatafileDocumentCollection(document, i, false);
+    }
+
+    // must rotate the existing journal. now update its stats
+    if (cache->lastFid > 0) {
+      auto& dfi = getDfi(cache, cache->lastFid);
+      document->_datafileStatistics.increaseUncollected(cache->lastFid, dfi.numberUncollected);
+      // and reset afterwards
+      dfi.numberUncollected = 0;
     }
 
     datafile = TRI_CreateDatafileDocumentCollection(document, tick, targetSize, false);

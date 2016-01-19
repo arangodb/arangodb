@@ -63,6 +63,7 @@
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
+using namespace triagens;
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,24 +450,18 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures () {
     return nullptr;
   }
 
-  for (size_t i = 0;  i < _datafileInfo._nrAlloc;  ++i) {
-    auto d = static_cast<TRI_doc_datafile_info_t const*>(_datafileInfo._table[i]);
-
-    if (d != nullptr) {
-      info->_numberAlive        += d->_numberAlive;
-      info->_numberDead         += d->_numberDead;
-      info->_numberDeletion     += d->_numberDeletion;
-      info->_numberShapes       += d->_numberShapes;
-      info->_numberAttributes   += d->_numberAttributes;
-      info->_numberTransactions += d->_numberTransactions;
-
-      info->_sizeAlive          += d->_sizeAlive;
-      info->_sizeDead           += d->_sizeDead;
-      info->_sizeShapes         += d->_sizeShapes;
-      info->_sizeAttributes     += d->_sizeAttributes;
-      info->_sizeTransactions   += d->_sizeTransactions;
-    }
-  }
+  DatafileStatisticsContainer dfi = _datafileStatistics.all();
+  info->_numberAlive += dfi.numberAlive;
+  info->_numberDead += dfi.numberDead;
+  info->_numberDeletions += dfi.numberDeletions;
+  info->_numberShapes += dfi.numberShapes;
+  info->_numberAttributes += dfi.numberAttributes;
+  info->_numberTransactions += dfi.numberTransactions;
+  info->_sizeAlive += dfi.sizeAlive;
+  info->_sizeDead += dfi.sizeDead;
+  info->_sizeShapes += dfi.sizeShapes;
+  info->_sizeAttributes += dfi.sizeAttributes;
+  info->_sizeTransactions += dfi.sizeTransactions;
 
   // add the file sizes for datafiles and journals
   TRI_collection_t* base = this;
@@ -690,45 +685,6 @@ static int FulltextIndexFromJson (TRI_document_collection_t*,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes a datafile identifier
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashKeyDatafile (TRI_associative_pointer_t* array, void const* key) {
-  TRI_voc_fid_t const* k = static_cast<TRI_voc_fid_t const*>(key);
-
-  return *k;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes a datafile identifier
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementDatafile (TRI_associative_pointer_t* array, void const* element) {
-  TRI_doc_datafile_info_t const* e = static_cast<TRI_doc_datafile_info_t const*>(element);
-
-  return e->_fid;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a datafile identifier and a datafile info
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  TRI_voc_fid_t const* k = static_cast<TRI_voc_fid_t const*>(key);
-  TRI_doc_datafile_info_t const* e = static_cast<TRI_doc_datafile_info_t const*>(element);
-
-  return *k == e->_fid;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free an assoc array of datafile infos
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeDatafileInfo (TRI_doc_datafile_info_t* dfi) {
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, dfi);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the collection tick with the marker's tick value
@@ -1364,11 +1320,12 @@ static size_t OpenIteratorBufferSize = 128;
 /// @brief state during opening of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct open_iterator_state_s {
+struct open_iterator_state_t {
   TRI_document_collection_t* _document;
   TRI_voc_tid_t              _tid;
   TRI_voc_fid_t              _fid;
-  TRI_doc_datafile_info_t*   _dfi;
+  std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
+  DatafileStatisticsContainer* _dfi;
   TRI_vector_t               _operations;
   TRI_vocbase_t*             _vocbase;
   uint64_t                   _deletions;
@@ -1376,19 +1333,48 @@ typedef struct open_iterator_state_s {
   int64_t                    _initialCount;
   uint32_t                   _trxCollections;
   bool                       _trxPrepared;
-}
-open_iterator_state_t;
+
+  open_iterator_state_t()
+    : _stats(),
+      _dfi(nullptr) {
+  }
+
+  ~open_iterator_state_t() {
+    for (auto& it : _stats) {
+      delete it.second;
+    }
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container for a single collection operation (used during opening)
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct open_iterator_operation_s {
+struct open_iterator_operation_t {
   TRI_voc_document_operation_e  _type;
   TRI_df_marker_t const*        _marker;
   TRI_voc_fid_t                 _fid;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find a statistics container for a given file id
+////////////////////////////////////////////////////////////////////////////////
+
+static DatafileStatisticsContainer* FindDatafileStats(open_iterator_state_t* state, 
+                                                      TRI_voc_fid_t fid) {
+  auto it = state->_stats.find(fid);
+
+  if (it != state->_stats.end()) {
+    return (*it).second;
+  }
+
+  std::unique_ptr<DatafileStatisticsContainer> stats(new DatafileStatisticsContainer);
+
+  state->_stats.emplace(fid, stats.get());
+  auto p = stats.release();
+
+  return p;
 }
-open_iterator_operation_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -1424,7 +1410,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   if (state->_fid != operation->_fid) {
     // update the state
     state->_fid = operation->_fid;
-    state->_dfi = TRI_FindDatafileInfoDocumentCollection(document, operation->_fid, true);
+    state->_dfi = FindDatafileStats(state, operation->_fid); 
   }
 
   SetRevision(document, d->_rid, false);
@@ -1514,10 +1500,8 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     ++document->_numberDocuments;
 
     // update the datafile info
-    if (state->_dfi != nullptr) {
-      state->_dfi->_numberAlive++;
-      state->_dfi->_sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-    }
+    state->_dfi->numberAlive++;
+    state->_dfi->sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
   }
 
   // it is an update, but only if found has a smaller revision identifier
@@ -1533,39 +1517,35 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     document->_headersPtr->moveBack(newHeader, &oldData);  // ONLY IN OPENITERATOR
 
     // update the datafile info
-    TRI_doc_datafile_info_t* dfi;
+    DatafileStatisticsContainer* dfi;
     if (oldData._fid == state->_fid) {
       dfi = state->_dfi;
     }
     else {
-      dfi = TRI_FindDatafileInfoDocumentCollection(document, oldData._fid, true);
+      dfi = FindDatafileStats(state, oldData._fid);
     }
 
-    if (dfi != nullptr && oldData.getDataPtr() != nullptr) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    if (oldData.getDataPtr() != nullptr) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
       TRI_ASSERT(oldData.getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
       int64_t size = (int64_t) ((TRI_df_marker_t const*) oldData.getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
-      dfi->_numberAlive--;
-      dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
-
-      dfi->_numberDead++;
-      dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(size);
+      dfi->numberAlive--;
+      dfi->sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
+      dfi->numberDead++;
+      dfi->sizeDead += TRI_DF_ALIGN_BLOCK(size);
     }
 
-    if (state->_dfi != nullptr) {
-      state->_dfi->_numberAlive++;
-      state->_dfi->_sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-    }
+    state->_dfi->numberAlive++;
+    state->_dfi->sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
   }
 
   // it is a stale update
   else {
-    if (state->_dfi != nullptr) {
-      TRI_ASSERT(found->getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
-
-      state->_dfi->_numberDead++;
-      state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(((TRI_df_marker_t*) found->getDataPtr())->_size);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
-    }
+    TRI_ASSERT(found->getDataPtr() !=  nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    state->_dfi->numberDead++;
+    state->_dfi->sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(
+          ((TRI_df_marker_t*)found->getDataPtr())
+              ->_size);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1595,7 +1575,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   if (state->_fid != operation->_fid) {
     // update the state
     state->_fid = operation->_fid;
-    state->_dfi = TRI_FindDatafileInfoDocumentCollection(document, operation->_fid, true);
+    state->_dfi = FindDatafileStats(state, operation->_fid);
   }
 
   key = ((char*) d) + d->_offsetKey;
@@ -1617,38 +1597,30 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   // it is a new entry, so we missed the create
   if (found == nullptr) {
     // update the datafile info
-    if (state->_dfi != nullptr) {
-      state->_dfi->_numberDeletion++;
-    }
+    state->_dfi->numberDeletions++;
   }
 
   // it is a real delete
   else {
-    TRI_doc_datafile_info_t* dfi;
-
     // update the datafile info
+    DatafileStatisticsContainer* dfi;
+
     if (found->_fid == state->_fid) {
       dfi = state->_dfi;
     }
     else {
-      dfi = TRI_FindDatafileInfoDocumentCollection(document, found->_fid, true);
+      dfi = FindDatafileStats(state, found->_fid);
     }
 
-    if (dfi != nullptr) {
-      TRI_ASSERT(found->getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    TRI_ASSERT(found->getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    int64_t size = (int64_t)((TRI_df_marker_t*)found->getDataPtr())
+                       ->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
-      int64_t size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
-
-      dfi->_numberAlive--;
-      dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
-
-      dfi->_numberDead++;
-      dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(size);
-    }
-
-    if (state->_dfi != nullptr) {
-      state->_dfi->_numberDeletion++;
-    }
+    dfi->numberAlive--;
+    dfi->sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
+    dfi->numberDead++;
+    dfi->sizeDead += TRI_DF_ALIGN_BLOCK(size);
+    state->_dfi->numberDeletions++;
 
     DeletePrimaryIndex(document, found, false);
     --document->_numberDocuments;
@@ -1898,13 +1870,11 @@ static int OpenIteratorHandleShapeMarker (TRI_df_marker_t const* marker,
   if (res == TRI_ERROR_NO_ERROR) {
     if (state->_fid != datafile->_fid) {
       state->_fid = datafile->_fid;
-      state->_dfi = TRI_FindDatafileInfoDocumentCollection(document, state->_fid, true);
+      state->_dfi = FindDatafileStats(state, state->_fid);
     }
 
-    if (state->_dfi != nullptr) {
-      state->_dfi->_numberShapes++;
-      state->_dfi->_sizeShapes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-    }
+    state->_dfi->numberShapes++;
+    state->_dfi->sizeShapes += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
   }
 
   return res;
@@ -1924,13 +1894,11 @@ static int OpenIteratorHandleAttributeMarker (TRI_df_marker_t const* marker,
   if (res == TRI_ERROR_NO_ERROR) {
     if (state->_fid != datafile->_fid) {
       state->_fid = datafile->_fid;
-      state->_dfi = TRI_FindDatafileInfoDocumentCollection(document, state->_fid, true);
+      state->_dfi = FindDatafileStats(state, state->_fid);
     }
 
-    if (state->_dfi != nullptr) {
-      state->_dfi->_numberAttributes++;
-      state->_dfi->_sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-    }
+    state->_dfi->numberAttributes++;
+    state->_dfi->sizeShapes += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
   }
 
   return res;
@@ -2092,7 +2060,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
   else {
     if (marker->_type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the collection
-      TRI_FindDatafileInfoDocumentCollection(document, datafile->_fid, true);
+      FindDatafileStats((open_iterator_state_t*)data, datafile->_fid);
     }
 
     LOG_TRACE("skipping marker type %lu", (unsigned long) marker->_type);
@@ -2165,17 +2133,6 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
   document->_numberDocuments          = 0;
   document->_lastCompaction           = 0.0;
 
-  int res = TRI_InitAssociativePointer(&document->_datafileInfo,
-                                       TRI_UNKNOWN_MEM_ZONE,
-                                       HashKeyDatafile,
-                                       HashElementDatafile,
-                                       IsEqualKeyElementDatafile,
-                                       nullptr);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
   TRI_InitReadWriteLock(&document->_compactionLock);
 
   return TRI_ERROR_NO_ERROR;
@@ -2204,18 +2161,6 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
     delete document->_headersPtr;
     document->_headersPtr = nullptr;
   }
-
-  size_t const n = document->_datafileInfo._nrAlloc;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_doc_datafile_info_t* dfi = static_cast<TRI_doc_datafile_info_t*>(document->_datafileInfo._table[i]);
-
-    if (dfi != nullptr) {
-      FreeDatafileInfo(dfi);
-    }
-  }
-
-  TRI_DestroyAssociativePointer(&document->_datafileInfo);
 
   document->ditches()->destroy();
   TRI_DestroyCollection(document);
@@ -2311,7 +2256,6 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   openState._deletions      = 0;
   openState._documents      = 0;
   openState._fid            = 0;
-  openState._dfi            = nullptr;
   openState._initialCount   = -1;
 
   if (collection->_info._initialCount != -1) {
@@ -2344,6 +2288,11 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   OpenIteratorAbortTransaction(&openState);
 
   TRI_DestroyVector(&openState._operations);
+
+  // update the real statistics for the collection
+  for (auto& it : openState._stats) {
+    document->_datafileStatistics.create(it.first, *(it.second));
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2484,46 +2433,6 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t* document) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a datafile description
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_RemoveDatafileInfoDocumentCollection (TRI_document_collection_t* document,
-                                              TRI_voc_fid_t fid) {
-  TRI_RemoveKeyAssociativePointer(&document->_datafileInfo, &fid);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a datafile description
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocumentCollection (TRI_document_collection_t* document,
-                                                                TRI_voc_fid_t fid,
-                                                                bool create) {
-  TRI_doc_datafile_info_t const* found = static_cast<TRI_doc_datafile_info_t const*>(TRI_LookupByKeyAssociativePointer(&document->_datafileInfo, &fid));
-
-  if (found != nullptr) {
-    return const_cast<TRI_doc_datafile_info_t*>(found);
-  }
-
-  if (! create) {
-    return nullptr;
-  }
-
-  // allocate and set to 0
-  TRI_doc_datafile_info_t* dfi = static_cast<TRI_doc_datafile_info_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t), true));
-
-  if (dfi == nullptr) {
-    return nullptr;
-  }
-
-  dfi->_fid = fid;
-
-  TRI_InsertKeyAssociativePointer(&document->_datafileInfo, &fid, dfi, true);
-
-  return dfi;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a journal
 ///
 /// Note that the caller must hold a lock protecting the _journals entry.
@@ -2534,6 +2443,15 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
                                                       TRI_voc_size_t journalSize,
                                                       bool isCompactor) {
   TRI_ASSERT(fid > 0);
+
+  // create a datafile entry for the new journal
+  try {
+    document->_datafileStatistics.create(fid);
+  }
+  catch (...) {
+    EnsureErrorCode(TRI_ERROR_OUT_OF_MEMORY);
+    return nullptr;
+  }
 
   TRI_datafile_t* journal;
 
@@ -2686,9 +2604,6 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
 
     TRI_PushBackVectorPointer(&document->_journals, journal);
   }
-
-  // now create a datafile entry for the new journal
-  TRI_FindDatafileInfoDocumentCollection(document, fid, true);
 
   return journal;
 }

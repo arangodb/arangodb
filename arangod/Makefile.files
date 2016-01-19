@@ -203,6 +203,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/collection.cpp \
 	arangod/VocBase/compactor.cpp \
 	arangod/VocBase/datafile.cpp \
+	arangod/VocBase/DatafileStatistics.cpp \
 	arangod/VocBase/Ditch.cpp \
 	arangod/VocBase/document-collection.cpp \
 	arangod/VocBase/DocumentAccessor.cpp \
