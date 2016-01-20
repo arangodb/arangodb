@@ -28,9 +28,15 @@
 
 const _ = require('lodash');
 
+exports.pluck = function (objs, key) {
+  return _.map(objs, function (obj) {
+    return _.get(obj, key);
+  });
+};
+
 exports.union = function union() {
   const things = Array.prototype.slice.call(arguments);
-  if (things.length < 2) {
+  if (!things.slice(1).some(Boolean)) {
     return things[0];
   }
   let result;
