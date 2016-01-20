@@ -742,10 +742,11 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   if (! TRI_TryReadLockReadWriteLock(&document->_compactionLock)) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
+  
+  TRI_DEFER(TRI_ReadUnlockReadWriteLock(&document->_compactionLock));
 
   // try to acquire the write lock on the collection
   if (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
-    TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
     LOG_TRACE("wal collector couldn't acquire write lock for collection '%llu'", (unsigned long long) document->_info._cid);
 
     return TRI_ERROR_LOCK_TIMEOUT;
@@ -881,8 +882,6 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
   // always release the locks
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
-  TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
   LOG_TRACE("wal collector processed operations for collection '%s' with status: %s",
             document->_info._name,
