@@ -821,7 +821,8 @@ int SkiplistIndex::insert(arangodb::arango::Transaction*,
   // insert into the index. the memory for the element will be owned or freed
   // by the index
 
-  size_t count = elements.size();
+  size_t const count = elements.size();
+
   for (size_t i = 0; i < count; ++i) {
     res = _skiplistIndex->insert(elements[i]);
 
@@ -856,15 +857,33 @@ int SkiplistIndex::remove(arangodb::arango::Transaction*,
   std::vector<TRI_index_element_t*> elements;
 
   int res = fillElement(elements, doc);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    for (auto& it : elements) {
+      // free all elements to prevent leak
+      TRI_index_element_t::free(it);
+    }
+
+    return res;
+  }
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index
 
-  size_t count = elements.size();
+  size_t const count = elements.size();
+
   for (size_t i = 0; i < count; ++i) {
-    res = _skiplistIndex->remove(elements[i]);
+    int result = _skiplistIndex->remove(elements[i]);
+    
+    // we may be looping through this multiple times, and if an error
+    // occurs, we want to keep it
+    if (result != TRI_ERROR_NO_ERROR) {
+      res = result;
+    }
+
     TRI_index_element_t::free(elements[i]);
   }
+
   return res;
 }
 

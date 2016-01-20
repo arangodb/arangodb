@@ -32,7 +32,6 @@
 
 using namespace arangodb::arango;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Frees an index element
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,9 +416,9 @@ int HashIndex::sizeHint(arangodb::arango::Transaction* trx, size_t size) {
 
   if (_unique) {
     return _uniqueArray->_hashArray->resize(trx, size);
-  } else {
-    return _multiArray->_hashArray->resize(trx, size);
-  }
+  } 
+
+  return _multiArray->_hashArray->resize(trx, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -519,7 +518,6 @@ int HashIndex::lookup(arangodb::arango::Transaction* trx,
   }
   return TRI_ERROR_NO_ERROR;
 }
-
 
 int HashIndex::insertUnique(arangodb::arango::Transaction* trx,
                             TRI_doc_mptr_t const* doc, bool isRollback) {
@@ -679,9 +677,8 @@ int HashIndex::removeUniqueElement(arangodb::arango::Transaction* trx,
   if (old == nullptr) {
     if (isRollback) {
       return TRI_ERROR_NO_ERROR;
-    } else {
-      return TRI_ERROR_INTERNAL;
-    }
+    } 
+    return TRI_ERROR_INTERNAL;
   }
 
   FreeElement(old);
@@ -702,9 +699,16 @@ int HashIndex::removeUnique(arangodb::arango::Transaction* trx,
   }
 
   for (auto& hashElement : elements) {
-    res = removeUniqueElement(trx, hashElement, isRollback);
+    int result = removeUniqueElement(trx, hashElement, isRollback);
+
+    // we may be looping through this multiple times, and if an error
+    // occurs, we want to keep it
+    if (result != TRI_ERROR_NO_ERROR) {
+      res = result;
+    }
     FreeElement(hashElement);
   }
+
   return res;
 }
 
@@ -719,9 +723,8 @@ int HashIndex::removeMultiElement(arangodb::arango::Transaction* trx,
     // not found
     if (isRollback) {  // ignore in this case, because it can happen
       return TRI_ERROR_NO_ERROR;
-    } else {
-      return TRI_ERROR_INTERNAL;
-    }
+    } 
+    return TRI_ERROR_INTERNAL;
   }
   FreeElement(old);
 
@@ -740,7 +743,14 @@ int HashIndex::removeMulti(arangodb::arango::Transaction* trx,
   }
 
   for (auto& hashElement : elements) {
-    res = removeMultiElement(trx, hashElement, isRollback);
+    int result = removeMultiElement(trx, hashElement, isRollback);
+    
+    // we may be looping through this multiple times, and if an error
+    // occurs, we want to keep it
+    if (result != TRI_ERROR_NO_ERROR) {
+      res = result;
+    }
+
     FreeElement(hashElement);
   }
 
