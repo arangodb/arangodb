@@ -642,8 +642,8 @@ class ClusterInfo {
   /// @brief create database in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int createDatabaseCoordinator(std::string const& name, TRI_json_t const* json,
-                                std::string& errorMsg, double timeout);
+  int createDatabaseCoordinator(std::string const&, VPackSlice const&,
+                                std::string&, double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
@@ -693,7 +693,7 @@ class ClusterInfo {
   int ensureIndexCoordinator(
       std::string const& databaseName, std::string const& collectionID,
       VPackSlice const& slice, bool create,
-      bool (*compare)(TRI_json_t const*, TRI_json_t const*),
+      bool (*compare)(VPackSlice const&, VPackSlice const&),
       TRI_json_t*& resultJson, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////

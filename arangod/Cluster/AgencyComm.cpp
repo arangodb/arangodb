@@ -41,6 +41,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <iostream>
 using namespace triagens::arango;
 
 
@@ -942,6 +943,10 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       double ttl) {
   AgencyCommResult result;
 
+  size_t pos = key.find("Current/Collections");
+  if (pos != std::string::npos) {
+    std::cout << "Setting Value " << json.toJson() << "\n";
+  }
   sendWithFailover(
       triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
       _globalConnectionOptions._requestTimeout, result,
@@ -1019,13 +1024,14 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 /// @brief compares and swaps a single value in the backend
 /// the CAS condition is whether or not a previous value existed for the key
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       TRI_json_t const* json, bool prevExist,
                                       double ttl, double timeout) {
   auto oldBuilder = triagens::basics::JsonHelper::toVelocyPack(json);
   return casValue(key, oldBuilder->slice(), prevExist, ttl, timeout);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the backend
@@ -1055,7 +1061,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
 /// the CAS condition is whether or not the previous value for the key was
 /// identical to `oldValue`
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       TRI_json_t const* oldJson,
                                       TRI_json_t const* newJson, double ttl,
@@ -1065,6 +1071,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   auto newBuilder = triagens::basics::JsonHelper::toVelocyPack(newJson);
   return casValue(key, oldBuilder->slice(), newBuilder->slice(), ttl, timeout);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares and swaps a single value in the backend

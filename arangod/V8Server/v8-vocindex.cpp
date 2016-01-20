@@ -516,8 +516,9 @@ static void EnsureIndexCoordinator(
 
   TRI_json_t* resultJson = nullptr;
   std::string errorMsg;
+  auto tmp = triagens::basics::JsonHelper::toVelocyPack(json);
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
-      databaseName, cid, json, create, &triagens::arango::Index::Compare,
+      databaseName, cid, tmp->slice(), create, &triagens::arango::Index::Compare,
       resultJson, errorMsg, 360.0);
 
   if (res != TRI_ERROR_NO_ERROR) {

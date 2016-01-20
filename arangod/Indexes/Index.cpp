@@ -36,6 +36,8 @@
 #include "VocBase/VocShaper.h"
 
 #include <ostream>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace triagens::arango;
 
@@ -247,92 +249,95 @@ TRI_idx_iid_t Index::generateId() { return TRI_NewTickServer(); }
 /// contents are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::Compare(TRI_json_t const* lhs, TRI_json_t const* rhs) {
-  TRI_json_t* typeJson = TRI_LookupObjectJson(lhs, "type");
-  TRI_ASSERT(TRI_IsStringJson(typeJson));
+bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
+  VPackSlice lhsType = lhs.get("type");
+  TRI_ASSERT(lhsType.isString());
 
   // type must be identical
-  if (!TRI_CheckSameValueJson(typeJson, TRI_LookupObjectJson(rhs, "type"))) {
+  if (triagens::basics::VelocyPackHelper::compare(lhsType, rhs.get("type"),
+                                                  false) != 0) {
     return false;
   }
 
-  auto type = Index::type(typeJson->_value._string.data);
+  std::string tmp = lhsType.copyString();
+  auto type = Index::type(tmp.c_str());
 
   // unique must be identical if present
-  TRI_json_t* value = TRI_LookupObjectJson(lhs, "unique");
-  if (TRI_IsBooleanJson(value)) {
-    if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "unique"))) {
+  VPackSlice value = lhs.get("unique");
+  if (value.isBoolean()) {
+    if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("unique"),
+                                                    false) != 0) {
       return false;
     }
   }
 
   // sparse must be identical if present
-  value = TRI_LookupObjectJson(lhs, "sparse");
-  if (TRI_IsBooleanJson(value)) {
-    if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "sparse"))) {
+  value = lhs.get("sparse");
+  if (value.isBoolean()) {
+    if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("sparse"),
+                                                    false) != 0) {
       return false;
     }
   }
 
   if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX) {
     // geoJson must be identical if present
-    value = TRI_LookupObjectJson(lhs, "geoJson");
-    if (TRI_IsBooleanJson(value)) {
-      if (!TRI_CheckSameValueJson(value,
-                                  TRI_LookupObjectJson(rhs, "geoJson"))) {
+    value = lhs.get("geoJson");
+    if (value.isBoolean()) {
+      if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("geoJson"),
+                                                      false) != 0) {
         return false;
       }
     }
   } else if (type == IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     // minLength
-    value = TRI_LookupObjectJson(lhs, "minLength");
-    if (TRI_IsNumberJson(value)) {
-      if (!TRI_CheckSameValueJson(value,
-                                  TRI_LookupObjectJson(rhs, "minLength"))) {
+    value = lhs.get("minLength");
+    if (value.isNumber()) {
+      if (triagens::basics::VelocyPackHelper::compare(
+              value, rhs.get("minLength"), false) != 0) {
         return false;
       }
     }
   } else if (type == IndexType::TRI_IDX_TYPE_CAP_CONSTRAINT) {
     // size, byteSize
-    value = TRI_LookupObjectJson(lhs, "size");
-    if (TRI_IsNumberJson(value)) {
-      if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "size"))) {
+    value = lhs.get("size");
+    if (value.isNumber()) {
+      if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("size"),
+                                                      false) != 0) {
         return false;
       }
     }
 
-    value = TRI_LookupObjectJson(lhs, "byteSize");
-    if (TRI_IsNumberJson(value)) {
-      if (!TRI_CheckSameValueJson(value,
-                                  TRI_LookupObjectJson(rhs, "byteSize"))) {
+    value = lhs.get("byteSize");
+    if (value.isNumber()) {
+      if (triagens::basics::VelocyPackHelper::compare(
+              value, rhs.get("byteSize"), false) != 0) {
         return false;
       }
     }
   }
 
   // other index types: fields must be identical if present
-  value = TRI_LookupObjectJson(lhs, "fields");
+  value = lhs.get("fields");
 
-  if (TRI_IsArrayJson(value)) {
+  if (value.isArray()) {
     if (type == IndexType::TRI_IDX_TYPE_HASH_INDEX) {
-      size_t const nv = TRI_LengthArrayJson(value);
+      VPackValueLength const nv = value.length();
 
       // compare fields in arbitrary order
-      TRI_json_t const* r = TRI_LookupObjectJson(rhs, "fields");
+      VPackSlice const r = rhs.get("fields");
 
-      if (!TRI_IsArrayJson(r) || nv != TRI_LengthArrayJson(r)) {
+      if (!r.isArray() || nv != r.length()) {
         return false;
       }
 
-      size_t const nr = TRI_LengthArrayJson(r);
-
       for (size_t i = 0; i < nv; ++i) {
-        TRI_json_t const* v = TRI_LookupArrayJson(value, i);
+        VPackSlice const v = value.at(i);
 
         bool found = false;
 
-        for (size_t j = 0; j < nr; ++j) {
-          if (TRI_CheckSameValueJson(v, TRI_LookupArrayJson(r, j))) {
+        for (auto const& vr : VPackArrayIterator(r)) {
+          if (triagens::basics::VelocyPackHelper::compare(v, vr, false) == 0) {
             found = true;
             break;
           }
@@ -343,7 +348,8 @@ bool Index::Compare(TRI_json_t const* lhs, TRI_json_t const* rhs) {
         }
       }
     } else {
-      if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "fields"))) {
+      if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("fields"),
+                                                      false) != 0) {
         return false;
       }
     }

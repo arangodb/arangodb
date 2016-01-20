@@ -88,17 +88,25 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const key = TRI_ObjectToString(args[0]);
 
-  TRI_json_t* oldJson = TRI_ObjectToJson(isolate, args[1]);
-
-  if (oldJson == nullptr) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to JSON");
+  int res = TRI_ERROR_NO_ERROR;
+  VPackBuilder oldBuilder;
+  try {
+    res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
+  } catch (...) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
+  }
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
   }
 
-  TRI_json_t* newJson = TRI_ObjectToJson(isolate, args[2]);
-
-  if (newJson == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to JSON");
+  VPackBuilder newBuilder;
+  try {
+    res = TRI_V8ToVPack(isolate, newBuilder, args[2], false);
+  } catch (...) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to VPack");
+  }
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to VPack");
   }
 
   double ttl = 0.0;
@@ -117,10 +125,7 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.casValue(key, oldJson, newJson, ttl, timeout);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+  AgencyCommResult result = comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
 
   if (!result.successful()) {
     if (!shouldThrow) {

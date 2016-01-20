@@ -1023,7 +1023,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
 ////////////////////////////////////////////////////////////////////////////////
 
 int ClusterInfo::createDatabaseCoordinator(std::string const& name,
-                                           TRI_json_t const* json,
+                                           VPackSlice const& slice,
                                            std::string& errorMsg, double timeout) {
   AgencyComm ac;
   AgencyCommResult res;
@@ -1039,7 +1039,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
     }
 
-    res = ac.casValue("Plan/Databases/" + name, json, false, 0.0, realTimeout);
+    res = ac.casValue("Plan/Databases/" + name, slice, false, 0.0, realTimeout);
     if (!res.successful()) {
       if (res._statusCode ==
           triagens::rest::HttpResponse::PRECONDITION_FAILED) {
@@ -1557,22 +1557,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
 int ClusterInfo::ensureIndexCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     VPackSlice const& slice, bool create,
-    bool (*compare)(TRI_json_t const*, TRI_json_t const*),
-    TRI_json_t*& resultJson, std::string& errorMsg, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
-  return ensureIndexCoordinator(databaseName, collectionID, json.get(), create,
-                                compare, resultJson, errorMsg, timeout);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure an index in coordinator.
-////////////////////////////////////////////////////////////////////////////////
-
-int ClusterInfo::ensureIndexCoordinator(
-    std::string const& databaseName, std::string const& collectionID,
-    TRI_json_t const* json, bool create,
-    bool (*compare)(TRI_json_t const*, TRI_json_t const*),
+    bool (*compare)(VPackSlice const&, VPackSlice const&),
     TRI_json_t*& resultJson, std::string& errorMsg, double timeout) {
   AgencyComm ac;
 
@@ -1581,16 +1566,15 @@ int ClusterInfo::ensureIndexCoordinator(
   double const interval = getPollInterval();
 
   resultJson = nullptr;
-  TRI_json_t* newIndex = nullptr;
   int numberOfShards = 0;
 
   // check index id
   uint64_t iid = 0;
 
-  TRI_json_t const* idxJson = TRI_LookupObjectJson(json, "id");
-  if (TRI_IsStringJson(idxJson)) {
+  VPackSlice const idxSlice = slice.get("id");
+  if (idxSlice.isString()) {
     // use predefined index id
-    iid = triagens::basics::StringUtils::uint64(idxJson->_value._string.data);
+    iid = triagens::basics::StringUtils::uint64(idxSlice.copyString());
   }
 
   if (iid == 0) {
@@ -1604,27 +1588,25 @@ int ClusterInfo::ensureIndexCoordinator(
   AgencyCommResult previous = ac.getValues(key, false);
   previous.parse("", false);
   auto it = previous._values.begin();
-  TRI_json_t const* previousVal;
+  bool usePrevious = true;
   if (it == previous._values.end()) {
     LOG_INFO("Entry for collection in Plan does not exist!");
-    previousVal = nullptr;
-  } else {
-    previousVal = triagens::basics::VelocyPackHelper::velocyPackToJson(
-        it->second._vpack->slice());
+    usePrevious = false;
   }
 
   loadPlannedCollections();
+  VPackBuilder newBuilder;
   // It is possible that between the fetching of the planned collections
   // and the write lock we acquire below something has changed. Therefore
   // we first get the previous value and then do a compare and swap operation.
   {
-    TRI_json_t* collectionJson = nullptr;
     AgencyCommLocker locker("Plan", "WRITE");
 
     if (!locker.successful()) {
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
     }
 
+    std::shared_ptr<VPackBuilder> collectionBuilder;
     {
       std::shared_ptr<CollectionInfo> c =
           getCollection(databaseName, collectionID);
@@ -1640,34 +1622,34 @@ int ClusterInfo::ensureIndexCoordinator(
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
       }
 
-      TRI_json_t const* indexes = c->getIndexes();
+      std::shared_ptr<VPackBuilder> tmp =
+          triagens::basics::JsonHelper::toVelocyPack(c->getIndexes());
       numberOfShards = c->numberOfShards();
+      VPackSlice const indexes = tmp->slice();
 
-      if (TRI_IsArrayJson(indexes)) {
+      if (indexes.isArray()) {
         bool hasSameIndexType = false;
-        TRI_json_t const* type = TRI_LookupObjectJson(json, "type");
+        VPackSlice const type = slice.get("type");
 
-        if (!TRI_IsStringJson(type)) {
+        if (!type.isString()) {
           return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
         }
 
-        size_t const n = TRI_LengthArrayJson(indexes);
-        for (size_t i = 0; i < n; ++i) {
-          TRI_json_t const* other = TRI_LookupArrayJson(indexes, i);
-
-          if (!TRI_CheckSameValueJson(TRI_LookupObjectJson(json, "type"),
-                                      TRI_LookupObjectJson(other, "type"))) {
+        for (auto const& other : VPackArrayIterator(indexes)) {
+          if (triagens::basics::VelocyPackHelper::compare(
+                    type, other.get("type"), false) != 0) {
             // compare index types first. they must match
             continue;
           }
 
           hasSameIndexType = true;
 
-          bool isSame = compare(json, other);
+          bool isSame = compare(slice, other);
 
           if (isSame) {
             // found an existing index...
-            resultJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other);
+            resultJson = triagens::basics::VelocyPackHelper::velocyPackToJson(
+                other);
             TRI_Insert3ObjectJson(
                 TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
                 TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
@@ -1675,7 +1657,7 @@ int ClusterInfo::ensureIndexCoordinator(
           }
         }
 
-        if (TRI_EqualString(type->_value._string.data, "cap")) {
+        if (type.copyString() == "cap") {
           // special handling for cap constraints
           if (hasSameIndexType) {
             // there can only be one cap constraint
@@ -1698,47 +1680,59 @@ int ClusterInfo::ensureIndexCoordinator(
       }
 
       // now create a new index
-      collectionJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, c->getJson());
+      collectionBuilder =
+          triagens::basics::JsonHelper::toVelocyPack(c->getJson());
     }
+    VPackSlice const collectionSlice = collectionBuilder->slice();
 
-    if (collectionJson == nullptr) {
+    if (!collectionSlice.isObject()) {
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
-
-    TRI_json_t* idx = TRI_LookupObjectJson(collectionJson, "indexes");
-
-    if (idx == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+    try {
+      newBuilder.openObject();
+      // Create a new collection VPack with the new Index
+      for (auto const& entry : VPackObjectIterator(collectionSlice)) {
+        TRI_ASSERT(entry.key.isString());
+        std::string key = entry.key.copyString();
+        if (key == "indexes") {
+          TRI_ASSERT(entry.value.isArray());
+          newBuilder.add(key, VPackValue(VPackValueType::Array));
+          // Copy over all indexes known so far
+          for (auto const& idx : VPackArrayIterator(entry.value)) {
+            newBuilder.add(idx);
+          }
+          newBuilder.openObject();
+          // Add the new index ignoring "id"
+          for (auto const& e : VPackObjectIterator(slice)) {
+            TRI_ASSERT(e.key.isString());
+            std::string tmpkey = e.key.copyString();
+            if (tmpkey != "id") {
+              newBuilder.add(tmpkey, e.value);
+            }
+          }
+          newBuilder.add("id", VPackValue(idString));
+          newBuilder.close(); // the idx object
+          newBuilder.close(); // the array
+        }
+        else {
+          // Plain copy everything else
+          newBuilder.add(key, entry.value);
+        }
+      }
+      newBuilder.close();
+    } catch (...) {
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
-
-    newIndex = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-    if (newIndex == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
-      return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
-    }
-
-    // add index id
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, newIndex, "id",
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(),
-                                 idString.size()));
-
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, idx,
-                           TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, newIndex));
 
     AgencyCommResult result;
-    if (previousVal != nullptr) {
-      result = ac.casValue(key, previousVal, collectionJson, 0.0, 0.0);
+    if (usePrevious) {
+      result =
+          ac.casValue(key, it->second._vpack->slice(), newBuilder.slice(), 0.0, 0.0);
     } else {  // only when there is no previous value
-      result = ac.setValue(key, collectionJson, 0.0);
+      result = ac.setValue(key, newBuilder.slice(), 0.0);
     }
 
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
-
     if (!result.successful()) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
                          errorMsg);
     }
@@ -1752,7 +1746,6 @@ int ClusterInfo::ensureIndexCoordinator(
   // now wait for the index to appear
   AgencyCommResult res = ac.getValues("Current/Version", false);
   if (!res.successful()) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
@@ -1779,7 +1772,6 @@ int ClusterInfo::ensureIndexCoordinator(
             for (auto const& v : VPackArrayIterator(indexes)) {
               // check for errors
               if (hasError(v)) {
-                TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
                 std::string errorMsg = extractErrorMessage((*it).first, v);
 
                 errorMsg = "Error during index creation: " + errorMsg;
@@ -1806,7 +1798,14 @@ int ClusterInfo::ensureIndexCoordinator(
         }
 
         if (found == (size_t)numberOfShards) {
-          resultJson = newIndex;
+          VPackSlice indexFinder = newBuilder.slice();
+          TRI_ASSERT(indexFinder.isObject());
+          indexFinder = indexFinder.get("indexes");
+          TRI_ASSERT(indexFinder.isArray());
+          VPackValueLength l = indexFinder.length();
+          indexFinder = indexFinder.at(l - 1); // Get the last index
+          TRI_ASSERT(indexFinder.isObject());
+          resultJson = triagens::basics::VelocyPackHelper::velocyPackToJson(indexFinder);
           TRI_Insert3ObjectJson(
               TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
               TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
@@ -1822,7 +1821,6 @@ int ClusterInfo::ensureIndexCoordinator(
     index = res._index;
   }
 
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
 
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }

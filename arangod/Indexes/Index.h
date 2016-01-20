@@ -319,8 +319,8 @@ class Index {
   /// contents are the same
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool Compare(struct TRI_json_t const* lhs,
-                      struct TRI_json_t const* rhs);
+  static bool Compare(VPackSlice const& lhs,
+                      VPackSlice const& rhs);
 
   virtual IndexType type() const = 0;
 
