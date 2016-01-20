@@ -1940,8 +1940,9 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
     }
 
+    auto tmp = triagens::basics::JsonHelper::toVelocyPack(collectionJson);
     AgencyCommResult result =
-        ac.casValue(key, it->second._vpack->slice(), collectionJson, 0.0, 0.0);
+        ac.casValue(key, it->second._vpack->slice(), tmp->slice(), 0.0, 0.0);
 
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
 
