@@ -722,9 +722,12 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
 
+  TRI_DEFER(TRI_ReadUnlockReadWriteLock(&document->_compactionLock));
+
   arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
       new arangodb::arango::StandaloneTransactionContext(), document->_vocbase,
       document->_info.id());
+  trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, true);
@@ -733,8 +736,6 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     // this includes TRI_ERROR_LOCK_TIMEOUT!
-    TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
-
     LOG_TRACE(
         "wal collector couldn't acquire write lock for collection '%llu': %s",
         (unsigned long long)document->_info.id(), TRI_errno_string(res));
@@ -884,8 +885,6 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
   // always release the locks
   trx.finish(res);
-
-  TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
   LOG_TRACE(
       "wal collector processed operations for collection '%s' with status: %s",
