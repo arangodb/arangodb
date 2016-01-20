@@ -41,7 +41,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <iostream>
 using namespace triagens::arango;
 
 
@@ -944,16 +943,12 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
   AgencyCommResult result;
 
   size_t pos = key.find("Current/Collections");
-  if (pos != std::string::npos) {
-    std::cout << "Setting Value " << json.toJson() << "\n";
-  }
   sendWithFailover(
       triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
       _globalConnectionOptions._requestTimeout, result,
       buildUrl(key) + ttlParam(ttl, true),
       "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
       false);
-
   return result;
 }
 
@@ -1052,7 +1047,6 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
                   ttlParam(ttl, false),
       "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
       false);
-
   return result;
 }
 
