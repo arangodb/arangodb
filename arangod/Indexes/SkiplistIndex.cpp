@@ -754,8 +754,8 @@ SkiplistIndex::SkiplistIndex(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIndex::SkiplistIndex(TRI_json_t const* json)
-    : PathBasedIndex(json, true),
+SkiplistIndex::SkiplistIndex(VPackSlice const& slice)
+    : PathBasedIndex(slice, true),
       CmpElmElm(this),
       CmpKeyElm(this),
       _skiplistIndex(nullptr) {}

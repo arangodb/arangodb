@@ -32,9 +32,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
-
-
 namespace triagens {
 namespace aql {
 class SortCondition;
@@ -87,7 +84,7 @@ class EdgeIndex final : public Index {
 
   EdgeIndex(TRI_idx_iid_t, struct TRI_document_collection_t*);
 
-  explicit EdgeIndex(struct TRI_json_t const*);
+  explicit EdgeIndex(VPackSlice const&);
 
   ~EdgeIndex();
 

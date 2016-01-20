@@ -291,8 +291,8 @@ HashIndex::HashIndex(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-HashIndex::HashIndex(TRI_json_t const* json)
-    : PathBasedIndex(json, false), _uniqueArray(nullptr) {}
+HashIndex::HashIndex(VPackSlice const& slice) 
+    : PathBasedIndex(slice, false), _uniqueArray(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the index

@@ -41,8 +41,6 @@
 
 using namespace triagens::arango;
 
-
-
 Index::Index(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
     std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
@@ -62,51 +60,44 @@ Index::Index(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-Index::Index(TRI_json_t const* json)
+Index::Index(VPackSlice const& slice)
     : _iid(triagens::basics::StringUtils::uint64(
-          triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
+          triagens::basics::VelocyPackHelper::checkAndGetStringValue(slice,
+                                                                     "id"))),
       _collection(nullptr),
       _fields(),
-      _unique(
-          triagens::basics::JsonHelper::getBooleanValue(json, "unique", false)),
-      _sparse(
-          triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
+      _unique(triagens::basics::VelocyPackHelper::getBooleanValue(
+          slice, "unique", false)),
+      _sparse(triagens::basics::VelocyPackHelper::getBooleanValue(
+          slice, "sparse", false)),
       _selectivityEstimate(0.0) {
-  TRI_json_t const* fields = TRI_LookupObjectJson(json, "fields");
+  VPackSlice const fields = slice.get("fields");
 
-  if (!TRI_IsArrayJson(fields)) {
+  if (!fields.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid index description");
   }
 
-  size_t const n = TRI_LengthArrayJson(fields);
+  size_t const n = static_cast<size_t>(fields.length());
   _fields.reserve(n);
 
-  for (size_t i = 0; i < n; ++i) {
-    auto name = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&fields->_value._objects, i));
-
-    if (!TRI_IsStringJson(name)) {
+  for (auto const& name : VPackArrayIterator(fields)) {
+    if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "invalid index description");
     }
 
     std::vector<triagens::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(
-        std::string(name->_value._string.data, name->_value._string.length - 1),
-        parsedAttributes);
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes);
     _fields.emplace_back(parsedAttributes);
   }
 
-  TRI_json_t const* se = TRI_LookupObjectJson(json, "selectivityEstimate");
-
-  if (TRI_IsNumberJson(se)) {
-    _selectivityEstimate = json->_value._number;
-  }
+  _selectivityEstimate =
+      triagens::basics::VelocyPackHelper::getNumericValue<double>(
+          slice, "selectivityEstimate", 0.0);
 }
 
 Index::~Index() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the index type based on a type name
@@ -697,5 +688,4 @@ std::ostream& operator<<(std::ostream& stream,
   stream << index.context();
   return stream;
 }
-
 

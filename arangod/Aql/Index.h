@@ -28,9 +28,13 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include <iosfwd>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
 namespace aql {
@@ -64,34 +68,32 @@ struct Index {
     }
   }
 
-  explicit Index(TRI_json_t const* json)
+  explicit Index(VPackSlice const& slice)
       : id(triagens::basics::StringUtils::uint64(
-            triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
+            triagens::basics::VelocyPackHelper::checkAndGetStringValue(slice,
+                                                                       "id"))),
         type(triagens::arango::Index::type(
-            triagens::basics::JsonHelper::checkAndGetStringValue(json, "type")
+            triagens::basics::VelocyPackHelper::checkAndGetStringValue(slice,
+                                                                       "type")
                 .c_str())),
-        unique(triagens::basics::JsonHelper::getBooleanValue(json, "unique",
-                                                             false)),
-        sparse(triagens::basics::JsonHelper::getBooleanValue(json, "sparse",
-                                                             false)),
+        unique(triagens::basics::VelocyPackHelper::getBooleanValue(
+            slice, "unique", false)),
+        sparse(triagens::basics::VelocyPackHelper::getBooleanValue(
+            slice, "sparse", false)),
         ownsInternals(false),
         fields(),
         internals(nullptr) {
-    TRI_json_t const* f = TRI_LookupObjectJson(json, "fields");
+    VPackSlice const f = slice.get("fields");
 
-    if (TRI_IsArrayJson(f)) {
-      size_t const n = TRI_LengthArrayJson(f);
+    if (f.isArray()) {
+      size_t const n = static_cast<size_t>(f.length());
       fields.reserve(n);
 
-      for (size_t i = 0; i < n; ++i) {
-        auto* name = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&f->_value._objects, i));
+      for (auto const& name : VPackArrayIterator(f)) {
 
-        if (TRI_IsStringJson(name)) {
+        if (name.isString()) {
           std::vector<triagens::basics::AttributeName> parsedAttributes;
-          TRI_ParseAttributeString(std::string(name->_value._string.data,
-                                               name->_value._string.length - 1),
-                                   parsedAttributes);
+          TRI_ParseAttributeString(name.copyString(), parsedAttributes);
           fields.emplace_back(parsedAttributes);
         }
       }

@@ -31,7 +31,6 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 
-struct TRI_json_t;
 class VocShaper;
 
 
@@ -75,7 +74,7 @@ class PathBasedIndex : public Index {
       std::vector<std::vector<triagens::basics::AttributeName>> const&,
       bool unique, bool sparse, bool allowPartialIndex);
 
-  explicit PathBasedIndex(struct TRI_json_t const*, bool);
+  explicit PathBasedIndex(VPackSlice const&, bool);
 
   ~PathBasedIndex();
 

@@ -34,8 +34,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
-
 typedef struct {
   TRI_shaped_json_t* _fields;  // list of shaped json objects which the
                                // collection should know about
@@ -207,7 +205,7 @@ class SkiplistIndex final : public PathBasedIndex {
       std::vector<std::vector<triagens::basics::AttributeName>> const&, bool,
       bool);
 
-  explicit SkiplistIndex(struct TRI_json_t const*);
+  explicit SkiplistIndex(VPackSlice const&);
 
   ~SkiplistIndex();
 

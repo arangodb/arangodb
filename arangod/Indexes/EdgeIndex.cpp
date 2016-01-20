@@ -455,8 +455,8 @@ EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-EdgeIndex::EdgeIndex(TRI_json_t const* json)
-    : Index(json), _edgesFrom(nullptr), _edgesTo(nullptr), _numBuckets(1) {}
+EdgeIndex::EdgeIndex(VPackSlice const& slice)
+    : Index(slice), _edgesFrom(nullptr), _edgesTo(nullptr), _numBuckets(1) {}
 
 EdgeIndex::~EdgeIndex() {
   delete _edgesTo;

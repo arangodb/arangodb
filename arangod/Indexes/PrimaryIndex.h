@@ -31,9 +31,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
-
-
 namespace triagens {
 namespace aql {
 class SortCondition;
@@ -72,7 +69,7 @@ class PrimaryIndex final : public Index {
 
   explicit PrimaryIndex(struct TRI_document_collection_t*);
 
-  explicit PrimaryIndex(struct TRI_json_t const*);
+  explicit PrimaryIndex(VPackSlice const&);
 
   ~PrimaryIndex();
 

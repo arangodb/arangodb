@@ -39,7 +39,6 @@
 
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
-struct TRI_json_t;
 struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
@@ -140,7 +139,7 @@ class Index {
         std::vector<std::vector<triagens::basics::AttributeName>> const&,
         bool unique, bool sparse);
 
-  explicit Index(struct TRI_json_t const*);
+  explicit Index(VPackSlice const&);
 
   virtual ~Index();
 

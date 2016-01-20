@@ -114,8 +114,8 @@ PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-PrimaryIndex::PrimaryIndex(TRI_json_t const* json)
-    : Index(json), _primaryIndex(nullptr) {}
+PrimaryIndex::PrimaryIndex(VPackSlice const& slice)
+    : Index(slice), _primaryIndex(nullptr) {}
 
 PrimaryIndex::~PrimaryIndex() { delete _primaryIndex; }
 
