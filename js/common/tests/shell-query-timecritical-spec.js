@@ -88,7 +88,7 @@ describe('AQL query analyzer', function() {
   describe('with active tracking', function() {
 
     beforeEach(function() {
-      if (internal.debugCanUseFailAt()) {
+      if (isServer && internal.debugCanUseFailAt()) {
         internal.debugClearFailAt();
       }
       testee.properties({
@@ -99,7 +99,7 @@ describe('AQL query analyzer', function() {
     });
 
     afterEach(function() {
-      if (internal.debugCanUseFailAt()) {
+      if (isServer && internal.debugCanUseFailAt()) {
         internal.debugClearFailAt();
       }
       const list = testee.current().filter(filterQueries);
