@@ -387,7 +387,7 @@ bool TRI_ExistsFile(char const* path) {
 
     // path must not end with a \ on Windows, other stat() will return -1
     if (len > 0 && path[len - 1] == TRI_DIR_SEPARATOR_CHAR) {
-      char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
+      char* copy = TRI_DuplicateString(TRI_CORE_MEM_ZONE, path);
 
       if (copy == nullptr) {
         return false;
@@ -652,7 +652,7 @@ char* TRI_Dirname(char const* path) {
 
   n = p - path;
 
-  return TRI_DuplicateString2(path, n);
+  return TRI_DuplicateString(path, n);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -676,7 +676,7 @@ char* TRI_Basename(char const* path) {
     if (*path == TRI_DIR_SEPARATOR_CHAR || *path == '/') {
       return TRI_DuplicateString(TRI_DIR_SEPARATOR_STR);
     } else {
-      return TRI_DuplicateString2(path, n);
+      return TRI_DuplicateString(path, n);
     }
   } else {
     char const* p;
@@ -689,14 +689,14 @@ char* TRI_Basename(char const* path) {
 
     if (path == p) {
       if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
-        return TRI_DuplicateString2(path + 1, n - 1);
+        return TRI_DuplicateString(path + 1, n - 1);
       } else {
-        return TRI_DuplicateString2(path, n);
+        return TRI_DuplicateString(path, n);
       }
     } else {
       n -= p - path;
 
-      return TRI_DuplicateString2(p + 1, n - 1);
+      return TRI_DuplicateString(p + 1, n - 1);
     }
   }
 }
@@ -1420,7 +1420,7 @@ char* TRI_GetAbsolutePath(char const* fileName,
       (fileName[0] > 96 && fileName[0] < 123)) {
     if (fileName[1] == ':') {
       if (fileName[2] == '/' || fileName[2] == '\\') {
-        return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fileName);
+        return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, fileName);
       }
     }
   }
@@ -1517,7 +1517,7 @@ char* TRI_GetAbsolutePath(char const* file, char const* cwd) {
   }
 
   if (isAbsolute) {
-    return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, file);
+    return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, file);
   }
 
   if (cwd == nullptr || *cwd == '\0') {
@@ -1911,7 +1911,7 @@ char* TRI_HomeDirectory() {
     result = ".";
   }
 
-  return TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, result);
+  return TRI_DuplicateString(TRI_CORE_MEM_ZONE, result);
 }
 
 #endif

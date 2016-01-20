@@ -449,7 +449,7 @@ char* TRI_CheckCacheAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
       TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash));
 
   if (cached != nullptr) {
-    username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, cached->_username);
+    username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, cached->_username);
     *mustChange = cached->_mustChange;
   }
 
@@ -580,8 +580,8 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
             TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_cache_t), false));
 
     if (cached != nullptr) {
-      cached->_hash = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, hash);
-      cached->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, username);
+      cached->_hash = TRI_DuplicateString(TRI_CORE_MEM_ZONE, hash);
+      cached->_username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, username);
       cached->_mustChange = auth->mustChange();
 
       if (cached->_hash == nullptr || cached->_username == nullptr) {

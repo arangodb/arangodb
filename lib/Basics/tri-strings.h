@@ -25,9 +25,7 @@
 #define LIB_BASICS_TRI_STRINGS_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/vector.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an ASCII string to lower case
@@ -57,7 +55,7 @@ bool TRI_EqualString(char const* left, char const* right);
 /// @brief tests if ASCII strings are equal
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EqualString2(char const* left, char const* right, size_t n);
+bool TRI_EqualString(char const* left, char const* right, size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if ASCII strings are equal ignoring case
@@ -69,7 +67,7 @@ bool TRI_CaseEqualString(char const* left, char const* right);
 /// @brief tests if ASCII strings are equal ignoring case
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CaseEqualString2(char const* left, char const* right, size_t n);
+bool TRI_CaseEqualString(char const* left, char const* right, size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if second string is prefix of the first
@@ -100,19 +98,19 @@ char* TRI_DuplicateString(char const*);
 /// @brief duplicates a string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_DuplicateStringZ(TRI_memory_zone_t*, char const*);
+char* TRI_DuplicateString(TRI_memory_zone_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string of given length
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_DuplicateString2(char const*, size_t length);
+char* TRI_DuplicateString(char const*, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string of given length
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_DuplicateString2Z(TRI_memory_zone_t*, char const*, size_t length);
+char* TRI_DuplicateString(TRI_memory_zone_t*, char const*, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends text to a string
@@ -138,7 +136,7 @@ char* TRI_Concatenate2String(char const*, char const*);
 /// @brief concatenate two strings using a memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_Concatenate2StringZ(TRI_memory_zone_t*, char const*, char const*);
+char* TRI_Concatenate2String(TRI_memory_zone_t*, char const*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate three strings
@@ -150,8 +148,8 @@ char* TRI_Concatenate3String(char const*, char const*, char const*);
 /// @brief concatenate three strings using a memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_Concatenate3StringZ(TRI_memory_zone_t*, char const*, char const*,
-                              char const*);
+char* TRI_Concatenate3String(TRI_memory_zone_t*, char const*, char const*,
+                             char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate four strings
@@ -182,8 +180,6 @@ void TRI_FreeStringZ(TRI_memory_zone_t*, char*, char const* file, int line);
 #else
 void TRI_FreeString(TRI_memory_zone_t*, char*);
 #endif
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts into printable representation

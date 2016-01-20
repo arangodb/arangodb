@@ -36,7 +36,7 @@ void TRI_InitMasterInfoReplication(TRI_replication_master_info_t* info,
                                    char const* endpoint) {
   TRI_ASSERT(endpoint != nullptr);
 
-  info->_endpoint = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
+  info->_endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint);
   info->_serverId = 0;
   info->_majorVersion = 0;
   info->_minorVersion = 0;

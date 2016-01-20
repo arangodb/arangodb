@@ -273,7 +273,7 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
 
   if (datafile->isPhysical(datafile)) {
     // copy the current filename
-    copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, datafile->_filename);
+    copy = TRI_DuplicateString(TRI_CORE_MEM_ZONE, datafile->_filename);
 
     ok = TRI_RenameDatafile(datafile, filename);
 

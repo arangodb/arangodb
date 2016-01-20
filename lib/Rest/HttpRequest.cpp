@@ -82,7 +82,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
 
-  char* request = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, header, length);
+  char* request = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, header, length);
 
   if (request != nullptr) {
     _freeables.emplace_back(request);
@@ -382,7 +382,7 @@ size_t HttpRequest::bodySize() const { return _bodySize; }
 
 
 int HttpRequest::setBody(char const* newBody, size_t length) {
-  _body = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, newBody, length);
+  _body = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, newBody, length);
 
   if (_body == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;

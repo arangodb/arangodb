@@ -282,7 +282,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
 
   char const* auth = _request->header("authorization", found);
 
-  if (!found || !TRI_CaseEqualString2(auth, "basic ", 6)) {
+  if (!found || !TRI_CaseEqualString(auth, "basic ", 6)) {
     return HttpResponse::UNAUTHORIZED;
   }
 
@@ -358,7 +358,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   if (mustChange) {
     if ((_request->requestType() == HttpRequest::HTTP_REQUEST_PUT ||
          _request->requestType() == HttpRequest::HTTP_REQUEST_PATCH) &&
-        TRI_EqualString2(_request->requestPath(), "/_api/user/", 11)) {
+        TRI_EqualString(_request->requestPath(), "/_api/user/", 11)) {
       return HttpResponse::OK;
     }
 

@@ -251,7 +251,7 @@ static char* FillVariables(char const* value) {
           ;
 
         if (q < e) {
-          char* k = TRI_DuplicateString2(t, q - t);
+          char* k = TRI_DuplicateString(t, q - t);
           char* v = getenv(k);
 
           if (v != nullptr && *v == '\0') {
@@ -269,7 +269,7 @@ static char* FillVariables(char const* value) {
                 size_t lv = vv.length();
 
                 if (vv[lv - 1] == TRI_DIR_SEPARATOR_CHAR || vv[lv - 1] == '/') {
-                  v = TRI_DuplicateString2(vv.c_str(), lv - 1);
+                  v = TRI_DuplicateString(vv.c_str(), lv - 1);
                 }
               }
             }
@@ -1322,7 +1322,7 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
     if (res == 0) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, section);
 
-      section = TRI_DuplicateString2(buffer + matches[1].rm_so,
+      section = TRI_DuplicateString(buffer + matches[1].rm_so,
                                      matches[1].rm_eo - matches[1].rm_so);
       TRI_SystemFree(buffer);
       buffer = nullptr;
@@ -1335,9 +1335,9 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
         regexec(&re3, buffer, sizeof(matches) / sizeof(matches[0]), matches, 0);
 
     if (res == 0) {
-      option = TRI_DuplicateString2(buffer + matches[1].rm_so,
+      option = TRI_DuplicateString(buffer + matches[1].rm_so,
                                     matches[1].rm_eo - matches[1].rm_so);
-      raw = TRI_DuplicateString2(buffer + matches[2].rm_so,
+      raw = TRI_DuplicateString(buffer + matches[2].rm_so,
                                  matches[2].rm_eo - matches[2].rm_so);
       value = FillVariables(raw);
       TRI_FreeString(TRI_CORE_MEM_ZONE, raw);
@@ -1370,7 +1370,7 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
         regexec(&re4, buffer, sizeof(matches) / sizeof(matches[0]), matches, 0);
 
     if (res == 0) {
-      option = TRI_DuplicateString2(buffer + matches[1].rm_so,
+      option = TRI_DuplicateString(buffer + matches[1].rm_so,
                                     matches[1].rm_eo - matches[1].rm_so);
 
       TRI_SystemFree(buffer);
@@ -1399,11 +1399,11 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
         regexec(&re5, buffer, sizeof(matches) / sizeof(matches[0]), matches, 0);
 
     if (res == 0) {
-      tmpSection = TRI_DuplicateString2(buffer + matches[1].rm_so,
+      tmpSection = TRI_DuplicateString(buffer + matches[1].rm_so,
                                         matches[1].rm_eo - matches[1].rm_so);
-      option = TRI_DuplicateString2(buffer + matches[2].rm_so,
+      option = TRI_DuplicateString(buffer + matches[2].rm_so,
                                     matches[2].rm_eo - matches[2].rm_so);
-      raw = TRI_DuplicateString2(buffer + matches[3].rm_so,
+      raw = TRI_DuplicateString(buffer + matches[3].rm_so,
                                  matches[3].rm_eo - matches[3].rm_so);
       value = FillVariables(raw);
       TRI_FreeString(TRI_CORE_MEM_ZONE, raw);
@@ -1434,9 +1434,9 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
         regexec(&re6, buffer, sizeof(matches) / sizeof(matches[0]), matches, 0);
 
     if (res == 0) {
-      tmpSection = TRI_DuplicateString2(buffer + matches[1].rm_so,
+      tmpSection = TRI_DuplicateString(buffer + matches[1].rm_so,
                                         matches[1].rm_eo - matches[1].rm_so);
-      option = TRI_DuplicateString2(buffer + matches[2].rm_so,
+      option = TRI_DuplicateString(buffer + matches[2].rm_so,
                                     matches[2].rm_eo - matches[1].rm_so);
 
       TRI_SystemFree(buffer);

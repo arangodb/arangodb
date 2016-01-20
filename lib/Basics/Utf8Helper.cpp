@@ -58,6 +58,9 @@ Utf8Helper::~Utf8Helper() {
 }
 
 int Utf8Helper::compareUtf8(char const* left, char const* right) const {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
+
   if (!_coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf8()!");
     return (strcmp(left, right));
@@ -76,6 +79,9 @@ int Utf8Helper::compareUtf8(char const* left, char const* right) const {
 
 int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
                             char const* right, size_t rightLength) const {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
+
   if (!_coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf8()!");
     return (strcmp(left, right));
@@ -95,6 +101,9 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
 
 int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                              uint16_t const* right, size_t rightLength) const {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
+
   if (!_coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf16()!");
 
@@ -706,6 +715,8 @@ int TRI_compare_utf16(uint16_t const* left, size_t leftLength,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_compare_utf8(char const* left, char const* right) {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
   return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);
 }
 
@@ -715,6 +726,8 @@ int TRI_compare_utf8(char const* left, char const* right) {
 
 int TRI_compare_utf8(char const* left, size_t leftLength, char const* right,
                      size_t rightLength) {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
   return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, right,
                                                    rightLength);
 }

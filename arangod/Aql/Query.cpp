@@ -812,6 +812,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         std::unique_ptr<TRI_json_t> cacheResult(
             TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
 
+        if (cacheResult == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(
                                1, ExecutionBlock::DefaultBatchSize))) {
@@ -1062,7 +1066,7 @@ char* Query::registerString(char const* p, size_t length) {
     return _shortStringStorage.registerString(p, length);
   }
 
-  char* copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, p, length);
+  char* copy = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, p, length);
 
   if (copy == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

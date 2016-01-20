@@ -1126,7 +1126,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
     return nullptr;
   }
 
-  buffer = ptr = TRI_DuplicateString2Z(_memoryZone, name, len);
+  buffer = ptr = TRI_DuplicateString(_memoryZone, name, len);
 
   if (buffer == nullptr) {
     TRI_Free(_memoryZone, aids);
@@ -1296,7 +1296,7 @@ static int FillAttributesVector(TRI_vector_t* vector,
       return TRI_ERROR_INTERNAL;
     }
 
-    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, a);
+    char* copy = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, a);
 
     if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -1320,7 +1320,7 @@ static int FillAttributesVector(TRI_vector_t* vector,
       return TRI_ERROR_INTERNAL;
     }
 
-    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, a);
+    char* copy = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, a);
 
     if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;

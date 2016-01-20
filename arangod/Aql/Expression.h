@@ -267,6 +267,7 @@ class Expression {
   
  private:
   void setVariable(Variable const* variable, TRI_json_t const* value) {
+    TRI_ASSERT(value != nullptr);
     _variables.emplace(variable, value);
   }
 

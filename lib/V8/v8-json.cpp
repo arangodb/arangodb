@@ -2385,7 +2385,7 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
 
   if (error != nullptr) {
     if (yyextra._message != nullptr) {
-      *error = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, yyextra._message);
+      *error = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, yyextra._message);
     }
     else {
       *error = nullptr;

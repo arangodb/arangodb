@@ -264,13 +264,13 @@ static void JS_SynchronizeReplication(
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
-  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(),
+  config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(),
                                            endpoint.size());
-  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(),
+  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
                                            database.size());
-  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(),
+  config._username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(),
                                            username.size());
-  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(),
+  config._password = TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(),
                                            password.size());
 
   if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
@@ -433,7 +433,7 @@ static void JS_ConfigureApplierReplication(
         if (config._endpoint != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._endpoint);
         }
-        config._endpoint = TRI_DuplicateString2Z(
+        config._endpoint = TRI_DuplicateString(
             TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
       }
     }
@@ -446,14 +446,14 @@ static void JS_ConfigureApplierReplication(
         if (config._database != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._database);
         }
-        config._database = TRI_DuplicateString2Z(
+        config._database = TRI_DuplicateString(
             TRI_CORE_MEM_ZONE, database.c_str(), database.size());
       }
     } else {
       if (config._database == nullptr) {
         // no database set, use current
         config._database =
-            TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+            TRI_DuplicateString(TRI_CORE_MEM_ZONE, vocbase->_name);
       }
     }
 
@@ -467,7 +467,7 @@ static void JS_ConfigureApplierReplication(
         if (config._username != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._username);
         }
-        config._username = TRI_DuplicateString2Z(
+        config._username = TRI_DuplicateString(
             TRI_CORE_MEM_ZONE, username.c_str(), username.size());
       }
     }
@@ -480,7 +480,7 @@ static void JS_ConfigureApplierReplication(
         if (config._password != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._password);
         }
-        config._password = TRI_DuplicateString2Z(
+        config._password = TRI_DuplicateString(
             TRI_CORE_MEM_ZONE, password.c_str(), password.size());
       }
     }

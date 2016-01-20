@@ -613,9 +613,8 @@ ExecutionNode const* ExecutionNode::getLoop() const {
   return nullptr;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief factory for (optional) variables from json.
+/// @brief factory for (optional) variables from json
 ////////////////////////////////////////////////////////////////////////////////
 
 Variable* ExecutionNode::varFromJson(Ast* ast,
@@ -626,15 +625,15 @@ Variable* ExecutionNode::varFromJson(Ast* ast,
   if (variableJson.isEmpty()) {
     if (optional) {
       return nullptr;
-    } else {
-      std::string msg;
-      msg +=
-          "Mandatory variable \"" + std::string(variableName) + "\" not found.";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
-    }
-  } else {
-    return ast->variables()->createVariable(variableJson);
-  }
+    } 
+    
+    std::string msg;
+    msg +=
+        "Mandatory variable \"" + std::string(variableName) + "\" not found.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  } 
+
+  return ast->variables()->createVariable(variableJson);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1453,8 +1452,8 @@ void CalculationNode::toJsonHelper(arangodb::basics::Json& nodes,
   }
 
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
-      "outVariable", _outVariable->toJson())(
-      "canThrow", arangodb::basics::Json(_expression->canThrow()));
+       "outVariable", _outVariable->toJson())(
+       "canThrow", arangodb::basics::Json(_expression->canThrow()));
 
   if (_conditionVariable != nullptr) {
     json("conditionVariable", _conditionVariable->toJson());

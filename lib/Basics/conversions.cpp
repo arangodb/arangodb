@@ -707,7 +707,7 @@ char* TRI_StringInt8 (int8_t attr) {
   char buffer[5];
   size_t len = TRI_StringInt8InPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 
@@ -720,7 +720,7 @@ char* TRI_StringUInt8 (uint8_t attr) {
   char buffer[4];
   size_t len = TRI_StringUInt8InPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 
@@ -733,7 +733,7 @@ char* TRI_StringInt16 (int16_t attr) {
   char buffer[7];
   size_t len = TRI_StringInt16InPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 
@@ -746,7 +746,7 @@ char* TRI_StringUInt16 (uint16_t attr) {
   char buffer[6];
   size_t len = TRI_StringUInt16InPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 
@@ -759,7 +759,7 @@ char* TRI_StringInt32 (int32_t attr) {
   char buffer[12];
   size_t len = TRI_StringInt32InPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 
@@ -771,7 +771,7 @@ char* TRI_StringUInt32(uint32_t attr) {
   char buffer[11];
   size_t len = TRI_StringUInt32InPlace(attr, (char*)&buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -783,7 +783,7 @@ char* TRI_StringInt64 (int64_t attr) {
   char buffer[22];
   size_t len = TRI_StringInt64InPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 
@@ -795,7 +795,7 @@ char* TRI_StringUInt64(uint64_t attr) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace(attr, (char*)&buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -911,7 +911,7 @@ char* TRI_StringUInt32Hex (uint32_t attr) {
   char buffer[9];
   size_t len = TRI_StringUInt32HexInPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 
@@ -924,7 +924,7 @@ char* TRI_StringUInt64Hex (uint64_t attr) {
   char buffer[17];
   size_t len = TRI_StringUInt64HexInPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 
@@ -1068,7 +1068,7 @@ char* TRI_StringUInt32Octal (uint32_t attr) {
   char buffer[9];
   size_t len = TRI_StringUInt32OctalInPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 
@@ -1081,7 +1081,7 @@ char* TRI_StringUInt64Octal (uint64_t attr) {
   char buffer[17];
   size_t len = TRI_StringUInt64OctalInPlace(attr, (char*) &buffer);
 
-  return TRI_DuplicateString2(buffer, len);
+  return TRI_DuplicateString(buffer, len);
 }
 #endif
 

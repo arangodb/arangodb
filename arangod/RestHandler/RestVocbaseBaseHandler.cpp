@@ -606,7 +606,7 @@ int RestVocbaseBaseHandler::parseDocumentId(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, pos + 1, end - pos - 1);
+  key = TRI_DuplicateString(TRI_CORE_MEM_ZONE, pos + 1, end - pos - 1);
 
   return TRI_ERROR_NO_ERROR;
 }

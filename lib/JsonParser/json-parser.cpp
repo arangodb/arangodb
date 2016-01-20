@@ -2212,7 +2212,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
       nameLen = yyleng - 2;
 
       // no unescaping necessary. just copy it
-      name = TRI_DuplicateString2Z(yyextra._memoryZone, yytext + 1, nameLen);
+      name = TRI_DuplicateString(yyextra._memoryZone, yytext + 1, nameLen);
     }
     else {
       // some other token found => invalid
@@ -2361,7 +2361,7 @@ static bool ParseValue (yyscan_t scanner, TRI_json_t* result, int c) {
         TRI_InitStringReferenceJson(result, ptr, 0);
        }
       else {
-        char* ptr = TRI_DuplicateString2Z(yyextra._memoryZone, yytext + 1, yyleng - 2);
+        char* ptr = TRI_DuplicateString(yyextra._memoryZone, yytext + 1, yyleng - 2);
  
         if (ptr == nullptr) {
           yyextra._message = "out-of-memory";

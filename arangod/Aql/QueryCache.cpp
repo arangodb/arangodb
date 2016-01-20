@@ -69,7 +69,7 @@ QueryCacheResultEntry::QueryCacheResultEntry(
       _next(nullptr),
       _refCount(0),
       _deletionRequested(0) {
-  _queryString = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, queryString,
+  _queryString = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, queryString,
                                        queryStringLength);
 
   if (_queryString == nullptr) {

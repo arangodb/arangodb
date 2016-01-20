@@ -74,7 +74,7 @@ struct log_message_t {
 
     if (!claimOwnership) {
       // need to copy the message before it is invalidated
-      _message = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, message, length);
+      _message = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, message, length);
     }
 
     if (_message == nullptr) {
@@ -135,7 +135,7 @@ TRI_log_appender_t::TRI_log_appender_t(char const* contentFilter,
       _severityFilter(severityFilter),
       _consume(consume) {
   if (contentFilter != nullptr) {
-    _contentFilter = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, contentFilter);
+    _contentFilter = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, contentFilter);
   }
 }
 
@@ -378,7 +378,7 @@ static void StoreOutput(TRI_log_level_e level, time_t timestamp,
     }
   }
   else {
-    msg = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, text, length);
+    msg = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, text, length);
   }
       
   if (msg == nullptr) {
@@ -1002,7 +1002,7 @@ void TRI_SetLogSeverityLogging(char const* severities) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetPrefixLogging(char const* prefix) {
-  char* outputPrefix = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, prefix);
+  char* outputPrefix = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, prefix);
 
   if (outputPrefix == nullptr) {
     return;
@@ -1187,7 +1187,7 @@ TRI_vector_t* TRI_BufferLogging(TRI_log_level_e level, uint64_t start,
         TRI_log_buffer_t buf = BufferOutput[i][cur];
 
         if (buf._lid >= start && buf._text != nullptr && *buf._text != '\0') {
-          buf._text = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buf._text);
+          buf._text = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, buf._text);
 
           if (buf._text != nullptr) {
             TRI_PushBackVector(result, &buf);
@@ -1399,7 +1399,7 @@ char* log_appender_file_t::details() {
              "More error details may be provided in the logfile '%s'",
              _filename.c_str());
 
-    return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buffer);
+    return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, buffer);
   }
 
   return nullptr;
@@ -1467,7 +1467,7 @@ int TRI_CreateLogAppenderFile(char const* filename, char const* contentFilter,
 
   // register the name of the first logfile
   if (LogfileName == nullptr) {
-    LogfileName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, filename);
+    LogfileName = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, filename);
   }
 
   // and return base structure
@@ -1640,7 +1640,7 @@ void log_appender_syslog_t::closeLog() {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* log_appender_syslog_t::details() {
-  return TRI_DuplicateStringZ(
+  return TRI_DuplicateString(
       TRI_UNKNOWN_MEM_ZONE, "More error details may be provided in the syslog");
 }
 

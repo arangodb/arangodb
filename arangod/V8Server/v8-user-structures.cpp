@@ -40,7 +40,7 @@ struct KeySpaceElement {
 
   KeySpaceElement(char const* k, size_t length, TRI_json_t* json)
       : key(nullptr), json(json) {
-    key = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, k, length);
+    key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, k, length);
     if (key == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }

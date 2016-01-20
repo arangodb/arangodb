@@ -21,12 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Utils/StandaloneTransactionContext.h"
+#include "StandaloneTransactionContext.h"
 #include "Storage/Options.h"
 #include "Utils/CollectionNameResolver.h"
 
 using namespace arangodb::arango;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the context
@@ -96,10 +95,8 @@ int StandaloneTransactionContext::registerTransaction(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int StandaloneTransactionContext::unregisterTransaction() {
-  if (_resolver != nullptr) {
-    delete _resolver;
-    _resolver = nullptr;
-  }
+  delete _resolver;
+  _resolver = nullptr;
 
   if (_options.customTypeHandler != nullptr) {
     delete _options.customTypeHandler;
@@ -116,5 +113,4 @@ int StandaloneTransactionContext::unregisterTransaction() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool StandaloneTransactionContext::isEmbeddable() const { return false; }
-
 

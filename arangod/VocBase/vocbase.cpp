@@ -399,8 +399,8 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
 
       char* newFilename;
 
-      tmp1 = TRI_DuplicateString2(first, firstLen);
-      tmp2 = TRI_DuplicateString2(second, secondLen);
+      tmp1 = TRI_DuplicateString(first, firstLen);
+      tmp2 = TRI_DuplicateString(second, secondLen);
       tmp3 = TRI_Concatenate2String("deleted-", tmp2);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
@@ -1799,7 +1799,7 @@ char* TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found->_name);
+  return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, found->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2093,7 +2093,7 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
   // old name should be different
-  char* oldName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, collection->_name);
+  char* oldName = TRI_DuplicateString(TRI_CORE_MEM_ZONE, collection->_name);
 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2434,8 +2434,8 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
   _cursorRepository = new arangodb::arango::CursorRepository(this);
   _collectionKeys = new arangodb::arango::CollectionKeysRepository();
 
-  _path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
-  _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
+  _path = TRI_DuplicateString(TRI_CORE_MEM_ZONE, path);
+  _name = TRI_DuplicateString(TRI_CORE_MEM_ZONE, name);
 
   // use the defaults provided
   defaults->applyToVocBase(this);

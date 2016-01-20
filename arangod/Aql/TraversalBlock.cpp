@@ -47,6 +47,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _vertexReg(0),
       _edgeReg(0),
       _pathReg(0),
+      _resolver(nullptr),
       _expressions(ep->expressions()),
       _hasV8Expression(false) {
   arangodb::arango::traverser::TraverserOptions opts;

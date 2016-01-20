@@ -2938,13 +2938,13 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
 
-  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(),
+  config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(),
                                            endpoint.size());
-  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(),
+  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
                                            database.size());
-  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(),
+  config._username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(),
                                            username.size());
-  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(),
+  config._password = TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(),
                                            password.size());
   config._includeSystem =
       VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
@@ -3139,13 +3139,13 @@ void RestReplicationHandler::handleCommandSync() {
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
-  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(),
+  config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(),
                                            endpoint.size());
-  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(),
+  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
                                            database.size());
-  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(),
+  config._username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(),
                                            username.size());
-  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(),
+  config._password = TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(),
                                            password.size());
   config._includeSystem = includeSystem;
   config._verbose = verbose;
@@ -3274,7 +3274,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     if (config._endpoint != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
     }
-    config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
+    config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE,
                                              endpoint.c_str(), endpoint.size());
   }
 
@@ -3284,7 +3284,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     // free old value
     TRI_FreeString(TRI_CORE_MEM_ZONE, config._database);
   }
-  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(),
+  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
                                            database.length());
 
   VPackSlice const username = body.get("username");
@@ -3294,7 +3294,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     }
     std::string tmp = username.copyString();
     config._username =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
   }
 
   VPackSlice const password = body.get("password");
@@ -3304,7 +3304,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     }
     std::string tmp = password.copyString();
     config._password =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
   }
 
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(

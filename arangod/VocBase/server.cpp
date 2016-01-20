@@ -569,7 +569,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     }
     std::string dbname = nameSlice.copyString();
 
-    databaseName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, dbname.c_str());
+    databaseName = TRI_DuplicateString(TRI_CORE_MEM_ZONE, dbname.c_str());
 
     // .........................................................................
     // setup defaults
@@ -795,7 +795,7 @@ static int GetDatabases(TRI_server_t* server, TRI_vector_string_t* databases) {
 
     if (TRI_IsDirectory(dname)) {
       TRI_PushBackVectorString(
-          databases, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name.c_str()));
+          databases, TRI_DuplicateString(TRI_CORE_MEM_ZONE, name.c_str()));
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
@@ -1476,7 +1476,7 @@ static void DatabaseManager(void* data) {
           }
         }
 
-        path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, database->_path);
+        path = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database->_path);
 
         TRI_DestroyVocBase(database);
 
@@ -1562,7 +1562,7 @@ int TRI_InitServer(
   // set up paths and filenames
   // ...........................................................................
 
-  server->_basePath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, basePath);
+  server->_basePath = TRI_DuplicateString(TRI_CORE_MEM_ZONE, basePath);
 
   if (server->_basePath == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1595,7 +1595,7 @@ int TRI_InitServer(
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  server->_appPath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, appPath);
+  server->_appPath = TRI_DuplicateString(TRI_CORE_MEM_ZONE, appPath);
 
   if (server->_appPath == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);

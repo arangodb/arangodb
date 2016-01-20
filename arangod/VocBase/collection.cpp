@@ -307,8 +307,8 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
       // file is an index
       // .............................................................................
 
-      else if (TRI_EqualString2("index", first, firstLen) &&
-               TRI_EqualString2("json", third, thirdLen)) {
+      else if (TRI_EqualString("index", first, firstLen) &&
+               TRI_EqualString("json", third, thirdLen)) {
         char* filename;
 
         filename = TRI_Concatenate2File(path, file.c_str());
@@ -319,23 +319,23 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
       // file is a journal or datafile
       // .............................................................................
 
-      else if (TRI_EqualString2("db", third, thirdLen)) {
+      else if (TRI_EqualString("db", third, thirdLen)) {
         std::string filename = TRI_Concatenate2File(path, file.c_str());
 
         // file is a journal
-        if (TRI_EqualString2("journal", first, firstLen)) {
+        if (TRI_EqualString("journal", first, firstLen)) {
           TRI_PushBackVectorString(&structure._journals,
                                    TRI_DuplicateString(filename.c_str()));
         }
 
         // file is a datafile
-        else if (TRI_EqualString2("datafile", first, firstLen)) {
+        else if (TRI_EqualString("datafile", first, firstLen)) {
           TRI_PushBackVectorString(&structure._datafiles,
                                    TRI_DuplicateString(filename.c_str()));
         }
 
         // file is a left-over compaction file. rename it back
-        else if (TRI_EqualString2("compaction", first, firstLen)) {
+        else if (TRI_EqualString("compaction", first, firstLen)) {
           char* relName;
           char* newName;
 
@@ -377,7 +377,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
         }
 
         // temporary file, we can delete it!
-        else if (TRI_EqualString2("temp", first, firstLen)) {
+        else if (TRI_EqualString("temp", first, firstLen)) {
           LOG_WARNING(
               "found temporary file '%s', which is probably a left-over. "
               "deleting it",
@@ -456,7 +456,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
 
       // check for temporary & dead files
 
-      if (fourthLen > 0 || TRI_EqualString2("temp", first, firstLen)) {
+      if (fourthLen > 0 || TRI_EqualString("temp", first, firstLen)) {
         // found a temporary file. we can delete it!
         char* filename;
 
@@ -475,8 +475,8 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       // file is an index, just store the filename
       // .............................................................................
 
-      if (TRI_EqualString2("index", first, firstLen) &&
-          TRI_EqualString2("json", third, thirdLen)) {
+      if (TRI_EqualString("index", first, firstLen) &&
+          TRI_EqualString("json", third, thirdLen)) {
         char* filename;
 
         filename = TRI_Concatenate2File(collection->_directory, file.c_str());
@@ -487,12 +487,12 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       // file is a journal or datafile, open the datafile
       // .............................................................................
 
-      else if (TRI_EqualString2("db", third, thirdLen)) {
+      else if (TRI_EqualString("db", third, thirdLen)) {
         char* filename;
         char* ptr;
         TRI_col_header_marker_t* cm;
 
-        if (TRI_EqualString2("compaction", first, firstLen)) {
+        if (TRI_EqualString("compaction", first, firstLen)) {
           // found a compaction file. now rename it back
           char* relName;
           char* newName;
@@ -578,7 +578,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
         }
 
         // file is a journal
-        if (TRI_EqualString2("journal", first, firstLen)) {
+        if (TRI_EqualString("journal", first, firstLen)) {
           if (datafile->_isSealed) {
             if (datafile->_state != TRI_DF_STATE_READ) {
               LOG_WARNING(
@@ -594,13 +594,13 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
         }
 
         // file is a compactor
-        else if (TRI_EqualString2("compactor", first, firstLen)) {
+        else if (TRI_EqualString("compactor", first, firstLen)) {
           // ignore
         }
 
         // file is a datafile (or was a compaction file)
-        else if (TRI_EqualString2("datafile", first, firstLen) ||
-                 TRI_EqualString2("compaction", first, firstLen)) {
+        else if (TRI_EqualString("datafile", first, firstLen) ||
+                 TRI_EqualString("compaction", first, firstLen)) {
           if (!datafile->_isSealed) {
             LOG_ERROR("datafile '%s' is not sealed, this should never happen",
                       filename);
@@ -1400,9 +1400,14 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
 
   TRI_json_t* json = TRI_CreateJsonCollectionInfo(*this);
 
+  if (json == nullptr) {
+    LOG_ERROR("cannot save collection properties file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
   // save json info to file
   bool ok = TRI_SaveJson(filename, json, forceSync);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   int res;
   if (!ok) {
@@ -1412,7 +1417,8 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   } else {
     res = TRI_ERROR_NO_ERROR;
   }
-
+  
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   return res;
 }

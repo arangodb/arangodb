@@ -817,7 +817,7 @@ void TRI_SetProcessTitle(char const* title) {
       size_t i = 0;
 
       while (environ[i]) {
-        newEnviron[i] = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, environ[i]);
+        newEnviron[i] = TRI_DuplicateString(TRI_CORE_MEM_ZONE, environ[i]);
         ++i;
       }
       // pad with a null pointer so we know the end of the array

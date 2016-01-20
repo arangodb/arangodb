@@ -38,7 +38,6 @@ namespace aql {
 
 class AqlItemBlock;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a struct to hold a value, registers hole AqlValue* during the
 /// execution
@@ -66,13 +65,19 @@ struct AqlValue {
 
   AqlValue() : _json(nullptr), _type(EMPTY) {}
 
-  explicit AqlValue(arangodb::basics::Json* json) : _json(json), _type(JSON) {}
+  explicit AqlValue(arangodb::basics::Json* json) : _json(json), _type(JSON) {
+    TRI_ASSERT(_json != nullptr);
+  }
 
   explicit AqlValue(TRI_df_marker_t const* marker)
-      : _marker(marker), _type(SHAPED) {}
+      : _marker(marker), _type(SHAPED) {
+    TRI_ASSERT(_marker != nullptr);
+  }
 
   explicit AqlValue(std::vector<AqlItemBlock*>* vector)
-      : _vector(vector), _type(DOCVEC) {}
+      : _vector(vector), _type(DOCVEC) {
+    TRI_ASSERT(_vector != nullptr);
+  }
 
   AqlValue(int64_t low, int64_t high) : _range(nullptr), _type(RANGE) {
     _range = new Range(low, high);
@@ -84,7 +89,6 @@ struct AqlValue {
 
   ~AqlValue() {}
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the value type
   //////////////////////////////////////////////////////////////////////////////

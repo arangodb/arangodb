@@ -128,10 +128,10 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   TRI_json_t const* value = TRI_LookupObjectJson(json.get(), "database");
 
   if (!TRI_IsStringJson(value)) {
-    config->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+    config->_database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, vocbase->_name);
   } else {
     config->_database =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                               value->_value._string.length - 1);
   }
 
@@ -140,7 +140,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 
   if (TRI_IsStringJson(value)) {
     config->_username =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                               value->_value._string.length - 1);
   }
 
@@ -148,7 +148,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 
   if (TRI_IsStringJson(value)) {
     config->_password =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                               value->_value._string.length - 1);
   }
 
@@ -294,7 +294,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
     config->_autoStart = false;
   } else {
     config->_endpoint =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                               value->_value._string.length - 1);
   }
 
@@ -722,7 +722,7 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
 
   if (applier->_state._progressMsg != nullptr) {
     state->_progressMsg =
-        TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, applier->_state._progressMsg);
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, applier->_state._progressMsg);
   } else {
     state->_progressMsg = nullptr;
   }
@@ -731,7 +731,7 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
          sizeof(state->_progressTime));
 
   if (applier->_state._lastError._msg != nullptr) {
-    state->_lastError._msg = TRI_DuplicateStringZ(
+    state->_lastError._msg = TRI_DuplicateString(
         TRI_CORE_MEM_ZONE, applier->_state._lastError._msg);
   } else {
     state->_lastError._msg = nullptr;
@@ -953,25 +953,25 @@ void TRI_CopyConfigurationReplicationApplier(
     TRI_replication_applier_configuration_t const* src,
     TRI_replication_applier_configuration_t* dst) {
   if (src->_endpoint != nullptr) {
-    dst->_endpoint = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_endpoint);
+    dst->_endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, src->_endpoint);
   } else {
     dst->_endpoint = nullptr;
   }
 
   if (src->_database != nullptr) {
-    dst->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_database);
+    dst->_database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, src->_database);
   } else {
     dst->_database = nullptr;
   }
 
   if (src->_username != nullptr) {
-    dst->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_username);
+    dst->_username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, src->_username);
   } else {
     dst->_username = nullptr;
   }
 
   if (src->_password != nullptr) {
-    dst->_password = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_password);
+    dst->_password = TRI_DuplicateString(TRI_CORE_MEM_ZONE, src->_password);
   } else {
     dst->_password = nullptr;
   }
@@ -1396,7 +1396,7 @@ bool TRI_replication_applier_t::wait(uint64_t sleepTime) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_replication_applier_t::setProgress(char const* msg, bool lock) {
-  char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, msg);
+  char* copy = TRI_DuplicateString(TRI_CORE_MEM_ZONE, msg);
 
   if (copy == nullptr) {
     return;
@@ -1529,7 +1529,7 @@ int TRI_replication_applier_t::doSetError(int errorCode, char const* msg) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
   }
 
-  _state._lastError._msg = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, realMsg);
+  _state._lastError._msg = TRI_DuplicateString(TRI_CORE_MEM_ZONE, realMsg);
 
   return errorCode;
 }

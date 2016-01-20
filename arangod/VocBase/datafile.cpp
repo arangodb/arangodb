@@ -587,7 +587,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
       entry._status = 4;
 
       auto&& diagnosis = DiagnoseMarker(marker, end);
-      entry._diagnosis = TRI_DuplicateString2Z(
+      entry._diagnosis = TRI_DuplicateString(
           TRI_UNKNOWN_MEM_ZONE, diagnosis.c_str(), diagnosis.size());
 
       scan._endPosition = currentSize;
@@ -601,7 +601,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
       entry._status = 4;
 
       auto&& diagnosis = DiagnoseMarker(marker, end);
-      entry._diagnosis = TRI_DuplicateString2Z(
+      entry._diagnosis = TRI_DuplicateString(
           TRI_UNKNOWN_MEM_ZONE, diagnosis.c_str(), diagnosis.size());
 
       scan._endPosition = currentSize;
@@ -617,7 +617,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
       entry._status = 5;
 
       auto&& diagnosis = DiagnoseMarker(marker, end);
-      entry._diagnosis = TRI_DuplicateString2Z(
+      entry._diagnosis = TRI_DuplicateString(
           TRI_UNKNOWN_MEM_ZONE, diagnosis.c_str(), diagnosis.size());
 
       scan._status = 4;
@@ -631,27 +631,27 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
                         reinterpret_cast<TRI_doc_document_key_marker_t const*>(
                             marker)->_offsetKey;
       entry._key =
-          TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
+          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
     } else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
       char const* ptr =
           reinterpret_cast<char const*>(marker) +
           reinterpret_cast<TRI_doc_deletion_key_marker_t*>(marker)->_offsetKey;
       entry._key =
-          TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
+          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
     } else if (marker->_type == TRI_DF_MARKER_SHAPE) {
       char* p = ((char*)marker) + sizeof(TRI_df_shape_marker_t);
       TRI_shape_t* l = (TRI_shape_t*)p;
       std::string tmp("shape #");
       tmp.append(std::to_string(l->_sid));
       entry._key =
-          TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
+          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
     } else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
       TRI_shape_aid_t aid =
           reinterpret_cast<TRI_df_attribute_marker_t const*>(marker)->_aid;
       std::string tmp("attribute #");
       tmp.append(std::to_string(aid));
       entry._key =
-          TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
+          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
     }
 
     TRI_PushBackVector(&scan._entries, &entry);
