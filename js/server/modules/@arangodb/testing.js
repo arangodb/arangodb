@@ -560,7 +560,8 @@ function analyzeCoreDumpWindows(instanceInfo) {
     return;
   }
   var dbgCmds = [
-    "kp", // print backtrace with arguments
+    "kp", // print curren threads backtrace with arguments
+    "~*kb", // print all threads stack traces
     "dv", // analyze local variables (if)
     "!analyze -v", // print verbose analysis
     "q" //quit the debugger
