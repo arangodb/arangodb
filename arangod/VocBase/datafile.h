@@ -278,8 +278,6 @@ typedef struct TRI_datafile_s {
   void (*destroy)(struct TRI_datafile_s*);      // destroys the datafile
   bool (*sync)(const struct TRI_datafile_s* const, char const*,
                char const*);  // syncs the datafile
-  int (*truncate)(struct TRI_datafile_s* const,
-                  const off_t);  // truncates the datafile to a specific length
 
   int _lastError;  // last (critical) error
   bool _full;  // at least one request was rejected because there is not enough

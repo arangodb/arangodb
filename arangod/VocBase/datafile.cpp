@@ -114,21 +114,6 @@ static bool SyncDatafile(const TRI_datafile_t* const datafile,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate the datafile to a specific length
-////////////////////////////////////////////////////////////////////////////////
-
-static int TruncateDatafile(TRI_datafile_t* const datafile,
-                            const off_t length) {
-  if (datafile->isPhysical(datafile)) {
-    // only physical files can be truncated
-    return ftruncate(datafile->_fd, length);
-  }
-
-  // for anonymous regions, this is a non-op
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief calculates the actual CRC of a marker, without bounds checks
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -369,7 +354,6 @@ static void InitDatafile(TRI_datafile_t* datafile, char* filename, int fd,
   datafile->close = &CloseDatafile;
   datafile->destroy = &DestroyDatafile;
   datafile->sync = &SyncDatafile;
-  datafile->truncate = &TruncateDatafile;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
