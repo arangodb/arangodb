@@ -35,6 +35,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_LEGEND_NOT_IN_WAL_FILE, "internal error if a legend for a marker does not yet exist in the same WAL file");
   REG_ERROR(ERROR_FILE_EXISTS, "file exists");
   REG_ERROR(ERROR_LOCKED, "locked");
+  REG_ERROR(ERROR_DEADLOCK, "deadlock detected");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");

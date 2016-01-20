@@ -351,8 +351,6 @@ static void FreeDitch (TRI_transaction_collection_t* trxCollection) {
 static int LockCollection (TRI_transaction_collection_t* trxCollection,
                            TRI_transaction_type_e type,
                            int nestingLevel) {
-  int res;
-
   TRI_ASSERT(trxCollection != nullptr);
 
   TRI_transaction_t* trx = trxCollection->_transaction;
@@ -380,29 +378,20 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
+  int res;
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trx,
             nestingLevel,
             "read-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
-    if (trx->_timeout == 0) {
-      res = document->beginRead();
-    }
-    else {
-      res = document->beginReadTimed(trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
-    }
+    res = document->beginReadTimed(trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
   }
   else {
     LOG_TRX(trx,
             nestingLevel,
             "write-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
-    if (trx->_timeout == 0) {
-      res = document->beginWrite();
-    }
-    else {
-      res = document->beginWriteTimed(trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
-    }
+    res = document->beginWriteTimed(trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 50);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -802,7 +791,7 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
     trx->_timeout         = (uint64_t) (timeout * 1000000.0);
   }
   else if (timeout == 0.0) {
-    trx->_timeout         = (uint64_t) 0;
+    trx->_timeout         = static_cast<uint64_t>(0);
   }
 
   TRI_InitVectorPointer(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
