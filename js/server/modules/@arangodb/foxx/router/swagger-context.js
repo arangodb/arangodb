@@ -517,7 +517,7 @@ function swaggerifyParam(joi) {
   if (type.length > 1) {
     item.format = type[1];
   }
-  if (joi._valids._set) {
+  if (joi._valids._set && joi._valids._set.length) {
     item.enum = joi._valids._set;
   }
   if (joi._flags.hasOwnProperty('default')) {

@@ -243,12 +243,21 @@ function refillCaches(dbname) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief routes of an foxx
+/// @brief routes of a foxx
 ////////////////////////////////////////////////////////////////////////////////
 
 function routes(mount) {
   var app = lookupApp(mount);
   return routeAndExportApp(app, false).routes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure a foxx is routed
+////////////////////////////////////////////////////////////////////////////////
+
+function ensureRouted(mount) {
+  var app = lookupApp(mount);
+  return routeAndExportApp(app, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1496,6 +1505,7 @@ exports._resetCache = resetCache;
 exports.scanFoxx = scanFoxx;
 exports.mountPoints = mountPoints;
 exports.routes = routes;
+exports.ensureRouted = ensureRouted;
 exports.rescanFoxx = rescanFoxx;
 exports.lookupApp = lookupApp;
 

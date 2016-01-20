@@ -152,15 +152,20 @@ module.exports = class Tree {
       }
       for (let token of swagger._pathTokens) {
         if (token === tokenize.PARAM) {
-          token = ':' + swagger._pathParamNames[i];
+          token = `{${swagger._pathParamNames[i]}}`;
           i++;
+        } else if (token === tokenize.WILDCARD) {
+          token = '*';
         }
-        parts.push(token);
+        if (typeof token === 'string') {
+          parts.push(token);
+        }
       }
-      if (!paths[swagger.path]) {
-        paths[swagger.path] = {};
+      const path = '/' + parts.join('/');
+      if (!paths[path]) {
+        paths[path] = {};
       }
-      let pathItem = paths[swagger.path];
+      let pathItem = paths[path];
       let operation = swagger._buildOperation();
       for (let method of swagger._methods) {
         method = method.toLowerCase();

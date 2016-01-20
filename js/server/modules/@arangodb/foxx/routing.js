@@ -127,14 +127,16 @@ exports.routeApp = function (service, throwOnErrors) {
   if (service.needsConfiguration()) {
     return {
       exports: service.main.exports,
-      routes: createServiceNeedsConfigurationRoute(service)
+      routes: createServiceNeedsConfigurationRoute(service),
+      docs: null
     };
   }
 
   if (!service.isDevelopment && service.main.loaded) {
     return {
       exports: service.main.exports,
-      routes: service.routes
+      routes: service.routes,
+      docs: service.docs
     };
   }
 

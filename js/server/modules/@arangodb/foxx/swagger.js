@@ -1,5 +1,4 @@
 'use strict';
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Swagger integration
 ///
@@ -105,7 +104,7 @@ function swaggerPath(path, basePath) {
 function swaggerJson(req, res, opts) {
   var foxx;
   try {
-    foxx = FoxxManager.routes(opts.appPath);
+    foxx = FoxxManager.ensureRouted(opts.appPath);
   } catch (e) {
     if (e instanceof ArangoError && e.errorNum === errors.ERROR_APP_NOT_FOUND.code) {
       resultNotFound(req, res, 404, e.errorMessage);
@@ -113,22 +112,26 @@ function swaggerJson(req, res, opts) {
     }
     throw e;
   }
-  var app = foxx.foxxContext && foxx.foxxContext.app;
-  var swagger = parseRoutes(opts.appPath, foxx.routes, foxx.models);
-  res.json({
-    swagger: '2.0',
-    info: {
-      description: app && app.manifest.description,
-      version: app && app.manifest.version,
-      title: app && app.manifest.name,
-      license: app && app.manifest.license && {name: app.manifest.license}
-    },
-    basePath: '/_db/' + encodeURIComponent(req.database) + (app ? app.mount : opts.appPath),
-    schemes: [req.protocol],
-    paths: swagger.paths,
-    // securityDefinitions: {},
-    definitions: swagger.definitions
-  });
+  let docs = foxx.docs;
+  if (!docs) {
+    var app = foxx.routes.foxxContext && foxx.routes.foxxContext.app;
+    var swagger = parseRoutes(opts.appPath, foxx.routes.routes, foxx.routes.models);
+    docs = {
+      swagger: '2.0',
+      info: {
+        description: app && app.manifest.description,
+        version: app && app.manifest.version,
+        title: app && app.manifest.name,
+        license: app && app.manifest.license && {name: app.manifest.license}
+      },
+      basePath: '/_db/' + encodeURIComponent(req.database) + (app ? app.mount : opts.appPath),
+      schemes: [req.protocol],
+      paths: swagger.paths,
+      // securityDefinitions: {},
+      definitions: swagger.definitions
+    };
+  }
+  res.json(docs);
 }
 
 function fixSchema(model) {
