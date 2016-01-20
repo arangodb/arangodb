@@ -412,8 +412,8 @@ class AgencyComm {
   /// the CAS condition is whether or not a previous value existed for the key
   //////////////////////////////////////////////////////////////////////////////
 
-  // AgencyCommResult casValue(std::string const&, TRI_json_t const*, bool, double,
-  //                          double);
+  AgencyCommResult casValue(std::string const&, TRI_json_t const*, bool, double,
+                            double) = delete;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compares and swaps a single value in the backend
@@ -431,8 +431,8 @@ class AgencyComm {
   /// identical to `oldValue`
   //////////////////////////////////////////////////////////////////////////////
 
-  // AgencyCommResult casValue(std::string const&, TRI_json_t const*,
-  //                          TRI_json_t const*, double, double);
+  AgencyCommResult casValue(std::string const&, TRI_json_t const*,
+                            TRI_json_t const*, double, double) = delete;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compares and swaps a single value in the back end

@@ -942,7 +942,6 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       double ttl) {
   AgencyCommResult result;
 
-  size_t pos = key.find("Current/Collections");
   sendWithFailover(
       triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
       _globalConnectionOptions._requestTimeout, result,
