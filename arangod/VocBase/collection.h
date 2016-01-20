@@ -191,7 +191,8 @@ class VocbaseCollectionInfo {
   bool _waitForSync;  // if true, wait for msync
 
  public:
-  VocbaseCollectionInfo(){};
+  VocbaseCollectionInfo() {};
+  virtual ~VocbaseCollectionInfo() {};
 
   explicit VocbaseCollectionInfo(CollectionInfo const&);
 
