@@ -38,7 +38,7 @@ const semver = require('semver');
 const utils = require('@arangodb/foxx/manager-utils');
 const store = require('@arangodb/foxx/store');
 const FoxxService = require('@arangodb/foxx/service');
-const TemplateEngine = require('@arangodb/foxx/templateEngine').Engine;
+const generator = require('@arangodb/foxx/generator');
 const routeAndExportApp = require('@arangodb/foxx/routing').routeApp;
 const formatUrl = require('url').format;
 const parseUrl = require('url').parse;
@@ -547,7 +547,6 @@ function installAppFromGenerator(targetPath, options) {
   options.author = options.author || 'Author';
   options.description = options.description || '';
   options.license = options.license || 'Apache 2';
-  options.authenticated = options.authenticated || false;
   options.collectionNames = options.collectionNames || [];
   if (typeof options.name !== 'string') {
     invalidOptions.push('options.name has to be a string.');
@@ -561,9 +560,6 @@ function installAppFromGenerator(targetPath, options) {
   if (typeof options.license !== 'string') {
     invalidOptions.push('options.license has to be a string.');
   }
-  if (typeof options.authenticated !== 'boolean') {
-    invalidOptions.push('options.authenticated has to be a boolean.');
-  }
   if (!Array.isArray(options.collectionNames)) {
     invalidOptions.push('options.collectionNames has to be an array.');
   }
@@ -574,9 +570,8 @@ function installAppFromGenerator(targetPath, options) {
       + '\nOptions: ' + JSON.stringify(invalidOptions, undefined, 2)
     });
   }
-  options.path = targetPath;
-  var engine = new TemplateEngine(options);
-  engine.write();
+  var cfg = generator.generate(options);
+  generator.write(targetPath, cfg.files, cfg.folders);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
