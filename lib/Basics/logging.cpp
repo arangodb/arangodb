@@ -355,52 +355,61 @@ static bool FilesToLog[FilesToLogSize];
 
 static void StoreOutput(TRI_log_level_e level, time_t timestamp,
                         char const* text, size_t length) {
-  TRI_log_buffer_t* buf;
-  size_t pos;
-  size_t cur;
-  size_t oldPos;
-
-  pos = (size_t)level;
+  size_t pos = (size_t)level;
 
   if (pos >= OUTPUT_LOG_LEVELS) {
     return;
   }
-
-  MUTEX_LOCKER(BufferLock);  // FIX_MUTEX
-
-  oldPos = BufferCurrent[pos];
-  BufferCurrent[pos] = (oldPos + 1) % OUTPUT_BUFFER_SIZE;
-  cur = BufferCurrent[pos];
-  buf = &BufferOutput[pos][cur];
-
-  if (buf->_text != nullptr) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, buf->_text);
-    buf->_text = nullptr;
-  }
-
-  buf->_lid = BufferLID++;
-  buf->_level = level;
-  buf->_timestamp = timestamp;
+  
+  char* msg;
 
   if (length > OUTPUT_MAX_LENGTH) {
     // use the UNKNOWN_MEM_ZONE here...
     // if we use CORE_MEM_ZONE and malloc fails, this fact would be logged.
     // but we are in the logging already...
-    buf->_text = static_cast<char*>(
+    msg = static_cast<char*>(
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, OUTPUT_MAX_LENGTH + 1, false));
-
-    if (buf->_text == nullptr) {
-      // revert...
-      BufferLID--;
-      BufferCurrent[pos] = oldPos;
-    } else {
-      memcpy(buf->_text, text, OUTPUT_MAX_LENGTH - 4);
-      memcpy(buf->_text + OUTPUT_MAX_LENGTH - 4, " ...", 4);
+    
+    if (msg != nullptr) {
+      memcpy(msg, text, OUTPUT_MAX_LENGTH - 4);
+      memcpy(msg + OUTPUT_MAX_LENGTH - 4, " ...", 4);
       // append the \0 byte, otherwise we have potentially unbounded strings
-      buf->_text[OUTPUT_MAX_LENGTH] = '\0';
+      msg[OUTPUT_MAX_LENGTH] = '\0';
     }
-  } else {
-    buf->_text = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, text, length);
+  }
+  else {
+    msg = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, text, length);
+  }
+      
+  if (msg == nullptr) {
+    // unable to allocate memory for the log message
+    // do not try to log this (as we're in the logger ourselves)
+    return;
+  }
+
+  char* old = nullptr;
+
+  {
+    MUTEX_LOCKER(BufferLock); 
+
+    size_t oldPos = BufferCurrent[pos];
+    BufferCurrent[pos] = (oldPos + 1) % OUTPUT_BUFFER_SIZE;
+    size_t cur = BufferCurrent[pos];
+    
+    TRI_log_buffer_t* buf = &BufferOutput[pos][cur];
+
+    // save the old value, so we can free it outside the mutex
+    old = buf->_text;
+
+    buf->_lid = BufferLID++;
+    buf->_level = level;
+    buf->_timestamp = timestamp;
+    buf->_text = msg;
+  }
+ 
+  // now free the old value outside the mutex 
+  if (old != nullptr) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, old);
   }
 }
 
