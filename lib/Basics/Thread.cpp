@@ -61,7 +61,7 @@ std::atomic_uint_fast64_t NEXT_THREAD_ID(1);
 
 void Thread::startThread(void* arg) {
 #ifdef TRI_HAVE_GETTID
-  LOCAL_THREAD_NUMBER = (uint64_t)gettid();
+  LOCAL_THREAD_NUMBER = (uint64_t)_gettid();
 #else
   LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);
 #endif
