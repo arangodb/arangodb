@@ -1103,7 +1103,7 @@ function performTests(options, testList, testname, remote) {
 
         first = false;
         if (options.loopEternal) {
-          if (options.loopSleepWhen % loopCount === 0) {
+          if (loopCount % options.loopSleepWhen === 0) {
             print("sleeping...");
             sleep(options.loopSleepSec);
             print("continuing.");
