@@ -1452,6 +1452,9 @@ void TRI_CompactorVocBase(void* data) {
             continue;
           }
 
+          // read-unlock the compaction lock later
+          TRI_DEFER(TRI_WriteUnlockReadWriteLock(&document->_compactionLock));
+
           try {
             if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <=
                 now) {
@@ -1485,9 +1488,6 @@ void TRI_CompactorVocBase(void* data) {
             // in case an error occurs, we must still relase the lock
             LOG_ERROR("an unknown exception occurred during compaction");
           }
-
-          // read-unlock the compaction lock
-          TRI_WriteUnlockReadWriteLock(&document->_compactionLock);
         }
 
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);

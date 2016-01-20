@@ -28,6 +28,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Utils/transactions.h"
 #include "VocBase/datafile.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
@@ -252,6 +253,16 @@ class CollectorThread : public basics::Thread {
 
   
  private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief process a single marker in collector step 2
+  //////////////////////////////////////////////////////////////////////////////
+
+  void processCollectionMarker(arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX>&,
+                               TRI_document_collection_t*,
+                               CollectorCache*,
+                               CollectorOperation const&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the number of queued operations
   //////////////////////////////////////////////////////////////////////////////
