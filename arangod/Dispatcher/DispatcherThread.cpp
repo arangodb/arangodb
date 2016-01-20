@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DispatcherThread.h"
-
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
@@ -31,14 +30,13 @@
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"
 #include "Scheduler/Scheduler.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global, but thread-local place to hold the current dispatcher
@@ -47,7 +45,6 @@ using namespace arangodb::rest;
 
 thread_local DispatcherThread* DispatcherThread::currentDispatcherThread =
     nullptr;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a dispatcher thread
@@ -62,8 +59,6 @@ DispatcherThread::DispatcherThread(DispatcherQueue* queue)
       _queue(queue) {
   allowAsynchronousCancelation();
 }
-
-
 
 void DispatcherThread::run() {
   currentDispatcherThread = this;

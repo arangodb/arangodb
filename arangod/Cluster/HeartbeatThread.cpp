@@ -52,7 +52,7 @@ HeartbeatThread::HeartbeatThread(
     TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
     ApplicationV8* applicationV8, uint64_t interval,
     uint64_t maxFailsBeforeWarning)
-    : Thread("heartbeat"),
+    : Thread("Heartbeat"),
       _server(server),
       _dispatcher(dispatcher),
       _applicationV8(applicationV8),

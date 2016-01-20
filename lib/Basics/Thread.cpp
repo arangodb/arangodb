@@ -35,8 +35,9 @@
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 #include "Basics/WorkMonitor.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -197,9 +198,8 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
   _started = true;
 
-  std::string text = "[" + _name + "]";
   bool ok =
-      TRI_StartThread(&_thread, &_threadId, text.c_str(), &startThread, this);
+      TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
   if (!ok) {
     LOG_ERROR("could not start thread '%s': %s", _name.c_str(),

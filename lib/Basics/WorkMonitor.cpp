@@ -157,7 +157,7 @@ WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
     : _type(type), _destroy(true), _prev(prev) {}
 
 
-WorkMonitor::WorkMonitor() : Thread("Work Monitor"), _stopping(false) {}
+WorkMonitor::WorkMonitor() : Thread("WorkMonitor"), _stopping(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty WorkDescription

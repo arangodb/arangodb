@@ -1809,7 +1809,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
 
   // start dbm thread
   TRI_InitThread(&server->_databaseManager);
-  TRI_StartThread(&server->_databaseManager, nullptr, "[databases]",
+  TRI_StartThread(&server->_databaseManager, nullptr, "Databases",
                   DatabaseManager, server);
 
   return TRI_ERROR_NO_ERROR;

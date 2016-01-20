@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "statistics.h"
-
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/threads.h"
@@ -30,8 +29,6 @@
 #include <boost/lockfree/queue.hpp>
 
 using namespace arangodb::basics;
-using namespace std;
-
 
 static size_t const QUEUE_SIZE = 1000;
 
@@ -563,7 +560,7 @@ void TRI_InitializeStatistics() {
   // .............................................................................
 
   Shutdown = false;
-  TRI_StartThread(&StatisticsThread, nullptr, "[statistics]",
+  TRI_StartThread(&StatisticsThread, nullptr, "Statistics",
                   StatisticsQueueWorker, 0);
 }
 

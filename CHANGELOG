@@ -1,6 +1,8 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* changed names of sub-threads started by arangod
+
 * added option `--default-number-of-shards` to arangorestore, allowing creating
   collections with a specifiable number of shards from a non-cluster dump
 

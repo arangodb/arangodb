@@ -1513,7 +1513,7 @@ TRI_vocbase_t* TRI_OpenVocBase(TRI_server_t* server, char const* path,
 
   // start cleanup thread
   TRI_InitThread(&vocbase->_cleanup);
-  TRI_StartThread(&vocbase->_cleanup, nullptr, "[cleanup]", TRI_CleanupVocBase,
+  TRI_StartThread(&vocbase->_cleanup, nullptr, "Cleanup", TRI_CleanupVocBase,
                   vocbase);
 
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(server, vocbase);
@@ -1616,7 +1616,7 @@ void TRI_StartCompactorVocBase(TRI_vocbase_t* vocbase) {
   LOG_TRACE("starting compactor for database '%s'", vocbase->_name);
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
-  TRI_StartThread(&vocbase->_compactor, nullptr, "[compactor]",
+  TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
                   TRI_CompactorVocBase, vocbase);
   vocbase->_hasCompactor = true;
 }

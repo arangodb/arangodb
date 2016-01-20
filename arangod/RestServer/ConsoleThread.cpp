@@ -64,7 +64,7 @@ Mutex ConsoleThread::serverConsoleMutex;
 ConsoleThread::ConsoleThread(ApplicationServer* applicationServer,
                              ApplicationV8* applicationV8,
                              TRI_vocbase_t* vocbase)
-    : Thread("console"),
+    : Thread("Console"),
       _applicationServer(applicationServer),
       _applicationV8(applicationV8),
       _context(nullptr),

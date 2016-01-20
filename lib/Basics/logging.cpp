@@ -1714,7 +1714,7 @@ void TRI_InitializeLogging(bool threaded) {
   if (threaded) {
     TRI_InitCondition(&LogCondition);
     TRI_InitThread(&LoggingThread);
-    TRI_StartThread(&LoggingThread, nullptr, "[logging]", MessageQueueWorker,
+    TRI_StartThread(&LoggingThread, nullptr, "Logging", MessageQueueWorker,
                     0);
 
     while (true) {

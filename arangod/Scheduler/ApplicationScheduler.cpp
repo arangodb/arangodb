@@ -197,8 +197,8 @@ class Sigusr1Task : public SignalTask {
 class SchedulerReporterTask : public PeriodicTask {
  public:
   SchedulerReporterTask(Scheduler* scheduler, double _reportInterval)
-      : Task("Scheduler-Reporter"),
-        PeriodicTask("Scheduler-Reporter", 1.0, _reportInterval),
+      : Task("SchedulerReporter"),
+        PeriodicTask("SchedulerReporter", 1.0, _reportInterval),
         _scheduler(scheduler) {}
 
  public:

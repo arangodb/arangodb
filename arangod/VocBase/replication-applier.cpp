@@ -1139,7 +1139,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
 
   TRI_InitThread(&_thread);
 
-  if (!TRI_StartThread(&_thread, nullptr, "[applier]", ApplyThread,
+  if (!TRI_StartThread(&_thread, nullptr, "Applier", ApplyThread,
                        static_cast<void*>(syncer.get()))) {
     return TRI_ERROR_INTERNAL;
   }
