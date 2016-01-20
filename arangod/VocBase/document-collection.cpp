@@ -408,11 +408,11 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
   }
 
   DatafileStatisticsContainer dfi = _datafileStatistics.all();
-  info->_numberAlive += dfi.numberAlive;
-  info->_numberDead += dfi.numberDead;
-  info->_numberDeletions += dfi.numberDeletions;
-  info->_numberShapes += dfi.numberShapes;
-  info->_numberAttributes += dfi.numberAttributes;
+  info->_numberAlive += static_cast<TRI_voc_ssize_t>(dfi.numberAlive);
+  info->_numberDead += static_cast<TRI_voc_ssize_t>(dfi.numberDead);
+  info->_numberDeletions += static_cast<TRI_voc_ssize_t>(dfi.numberDeletions);
+  info->_numberShapes += static_cast<TRI_voc_ssize_t>(dfi.numberShapes);
+  info->_numberAttributes += static_cast<TRI_voc_ssize_t>(dfi.numberAttributes);
 
   info->_sizeAlive += dfi.sizeAlive;
   info->_sizeDead += dfi.sizeDead;
