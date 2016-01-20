@@ -25,11 +25,9 @@
 #define ARANGOD_REST_SERVER_CONSOLE_THREAD_H 1
 
 #include "Basics/Thread.h"
-
 #include "V8Server/ApplicationV8.h"
 
 struct TRI_vocbase_t;
-
 
 namespace arangodb {
 class V8LineEditor;
@@ -40,9 +38,7 @@ namespace rest {
 class ApplicationServer;
 }
 
-namespace arango {
 class ApplicationV8;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ConsoleThread
@@ -149,8 +145,6 @@ class ConsoleThread : public basics::Thread {
   bool _userAborted;
 };
 }
-}
 
 #endif
-
 

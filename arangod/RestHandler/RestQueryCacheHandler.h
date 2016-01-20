@@ -28,8 +28,6 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-namespace arango {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query request handler
@@ -69,7 +67,6 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
 
   bool clearCache();
 };
-}
 }
 
 #endif

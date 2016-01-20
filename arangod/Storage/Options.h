@@ -31,12 +31,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-namespace arango {
 class CollectionNameResolver;
-}
-}
 
-namespace arangodb {
 class StorageOptions {
  public:
   StorageOptions();
@@ -49,7 +45,7 @@ class StorageOptions {
   static VPackOptions getJsonToDocumentTemplate();
   static VPackOptions getNonDocumentTemplate();
   static VPackCustomTypeHandler* createCustomHandler(
-      arangodb::arango::CollectionNameResolver const*);
+      arangodb::CollectionNameResolver const*);
 
  private:
   std::unique_ptr<VPackAttributeTranslator> _translator;

@@ -27,13 +27,14 @@
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "V8/v8-globals.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb::arango;
+using namespace arangodb;
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
@@ -1195,7 +1196,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
   std::string shardId;
   bool usesDefaultShardingAttributes;
-  auto clusterInfo = arangodb::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto const planId =
       arangodb::basics::StringUtils::itoa(_collection->getPlanId());
 
@@ -1223,7 +1224,6 @@ std::string DistributeBlock::createKey() const {
   uint64_t uid = ci->uniqid();
   return std::to_string(uid);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief local helper to throw an exception if a HTTP request went wrong
@@ -1335,9 +1335,9 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _isResponsibleForInitCursor(en->isResponsibleForInitCursor()) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT_EXPENSIVE(
-      (arangodb::arango::ServerState::instance()->isCoordinator() &&
+      (arangodb::ServerState::instance()->isCoordinator() &&
        ownName.empty()) ||
-      (!arangodb::arango::ServerState::instance()->isCoordinator() &&
+      (!arangodb::ServerState::instance()->isCoordinator() &&
        !ownName.empty()));
 }
 

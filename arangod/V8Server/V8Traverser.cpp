@@ -34,8 +34,8 @@
 
 using namespace std;
 using namespace arangodb::basics;
-using namespace arangodb::arango;
-using namespace arangodb::arango::traverser;
+
+using namespace arangodb::traverser;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _from Id out of mptr, we return an RValue reference
@@ -853,7 +853,7 @@ void DepthFirstTraverser::_defInternalFunctions() {
                    TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
       std::vector<TRI_doc_mptr_copy_t> tmp;
       TRI_ASSERT(eColIdx < _edgeCols.size());
-      arangodb::arango::EdgeIndex* edgeIndex =
+      arangodb::EdgeIndex* edgeIndex =
           _edgeCols.at(eColIdx)->edgeIndex();
       if (dir) {
         TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid,
@@ -941,7 +941,7 @@ void DepthFirstTraverser::_defInternalFunctions() {
       // encountered nullptr is final
       TRI_edge_index_iterator_t it(_opts.direction, startVertex.cid,
                                    startVertex.key);
-      arangodb::arango::EdgeIndex* edgeIndex =
+      arangodb::EdgeIndex* edgeIndex =
           _edgeCols.at(eColIdx)->edgeIndex();
       edgeIndex->lookup(_trx, &it, tmp, last, 1);
       while (last == nullptr) {
@@ -987,7 +987,7 @@ void DepthFirstTraverser::_defInternalFunctions() {
 }
 
 void DepthFirstTraverser::setStartVertex(
-    arangodb::arango::traverser::VertexId const& v) {
+    arangodb::traverser::VertexId const& v) {
   auto it = _expressions->find(0);
   if (it != _expressions->end()) {
     if (!it->second.empty()) {

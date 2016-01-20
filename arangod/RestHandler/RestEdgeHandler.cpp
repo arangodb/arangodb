@@ -33,10 +33,10 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a string if defined, nop otherwise
@@ -249,7 +249,7 @@ bool RestEdgeHandler::createDocumentCoordinator(std::string const& collname,
 
   std::unique_ptr<TRI_json_t> json(
       arangodb::basics::VelocyPackHelper::velocyPackToJson(document));
-  int error = arangodb::arango::createEdgeOnCoordinator(
+  int error = arangodb::createEdgeOnCoordinator(
       dbname, collname, waitForSync, json, from, to, responseCode,
       resultHeaders, resultBody);
 
@@ -261,7 +261,7 @@ bool RestEdgeHandler::createDocumentCoordinator(std::string const& collname,
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  arangodb::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
 
   return responseCode >= arangodb::rest::HttpResponse::BAD;

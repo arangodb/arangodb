@@ -40,7 +40,6 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
-namespace arango {
 class ReplicationTransaction;
 
 enum RestrictType : uint32_t {
@@ -272,7 +271,6 @@ class ContinuousSyncer : public Syncer {
   std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*>
       _ongoingTransactions;
 };
-}
 }
 
 #endif

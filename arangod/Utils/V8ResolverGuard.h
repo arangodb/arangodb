@@ -33,7 +33,6 @@
 #include <v8.h>
 
 namespace arangodb {
-namespace arango {
 
 class V8ResolverGuard {
   
@@ -96,8 +95,6 @@ class V8ResolverGuard {
   bool _ownResolver;
 };
 }
-}
 
 #endif
-
 

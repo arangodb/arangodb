@@ -40,11 +40,9 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb::arango;
-
+using namespace arangodb;
 
 volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a heartbeat thread
@@ -80,7 +78,6 @@ HeartbeatThread::HeartbeatThread(
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::~HeartbeatThread() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop

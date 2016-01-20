@@ -67,7 +67,7 @@ class AttributeAccessor {
   /// @brief execute the accessor
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue get(arangodb::arango::AqlTransaction* trx, AqlItemBlock const*,
+  AqlValue get(arangodb::AqlTransaction* trx, AqlItemBlock const*,
                size_t, std::vector<Variable const*> const&,
                std::vector<RegisterId> const&);
 
@@ -83,26 +83,26 @@ class AttributeAccessor {
   /// @brief extract the _id attribute from a ShapedJson marker
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue extractId(AqlValue const&, arangodb::arango::AqlTransaction*,
+  AqlValue extractId(AqlValue const&, arangodb::AqlTransaction*,
                      struct TRI_document_collection_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _from attribute from a ShapedJson marker
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue extractFrom(AqlValue const&, arangodb::arango::AqlTransaction*);
+  AqlValue extractFrom(AqlValue const&, arangodb::AqlTransaction*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _to attribute from a ShapedJson marker
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue extractTo(AqlValue const&, arangodb::arango::AqlTransaction*);
+  AqlValue extractTo(AqlValue const&, arangodb::AqlTransaction*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract any other attribute from a ShapedJson marker
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue extractRegular(AqlValue const&, arangodb::arango::AqlTransaction*,
+  AqlValue extractRegular(AqlValue const&, arangodb::AqlTransaction*,
                           struct TRI_document_collection_t const*);
 
   

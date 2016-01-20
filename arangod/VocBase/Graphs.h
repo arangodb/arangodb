@@ -30,8 +30,6 @@ namespace arangodb {
 namespace aql {
 class Graph;
 }
-namespace arango {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an instance of Graph by Name.
@@ -41,7 +39,6 @@ namespace arango {
 
 arangodb::aql::Graph* lookupGraphByName(TRI_vocbase_t*, std::string const&);
 
-}  // namespace arango
 }  // namespace arangodb
 
 #endif

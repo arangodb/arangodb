@@ -47,12 +47,11 @@ struct TRI_json_t;
 struct TRI_vector_pointer_s;
 
 namespace arangodb {
-namespace arango {
-
 
 namespace traverser {
 class TraverserExpression;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge headers of a DB server response into the current response
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,9 +248,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 
 int flushWalOnAllDBServers(bool, bool);
 
-}  // namespace arango
 }  // namespace arangodb
 
 #endif
-
 

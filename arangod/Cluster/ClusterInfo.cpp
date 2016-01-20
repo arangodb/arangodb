@@ -43,8 +43,8 @@
 #pragma warning(disable : 4503)
 #endif
 
-using namespace std;
-using namespace arangodb::arango;
+using namespace arangodb;
+
 using arangodb::basics::JsonHelper;
 
 
@@ -711,7 +711,7 @@ void ClusterInfo::loadPlannedCollections() {
       // steal the json
       (*it).second._json = nullptr;
 
-      auto collectionData = make_shared<CollectionInfo>(json);
+      auto collectionData = std::make_shared<CollectionInfo>(json);
       auto shardKeys = std::make_shared<std::vector<std::string>>(
           collectionData->shardKeys());
       newShardKeys.insert(make_pair(collection, shardKeys));
@@ -801,9 +801,9 @@ std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
 /// @brief get properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::arango::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
+arangodb::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
     CollectionInfo const& collection) {
-  arangodb::arango::VocbaseCollectionInfo info(collection);
+  arangodb::VocbaseCollectionInfo info(collection);
   return info;
 }
 
@@ -2564,7 +2564,7 @@ ClusterInfo::FollowerInfo ClusterInfo::getFollowerInfo(ShardID& c) {
 ClusterInfo::FollowerInfo ClusterInfo::newFollowerInfo(ShardID& c,
                                                        int64_t& index) {
   // Mutex must already be locked, which is done in the getFollowerInfo methods
-  auto v = make_shared<std::vector<ServerID> const>();
+  auto v = std::make_shared<std::vector<ServerID> const>();
   _followerInfos.push_back(v);
   try {
     index = static_cast<int64_t>(_followerInfos.size() - 1);
@@ -2591,7 +2591,7 @@ void ClusterInfo::addFollower(ShardID& c, ServerID const& s) {
   auto it = _followerInfoTable.find(c);
   TRI_ASSERT(it != _followerInfoTable.end());
   size_t pos = static_cast<size_t>(it->second);
-  auto v = make_shared<std::vector<ServerID>>(*_followerInfos[pos]);
+  auto v = std::make_shared<std::vector<ServerID>>(*_followerInfos[pos]);
   v->push_back(s);
   _followerInfos[pos] = v;  // will cast to std::vector<ServerID> const
   // Now tell the agency:
@@ -2611,7 +2611,7 @@ void ClusterInfo::removeFollower(ShardID& c, ServerID const& s) {
   auto it = _followerInfoTable.find(c);
   TRI_ASSERT(it != _followerInfoTable.end());
   size_t pos = static_cast<size_t>(it->second);
-  auto v = make_shared<std::vector<ServerID>>();
+  auto v = std::make_shared<std::vector<ServerID>>();
   v->reserve(_followerInfos[pos]->size() - 1);
   for (auto const& i : *_followerInfos[pos]) {
     if (i != s) {

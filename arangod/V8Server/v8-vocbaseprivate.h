@@ -54,7 +54,7 @@ extern int32_t const WRP_VOCBASE_COL_TYPE;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define PREVENT_EMBEDDED_TRANSACTION()                                  \
-  if (arangodb::arango::V8TransactionContext::IsEmbedded()) {           \
+  if (arangodb::V8TransactionContext::IsEmbedded()) {           \
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION); \
   }
 

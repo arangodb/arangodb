@@ -2217,7 +2217,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-  if (arangodb::arango::ServerState::instance()->isCoordinator()) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
     // find subqueries
     std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
 
@@ -2348,7 +2348,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
                                             Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-  if (arangodb::arango::ServerState::instance()->isCoordinator()) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
     // we are a coordinator, we replace the root if it is a modification node
 
     // only replace if it is the last node in the plan

@@ -52,17 +52,12 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-
 
 uint64_t const RestReplicationHandler::defaultChunkSize = 128 * 1024;
-
 uint64_t const RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
-
-
 
 RestReplicationHandler::RestReplicationHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
@@ -624,7 +619,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   std::string const& dbname = _request->databaseName();
 
   auto headers = std::make_shared<std::map<std::string, std::string>>(
-      arangodb::arango::getForwardableRequestHeaders(_request));
+      arangodb::getForwardableRequestHeaders(_request));
   std::map<std::string, std::string> values = _request->values();
   std::string params;
   for (auto const& i : values) {
@@ -1400,7 +1395,7 @@ int RestReplicationHandler::processRestoreCollection(
   int res = createCollection(parameters, &col, reuseId);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
+    errorMsg = "unable to create collection: " + std::string(TRI_errno_string(res));
 
     return res;
   }
@@ -1547,8 +1542,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     // create a dummy primary index
     {
       TRI_document_collection_t* doc = nullptr;
-      std::unique_ptr<arangodb::arango::PrimaryIndex> primaryIndex(
-          new arangodb::arango::PrimaryIndex(doc));
+      std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
+          new arangodb::PrimaryIndex(doc));
       std::shared_ptr<VPackBuilder> idxVPack =
           primaryIndex->toVelocyPack(false, true);
       toMerge.add(idxVPack->slice());
@@ -1565,8 +1560,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
     if (collectionType == TRI_COL_TYPE_EDGE) {
       // create a dummy edge index
-      std::unique_ptr<arangodb::arango::EdgeIndex> edgeIndex(
-          new arangodb::arango::EdgeIndex(newIdTick, nullptr));
+      std::unique_ptr<arangodb::EdgeIndex> edgeIndex(
+          new arangodb::EdgeIndex(newIdTick, nullptr));
       std::shared_ptr<VPackBuilder> idxVPack =
           edgeIndex->toVelocyPack(false, true);
       toMerge.add(idxVPack->slice());
@@ -1584,7 +1579,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
                                               merged, errorMsg, 0.0);
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg =
-          "unable to create collection: " + string(TRI_errno_string(res));
+          "unable to create collection: " + std::string(TRI_errno_string(res));
 
       return res;
     }
@@ -1662,12 +1657,12 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg =
-          "unable to start transaction: " + string(TRI_errno_string(res));
+          "unable to start transaction: " + std::string(TRI_errno_string(res));
       THROW_ARANGO_EXCEPTION(res);
     }
 
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
-      arangodb::arango::Index* idx = nullptr;
+      arangodb::Index* idx = nullptr;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
@@ -1675,7 +1670,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
                                                       &idx);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "could not create index: " + string(TRI_errno_string(res));
+        errorMsg = "could not create index: " + std::string(TRI_errno_string(res));
         break;
       } else {
         TRI_ASSERT(idx != nullptr);
@@ -1683,13 +1678,13 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
         res = TRI_SaveIndex(document, idx, true);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg = "could not save index: " + string(TRI_errno_string(res));
+          errorMsg = "could not save index: " + std::string(TRI_errno_string(res));
           break;
         }
       }
     }
   } catch (arangodb::basics::Exception const& ex) {
-    errorMsg = "could not create index: " + string(TRI_errno_string(ex.code()));
+    errorMsg = "could not create index: " + std::string(TRI_errno_string(ex.code()));
   } catch (...) {
     errorMsg = "could not create index: unknown error";
   }
@@ -1761,13 +1756,13 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
     TRI_json_t* res_json = nullptr;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
-                                     arangodb::arango::Index::Compare, res_json,
+                                     arangodb::Index::Compare, res_json,
                                      errorMsg, 3600.0);
     if (res_json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, res_json);
     }
     if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "could not create index: " + string(TRI_errno_string(res));
+      errorMsg = "could not create index: " + std::string(TRI_errno_string(res));
       break;
     }
   }
@@ -1780,7 +1775,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::applyCollectionDumpMarker(
-    arangodb::arango::Transaction* trx, CollectionNameResolver const& resolver,
+    arangodb::Transaction* trx, CollectionNameResolver const& resolver,
     TRI_transaction_collection_t* trxCollection,
     TRI_replication_operation_e type, const TRI_voc_key_t key,
     const TRI_voc_rid_t rid, VPackSlice const& slice, std::string& errorMsg) {
@@ -1908,7 +1903,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg =
-          "document removal operation failed: " + string(TRI_errno_string(res));
+          "document removal operation failed: " + std::string(TRI_errno_string(res));
     }
 
     return res;
@@ -2004,7 +1999,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::processRestoreDataBatch(
-    arangodb::arango::Transaction* trx, CollectionNameResolver const& resolver,
+    arangodb::Transaction* trx, CollectionNameResolver const& resolver,
     TRI_transaction_collection_t* trxCollection, bool useRevision, bool force,
     std::string& errorMsg) {
   std::string const invalidMsg = "received invalid JSON data for collection " +
@@ -2065,7 +2060,7 @@ int RestReplicationHandler::processRestoreData(
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
+    errorMsg = "unable to start transaction: " + std::string(TRI_errno_string(res));
 
     return res;
   }
@@ -2074,7 +2069,7 @@ int RestReplicationHandler::processRestoreData(
 
   if (trxCollection == nullptr) {
     res = TRI_ERROR_INTERNAL;
-    errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
+    errorMsg = "unable to start transaction: " + std::string(TRI_errno_string(res));
   } else {
     // waitForSync disabled here. use for initial replication, too
     // TODO: sync at end of trx
@@ -2291,7 +2286,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
         auto headers = std::make_unique<std::map<std::string, std::string>>();
         size_t j = it->second;
         auto body =
-            make_shared<std::string const>(bufs[j]->c_str(), bufs[j]->length());
+            std::make_shared<std::string const>(bufs[j]->c_str(), bufs[j]->length());
         cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
                          arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                          "/_db/" + StringUtils::urlEncode(dbName) +
@@ -2443,7 +2438,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::arango::CollectionGuard guard(_vocbase, c->_cid, false);
+    arangodb::CollectionGuard guard(_vocbase, c->_cid, false);
 
     TRI_vocbase_col_t* col = guard.collection();
     TRI_ASSERT(col != nullptr);
@@ -2466,7 +2461,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     size_t const count = keys->count();
 
     auto keysRepository =
-        static_cast<arangodb::arango::CollectionKeysRepository*>(
+        static_cast<arangodb::CollectionKeysRepository*>(
             _vocbase->_collectionKeys);
 
     try {
@@ -2529,11 +2524,11 @@ void RestReplicationHandler::handleCommandGetKeys() {
 
   try {
     auto keysRepository =
-        static_cast<arangodb::arango::CollectionKeysRepository*>(
+        static_cast<arangodb::CollectionKeysRepository*>(
             _vocbase->_collectionKeys);
     TRI_ASSERT(keysRepository != nullptr);
 
-    auto collectionKeysId = static_cast<arangodb::arango::CollectionKeysId>(
+    auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
         arangodb::basics::StringUtils::uint64(id));
 
     auto collectionKeys = keysRepository->find(collectionKeysId);
@@ -2642,11 +2637,11 @@ void RestReplicationHandler::handleCommandFetchKeys() {
 
   try {
     auto keysRepository =
-        static_cast<arangodb::arango::CollectionKeysRepository*>(
+        static_cast<arangodb::CollectionKeysRepository*>(
             _vocbase->_collectionKeys);
     TRI_ASSERT(keysRepository != nullptr);
 
-    auto collectionKeysId = static_cast<arangodb::arango::CollectionKeysId>(
+    auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
         arangodb::basics::StringUtils::uint64(id));
 
     auto collectionKeys = keysRepository->find(collectionKeysId);
@@ -2703,11 +2698,11 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 
   std::string const& id = suffix[1];
 
-  auto keys = static_cast<arangodb::arango::CollectionKeysRepository*>(
+  auto keys = static_cast<arangodb::CollectionKeysRepository*>(
       _vocbase->_collectionKeys);
   TRI_ASSERT(keys != nullptr);
 
-  auto collectionKeysId = static_cast<arangodb::arango::CollectionKeysId>(
+  auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
       arangodb::basics::StringUtils::uint64(id));
   bool found = keys->remove(collectionKeysId);
 
@@ -2843,7 +2838,7 @@ void RestReplicationHandler::handleCommandDump() {
       }
     }
 
-    arangodb::arango::CollectionGuard guard(_vocbase, c->_cid, false);
+    arangodb::CollectionGuard guard(_vocbase, c->_cid, false);
 
     TRI_vocbase_col_t* col = guard.collection();
     TRI_ASSERT(col != nullptr);

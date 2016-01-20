@@ -72,7 +72,7 @@ struct V8Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue execute(v8::Isolate* isolate, Query* query,
-                   arangodb::arango::AqlTransaction*, AqlItemBlock const*,
+                   arangodb::AqlTransaction*, AqlItemBlock const*,
                    size_t, std::vector<Variable const*> const&,
                    std::vector<RegisterId> const&);
 

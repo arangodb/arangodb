@@ -34,10 +34,8 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace arango {
 
 class ExplicitTransaction : public Transaction {
-  
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -105,7 +103,6 @@ class ExplicitTransaction : public Transaction {
 
   ~ExplicitTransaction() {}
 };
-}
 }
 
 #endif

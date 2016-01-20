@@ -25,20 +25,16 @@
 #define ARANGOD_REST_HANDLER_REST_UPLOAD_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-namespace arango {
 
 class RestUploadHandler : public RestVocbaseBaseHandler {
-  
   
  public:
 
   explicit RestUploadHandler(rest::HttpRequest*);
-
 
   ~RestUploadHandler();
 
@@ -54,7 +50,6 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
 
   bool parseMultiPart(char const*&, size_t&);
 };
-}
 }
 
 #endif

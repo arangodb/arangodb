@@ -31,18 +31,16 @@
 #include "VocBase/server.h"
 
 namespace arangodb {
-namespace arango {
 class Index;
-}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::arango::Index* TRI_LookupIndexByHandle(
+arangodb::Index* TRI_LookupIndexByHandle(
     v8::Isolate* isolate,
-    arangodb::arango::CollectionNameResolver const* resolver,
+    arangodb::CollectionNameResolver const* resolver,
     TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val,
     bool ignoreNotFound);
 

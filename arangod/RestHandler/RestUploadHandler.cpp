@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestUploadHandler.h"
-
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Basics/logging.h"
@@ -30,12 +29,9 @@
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-
-
 
 RestUploadHandler::RestUploadHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}

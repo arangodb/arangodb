@@ -23,7 +23,7 @@
 
 #include "Utils/TransactionContext.h"
 
-using namespace arangodb::arango;
+using namespace arangodb;
 
 
 ////////////////////////////////////////////////////////////////////////////////

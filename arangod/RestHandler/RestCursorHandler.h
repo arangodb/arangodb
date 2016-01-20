@@ -40,7 +40,6 @@ class Query;
 class QueryRegistry;
 }
 
-namespace arango {
 class ApplicationV8;
 class Cursor;
 
@@ -53,7 +52,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
 
   RestCursorHandler(rest::HttpRequest*,
-                    std::pair<arangodb::arango::ApplicationV8*,
+                    std::pair<arangodb::ApplicationV8*,
                               arangodb::aql::QueryRegistry*>*);
 
   
@@ -117,7 +116,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief append the contents of the cursor into the response body
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpCursor(arangodb::arango::Cursor*);
+  void dumpCursor(arangodb::Cursor*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursor and return the first results
@@ -143,7 +142,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief _applicationV8
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::ApplicationV8* _applicationV8;
+  arangodb::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our query registry
@@ -169,7 +168,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   bool _queryKilled;
 };
-}
 }
 
 #endif

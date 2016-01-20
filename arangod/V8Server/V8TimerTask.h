@@ -25,13 +25,10 @@
 #define ARANGOD_V8_SERVER_V8_TIMER_TASK_H 1
 
 #include "Basics/Common.h"
-
 #include "Scheduler/TimerTask.h"
-
 #include "VocBase/vocbase.h"
 
 struct TRI_json_t;
-
 
 namespace arangodb {
 namespace rest {
@@ -39,7 +36,6 @@ class Dispatcher;
 class Scheduler;
 }
 
-namespace arango {
 class ApplicationV8;
 
 class V8TimerTask : public rest::TimerTask {
@@ -87,7 +83,7 @@ class V8TimerTask : public rest::TimerTask {
   /// @brief V8 dealer
   //////////////////////////////////////////////////////////////////////////////
 
-  arango::ApplicationV8* _v8Dealer;
+  ApplicationV8* _v8Dealer;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispatcher
@@ -120,8 +116,6 @@ class V8TimerTask : public rest::TimerTask {
   bool _allowUseDatabase;
 };
 }
-}
 
 #endif
-
 

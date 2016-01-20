@@ -45,12 +45,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::arango;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a binary search for the given key in the markers vector
@@ -465,7 +463,7 @@ bool InitialSyncer::checkAborted() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::applyCollectionDump(
-    arangodb::arango::Transaction* trx,
+    arangodb::Transaction* trx,
     TRI_transaction_collection_t* trxCollection, SimpleHttpResult* response,
     uint64_t& markersProcessed, std::string& errorMsg) {
   std::string const invalidMsg = "received invalid JSON data for collection " +
@@ -574,7 +572,7 @@ int InitialSyncer::applyCollectionDump(
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::handleCollectionDump(
-    arangodb::arango::Transaction* trx, std::string const& cid,
+    arangodb::Transaction* trx, std::string const& cid,
     TRI_transaction_collection_t* trxCollection, std::string const& collectionName,
     TRI_voc_tick_t maxTick, std::string& errorMsg) {
   std::string appendix;
@@ -1529,7 +1527,7 @@ int InitialSyncer::changeCollection(TRI_vocbase_col_t* col,
   try {
     std::shared_ptr<VPackBuilder> tmp =
         arangodb::basics::JsonHelper::toVelocyPack(json);
-    arangodb::arango::CollectionGuard guard(_vocbase, col->_cid);
+    arangodb::CollectionGuard guard(_vocbase, col->_cid);
     bool doSync = _vocbase->_settings.forceSyncProperties;
     return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
                                     tmp->slice(), doSync);
@@ -1729,7 +1727,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg =
-            "unable to start transaction: " + string(TRI_errno_string(res));
+            "unable to start transaction: " + std::string(TRI_errno_string(res));
 
         return res;
       }
@@ -1739,7 +1737,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
       if (trxCollection == nullptr) {
         res = TRI_ERROR_INTERNAL;
         errorMsg =
-            "unable to start transaction: " + string(TRI_errno_string(res));
+            "unable to start transaction: " + std::string(TRI_errno_string(res));
       } else {
         if (incremental && trx.documentCollection()->size() > 0) {
           res = handleCollectionSync(StringUtils::itoa(cid), trx, masterName,
@@ -1764,7 +1762,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
           READ_LOCKER(_vocbase->_inventoryLock);
 
           try {
-            arangodb::arango::CollectionGuard guard(_vocbase, col->_cid, false);
+            arangodb::CollectionGuard guard(_vocbase, col->_cid, false);
             TRI_vocbase_col_t* col = guard.collection();
 
             if (col == nullptr) {
@@ -1774,7 +1772,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
               TRI_ASSERT(document != nullptr);
 
               for (auto const& idxDef : VPackArrayIterator(indexes)) {
-                arangodb::arango::Index* idx = nullptr;
+                arangodb::Index* idx = nullptr;
 
                 if (idxDef.isObject()) {
                   VPackSlice const type = idxDef.get("type");

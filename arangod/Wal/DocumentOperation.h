@@ -11,9 +11,7 @@
 struct TRI_transaction_collection_s;
 
 namespace arangodb {
-namespace arango {
 class Transaction;
-}
 
 namespace wal {
 class Marker;
@@ -27,7 +25,7 @@ struct DocumentOperation {
     REVERTED
   };
 
-  DocumentOperation(arangodb::arango::Transaction* trx, Marker* marker,
+  DocumentOperation(arangodb::Transaction* trx, Marker* marker,
                     bool freeMarker, TRI_document_collection_t* document,
                     TRI_voc_document_operation_e type, TRI_voc_rid_t rid)
       : trx(trx),
@@ -126,7 +124,7 @@ struct DocumentOperation {
     status = StatusType::REVERTED;
   }
 
-  arangodb::arango::Transaction* trx;
+  arangodb::Transaction* trx;
   Marker* marker;
   TRI_document_collection_t* document;
   TRI_doc_mptr_t* header;

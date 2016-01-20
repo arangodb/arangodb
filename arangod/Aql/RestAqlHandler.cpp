@@ -34,7 +34,7 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/server.h"
 
-using namespace arangodb::arango;
+
 using namespace arangodb::rest;
 using namespace arangodb::aql;
 
@@ -542,7 +542,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
   // std::cout << "GOT INCOMING REQUEST: " <<
   // arangodb::rest::HttpRequest::translateMethod(_request->requestType()) << ",
-  // " << arangodb::arango::ServerState::instance()->getId() << ": " <<
+  // " << arangodb::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _request->body() << "\n\n";
 
   std::vector<std::string> const& suffix = _request->suffix();
@@ -599,7 +599,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
   }
 
   // std::cout << "REQUEST HANDLING DONE: " <<
-  // arangodb::arango::ServerState::instance()->getId() << ": " <<
+  // arangodb::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _response->responseCode() << ",
   // CONTENT-LENGTH: " << _response->contentLength() << "\n";
 

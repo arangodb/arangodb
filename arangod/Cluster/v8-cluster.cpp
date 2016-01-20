@@ -32,10 +32,8 @@
 #include "V8/v8-utils.h"
 #include "VocBase/server.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::arango;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a v8 exception object
@@ -1872,7 +1870,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   arangodb::rest::HttpRequest::HttpRequestType reqType;
   std::string destination;
   std::string path;
-  auto body = make_shared<std::string>();
+  auto body = std::make_shared<std::string>();
   std::unique_ptr<std::map<std::string, std::string>> headerFields(
       new std::map<std::string, std::string>());
   ClientTransactionID clientTransactionID;

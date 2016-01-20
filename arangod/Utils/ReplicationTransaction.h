@@ -34,10 +34,8 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace arango {
 
 class ReplicationTransaction : public Transaction {
-  
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -102,7 +100,6 @@ class ReplicationTransaction : public Transaction {
 
   TRI_voc_tid_t _externalId;
 };
-}
 }
 
 #endif

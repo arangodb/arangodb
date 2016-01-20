@@ -100,7 +100,7 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief Depth first Traverser object
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::arango::traverser::Traverser> _traverser;
+  std::unique_ptr<arangodb::traverser::Traverser> _traverser;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The information to get the starting point, when a register id is
@@ -172,7 +172,7 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief A collection name resolver required to identify vertex collections
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::CollectionNameResolver* _resolver;
+  arangodb::CollectionNameResolver* _resolver;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reference to the conditions that might be executed locally
@@ -180,7 +180,7 @@ class TraversalBlock : public ExecutionBlock {
 
   std::unordered_map<
       size_t,
-      std::vector<arangodb::arango::traverser::TraverserExpression*>> const*
+      std::vector<arangodb::traverser::TraverserExpression*>> const*
       _expressions;
 
   //////////////////////////////////////////////////////////////////////////////

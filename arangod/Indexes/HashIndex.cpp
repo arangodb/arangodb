@@ -30,7 +30,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace arangodb::arango;
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Frees an index element
@@ -371,7 +371,7 @@ arangodb::basics::Json HashIndex::toJsonFigures(TRI_memory_zone_t* zone) const {
   return json;
 }
 
-int HashIndex::insert(arangodb::arango::Transaction* trx,
+int HashIndex::insert(arangodb::Transaction* trx,
                       TRI_doc_mptr_t const* doc, bool isRollback) {
   if (_unique) {
     return insertUnique(trx, doc, isRollback);
@@ -384,7 +384,7 @@ int HashIndex::insert(arangodb::arango::Transaction* trx,
 /// @brief removes an entry from the hash array part of the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::remove(arangodb::arango::Transaction* trx,
+int HashIndex::remove(arangodb::Transaction* trx,
                       TRI_doc_mptr_t const* doc, bool isRollback) {
   if (_unique) {
     return removeUnique(trx, doc, isRollback);
@@ -393,7 +393,7 @@ int HashIndex::remove(arangodb::arango::Transaction* trx,
   return removeMulti(trx, doc, isRollback);
 }
 
-int HashIndex::batchInsert(arangodb::arango::Transaction* trx,
+int HashIndex::batchInsert(arangodb::Transaction* trx,
                            std::vector<TRI_doc_mptr_t const*> const* documents,
                            size_t numThreads) {
   if (_unique) {
@@ -407,7 +407,7 @@ int HashIndex::batchInsert(arangodb::arango::Transaction* trx,
 /// @brief provides a size hint for the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::sizeHint(arangodb::arango::Transaction* trx, size_t size) {
+int HashIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
   if (_sparse) {
     // for sparse indexes, we assume that we will have less index entries
     // than if the index would be fully populated
@@ -425,7 +425,7 @@ int HashIndex::sizeHint(arangodb::arango::Transaction* trx, size_t size) {
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup(arangodb::arango::Transaction* trx,
+int HashIndex::lookup(arangodb::Transaction* trx,
                       TRI_hash_index_search_value_t* searchValue,
                       std::vector<TRI_doc_mptr_t*>& documents) const {
   if (_unique) {
@@ -464,7 +464,7 @@ int HashIndex::lookup(arangodb::arango::Transaction* trx,
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup(arangodb::arango::Transaction* trx,
+int HashIndex::lookup(arangodb::Transaction* trx,
                       TRI_hash_index_search_value_t* searchValue,
                       std::vector<TRI_doc_mptr_copy_t>& documents,
                       TRI_index_element_t*& next, size_t batchSize) const {
@@ -519,7 +519,7 @@ int HashIndex::lookup(arangodb::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::insertUnique(arangodb::arango::Transaction* trx,
+int HashIndex::insertUnique(arangodb::Transaction* trx,
                             TRI_doc_mptr_t const* doc, bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
@@ -558,7 +558,7 @@ int HashIndex::insertUnique(arangodb::arango::Transaction* trx,
 }
 
 int HashIndex::batchInsertUnique(
-    arangodb::arango::Transaction* trx,
+    arangodb::Transaction* trx,
     std::vector<TRI_doc_mptr_t const*> const* documents, size_t numThreads) {
   std::vector<TRI_index_element_t*> elements;
   elements.reserve(documents->size());
@@ -587,7 +587,7 @@ int HashIndex::batchInsertUnique(
   return res;
 }
 
-int HashIndex::insertMulti(arangodb::arango::Transaction* trx,
+int HashIndex::insertMulti(arangodb::Transaction* trx,
                            TRI_doc_mptr_t const* doc, bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
@@ -648,7 +648,7 @@ int HashIndex::insertMulti(arangodb::arango::Transaction* trx,
 }
 
 int HashIndex::batchInsertMulti(
-    arangodb::arango::Transaction* trx,
+    arangodb::Transaction* trx,
     std::vector<TRI_doc_mptr_t const*> const* documents, size_t numThreads) {
   std::vector<TRI_index_element_t*> elements;
 
@@ -667,7 +667,7 @@ int HashIndex::batchInsertMulti(
   return _multiArray->_hashArray->batchInsert(trx, &elements, numThreads);
 }
 
-int HashIndex::removeUniqueElement(arangodb::arango::Transaction* trx,
+int HashIndex::removeUniqueElement(arangodb::Transaction* trx,
                                    TRI_index_element_t* element,
                                    bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
@@ -686,7 +686,7 @@ int HashIndex::removeUniqueElement(arangodb::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::removeUnique(arangodb::arango::Transaction* trx,
+int HashIndex::removeUnique(arangodb::Transaction* trx,
                             TRI_doc_mptr_t const* doc, bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
@@ -712,7 +712,7 @@ int HashIndex::removeUnique(arangodb::arango::Transaction* trx,
   return res;
 }
 
-int HashIndex::removeMultiElement(arangodb::arango::Transaction* trx,
+int HashIndex::removeMultiElement(arangodb::Transaction* trx,
                                   TRI_index_element_t* element,
                                   bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
@@ -731,7 +731,7 @@ int HashIndex::removeMultiElement(arangodb::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::removeMulti(arangodb::arango::Transaction* trx,
+int HashIndex::removeMulti(arangodb::Transaction* trx,
                            TRI_doc_mptr_t const* doc, bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
@@ -775,7 +775,7 @@ bool HashIndex::supportsFilterCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* HashIndex::iteratorForCondition(
-    arangodb::arango::Transaction* trx, IndexIteratorContext* context,
+    arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);

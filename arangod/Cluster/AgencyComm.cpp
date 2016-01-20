@@ -37,9 +37,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-using namespace arangodb::arango;
-
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an agency endpoint
@@ -58,8 +56,6 @@ AgencyEndpoint::~AgencyEndpoint() {
   delete _connection;
   delete _endpoint;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a communication result
@@ -89,7 +85,6 @@ AgencyCommResult::~AgencyCommResult() {
     ++it;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the connected flag from the result

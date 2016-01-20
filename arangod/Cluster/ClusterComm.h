@@ -38,11 +38,8 @@
 #include "Cluster/ServerState.h"
 
 namespace arangodb {
-namespace arango {
-
 
 class ClusterCommThread;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a client transaction ID
@@ -463,7 +460,6 @@ class ClusterCommThread : public basics::Thread {
 
   volatile sig_atomic_t _stop;
 };
-}  // namespace arango
 }  // namespace arangodb
 
 #endif

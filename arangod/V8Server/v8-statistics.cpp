@@ -30,7 +30,7 @@
 #include "V8/v8-utils.h"
 
 using namespace std;
-using namespace arangodb::arango;
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 

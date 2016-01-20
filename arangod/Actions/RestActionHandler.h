@@ -33,7 +33,6 @@ class TRI_action_t;
 
 
 namespace arangodb {
-namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action request handler
@@ -94,7 +93,6 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
   void* _data;
 };
-}
 }
 
 #endif

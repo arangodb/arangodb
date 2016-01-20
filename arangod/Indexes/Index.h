@@ -44,15 +44,15 @@ struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
 namespace arangodb {
+
 namespace aql {
 class Ast;
 struct AstNode;
 class SortCondition;
 struct Variable;
 }
-namespace arango {
+
 class Transaction;
-}
 }
 
 
@@ -124,7 +124,6 @@ struct TRI_index_element_t {
 };
 
 namespace arangodb {
-namespace arango {
 class IndexIterator;
 struct IndexIteratorContext;
 
@@ -341,21 +340,21 @@ class Index {
 
   virtual bool dumpFields() const = 0;
 
-  virtual int insert(arangodb::arango::Transaction*,
+  virtual int insert(arangodb::Transaction*,
                      struct TRI_doc_mptr_t const*, bool) = 0;
-  virtual int remove(arangodb::arango::Transaction*,
+  virtual int remove(arangodb::Transaction*,
                      struct TRI_doc_mptr_t const*, bool) = 0;
-  virtual int postInsert(arangodb::arango::Transaction*,
+  virtual int postInsert(arangodb::Transaction*,
                          struct TRI_transaction_collection_s*,
                          struct TRI_doc_mptr_t const*);
-  virtual int batchInsert(arangodb::arango::Transaction*,
+  virtual int batchInsert(arangodb::Transaction*,
                           std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
   // a garbage collection function for the index
   virtual int cleanup();
 
   // give index a hint about the expected size
-  virtual int sizeHint(arangodb::arango::Transaction*, size_t);
+  virtual int sizeHint(arangodb::Transaction*, size_t);
 
   virtual bool hasBatchInsert() const;
 
@@ -367,7 +366,7 @@ class Index {
                                      arangodb::aql::Variable const*, size_t,
                                      double&) const;
 
-  virtual IndexIterator* iteratorForCondition(arangodb::arango::Transaction*,
+  virtual IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                               IndexIteratorContext*,
                                               arangodb::aql::Ast*,
                                               arangodb::aql::AstNode const*,
@@ -398,10 +397,9 @@ class Index {
   double _selectivityEstimate;
 };
 }
-}
 
-std::ostream& operator<<(std::ostream&, arangodb::arango::Index const*);
-std::ostream& operator<<(std::ostream&, arangodb::arango::Index const&);
+std::ostream& operator<<(std::ostream&, arangodb::Index const*);
+std::ostream& operator<<(std::ostream&, arangodb::Index const&);
 
 #endif
 

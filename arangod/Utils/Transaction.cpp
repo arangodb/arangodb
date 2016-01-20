@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utils/transactions.h"
-#include "Basics/random.h"
 #include "Indexes/PrimaryIndex.h"
 
-using namespace arangodb::arango;
+using namespace arangodb;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief if this pointer is set to an actual set, then for each request

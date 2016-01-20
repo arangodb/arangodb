@@ -344,7 +344,7 @@ bool AqlValue::isNull(bool emptyIsNull) const {
 /// @brief returns the array member at position i
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json AqlValue::at(arangodb::arango::AqlTransaction* trx,
+arangodb::basics::Json AqlValue::at(arangodb::AqlTransaction* trx,
                                     size_t i) const {
   switch (_type) {
     case JSON: {
@@ -516,7 +516,7 @@ std::string AqlValue::toString() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> AqlValue::toV8Partial(
-    v8::Isolate* isolate, arangodb::arango::AqlTransaction* trx,
+    v8::Isolate* isolate, arangodb::AqlTransaction* trx,
     std::unordered_set<std::string> const& attributes,
     TRI_document_collection_t const* document) const {
   TRI_ASSERT_EXPENSIVE(_type == JSON);
@@ -580,7 +580,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> AqlValue::toV8(
-    v8::Isolate* isolate, arangodb::arango::AqlTransaction* trx,
+    v8::Isolate* isolate, arangodb::AqlTransaction* trx,
     TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
@@ -591,7 +591,7 @@ v8::Handle<v8::Value> AqlValue::toV8(
     case SHAPED: {
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
-      return TRI_WrapShapedJson<arangodb::arango::AqlTransaction>(
+      return TRI_WrapShapedJson<arangodb::AqlTransaction>(
           isolate, *trx, document->_info.id(), _marker);
     }
 
@@ -651,7 +651,7 @@ v8::Handle<v8::Value> AqlValue::toV8(
 /// @brief toJson method
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlValue::toJson(arangodb::arango::AqlTransaction* trx,
+Json AqlValue::toJson(arangodb::AqlTransaction* trx,
                       TRI_document_collection_t const* document,
                       bool copy) const {
   switch (_type) {
@@ -724,7 +724,7 @@ Json AqlValue::toJson(arangodb::arango::AqlTransaction* trx,
 /// @brief hashes the JSON contents
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t AqlValue::hash(arangodb::arango::AqlTransaction* trx,
+uint64_t AqlValue::hash(arangodb::AqlTransaction* trx,
                         TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
@@ -826,7 +826,7 @@ uint64_t AqlValue::hash(arangodb::arango::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 Json AqlValue::extractObjectMember(
-    arangodb::arango::AqlTransaction* trx,
+    arangodb::AqlTransaction* trx,
     TRI_document_collection_t const* document, char const* name, bool copy,
     arangodb::basics::StringBuffer& buffer) const {
   switch (_type) {
@@ -946,7 +946,7 @@ Json AqlValue::extractObjectMember(
 /// not be freed)
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlValue::extractArrayMember(arangodb::arango::AqlTransaction* trx,
+Json AqlValue::extractArrayMember(arangodb::AqlTransaction* trx,
                                   TRI_document_collection_t const* document,
                                   int64_t position, bool copy) const {
   switch (_type) {
@@ -1037,7 +1037,7 @@ Json AqlValue::extractArrayMember(arangodb::arango::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AqlValue::CreateFromBlocks(
-    arangodb::arango::AqlTransaction* trx,
+    arangodb::AqlTransaction* trx,
     std::vector<AqlItemBlock*> const& src,
     std::vector<std::string> const& variableNames) {
   size_t totalSize = 0;
@@ -1084,7 +1084,7 @@ AqlValue AqlValue::CreateFromBlocks(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AqlValue::CreateFromBlocks(
-    arangodb::arango::AqlTransaction* trx,
+    arangodb::AqlTransaction* trx,
     std::vector<AqlItemBlock*> const& src,
     arangodb::aql::RegisterId expressionRegister) {
   size_t totalSize = 0;
@@ -1112,7 +1112,7 @@ AqlValue AqlValue::CreateFromBlocks(
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int AqlValue::Compare(arangodb::arango::AqlTransaction* trx,
+int AqlValue::Compare(arangodb::AqlTransaction* trx,
                       AqlValue const& left,
                       TRI_document_collection_t const* leftcoll,
                       AqlValue const& right,

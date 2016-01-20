@@ -33,9 +33,7 @@
 
 class VocShaper;
 
-
 namespace arangodb {
-namespace arango {
 
 class GeoIndex2 final : public Index {
   
@@ -87,24 +85,24 @@ class GeoIndex2 final : public Index {
   arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
   arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
 
-  int insert(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up all points within a given radius
   //////////////////////////////////////////////////////////////////////////////
 
-  GeoCoordinates* withinQuery(arangodb::arango::Transaction*, double, double,
+  GeoCoordinates* withinQuery(arangodb::Transaction*, double, double,
                               double) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up the nearest points
   //////////////////////////////////////////////////////////////////////////////
 
-  GeoCoordinates* nearQuery(arangodb::arango::Transaction*, double, double,
+  GeoCoordinates* nearQuery(arangodb::Transaction*, double, double,
                             size_t) const;
 
   bool isSame(TRI_shape_pid_t location, bool geoJson) const {
@@ -167,7 +165,6 @@ class GeoIndex2 final : public Index {
 
   GeoIndex* _geoIndex;
 };
-}
 }
 
 #endif

@@ -40,8 +40,6 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
-namespace arango {
-
 
 class InitialSyncer : public Syncer {
   
@@ -162,7 +160,7 @@ class InitialSyncer : public Syncer {
   /// @brief apply the data from a collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDump(arangodb::arango::Transaction*,
+  int applyCollectionDump(arangodb::Transaction*,
                           struct TRI_transaction_collection_s*,
                           httpclient::SimpleHttpResult*, uint64_t&,
                           std::string&);
@@ -171,7 +169,7 @@ class InitialSyncer : public Syncer {
   /// @brief incrementally fetch data from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleCollectionDump(arangodb::arango::Transaction*, std::string const&,
+  int handleCollectionDump(arangodb::Transaction*, std::string const&,
                            struct TRI_transaction_collection_s*,
                            std::string const&, TRI_voc_tick_t, std::string&);
 
@@ -293,7 +291,6 @@ class InitialSyncer : public Syncer {
 
   static size_t const MaxChunkSize;
 };
-}
 }
 
 #endif

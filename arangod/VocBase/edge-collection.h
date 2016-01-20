@@ -97,7 +97,7 @@ struct TRI_edge_index_iterator_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
-    arangodb::arango::Transaction*, struct TRI_document_collection_t*,
+    arangodb::Transaction*, struct TRI_document_collection_t*,
     TRI_edge_direction_e, TRI_voc_cid_t, TRI_voc_key_t const);
 
 #endif

@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Utils/CollectionExport.h"
+#include "CollectionExport.h"
 #include "Basics/JsonHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
@@ -31,9 +31,7 @@
 #include "VocBase/Ditch.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb::arango;
-
-
+using namespace arangodb;
 
 CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
                                    std::string const& name,
@@ -47,7 +45,7 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
       _documents(nullptr) {
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard = new arangodb::arango::CollectionGuard(vocbase, _name.c_str(), false);
+  _guard = new arangodb::CollectionGuard(vocbase, _name.c_str(), false);
 
   _document = _guard->collection()->_collection;
   TRI_ASSERT(_document != nullptr);

@@ -30,14 +30,12 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace arango {
 class DocumentDitch;
-}
+
 namespace wal {
 struct DocumentOperation;
 }
 }
-
 
 struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
@@ -137,7 +135,7 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_type_e _accessType;  // access type (read|write)
   int _nestingLevel;  // the transaction level that added this collection
   TRI_vocbase_col_t* _collection;  // vocbase collection pointer
-  arangodb::arango::DocumentDitch* _ditch;
+  arangodb::DocumentDitch* _ditch;
   std::vector<arangodb::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t _originalRevision;   // collection revision at trx start
   TRI_transaction_type_e _lockType;  // collection lock type

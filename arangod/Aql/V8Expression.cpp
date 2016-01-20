@@ -65,7 +65,7 @@ V8Expression::~V8Expression() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
-                               arangodb::arango::AqlTransaction* trx,
+                               arangodb::AqlTransaction* trx,
                                AqlItemBlock const* argv, size_t startPos,
                                std::vector<Variable const*> const& vars,
                                std::vector<RegisterId> const& regs) {
@@ -160,7 +160,12 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
 #ifdef TRI_ENABLE_FAILURE_TESTS
     // now that the V8 function call is finished, check that our
     // constants actually were not modified
-    TRI_ASSERT(hasher(isolate, constantValues) == hash);
+    uint64_t cmpHash = hasher(isolate, constantValues);
+
+    if (hash != 0 && cmpHash != 0) {
+      // only compare if both values are not 0
+      TRI_ASSERT(hasher(isolate, constantValues) == hash);
+    }
 #endif
 
     v8g->_query = old;

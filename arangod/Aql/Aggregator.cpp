@@ -26,7 +26,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
   
-Aggregator* Aggregator::fromTypeString(arangodb::arango::AqlTransaction* trx, std::string const& type) {
+Aggregator* Aggregator::fromTypeString(arangodb::AqlTransaction* trx, std::string const& type) {
   if (type == "LENGTH" || type == "COUNT") {
     return new AggregatorLength(trx);
   }
@@ -60,7 +60,7 @@ Aggregator* Aggregator::fromTypeString(arangodb::arango::AqlTransaction* trx, st
   return nullptr;
 }
 
-Aggregator* Aggregator::fromJson(arangodb::arango::AqlTransaction* trx,
+Aggregator* Aggregator::fromJson(arangodb::AqlTransaction* trx,
                                  arangodb::basics::Json const& json,  
                                  char const* variableName) {
   arangodb::basics::Json variableJson = json.get(variableName);

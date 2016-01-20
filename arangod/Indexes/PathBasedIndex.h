@@ -40,8 +40,6 @@ namespace aql {
 enum AstNodeType : uint32_t;
 }
 
-namespace arango {
-
 class PathBasedIndex : public Index {
  protected:
   struct PermutationState {
@@ -170,7 +168,6 @@ class PathBasedIndex : public Index {
 
   bool _allowPartialIndex;
 };
-}
 }
 
 #endif

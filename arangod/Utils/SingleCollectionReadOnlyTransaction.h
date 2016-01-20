@@ -28,13 +28,11 @@
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-
 #include "VocBase/transaction.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace arango {
 
 class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
   
@@ -69,8 +67,6 @@ class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
   ~SingleCollectionReadOnlyTransaction() {}
 };
 }
-}
 
 #endif
-
 

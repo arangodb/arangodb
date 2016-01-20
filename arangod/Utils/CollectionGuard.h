@@ -30,8 +30,6 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-namespace arango {
-
 
 class CollectionGuard {
   
@@ -156,8 +154,6 @@ class CollectionGuard {
   bool _restoreOriginalStatus;
 };
 }
-}
 
 #endif
-
 

@@ -37,20 +37,17 @@ namespace aql {
 class QueryRegistry;
 }
 
-namespace arango {
 class ApplicationV8;
 class CollectionNameResolver;
 class JSLoader;
 }
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ParseVertex(v8::FunctionCallbackInfo<v8::Value> const& args,
-                    arangodb::arango::CollectionNameResolver const*,
+                    arangodb::CollectionNameResolver const*,
                     TRI_voc_cid_t&, std::unique_ptr<char[]>&,
                     v8::Handle<v8::Value> const);
 
@@ -64,7 +61,7 @@ int32_t TRI_GetVocBaseColType();
 /// @brief run version check
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_UpgradeDatabase(TRI_vocbase_t*, arangodb::arango::JSLoader*,
+bool TRI_UpgradeDatabase(TRI_vocbase_t*, arangodb::JSLoader*,
                          v8::Handle<v8::Context>);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +69,7 @@ bool TRI_UpgradeDatabase(TRI_vocbase_t*, arangodb::arango::JSLoader*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase,
-                             arangodb::arango::JSLoader* startupLoader,
+                             arangodb::JSLoader* startupLoader,
                              v8::Handle<v8::Context> context);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,11 +82,10 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate);
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge(v8::Isolate* isolate, arangodb::arango::ApplicationV8*,
+void TRI_InitV8VocBridge(v8::Isolate* isolate, arangodb::ApplicationV8*,
                          v8::Handle<v8::Context>, arangodb::aql::QueryRegistry*,
                          TRI_server_t*, TRI_vocbase_t*,
-                         arangodb::arango::JSLoader*, size_t);
+                         arangodb::JSLoader*, size_t);
 
 #endif
-
 

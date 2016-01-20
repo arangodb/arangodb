@@ -28,8 +28,6 @@
 #include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
-namespace arango {
-
 
 class ServerState {
   
@@ -559,7 +557,6 @@ class ServerState {
 
   bool _clusterEnabled;
 };
-}
 }
 
 #endif

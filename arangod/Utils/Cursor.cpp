@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Utils/Cursor.h"
+#include "Cursor.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/CollectionExport.h"
 #include "VocBase/document-collection.h"
@@ -29,9 +29,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
 
-using namespace arangodb::arango;
-
-
+using namespace arangodb;
 
 Cursor::Cursor(CursorId id, size_t batchSize, TRI_json_t* extra, double ttl,
                bool hasCount)
@@ -192,7 +190,7 @@ void JsonCursor::freeJson() {
 
 
 ExportCursor::ExportCursor(TRI_vocbase_t* vocbase, CursorId id,
-                           arangodb::arango::CollectionExport* ex,
+                           arangodb::CollectionExport* ex,
                            size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
       _vocbase(vocbase),

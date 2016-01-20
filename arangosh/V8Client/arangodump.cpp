@@ -46,12 +46,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -587,8 +585,8 @@ static void FlushWal() {
 
   if (response == nullptr || !response->isComplete() ||
       response->wasHttpError()) {
-    cerr << "got invalid response from server: " + Client->getErrorMessage()
-         << endl;
+    std::cerr << "got invalid response from server: " + Client->getErrorMessage()
+         << std::endl;
   }
 }
 
@@ -651,7 +649,7 @@ static int RunDump(std::string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
-  cout << "Last tick provided by server is: " << tickString << endl;
+  std::cout << "Last tick provided by server is: " << tickString << std::endl;
 
   uint64_t maxTick = StringUtils::uint64(tickString);
   // check if the user specified a max tick value
@@ -756,8 +754,8 @@ static int RunDump(std::string& errorMsg) {
 
     // found a collection!
     if (Progress) {
-      cout << "# Dumping " << collectionType << " collection '" << name
-           << "'..." << endl;
+      std::cout << "# Dumping " << collectionType << " collection '" << name
+           << "'..." << std::endl;
     }
 
     // now save the collection meta data and/or the actual data
@@ -1039,7 +1037,7 @@ static int RunClusterDump(std::string& errorMsg) {
 
     // found a collection!
     if (Progress) {
-      cout << "# Dumping collection '" << name << "'..." << endl;
+      std::cout << "# Dumping collection '" << name << "'..." << std::endl;
     }
 
     // now save the collection meta data and/or the actual data
@@ -1047,18 +1045,14 @@ static int RunClusterDump(std::string& errorMsg) {
 
     {
       // save meta data
-      std::string fileName;
-      fileName =
-          OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
-
-      int fd;
+      std::string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
 
       // remove an existing file first
       if (TRI_ExistsFile(fileName.c_str())) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(),
+      int fd = TRI_CREATE(fileName.c_str(),
                       O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR);
 
@@ -1116,8 +1110,8 @@ static int RunClusterDump(std::string& errorMsg) {
         std::string DBserver = it.value[0].copyString();
 
         if (Progress) {
-          cout << "# Dumping shard '" << shardName << "' from DBserver '"
-               << DBserver << "' ..." << endl;
+          std::cout << "# Dumping shard '" << shardName << "' from DBserver '"
+               << DBserver << "' ..." << std::endl;
         }
         res = StartBatch(DBserver, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1203,7 +1197,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (TickStart < TickEnd) {
-    cerr << "Error: invalid values for --tick-start or --tick-end" << endl;
+    std::cerr << "Error: invalid values for --tick-start or --tick-end" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -1236,15 +1230,15 @@ int main(int argc, char* argv[]) {
 
   if (OutputDirectory.empty() ||
       (TRI_ExistsFile(OutputDirectory.c_str()) && !isDirectory)) {
-    cerr << "Error: cannot write to output directory '" << OutputDirectory
-         << "'" << endl;
+    std::cerr << "Error: cannot write to output directory '" << OutputDirectory
+         << "'" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (isDirectory && !isEmptyDirectory && !Overwrite) {
-    cerr << "Error: output directory '" << OutputDirectory
+    std::cerr << "Error: output directory '" << OutputDirectory
          << "' already exists. use \"--overwrite true\" to overwrite data in it"
-         << endl;
+         << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -1255,8 +1249,8 @@ int main(int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == nullptr) {
-    cerr << "invalid value for --server.endpoint ('"
-         << BaseClient.endpointString() << "')" << endl;
+    std::cerr << "invalid value for --server.endpoint ('"
+         << BaseClient.endpointString() << "')" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -1266,7 +1260,7 @@ int main(int argc, char* argv[]) {
       BaseClient.sslProtocol());
 
   if (Connection == nullptr) {
-    cerr << "out of memory" << endl;
+    std::cerr << "out of memory" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -1279,29 +1273,29 @@ int main(int argc, char* argv[]) {
   std::string const versionString = GetArangoVersion();
 
   if (!Connection->isConnected()) {
-    cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
+    std::cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
          << "', database: '" << BaseClient.databaseName() << "', username: '"
-         << BaseClient.username() << "'" << endl;
-    cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
+         << BaseClient.username() << "'" << std::endl;
+    std::cerr << "Error message: '" << Client->getErrorMessage() << "'" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // successfully connected
-  cout << "Server version: " << versionString << endl;
+  std::cout << "Server version: " << versionString << std::endl;
 
   // validate server version
   int major = 0;
   int minor = 0;
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    cerr << "Error: invalid server version '" << versionString << "'" << endl;
+    std::cerr << "Error: invalid server version '" << versionString << "'" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (major < 1 || major > 2 || (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
-    cerr << "Error: got incompatible server version '" << versionString << "'"
-         << endl;
+    std::cerr << "Error: got incompatible server version '" << versionString << "'"
+         << std::endl;
     if (!Force) {
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
@@ -1312,17 +1306,17 @@ int main(int argc, char* argv[]) {
     clusterMode = GetArangoIsCluster();
     if (clusterMode) {
       if (TickStart != 0 || TickEnd != 0) {
-        cerr << "Error: cannot use tick-start or tick-end on a cluster" << endl;
+        std::cerr << "Error: cannot use tick-start or tick-end on a cluster" << std::endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
     }
   }
 
   if (!Connection->isConnected()) {
-    cerr << "Lost connection to endpoint '" << BaseClient.endpointString()
+    std::cerr << "Lost connection to endpoint '" << BaseClient.endpointString()
          << "', database: '" << BaseClient.databaseName() << "', username: '"
-         << BaseClient.username() << "'" << endl;
-    cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
+         << BaseClient.username() << "'" << std::endl;
+    std::cerr << "Error message: '" << Client->getErrorMessage() << "'" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -1333,19 +1327,19 @@ int main(int argc, char* argv[]) {
         TRI_CreateDirectory(OutputDirectory.c_str(), systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      cerr << "Error: unable to create output directory '" << OutputDirectory
-           << "': " << errorMessage << endl;
+      std::cerr << "Error: unable to create output directory '" << OutputDirectory
+           << "': " << errorMessage << std::endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
   }
 
   if (Progress) {
-    cout << "Connected to ArangoDB '" << BaseClient.endpointString()
+    std::cout << "Connected to ArangoDB '" << BaseClient.endpointString()
          << "', database: '" << BaseClient.databaseName() << "', username: '"
-         << BaseClient.username() << "'" << endl;
+         << BaseClient.username() << "'" << std::endl;
 
-    cout << "Writing dump to output directory '" << OutputDirectory << "'"
-         << endl;
+    std::cout << "Writing dump to output directory '" << OutputDirectory << "'"
+         << std::endl;
   }
 
   memset(&Stats, 0, sizeof(Stats));
@@ -1372,30 +1366,30 @@ int main(int argc, char* argv[]) {
       res = RunClusterDump(errorMsg);
     }
   } catch (std::exception const& ex) {
-    cerr << "Error: caught exception " << ex.what() << endl;
+    std::cerr << "Error: caught exception " << ex.what() << std::endl;
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    cerr << "Error: caught unknown exception" << endl;
+    std::cerr << "Error: caught unknown exception" << std::endl;
     res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (!errorMsg.empty()) {
-      cerr << "Error: " << errorMsg << endl;
+      std::cerr << "Error: " << errorMsg << std::endl;
     } else {
-      cerr << "An error occurred" << endl;
+      std::cerr << "An error occurred" << std::endl;
     }
     ret = EXIT_FAILURE;
   }
 
   if (Progress) {
     if (DumpData) {
-      cout << "Processed " << Stats._totalCollections << " collection(s), "
+      std::cout << "Processed " << Stats._totalCollections << " collection(s), "
            << "wrote " << Stats._totalWritten << " byte(s) into datafiles, "
-           << "sent " << Stats._totalBatches << " batch(es)" << endl;
+           << "sent " << Stats._totalBatches << " batch(es)" << std::endl;
     } else {
-      cout << "Processed " << Stats._totalCollections << " collection(s)"
-           << endl;
+      std::cout << "Processed " << Stats._totalCollections << " collection(s)"
+           << std::endl;
     }
   }
 

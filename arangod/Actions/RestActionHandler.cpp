@@ -27,12 +27,9 @@
 #include "Rest/HttpRequest.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-
-
 
 RestActionHandler::RestActionHandler(HttpRequest* request,
                                      action_options_t* data)

@@ -22,14 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentHelper.h"
-
 #include "Basics/json.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb::arango;
+using namespace arangodb;
 using namespace arangodb::basics;
-
 
 
 ////////////////////////////////////////////////////////////////////////////////

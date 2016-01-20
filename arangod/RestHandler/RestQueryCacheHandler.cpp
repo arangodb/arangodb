@@ -22,22 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestQueryCacheHandler.h"
-
 #include "Aql/QueryCache.h"
 #include "Rest/HttpRequest.h"
 
-using namespace std;
+using namespace arangodb;
+using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-using namespace arangodb::aql;
-
 
 
 RestQueryCacheHandler::RestQueryCacheHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
-
-
 
 bool RestQueryCacheHandler::isDirect() const { return false; }
 

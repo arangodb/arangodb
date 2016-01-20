@@ -27,7 +27,6 @@
 #include "VocBase/Traverser.h"
 
 namespace arangodb {
-namespace arango {
 class CollectionNameResolver;
 class Transaction;
 
@@ -144,7 +143,6 @@ class ClusterTraversalPath : public TraversalPath {
 };
 
 }  // traverser
-}  // arango
 }  // triagens
 
 #endif

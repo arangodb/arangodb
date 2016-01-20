@@ -34,7 +34,6 @@ class VocShaper;
 
 
 namespace arangodb {
-namespace arango {
 
 class ExampleMatcher {
   struct DocumentId {
@@ -61,7 +60,7 @@ class ExampleMatcher {
 
   void fillExampleDefinition(
       TRI_json_t const* example,
-      arangodb::arango::CollectionNameResolver const* resolver,
+      arangodb::CollectionNameResolver const* resolver,
       ExampleDefinition& def);
 
   void fillExampleDefinition(v8::Isolate* isolate,
@@ -77,7 +76,7 @@ class ExampleMatcher {
                  VocShaper* shaper, std::string& errorMessage);
 
   ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
-                 arangodb::arango::CollectionNameResolver const* resolver);
+                 arangodb::CollectionNameResolver const* resolver);
 
   ~ExampleMatcher() { cleanup(); }
 
@@ -86,7 +85,6 @@ class ExampleMatcher {
  private:
   void cleanup();
 };
-}
 }
 
 #endif

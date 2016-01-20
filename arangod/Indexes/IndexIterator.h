@@ -29,9 +29,7 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-namespace arango {
 class CollectionNameResolver;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context for an index iterator
@@ -73,7 +71,6 @@ class IndexIterator {
 
   virtual void reset();
 };
-}
 }
 
 #endif

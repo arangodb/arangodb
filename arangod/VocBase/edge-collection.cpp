@@ -74,9 +74,9 @@ static bool IsReflexive(TRI_doc_mptr_t const* mptr) {
 /// opposite direction (with matchType 2 or 3) to find all counterparts
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FindEdges(arangodb::arango::Transaction* trx,
+static bool FindEdges(arangodb::Transaction* trx,
                       TRI_edge_direction_e direction,
-                      arangodb::arango::EdgeIndex* edgeIndex,
+                      arangodb::EdgeIndex* edgeIndex,
                       std::vector<TRI_doc_mptr_copy_t>& result,
                       TRI_edge_header_t const* entry, int matchType) {
   std::unique_ptr<std::vector<TRI_doc_mptr_t*>> found;
@@ -133,7 +133,7 @@ static bool FindEdges(arangodb::arango::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
-    arangodb::arango::Transaction* trx, TRI_document_collection_t* document,
+    arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_edge_direction_e direction, TRI_voc_cid_t cid,
     TRI_voc_key_t const key) {
   // search criteria

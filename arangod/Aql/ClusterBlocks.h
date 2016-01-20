@@ -33,10 +33,8 @@
 struct TRI_json_t;
 
 namespace arangodb {
-namespace arango {
 class AqlTransaction;
 struct ClusterCommResult;
-}
 
 namespace aql {
 class AqlItemBlock;
@@ -152,7 +150,7 @@ class GatherBlock : public ExecutionBlock {
 
   class OurLessThan {
    public:
-    OurLessThan(arangodb::arango::AqlTransaction* trx,
+    OurLessThan(arangodb::AqlTransaction* trx,
                 std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
                 std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                 std::vector<TRI_document_collection_t const*>& colls)
@@ -165,7 +163,7 @@ class GatherBlock : public ExecutionBlock {
                     std::pair<size_t, size_t> const& b);
 
    private:
-    arangodb::arango::AqlTransaction* _trx;
+    arangodb::AqlTransaction* _trx;
     std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
     std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
     std::vector<TRI_document_collection_t const*>& _colls;
@@ -535,7 +533,7 @@ class RemoteBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-  std::unique_ptr<arangodb::arango::ClusterCommResult> sendRequest(
+  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
       rest::HttpRequest::HttpRequestType type, std::string const& urlPart,
       std::string const& body) const;
 

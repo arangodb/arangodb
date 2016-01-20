@@ -102,7 +102,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
                            std::vector<std::string> const& rulesSpecification,
                            bool inspectSimplePlans) {
   if (!inspectSimplePlans &&
-      !arangodb::arango::ServerState::instance()->isCoordinator() &&
+      !arangodb::ServerState::instance()->isCoordinator() &&
       plan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
@@ -541,7 +541,7 @@ void Optimizer::setupRules() {
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                patchUpdateStatementsRule_pass9, true);
 
-  if (arangodb::arango::ServerState::instance()->isCoordinator()) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster
     registerRule("scatter-in-cluster", scatterInClusterRule,
                  scatterInClusterRule_pass10, false);

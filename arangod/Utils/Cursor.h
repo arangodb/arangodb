@@ -32,10 +32,8 @@ struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace arango {
 
 class CollectionExport;
-
 
 typedef TRI_voc_tick_t CursorId;
 
@@ -137,7 +135,7 @@ class JsonCursor : public Cursor {
 
 class ExportCursor : public Cursor {
  public:
-  ExportCursor(TRI_vocbase_t*, CursorId, arangodb::arango::CollectionExport*,
+  ExportCursor(TRI_vocbase_t*, CursorId, arangodb::CollectionExport*,
                size_t, double, bool);
 
   ~ExportCursor();
@@ -155,12 +153,10 @@ class ExportCursor : public Cursor {
   
  private:
   TRI_vocbase_t* _vocbase;
-  arangodb::arango::CollectionExport* _ex;
+  arangodb::CollectionExport* _ex;
   size_t const _size;
 };
 }
-}
 
 #endif
-
 

@@ -33,7 +33,6 @@ struct TRI_document_collection_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace arango {
 
 class CollectionGuard;
 class DocumentDitch;
@@ -115,11 +114,11 @@ class CollectionKeys {
   
  private:
   struct TRI_vocbase_t* _vocbase;
-  arangodb::arango::CollectionGuard* _guard;
+  arangodb::CollectionGuard* _guard;
   struct TRI_document_collection_t* _document;
-  arangodb::arango::DocumentDitch* _ditch;
+  arangodb::DocumentDitch* _ditch;
   std::string const _name;
-  arangodb::arango::CollectionNameResolver _resolver;
+  arangodb::CollectionNameResolver _resolver;
   TRI_voc_tick_t _blockerId;
   std::vector<TRI_df_marker_t const*>* _markers;
 
@@ -130,8 +129,6 @@ class CollectionKeys {
   bool _isUsed;
 };
 }
-}
 
 #endif
-
 

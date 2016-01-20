@@ -45,7 +45,7 @@ struct Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  explicit Index(arangodb::arango::Index* idx)
+  explicit Index(arangodb::Index* idx)
       : id(idx->id()),
         type(idx->type()),
         unique(false),
@@ -55,10 +55,10 @@ struct Index {
         internals(idx) {
     TRI_ASSERT(internals != nullptr);
 
-    if (type == arangodb::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    if (type == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
       unique = true;
-    } else if (type == arangodb::arango::Index::TRI_IDX_TYPE_HASH_INDEX ||
-               type == arangodb::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    } else if (type == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX ||
+               type == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
       sparse = idx->sparse();
       unique = idx->unique();
     }
@@ -67,7 +67,7 @@ struct Index {
   explicit Index(TRI_json_t const* json)
       : id(arangodb::basics::StringUtils::uint64(
             arangodb::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
-        type(arangodb::arango::Index::type(
+        type(arangodb::Index::type(
             arangodb::basics::JsonHelper::checkAndGetStringValue(json, "type")
                 .c_str())),
         unique(arangodb::basics::JsonHelper::getBooleanValue(json, "unique",
@@ -107,7 +107,7 @@ struct Index {
     arangodb::basics::Json json(arangodb::basics::Json::Object);
 
     json("type",
-         arangodb::basics::Json(arangodb::arango::Index::typeName(type)))(
+         arangodb::basics::Json(arangodb::Index::typeName(type)))(
         "id", arangodb::basics::Json(arangodb::basics::StringUtils::itoa(id)))(
         "unique", arangodb::basics::Json(unique))(
         "sparse", arangodb::basics::Json(sparse));
@@ -146,15 +146,15 @@ struct Index {
 
   inline bool hasInternals() const { return (internals != nullptr); }
 
-  arangodb::arango::Index* getInternals() const;
+  arangodb::Index* getInternals() const;
 
-  void setInternals(arangodb::arango::Index*, bool);
+  void setInternals(arangodb::Index*, bool);
 
   bool isSorted() const {
     try {
       return getInternals()->isSorted();
     } catch (...) {
-      return type == arangodb::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
+      return type == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
     }
   }
 
@@ -180,8 +180,8 @@ struct Index {
   /// @brief get an iterator for the index
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::IndexIterator* getIterator(
-      arangodb::arango::Transaction*, arangodb::arango::IndexIteratorContext*,
+  arangodb::IndexIterator* getIterator(
+      arangodb::Transaction*, arangodb::IndexIteratorContext*,
       arangodb::aql::Ast*, arangodb::aql::AstNode const*,
       arangodb::aql::Variable const*, bool) const;
 
@@ -197,14 +197,14 @@ struct Index {
   
  public:
   TRI_idx_iid_t const id;
-  arangodb::arango::Index::IndexType type;
+  arangodb::Index::IndexType type;
   bool unique;
   bool sparse;
   bool ownsInternals;
   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
  private:
-  arangodb::arango::Index* internals;
+  arangodb::Index* internals;
 };
 }
 }

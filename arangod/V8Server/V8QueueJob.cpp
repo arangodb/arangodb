@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8QueueJob.h"
-
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Dispatcher/DispatcherQueue.h"
@@ -31,11 +30,9 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new V8 job

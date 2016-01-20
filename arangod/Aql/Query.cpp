@@ -169,7 +169,7 @@ bool Query::DoDisableQueryTracking = false;
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query(arangodb::arango::ApplicationV8* applicationV8,
+Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
              TRI_json_t* bindParameters, TRI_json_t* options, QueryPart part)
@@ -209,7 +209,7 @@ Query::Query(arangodb::arango::ApplicationV8* applicationV8,
 /// @brief creates a query from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query(arangodb::arango::ApplicationV8* applicationV8,
+Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              arangodb::basics::Json queryStruct, TRI_json_t* options,
              QueryPart part)
@@ -270,7 +270,7 @@ Query::~Query() {
     // unregister transaction and resolver in context
     ISOLATE;
     TRI_GET_GLOBALS();
-    auto ctx = static_cast<arangodb::arango::V8TransactionContext*>(
+    auto ctx = static_cast<arangodb::V8TransactionContext*>(
         v8g->_transactionContext);
     if (ctx != nullptr) {
       ctx->unregisterTransaction();
@@ -488,7 +488,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
     _isModificationQuery = parser->isModificationQuery();
 
     // create the transaction object, but do not start it yet
-    _trx = new arangodb::arango::AqlTransaction(
+    _trx = new arangodb::AqlTransaction(
         createTransactionContext(), _vocbase, _collections.collections(),
         _part == PART_MAIN);
 
@@ -951,7 +951,7 @@ QueryResult Query::explain() {
     // << "\n";
 
     // create the transaction object, but do not start it yet
-    _trx = new arangodb::arango::AqlTransaction(
+    _trx = new arangodb::AqlTransaction(
         createTransactionContext(), _vocbase, _collections.collections(), true);
 
     // we have an AST
@@ -1142,7 +1142,7 @@ void Query::enterContext() {
 
       ISOLATE;
       TRI_GET_GLOBALS();
-      auto ctx = static_cast<arangodb::arango::V8TransactionContext*>(
+      auto ctx = static_cast<arangodb::V8TransactionContext*>(
           v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->registerTransaction(_trx->getInternals());
@@ -1163,7 +1163,7 @@ void Query::exitContext() {
       // unregister transaction and resolver in context
       ISOLATE;
       TRI_GET_GLOBALS();
-      auto ctx = static_cast<arangodb::arango::V8TransactionContext*>(
+      auto ctx = static_cast<arangodb::V8TransactionContext*>(
           v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->unregisterTransaction();
@@ -1307,14 +1307,14 @@ bool Query::canUseQueryCache() const {
     // setting `cache` attribute to false.
 
     // cannot use query cache on a coordinator at the moment
-    return !arangodb::arango::ServerState::instance()->isRunningInCluster();
+    return !arangodb::ServerState::instance()->isRunningInCluster();
   } else if (queryCacheMode == CACHE_ON_DEMAND &&
              getBooleanOption("cache", false)) {
     // cache mode is set to demand... query will only be cached if `cache`
     // attribute is set to false
 
     // cannot use query cache on a coordinator at the moment
-    return !arangodb::arango::ServerState::instance()->isRunningInCluster();
+    return !arangodb::ServerState::instance()->isRunningInCluster();
   }
 
   return false;
@@ -1487,13 +1487,13 @@ void Query::setPlan(ExecutionPlan* plan) {
 /// @brief create a TransactionContext
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::arango::TransactionContext* Query::createTransactionContext() {
+arangodb::TransactionContext* Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
-    return new arangodb::arango::V8TransactionContext(true);
+    return new arangodb::V8TransactionContext(true);
   }
 
-  return new arangodb::arango::StandaloneTransactionContext();
+  return new arangodb::StandaloneTransactionContext();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1509,7 +1509,7 @@ Graph const* Query::lookupGraphByName(std::string const& name) {
   }
 
   std::unique_ptr<arangodb::aql::Graph> g(
-      arangodb::arango::lookupGraphByName(_vocbase, name));
+      arangodb::lookupGraphByName(_vocbase, name));
 
   if (g == nullptr) {
     return nullptr;

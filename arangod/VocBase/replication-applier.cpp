@@ -361,7 +361,7 @@ static std::unique_ptr<TRI_json_t> JsonApplyState(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ApplyThread(void* data) {
-  auto syncer = static_cast<arangodb::arango::ContinuousSyncer*>(data);
+  auto syncer = static_cast<arangodb::ContinuousSyncer*>(data);
 
   try {
     syncer->run();
@@ -1120,7 +1120,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
                       "no database configured");
   }
 
-  auto syncer = std::make_unique<arangodb::arango::ContinuousSyncer>(
+  auto syncer = std::make_unique<arangodb::ContinuousSyncer>(
       _server, _vocbase, &_configuration, initialTick, useTick);
 
   // reset error

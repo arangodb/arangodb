@@ -25,12 +25,9 @@
 #define ARANGOD_REST_HANDLER_REST_EDGE_HANDLER_H 1
 
 #include "Basics/Common.h"
-
 #include "RestHandler/RestDocumentHandler.h"
 
-
 namespace arangodb {
-namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection request handler
@@ -69,8 +66,6 @@ class RestEdgeHandler : public RestDocumentHandler {
                                  char const* to);
 };
 }
-}
 
 #endif
-
 

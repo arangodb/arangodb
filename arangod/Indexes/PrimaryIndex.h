@@ -42,12 +42,11 @@ namespace basics {
 struct AttributeName;
 }
 
-namespace arango {
 class Transaction;
 
 class PrimaryIndexIterator final : public IndexIterator {
  public:
-  PrimaryIndexIterator(arangodb::arango::Transaction* trx,
+  PrimaryIndexIterator(arangodb::Transaction* trx,
                        PrimaryIndex const* index,
                        std::vector<char const*>& keys)
       : _trx(trx), _index(index), _keys(std::move(keys)), _position(0) {}
@@ -59,7 +58,7 @@ class PrimaryIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  arangodb::arango::Transaction* _trx;
+  arangodb::Transaction* _trx;
   PrimaryIndex const* _index;
   std::vector<char const*> _keys;
   size_t _position;
@@ -105,13 +104,13 @@ class PrimaryIndex final : public Index {
   std::shared_ptr<VPackBuilder> toVelocyPack(bool, bool) const override final;
   std::shared_ptr<VPackBuilder> toVelocyPackFigures(bool) const override final;
 
-  int insert(arangodb::arango::Transaction*, TRI_doc_mptr_t const*,
+  int insert(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(arangodb::arango::Transaction*, TRI_doc_mptr_t const*,
+  int remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;
 
-  TRI_doc_mptr_t* lookupKey(arangodb::arango::Transaction*, char const*) const;
+  TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, char const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up an element given a key
@@ -119,7 +118,7 @@ class PrimaryIndex final : public Index {
   /// parameter. also returns the hash value for the object
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_doc_mptr_t* lookupKey(arangodb::arango::Transaction*, char const*,
+  TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, char const*,
                             arangodb::basics::BucketPosition&, uint64_t&) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -130,7 +129,7 @@ class PrimaryIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupRandom(
-      arangodb::arango::Transaction*,
+      arangodb::Transaction*,
       arangodb::basics::BucketPosition& initialPosition,
       arangodb::basics::BucketPosition& position, uint64_t& step,
       uint64_t& total);
@@ -142,7 +141,7 @@ class PrimaryIndex final : public Index {
   ///        Convention: position === 0 indicates a new start.
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_doc_mptr_t* lookupSequential(arangodb::arango::Transaction*,
+  TRI_doc_mptr_t* lookupSequential(arangodb::Transaction*,
                                    arangodb::basics::BucketPosition& position,
                                    uint64_t& total);
 
@@ -154,10 +153,10 @@ class PrimaryIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupSequentialReverse(
-      arangodb::arango::Transaction*,
+      arangodb::Transaction*,
       arangodb::basics::BucketPosition& position);
 
-  int insertKey(arangodb::arango::Transaction*, TRI_doc_mptr_t*, void const**);
+  int insertKey(arangodb::Transaction*, TRI_doc_mptr_t*, void const**);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a key/element to the index
@@ -165,16 +164,16 @@ class PrimaryIndex final : public Index {
   /// from a previous lookupKey call
   //////////////////////////////////////////////////////////////////////////////
 
-  int insertKey(arangodb::arango::Transaction*, struct TRI_doc_mptr_t*,
+  int insertKey(arangodb::Transaction*, struct TRI_doc_mptr_t*,
                 arangodb::basics::BucketPosition const&);
 
-  TRI_doc_mptr_t* removeKey(arangodb::arango::Transaction*, char const*);
+  TRI_doc_mptr_t* removeKey(arangodb::Transaction*, char const*);
 
-  int resize(arangodb::arango::Transaction*, size_t);
+  int resize(arangodb::Transaction*, size_t);
 
-  static uint64_t calculateHash(arangodb::arango::Transaction*, char const*);
+  static uint64_t calculateHash(arangodb::Transaction*, char const*);
 
-  static uint64_t calculateHash(arangodb::arango::Transaction*, char const*,
+  static uint64_t calculateHash(arangodb::Transaction*, char const*,
                                 size_t);
 
   void invokeOnAllElements(std::function<void(TRI_doc_mptr_t*)>);
@@ -183,7 +182,7 @@ class PrimaryIndex final : public Index {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(arangodb::arango::Transaction*,
+  IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
                                       arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
@@ -200,7 +199,7 @@ class PrimaryIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   IndexIterator* createIterator(
-      arangodb::arango::Transaction*, IndexIteratorContext*,
+      arangodb::Transaction*, IndexIteratorContext*,
       arangodb::aql::AstNode const*,
       std::vector<arangodb::aql::AstNode const*> const&) const;
 
@@ -212,7 +211,6 @@ class PrimaryIndex final : public Index {
 
   TRI_PrimaryIndex_t* _primaryIndex;
 };
-}
 }
 
 #endif

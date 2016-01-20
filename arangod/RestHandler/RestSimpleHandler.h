@@ -36,7 +36,6 @@ class Query;
 class QueryRegistry;
 }
 
-namespace arango {
 class ApplicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +47,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
  public:
 
   RestSimpleHandler(rest::HttpRequest*,
-                    std::pair<arangodb::arango::ApplicationV8*,
+                    std::pair<arangodb::ApplicationV8*,
                               arangodb::aql::QueryRegistry*>*);
 
   
@@ -103,7 +102,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
   /// @brief _applicationV8
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::ApplicationV8* _applicationV8;
+  arangodb::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our query registry
@@ -130,8 +129,6 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
   bool _queryKilled;
 };
 }
-}
 
 #endif
-
 

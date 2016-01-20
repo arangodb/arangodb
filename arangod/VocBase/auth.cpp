@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "auth.h"
-
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Indexes/PrimaryIndex.h"
@@ -37,8 +36,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a string

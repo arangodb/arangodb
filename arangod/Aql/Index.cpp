@@ -44,7 +44,7 @@ Index::~Index() {
 /// @brief get the index internals
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::arango::Index* Index::getInternals() const {
+arangodb::Index* Index::getInternals() const {
   if (internals == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "accessing undefined index internals");
@@ -56,7 +56,7 @@ arangodb::arango::Index* Index::getInternals() const {
 /// @brief set the index internals
 ////////////////////////////////////////////////////////////////////////////////
 
-void Index::setInternals(arangodb::arango::Index* idx, bool owns) {
+void Index::setInternals(arangodb::Index* idx, bool owns) {
   TRI_ASSERT(internals == nullptr);
   internals = idx;
   ownsInternals = owns;
@@ -98,9 +98,9 @@ bool Index::supportsSortCondition(
 /// @brief get an iterator for the index
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::arango::IndexIterator* Index::getIterator(
-    arangodb::arango::Transaction* trx,
-    arangodb::arango::IndexIteratorContext* context, arangodb::aql::Ast* ast,
+arangodb::IndexIterator* Index::getIterator(
+    arangodb::Transaction* trx,
+    arangodb::IndexIteratorContext* context, arangodb::aql::Ast* ast,
     arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(hasInternals());

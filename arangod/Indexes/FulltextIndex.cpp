@@ -30,8 +30,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace arangodb::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extraction context
@@ -166,7 +165,7 @@ arangodb::basics::Json FulltextIndex::toJsonFigures(
   return json;
 }
 
-int FulltextIndex::insert(arangodb::arango::Transaction*,
+int FulltextIndex::insert(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
@@ -192,7 +191,7 @@ int FulltextIndex::insert(arangodb::arango::Transaction*,
   return res;
 }
 
-int FulltextIndex::remove(arangodb::arango::Transaction*,
+int FulltextIndex::remove(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool) {
   TRI_DeleteDocumentFulltextIndex(_fulltextIndex,
                                   (TRI_fulltext_doc_t)((uintptr_t)doc));

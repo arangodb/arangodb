@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Utils/CollectionKeys.h"
+#include "CollectionKeys.h"
 #include "Basics/hashes.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
@@ -36,9 +36,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 
-using namespace arangodb::arango;
-
-
+using namespace arangodb;
 
 CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
                                TRI_voc_tick_t blockerId, double ttl)
@@ -61,7 +59,7 @@ CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
 
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard = new arangodb::arango::CollectionGuard(vocbase, _name.c_str(), false);
+  _guard = new arangodb::CollectionGuard(vocbase, _name.c_str(), false);
 
   _document = _guard->collection()->_collection;
   TRI_ASSERT(_document != nullptr);

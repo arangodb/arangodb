@@ -39,9 +39,7 @@ namespace rest {
 class ApplicationDispatcher;
 }
 
-namespace arango {
 class ApplicationV8;
-
 
 class HeartbeatThread : public basics::Thread {
   
@@ -286,7 +284,6 @@ class HeartbeatThread : public basics::Thread {
 
   static volatile sig_atomic_t HasRunOnce;
 };
-}
 }
 
 #endif

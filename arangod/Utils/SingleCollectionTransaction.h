@@ -40,7 +40,6 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace arango {
 
 class SingleCollectionTransaction : public Transaction {
   
@@ -136,14 +135,14 @@ class SingleCollectionTransaction : public Transaction {
   /// is called in two different ways
   //////////////////////////////////////////////////////////////////////////////
 
-  inline arangodb::arango::DocumentDitch* ditch() {
+  inline arangodb::DocumentDitch* ditch() {
     TRI_transaction_collection_t* trxCollection = this->trxCollection();
     TRI_ASSERT(trxCollection->_ditch != nullptr);
 
     return trxCollection->_ditch;
   }
 
-  inline arangodb::arango::DocumentDitch* ditch(TRI_voc_cid_t) {
+  inline arangodb::DocumentDitch* ditch(TRI_voc_cid_t) {
     return ditch();
   }
 
@@ -266,8 +265,6 @@ class SingleCollectionTransaction : public Transaction {
   TRI_transaction_type_e _accessType;
 };
 }
-}
 
 #endif
-
 

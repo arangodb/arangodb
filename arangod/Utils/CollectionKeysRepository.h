@@ -32,10 +32,8 @@
 struct TRI_json_t;
 
 namespace arangodb {
-namespace arango {
 
 class CollectionKeys;
-
 
 class CollectionKeysRepository {
   
@@ -113,8 +111,6 @@ class CollectionKeysRepository {
   static size_t const MaxCollectCount;
 };
 }
-}
 
 #endif
-
 

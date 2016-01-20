@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include <iostream>
-
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -45,11 +43,12 @@
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
 
-using namespace std;
+#include <iostream>
+
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
 using namespace arangodb::arangob;
 
 
@@ -63,7 +62,7 @@ ArangoClient BaseClient("arangob");
 /// @brief started counter
 ////////////////////////////////////////////////////////////////////////////////
 
-static atomic<int> Started;
+static std::atomic<int> Started;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex for start counter
@@ -163,7 +162,7 @@ static int GetStartCounter() { return Started; }
 
 static void Status(std::string const& value) {
   if (!BaseClient.quiet()) {
-    cout << value << endl;
+    std::cout << value << std::endl;
   }
 }
 
@@ -396,36 +395,36 @@ int main(int argc, char* argv[]) {
   size_t failures = operationsCounter.failures();
   size_t incomplete = operationsCounter.incompleteFailures();
 
-  cout << endl;
-  cout << "Total number of operations: " << Operations
+  std::cout << std::endl;
+  std::cout << "Total number of operations: " << Operations
        << ", keep alive: " << (KeepAlive ? "yes" : "no")
        << ", async: " << (Async ? "yes" : "no") << ", batch size: " << BatchSize
-       << ", concurrency level (threads): " << ThreadConcurrency << endl;
+       << ", concurrency level (threads): " << ThreadConcurrency << std::endl;
 
-  cout << "Test case: " << TestCase << ", complexity: " << Complexity
+  std::cout << "Test case: " << TestCase << ", complexity: " << Complexity
        << ", database: '" << BaseClient.databaseName() << "', collection: '"
-       << Collection << "'" << endl;
+       << Collection << "'" << std::endl;
 
-  cout << "Total request/response duration (sum of all threads): " << fixed
-       << requestTime << " s" << endl;
-  cout << "Request/response duration (per thread): " << fixed
-       << (requestTime / (double)ThreadConcurrency) << " s" << endl;
-  cout << "Time needed per operation: " << fixed << (time / Operations) << " s"
-       << endl;
-  cout << "Time needed per operation per thread: " << fixed
+  std::cout << "Total request/response duration (sum of all threads): " << std::fixed
+       << requestTime << " s" << std::endl;
+  std::cout << "Request/response duration (per thread): " << std::fixed
+       << (requestTime / (double)ThreadConcurrency) << " s" << std::endl;
+  std::cout << "Time needed per operation: " << std::fixed << (time / Operations) << " s"
+       << std::endl;
+  std::cout << "Time needed per operation per thread: " << std::fixed
        << (time / (double)Operations * (double)ThreadConcurrency) << " s"
-       << endl;
-  cout << "Operations per second rate: " << fixed << ((double)Operations / time)
-       << endl;
-  cout << "Elapsed time since start: " << fixed << time << " s" << endl
-       << endl;
+       << std::endl;
+  std::cout << "Operations per second rate: " << std::fixed << ((double)Operations / time)
+       << std::endl;
+  std::cout << "Elapsed time since start: " << std::fixed << time << " s" << std::endl
+       << std::endl;
 
   if (failures > 0) {
-    cerr << "WARNING: " << failures << " arangob request(s) failed!!" << endl;
+    std::cerr << "WARNING: " << failures << " arangob request(s) failed!!" << std::endl;
   }
   if (incomplete > 0) {
-    cerr << "WARNING: " << incomplete
-         << " arangob requests with incomplete results!!" << endl;
+    std::cerr << "WARNING: " << incomplete
+         << " arangob requests with incomplete results!!" << std::endl;
   }
 
   testCase->tearDown();
@@ -448,5 +447,4 @@ int main(int argc, char* argv[]) {
 
   return ret;
 }
-
 

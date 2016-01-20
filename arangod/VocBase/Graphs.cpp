@@ -27,7 +27,7 @@
 #include "Utils/transactions.h"
 #include "Cluster/ClusterMethods.h"
 using namespace arangodb::basics;
-using namespace arangodb::arango;
+
 
 std::string const graphs = "_graphs";
 
@@ -36,7 +36,7 @@ std::string const graphs = "_graphs";
 /// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::aql::Graph* arangodb::arango::lookupGraphByName(
+arangodb::aql::Graph* arangodb::lookupGraphByName(
     TRI_vocbase_t* vocbase, std::string const& name) {
   if (ServerState::instance()->isCoordinator()) {
     arangodb::rest::HttpResponse::HttpResponseCode responseCode;
@@ -46,7 +46,7 @@ arangodb::aql::Graph* arangodb::arango::lookupGraphByName(
 
     TRI_voc_rid_t rev = 0;
 
-    int error = arangodb::arango::getDocumentOnCoordinator(
+    int error = arangodb::getDocumentOnCoordinator(
         vocbase->_name, graphs, name, rev, headers, true, responseCode,
         resultHeaders, resultBody);
 

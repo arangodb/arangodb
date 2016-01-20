@@ -30,7 +30,7 @@
 
 
 DocumentAccessor::DocumentAccessor(
-    arangodb::arango::CollectionNameResolver const* resolver,
+    arangodb::CollectionNameResolver const* resolver,
     TRI_document_collection_t* document, TRI_doc_mptr_t const* mptr)
     : _resolver(resolver),
       _document(document),

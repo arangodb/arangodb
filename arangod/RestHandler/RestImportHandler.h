@@ -30,12 +30,9 @@
 #include "Utils/transactions.h"
 
 #define RestImportTransaction \
-  arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX>
-
+  arangodb::SingleCollectionWriteTransaction<UINT64_MAX>
 
 namespace arangodb {
-namespace arango {
-
 
 struct RestImportResult {
  public:
@@ -97,7 +94,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief create a position string
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string positionise(size_t) const;
+  std::string positionize(size_t) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register an error
@@ -193,7 +190,6 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
   OnDuplicateActionType _onDuplicateAction;
 };
-}
 }
 
 #endif

@@ -46,7 +46,7 @@
 #include "VocBase/server.h"
 
 using namespace arangodb::aql;
-using namespace arangodb::arango;
+
 using Json = arangodb::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,7 +450,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       if (current->getType() == ExecutionNode::REMOTE) {
         // update the remote node with the information about the query
         static_cast<RemoteNode*>(clone)->server(
-            "server:" + arangodb::arango::ServerState::instance()->getId());
+            "server:" + arangodb::ServerState::instance()->getId());
         static_cast<RemoteNode*>(clone)->ownName(shardId);
         static_cast<RemoteNode*>(clone)->queryId(connectedId);
         // only one of the remote blocks is responsible for forwarding the
@@ -476,7 +476,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   //////////////////////////////////////////////////////////////////////////////
 
   void distributePlanToShard(
-      arangodb::arango::CoordTransactionID& coordTransactionID,
+      arangodb::CoordTransactionID& coordTransactionID,
       EngineInfo const& info, Collection* collection, QueryId& connectedId,
       std::string const& shardId, TRI_json_t* jsonPlan) {
     // create a JSON representation of the plan
@@ -518,7 +518,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get())
     // << "\n";
 
-    auto cc = arangodb::arango::ClusterComm::instance();
+    auto cc = arangodb::ClusterComm::instance();
 
     std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
                                         collection->vocbase->_name) +
@@ -537,8 +537,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   //////////////////////////////////////////////////////////////////////////////
 
   void aggregateQueryIds(
-      EngineInfo const& info, arangodb::arango::ClusterComm*& cc,
-      arangodb::arango::CoordTransactionID& coordTransactionID,
+      EngineInfo const& info, arangodb::ClusterComm*& cc,
+      arangodb::CoordTransactionID& coordTransactionID,
       Collection* collection) {
     // pick up the remote query ids
     auto shardIds = collection->shardIds();
@@ -549,7 +549,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     for (count = (int)shardIds->size(); count > 0; count--) {
       auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
 
-      if (res.status == arangodb::arango::CL_COMM_RECEIVED) {
+      if (res.status == arangodb::CL_COMM_RECEIVED) {
         if (res.answer_code == arangodb::rest::HttpResponse::OK ||
             res.answer_code == arangodb::rest::HttpResponse::CREATED ||
             res.answer_code == arangodb::rest::HttpResponse::ACCEPTED) {
@@ -602,9 +602,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // std::cout << "distributePlansToShards: " << info.id << std::endl;
     Collection* collection = info.getCollection();
     // now send the plan to the remote servers
-    arangodb::arango::CoordTransactionID coordTransactionID =
+    arangodb::CoordTransactionID coordTransactionID =
         TRI_NewTickServer();
-    auto cc = arangodb::arango::ClusterComm::instance();
+    auto cc = arangodb::ClusterComm::instance();
     TRI_ASSERT(cc != nullptr);
 
     // iterate over all shards of the collection
@@ -859,11 +859,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     QueryRegistry* queryRegistry, Query* query, ExecutionPlan* plan,
     bool planRegisters) {
-  auto role = arangodb::arango::ServerState::instance()->getRole();
+  auto role = arangodb::ServerState::instance()->getRole();
   bool const isCoordinator =
-      arangodb::arango::ServerState::instance()->isCoordinator(role);
+      arangodb::ServerState::instance()->isCoordinator(role);
   bool const isDBServer =
-      arangodb::arango::ServerState::instance()->isDBServer(role);
+      arangodb::ServerState::instance()->isDBServer(role);
 
   ExecutionEngine* engine = nullptr;
 
@@ -950,9 +950,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           std::string const& shardId = p.first;
           std::string const& queryId = p.second;
           // Lock shard on DBserver:
-          arangodb::arango::CoordTransactionID coordTransactionID =
+          arangodb::CoordTransactionID coordTransactionID =
               TRI_NewTickServer();
-          auto cc = arangodb::arango::ClusterComm::instance();
+          auto cc = arangodb::ClusterComm::instance();
           TRI_vocbase_t* vocbase = query->vocbase();
           std::string const url(
               "/_db/" +
@@ -986,9 +986,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
             // So this is a remote one on a DBserver:
             std::string shardId = theId.substr(pos + 1);
             // Remove query from DBserver:
-            arangodb::arango::CoordTransactionID coordTransactionID =
+            arangodb::CoordTransactionID coordTransactionID =
                 TRI_NewTickServer();
-            auto cc = arangodb::arango::ClusterComm::instance();
+            auto cc = arangodb::ClusterComm::instance();
             if (queryId.back() == '*') {
               queryId.pop_back();
             }

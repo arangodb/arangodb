@@ -33,7 +33,6 @@ namespace aql {
 class QueryRegistry;
 }
 
-namespace arango {
 class ApplicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +44,7 @@ class RestSimpleQueryHandler : public RestCursorHandler {
  public:
 
   RestSimpleQueryHandler(rest::HttpRequest*,
-                         std::pair<arangodb::arango::ApplicationV8*,
+                         std::pair<arangodb::ApplicationV8*,
                                    arangodb::aql::QueryRegistry*>*);
 
   
@@ -61,7 +60,6 @@ class RestSimpleQueryHandler : public RestCursorHandler {
 
   void allDocuments();
 };
-}
 }
 
 #endif

@@ -44,8 +44,8 @@
 
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
-using CollectionNameResolver = arangodb::arango::CollectionNameResolver;
-using VertexId = arangodb::arango::traverser::VertexId;
+using CollectionNameResolver = arangodb::CollectionNameResolver;
+using VertexId = arangodb::traverser::VertexId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread-local cache for compiled regexes
@@ -138,7 +138,7 @@ static std::string BuildRegexPattern(char const* ptr, size_t length,
 /// @brief extract a function parameter from the arguments list
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json ExtractFunctionParameter(arangodb::arango::AqlTransaction* trx,
+static Json ExtractFunctionParameter(arangodb::AqlTransaction* trx,
                                      FunctionParameters const& parameters,
                                      size_t position, bool copy) {
   if (position >= parameters.size()) {
@@ -297,7 +297,7 @@ static bool ValueToBoolean(TRI_json_t const* json) {
 /// @brief extract a boolean parameter from an array
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool GetBooleanParameter(arangodb::arango::AqlTransaction* trx,
+static bool GetBooleanParameter(arangodb::AqlTransaction* trx,
                                 FunctionParameters const& parameters,
                                 size_t startParameter, bool defaultValue) {
   size_t const n = parameters.size();
@@ -316,7 +316,7 @@ static bool GetBooleanParameter(arangodb::arango::AqlTransaction* trx,
 
 static void ExtractKeys(std::unordered_set<std::string>& names,
                         arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters,
                         size_t startParameter, char const* functionName) {
   size_t const n = parameters.size();
@@ -525,7 +525,7 @@ static inline Json ExpandShapedJson(VocShaper* shaper,
 ///        Returns null if the document does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json ReadDocument(arangodb::arango::AqlTransaction* trx,
+static Json ReadDocument(arangodb::AqlTransaction* trx,
                          CollectionNameResolver const* resolver,
                          TRI_voc_cid_t cid, char const* key) {
   auto collection = trx->trxCollection(cid);
@@ -561,7 +561,7 @@ static Json ReadDocument(arangodb::arango::AqlTransaction* trx,
 /// @brief function to filter the given list of mptr
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FilterDocuments(arangodb::arango::ExampleMatcher const* matcher,
+static void FilterDocuments(arangodb::ExampleMatcher const* matcher,
                             TRI_voc_cid_t cid,
                             std::vector<TRI_doc_mptr_copy_t>& toFilter) {
   if (matcher == nullptr) {
@@ -579,12 +579,12 @@ static void FilterDocuments(arangodb::arango::ExampleMatcher const* matcher,
 }
 
 static void RequestEdges(arangodb::basics::Json const& vertexJson,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          CollectionNameResolver const* resolver,
                          VocShaper* shaper, TRI_voc_cid_t cid,
                          TRI_document_collection_t* collection,
                          TRI_edge_direction_e direction,
-                         arangodb::arango::ExampleMatcher const* matcher,
+                         arangodb::ExampleMatcher const* matcher,
                          bool includeVertices, arangodb::basics::Json& result) {
   std::string vertexId;
   if (vertexJson.isString()) {
@@ -683,7 +683,7 @@ void Functions::DestroyThreadContext() { ClearRegexCache(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsNull(arangodb::aql::Query*,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isNull()));
@@ -694,7 +694,7 @@ AqlValue Functions::IsNull(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsBool(arangodb::aql::Query*,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isBoolean()));
@@ -705,7 +705,7 @@ AqlValue Functions::IsBool(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsNumber(arangodb::aql::Query*,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isNumber()));
@@ -716,7 +716,7 @@ AqlValue Functions::IsNumber(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsString(arangodb::aql::Query*,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isString()));
@@ -727,7 +727,7 @@ AqlValue Functions::IsString(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsArray(arangodb::aql::Query*,
-                            arangodb::arango::AqlTransaction* trx,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isArray()));
@@ -738,7 +738,7 @@ AqlValue Functions::IsArray(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsObject(arangodb::aql::Query*,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isObject()));
@@ -749,7 +749,7 @@ AqlValue Functions::IsObject(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::ToNumber(arangodb::aql::Query*,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -767,7 +767,7 @@ AqlValue Functions::ToNumber(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::ToString(arangodb::aql::Query*,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -792,7 +792,7 @@ AqlValue Functions::ToString(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::ToBool(arangodb::aql::Query*,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -804,7 +804,7 @@ AqlValue Functions::ToBool(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::ToArray(arangodb::aql::Query*,
-                            arangodb::arango::AqlTransaction* trx,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -844,7 +844,7 @@ AqlValue Functions::ToArray(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Length(arangodb::aql::Query*,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   if (!parameters.empty() && parameters[0].first.isArray()) {
     // shortcut!
@@ -913,7 +913,7 @@ AqlValue Functions::Length(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::First(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   if (parameters.size() < 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -943,7 +943,7 @@ AqlValue Functions::First(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Last(arangodb::aql::Query* query,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   if (parameters.size() < 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -975,7 +975,7 @@ AqlValue Functions::Last(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Nth(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   if (parameters.size() < 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -1021,7 +1021,7 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Concat(arangodb::aql::Query*,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
 
@@ -1076,7 +1076,7 @@ AqlValue Functions::Concat(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Like(arangodb::aql::Query* query,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   if (parameters.size() < 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -1151,7 +1151,7 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Passthru(arangodb::aql::Query*,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   if (parameters.empty()) {
     return AqlValue(new Json(Json::Null));
@@ -1166,7 +1166,7 @@ AqlValue Functions::Passthru(arangodb::aql::Query*,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Unset(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1221,7 +1221,7 @@ AqlValue Functions::Unset(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
-                                   arangodb::arango::AqlTransaction* trx,
+                                   arangodb::AqlTransaction* trx,
                                    FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1293,7 +1293,7 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Keep(arangodb::aql::Query* query,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1345,7 +1345,7 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Merge(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1430,7 +1430,7 @@ AqlValue Functions::Merge(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::MergeRecursive(arangodb::aql::Query* query,
-                                   arangodb::arango::AqlTransaction* trx,
+                                   arangodb::AqlTransaction* trx,
                                    FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1515,7 +1515,7 @@ AqlValue Functions::MergeRecursive(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Has(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1553,7 +1553,7 @@ AqlValue Functions::Has(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Attributes(arangodb::aql::Query* query,
-                               arangodb::arango::AqlTransaction* trx,
+                               arangodb::AqlTransaction* trx,
                                FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1633,7 +1633,7 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Values(arangodb::aql::Query* query,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1695,7 +1695,7 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Min(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1741,7 +1741,7 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Max(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1788,7 +1788,7 @@ AqlValue Functions::Max(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Sum(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1836,7 +1836,7 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Average(arangodb::aql::Query* query,
-                            arangodb::arango::AqlTransaction* trx,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1885,7 +1885,7 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Md5(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1914,7 +1914,7 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Sha1(arangodb::aql::Query* query,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1943,7 +1943,7 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Unique(arangodb::aql::Query* query,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -1999,7 +1999,7 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
-                                 arangodb::arango::AqlTransaction* trx,
+                                 arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -2058,7 +2058,7 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Union(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2123,7 +2123,7 @@ AqlValue Functions::Union(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
-                                  arangodb::arango::AqlTransaction* trx,
+                                  arangodb::AqlTransaction* trx,
                                   FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2214,7 +2214,7 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Intersection(arangodb::aql::Query* query,
-                                 arangodb::arango::AqlTransaction* trx,
+                                 arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2329,7 +2329,7 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
 /// @brief Transforms VertexId to Json
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json VertexIdToJson(arangodb::arango::AqlTransaction* trx,
+static Json VertexIdToJson(arangodb::AqlTransaction* trx,
                            CollectionNameResolver const* resolver,
                            VertexId const& id) {
   auto collection = trx->trxCollection(id.cid);
@@ -2378,7 +2378,7 @@ static std::string VertexIdToString(CollectionNameResolver const* resolver,
 /// @brief Transforms an unordered_map<VertexId> to AQL json values
 ////////////////////////////////////////////////////////////////////////////////
 
-static AqlValue VertexIdsToAqlValue(arangodb::arango::AqlTransaction* trx,
+static AqlValue VertexIdsToAqlValue(arangodb::AqlTransaction* trx,
                                     CollectionNameResolver const* resolver,
                                     std::unordered_set<VertexId>& ids,
                                     bool includeData = false) {
@@ -2405,10 +2405,10 @@ static AqlValue VertexIdsToAqlValue(arangodb::arango::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Neighbors(arangodb::aql::Query* query,
-                              arangodb::arango::AqlTransaction* trx,
+                              arangodb::AqlTransaction* trx,
                               FunctionParameters const& parameters) {
   size_t const n = parameters.size();
-  arangodb::arango::traverser::NeighborsOptions opts;
+  arangodb::traverser::NeighborsOptions opts;
 
   if (n < 4 || n > 6) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -2606,7 +2606,7 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Near(arangodb::aql::Query* query,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2695,11 +2695,11 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
                                   colName.c_str());
   }
 
-  arangodb::arango::Index* index = nullptr;
+  arangodb::Index* index = nullptr;
 
   for (auto const& idx : document->allIndexes()) {
-    if (idx->type() == arangodb::arango::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == arangodb::arango::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
       index = idx;
       break;
     }
@@ -2715,7 +2715,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   }
 
   GeoCoordinates* cors =
-      static_cast<arangodb::arango::GeoIndex2*>(index)
+      static_cast<arangodb::GeoIndex2*>(index)
           ->nearQuery(trx, latitude.json()->_value._number,
                       longitude.json()->_value._number, limitValue);
 
@@ -2786,7 +2786,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Within(arangodb::aql::Query* query,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2861,11 +2861,11 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  arangodb::arango::Index* index = nullptr;
+  arangodb::Index* index = nullptr;
 
   for (auto const& idx : document->allIndexes()) {
-    if (idx->type() == arangodb::arango::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == arangodb::arango::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
       index = idx;
       break;
     }
@@ -2881,7 +2881,7 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
   }
 
   GeoCoordinates* cors =
-      static_cast<arangodb::arango::GeoIndex2*>(index)->withinQuery(
+      static_cast<arangodb::GeoIndex2*>(index)->withinQuery(
           trx, latitude.json()->_value._number,
           longitude.json()->_value._number, radius.json()->_value._number);
 
@@ -2970,7 +2970,7 @@ static void FlattenList(Json array, size_t maxDepth, size_t curDepth,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Flatten(arangodb::aql::Query* query,
-                            arangodb::arango::AqlTransaction* trx,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n == 0 || n > 2) {
@@ -3008,7 +3008,7 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Zip(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   if (parameters.size() != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3043,7 +3043,7 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::ParseIdentifier(arangodb::aql::Query* query,
-                                    arangodb::arango::AqlTransaction* trx,
+                                    arangodb::AqlTransaction* trx,
                                     FunctionParameters const& parameters) {
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3078,7 +3078,7 @@ AqlValue Functions::ParseIdentifier(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Minus(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3133,7 +3133,7 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
 }
 
 static void RegisterCollectionInTransaction(
-    arangodb::arango::AqlTransaction* trx, std::string const& collectionName,
+    arangodb::AqlTransaction* trx, std::string const& collectionName,
     TRI_voc_cid_t& cid, TRI_transaction_collection_t*& collection) {
   TRI_ASSERT(collection == nullptr);
   cid = trx->resolver()->getCollectionId(collectionName);
@@ -3168,7 +3168,7 @@ static void RegisterCollectionInTransaction(
 ///        The collection has to be locked by the transaction before
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json getDocumentByIdentifier(arangodb::arango::AqlTransaction* trx,
+static Json getDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     CollectionNameResolver const* resolver,
                                     TRI_transaction_collection_t* collection,
                                     TRI_voc_cid_t const& cid,
@@ -3207,7 +3207,7 @@ static Json getDocumentByIdentifier(arangodb::arango::AqlTransaction* trx,
 /// found
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json getDocumentByIdentifier(arangodb::arango::AqlTransaction* trx,
+static Json getDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     CollectionNameResolver const* resolver,
                                     std::string const& identifier) {
   std::vector<std::string> parts =
@@ -3245,7 +3245,7 @@ static Json getDocumentByIdentifier(arangodb::arango::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Document(arangodb::aql::Query* query,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3352,7 +3352,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Edges(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3413,7 +3413,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
   auto resolver = trx->resolver();
 
   auto shaper = collection->_collection->_collection->getShaper();
-  std::unique_ptr<arangodb::arango::ExampleMatcher> matcher;
+  std::unique_ptr<arangodb::ExampleMatcher> matcher;
   if (n > 3) {
     // We might have examples
     Json exampleJson = ExtractFunctionParameter(trx, parameters, 3, false);
@@ -3455,7 +3455,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
       }
       if (buildMatcher) {
         try {
-          matcher.reset(new arangodb::arango::ExampleMatcher(exampleJson.json(),
+          matcher.reset(new arangodb::ExampleMatcher(exampleJson.json(),
                                                              shaper, resolver));
         } catch (arangodb::basics::Exception const& e) {
           if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
@@ -3505,7 +3505,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Round(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3528,7 +3528,7 @@ AqlValue Functions::Round(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Abs(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3551,7 +3551,7 @@ AqlValue Functions::Abs(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Ceil(arangodb::aql::Query* query,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3574,7 +3574,7 @@ AqlValue Functions::Ceil(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Floor(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3597,7 +3597,7 @@ AqlValue Functions::Floor(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Sqrt(arangodb::aql::Query* query,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3623,7 +3623,7 @@ AqlValue Functions::Sqrt(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Pow(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3651,7 +3651,7 @@ AqlValue Functions::Pow(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Rand(arangodb::aql::Query* query,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3671,7 +3671,7 @@ AqlValue Functions::Rand(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::FirstDocument(arangodb::aql::Query* query,
-                                  arangodb::arango::AqlTransaction* trx,
+                                  arangodb::AqlTransaction* trx,
                                   FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -3689,7 +3689,7 @@ AqlValue Functions::FirstDocument(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::FirstList(arangodb::aql::Query* query,
-                              arangodb::arango::AqlTransaction* trx,
+                              arangodb::AqlTransaction* trx,
                               FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -3707,7 +3707,7 @@ AqlValue Functions::FirstList(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Push(arangodb::aql::Query* query,
-                         arangodb::arango::AqlTransaction* trx,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -3744,7 +3744,7 @@ AqlValue Functions::Push(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Pop(arangodb::aql::Query* query,
-                        arangodb::arango::AqlTransaction* trx,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -3777,7 +3777,7 @@ AqlValue Functions::Pop(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Append(arangodb::aql::Query* query,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -3829,7 +3829,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Unshift(arangodb::aql::Query* query,
-                            arangodb::arango::AqlTransaction* trx,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -3879,7 +3879,7 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Shift(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3912,7 +3912,7 @@ AqlValue Functions::Shift(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
-                                arangodb::arango::AqlTransaction* trx,
+                                arangodb::AqlTransaction* trx,
                                 FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -3964,7 +3964,7 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
-                                 arangodb::arango::AqlTransaction* trx,
+                                 arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2) {
@@ -4006,7 +4006,7 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
-                              arangodb::arango::AqlTransaction* trx,
+                              arangodb::AqlTransaction* trx,
                               FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2) {
@@ -4049,7 +4049,7 @@ AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::NotNull(arangodb::aql::Query* query,
-                            arangodb::arango::AqlTransaction* trx,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -4066,7 +4066,7 @@ AqlValue Functions::NotNull(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::CurrentDatabase(arangodb::aql::Query* query,
-                                    arangodb::arango::AqlTransaction* trx,
+                                    arangodb::AqlTransaction* trx,
                                     FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 0) {
@@ -4082,7 +4082,7 @@ AqlValue Functions::CurrentDatabase(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::CollectionCount(arangodb::aql::Query* query,
-                                    arangodb::arango::AqlTransaction* trx,
+                                    arangodb::AqlTransaction* trx,
                                     FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4140,7 +4140,7 @@ AqlValue Functions::CollectionCount(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::VarianceSample(arangodb::aql::Query* query,
-                                   arangodb::arango::AqlTransaction* trx,
+                                   arangodb::AqlTransaction* trx,
                                    FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4177,7 +4177,7 @@ AqlValue Functions::VarianceSample(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::VariancePopulation(arangodb::aql::Query* query,
-                                       arangodb::arango::AqlTransaction* trx,
+                                       arangodb::AqlTransaction* trx,
                                        FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4215,7 +4215,7 @@ AqlValue Functions::VariancePopulation(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::StdDevSample(arangodb::aql::Query* query,
-                                 arangodb::arango::AqlTransaction* trx,
+                                 arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4252,7 +4252,7 @@ AqlValue Functions::StdDevSample(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::StdDevPopulation(arangodb::aql::Query* query,
-                                     arangodb::arango::AqlTransaction* trx,
+                                     arangodb::AqlTransaction* trx,
                                      FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4289,7 +4289,7 @@ AqlValue Functions::StdDevPopulation(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Median(arangodb::aql::Query* query,
-                           arangodb::arango::AqlTransaction* trx,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4328,7 +4328,7 @@ AqlValue Functions::Median(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Percentile(arangodb::aql::Query* query,
-                               arangodb::arango::AqlTransaction* trx,
+                               arangodb::AqlTransaction* trx,
                                FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -4432,7 +4432,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Range(arangodb::aql::Query* query,
-                          arangodb::arango::AqlTransaction* trx,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -4486,7 +4486,7 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Position(arangodb::aql::Query* query,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -4531,7 +4531,7 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Fulltext(arangodb::aql::Query* query,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -4615,13 +4615,13 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  arangodb::arango::Index* index = nullptr;
+  arangodb::Index* index = nullptr;
 
   std::vector<std::vector<arangodb::basics::AttributeName>> const search(
       {{arangodb::basics::AttributeName(attributeName, false)}});
 
   for (auto const& idx : document->allIndexes()) {
-    if (idx->type() == arangodb::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
       if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
                                                        false)) {
@@ -4657,7 +4657,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto fulltextIndex = static_cast<arangodb::arango::FulltextIndex*>(index);
+  auto fulltextIndex = static_cast<arangodb::FulltextIndex*>(index);
   // note: the following call will free "ft"!
   TRI_fulltext_result_t* queryResult =
       TRI_QueryFulltextIndex(fulltextIndex->internals(), ft);

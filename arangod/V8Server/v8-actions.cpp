@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
-
 #include "Actions/actions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -47,11 +46,9 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-
 
 static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
@@ -63,8 +60,6 @@ static TRI_action_result_t ExecuteActionVocbase(
 ////////////////////////////////////////////////////////////////////////////////
 
 static ApplicationV8* GlobalV8Dealer = nullptr;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action description for V8
@@ -1482,8 +1477,6 @@ static void JS_DebugClearFailAt(
   TRI_V8_TRY_CATCH_END
 }
 
-
-
 void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           std::string const& startupPath,
                           std::string const& modules) {
@@ -1503,6 +1496,4 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_DebugRemoveFailAt);
 #endif
 }
-
-
 

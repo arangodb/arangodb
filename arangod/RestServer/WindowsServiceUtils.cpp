@@ -35,7 +35,7 @@
 
 using namespace arangodb;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
+
 
 #ifdef _WIN32
 

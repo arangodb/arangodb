@@ -93,7 +93,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::admin;
-using namespace arangodb::arango;
+
 using namespace std;
 
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
@@ -350,7 +350,7 @@ static bool SetRequestContext(arangodb::rest::HttpRequest* request,
   }
 
   VocbaseContext* ctx =
-      new arangodb::arango::VocbaseContext(request, server, vocbase);
+      new arangodb::VocbaseContext(request, server, vocbase);
 
   if (ctx == nullptr) {
     // out of memory

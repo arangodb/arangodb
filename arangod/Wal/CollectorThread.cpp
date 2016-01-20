@@ -701,7 +701,7 @@ size_t CollectorThread::numQueuedOperations() {
 /// @brief process a single marker in collector step 2
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectorThread::processCollectionMarker(arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX>& trx,
+void CollectorThread::processCollectionMarker(arangodb::SingleCollectionWriteTransaction<UINT64_MAX>& trx,
                                               TRI_document_collection_t* document,
                                               CollectorCache* cache,
                                               CollectorOperation const& operation) {
@@ -820,11 +820,11 @@ void CollectorThread::processCollectionMarker(arangodb::arango::SingleCollection
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::processCollectionOperations(CollectorCache* cache) {
-  arangodb::arango::DatabaseGuard dbGuard(_server, cache->databaseId);
+  arangodb::DatabaseGuard dbGuard(_server, cache->databaseId);
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 
-  arangodb::arango::CollectionGuard collectionGuard(vocbase,
+  arangodb::CollectionGuard collectionGuard(vocbase,
                                                     cache->collectionId, true);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
 
@@ -842,8 +842,8 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
   TRI_DEFER(TRI_ReadUnlockReadWriteLock(&document->_compactionLock));
 
-  arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-      new arangodb::arango::StandaloneTransactionContext(), document->_vocbase,
+  arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
+      new arangodb::StandaloneTransactionContext(), document->_vocbase,
       document->_info.id());
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
@@ -1048,11 +1048,11 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   TRI_ASSERT(!operations.empty());
 
   // prepare database and collection
-  arangodb::arango::DatabaseGuard dbGuard(_server, databaseId);
+  arangodb::DatabaseGuard dbGuard(_server, databaseId);
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 
-  arangodb::arango::CollectionGuard collectionGuard(vocbase, collectionId,
+  arangodb::CollectionGuard collectionGuard(vocbase, collectionId,
                                                     true);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);

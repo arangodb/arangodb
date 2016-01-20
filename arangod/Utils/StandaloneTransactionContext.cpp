@@ -25,7 +25,7 @@
 #include "Storage/Options.h"
 #include "Utils/CollectionNameResolver.h"
 
-using namespace arangodb::arango;
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the context

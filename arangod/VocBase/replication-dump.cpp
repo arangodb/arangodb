@@ -135,11 +135,11 @@ static char const* NameFromCid(TRI_replication_dump_t* dump,
 static int AppendCollection(
     TRI_replication_dump_t* dump, TRI_voc_cid_t cid,
     bool translateCollectionIds, bool failOnUnknown,
-    arangodb::arango::CollectionNameResolver* resolver) {
+    arangodb::CollectionNameResolver* resolver) {
   if (translateCollectionIds) {
     if (cid > 0) {
       std::string name;
-      if (arangodb::arango::ServerState::instance()->isDBServer()) {
+      if (arangodb::ServerState::instance()->isDBServer()) {
         name = resolver->getCollectionNameCluster(cid);
       } else {
         name = resolver->getCollectionName(cid);
@@ -267,7 +267,7 @@ static int AppendContext(TRI_replication_dump_t* dump,
 static int StringifyMarkerDump(
     TRI_replication_dump_t* dump, TRI_document_collection_t* document,
     TRI_df_marker_t const* marker, bool withTicks, bool translateCollectionIds,
-    bool failOnUnknown, arangodb::arango::CollectionNameResolver* resolver) {
+    bool failOnUnknown, arangodb::CollectionNameResolver* resolver) {
   // This covers two cases:
   //   1. document is not nullptr and marker points into a data file
   //   2. document is a nullptr and marker points into a WAL file
@@ -1167,7 +1167,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                           bool withTicks, bool translateCollectionIds,
                           bool failOnUnknown,
-                          arangodb::arango::CollectionNameResolver* resolver) {
+                          arangodb::CollectionNameResolver* resolver) {
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
@@ -1368,7 +1368,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(col->_collection != nullptr);
 
-  arangodb::arango::CollectionNameResolver resolver(col->_vocbase);
+  arangodb::CollectionNameResolver resolver(col->_vocbase);
   TRI_document_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded

@@ -38,10 +38,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb::arango;
+using namespace arangodb;
 using namespace arangodb::rest;
-
-
 
 RestExportHandler::RestExportHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request), _restrictions() {}
@@ -268,12 +266,12 @@ void RestExportHandler::createCursor() {
       createResponse(HttpResponse::CREATED);
       _response->setContentType("application/json; charset=utf-8");
 
-      auto cursors = static_cast<arangodb::arango::CursorRepository*>(
+      auto cursors = static_cast<arangodb::CursorRepository*>(
           _vocbase->_cursorRepository);
       TRI_ASSERT(cursors != nullptr);
 
       // create a cursor from the result
-      arangodb::arango::ExportCursor* cursor = cursors->createFromExport(
+      arangodb::ExportCursor* cursor = cursors->createFromExport(
           collectionExport.get(), batchSize, ttl, count);
       collectionExport.release();
 
@@ -309,11 +307,11 @@ void RestExportHandler::modifyCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<arangodb::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::CursorRepository*>(
       _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::arango::CursorId>(
+  auto cursorId = static_cast<arangodb::CursorId>(
       arangodb::basics::StringUtils::uint64(id));
   bool busy;
   auto cursor = cursors->find(cursorId, busy);
@@ -363,11 +361,11 @@ void RestExportHandler::deleteCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<arangodb::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::CursorRepository*>(
       _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::arango::CursorId>(
+  auto cursorId = static_cast<arangodb::CursorId>(
       arangodb::basics::StringUtils::uint64(id));
   bool found = cursors->remove(cursorId);
 

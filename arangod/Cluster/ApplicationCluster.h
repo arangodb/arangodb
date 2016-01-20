@@ -36,7 +36,6 @@ namespace rest {
 class ApplicationDispatcher;
 }
 
-namespace arango {
 class ApplicationV8;
 class HeartbeatThread;
 
@@ -53,7 +52,7 @@ class ApplicationCluster : public rest::ApplicationFeature {
  public:
 
   ApplicationCluster(TRI_server_t*, arangodb::rest::ApplicationDispatcher*,
-                     arangodb::arango::ApplicationV8*);
+                     arangodb::ApplicationV8*);
 
 
   ~ApplicationCluster();
@@ -110,7 +109,7 @@ class ApplicationCluster : public rest::ApplicationFeature {
   /// @brief v8 dispatcher
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::ApplicationV8* _applicationV8;
+  arangodb::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief thread for heartbeat
@@ -270,8 +269,6 @@ class ApplicationCluster : public rest::ApplicationFeature {
   bool _disableHeartbeat;
 };
 }
-}
 
 #endif
-
 

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVocbaseBaseHandler.h"
-
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
@@ -38,10 +37,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
@@ -450,7 +449,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     default:
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "failed with error: " + string(TRI_errno_string(res)));
+                    "failed with error: " + std::string(TRI_errno_string(res)));
   }
 }
 
@@ -624,7 +623,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   if (found) {
     _nolockHeaderSet = new std::unordered_set<std::string>();
     _nolockHeaderSet->insert(std::string(shardId));
-    arangodb::arango::Transaction::_makeNolockHeaders = _nolockHeaderSet;
+    arangodb::Transaction::_makeNolockHeaders = _nolockHeaderSet;
   }
 }
 
@@ -634,7 +633,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    arangodb::arango::Transaction::_makeNolockHeaders = nullptr;
+    arangodb::Transaction::_makeNolockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }

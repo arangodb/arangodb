@@ -41,13 +41,10 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
-using namespace arangodb::arango;
 using namespace arangodb::httpclient;
-
-
+using namespace arangodb::rest;
 
 ContinuousSyncer::ContinuousSyncer(
     TRI_server_t* server, TRI_vocbase_t* vocbase,
@@ -794,7 +791,7 @@ int ContinuousSyncer::changeCollection(TRI_json_t const* json) {
     TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
     std::shared_ptr<arangodb::velocypack::Builder> tmp =
         arangodb::basics::JsonHelper::toVelocyPack(collectionJson);
-    arangodb::arango::CollectionGuard guard(_vocbase, cid);
+    arangodb::CollectionGuard guard(_vocbase, cid);
     bool doSync = _vocbase->_settings.forceSyncProperties;
 
     return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,

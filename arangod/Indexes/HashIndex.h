@@ -61,12 +61,12 @@ namespace arangodb {
 namespace aql {
 class SortCondition;
 }
-namespace arango {
+
 class Transaction;
 
 class HashIndexIterator final : public IndexIterator {
  public:
-  HashIndexIterator(arangodb::arango::Transaction* trx, HashIndex const* index,
+  HashIndexIterator(arangodb::Transaction* trx, HashIndex const* index,
                     std::vector<TRI_hash_index_search_value_t*>& keys)
       : _trx(trx),
         _index(index),
@@ -86,7 +86,7 @@ class HashIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  arangodb::arango::Transaction* _trx;
+  arangodb::Transaction* _trx;
   HashIndex const* _index;
   std::vector<TRI_hash_index_search_value_t*> _keys;
   size_t _position;
@@ -124,17 +124,17 @@ class HashIndex final : public PathBasedIndex {
   arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
   arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
 
-  int insert(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int batchInsert(arangodb::arango::Transaction*,
+  int batchInsert(arangodb::Transaction*,
                   std::vector<TRI_doc_mptr_t const*> const*,
                   size_t) override final;
 
-  int sizeHint(arangodb::arango::Transaction*, size_t) override final;
+  int sizeHint(arangodb::Transaction*, size_t) override final;
 
   bool hasBatchInsert() const override final { return true; }
 
@@ -147,14 +147,14 @@ class HashIndex final : public PathBasedIndex {
   /// @brief locates entries in the hash index given shaped json objects
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookup(arangodb::arango::Transaction*, TRI_hash_index_search_value_t*,
+  int lookup(arangodb::Transaction*, TRI_hash_index_search_value_t*,
              std::vector<TRI_doc_mptr_t*>&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief locates entries in the hash index given shaped json objects
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookup(arangodb::arango::Transaction*, TRI_hash_index_search_value_t*,
+  int lookup(arangodb::Transaction*, TRI_hash_index_search_value_t*,
              std::vector<TRI_doc_mptr_copy_t>&, TRI_index_element_t*&,
              size_t batchSize) const;
 
@@ -162,7 +162,7 @@ class HashIndex final : public PathBasedIndex {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(arangodb::arango::Transaction*,
+  IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
                                       arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
@@ -174,28 +174,28 @@ class HashIndex final : public PathBasedIndex {
 
   
  private:
-  int insertUnique(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insertUnique(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
                    bool);
 
-  int batchInsertUnique(arangodb::arango::Transaction*,
+  int batchInsertUnique(arangodb::Transaction*,
                         std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-  int insertMulti(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insertMulti(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
                   bool);
 
-  int batchInsertMulti(arangodb::arango::Transaction*,
+  int batchInsertMulti(arangodb::Transaction*,
                        std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-  int removeUniqueElement(arangodb::arango::Transaction*, TRI_index_element_t*,
+  int removeUniqueElement(arangodb::Transaction*, TRI_index_element_t*,
                           bool);
 
-  int removeUnique(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int removeUnique(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
                    bool);
 
-  int removeMultiElement(arangodb::arango::Transaction*, TRI_index_element_t*,
+  int removeMultiElement(arangodb::Transaction*, TRI_index_element_t*,
                          bool);
 
-  int removeMulti(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int removeMulti(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
                   bool);
 
   bool accessFitsIndex(arangodb::aql::AstNode const* access,
@@ -334,7 +334,6 @@ class HashIndex final : public PathBasedIndex {
     MultiArray* _multiArray;
   };
 };
-}
 }
 
 #endif

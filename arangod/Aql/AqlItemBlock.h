@@ -332,7 +332,7 @@ class AqlItemBlock {
   /// be used to recreate the AqlItemBlock via the Json constructor
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json toJson(arangodb::arango::AqlTransaction* trx) const;
+  arangodb::basics::Json toJson(arangodb::AqlTransaction* trx) const;
 
   
  private:

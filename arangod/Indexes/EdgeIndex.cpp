@@ -33,8 +33,7 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
 
-using namespace arangodb::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge key
@@ -553,7 +552,7 @@ arangodb::basics::Json EdgeIndex::toJsonFigures(TRI_memory_zone_t* zone) const {
   return json;
 }
 
-int EdgeIndex::insert(arangodb::arango::Transaction* trx,
+int EdgeIndex::insert(arangodb::Transaction* trx,
                       TRI_doc_mptr_t const* doc, bool isRollback) {
   auto element = const_cast<TRI_doc_mptr_t*>(doc);
   _edgesFrom->insert(trx, element, true, isRollback);
@@ -568,7 +567,7 @@ int EdgeIndex::insert(arangodb::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int EdgeIndex::remove(arangodb::arango::Transaction* trx,
+int EdgeIndex::remove(arangodb::Transaction* trx,
                       TRI_doc_mptr_t const* doc, bool) {
   _edgesFrom->remove(trx, doc);
   _edgesTo->remove(trx, doc);
@@ -576,7 +575,7 @@ int EdgeIndex::remove(arangodb::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int EdgeIndex::batchInsert(arangodb::arango::Transaction* trx,
+int EdgeIndex::batchInsert(arangodb::Transaction* trx,
                            std::vector<TRI_doc_mptr_t const*> const* documents,
                            size_t numThreads) {
   _edgesFrom->batchInsert(
@@ -594,7 +593,7 @@ int EdgeIndex::batchInsert(arangodb::arango::Transaction* trx,
 /// by next
 ////////////////////////////////////////////////////////////////////////////////
 
-void EdgeIndex::lookup(arangodb::arango::Transaction* trx,
+void EdgeIndex::lookup(arangodb::Transaction* trx,
                        TRI_edge_index_iterator_t const* edgeIndexIterator,
                        std::vector<TRI_doc_mptr_copy_t>& result,
                        TRI_doc_mptr_copy_t*& next, size_t batchSize) {
@@ -643,7 +642,7 @@ void EdgeIndex::lookup(arangodb::arango::Transaction* trx,
 /// @brief provides a size hint for the edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-int EdgeIndex::sizeHint(arangodb::arango::Transaction* trx, size_t size) {
+int EdgeIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
   // we assume this is called when setting up the index and the index
   // is still empty
   TRI_ASSERT(_edgesFrom->size() == 0);
@@ -685,7 +684,7 @@ bool EdgeIndex::supportsFilterCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* EdgeIndex::iteratorForCondition(
-    arangodb::arango::Transaction* trx, IndexIteratorContext* context,
+    arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
@@ -759,7 +758,7 @@ arangodb::aql::AstNode* EdgeIndex::specializeCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* EdgeIndex::createIterator(
-    arangodb::arango::Transaction* trx, IndexIteratorContext* context,
+    arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::AstNode const* attrNode,
     std::vector<arangodb::aql::AstNode const*> const& valNodes) const {
   // only leave the valid elements in the vector

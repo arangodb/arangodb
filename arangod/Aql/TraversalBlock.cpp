@@ -32,11 +32,11 @@
 #include "V8/v8-globals.h"
 #include "V8Server/V8Traverser.h"
 
-using namespace arangodb::arango;
+
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
-using VertexId = arangodb::arango::traverser::VertexId;
+using VertexId = arangodb::traverser::VertexId;
 
 
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
@@ -50,7 +50,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _resolver(nullptr),
       _expressions(ep->expressions()),
       _hasV8Expression(false) {
-  arangodb::arango::traverser::TraverserOptions opts;
+  arangodb::traverser::TraverserOptions opts;
   ep->fillTraversalOptions(opts);
   auto ast = ep->_plan->getAst();
 
@@ -86,8 +86,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 
   _resolver = new CollectionNameResolver(_trx->vocbase());
 
-  if (arangodb::arango::ServerState::instance()->isCoordinator()) {
-    _traverser.reset(new arangodb::arango::traverser::ClusterTraverser(
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    _traverser.reset(new arangodb::traverser::ClusterTraverser(
         ep->edgeColls(), opts,
         std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
         _resolver, _expressions));
@@ -102,7 +102,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
         _trx->orderDitch(trxCollection);
       }
     }
-    _traverser.reset(new arangodb::arango::traverser::DepthFirstTraverser(
+    _traverser.reset(new arangodb::traverser::DepthFirstTraverser(
         edgeCollections, opts, _resolver, _trx, _expressions));
   }
   if (!ep->usesInVariable()) {
@@ -199,7 +199,7 @@ void TraversalBlock::executeFilterExpressions() {
   if (!_expressions->empty()) {
     if (_hasV8Expression) {
       bool const isRunningInCluster =
-          arangodb::arango::ServerState::instance()->isRunningInCluster();
+          arangodb::ServerState::instance()->isRunningInCluster();
 
       // must have a V8 context here to protect Expression::execute()
       auto engine = _engine;
@@ -266,7 +266,7 @@ bool TraversalBlock::morePaths(size_t hint) {
   auto en = static_cast<TraversalNode const*>(getPlanNode());
 
   for (size_t j = 0; j < hint; ++j) {
-    std::unique_ptr<arangodb::arango::traverser::TraversalPath> p(
+    std::unique_ptr<arangodb::traverser::TraversalPath> p(
         _traverser->next());
 
     if (p == nullptr) {
@@ -332,7 +332,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                              "Only id strings or objects with "
                                              "_id are allowed");
       } else {
-        auto v(arangodb::arango::traverser::VertexId(
+        auto v(arangodb::traverser::VertexId(
             _resolver->getCollectionIdCluster(_vertexId.substr(0, pos).c_str()),
             _vertexId.c_str() + pos + 1));
 
@@ -351,7 +351,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
         Json _idJson = input.get(TRI_VOC_ATTRIBUTE_ID);
         if (_idJson.isString()) {
           _vertexId = arangodb::basics::JsonHelper::getStringValue(_idJson.json(), "");
-          VertexId v = arangodb::arango::traverser::IdStringToVertexId(
+          VertexId v = arangodb::traverser::IdStringToVertexId(
               _resolver, _vertexId);
           _traverser->setStartVertex(v);
         }
@@ -359,7 +359,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
     } else if (in.isString()) {
       _vertexId = in.toString();
       VertexId v =
-          arangodb::arango::traverser::IdStringToVertexId(_resolver, _vertexId);
+          arangodb::traverser::IdStringToVertexId(_resolver, _vertexId);
       _traverser->setStartVertex(v);
     } else {
       _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,

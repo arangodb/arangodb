@@ -35,16 +35,12 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-
-
 
 RestDocumentHandler::RestDocumentHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
-
 
 
 HttpHandler::status_t RestDocumentHandler::execute() {
@@ -189,11 +185,11 @@ bool RestDocumentHandler::createDocumentCoordinator(
   std::string const collname(collection);
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> headers =
-      arangodb::arango::getForwardableRequestHeaders(_request);
+      arangodb::getForwardableRequestHeaders(_request);
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  int res = arangodb::arango::createDocumentOnCoordinator(
+  int res = arangodb::createDocumentOnCoordinator(
       dbname, collname, waitForSync, document, headers, responseCode,
       resultHeaders, resultBody);
 
@@ -205,7 +201,7 @@ bool RestDocumentHandler::createDocumentCoordinator(
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  arangodb::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= arangodb::rest::HttpResponse::BAD;
 }
@@ -356,7 +352,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
-          arangodb::arango::getForwardableRequestHeaders(_request)));
+          arangodb::getForwardableRequestHeaders(_request)));
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -367,7 +363,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
     rev = StringUtils::uint64(revstr);
   }
 
-  int error = arangodb::arango::getDocumentOnCoordinator(
+  int error = arangodb::getDocumentOnCoordinator(
       dbname, collname, key, rev, headers, generateBody, responseCode,
       resultHeaders, resultBody);
 
@@ -378,7 +374,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  arangodb::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::mergeResponseHeaders(_response, resultHeaders);
 
   if (!generateBody) {
     // a head request...
@@ -493,7 +489,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator(std::string const& collname
   std::string contentType;
   std::string resultBody;
 
-  int error = arangodb::arango::getAllDocumentsOnCoordinator(
+  int error = arangodb::getAllDocumentsOnCoordinator(
       dbname, collname, returnType, responseCode, contentType, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
@@ -802,7 +798,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
   std::string const& dbname = _request->databaseName();
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
-          arangodb::arango::getForwardableRequestHeaders(_request)));
+          arangodb::getForwardableRequestHeaders(_request)));
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
@@ -816,7 +812,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
     mergeObjects = false;
   }
 
-  int error = arangodb::arango::modifyDocumentOnCoordinator(
+  int error = arangodb::modifyDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
       mergeObjects, document, headers, responseCode, resultHeaders, resultBody);
 
@@ -828,7 +824,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  arangodb::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= arangodb::rest::HttpResponse::BAD;
 }
@@ -931,11 +927,11 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
-          arangodb::arango::getForwardableRequestHeaders(_request)));
+          arangodb::getForwardableRequestHeaders(_request)));
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  int error = arangodb::arango::deleteDocumentOnCoordinator(
+  int error = arangodb::deleteDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, headers, responseCode,
       resultHeaders, resultBody);
 
@@ -946,7 +942,7 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  arangodb::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= arangodb::rest::HttpResponse::BAD;
 }

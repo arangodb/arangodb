@@ -26,7 +26,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/json-utilities.h"
 
-using namespace arangodb::arango;
+
 using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////

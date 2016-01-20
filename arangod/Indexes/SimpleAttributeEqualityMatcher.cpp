@@ -28,9 +28,7 @@
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb::arango;
-
-
+using namespace arangodb;
 
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes)
@@ -43,7 +41,7 @@ SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SimpleAttributeEqualityMatcher::matchOne(
-    arangodb::arango::Index const* index, arangodb::aql::AstNode const* node,
+    arangodb::Index const* index, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
   _found.clear();
@@ -88,7 +86,7 @@ bool SimpleAttributeEqualityMatcher::matchOne(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SimpleAttributeEqualityMatcher::matchAll(
-    arangodb::arango::Index const* index, arangodb::aql::AstNode const* node,
+    arangodb::Index const* index, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
   _found.clear();
@@ -152,7 +150,7 @@ bool SimpleAttributeEqualityMatcher::matchAll(
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
-    arangodb::arango::Index const* index, arangodb::aql::AstNode* node,
+    arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
   _found.clear();
 
@@ -205,7 +203,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
-    arangodb::arango::Index const* index, arangodb::aql::AstNode* node,
+    arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
   _found.clear();
 
@@ -275,7 +273,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 ////////////////////////////////////////////////////////////////////////////////
 
 void SimpleAttributeEqualityMatcher::calculateIndexCosts(
-    arangodb::arango::Index const* index, size_t itemsInIndex,
+    arangodb::Index const* index, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   double equalityReductionFactor = 20.0;
 
@@ -321,7 +319,7 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SimpleAttributeEqualityMatcher::accessFitsIndex(
-    arangodb::arango::Index const* index, arangodb::aql::AstNode const* access,
+    arangodb::Index const* index, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
     arangodb::aql::Variable const* reference, bool isExecution) {
   if (!index->canUseConditionPart(access, other, op, reference, isExecution)) {

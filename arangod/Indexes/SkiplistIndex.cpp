@@ -32,9 +32,9 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace arangodb::arango;
-using Json = arangodb::basics::Json;
+using namespace arangodb;
 
+using Json = arangodb::basics::Json;
 
 static size_t sortWeight(arangodb::aql::AstNode const* node) {
   switch (node->type) {
@@ -803,7 +803,7 @@ arangodb::basics::Json SkiplistIndex::toJsonFigures(
 /// @brief inserts a document into a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex::insert(arangodb::arango::Transaction*,
+int SkiplistIndex::insert(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool) {
   std::vector<TRI_index_element_t*> elements;
 
@@ -852,7 +852,7 @@ int SkiplistIndex::insert(arangodb::arango::Transaction*,
 /// @brief removes a document from a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex::remove(arangodb::arango::Transaction*,
+int SkiplistIndex::remove(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool) {
   std::vector<TRI_index_element_t*> elements;
 
@@ -895,7 +895,7 @@ int SkiplistIndex::remove(arangodb::arango::Transaction*,
 /// the TRI_index_operator_t* and the SkiplistIterator* results
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIterator* SkiplistIndex::lookup(arangodb::arango::Transaction* trx,
+SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
                                         TRI_index_operator_t* slOperator,
                                         bool reverse) const {
   TRI_ASSERT(slOperator != nullptr);
@@ -1281,7 +1281,7 @@ bool SkiplistIndex::supportsSortCondition(
 }
 
 IndexIterator* SkiplistIndex::iteratorForCondition(
-    arangodb::arango::Transaction* trx, IndexIteratorContext* context,
+    arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   // Create the skiplistOperator for the IndexLookup

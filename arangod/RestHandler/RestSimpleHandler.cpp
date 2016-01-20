@@ -37,13 +37,12 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb::arango;
+using namespace arangodb;
 using namespace arangodb::rest;
 
 
-
 RestSimpleHandler::RestSimpleHandler(
-    HttpRequest* request, std::pair<arangodb::arango::ApplicationV8*,
+    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
                                     arangodb::aql::QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
@@ -360,7 +359,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         // Should not be documented
         VPackSlice const postFilter = slice.get("filter");
         if (postFilter.isArray()) {
-          std::vector<arangodb::arango::traverser::TraverserExpression*>
+          std::vector<arangodb::traverser::TraverserExpression*>
               expressions;
           arangodb::basics::ScopeGuard guard{[]() -> void {},
                                              [&expressions]() -> void {

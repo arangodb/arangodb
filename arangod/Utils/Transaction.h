@@ -47,8 +47,6 @@
 #include <velocypack/Options.h>
 
 namespace arangodb {
-namespace arango {
-
 
 class Transaction {
   using VPackOptions = arangodb::velocypack::Options;
@@ -357,7 +355,7 @@ class Transaction {
   /// @brief order a ditch for a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::DocumentDitch* orderDitch(
+  arangodb::DocumentDitch* orderDitch(
       TRI_transaction_collection_t* trxCollection) {
     TRI_ASSERT(_trx != nullptr);
     TRI_ASSERT(trxCollection != nullptr);
@@ -1092,7 +1090,6 @@ class Transaction {
  public:
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
 };
-}
 }
 
 #endif

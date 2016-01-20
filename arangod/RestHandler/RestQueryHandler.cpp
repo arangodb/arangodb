@@ -39,13 +39,10 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
+using namespace arangodb;
+using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-using namespace arangodb::aql;
-
-
 
 RestQueryHandler::RestQueryHandler(HttpRequest* request,
                                    ApplicationV8* applicationV8)

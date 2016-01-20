@@ -248,9 +248,9 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
 
   auto ditches = collection->_collection->ditches();
 
-  if (ditches->contains(arangodb::arango::Ditch::TRI_DITCH_DOCUMENT) ||
-      ditches->contains(arangodb::arango::Ditch::TRI_DITCH_REPLICATION) ||
-      ditches->contains(arangodb::arango::Ditch::TRI_DITCH_COMPACTION)) {
+  if (ditches->contains(arangodb::Ditch::TRI_DITCH_DOCUMENT) ||
+      ditches->contains(arangodb::Ditch::TRI_DITCH_REPLICATION) ||
+      ditches->contains(arangodb::Ditch::TRI_DITCH_COMPACTION)) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     // still some ditches left...
@@ -577,7 +577,7 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_col_t* CreateCollection(
-    TRI_vocbase_t* vocbase, arangodb::arango::VocbaseCollectionInfo& parameters,
+    TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo& parameters,
     TRI_voc_cid_t& cid, bool writeMarker, VPackBuilder& builder) {
   TRI_ASSERT(!builder.isClosed());
   std::string name = parameters.name();
@@ -684,8 +684,8 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
 
     else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
       try {
-        arangodb::arango::VocbaseCollectionInfo info =
-            arangodb::arango::VocbaseCollectionInfo::fromFile(
+        arangodb::VocbaseCollectionInfo info =
+            arangodb::VocbaseCollectionInfo::fromFile(
                 collection->_path, vocbase, newName, true);
 
         int res = info.saveToFile(collection->_path,
@@ -834,8 +834,8 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
       int res = TRI_ERROR_NO_ERROR;
 
       try {
-        arangodb::arango::VocbaseCollectionInfo info =
-            arangodb::arango::VocbaseCollectionInfo::fromFile(
+        arangodb::VocbaseCollectionInfo info =
+            arangodb::VocbaseCollectionInfo::fromFile(
                 file.c_str(), vocbase,
                 "",  // Name is unused
                 true);
@@ -1014,7 +1014,7 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     // check if there is a deferred drop action going on for this collection
     if (collection->_collection->ditches()->contains(
-            arangodb::arango::Ditch::TRI_DITCH_COLLECTION_DROP)) {
+            arangodb::Ditch::TRI_DITCH_COLLECTION_DROP)) {
       // drop call going on, we must abort
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1145,8 +1145,8 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
 
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
     try {
-      arangodb::arango::VocbaseCollectionInfo info =
-          arangodb::arango::VocbaseCollectionInfo::fromFile(
+      arangodb::VocbaseCollectionInfo info =
+          arangodb::VocbaseCollectionInfo::fromFile(
               collection->_path, collection->_vocbase, collection->_name, true);
       if (!info.deleted()) {
         info.setDeleted(true);
@@ -1282,8 +1282,8 @@ static int ScanTrxCollection(TRI_vocbase_t* vocbase) {
   int res = TRI_ERROR_INTERNAL;
 
   {
-    arangodb::arango::SingleCollectionReadOnlyTransaction trx(
-        new arangodb::arango::StandaloneTransactionContext(), vocbase,
+    arangodb::SingleCollectionReadOnlyTransaction trx(
+        new arangodb::StandaloneTransactionContext(), vocbase,
         collection->_cid);
 
     res = trx.begin();
@@ -1870,7 +1870,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
   } else {
     // collection not found. now create it
     VPackBuilder builder;  // DO NOT FILL IT
-    arangodb::arango::VocbaseCollectionInfo parameter(
+    arangodb::VocbaseCollectionInfo parameter(
         vocbase, name, (TRI_col_type_e)type,
         (TRI_voc_size_t)vocbase->_settings.defaultMaximalSize, builder.slice());
     TRI_vocbase_col_t* collection =
@@ -1890,7 +1890,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
-    TRI_vocbase_t* vocbase, arangodb::arango::VocbaseCollectionInfo& parameters,
+    TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo& parameters,
     TRI_voc_cid_t cid, bool writeMarker) {
   // check that the name does not contain any strange characters
   if (!TRI_IsAllowedNameCollection(parameters.isSystem(),
@@ -2431,8 +2431,8 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
       _oldTransactions(nullptr),
       _replicationApplier(nullptr) {
   _queries = new arangodb::aql::QueryList(this);
-  _cursorRepository = new arangodb::arango::CursorRepository(this);
-  _collectionKeys = new arangodb::arango::CollectionKeysRepository();
+  _cursorRepository = new arangodb::CursorRepository(this);
+  _collectionKeys = new arangodb::CollectionKeysRepository();
 
   _path = TRI_DuplicateString(TRI_CORE_MEM_ZONE, path);
   _name = TRI_DuplicateString(TRI_CORE_MEM_ZONE, name);

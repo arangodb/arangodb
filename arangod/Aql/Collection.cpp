@@ -73,11 +73,11 @@ Collection::~Collection() {
 
 size_t Collection::count() const {
   if (numDocuments == UNINITIALIZED) {
-    if (arangodb::arango::ServerState::instance()->isCoordinator()) {
+    if (arangodb::ServerState::instance()->isCoordinator()) {
       // cluster case
       uint64_t result;
       int res =
-          arangodb::arango::countOnCoordinator(vocbase->_name, name, result);
+          arangodb::countOnCoordinator(vocbase->_name, name, result);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             res, "could not determine number of documents in collection");
@@ -99,7 +99,7 @@ size_t Collection::count() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t Collection::getPlanId() const {
-  auto clusterInfo = arangodb::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo =
       clusterInfo->getCollection(std::string(vocbase->_name), name);
 
@@ -117,7 +117,7 @@ TRI_voc_cid_t Collection::getPlanId() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
-  auto clusterInfo = arangodb::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   return clusterInfo->getShardList(
       arangodb::basics::StringUtils::itoa(getPlanId()));
 }
@@ -127,10 +127,10 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<std::string> Collection::shardKeys() const {
-  auto clusterInfo = arangodb::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
 
   std::string id;
-  if (arangodb::arango::ServerState::instance()->isDBServer() &&
+  if (arangodb::ServerState::instance()->isDBServer() &&
       documentCollection()->_info.planId() > 0) {
     id = std::to_string(documentCollection()->_info.planId());
   } else {
@@ -209,9 +209,9 @@ void Collection::fillIndexes() const {
     return;
   }
 
-  auto const role = arangodb::arango::ServerState::instance()->getRole();
+  auto const role = arangodb::ServerState::instance()->getRole();
 
-  if (arangodb::arango::ServerState::instance()->isCoordinator(role)) {
+  if (arangodb::ServerState::instance()->isCoordinator(role)) {
     fillIndexesCoordinator();
     return;
   }
@@ -224,7 +224,7 @@ void Collection::fillIndexes() const {
 // FIXME: Remove fillIndexesDBServer later, when it is clear that we
 // will never have to do this.
 #if 0
-  if (arangodb::arango::ServerState::instance()->isDBServer(role) && 
+  if (arangodb::ServerState::instance()->isDBServer(role) && 
       documentCollection()->_info._planId > 0) {
     fillIndexesDBServer();
     return;
@@ -240,7 +240,7 @@ void Collection::fillIndexes() const {
 
 void Collection::fillIndexesCoordinator() const {
   // coordinator case, remote collection
-  auto clusterInfo = arangodb::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo =
       clusterInfo->getCollection(std::string(vocbase->_name), name);
 
@@ -280,15 +280,15 @@ void Collection::fillIndexesCoordinator() const {
       indexes.emplace_back(idx.get());
       auto p = idx.release();
 
-      if (p->type == arangodb::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-        p->setInternals(new arangodb::arango::PrimaryIndex(v), true);
-      } else if (p->type == arangodb::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        p->setInternals(new arangodb::arango::EdgeIndex(v), true);
-      } else if (p->type == arangodb::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
-        p->setInternals(new arangodb::arango::HashIndex(v), true);
+      if (p->type == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        p->setInternals(new arangodb::PrimaryIndex(v), true);
+      } else if (p->type == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        p->setInternals(new arangodb::EdgeIndex(v), true);
+      } else if (p->type == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
+        p->setInternals(new arangodb::HashIndex(v), true);
       } else if (p->type ==
-                 arangodb::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-        p->setInternals(new arangodb::arango::SkiplistIndex(v), true);
+                 arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+        p->setInternals(new arangodb::SkiplistIndex(v), true);
       }
     }
   }
@@ -302,7 +302,7 @@ void Collection::fillIndexesDBServer() const {
   auto document = documentCollection();
 
   // lookup collection in agency by plan id
-  auto clusterInfo = arangodb::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo = clusterInfo->getCollection(
       std::string(vocbase->_name),
       arangodb::basics::StringUtils::itoa(document->_info.planId()));
@@ -349,7 +349,7 @@ void Collection::fillIndexesDBServer() const {
       // use numeric index id
       uint64_t iid = arangodb::basics::StringUtils::uint64(
           id->_value._string.data, id->_value._string.length - 1);
-      arangodb::arango::Index* data = nullptr;
+      arangodb::Index* data = nullptr;
 
       auto const& allIndexes = document->allIndexes();
       size_t const n = allIndexes.size();
@@ -388,7 +388,7 @@ void Collection::fillIndexesLocal() const {
 
   for (size_t i = 0; i < n; ++i) {
     if (allIndexes[i]->type() ==
-        arangodb::arango::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
+        arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
       // ignore this type of index
       continue;
     }

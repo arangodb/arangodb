@@ -26,7 +26,7 @@
 #include "Basics/json-utilities.h"
 #include "VocBase/KeyGenerator.h"
 
-using TraverserExpression = arangodb::arango::traverser::TraverserExpression;
+using TraverserExpression = arangodb::traverser::TraverserExpression;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper to transform a vertex _id string to VertexId struct.
@@ -34,8 +34,8 @@ using TraverserExpression = arangodb::arango::traverser::TraverserExpression;
 ///        VertexId is in use
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::arango::traverser::VertexId
-arangodb::arango::traverser::IdStringToVertexId(
+arangodb::traverser::VertexId
+arangodb::traverser::IdStringToVertexId(
     CollectionNameResolver const* resolver, std::string const& vertex) {
   size_t split;
   char const* str = vertex.c_str();
@@ -213,7 +213,7 @@ bool TraverserExpression::matchesCheck(VPackSlice const& element) const {
 
 bool TraverserExpression::matchesCheck(
     TRI_doc_mptr_t& element, TRI_document_collection_t* collection,
-    arangodb::arango::CollectionNameResolver const* resolver) const {
+    arangodb::CollectionNameResolver const* resolver) const {
   DocumentAccessor accessor(resolver, collection, &element);
   return matchesCheck(accessor);
 }

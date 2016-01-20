@@ -62,7 +62,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::httpclient;
 using namespace arangodb::v8client;
-using namespace arangodb::arango;
+
 using namespace arangodb;
 
 

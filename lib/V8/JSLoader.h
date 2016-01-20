@@ -25,14 +25,11 @@
 #define LIB_V8_JSLOADER_H 1
 
 #include "Basics/Common.h"
-
 #include "Utilities/ScriptLoader.h"
 
 #include <v8.h>
 
-
 namespace arangodb {
-namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript source code loader
@@ -87,8 +84,6 @@ class JSLoader : public ScriptLoader {
                          v8::Handle<v8::Context>& context);
 };
 }
-}
 
 #endif
-
 

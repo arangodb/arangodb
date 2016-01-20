@@ -50,7 +50,6 @@ class SortCondition;
 struct Variable;
 }
 
-namespace arango {
 class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,7 +138,7 @@ class SkiplistIterator {
 
 class SkiplistIndexIterator final : public IndexIterator {
  public:
-  SkiplistIndexIterator(arangodb::arango::Transaction* trx,
+  SkiplistIndexIterator(arangodb::Transaction* trx,
                         SkiplistIndex const* index,
                         std::vector<TRI_index_operator_t*> op, bool reverse)
       : _trx(trx),
@@ -161,7 +160,7 @@ class SkiplistIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  arangodb::arango::Transaction* _trx;
+  arangodb::Transaction* _trx;
   SkiplistIndex const* _index;
   std::vector<TRI_index_operator_t*> _operators;
   bool _reverse;
@@ -226,10 +225,10 @@ class SkiplistIndex final : public PathBasedIndex {
   arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
   arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
 
-  int insert(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -241,7 +240,7 @@ class SkiplistIndex final : public PathBasedIndex {
   /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
   //////////////////////////////////////////////////////////////////////////////
 
-  SkiplistIterator* lookup(arangodb::arango::Transaction*,
+  SkiplistIterator* lookup(arangodb::Transaction*,
                            TRI_index_operator_t*, bool) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
@@ -252,7 +251,7 @@ class SkiplistIndex final : public PathBasedIndex {
                              arangodb::aql::Variable const*, size_t,
                              double&) const override;
 
-  IndexIterator* iteratorForCondition(arangodb::arango::Transaction*,
+  IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
                                       arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
@@ -297,7 +296,6 @@ class SkiplistIndex final : public PathBasedIndex {
 
   TRI_Skiplist* _skiplistIndex;
 };
-}
 }
 
 #endif

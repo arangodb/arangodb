@@ -32,8 +32,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
-using namespace arangodb::arango;
-
+using namespace arangodb;
 
 static inline uint64_t HashKey(void* userData, char const* key) {
   return TRI_FnvHashString(key);
@@ -191,12 +190,12 @@ arangodb::basics::Json PrimaryIndex::toJsonFigures(
   return json;
 }
 
-int PrimaryIndex::insert(arangodb::arango::Transaction*, TRI_doc_mptr_t const*,
+int PrimaryIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const*,
                          bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-int PrimaryIndex::remove(arangodb::arango::Transaction*, TRI_doc_mptr_t const*,
+int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
                          bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -205,7 +204,7 @@ int PrimaryIndex::remove(arangodb::arango::Transaction*, TRI_doc_mptr_t const*,
 /// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::arango::Transaction* trx,
+TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
                                         char const* key) const {
   return _primaryIndex->findByKey(trx, key);
 }
@@ -217,7 +216,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::arango::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupKey(
-    arangodb::arango::Transaction* trx, char const* key,
+    arangodb::Transaction* trx, char const* key,
     arangodb::basics::BucketPosition& position, uint64_t& hash) const {
   return _primaryIndex->findByKey(trx, key, position, hash);
 }
@@ -230,7 +229,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupRandom(
-    arangodb::arango::Transaction* trx,
+    arangodb::Transaction* trx,
     arangodb::basics::BucketPosition& initialPosition,
     arangodb::basics::BucketPosition& position, uint64_t& step,
     uint64_t& total) {
@@ -245,7 +244,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupRandom(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupSequential(
-    arangodb::arango::Transaction* trx,
+    arangodb::Transaction* trx,
     arangodb::basics::BucketPosition& position, uint64_t& total) {
   return _primaryIndex->findSequential(trx, position, total);
 }
@@ -258,7 +257,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequential(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse(
-    arangodb::arango::Transaction* trx,
+    arangodb::Transaction* trx,
     arangodb::basics::BucketPosition& position) {
   return _primaryIndex->findSequentialReverse(trx, position);
 }
@@ -268,7 +267,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse(
 /// returns a status code, and *found will contain a found element (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::insertKey(arangodb::arango::Transaction* trx,
+int PrimaryIndex::insertKey(arangodb::Transaction* trx,
                             TRI_doc_mptr_t* header, void const** found) {
   *found = nullptr;
   int res = _primaryIndex->insert(trx, header);
@@ -286,7 +285,7 @@ int PrimaryIndex::insertKey(arangodb::arango::Transaction* trx,
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::insertKey(arangodb::arango::Transaction* trx,
+int PrimaryIndex::insertKey(arangodb::Transaction* trx,
                             TRI_doc_mptr_t* header,
                             arangodb::basics::BucketPosition const& position) {
   return _primaryIndex->insertAtPosition(trx, header, position);
@@ -296,7 +295,7 @@ int PrimaryIndex::insertKey(arangodb::arango::Transaction* trx,
 /// @brief removes an key/element from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::removeKey(arangodb::arango::Transaction* trx,
+TRI_doc_mptr_t* PrimaryIndex::removeKey(arangodb::Transaction* trx,
                                         char const* key) {
   return _primaryIndex->removeByKey(trx, key);
 }
@@ -305,17 +304,17 @@ TRI_doc_mptr_t* PrimaryIndex::removeKey(arangodb::arango::Transaction* trx,
 /// @brief resizes the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::resize(arangodb::arango::Transaction* trx,
+int PrimaryIndex::resize(arangodb::Transaction* trx,
                          size_t targetSize) {
   return _primaryIndex->resize(trx, targetSize);
 }
 
-uint64_t PrimaryIndex::calculateHash(arangodb::arango::Transaction* trx,
+uint64_t PrimaryIndex::calculateHash(arangodb::Transaction* trx,
                                      char const* key) {
   return HashKey(trx, key);
 }
 
-uint64_t PrimaryIndex::calculateHash(arangodb::arango::Transaction* trx,
+uint64_t PrimaryIndex::calculateHash(arangodb::Transaction* trx,
                                      char const* key, size_t length) {
   return TRI_FnvHashPointer(static_cast<void const*>(key), length);
 }
@@ -346,7 +345,7 @@ bool PrimaryIndex::supportsFilterCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* PrimaryIndex::iteratorForCondition(
-    arangodb::arango::Transaction* trx, IndexIteratorContext* context,
+    arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
@@ -418,7 +417,7 @@ arangodb::aql::AstNode* PrimaryIndex::specializeCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* PrimaryIndex::createIterator(
-    arangodb::arango::Transaction* trx, IndexIteratorContext* context,
+    arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::AstNode const* attrNode,
     std::vector<arangodb::aql::AstNode const*> const& valNodes) const {
   // _key or _id?

@@ -40,8 +40,6 @@ namespace aql {
 class SortCondition;
 }
 
-namespace arango {
-
 class EdgeIndexIterator final : public IndexIterator {
  public:
   typedef arangodb::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
@@ -51,7 +49,7 @@ class EdgeIndexIterator final : public IndexIterator {
 
   void reset() override;
 
-  EdgeIndexIterator(arangodb::arango::Transaction* trx,
+  EdgeIndexIterator(arangodb::Transaction* trx,
                     TRI_EdgeIndexHash_t const* index,
                     std::vector<TRI_edge_header_t>& searchValues)
       : _trx(trx),
@@ -70,7 +68,7 @@ class EdgeIndexIterator final : public IndexIterator {
   }
 
  private:
-  arangodb::arango::Transaction* _trx;
+  arangodb::Transaction* _trx;
   TRI_EdgeIndexHash_t const* _index;
   std::vector<TRI_edge_header_t> _keys;
   size_t _position;
@@ -122,10 +120,10 @@ class EdgeIndex final : public Index {
   arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
   arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
 
-  int insert(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(arangodb::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -133,14 +131,14 @@ class EdgeIndex final : public Index {
   /// by next
   //////////////////////////////////////////////////////////////////////////////
 
-  void lookup(arangodb::arango::Transaction*, TRI_edge_index_iterator_t const*,
+  void lookup(arangodb::Transaction*, TRI_edge_index_iterator_t const*,
               std::vector<TRI_doc_mptr_copy_t>&, TRI_doc_mptr_copy_t*&, size_t);
 
-  int batchInsert(arangodb::arango::Transaction*,
+  int batchInsert(arangodb::Transaction*,
                   std::vector<TRI_doc_mptr_t const*> const*,
                   size_t) override final;
 
-  int sizeHint(arangodb::arango::Transaction*, size_t) override final;
+  int sizeHint(arangodb::Transaction*, size_t) override final;
 
   bool hasBatchInsert() const override final { return true; }
 
@@ -152,7 +150,7 @@ class EdgeIndex final : public Index {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(arangodb::arango::Transaction*,
+  IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
                                       arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
@@ -169,7 +167,7 @@ class EdgeIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   IndexIterator* createIterator(
-      arangodb::arango::Transaction*, IndexIteratorContext*,
+      arangodb::Transaction*, IndexIteratorContext*,
       arangodb::aql::AstNode const*,
       std::vector<arangodb::aql::AstNode const*> const&) const;
 
@@ -193,7 +191,6 @@ class EdgeIndex final : public Index {
 
   size_t _numBuckets;
 };
-}
 }
 
 #endif

@@ -27,7 +27,7 @@
 #include "Aql/ExecutionEngine.h"
 
 using namespace arangodb::aql;
-using namespace arangodb::arango;
+
 
 
 

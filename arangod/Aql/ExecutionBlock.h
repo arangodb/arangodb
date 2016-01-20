@@ -30,9 +30,7 @@
 #include <deque>
 
 namespace arangodb {
-namespace arango {
 class AqlTransaction;
-}
 
 namespace aql {
 
@@ -260,7 +258,7 @@ class ExecutionBlock {
   /// @brief the transaction for this query
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::AqlTransaction* _trx;
+  arangodb::AqlTransaction* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our corresponding ExecutionNode node

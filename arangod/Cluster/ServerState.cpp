@@ -29,10 +29,8 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 
-using namespace std;
-using namespace arangodb::arango;
+using namespace arangodb;
 using namespace arangodb::basics;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single instance of ServerState - will live as long as the server is

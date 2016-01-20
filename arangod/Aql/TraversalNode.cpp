@@ -100,7 +100,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(graph != nullptr);
-  auto resolver = std::make_unique<arango::CollectionNameResolver>(vocbase);
+  auto resolver = std::make_unique<CollectionNameResolver>(vocbase);
 
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
@@ -112,9 +112,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
         std::string msg(
-            "collection type invalid; Expecting Collection type 'Edge "
-            "Collection'. Collection name: ");
-        msg += eColName;
+            "collection type invalid for collection '" + std::string(eColName) + ": expecting collection type 'edge'");
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
@@ -358,7 +356,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
             "simpleExpressions one expression set has to be an array.");
       }
 
-      std::vector<arangodb::arango::traverser::TraverserExpression*>
+      std::vector<arangodb::traverser::TraverserExpression*>
           oneExpressionSet;
       oneExpressionSet.reserve(oneSetLength);
       size_t n = std::stoull(k);
@@ -528,7 +526,7 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
     auto collection = collections->get(it);
     for (auto const& index : collection->getIndexes()) {
       if (index->type ==
-          arangodb::arango::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+          arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         // We can only use Edge Index
         if (index->hasSelectivityEstimate()) {
           expectedEdgesPerDepth += 1 / index->selectivityEstimate();
@@ -548,7 +546,7 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 }
 
 void TraversalNode::fillTraversalOptions(
-    arangodb::arango::traverser::TraverserOptions& opts) const {
+    arangodb::traverser::TraverserOptions& opts) const {
   opts.direction = _direction;
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
@@ -583,7 +581,7 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess, size_t indexAccess,
   auto it = _expressions.find(indexAccess);
 
   if (it == _expressions.end()) {
-    std::vector<arangodb::arango::traverser::TraverserExpression*> sec;
+    std::vector<arangodb::traverser::TraverserExpression*> sec;
     _expressions.emplace(indexAccess, sec);
     it = _expressions.find(indexAccess);
   }

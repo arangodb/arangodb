@@ -31,8 +31,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace arango {
-
 
 class DatabaseGuard {
   
@@ -99,8 +97,6 @@ class DatabaseGuard {
   TRI_vocbase_t* _database;
 };
 }
-}
 
 #endif
-
 

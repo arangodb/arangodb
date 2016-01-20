@@ -33,9 +33,7 @@
 #include "RestServer/VocbaseContext.h"
 #include "V8Server/ApplicationV8.h"
 
-
 struct TRI_vocbase_t;
-
 
 namespace arangodb {
 namespace aql {
@@ -44,12 +42,12 @@ namespace aql {
 /// @brief shard control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestAqlHandler : public arango::RestVocbaseBaseHandler {
+class RestAqlHandler : public RestVocbaseBaseHandler {
   
  public:
 
   RestAqlHandler(rest::HttpRequest* request,
-                 std::pair<arango::ApplicationV8*, QueryRegistry*>* pair);
+                 std::pair<ApplicationV8*, QueryRegistry*>* pair);
 
   
  public:
@@ -169,13 +167,13 @@ class RestAqlHandler : public arango::RestVocbaseBaseHandler {
   /// @brief _applicationV8
   //////////////////////////////////////////////////////////////////////////////
 
-  arango::ApplicationV8* _applicationV8;
+  ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request context
   //////////////////////////////////////////////////////////////////////////////
 
-  arango::VocbaseContext* _context;
+  VocbaseContext* _context;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the vocbase

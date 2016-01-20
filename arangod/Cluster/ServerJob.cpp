@@ -33,10 +33,11 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+using namespace arangodb;
 
 static arangodb::basics::Mutex ExecutorLock;
 
-using namespace arangodb::arango;
+
 using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////

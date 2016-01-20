@@ -37,7 +37,7 @@ class VocShaper;
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::basics::Json TRI_ExpandShapedJson(
-    VocShaper* shaper, arangodb::arango::CollectionNameResolver const* resolver,
+    VocShaper* shaper, arangodb::CollectionNameResolver const* resolver,
     TRI_voc_cid_t const& cid, TRI_df_marker_t const* marker);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ arangodb::basics::Json TRI_ExpandShapedJson(
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::basics::Json TRI_ExpandShapedJson(
-    VocShaper* shaper, arangodb::arango::CollectionNameResolver const* resolver,
+    VocShaper* shaper, arangodb::CollectionNameResolver const* resolver,
     TRI_voc_cid_t const& cid, TRI_doc_mptr_t const* mptr);
 
 #endif

@@ -26,7 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb::arango;
+
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;

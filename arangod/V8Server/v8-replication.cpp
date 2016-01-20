@@ -30,9 +30,8 @@
 #include "Wal/LogfileManager.h"
 #include "VocBase/replication-dump.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::arango;
 using namespace arangodb::rest;
 
 

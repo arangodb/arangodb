@@ -33,13 +33,12 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace arango {
 
 template <uint64_t N>
 class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   
-  
  public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection object
   ///
@@ -305,7 +304,6 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
   uint64_t _numWrites;
 };
-}
 }
 
 #endif

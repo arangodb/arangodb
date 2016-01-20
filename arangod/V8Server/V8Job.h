@@ -30,9 +30,7 @@
 
 struct TRI_vocbase_t;
 
-
 namespace arangodb {
-namespace arango {
 class ApplicationV8;
 
 class V8Job : public rest::Job {
@@ -111,8 +109,6 @@ class V8Job : public rest::Job {
   bool const _allowUseDatabase;
 };
 }
-}
 
 #endif
-
 

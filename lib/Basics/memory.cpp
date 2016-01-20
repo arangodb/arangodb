@@ -206,7 +206,7 @@ static char* FailRealloc(TRI_memory_zone_t* zone, void* old, size_t n) {
 #ifdef TRI_ENABLE_FAILURE_TESTS
 static void InitFailMalloc(void) {
   // get failure probability
-  char* value = getenv("ARANGO_FAILMALLOC_PROBABILITY");
+  char* value = getenv("ARANGODB_FAILMALLOC_PROBABILITY");
 
   if (value != nullptr) {
     double v = strtod(value, nullptr);
@@ -216,7 +216,7 @@ static void InitFailMalloc(void) {
   }
 
   // get startup delay
-  value = getenv("ARANGO_FAILMALLOC_DELAY");
+  value = getenv("ARANGODB_FAILMALLOC_DELAY");
 
   if (value != nullptr) {
     double v = strtod(value, nullptr);
@@ -226,7 +226,7 @@ static void InitFailMalloc(void) {
   }
 
   // get minimum size for failures
-  value = getenv("ARANGO_FAILMALLOC_MINSIZE");
+  value = getenv("ARANGODB_FAILMALLOC_MINSIZE");
 
   if (value != nullptr) {
     unsigned long long v = strtoull(value, nullptr, 10);

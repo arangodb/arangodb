@@ -40,7 +40,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define SingleWriteTransactionType \
-  arangodb::arango::SingleCollectionWriteTransaction<1>
+  arangodb::SingleCollectionWriteTransaction<1>
 
 namespace arangodb {
 namespace wal {

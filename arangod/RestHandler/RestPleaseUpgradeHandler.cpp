@@ -23,17 +23,13 @@
 
 #include "RestPleaseUpgradeHandler.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-using namespace std;
-
 
 
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
     : HttpHandler(request) {}
-
-
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 

@@ -40,11 +40,8 @@
 using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
 
 namespace arangodb {
-namespace arango {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a numeric value from an hierarchical JSON
@@ -1651,7 +1648,6 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   return TRI_ERROR_NO_ERROR;
 }
 
-}  // namespace arango
 }  // namespace arangodb
 
 

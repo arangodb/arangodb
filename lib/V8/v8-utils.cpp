@@ -60,7 +60,7 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
-using namespace arangodb::arango;
+
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;

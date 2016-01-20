@@ -29,7 +29,7 @@
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb::arango;
+
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
@@ -186,7 +186,7 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     }
   } else {
     bool const isRunningInCluster =
-        arangodb::arango::ServerState::instance()->isRunningInCluster();
+        arangodb::ServerState::instance()->isRunningInCluster();
 
     // must have a V8 context here to protect Expression::execute()
     arangodb::basics::ScopeGuard guard{

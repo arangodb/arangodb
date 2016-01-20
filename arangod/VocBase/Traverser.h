@@ -36,9 +36,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-namespace arango {
 namespace traverser {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Template for a vertex id. Is simply a pair of cid and key
@@ -63,7 +61,7 @@ struct VertexId {
   }
 
   std::string toString(
-      arangodb::arango::CollectionNameResolver const* resolver) const {
+      arangodb::CollectionNameResolver const* resolver) const {
     return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
   }
 };
@@ -76,7 +74,7 @@ typedef VertexId EdgeId;
 ////////////////////////////////////////////////////////////////////////////////
 
 VertexId IdStringToVertexId(
-    arangodb::arango::CollectionNameResolver const* resolver,
+    arangodb::CollectionNameResolver const* resolver,
     std::string const& vertex);
 
 
@@ -352,15 +350,14 @@ class Traverser {
 };
 
 }  // traverser
-}  // arango
-}  // triagens
+}  // arangodb
 
 
 namespace std {
 template <>
-struct hash<arangodb::arango::traverser::VertexId> {
+struct hash<arangodb::traverser::VertexId> {
  public:
-  size_t operator()(arangodb::arango::traverser::VertexId const& s) const {
+  size_t operator()(arangodb::traverser::VertexId const& s) const {
     size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
     size_t h2 = TRI_FnvHashString(s.key);
     return h1 ^ (h2 << 1);
@@ -368,19 +365,19 @@ struct hash<arangodb::arango::traverser::VertexId> {
 };
 
 template <>
-struct equal_to<arangodb::arango::traverser::VertexId> {
+struct equal_to<arangodb::traverser::VertexId> {
  public:
-  bool operator()(arangodb::arango::traverser::VertexId const& s,
-                  arangodb::arango::traverser::VertexId const& t) const {
+  bool operator()(arangodb::traverser::VertexId const& s,
+                  arangodb::traverser::VertexId const& t) const {
     return s.cid == t.cid && strcmp(s.key, t.key) == 0;
   }
 };
 
 template <>
-struct less<arangodb::arango::traverser::VertexId> {
+struct less<arangodb::traverser::VertexId> {
  public:
-  bool operator()(arangodb::arango::traverser::VertexId const& lhs,
-                  arangodb::arango::traverser::VertexId const& rhs) {
+  bool operator()(arangodb::traverser::VertexId const& lhs,
+                  arangodb::traverser::VertexId const& rhs) {
     if (lhs.cid != rhs.cid) {
       return lhs.cid < rhs.cid;
     }

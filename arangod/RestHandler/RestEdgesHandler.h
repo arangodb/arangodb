@@ -30,8 +30,6 @@
 
 
 namespace arangodb {
-namespace arango {
-
 
 namespace traverser {
 class TraverserExpression;
@@ -81,7 +79,6 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
       TRI_edge_direction_e direction, SingleCollectionReadOnlyTransaction& trx,
       arangodb::basics::Json& result, size_t& scannedIndex, size_t& filtered);
 };
-}
 }
 
 #endif

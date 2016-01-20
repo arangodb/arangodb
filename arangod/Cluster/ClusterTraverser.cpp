@@ -24,12 +24,12 @@
 #include "ClusterTraverser.h"
 #include "Cluster/ClusterMethods.h"
 
-using ClusterTraversalPath = arangodb::arango::traverser::ClusterTraversalPath;
-using ClusterTraverser = arangodb::arango::traverser::ClusterTraverser;
+using ClusterTraversalPath = arangodb::traverser::ClusterTraversalPath;
+using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
 
 arangodb::basics::Json* ClusterTraversalPath::pathToJson(
-    arangodb::arango::Transaction*, arangodb::arango::CollectionNameResolver*) {
+    arangodb::Transaction*, arangodb::CollectionNameResolver*) {
   auto result =
       std::make_unique<arangodb::basics::Json>(arangodb::basics::Json::Object);
 
@@ -63,12 +63,12 @@ arangodb::basics::Json* ClusterTraversalPath::pathToJson(
 }
 
 arangodb::basics::Json* ClusterTraversalPath::lastEdgeToJson(
-    arangodb::arango::Transaction*, arangodb::arango::CollectionNameResolver*) {
+    arangodb::Transaction*, arangodb::CollectionNameResolver*) {
   return _traverser->edgeToJson(_path.edges.back());
 }
 
 arangodb::basics::Json* ClusterTraversalPath::lastVertexToJson(
-    arangodb::arango::Transaction*, arangodb::arango::CollectionNameResolver*) {
+    arangodb::Transaction*, arangodb::CollectionNameResolver*) {
   return _traverser->vertexToJson(_path.vertices.back());
 }
 
@@ -243,7 +243,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
 }
 
 void ClusterTraverser::setStartVertex(
-    arangodb::arango::traverser::VertexId const& v) {
+    arangodb::traverser::VertexId const& v) {
   std::string id = v.toString(_resolver);
   _enumerator.reset(
       new arangodb::basics::PathEnumerator<std::string, std::string, size_t>(
@@ -285,7 +285,7 @@ void ClusterTraverser::setStartVertex(
 
 bool ClusterTraverser::vertexMatchesCondition(
     TRI_json_t* v,
-    std::vector<arangodb::arango::traverser::TraverserExpression*> const& exp) {
+    std::vector<arangodb::traverser::TraverserExpression*> const& exp) {
   for (auto const& e : exp) {
     if (!e->isEdgeAccess) {
       if (v == nullptr || !e->matchesCheck(v)) {
@@ -297,7 +297,7 @@ bool ClusterTraverser::vertexMatchesCondition(
   return true;
 }
 
-arangodb::arango::traverser::TraversalPath* ClusterTraverser::next() {
+arangodb::traverser::TraversalPath* ClusterTraverser::next() {
   TRI_ASSERT(!_done);
   if (_pruneNext) {
     _pruneNext = false;

@@ -33,8 +33,6 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-namespace arango {
-
 
 class CollectionNameResolver {
   
@@ -378,8 +376,6 @@ class CollectionNameResolver {
   mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
 };
 }
-}
 
 #endif
-
 

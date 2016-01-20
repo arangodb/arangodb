@@ -28,7 +28,7 @@ using namespace arangodb::aql;
 
 
 CollectionScanner::CollectionScanner(
-    arangodb::arango::AqlTransaction* trx,
+    arangodb::AqlTransaction* trx,
     TRI_transaction_collection_t* trxCollection)
     : trx(trx), trxCollection(trxCollection), totalCount(0) {}
 
@@ -37,7 +37,7 @@ CollectionScanner::~CollectionScanner() {}
 
 
 RandomCollectionScanner::RandomCollectionScanner(
-    arangodb::arango::AqlTransaction* trx,
+    arangodb::AqlTransaction* trx,
     TRI_transaction_collection_t* trxCollection)
     : CollectionScanner(trx, trxCollection), step(0) {}
 
@@ -68,7 +68,7 @@ void RandomCollectionScanner::reset() {
 
 
 LinearCollectionScanner::LinearCollectionScanner(
-    arangodb::arango::AqlTransaction* trx,
+    arangodb::AqlTransaction* trx,
     TRI_transaction_collection_t* trxCollection)
     : CollectionScanner(trx, trxCollection) {}
 

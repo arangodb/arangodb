@@ -27,9 +27,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace arangodb::arango;
-
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new geo index, type "geo1"
@@ -163,7 +161,7 @@ arangodb::basics::Json GeoIndex2::toJsonFigures(TRI_memory_zone_t* zone) const {
   return json;
 }
 
-int GeoIndex2::insert(arangodb::arango::Transaction*, TRI_doc_mptr_t const* doc,
+int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                       bool) {
   auto shaper =
       _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -215,7 +213,7 @@ int GeoIndex2::insert(arangodb::arango::Transaction*, TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
 
-int GeoIndex2::remove(arangodb::arango::Transaction*, TRI_doc_mptr_t const* doc,
+int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                       bool) {
   TRI_shaped_json_t shapedJson;
 
@@ -254,7 +252,7 @@ int GeoIndex2::remove(arangodb::arango::Transaction*, TRI_doc_mptr_t const* doc,
 /// @brief looks up all points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::withinQuery(arangodb::arango::Transaction* trx,
+GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx,
                                        double lat, double lon,
                                        double radius) const {
   GeoCoordinate gc;
@@ -268,7 +266,7 @@ GeoCoordinates* GeoIndex2::withinQuery(arangodb::arango::Transaction* trx,
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::nearQuery(arangodb::arango::Transaction* trx,
+GeoCoordinates* GeoIndex2::nearQuery(arangodb::Transaction* trx,
                                      double lat, double lon,
                                      size_t count) const {
   GeoCoordinate gc;

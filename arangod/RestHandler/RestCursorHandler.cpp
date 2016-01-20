@@ -37,13 +37,11 @@
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb::arango;
+using namespace arangodb;
 using namespace arangodb::rest;
 
-
-
 RestCursorHandler::RestCursorHandler(
-    HttpRequest* request, std::pair<arangodb::arango::ApplicationV8*,
+    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
                                     arangodb::aql::QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
@@ -51,8 +49,6 @@ RestCursorHandler::RestCursorHandler(
       _queryLock(),
       _query(nullptr),
       _queryKilled(false) {}
-
-
 
 HttpHandler::status_t RestCursorHandler::execute() {
   // extract the sub-request type
@@ -179,7 +175,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     }
 
     // result is bigger than batchSize, and a cursor will be created
-    auto cursors = static_cast<arangodb::arango::CursorRepository*>(
+    auto cursors = static_cast<arangodb::CursorRepository*>(
         _vocbase->_cursorRepository);
     TRI_ASSERT(cursors != nullptr);
 
@@ -190,7 +186,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
     // steal the query JSON, cursor will take over the ownership
     auto j = queryResult.json;
-    arangodb::arango::JsonCursor* cursor = cursors->createFromJson(
+    arangodb::JsonCursor* cursor = cursors->createFromJson(
         j, batchSize, extra.steal(), ttl, count, queryResult.cached);
     queryResult.json = nullptr;
 
@@ -412,11 +408,11 @@ void RestCursorHandler::modifyCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<arangodb::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::CursorRepository*>(
       _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::arango::CursorId>(
+  auto cursorId = static_cast<arangodb::CursorId>(
       arangodb::basics::StringUtils::uint64(id));
   bool busy;
   auto cursor = cursors->find(cursorId, busy);
@@ -470,11 +466,11 @@ void RestCursorHandler::deleteCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<arangodb::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::CursorRepository*>(
       _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::arango::CursorId>(
+  auto cursorId = static_cast<arangodb::CursorId>(
       arangodb::basics::StringUtils::uint64(id));
   bool found = cursors->remove(cursorId);
 

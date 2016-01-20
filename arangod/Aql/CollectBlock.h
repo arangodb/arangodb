@@ -181,13 +181,13 @@ class HashedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   struct GroupKeyHash {
-    GroupKeyHash(arangodb::arango::AqlTransaction* trx,
+    GroupKeyHash(arangodb::AqlTransaction* trx,
                  std::vector<TRI_document_collection_t const*>& colls)
         : _trx(trx), _colls(colls), _num(colls.size()) {}
 
     size_t operator()(std::vector<AqlValue> const& value) const;
 
-    arangodb::arango::AqlTransaction* _trx;
+    arangodb::AqlTransaction* _trx;
     std::vector<TRI_document_collection_t const*>& _colls;
     size_t const _num;
   };
@@ -197,14 +197,14 @@ class HashedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   struct GroupKeyEqual {
-    GroupKeyEqual(arangodb::arango::AqlTransaction* trx,
+    GroupKeyEqual(arangodb::AqlTransaction* trx,
                   std::vector<TRI_document_collection_t const*>& colls)
         : _trx(trx), _colls(colls) {}
 
     bool operator()(std::vector<AqlValue> const&,
                     std::vector<AqlValue> const&) const;
 
-    arangodb::arango::AqlTransaction* _trx;
+    arangodb::AqlTransaction* _trx;
     std::vector<TRI_document_collection_t const*>& _colls;
   };
 };

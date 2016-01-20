@@ -38,7 +38,7 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
+
 using namespace arangodb;
 using namespace std;
 

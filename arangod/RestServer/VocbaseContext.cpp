@@ -22,9 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
-
-#include "Basics/MutexLocker.h"
 #include "Basics/logging.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Rest/ConnectionInfo.h"
@@ -32,9 +31,8 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::arango;
 using namespace arangodb::rest;
 
 

@@ -32,13 +32,12 @@
 #include "Utils/CursorRepository.h"
 #include "V8Server/ApplicationV8.h"
 
-using namespace arangodb::arango;
+using namespace arangodb;
 using namespace arangodb::rest;
 
 
-
 RestSimpleQueryHandler::RestSimpleQueryHandler(
-    HttpRequest* request, std::pair<arangodb::arango::ApplicationV8*,
+    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
                                     arangodb::aql::QueryRegistry*>* pair)
     : RestCursorHandler(request, pair) {}
 

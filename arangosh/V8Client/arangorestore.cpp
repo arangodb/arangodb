@@ -46,12 +46,10 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -678,11 +676,11 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         // re-create collection
         if (Progress) {
           if (Overwrite) {
-            cout << "# Re-creating " << collectionType << " collection '"
-                 << cname << "'..." << endl;
+            std::cout << "# Re-creating " << collectionType << " collection '"
+                 << cname << "'..." << std::endl;
           } else {
-            cout << "# Creating " << collectionType << " collection '" << cname
-                 << "'..." << endl;
+            std::cout << "# Creating " << collectionType << " collection '" << cname
+                 << "'..." << std::endl;
           }
         }
 
@@ -690,7 +688,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
 
         if (res != TRI_ERROR_NO_ERROR) {
           if (Force) {
-            cerr << errorMsg << endl;
+            std::cerr << errorMsg << std::endl;
             continue;
           }
           return TRI_ERROR_INTERNAL;
@@ -712,8 +710,8 @@ static int ProcessInputDirectory(std::string& errorMsg) {
           // found a datafile
 
           if (Progress) {
-            cout << "# Loading data into " << collectionType << " collection '"
-                 << cname << "'..." << endl;
+            std::cout << "# Loading data into " << collectionType << " collection '"
+                 << cname << "'..." << std::endl;
           }
 
           int fd = TRI_OPEN(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
@@ -792,7 +790,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
                 }
 
                 if (Force) {
-                  cerr << errorMsg << endl;
+                  std::cerr << errorMsg << std::endl;
                   continue;
                 }
 
@@ -817,15 +815,15 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         if (indexes.length() > 0) {
           // we actually have indexes
           if (Progress) {
-            cout << "# Creating indexes for collection '" << cname << "'..."
-                 << endl;
+            std::cout << "# Creating indexes for collection '" << cname << "'..."
+                 << std::endl;
           }
 
           int res = SendRestoreIndexes(collection, errorMsg);
 
           if (res != TRI_ERROR_NO_ERROR) {
             if (Force) {
-              cerr << errorMsg << endl;
+              std::cerr << errorMsg << std::endl;
               continue;
             }
             return TRI_ERROR_INTERNAL;
@@ -901,14 +899,14 @@ int main(int argc, char* argv[]) {
   // .............................................................................
 
   if (InputDirectory == "" || !TRI_IsDirectory(InputDirectory.c_str())) {
-    cerr << "Error: input directory '" << InputDirectory << "' does not exist"
-         << endl;
+    std::cerr << "Error: input directory '" << InputDirectory << "' does not exist"
+         << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (!ImportStructure && !ImportData) {
-    cerr << "Error: must specify either --create-collection or --import-data"
-         << endl;
+    std::cerr << "Error: must specify either --create-collection or --import-data"
+         << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -919,8 +917,8 @@ int main(int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == nullptr) {
-    cerr << "Error: invalid value for --server.endpoint ('"
-         << BaseClient.endpointString() << "')" << endl;
+    std::cerr << "Error: invalid value for --server.endpoint ('"
+         << BaseClient.endpointString() << "')" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -941,15 +939,15 @@ int main(int argc, char* argv[]) {
     // database not found, but database creation requested
 
     std::string old = BaseClient.databaseName();
-    cout << "Creating database '" << old << "'" << endl;
+    std::cout << "Creating database '" << old << "'" << std::endl;
 
     BaseClient.setDatabaseName("_system");
 
     int res = TryCreateDatabase(old);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      cerr << "Could not create database '" << old << "'" << endl;
-      cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
+      std::cerr << "Could not create database '" << old << "'" << std::endl;
+      std::cerr << "Error message: '" << Client->getErrorMessage() << "'" << std::endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
@@ -961,28 +959,28 @@ int main(int argc, char* argv[]) {
   }
 
   if (!Connection->isConnected()) {
-    cerr << "Could not connect to endpoint "
-         << BaseClient.endpointServer()->getSpecification() << endl;
-    cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
+    std::cerr << "Could not connect to endpoint "
+         << BaseClient.endpointServer()->getSpecification() << std::endl;
+    std::cerr << "Error message: '" << Client->getErrorMessage() << "'" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // successfully connected
-  cout << "Server version: " << versionString << endl;
+  std::cout << "Server version: " << versionString << std::endl;
 
   // validate server version
   int major = 0;
   int minor = 0;
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    cerr << "Error: invalid server version '" << versionString << "'" << endl;
+    std::cerr << "Error: invalid server version '" << versionString << "'" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (major < 1 || major > 2 || (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
-    cerr << "Error: got incompatible server version '" << versionString << "'"
-         << endl;
+    std::cerr << "Error: got incompatible server version '" << versionString << "'"
+         << std::endl;
     if (!Force) {
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
@@ -994,8 +992,8 @@ int main(int argc, char* argv[]) {
   }
 
   if (Progress) {
-    cout << "# Connected to ArangoDB '"
-         << BaseClient.endpointServer()->getSpecification() << "'" << endl;
+    std::cout << "# Connected to ArangoDB '"
+         << BaseClient.endpointServer()->getSpecification() << "'" << std::endl;
   }
 
   memset(&Stats, 0, sizeof(Stats));
@@ -1006,30 +1004,30 @@ int main(int argc, char* argv[]) {
   try {
     res = ProcessInputDirectory(errorMsg);
   } catch (std::exception const& ex) {
-    cerr << "Error: caught exception " << ex.what() << endl;
+    std::cerr << "Error: caught exception " << ex.what() << std::endl;
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    cerr << "Error: caught unknown exception" << endl;
+    std::cerr << "Error: caught unknown exception" << std::endl;
     res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (!errorMsg.empty()) {
-      cerr << "Error: " << errorMsg << endl;
+      std::cerr << "Error: " << errorMsg << std::endl;
     } else {
-      cerr << "An error occurred" << endl;
+      std::cerr << "An error occurred" << std::endl;
     }
     ret = EXIT_FAILURE;
   }
 
   if (Progress) {
     if (ImportData) {
-      cout << "Processed " << Stats._totalCollections << " collection(s), "
+      std::cout << "Processed " << Stats._totalCollections << " collection(s), "
            << "read " << Stats._totalRead << " byte(s) from datafiles, "
-           << "sent " << Stats._totalBatches << " batch(es)" << endl;
+           << "sent " << Stats._totalBatches << " batch(es)" << std::endl;
     } else if (ImportStructure) {
-      cout << "Processed " << Stats._totalCollections << " collection(s)"
-           << endl;
+      std::cout << "Processed " << Stats._totalCollections << " collection(s)"
+           << std::endl;
     }
   }
 

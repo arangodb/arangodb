@@ -26,8 +26,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
-using namespace arangodb::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum size
@@ -77,7 +76,7 @@ arangodb::basics::Json CapConstraint::toJsonFigures(
   return json;
 }
 
-int CapConstraint::insert(arangodb::arango::Transaction*,
+int CapConstraint::insert(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool) {
   if (_size > 0) {
     // there is a size restriction
@@ -93,12 +92,12 @@ int CapConstraint::insert(arangodb::arango::Transaction*,
   return TRI_ERROR_NO_ERROR;
 }
 
-int CapConstraint::remove(arangodb::arango::Transaction*, TRI_doc_mptr_t const*,
+int CapConstraint::remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
                           bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int CapConstraint::postInsert(arangodb::arango::Transaction* trx,
+int CapConstraint::postInsert(arangodb::Transaction* trx,
                               TRI_transaction_collection_t* trxCollection,
                               TRI_doc_mptr_t const*) {
   TRI_ASSERT(_count > 0 || _size > 0);
@@ -110,7 +109,7 @@ int CapConstraint::postInsert(arangodb::arango::Transaction* trx,
 /// @brief initialize the cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-int CapConstraint::initialize(arangodb::arango::Transaction* trx) {
+int CapConstraint::initialize(arangodb::Transaction* trx) {
   TRI_ASSERT(_count > 0 || _size > 0);
 
   TRI_headers_t* headers = _collection->_headersPtr;  // ONLY IN INDEX (CAP)
@@ -125,8 +124,8 @@ int CapConstraint::initialize(arangodb::arango::Transaction* trx) {
     TRI_vocbase_t* vocbase = _collection->_vocbase;
     TRI_voc_cid_t cid = _collection->_info.id();
 
-    arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new arangodb::arango::StandaloneTransactionContext(), vocbase, cid);
+    arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
+        new arangodb::StandaloneTransactionContext(), vocbase, cid);
     trx.addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);
     trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
     trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
@@ -154,7 +153,7 @@ int CapConstraint::initialize(arangodb::arango::Transaction* trx) {
 /// @brief apply the cap constraint for the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int CapConstraint::apply(arangodb::arango::Transaction* trx,
+int CapConstraint::apply(arangodb::Transaction* trx,
                          TRI_document_collection_t* document,
                          TRI_transaction_collection_t* trxCollection) {
   TRI_headers_t* headers =

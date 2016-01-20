@@ -34,7 +34,7 @@ namespace aql {
 
 
 class SimpleTraverserExpression
-    : public arangodb::arango::traverser::TraverserExpression {
+    : public arangodb::traverser::TraverserExpression {
  public:
   arangodb::aql::AstNode* compareToNode;
 
@@ -44,7 +44,7 @@ class SimpleTraverserExpression
                             arangodb::aql::AstNodeType comparisonType,
                             arangodb::aql::AstNode const* varAccess,
                             arangodb::aql::AstNode* compareToNode)
-      : arangodb::arango::traverser::TraverserExpression(
+      : arangodb::traverser::TraverserExpression(
             isEdgeAccess, comparisonType, varAccess),
         compareToNode(compareToNode),
         expression(nullptr) {}
@@ -243,7 +243,7 @@ class TraversalNode : public ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   void fillTraversalOptions(
-      arangodb::arango::traverser::TraverserOptions& opts) const;
+      arangodb::traverser::TraverserOptions& opts) const;
 
   std::vector<std::string> const edgeColls() const { return _edgeColls; }
 
@@ -296,7 +296,7 @@ class TraversalNode : public ExecutionNode {
 
   std::unordered_map<
       size_t,
-      std::vector<arangodb::arango::traverser::TraverserExpression*>> const*
+      std::vector<arangodb::traverser::TraverserExpression*>> const*
   expressions() const {
     return &_expressions;
   }
@@ -393,7 +393,7 @@ class TraversalNode : public ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_map<
-      size_t, std::vector<arangodb::arango::traverser::TraverserExpression*>>
+      size_t, std::vector<arangodb::traverser::TraverserExpression*>>
       _expressions;
 };
 

@@ -40,11 +40,8 @@
 struct TRI_doc_mptr_t;
 
 namespace arangodb {
-namespace arango {
 class CollectionNameResolver;
 }
-}
-
 
 class DocumentAccessor {
  public:
@@ -52,7 +49,7 @@ class DocumentAccessor {
   DocumentAccessor(DocumentAccessor const&);
   DocumentAccessor& operator=(DocumentAccessor const&);
 
-  DocumentAccessor(arangodb::arango::CollectionNameResolver const* resolver,
+  DocumentAccessor(arangodb::CollectionNameResolver const* resolver,
                    TRI_document_collection_t* document,
                    TRI_doc_mptr_t const* mptr);
 
@@ -89,7 +86,7 @@ class DocumentAccessor {
 
   
  private:
-  arangodb::arango::CollectionNameResolver const* _resolver;
+  arangodb::CollectionNameResolver const* _resolver;
 
   TRI_document_collection_t* _document;
 
@@ -105,7 +102,7 @@ class DocumentAccessor {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline std::string TRI_EXTRACT_MARKER_KEY(
-    arangodb::arango::Transaction* trx, TRI_df_marker_t const* marker) {
+    arangodb::Transaction* trx, TRI_df_marker_t const* marker) {
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
              sizeof(arangodb::wal::vpack_document_marker_t);
@@ -126,7 +123,7 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline std::string TRI_EXTRACT_MARKER_KEY(
-    arangodb::arango::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+    arangodb::Transaction* trx, TRI_doc_mptr_t const* mptr) {
   return TRI_EXTRACT_MARKER_KEY(
       trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
@@ -136,7 +133,7 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
-    arangodb::arango::Transaction* trx, TRI_df_marker_t const* marker) {
+    arangodb::Transaction* trx, TRI_df_marker_t const* marker) {
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
              sizeof(arangodb::wal::vpack_document_marker_t);
@@ -158,7 +155,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
-    arangodb::arango::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+    arangodb::Transaction* trx, TRI_doc_mptr_t const* mptr) {
   return TRI_EXTRACT_MARKER_RID(
       trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
@@ -167,7 +164,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
 /// @brief compares the key from a master pointer to the given key
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_MATCHES_MARKER_KEY(arangodb::arango::Transaction* trx,
+static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
                                           TRI_doc_mptr_t const* mptr,
                                           char const* key) {
   auto marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
@@ -195,7 +192,7 @@ static inline bool TRI_MATCHES_MARKER_KEY(arangodb::arango::Transaction* trx,
 /// @brief compares the key from a master pointer to the given key
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_MATCHES_MARKER_KEY(arangodb::arango::Transaction* trx,
+static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
                                           TRI_doc_mptr_t const* left,
                                           TRI_doc_mptr_t const* right) {
   auto lm = static_cast<TRI_df_marker_t const*>(left->getDataPtr());

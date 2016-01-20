@@ -25,7 +25,6 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
-#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
@@ -36,9 +35,7 @@
 
 #include <ostream>
 
-using namespace arangodb::arango;
-
-
+using namespace arangodb;
 
 Index::Index(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
@@ -487,7 +484,7 @@ double Index::selectivityEstimate() const {
 /// @brief default implementation for selectivityEstimate
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::batchInsert(arangodb::arango::Transaction*,
+int Index::batchInsert(arangodb::Transaction*,
                        std::vector<TRI_doc_mptr_t const*> const*, size_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -496,7 +493,7 @@ int Index::batchInsert(arangodb::arango::Transaction*,
 /// @brief default implementation for postInsert
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::postInsert(arangodb::arango::Transaction*,
+int Index::postInsert(arangodb::Transaction*,
                       struct TRI_transaction_collection_s*,
                       struct TRI_doc_mptr_t const*) {
   // do nothing
@@ -516,7 +513,7 @@ int Index::cleanup() {
 /// @brief default implementation for sizeHint
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::sizeHint(arangodb::arango::Transaction*, size_t) {
+int Index::sizeHint(arangodb::Transaction*, size_t) {
   // do nothing
   return TRI_ERROR_NO_ERROR;
 }
@@ -563,7 +560,7 @@ bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* Index::iteratorForCondition(
-    arangodb::arango::Transaction*, IndexIteratorContext*, arangodb::aql::Ast*,
+    arangodb::Transaction*, IndexIteratorContext*, arangodb::aql::Ast*,
     arangodb::aql::AstNode const*, arangodb::aql::Variable const*, bool) const {
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
@@ -681,7 +678,7 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         arangodb::arango::Index const* index) {
+                         arangodb::Index const* index) {
   stream << index->context();
   return stream;
 }
@@ -691,7 +688,7 @@ std::ostream& operator<<(std::ostream& stream,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         arangodb::arango::Index const& index) {
+                         arangodb::Index const& index) {
   stream << index.context();
   return stream;
 }

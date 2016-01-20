@@ -32,9 +32,7 @@
 
 struct TRI_server_t;
 
-
 namespace arangodb {
-namespace arango {
 class HeartbeatThread;
 class ApplicationV8;
 
@@ -143,7 +141,6 @@ class ServerJob : public arangodb::rest::Job {
 
   bool _abandon;
 };
-}
 }
 
 #endif

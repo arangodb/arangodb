@@ -35,7 +35,7 @@
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb::arango;
+
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
@@ -256,7 +256,7 @@ bool IndexBlock::initIndexes() {
 
     if (_hasV8Expression) {
       bool const isRunningInCluster =
-          arangodb::arango::ServerState::instance()->isRunningInCluster();
+          arangodb::ServerState::instance()->isRunningInCluster();
 
       // must have a V8 context here to protect Expression::execute()
       auto engine = _engine;
@@ -332,7 +332,7 @@ bool IndexBlock::initIndexes() {
 /// @brief create an iterator object
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::arango::IndexIterator* IndexBlock::createIterator() {
+arangodb::IndexIterator* IndexBlock::createIterator() {
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   auto outVariable = node->outVariable();
   auto ast = node->_plan->getAst();

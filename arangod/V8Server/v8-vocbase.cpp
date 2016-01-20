@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 #include "v8-vocbaseprivate.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
@@ -65,17 +63,14 @@
 #include <unicode/dtfmtsym.h>
 
 #include <v8.h>
+#include <iostream>
 
-using namespace std;
-using namespace arangodb::basics;
-using namespace arangodb::arango;
-using namespace arangodb::arango::traverser;
-using namespace arangodb::rest;
 using namespace arangodb;
-
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::traverser;
 
 extern bool TRI_ENABLE_STATISTICS;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_t
@@ -100,10 +95,10 @@ int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
 
 struct CollectionDitchInfo {
-  arangodb::arango::DocumentDitch* ditch;
+  arangodb::DocumentDitch* ditch;
   TRI_transaction_collection_t* col;
 
-  CollectionDitchInfo(arangodb::arango::DocumentDitch* ditch,
+  CollectionDitchInfo(arangodb::DocumentDitch* ditch,
                       TRI_transaction_collection_t* col)
       : ditch(ditch), col(col) {}
 };
@@ -1689,7 +1684,7 @@ static v8::Local<v8::String> VertexIdToString(
     v8::Isolate* isolate, CollectionNameResolver const* resolver,
     VertexId const& id) {
   return TRI_V8_STD_STRING(
-      (resolver->getCollectionName(id.cid) + "/" + string(id.key)));
+      (resolver->getCollectionName(id.cid) + "/" + std::string(id.key)));
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms EdgeId to v8String
@@ -1699,7 +1694,7 @@ static v8::Local<v8::String> EdgeIdToString(
     v8::Isolate* isolate, CollectionNameResolver const* resolver,
     EdgeId const& id) {
   return TRI_V8_STD_STRING(
-      (resolver->getCollectionName(id.cid) + "/" + string(id.key)));
+      (resolver->getCollectionName(id.cid) + "/" + std::string(id.key)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2374,7 +2369,7 @@ static void JS_QueryShortestPath(
 
 static v8::Handle<v8::Value> VertexIdsToV8(
     v8::Isolate* isolate, ExplicitTransaction* trx,
-    CollectionNameResolver const* resolver, unordered_set<VertexId>& ids,
+    CollectionNameResolver const* resolver, std::unordered_set<VertexId>& ids,
     std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
     bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
@@ -3413,7 +3408,7 @@ static void DropDatabaseCoordinator(
   std::string errorMsg;
 
   // clear local sid cache for database
-  arangodb::arango::VocbaseContext::clearSid(name);
+  arangodb::VocbaseContext::clearSid(name);
 
   int res = ci->dropDatabaseCoordinator(name, errorMsg, 120.0);
 
@@ -3482,7 +3477,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // clear local sid cache for the database
-  arangodb::arango::VocbaseContext::clearSid(name);
+  arangodb::VocbaseContext::clearSid(name);
 
   // run the garbage collection in case the database held some objects which can
   // now be freed
@@ -3669,7 +3664,7 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate,
-                         arangodb::arango::ApplicationV8* applicationV8,
+                         arangodb::ApplicationV8* applicationV8,
                          v8::Handle<v8::Context> context,
                          arangodb::aql::QueryRegistry* queryRegistry,
                          TRI_server_t* server, TRI_vocbase_t* vocbase,

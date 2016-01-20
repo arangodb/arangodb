@@ -31,15 +31,13 @@
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
 
-using namespace std;
-using namespace arangodb::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global callback for asynchronous REST handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::arango::ClusterCommRestCallback(
+void arangodb::ClusterCommRestCallback(
     std::string& coordinator, arangodb::rest::HttpResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
@@ -175,12 +173,12 @@ ClusterCommResult const ClusterComm::asyncRequest(
       }
     }
     LOG_DEBUG("Responsible server: %s", op->result.serverID.c_str());
-    if (arangodb::arango::Transaction::_makeNolockHeaders != nullptr) {
+    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
-      auto it = arangodb::arango::Transaction::_makeNolockHeaders->find(
+      auto it = arangodb::Transaction::_makeNolockHeaders->find(
           op->result.shardID);
-      if (it != arangodb::arango::Transaction::_makeNolockHeaders->end()) {
+      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found our shard\n";
         (*headerFields)["X-Arango-Nolock"] = op->result.shardID;
@@ -238,7 +236,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
     CONDITION_LOCKER(locker, somethingToSend);
     toSend.push_back(op.get());
     TRI_ASSERT(nullptr != op.get());
-    list<ClusterCommOperation*>::iterator i = toSend.end();
+    std::list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[op->result.operationID] = --i;
   }
   LOG_DEBUG("In asyncRequest, put into queue %llu",
@@ -305,12 +303,12 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       res->status = CL_COMM_ERROR;
       return res;
     }
-    if (arangodb::arango::Transaction::_makeNolockHeaders != nullptr) {
+    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
       auto it =
-          arangodb::arango::Transaction::_makeNolockHeaders->find(res->shardID);
-      if (it != arangodb::arango::Transaction::_makeNolockHeaders->end()) {
+          arangodb::Transaction::_makeNolockHeaders->find(res->shardID);
+      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found this shard: " << res->shardID << std::endl;
         headersCopy["X-Arango-Nolock"] = res->shardID;
@@ -722,7 +720,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
   LOG_DEBUG("In asyncAnswer, seeing %s", coordinatorHeader.c_str());
   pos = coordinatorHeader.find(":", start);
-  if (pos == string::npos) {
+  if (pos == std::string::npos) {
     LOG_ERROR("Could not find coordinator ID in X-Arango-Coordinator");
     return;
   }
@@ -800,13 +798,13 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
   LOG_DEBUG("In processAnswer, seeing %s", coordinatorHeader.c_str());
 
   pos = coordinatorHeader.find(":", start);
-  if (pos == string::npos) {
+  if (pos == std::string::npos) {
     return std::string("could not find coordinator ID in 'X-Arango-Coordinator'");
   }
   // coordinatorID = coordinatorHeader.substr(start,pos-start);
   start = pos + 1;
   pos = coordinatorHeader.find(":", start);
-  if (pos == string::npos) {
+  if (pos == std::string::npos) {
     return std::string("could not find operationID in 'X-Arango-Coordinator'");
   }
   operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));

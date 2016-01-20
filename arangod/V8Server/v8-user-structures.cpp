@@ -34,6 +34,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 
+using namespace arangodb;
 
 struct KeySpaceElement {
   KeySpaceElement() = delete;

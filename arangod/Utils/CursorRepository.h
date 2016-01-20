@@ -33,10 +33,8 @@ struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace arango {
 
 class CollectionExport;
-
 
 class CursorRepository {
   
@@ -69,7 +67,7 @@ class CursorRepository {
   /// @brief creates a cursor and stores it in the registry
   //////////////////////////////////////////////////////////////////////////////
 
-  ExportCursor* createFromExport(arangodb::arango::CollectionExport*, size_t,
+  ExportCursor* createFromExport(arangodb::CollectionExport*, size_t,
                                  double, bool);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -130,7 +128,6 @@ class CursorRepository {
 
   static size_t const MaxCollectCount;
 };
-}
 }
 
 #endif

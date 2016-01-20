@@ -227,7 +227,7 @@ struct AqlValue {
   /// @brief returns the array member at position i
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json at(arangodb::arango::AqlTransaction*, size_t i) const;
+  arangodb::basics::Json at(arangodb::AqlTransaction*, size_t i) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the length of an AqlValue containing an array
@@ -259,7 +259,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
-                             arangodb::arango::AqlTransaction*,
+                             arangodb::AqlTransaction*,
                              TRI_document_collection_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -268,7 +268,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   v8::Handle<v8::Value> toV8Partial(v8::Isolate* isolate,
-                                    arangodb::arango::AqlTransaction*,
+                                    arangodb::AqlTransaction*,
                                     std::unordered_set<std::string> const&,
                                     TRI_document_collection_t const*) const;
 
@@ -276,14 +276,14 @@ struct AqlValue {
   /// @brief toJson method
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json toJson(arangodb::arango::AqlTransaction*,
+  arangodb::basics::Json toJson(arangodb::AqlTransaction*,
                                 TRI_document_collection_t const*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a hash value for the AqlValue
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t hash(arangodb::arango::AqlTransaction*,
+  uint64_t hash(arangodb::AqlTransaction*,
                 TRI_document_collection_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::basics::Json extractObjectMember(
-      arangodb::arango::AqlTransaction*, TRI_document_collection_t const*,
+      arangodb::AqlTransaction*, TRI_document_collection_t const*,
       char const*, bool, arangodb::basics::StringBuffer&) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -303,7 +303,7 @@ struct AqlValue {
   /// not be freed)
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json extractArrayMember(arangodb::arango::AqlTransaction*,
+  arangodb::basics::Json extractArrayMember(arangodb::AqlTransaction*,
                                             TRI_document_collection_t const*,
                                             int64_t, bool) const;
 
@@ -311,7 +311,7 @@ struct AqlValue {
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
   //////////////////////////////////////////////////////////////////////////////
 
-  static AqlValue CreateFromBlocks(arangodb::arango::AqlTransaction*,
+  static AqlValue CreateFromBlocks(arangodb::AqlTransaction*,
                                    std::vector<AqlItemBlock*> const&,
                                    std::vector<std::string> const&);
 
@@ -319,7 +319,7 @@ struct AqlValue {
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
   //////////////////////////////////////////////////////////////////////////////
 
-  static AqlValue CreateFromBlocks(arangodb::arango::AqlTransaction*,
+  static AqlValue CreateFromBlocks(arangodb::AqlTransaction*,
                                    std::vector<AqlItemBlock*> const&,
                                    arangodb::aql::RegisterId);
 
@@ -327,7 +327,7 @@ struct AqlValue {
   /// @brief 3-way comparison for AqlValue objects
   //////////////////////////////////////////////////////////////////////////////
 
-  static int Compare(arangodb::arango::AqlTransaction*, AqlValue const&,
+  static int Compare(arangodb::AqlTransaction*, AqlValue const&,
                      TRI_document_collection_t const*, AqlValue const&,
                      TRI_document_collection_t const*, bool compareUtf8);
   

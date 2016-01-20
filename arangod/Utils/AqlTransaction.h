@@ -36,10 +36,8 @@
 #include <v8.h>
 
 namespace arangodb {
-namespace arango {
 
 class AqlTransaction : public Transaction {
-  
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -144,7 +142,7 @@ class AqlTransaction : public Transaction {
   /// @brief ditch
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::DocumentDitch* ditch(TRI_voc_cid_t cid) {
+  arangodb::DocumentDitch* ditch(TRI_voc_cid_t cid) {
     TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
     TRI_ASSERT(trxColl != nullptr);
     return trxColl->_ditch;
@@ -166,9 +164,9 @@ class AqlTransaction : public Transaction {
   /// AQL query running on the coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::AqlTransaction* clone() const {
-    return new arangodb::arango::AqlTransaction(
-        new arangodb::arango::StandaloneTransactionContext(), this->_vocbase,
+  arangodb::AqlTransaction* clone() const {
+    return new arangodb::AqlTransaction(
+        new arangodb::StandaloneTransactionContext(), this->_vocbase,
         &_collections, false);
   }
 
@@ -205,8 +203,6 @@ class AqlTransaction : public Transaction {
   std::map<std::string, arangodb::aql::Collection*> _collections;
 };
 }
-}
 
 #endif
-
 

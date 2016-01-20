@@ -55,10 +55,8 @@ class HttpServer;
 class HttpsServer;
 }
 
-namespace arango {
 class ApplicationV8;
 class ApplicationCluster;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -185,7 +183,7 @@ class ArangoServer : public rest::AnyServer {
   /// @brief cluster application feature
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::ApplicationCluster* _applicationCluster;
+  arangodb::ApplicationCluster* _applicationCluster;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief asynchronous job manager
@@ -405,8 +403,6 @@ class ArangoServer : public rest::AnyServer {
   uint32_t _threadAffinity;
 };
 }
-}
 
 #endif
-
 

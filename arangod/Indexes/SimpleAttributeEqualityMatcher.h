@@ -34,9 +34,7 @@ struct AstNode;
 struct Variable;
 }
 
-namespace arango {
 class Index;
-
 
 class SimpleAttributeEqualityMatcher {
   
@@ -51,7 +49,7 @@ class SimpleAttributeEqualityMatcher {
   /// this is used for the primary index and the edge index
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matchOne(arangodb::arango::Index const*, arangodb::aql::AstNode const*,
+  bool matchOne(arangodb::Index const*, arangodb::aql::AstNode const*,
                 arangodb::aql::Variable const*, size_t, size_t&, double&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -59,7 +57,7 @@ class SimpleAttributeEqualityMatcher {
   /// this is used for the hash index
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matchAll(arangodb::arango::Index const*, arangodb::aql::AstNode const*,
+  bool matchAll(arangodb::Index const*, arangodb::aql::AstNode const*,
                 arangodb::aql::Variable const*, size_t, size_t&, double&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -70,7 +68,7 @@ class SimpleAttributeEqualityMatcher {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::aql::AstNode* getOne(arangodb::aql::Ast*,
-                                 arangodb::arango::Index const*,
+                                 arangodb::Index const*,
                                  arangodb::aql::AstNode const*,
                                  arangodb::aql::Variable const*);
 
@@ -80,7 +78,7 @@ class SimpleAttributeEqualityMatcher {
   /// requires that a previous matchOne() returned true
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::aql::AstNode* specializeOne(arangodb::arango::Index const*,
+  arangodb::aql::AstNode* specializeOne(arangodb::Index const*,
                                         arangodb::aql::AstNode*,
                                         arangodb::aql::Variable const*);
 
@@ -90,7 +88,7 @@ class SimpleAttributeEqualityMatcher {
   /// requires that a previous matchAll() returned true
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::aql::AstNode* specializeAll(arangodb::arango::Index const*,
+  arangodb::aql::AstNode* specializeAll(arangodb::Index const*,
                                         arangodb::aql::AstNode*,
                                         arangodb::aql::Variable const*);
 
@@ -103,14 +101,14 @@ class SimpleAttributeEqualityMatcher {
   /// comparable, and lower values mean lower costs
   //////////////////////////////////////////////////////////////////////////////
 
-  void calculateIndexCosts(arangodb::arango::Index const*, size_t, size_t&,
+  void calculateIndexCosts(arangodb::Index const*, size_t, size_t&,
                            double&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the access fits
   //////////////////////////////////////////////////////////////////////////////
 
-  bool accessFitsIndex(arangodb::arango::Index const*,
+  bool accessFitsIndex(arangodb::Index const*,
                        arangodb::aql::AstNode const*,
                        arangodb::aql::AstNode const*,
                        arangodb::aql::AstNode const*,
@@ -131,7 +129,6 @@ class SimpleAttributeEqualityMatcher {
 
   std::unordered_map<size_t, arangodb::aql::AstNode const*> _found;
 };
-}
 }
 
 #endif

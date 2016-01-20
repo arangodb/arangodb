@@ -25,9 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/logging.h"
 
-using namespace arangodb::arango;
-
-
+using namespace arangodb;
 
 arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
     const {

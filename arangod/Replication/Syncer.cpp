@@ -43,8 +43,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-using namespace std;
-using namespace arangodb::arango;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::httpclient;
@@ -207,7 +206,7 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::applyCollectionDumpMarker(
-    arangodb::arango::Transaction* trx,
+    arangodb::Transaction* trx,
     TRI_transaction_collection_t* trxCollection,
     TRI_replication_operation_e type, const TRI_voc_key_t key,
     const TRI_voc_rid_t rid, TRI_json_t const* json, std::string& errorMsg) {
@@ -326,17 +325,15 @@ int Syncer::applyCollectionDumpMarker(
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg =
-          "document removal operation failed: " + string(TRI_errno_string(res));
+          "document removal operation failed: " + std::string(TRI_errno_string(res));
     }
 
     return res;
   }
 
-  else {
-    errorMsg = "unexpected marker type " + StringUtils::itoa(type);
+  errorMsg = "unexpected marker type " + StringUtils::itoa(type);
 
-    return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
-  }
+  return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,7 +504,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
       return res;
     }
 
-    arangodb::arango::Index* idx = nullptr;
+    arangodb::Index* idx = nullptr;
     res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document, indexSlice,
                                                     &idx);
 

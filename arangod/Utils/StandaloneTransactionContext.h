@@ -36,10 +36,8 @@
 struct TRI_transaction_s;
 
 namespace arangodb {
-namespace arango {
 
 class StandaloneTransactionContext final : public TransactionContext {
-  
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -107,8 +105,6 @@ class StandaloneTransactionContext final : public TransactionContext {
   VPackOptions _options;
 };
 }
-}
 
 #endif
-
 

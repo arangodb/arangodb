@@ -26,7 +26,7 @@
 #include "VocBase/VocShaper.h"
 
 using Json = arangodb::basics::Json;
-using CollectionNameResolver = arangodb::arango::CollectionNameResolver;
+using CollectionNameResolver = arangodb::CollectionNameResolver;
 
 Json TRI_ExpandShapedJson(VocShaper* shaper,
                           CollectionNameResolver const* resolver,

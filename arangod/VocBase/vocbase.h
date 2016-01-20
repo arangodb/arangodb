@@ -49,11 +49,9 @@ namespace arangodb {
 namespace aql {
 class QueryList;
 }
-namespace arango {
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
-}
 }
 
 extern bool IGNORE_DATAFILE_ERRORS;
@@ -274,8 +272,8 @@ struct TRI_vocbase_t {
   // structures for user-defined volatile data
   void* _userStructures;
   arangodb::aql::QueryList* _queries;
-  arangodb::arango::CursorRepository* _cursorRepository;
-  arangodb::arango::CollectionKeysRepository* _collectionKeys;
+  arangodb::CursorRepository* _cursorRepository;
+  arangodb::CollectionKeysRepository* _collectionKeys;
 
   TRI_associative_pointer_t _authInfo;
   TRI_associative_pointer_t _authCache;
@@ -507,7 +505,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
-    TRI_vocbase_t*, arangodb::arango::VocbaseCollectionInfo&, TRI_voc_cid_t cid,
+    TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&, TRI_voc_cid_t cid,
     bool);
 
 ////////////////////////////////////////////////////////////////////////////////

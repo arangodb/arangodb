@@ -53,9 +53,9 @@
 
 #include "unicode/timezone.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::arango;
+
 using namespace arangodb::rest;
 
 struct LocalCollectionGuard {
@@ -290,7 +290,7 @@ static int ParseKeyAndRef(v8::Isolate* isolate, v8::Handle<v8::Value> const arg,
   }
 
   size_t pos = key.find('/');
-  if (pos != string::npos) {
+  if (pos != std::string::npos) {
     key = key.substr(pos + 1);
   }
   return TRI_ERROR_NO_ERROR;
@@ -328,7 +328,7 @@ static void DocumentVocbaseColCoordinator(
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  error = arangodb::arango::getDocumentOnCoordinator(
+  error = arangodb::getDocumentOnCoordinator(
       dbname, collname, key, rev, headers, generateDocument, responseCode,
       resultHeaders, resultBody);
 
@@ -523,7 +523,7 @@ static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster(
     TRI_vocbase_t* vocbase) {
   std::vector<TRI_vocbase_col_t*> result;
 
-  std::vector<shared_ptr<CollectionInfo>> const collections =
+  std::vector<std::shared_ptr<CollectionInfo>> const collections =
       ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
@@ -545,7 +545,7 @@ static std::vector<std::string> GetCollectionNamesCluster(
     TRI_vocbase_t* vocbase) {
   std::vector<std::string> result;
 
-  std::vector<shared_ptr<CollectionInfo>> const collections =
+  std::vector<std::shared_ptr<CollectionInfo>> const collections =
       ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
@@ -694,7 +694,7 @@ static void ModifyVocbaseColCoordinator(
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  error = arangodb::arango::modifyDocumentOnCoordinator(
+  error = arangodb::modifyDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
       mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
 
@@ -1468,7 +1468,7 @@ static void RemoveVocbaseColCoordinator(
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
 
-  error = arangodb::arango::deleteDocumentOnCoordinator(
+  error = arangodb::deleteDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, headers, responseCode,
       resultHeaders, resultBody);
 
@@ -2196,7 +2196,7 @@ static void JS_PropertiesVocbaseCol(
 
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
-    arangodb::arango::VocbaseCollectionInfo info =
+    arangodb::VocbaseCollectionInfo info =
         ClusterInfo::instance()->getCollectionProperties(
             databaseName, StringUtils::itoa(collection->_cid));
 
@@ -2712,7 +2712,7 @@ static void InsertVocbaseColCoordinator(
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  int error = arangodb::arango::createDocumentOnCoordinator(
+  int error = arangodb::createDocumentOnCoordinator(
       dbname, collname, options.waitForSync, json, headers, responseCode,
       resultHeaders, resultBody);
 
@@ -2981,7 +2981,7 @@ static void InsertEdgeColCoordinator(
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
-  int error = arangodb::arango::createEdgeOnCoordinator(
+  int error = arangodb::createEdgeOnCoordinator(
       dbname, collname, options.waitForSync, json, _from.c_str(), _to.c_str(),
       responseCode, resultHeaders, resultBody);
 
@@ -3076,8 +3076,8 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_vocbase_col_t* collection = nullptr;
 
   if (ServerState::instance()->isCoordinator()) {
-    string const name = TRI_ObjectToString(val);
-    shared_ptr<CollectionInfo> const& ci =
+    std::string const name = TRI_ObjectToString(val);
+    std::shared_ptr<CollectionInfo> const& ci =
         ClusterInfo::instance()->getCollection(vocbase->_name, name);
 
     if ((*ci).id() == 0 || (*ci).empty()) {
@@ -3777,7 +3777,7 @@ static void JS_CountVocbaseCol(
     std::string const collname(collection->_name);
 
     uint64_t count = 0;
-    int error = arangodb::arango::countOnCoordinator(dbname, collname, count);
+    int error = arangodb::countOnCoordinator(dbname, collname, count);
 
     if (error != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(error);

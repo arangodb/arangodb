@@ -42,9 +42,7 @@ namespace rest {
 class Endpoint;
 }
 
-namespace arango {
 class AgencyComm;
-
 
 struct AgencyEndpoint {
   
@@ -617,8 +615,6 @@ class AgencyComm {
   static unsigned long const MaxSleepTime = 50000;
 };
 }
-}
 
 #endif
-
 

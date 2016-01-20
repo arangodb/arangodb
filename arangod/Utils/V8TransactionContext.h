@@ -33,7 +33,6 @@
 struct TRI_transaction_s;
 
 namespace arangodb {
-namespace arango {
 
 class V8TransactionContext final : public TransactionContext {
   
@@ -168,8 +167,6 @@ class V8TransactionContext final : public TransactionContext {
   bool const _embeddable;
 };
 }
-}
 
 #endif
-
 

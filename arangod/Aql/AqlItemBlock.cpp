@@ -523,7 +523,7 @@ AqlItemBlock* AqlItemBlock::concatenate(
 ///                      such that actual indices start at 2
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlItemBlock::toJson(arangodb::arango::AqlTransaction* trx) const {
+Json AqlItemBlock::toJson(arangodb::AqlTransaction* trx) const {
   Json json(Json::Object, 6);
   json("nrItems", Json(static_cast<double>(_nrItems)))(
       "nrRegs", Json(static_cast<double>(_nrRegs)));

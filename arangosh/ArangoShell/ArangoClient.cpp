@@ -35,10 +35,9 @@
 #include <iostream>
 #include <sstream>
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
 
 double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 5.0;
 double const ArangoClient::DEFAULT_REQUEST_TIMEOUT = 1200.0;
@@ -363,10 +362,10 @@ void ArangoClient::parse(ProgramOptions& options,
 
   if (!help.empty()) {
     if (!example.empty()) {
-      std::cout << "USAGE:  " << argv[0] << " " << example << endl
-                << endl;
+      std::cout << "USAGE:  " << argv[0] << " " << example << std::endl
+                << std::endl;
     }
-    std::cout << description.usage(help) << endl;
+    std::cout << description.usage(help) << std::endl;
 
     // check for program-specific help
     std::string const progname(argv[0]);
@@ -376,7 +375,7 @@ void ArangoClient::parse(ProgramOptions& options,
                         _specificHelp.progname.size()) ==
             _specificHelp.progname) {
       // found a program-specific help
-      std::cout << _specificHelp.message << endl;
+      std::cout << _specificHelp.message << std::endl;
     }
 
     // --help always returns success
@@ -467,7 +466,7 @@ void ArangoClient::parse(ProgramOptions& options,
 // now prompt for it
 #ifdef TRI_HAVE_TERMIOS_H
       TRI_SetStdinVisibility(false);
-      getline(cin, _password);
+      getline(std::cin, _password);
 
       TRI_SetStdinVisibility(true);
 #else
@@ -681,7 +680,7 @@ void ArangoClient::openLog() {
   if (!_logFile.empty()) {
     _log = fopen(_logFile.c_str(), "w");
 
-    ostringstream s;
+    std::ostringstream s;
     if (_log == nullptr) {
       s << "Cannot open file '" << _logFile << "' for logging.";
       printErrLine(s.str());
@@ -709,7 +708,7 @@ void ArangoClient::closeLog() {
 
 void ArangoClient::printWelcomeInfo() {
   if (_usePager) {
-    ostringstream s;
+    std::ostringstream s;
     s << "Using pager '" << _outputPager << "' for output buffering.";
 
     printLine(s.str());

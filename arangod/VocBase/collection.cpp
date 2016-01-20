@@ -42,10 +42,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
-using namespace arangodb::arango;
-
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auxilliary struct for shape file iteration
@@ -853,7 +850,7 @@ char* TRI_GetDirectoryCollection(char const* path, char const* name,
 
 TRI_collection_t* TRI_CreateCollection(
     TRI_vocbase_t* vocbase, TRI_collection_t* collection, char const* path,
-    arangodb::arango::VocbaseCollectionInfo const& parameters) {
+    arangodb::VocbaseCollectionInfo const& parameters) {
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
       parameters.maximalSize()) {
@@ -1589,7 +1586,7 @@ int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
 
 // Only temporary
 TRI_json_t* TRI_CreateJsonCollectionInfo(
-    arangodb::arango::VocbaseCollectionInfo const& info) {
+    arangodb::VocbaseCollectionInfo const& info) {
   try {
     VPackBuilder builder;
     builder.openObject();
@@ -1603,7 +1600,7 @@ TRI_json_t* TRI_CreateJsonCollectionInfo(
 }
 
 std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
-    arangodb::arango::VocbaseCollectionInfo const& info) {
+    arangodb::VocbaseCollectionInfo const& info) {
   // This function might throw
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
@@ -1613,7 +1610,7 @@ std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
 }
 
 void TRI_CreateVelocyPackCollectionInfo(
-    arangodb::arango::VocbaseCollectionInfo const& info,
+    arangodb::VocbaseCollectionInfo const& info,
     VPackBuilder& builder) {
   // This function might throw
   //

@@ -31,11 +31,8 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
-using namespace std;
-using namespace arangodb::arango;
+using namespace arangodb;
 using namespace arangodb::rest;
-
-
 
 RestShardHandler::RestShardHandler(arangodb::rest::HttpRequest* request,
                                    Dispatcher* data)

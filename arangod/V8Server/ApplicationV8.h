@@ -50,10 +50,8 @@ class ApplicationDispatcher;
 class ApplicationScheduler;
 }
 
-namespace arango {
-
-
 class GlobalContextMethods {
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief method type
@@ -594,8 +592,6 @@ class ApplicationV8 : public rest::ApplicationFeature {
   std::atomic<bool> _ok;
 };
 }
-}
 
 #endif
-
 

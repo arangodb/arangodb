@@ -99,7 +99,7 @@ struct CollectorCache {
   /// @brief add a ditch
   //////////////////////////////////////////////////////////////////////////////
 
-  void addDitch(arangodb::arango::DocumentDitch* ditch) {
+  void addDitch(arangodb::DocumentDitch* ditch) {
     TRI_ASSERT(ditch != nullptr);
     ditches.emplace_back(ditch);
   }
@@ -150,7 +150,7 @@ struct CollectorCache {
   /// @brief ditches held by the operations
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<arangodb::arango::DocumentDitch*> ditches;
+  std::vector<arangodb::DocumentDitch*> ditches;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief datafile info cache, updated when the collector transfers markers
@@ -258,7 +258,7 @@ class CollectorThread : public basics::Thread {
   /// @brief process a single marker in collector step 2
   //////////////////////////////////////////////////////////////////////////////
 
-  void processCollectionMarker(arangodb::arango::SingleCollectionWriteTransaction<UINT64_MAX>&,
+  void processCollectionMarker(arangodb::SingleCollectionWriteTransaction<UINT64_MAX>&,
                                TRI_document_collection_t*,
                                CollectorCache*,
                                CollectorOperation const&);

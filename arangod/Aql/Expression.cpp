@@ -156,7 +156,7 @@ void Expression::variables(std::unordered_set<Variable const*>& result) const {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::execute(arangodb::arango::AqlTransaction* trx,
+AqlValue Expression::execute(arangodb::AqlTransaction* trx,
                              AqlItemBlock const* argv, size_t startPos,
                              std::vector<Variable const*> const& vars,
                              std::vector<RegisterId> const& regs,
@@ -291,7 +291,7 @@ void Expression::invalidate() {
 bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
                              TRI_document_collection_t const* leftCollection,
                              TRI_document_collection_t const* rightCollection,
-                             arangodb::arango::AqlTransaction* trx,
+                             arangodb::AqlTransaction* trx,
                              AstNode const* node) const {
   TRI_ASSERT_EXPENSIVE(right.isArray());
 
@@ -462,7 +462,7 @@ void Expression::buildExpression() {
 
 AqlValue Expression::executeSimpleExpression(
     AstNode const* node, TRI_document_collection_t const** collection,
-    arangodb::arango::AqlTransaction* trx, AqlItemBlock const* argv,
+    arangodb::AqlTransaction* trx, AqlItemBlock const* argv,
     size_t startPos, std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs, bool doCopy) {
   switch (node->type) {
@@ -576,7 +576,7 @@ void Expression::stringifyIfNotTooLong(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionAttributeAccess(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -600,7 +600,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionIndexedAccess(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -688,7 +688,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionArray(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -724,7 +724,7 @@ AqlValue Expression::executeSimpleExpressionArray(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionObject(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -828,7 +828,7 @@ AqlValue Expression::executeSimpleExpressionReference(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionRange(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -853,7 +853,7 @@ AqlValue Expression::executeSimpleExpressionRange(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionFCall(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -907,7 +907,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionNot(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -928,7 +928,7 @@ AqlValue Expression::executeSimpleExpressionNot(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionAndOr(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -971,7 +971,7 @@ AqlValue Expression::executeSimpleExpressionAndOr(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionComparison(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -1057,7 +1057,7 @@ AqlValue Expression::executeSimpleExpressionComparison(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionTernary(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -1084,7 +1084,7 @@ AqlValue Expression::executeSimpleExpressionTernary(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionExpansion(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
@@ -1269,7 +1269,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
 AqlValue Expression::executeSimpleExpressionIterator(
     AstNode const* node, TRI_document_collection_t const** collection,
-    arangodb::arango::AqlTransaction* trx, AqlItemBlock const* argv,
+    arangodb::AqlTransaction* trx, AqlItemBlock const* argv,
     size_t startPos, std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
   TRI_ASSERT(node != nullptr);
@@ -1285,7 +1285,7 @@ AqlValue Expression::executeSimpleExpressionIterator(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionArithmetic(
-    AstNode const* node, arangodb::arango::AqlTransaction* trx,
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {

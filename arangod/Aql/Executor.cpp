@@ -42,7 +42,7 @@ using namespace arangodb::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 static ExecutionCondition const NotInCluster = [] {
-  return !arangodb::arango::ServerState::instance()->isRunningInCluster();
+  return !arangodb::ServerState::instance()->isRunningInCluster();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

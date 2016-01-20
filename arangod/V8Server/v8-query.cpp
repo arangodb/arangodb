@@ -47,10 +47,8 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::arango;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut to wrap a shaped-json object in a read-only transaction
@@ -529,7 +527,7 @@ static void ExecuteSkiplistQuery(
       TRI_LookupIndexByHandle(isolate, trx.resolver(), col, args[0], false);
 
   if (idx == nullptr ||
-      idx->type() != arangodb::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      idx->type() != arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -549,7 +547,7 @@ static void ExecuteSkiplistQuery(
   }
 
   std::unique_ptr<SkiplistIterator> skiplistIterator(
-      static_cast<arangodb::arango::SkiplistIndex*>(idx)
+      static_cast<arangodb::SkiplistIndex*>(idx)
           ->lookup(&trx, skiplistOperator, reverse));
   delete skiplistOperator;
 
@@ -1159,11 +1157,11 @@ static void ByExampleHashIndexQuery(
                                      args[0], false);
 
   if (idx == nullptr ||
-      idx->type() != arangodb::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
+      idx->type() != arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  auto hashIndex = static_cast<arangodb::arango::HashIndex*>(idx);
+  auto hashIndex = static_cast<arangodb::HashIndex*>(idx);
 
   // convert the example (index is locked by lockRead)
   TRI_hash_index_search_value_t searchValue;
@@ -1188,7 +1186,7 @@ static void ByExampleHashIndexQuery(
 
   // find the matches
   std::vector<TRI_doc_mptr_t*> list;
-  static_cast<arangodb::arango::HashIndex*>(idx)
+  static_cast<arangodb::HashIndex*>(idx)
       ->lookup(&trx, &searchValue, list);
 
   // convert result
@@ -1629,7 +1627,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
                                      args[0], false);
 
   if (idx == nullptr ||
-      idx->type() != arangodb::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      idx->type() != arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1660,7 +1658,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto fulltextIndex = static_cast<arangodb::arango::FulltextIndex*>(idx);
+  auto fulltextIndex = static_cast<arangodb::FulltextIndex*>(idx);
 
   if (isSubstringQuery) {
     TRI_FreeQueryFulltextIndex(query);
@@ -1860,8 +1858,8 @@ static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
                                      args[0], false);
 
   if (idx == nullptr ||
-      (idx->type() != arangodb::arango::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-       idx->type() != arangodb::arango::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
+      (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
+       idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1881,7 +1879,7 @@ static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<arangodb::arango::GeoIndex2*>(idx)
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(idx)
                              ->nearQuery(&trx, latitude, longitude, limit);
 
   if (cors != nullptr) {
@@ -1962,8 +1960,8 @@ static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
                                      args[0], false);
 
   if (idx == nullptr ||
-      (idx->type() != arangodb::arango::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-       idx->type() != arangodb::arango::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
+      (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
+       idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1983,7 +1981,7 @@ static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<arangodb::arango::GeoIndex2*>(idx)
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(idx)
                              ->withinQuery(&trx, latitude, longitude, radius);
 
   if (cors != nullptr) {

@@ -1508,7 +1508,7 @@ static void DatabaseManager(void* data) {
       // on a coordinator, we have no cleanup threads for the databases
       // so we have to do cursor cleanup here
       if (++cleanupCycles >= 10 &&
-          arangodb::arango::ServerState::instance()->isCoordinator()) {
+          arangodb::ServerState::instance()->isCoordinator()) {
         // note: if no coordinator then cleanupCycles will increase endlessly,
         // but it's only used for the following part
         cleanupCycles = 0;
@@ -1520,7 +1520,7 @@ static void DatabaseManager(void* data) {
           TRI_vocbase_t* vocbase = p.second;
           TRI_ASSERT(vocbase != nullptr);
           auto cursorRepository =
-              static_cast<arangodb::arango::CursorRepository*>(
+              static_cast<arangodb::CursorRepository*>(
                   vocbase->_cursorRepository);
 
           try {

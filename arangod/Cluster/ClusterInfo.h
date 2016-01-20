@@ -26,7 +26,6 @@
 #define ARANGOD_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
-#include <mutex>
 #include "Basics/JsonHelper.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -34,15 +33,15 @@
 #include "VocBase/collection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Slice.h"
+
+#include <mutex>
+#include <velocypack/Slice.h>
 
 struct TRI_json_t;
 struct TRI_memory_zone_s;
 
 namespace arangodb {
-namespace arango {
 class ClusterInfo;
-
 
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
@@ -53,7 +52,6 @@ typedef std::string ShardID;       // ID of a shard
 class CollectionInfo {
   friend class ClusterInfo;
 
-  
  public:
   CollectionInfo();
 
@@ -1003,7 +1001,6 @@ class ClusterInfo {
   static double const reloadServerListTimeout;
 };
 
-}  // end namespace arango
 }  // end namespace arangodb
 
 #endif

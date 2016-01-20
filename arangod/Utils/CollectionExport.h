@@ -32,7 +32,6 @@ struct TRI_document_collection_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace arango {
 
 class CollectionGuard;
 class DocumentDitch;
@@ -65,15 +64,14 @@ class CollectionExport {
 
   
  private:
-  arangodb::arango::CollectionGuard* _guard;
+  arangodb::CollectionGuard* _guard;
   struct TRI_document_collection_t* _document;
-  arangodb::arango::DocumentDitch* _ditch;
+  arangodb::DocumentDitch* _ditch;
   std::string const _name;
-  arangodb::arango::CollectionNameResolver _resolver;
+  arangodb::CollectionNameResolver _resolver;
   Restrictions _restrictions;
   std::vector<void const*>* _documents;
 };
-}
 }
 
 #endif

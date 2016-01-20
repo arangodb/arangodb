@@ -36,10 +36,8 @@ struct TRI_edge_index_iterator_t;
 struct TRI_hash_index_element_multi_s;
 
 namespace arangodb {
-namespace arango {
 class IndexIterator;
 struct IndexIteratorContext;
-}
 
 namespace aql {
 
@@ -89,7 +87,7 @@ class IndexBlock : public ExecutionBlock {
   /// @brief create an iterator object
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::IndexIterator* createIterator();
+  arangodb::IndexIterator* createIterator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Forwards _iterator to the next available index
@@ -184,7 +182,7 @@ class IndexBlock : public ExecutionBlock {
   /// @brief context for index iteration
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::IndexIteratorContext* _context;
+  arangodb::IndexIteratorContext* _context;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _iterator: holds the index iterator found using
@@ -192,7 +190,7 @@ class IndexBlock : public ExecutionBlock {
   /// necessarily all at once.
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::arango::IndexIterator* _iterator;
+  arangodb::IndexIterator* _iterator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _condition: holds the complete condition this Block can serve for

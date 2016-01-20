@@ -29,15 +29,11 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::rest;
-using namespace arangodb::arango;
-
-
 
 RestEdgesHandler::RestEdgesHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
-
-
 
 HttpHandler::status_t RestEdgesHandler::execute() {
   // extract the sub-request type
@@ -75,9 +71,9 @@ bool RestEdgesHandler::getEdgesForVertex(
     std::vector<traverser::TraverserExpression*> const& expressions,
     TRI_edge_direction_e direction, SingleCollectionReadOnlyTransaction& trx,
     arangodb::basics::Json& result, size_t& scannedIndex, size_t& filtered) {
-  arangodb::arango::traverser::VertexId start;
+  arangodb::traverser::VertexId start;
   try {
-    start = arangodb::arango::traverser::IdStringToVertexId(trx.resolver(), id);
+    start = arangodb::traverser::IdStringToVertexId(trx.resolver(), id);
   } catch (arangodb::basics::Exception& e) {
     handleError(e);
     return false;
