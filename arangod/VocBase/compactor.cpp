@@ -38,11 +38,15 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/memory-map.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Utils/transactions.h"
+#include "VocBase/DatafileStatistics.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
+
+using namespace triagens;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -51,9 +55,11 @@
 static char const* ReasonNoDatafiles       = "skipped compaction because collection has no datafiles";
 static char const* ReasonCompactionBlocked = "skipped compaction because existing compactor file is in the way and waits to be processed";
 static char const* ReasonDatafileSmall     = "compacting datafile because it's small and will be merged with next";
+static char const* ReasonEmpty             = "compacting datafile because collection is empty";
 static char const* ReasonOnlyDeletions     = "compacting datafile because it contains only deletion markers";
 static char const* ReasonDeadSize          = "compacting datafile because it contains much dead object space";
 static char const* ReasonDeadSizeShare     = "compacting datafile because it contains high share of dead objects";
+static char const* ReasonDeadCount         = "compacting datafile because it contains many dead objects";
 static char const* ReasonNothingToCompact  = "checked datafiles, but no compaction opportunity found";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,6 +82,13 @@ static char const* ReasonNothingToCompact  = "checked datafiles, but no compacti
 ////////////////////////////////////////////////////////////////////////////////
 
 #define COMPACTOR_DEAD_SIZE_SHARE (0.1)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum number of deletion marker in file from which on we will
+/// compact it if nothing else qualifies file for compaction
+////////////////////////////////////////////////////////////////////////////////
+
+#define COMPACTOR_DEAD_THRESHOLD (16384)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum number of datafiles to join together in one compaction run
@@ -147,10 +160,10 @@ compaction_initial_context_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct compaction_context_s {
-  TRI_document_collection_t* _document;
-  TRI_datafile_t*            _compactor;
-  TRI_doc_datafile_info_t    _dfi;
-  bool                       _keepDeletions;
+  TRI_document_collection_t*  _document;
+  TRI_datafile_t*             _compactor;
+  DatafileStatisticsContainer _dfi;
+  bool                        _keepDeletions;
 }
 compaction_context_t;
 
@@ -388,28 +401,18 @@ static void RenameDatafileCallback (TRI_datafile_t* datafile,
       TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
       LOG_ERROR("logic error: could not locate datafile");
-
+      TRI_Free(TRI_CORE_MEM_ZONE, context);
       return;
     }
 
     // put the compactor in place of the datafile
     document->_datafiles._buffer[i] = compactor;
 
-    // update dfi
-    TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, compactor->_fid, false);
-
-    if (dfi != nullptr) {
-      *dfi = context->_dfi;
-    }
-    else {
-      LOG_ERROR("logic error: could not find compactor file information");
-    }
-
     if (! LocateDatafile(&document->_compactors, compactor->_fid, &i)) {
       TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
       LOG_ERROR("logic error: could not locate compactor");
-
+      TRI_Free(TRI_CORE_MEM_ZONE, context);
       return;
     }
 
@@ -442,6 +445,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
   compaction_context_t* context = static_cast<compaction_context_t*>(data);
   TRI_document_collection_t* document = context->_document;
+  TRI_voc_fid_t const targetFid = context->_compactor->_fid;
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
@@ -457,14 +461,10 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     bool deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
+      // found a dead document
+      context->_dfi.numberDead++;
+      context->_dfi.sizeDead += AlignedSize(marker);
       LOG_TRACE("found a stale document: %s", key);
-      return true;
-    }
-
-    // we found an index entry with a revision id <= the marker revision
-    auto oldPtr = found->getDataPtr();
-    if (! TRI_IsWalDataMarkerDatafile(oldPtr) && oldPtr != static_cast<void const*>(marker)) {
-      // the index points to a datafile marker, but not to THIS marker
       return true;
     }
 
@@ -484,25 +484,31 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     // let marker point to the new position
     found2->setDataPtr(result);
-
-    // update datafile info
-    context->_dfi._numberAlive += 1;
-    context->_dfi._sizeAlive += AlignedSize(marker);
-  }
-
-  // deletions
-  else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION &&
-           context->_keepDeletions) {
-    // write to compactor files
-    res = CopyMarker(document, context->_compactor, marker, &result);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // TODO: dont fail but recover from this state
-      LOG_FATAL_AND_EXIT("cannot write document marker to compactor file: %s", TRI_last_error());
+    // update fid in case it changes
+    if (found2->_fid != targetFid) {
+      found2->_fid = targetFid;
     }
 
     // update datafile info
-    context->_dfi._numberDeletion++;
+    // keep track of alive stats
+    context->_dfi.numberAlive++;
+    context->_dfi.sizeAlive += AlignedSize(marker);
+  }
+
+  // deletions
+  else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
+    if (context->_keepDeletions) {
+      // write to compactor files
+      res = CopyMarker(document, context->_compactor, marker, &result);
+      if (res != TRI_ERROR_NO_ERROR) {
+        // TODO: dont fail but recover from this state
+        LOG_FATAL_AND_EXIT("cannot write document marker to compactor file: %s",
+                           TRI_last_error());
+      }
+      
+      // update datafile info
+      context->_dfi.numberDeletions++;
+    }
   }
 
   // shapes
@@ -520,9 +526,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
     }
-
-    context->_dfi._numberShapes++;
-    context->_dfi._sizeShapes += AlignedSize(marker);
+    
+    context->_dfi.numberShapes++;
+    context->_dfi.sizeShapes += AlignedSize(marker);
   }
 
   // attributes
@@ -538,11 +544,11 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     res = document->getShaper()->moveMarker(result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
+      LOG_FATAL_AND_EXIT("cannot re-locate attribute marker");
     }
-
-    context->_dfi._numberAttributes++;
-    context->_dfi._sizeAttributes += AlignedSize(marker);
+    
+    context->_dfi.numberAttributes++;
+    context->_dfi.sizeAttributes += AlignedSize(marker);
   }
 
   // transaction markers
@@ -562,9 +568,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
         // TODO: dont fail but recover from this state
         LOG_FATAL_AND_EXIT("cannot write transaction marker to compactor file: %s", TRI_last_error());
       }
-
-      context->_dfi._numberTransactions++;
-      context->_dfi._sizeTransactions += AlignedSize(marker);
+    
+      context->_dfi.numberTransactions++;
+      context->_dfi.sizeTransactions += AlignedSize(marker);
     }
     // otherwise don't copy
   }
@@ -638,16 +644,10 @@ static int RemoveDatafile (TRI_document_collection_t* document,
   }
 
   TRI_RemoveVectorPointer(&document->_datafiles, i);
+  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
   // update dfi
-  TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, df->_fid, false);
-
-  if (dfi != nullptr) {
-    TRI_RemoveDatafileInfoDocumentCollection(document, df->_fid);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, dfi);
-  }
-
-  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
+  document->_datafileStatistics.remove(df->_fid);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -666,15 +666,13 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
 
-    bool deleted;
-
     TRI_doc_document_key_marker_t const* d = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
     TRI_voc_key_t key = (char*) d + d->_offsetKey;
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
     auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key));
-    deleted = (found == nullptr || found->_rid > d->_rid);
+    bool deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
       return true;
@@ -814,42 +812,56 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
 
   LOG_DEBUG("created new compactor file '%s'", compactor->getName(compactor));
 
-  memset(&context._dfi, 0, sizeof(TRI_doc_datafile_info_t));
   // these attributes remain the same for all datafiles we collect
   context._document  = document;
   context._compactor = compactor;
-  context._dfi._fid  = compactor->_fid;
 
-  // now compact all datafiles
-  for (i = 0; i < n; ++i) {
-    compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
-    TRI_datafile_t* df = compaction->_datafile;
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-    LOG_TRACE("compacting datafile '%s' into '%s', number: %d, keep deletions: %d",
-               df->getName(df),
-               compactor->getName(compactor),
-               (int) i,
-               (int) compaction->_keepDeletions);
+  try {
+    // now compact all datafiles
+    for (i = 0; i < n; ++i) {
+      compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
+      TRI_datafile_t* df = compaction->_datafile;
 
-    // if this is the first datafile in the list of datafiles, we can also collect
-    // deletion markers
-    context._keepDeletions = compaction->_keepDeletions;
+      LOG_TRACE("compacting datafile '%s' into '%s', number: %d, keep deletions: %d",
+                df->getName(df),
+                compactor->getName(compactor),
+                (int) i,
+                (int) compaction->_keepDeletions);
 
-    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-   
-    // run the actual compaction of a single datafile
-    bool ok = TRI_IterateDatafile(df, Compactifier, &context);
-   
+      // if this is the first datafile in the list of datafiles, we can also collect
+      // deletion markers
+      context._keepDeletions = compaction->_keepDeletions;
+
+      // run the actual compaction of a single datafile
+      bool ok = TRI_IterateDatafile(df, Compactifier, &context);
+    
+      if (! ok) {
+        TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+        LOG_WARNING("failed to compact datafile '%s'", df->getName(df));
+        // compactor file does not need to be removed now. will be removed on next startup
+        // TODO: Remove
+        return;
+      }
+    } // next file
+
+    document->_datafileStatistics.replace(compactor->_fid, context._dfi);
+    
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+  }
+  catch (...) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+    LOG_WARNING("caught an exception during compaction");
+    return;
+  }
 
-    if (! ok) {
-      LOG_WARNING("failed to compact datafile '%s'", df->getName(df));
-      // compactor file does not need to be removed now. will be removed on next startup
-      // TODO: Remove
-      return;
-    }
-  } // next file
-
+  // remove all datafile statistics that we don't need anymore
+  for (i = 1; i < n; ++i) {
+    compaction_info_t* compaction =
+        static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
+    document->_datafileStatistics.remove(compaction->_datafile->_fid);
+  }
 
   // locate the compactor
   // must acquire a write-lock as we're about to change the datafiles vector
@@ -874,12 +886,12 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
 
-  if (context._dfi._numberAlive == 0 &&
-      context._dfi._numberDead == 0 &&
-      context._dfi._numberDeletion == 0 &&
-      context._dfi._numberShapes == 0 &&
-      context._dfi._numberAttributes == 0 &&
-      context._dfi._numberTransactions == 0) {
+  if (context._dfi.numberAlive == 0 &&
+      context._dfi.numberDead == 0 &&
+      context._dfi.numberDeletions == 0 &&
+      context._dfi.numberShapes == 0 &&
+      context._dfi.numberAttributes == 0 &&
+      context._dfi.numberTransactions == 0) {
     if (n > 1) {
       // create .dead files for all collected files
       for (i = 0; i < n; ++i) {
@@ -931,6 +943,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
         }
       }
     }
+      
 
     for (i = 0; i < n; ++i) {
       compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
@@ -988,6 +1001,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 
     // additionally, if there are no datafiles, then there's no need to compact
     TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
+
     if (n == 0) {
       document->setCompactionStatus(ReasonNoDatafiles);
     }
@@ -996,6 +1010,11 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     }
     return false;
   }
+  
+  size_t start = document->getNextCompactionStartIndex();
+  
+  // number of documents is protected by the same lock
+  uint64_t const numDocuments = document->size();
 
   // get maximum size of result file
   uint64_t maxSize = (uint64_t) COMPACTOR_MAX_SIZE_FACTOR * (uint64_t) document->_info._maximalSize;
@@ -1009,103 +1028,115 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   // copy datafile information
   TRI_vector_t vector;
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(compaction_info_t));
+
+  if (start >= n || numDocuments == 0) {
+    start = 0;
+  }
+
   int64_t numAlive = 0;
-  bool compactNext = false;
+
+  if (start > 0) {
+    // we don't know for sure if there are alive documents in the first datafile,
+    // so let's assume there are some
+    numAlive = 16384; 
+  }
+
+  bool doCompact = false;
+  uint64_t totalSize = 0; 
   char const* reason = nullptr;
 
-  for (size_t i = 0;  i < n;  ++i) {
-    uint64_t totalSize = 0;
-
+  for (size_t i = start;  i < n;  ++i) {
     TRI_datafile_t* df = static_cast<TRI_datafile_t*>(document->_datafiles._buffer[i]);
 
     TRI_ASSERT(df != nullptr);
 
-    TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, df->_fid, false);
+    DatafileStatisticsContainer dfi = document->_datafileStatistics.get(df->_fid);
+    
+    if (dfi.numberUncollected > 0) {
+      LOG_TRACE("cannot compact file %llu because it still has uncollected entries", (unsigned long long) df->_fid);
+      start = i + 1;
+      break;
+    }
 
-    if (dfi == nullptr) {
-      // datafile info not found. this shouldn't happen
-      LOG_WARNING("datafile info not found for datafile %llu", (unsigned long long) df->_fid);
+    if (! doCompact &&
+        df->_maximalSize < COMPACTOR_MIN_SIZE &&
+        i < n - 1) {
+      // very small datafile and not the last one. let's compact it so it's merged with others
+      doCompact = true;
+      reason = ReasonDatafileSmall;
+    }
+    else if (numDocuments == 0 && 
+             (dfi.numberAlive > 0 || dfi.numberDead > 0 || dfi.numberDeletions > 0)) {
+      // collection is empty, but datafile statistics indicate there is something in this datafile
+      doCompact = true;
+      reason = ReasonEmpty;
+    }
+    else if (numAlive == 0 && dfi.numberAlive == 0 && dfi.numberDeletions > 0) {
+      // compact first datafile(s) if they contain only deletions
+      doCompact = true;
+      reason = ReasonOnlyDeletions;
+    }
+    else if (dfi.sizeDead >= (int64_t) COMPACTOR_DEAD_SIZE_THRESHOLD) {
+      // the size of dead objects is above some threshold
+      doCompact = true;
+      reason = ReasonDeadSize;
+    }
+    else if (dfi.sizeDead > 0 &&
+             (((double) dfi.sizeDead / ((double) dfi.sizeDead + (double) dfi.sizeAlive) >= COMPACTOR_DEAD_SIZE_SHARE) ||
+              ((double) dfi.sizeDead / (double) df->_maximalSize >= COMPACTOR_DEAD_SIZE_SHARE))) {
+      // the size of dead objects is above some share
+      doCompact = true;
+      reason = ReasonDeadSizeShare;
+    }
+    else if (dfi.numberDead >= (int64_t) COMPACTOR_DEAD_THRESHOLD) {
+      // the number of dead objects is above some threshold
+      doCompact = true;
+      reason = ReasonDeadCount;
+    }
+
+    if (! doCompact) {
+      numAlive += (int64_t) dfi.numberAlive;
       continue;
     }
 
-    bool shouldCompact = false;
-  
-    if (! compactNext &&
-        df->_maximalSize < COMPACTOR_MIN_SIZE &&
-        i < n - 1) {
-      // very small datafile. let's compact it so it's merged with others
-      shouldCompact = true;
-      compactNext = true;
-      LOG_TRACE("will compact datafile %llu because it is small",
-                (unsigned long long) df->_fid);
-      reason = ReasonDatafileSmall;
-    }
-    else if (numAlive == 0 && dfi->_numberAlive == 0 && dfi->_numberDeletion > 0) {
-      // compact first datafile(s) already if they have some deletions
-      shouldCompact = true;
-      compactNext = true;
-      LOG_TRACE("will compact datafile %llu because it does not have alive or deletion markers",
-                (unsigned long long) df->_fid);
-      reason = ReasonOnlyDeletions;
-    }
-    else {
-      // in all other cases, only check the number and size of "dead" objects
-      if (dfi->_sizeDead >= (int64_t) COMPACTOR_DEAD_SIZE_THRESHOLD) {
-        shouldCompact = true;
-        compactNext = true;
-        LOG_TRACE("will compact datafile %llu because it contains more than %llu bytes of dead objects",
-                  (unsigned long long) df->_fid,
-                  (unsigned long long) COMPACTOR_DEAD_SIZE_THRESHOLD);
-        reason = ReasonDeadSize;
-      }
-      else if (dfi->_sizeDead > 0) {
-        // the size of dead objects is above some threshold
-        double share = (double) dfi->_sizeDead / ((double) dfi->_sizeDead + (double) dfi->_sizeAlive);
+    // remember for next compaction
+    start = i + 1;
 
-        if (share >= COMPACTOR_DEAD_SIZE_SHARE) {
-          // the size of dead objects is above some share
-          shouldCompact = true;
-          compactNext = true;
-          LOG_TRACE("will compact datafile %llu because it contains more than %f %% dead objects",
-                    (unsigned long long) df->_fid,
-                    (double) COMPACTOR_DEAD_SIZE_SHARE * 100.0);
-          reason = ReasonDeadSizeShare;
-        }
-      }
+    if (totalSize + (uint64_t) df->_maximalSize >= maxSize &&
+        TRI_LengthVector(&vector) >= 1) {
+      // found enough files to compact
+      break;
     }
-      
-    if (! shouldCompact) {
-      // only use those datafiles that contain dead objects
 
-      if (! compactNext) {
-        numAlive += (int64_t) dfi->_numberAlive;
-        continue;
-      }
-    }
+    TRI_ASSERT(reason != nullptr);
      
-    LOG_TRACE("found datafile eligible for compaction. fid: %llu, size: %llu "
+    LOG_TRACE("found datafile eligible for compaction. fid: %llu, size: %llu, reason: %s, "
               "numberDead: %llu, numberAlive: %llu, numberDeletion: %llu, "
               "numberShapes: %llu, numberAttributes: %llu, transactions: %llu, "
+              "uncollected: %llu, "
               "sizeDead: %llu, sizeAlive: %llu, sizeShapes %llu, sizeAttributes: %llu, "
               "sizeTransactions: %llu",
               (unsigned long long) df->_fid,
               (unsigned long long) df->_maximalSize,
-              (unsigned long long) dfi->_numberDead,
-              (unsigned long long) dfi->_numberAlive,
-              (unsigned long long) dfi->_numberDeletion,
-              (unsigned long long) dfi->_numberShapes,
-              (unsigned long long) dfi->_numberAttributes,
-              (unsigned long long) dfi->_numberTransactions,
-              (unsigned long long) dfi->_sizeDead,
-              (unsigned long long) dfi->_sizeAlive,
-              (unsigned long long) dfi->_sizeShapes,
-              (unsigned long long) dfi->_sizeAttributes,
-              (unsigned long long) dfi->_sizeTransactions);
+              reason,
+              (unsigned long long) dfi.numberDead,
+              (unsigned long long) dfi.numberAlive,
+              (unsigned long long) dfi.numberDeletions,
+              (unsigned long long) dfi.numberShapes,
+              (unsigned long long) dfi.numberAttributes,
+              (unsigned long long) dfi.numberTransactions,
+              (unsigned long long) dfi.numberUncollected,
+              (unsigned long long) dfi.sizeDead,
+              (unsigned long long) dfi.sizeAlive,
+              (unsigned long long) dfi.sizeShapes,
+              (unsigned long long) dfi.sizeAttributes,
+              (unsigned long long) dfi.sizeTransactions);
     totalSize += (uint64_t) df->_maximalSize;
 
     compaction_info_t compaction;
     compaction._datafile = df;
     compaction._keepDeletions = (numAlive > 0 && i > 0);
+// TODO: verify that keepDeletions actually works with wrong numAlive stats
 
     TRI_PushBackVector(&vector, &compaction);
 
@@ -1116,30 +1147,38 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     // delete the collection in the middle of compaction, but the compactor
     // will not pick this up as it is read-locking the collection status)
 
-    if (TRI_LengthVector(&vector) >= COMPACTOR_MAX_FILES ||
-        totalSize >= maxSize) {
-      // found enough to compact
+    if (totalSize >= maxSize) {
+      // result file will be big enough
       break;
     }
 
-    numAlive += (int64_t) dfi->_numberAlive;
-  }
+    if (totalSize >= COMPACTOR_MIN_SIZE &&
+        TRI_LengthVector(&vector) >= COMPACTOR_MAX_FILES) {
+      // found enough files to compact
+      break;
+    }
 
+    numAlive += (int64_t) dfi.numberAlive;
+  }
+  
   // can now continue without the lock
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
- 
+  
   if (TRI_LengthVector(&vector) == 0) {
+    // nothing to compact. now reset start index
+    document->setNextCompactionStartIndex(0);
+
     // cleanup local variables
     TRI_DestroyVector(&vector);
     document->setCompactionStatus(ReasonNothingToCompact);
     return false;
   }
- 
+    
   // handle datafiles with dead objects
   TRI_ASSERT(TRI_LengthVector(&vector) >= 1);
-  if (reason != nullptr) {
-    document->setCompactionStatus(reason);
-  }
+  TRI_ASSERT(reason != nullptr);
+  document->setCompactionStatus(reason);
+  document->setNextCompactionStartIndex(start);
 
   CompactifyDatafiles(document, &vector);
 
@@ -1438,28 +1477,41 @@ void TRI_CompactorVocBase (void* data) {
             continue;
           }
 
-          if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <= now) {
-            auto ce = document->ditches()->createCompactionDitch(__FILE__, __LINE__);
+          // read-unlock the compaction lock
+          TRI_DEFER(TRI_WriteUnlockReadWriteLock(&document->_compactionLock));
 
-            if (ce == nullptr) {
-              // out of memory
-              LOG_WARNING("out of memory when trying to create compaction ditch");
-            }
-            else {
-              worked = CompactifyDocumentCollection(document);
+          try {  
+            if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <= now) {
+              auto ce = document->ditches()->createCompactionDitch(__FILE__, __LINE__);
 
-              if (! worked) {
-                // set compaction stamp
-                document->_lastCompaction = now;
+              if (ce == nullptr) {
+                // out of memory
+                LOG_WARNING("out of memory when trying to create compaction ditch");
               }
-              // if we worked, then we don't set the compaction stamp to force another round of compaction
+              else {
+                try {
+                  worked = CompactifyDocumentCollection(document);
 
-              document->ditches()->freeDitch(ce);
+                  if (! worked) {
+                    // set compaction stamp
+                    document->_lastCompaction = now;
+                  }
+                  // if we worked, then we don't set the compaction stamp to force 
+                  // another round of compaction
+                }
+                catch (...) {
+                  LOG_ERROR("an unknown exception occurred during compaction");
+                  // in case an error occurs, we must still free this ditch
+                }
+
+                document->ditches()->freeDitch(ce);
+              }
             }
           }
-
-          // read-unlock the compaction lock
-          TRI_WriteUnlockReadWriteLock(&document->_compactionLock);
+          catch (...) {
+            // in case an error occurs, we must still relase the lock
+            LOG_ERROR("an unknown exception occurred during compaction");
+          }
         }
 
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);

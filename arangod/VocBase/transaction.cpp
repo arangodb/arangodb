@@ -229,23 +229,9 @@ static void FreeOperations (TRI_transaction_t* trx) {
       }
 
       // now update the stats for all datafiles of the collection in one go
-      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-      
-      for (auto it = stats.begin(); it != stats.end(); ++it) {
-        TRI_voc_fid_t fid = (*it).first;
-
-        TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, fid, false);
-        // the old header might point to the WAL. in this case, there'll be no stats update
-
-        if (dfi != nullptr) {
-          dfi->_numberDead += static_cast<TRI_voc_ssize_t>((*it).second.first);
-          dfi->_sizeDead += (*it).second.second;
-          dfi->_numberAlive -= static_cast<TRI_voc_ssize_t>((*it).second.first);
-          dfi->_sizeAlive -= (*it).second.second;
-        }
+      for (auto const& it : stats) {
+        document->_datafileStatistics.increaseDead(it.first, it.second.first, it.second.second);
       }
-      
-      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
     }
 
     for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
@@ -1248,20 +1234,9 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
       // update datafile statistics for the old header
       TRI_ASSERT(operation.oldHeader._fid > 0);
        
-      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-      TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, operation.oldHeader._fid, false);
-      // the old header might point to the WAL. in this case, there'll be no stats update
-
-      if (dfi != nullptr) {
-        TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
-        dfi->_numberDead += 1;
-        dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(marker->_size);
-        dfi->_numberAlive -= 1;
-        dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(marker->_size);
-      }
-      
-      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+      TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
+            operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
+      document->_datafileStatistics.increaseDead(operation.oldHeader._fid, 1, static_cast<int64_t>(TRI_DF_ALIGN_BLOCK(marker->_size)));
     }
   }
   else {
