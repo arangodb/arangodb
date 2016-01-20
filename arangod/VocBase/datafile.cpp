@@ -72,7 +72,11 @@ static void CloseDatafile(TRI_datafile_t* const datafile) {
   TRI_ASSERT(datafile->_state != TRI_DF_STATE_CLOSED);
 
   if (datafile->isPhysical(datafile)) {
-    TRI_CLOSE(datafile->_fd);
+    int res = TRI_CLOSE(datafile->_fd);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to close datafile '%s': %d", datafile->getName(datafile), res);
+    }
   }
 
   datafile->_state = TRI_DF_STATE_CLOSED;
