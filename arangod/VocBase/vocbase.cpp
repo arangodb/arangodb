@@ -883,11 +883,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
 
               if (res == TRI_ERROR_NO_ERROR &&
                   info.version() < TRI_COL_VERSION_20) {
-                res = TRI_UpgradeCollection20(vocbase, file.c_str(), info);
-              }
-
-              if (res != TRI_ERROR_NO_ERROR) {
-                LOG_ERROR("upgrading collection '%s' failed.",
+                LOG_ERROR("format of collection '%s' is too old",
                           info.namec_str());
 
                 regfree(&re);
