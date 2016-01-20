@@ -87,7 +87,6 @@ module.exports = class FoxxService {
         `Stored configuration for app "${data.mount}" has errors:\n${warnings.join('\n  ')}`
       );
     }
-    // don't need to apply deps from options -- they work automatically
 
     if (this.manifest.thumbnail) {
       let thumb = path.resolve(this.root, this.path, this.manifest.thumbnail);
@@ -95,11 +94,9 @@ module.exports = class FoxxService {
         this.thumbnail = fs.read64(thumb);
       } catch (e) {
         this.thumbnail = null;
-        /*
         console.warnLines(
           `Cannot read thumbnail "${thumb}" for app "${data.mount}": ${e.stack}`
         );
-        */
       }
     } else {
       this.thumbnail = null;
@@ -208,6 +205,7 @@ module.exports = class FoxxService {
               body.exception = String(err);
               body.stacktrace = err.stack;
             }
+            res.responseCode = error.statusCode;
             res.contentType = 'application/json';
             res.body = JSON.stringify(body);
           }

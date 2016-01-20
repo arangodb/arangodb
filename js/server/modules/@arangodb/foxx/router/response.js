@@ -52,6 +52,9 @@ module.exports = class SyntheticResponse {
   // Node compat
 
   get headers() {
+    if (!this._raw.headers) {
+      this._raw.headers = {};
+    }
     return this._raw.headers;
   }
 
@@ -184,8 +187,8 @@ module.exports = class SyntheticResponse {
 
   set(name, value) {
     if (name && typeof name === 'object') {
-      _.each(name, function (key) {
-        this.set(key, name[key]);
+      _.each(name, function (v, k) {
+        this.set(k, v);
       }, this);
     } else {
       this.setHeader(name, value);
@@ -248,6 +251,10 @@ module.exports = class SyntheticResponse {
   }
 
   send(body, type) {
+    if (body && body.isArangoResultSet) {
+      body = body.toArray();
+    }
+
     if (!type) {
       type = 'auto';
     }
@@ -258,7 +265,13 @@ module.exports = class SyntheticResponse {
 
     if (response) {
       if (response.model && response.model.forClient) {
-        body = response.model.forClient(body);
+        if (response.multiple && Array.isArray(body)) {
+          body = body.map(function (item) {
+            return response.model.forClient(item);
+          });
+        } else {
+          body = response.model.forClient(body);
+        }
       }
       if (type === 'auto' && response.contentTypes) {
         type = response.contentTypes[0];
@@ -290,7 +303,8 @@ module.exports = class SyntheticResponse {
       } else {
         match = typeIs.is(key, type);
       }
-      if (match && value.fromClient) {
+      if (match && value.forClient) {
+        contentType = key;
         handler = value;
         break;
       }
@@ -299,6 +313,7 @@ module.exports = class SyntheticResponse {
     if (handler) {
       const result = handler.forClient(body, this, mediaTyper.parse(contentType));
       if (result.headers || result.data) {
+        contentType = result.headers['content-type'] || contentType;
         this.set(result.headers);
         body = result.data;
       } else {

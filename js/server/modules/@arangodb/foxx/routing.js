@@ -34,7 +34,6 @@ const _ = require('lodash');
 const fs = require('fs');
 const arangodb = require('@arangodb');
 const actions = require('@arangodb/actions');
-const createRouter = require('@arangodb/foxx/router');
 const routeLegacyService = require('@arangodb/foxx/legacy/routing').routeService;
 
 

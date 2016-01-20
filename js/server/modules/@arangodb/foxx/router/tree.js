@@ -34,7 +34,7 @@ const SyntheticRequest = require('@arangodb/foxx/router/request');
 const SyntheticResponse = require('@arangodb/foxx/router/response');
 const tokenize = require('@arangodb/foxx/router/tokenize');
 const validation = require('@arangodb/foxx/router/validation');
-const BODYFREE_METHODS = require('@arangodb/actions').BODYFREE_METHODS;
+const actions = require('@arangodb/actions');
 
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
 const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware
@@ -96,7 +96,7 @@ module.exports = class Tree {
     let error;
 
     for (const route of this.findRoutes(req.suffix)) {
-      const endpoint = route[route.length - 1];
+      const endpoint = route[route.length - 1].endpoint;
 
       try {
         applyPathParams(route);
@@ -127,7 +127,7 @@ module.exports = class Tree {
     }
 
     const req = new SyntheticRequest(rawReq, this.context);
-    const res = new SyntheticResponse(rawRes);
+    const res = new SyntheticResponse(rawRes, this.context);
     dispatch(route, req, res);
 
     return true;
@@ -181,16 +181,16 @@ module.exports = class Tree {
 
 function applyPathParams(route) {
   for (const item of route) {
+    let context = item.middleware || item.endpoint || item.router;
+    let params = parsePathParams(
+      context._pathParamNames,
+      context._pathTokens,
+      item.path
+    );
     try {
-      let context = item.middleware || item.endpoint || item.router;
-      let params = parsePathParams(
-        context._pathParamNames,
-        context._pathTokens,
-        item.path
-      );
       item.pathParams = validation.validateParams(
         (
-          item.router
+          item.router && item.router.router
           ? union(context._pathParams, context.router._pathParams)
           : context._pathParams
         ),
@@ -206,14 +206,21 @@ function applyPathParams(route) {
 
 
 function dispatch(route, req, res) {
-  const ignoreRequestBody = BODYFREE_METHODS.indexOf(req.method) !== -1;
+  const ignoreRequestBody = actions.BODYFREE_METHODS.indexOf(req.method) !== -1;
   let pathParams = {};
   let queryParams = _.clone(req.queryParams);
 
-  let responses = res._responses;
-  for (const item of route) {
-    item._responses = union(responses, item._responses);
-    responses = item._responses;
+  {
+    let responses = res._responses;
+    for (const item of route) {
+      const context = (
+        item.router
+        ? (item.router.router || item.router)
+        : (item.middleware || item.endpoint)
+      );
+      item._responses = union(responses, context._responses);
+      responses = item._responses;
+    }
   }
 
   function next(err) {
@@ -239,7 +246,7 @@ function dispatch(route, req, res) {
           req
         );
       } catch (e) {
-        throw httpError(415, e.message);
+        throw httpError(400, e.message);
       }
     }
 
@@ -291,13 +298,13 @@ function dispatch(route, req, res) {
 
   next();
 
-  if (res.body && typeof res.body !== 'string' && !(res.body instanceof Buffer)) {
-    require('console').warn(`Coercing response body to string for ${req.method} ${req.originalUrl}`);
-    res.body = String(res.body);
+  if (res._raw.body && typeof res._raw.body !== 'string' && !(res._raw.body instanceof Buffer)) {
+    console.warn(`Coercing response body to string for ${req.method} ${req.originalUrl}`);
+    res._raw.body = String(res._raw.body);
   }
 
   if (!res.statusCode) {
-    res.statusCode = res.body ? 200 : 204;
+    res.statusCode = res._raw.body ? 200 : 204;
   }
 }
 

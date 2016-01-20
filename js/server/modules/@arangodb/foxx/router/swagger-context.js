@@ -88,79 +88,92 @@ module.exports = exports = class SwaggerContext {
   }
 
   body(model, mimes, description) {
-    if (model === null) {
-      this._bodyParam = {};
-    } else {
-      let multiple = false;
-      if (
-        typeof model === 'string'
-        || (Array.isArray(model) && typeof model[0] === 'string')
-      ) {
-        description = mimes;
-        mimes = model;
-        model = undefined;
-      }
-      if (!Array.isArray(mimes)) {
-        mimes = mimes ? [mimes] : [];
-      }
-      if (Array.isArray(model)) {
-        if (model.length !== 1) {
-          throw new Error(
-            'Model must be a model or schema'
-            + ' or an array containing exactly one model or schema.'
-            + ' If you are trying to use multiple schemas'
-            + ' try using joi.alternatives.'
-          );
-        }
-        model = model[0];
-        multiple = true;
-      }
-      if (!mimes.length && model) {
-        mimes.push(MIME_JSON);
-      }
-      const contentTypes = mimes.map(function (mime) {
-        if (mime === 'binary') {
-          mime = MIME_BINARY;
-        }
-        const contentType = mimeTypes.contentType(mime) || mime;
-        const parsed = mediaTyper.parse(contentType);
-        return mediaTyper.format(_.pick(parsed, [
-          'type',
-          'subtype',
-          'suffix'
-        ]));
-      });
-
-      if (model) {
-        assert(
-          !model.forClient || typeof model.forClient === 'function',
-          `Request body model forClient handler must be a function, not ${typeof model.forClient}`
-        );
-        assert(
-          !model.fromClient || typeof model.fromClient === 'function',
-          `Request body model fromClient handler must be a function, not ${typeof model.fromClient}`
-        );
-        if (!model.fromClient && typeof model.toClient === 'function') {
-          console.log(
-            `Found unexpected "toClient" method on request body model.`
-            + ' Did you mean "forClient"?'
-          );
-        }
-      }
-
-      this._bodyParam = {
-        model: model,
-        multiple: multiple,
-        contentTypes: contentTypes,
-        description: description
-      };
+    if (
+      typeof model === 'string'
+      || (Array.isArray(model) && typeof model[0] === 'string')
+    ) {
+      description = mimes;
+      mimes = model;
+      model = undefined;
     }
+
+    if (typeof mimes === 'string') {
+      description = mimes;
+      mimes = undefined;
+    }
+
+    let multiple = false;
+    if (Array.isArray(model)) {
+      if (model.length !== 1) {
+        throw new Error(
+          'Model must be a model or schema'
+          + ' or an array containing exactly one model or schema.'
+          + ' If you are trying to use multiple schemas'
+          + ' try using joi.alternatives.'
+        );
+      }
+      model = model[0];
+      multiple = true;
+    }
+
+    if (!mimes) {
+      mimes = [];
+    }
+
+    if (!mimes.length && model) {
+      mimes.push(MIME_JSON);
+    }
+
+    const contentTypes = mimes.map(function (mime) {
+      if (mime === 'binary') {
+        mime = MIME_BINARY;
+      }
+      const contentType = mimeTypes.contentType(mime) || mime;
+      const parsed = mediaTyper.parse(contentType);
+      return mediaTyper.format(_.pick(parsed, [
+        'type',
+        'subtype',
+        'suffix'
+      ]));
+    });
+
+    if (model) {
+      if (model.isJoi) {
+        model = {schema: model};
+      } else {
+        model = _.clone(model);
+      }
+      if (model.schema && !model.schema.isJoi) {
+        model.schema = joi.object(model.schema).required();
+      }
+      assert(
+        !model.forClient || typeof model.forClient === 'function',
+        `Request body model forClient handler must be a function, not ${typeof model.forClient}`
+      );
+      assert(
+        !model.fromClient || typeof model.fromClient === 'function',
+        `Request body model fromClient handler must be a function, not ${typeof model.fromClient}`
+      );
+      if (!model.forClient && typeof model.toClient === 'function') {
+        console.log(
+          `Found unexpected "toClient" method on request body model.`
+          + ' Did you mean "forClient"?'
+        );
+      }
+    }
+
+    this._bodyParam = {
+      model: model || null,
+      multiple: multiple,
+      contentTypes: contentTypes,
+      description: description
+    };
     return this;
   }
 
   response(status, model, mimes, description) {
     let statusCode = Number(status);
-    if (!statusCode || Number.isNaN(statusCode)) {
+    if (!status || Number.isNaN(statusCode)) {
       description = mimes;
       mimes = model;
       model = status;
@@ -169,79 +182,91 @@ module.exports = exports = class SwaggerContext {
 
     if (model === null) {
       if (statusCode === 200) {
-        this._responses.remove(200);
+        this._responses.delete(200);
         statusCode = 204;
       }
-      this._responses.set(statusCode, {});
-    } else {
-      let multiple = false;
-      if (
-        typeof model === 'string'
-        || (Array.isArray(model) && typeof model[0] === 'string')
-      ) {
-        description = mimes;
-        mimes = model;
-        model = undefined;
-      }
-
-      if (!Array.isArray(mimes)) {
-        mimes = mimes ? [mimes] : [];
-      }
-
-      if (Array.isArray(model)) {
-        if (model.length !== 1) {
-          throw new Error(
-            'Model must be a model or schema'
-            + ' or an array containing exactly one model or schema.'
-            + ' If you are trying to use multiple schemas'
-            + ' try using joi.alternatives.'
-          );
-        }
-        model = model[0];
-        multiple = true;
-      }
-
-      if (!mimes.length && model) {
-        mimes.push(MIME_JSON);
-      }
-
-      const contentTypes = mimes.map(function (mime) {
-        if (mime === 'binary') {
-          mime = MIME_BINARY;
-        }
-        const contentType = mimeTypes.contentType(mime) || mime;
-        const parsed = mediaTyper.parse(contentType);
-        return mediaTyper.format(_.pick(parsed, [
-          'type',
-          'subtype',
-          'suffix'
-        ]));
-      });
-
-      if (model) {
-        assert(
-          !model.forClient || typeof model.forClient === 'function',
-          `Response body model forClient handler at ${statusCode} must be a function, not ${typeof model.forClient}`
-        );
-        assert(
-          !model.fromClient || typeof model.fromClient === 'function',
-          `Response body model fromClient handler at ${statusCode} must be a function, not ${typeof model.fromClient}`
-        );
-        if (!model.fromClient && typeof model.toClient === 'function') {
-          console.log(
-            `Found unexpected "toClient" method on response body model at ${statusCode}.`
-            + ' Did you mean "forClient"?'
-          );
-        }
-      }
-
-      this._responses.set(statusCode, {
-        multiple: multiple,
-        model: model,
-        contentTypes: contentTypes,
-        description: description
-      });
     }
+
+    if (
+      typeof model === 'string'
+      || (Array.isArray(model) && typeof model[0] === 'string')
+    ) {
+      description = mimes;
+      mimes = model;
+      model = undefined;
+    }
+
+    if (typeof mimes === 'string') {
+      description = mimes;
+      mimes = undefined;
+    }
+
+    let multiple = false;
+    if (Array.isArray(model)) {
+      if (model.length !== 1) {
+        throw new Error(
+          'Model must be a model or schema'
+          + ' or an array containing exactly one model or schema.'
+          + ' If you are trying to use multiple schemas'
+          + ' try using joi.alternatives.'
+        );
+      }
+      model = model[0];
+      multiple = true;
+    }
+
+    if (!mimes) {
+      mimes = [];
+    }
+
+    if (!mimes.length && model) {
+      mimes.push(MIME_JSON);
+    }
+
+    const contentTypes = mimes.map(function (mime) {
+      if (mime === 'binary') {
+        mime = MIME_BINARY;
+      }
+      const contentType = mimeTypes.contentType(mime) || mime;
+      const parsed = mediaTyper.parse(contentType);
+      return mediaTyper.format(_.pick(parsed, [
+        'type',
+        'subtype',
+        'suffix'
+      ]));
+    });
+
+    if (model) {
+      if (model.isJoi) {
+        model = {schema: model};
+      } else {
+        model = _.clone(model);
+      }
+      if (model.schema && !model.schema.isJoi) {
+        model.schema = joi.object(model.schema).required();
+      }
+      assert(
+        !model.forClient || typeof model.forClient === 'function',
+        `Response body model forClient handler at ${statusCode} must be a function, not ${typeof model.forClient}`
+      );
+      assert(
+        !model.fromClient || typeof model.fromClient === 'function',
+        `Response body model fromClient handler at ${statusCode} must be a function, not ${typeof model.fromClient}`
+      );
+      if (!model.forClient && typeof model.toClient === 'function') {
+        console.log(
+          `Found unexpected "toClient" method on response body model at ${statusCode}.`
+          + ' Did you mean "forClient"?'
+        );
+      }
+    }
+
+    this._responses.set(statusCode, {
+      model: model || null,
+      multiple: multiple,
+      contentTypes: contentTypes,
+      description: description
+    });
     return this;
   }
 

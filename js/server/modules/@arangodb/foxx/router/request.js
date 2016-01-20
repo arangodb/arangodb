@@ -41,6 +41,7 @@ module.exports = class SyntheticRequest {
     this._url = parseUrl(req.url);
     this._raw = req;
     this.context = context;
+    this.path = req.path;
     this.suffix = req.suffix;
     this.queryParams = querystring.decode(this._url.query);
     this.pathParams = {};
@@ -71,10 +72,6 @@ module.exports = class SyntheticRequest {
 
   get originalUrl() {
     return `/_db/${encodeURIComponent(this._raw.database)}${this._raw.url}`;
-  }
-
-  get path() {
-    return '/' + this.suffix.join('/');
   }
 
   get secure() {

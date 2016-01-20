@@ -35,11 +35,11 @@ const requestParts = require('internal').requestParts;
 
 exports.validateParams = function validateParams(typeDefs, rawParams) {
   const params = {};
-  for (let entry of typeDefs) {
+  for (const entry of typeDefs) {
     const name = entry[0];
     const def = entry[1];
-    if (def.type.isJoi) {
-      const result = def.type.validate(rawParams[name]);
+    if (def.schema.isJoi) {
+      const result = def.schema.validate(rawParams[name]);
       if (result.error) {
         throw result.error;
       }
@@ -58,7 +58,7 @@ exports.validateRequestBody = function validateRequestBody(def, req) {
     return null;
   }
 
-  let indicatedType = req.get('content-type');
+  const indicatedType = req.get('content-type');
   let actualType;
 
   if (indicatedType) {
@@ -75,7 +75,7 @@ exports.validateRequestBody = function validateRequestBody(def, req) {
   }
 
   const parsedType = mediaTyper.parse(actualType);
-  actualType = mediaTyper.format(_.pick(actualType, ['type', 'subtype', 'suffix']));
+  actualType = mediaTyper.format(_.pick(parsedType, ['type', 'subtype', 'suffix']));
 
   if (parsedType.type === 'multipart') {
     body = requestParts(req._raw);
