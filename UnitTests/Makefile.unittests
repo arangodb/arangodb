@@ -340,7 +340,7 @@ unittests-config:
 
 .PHONY: unittests-boost
 
-if ENABLE_MAINTAINER_MODE
+if ENABLE_BOOST_TESTS
 
 unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 	@echo
@@ -420,7 +420,7 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	@echo "to enable boost unit-tests, install Boost test and configure with --enable-maintainer-mode"
+	@echo "to enable boost unit-tests, install Boost test and configure with --enable-boost-tests"
 
 	@echo
 endif
