@@ -18,11 +18,14 @@ addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
+    - george-edison55-precise-backports
     packages:
     - g++-4.9
     - gcc-4.9
     - binutils-gold
     - gdb
+    - cmake-data
+    - cmake
 
 install:
 
