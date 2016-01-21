@@ -175,9 +175,9 @@ noinst_PROGRAMS = $(am__EXEEXT_1)
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Aql/grammar.h \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Aql/grammar.cpp
 
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_5 = UnitTests/basics_suite UnitTests/geo_suite
-@ENABLE_MAINTAINER_MODE_FALSE@UnitTests_basics_suite_DEPENDENCIES =
-@ENABLE_MAINTAINER_MODE_FALSE@UnitTests_geo_suite_DEPENDENCIES =
+@ENABLE_BOOST_TESTS_TRUE@am__append_5 = UnitTests/basics_suite UnitTests/geo_suite
+@ENABLE_BOOST_TESTS_FALSE@UnitTests_basics_suite_DEPENDENCIES =
+@ENABLE_BOOST_TESTS_FALSE@UnitTests_geo_suite_DEPENDENCIES =
 
 ################################################################################
 ### @brief source files
@@ -687,9 +687,9 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdataJS06dir)" "$(DESTDIR)$(pkgdataJS07dir)" \
 	"$(DESTDIR)$(pkgdataJS08dir)" "$(DESTDIR)$(pkgdataJS09dir)" \
 	"$(DESTDIR)$(pkgdataJS10dir)"
-@ENABLE_MAINTAINER_MODE_TRUE@am__EXEEXT_1 =  \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/basics_suite$(EXEEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/geo_suite$(EXEEXT)
+@ENABLE_BOOST_TESTS_TRUE@am__EXEEXT_1 =  \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/basics_suite$(EXEEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/geo_suite$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Basics/Runner.cpp \
 	UnitTests/Basics/conversions-test.cpp \
@@ -715,37 +715,37 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Basics/Runner.cpp \
 	UnitTests/Basics/StringUtilsTest.cpp \
 	UnitTests/Basics/PathEnumeratorTest.cpp \
 	UnitTests/Basics/AttributeNameParserTest.cpp
-@ENABLE_MAINTAINER_MODE_TRUE@am_UnitTests_basics_suite_OBJECTS = UnitTests/Basics/UnitTests_basics_suite-Runner.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-conversions-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-csv-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-files-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-fpconv-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-json-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-json-utilities-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-hashes-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-pointer-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-nohashcache-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-skiplist-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-buffer-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-utf8-normalize-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-utf8-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-structure-size-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-vector-pointer-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-vector-test.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-EndpointTest.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-StringBufferTest.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-StringUtilsTest.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-PathEnumeratorTest.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-AttributeNameParserTest.$(OBJEXT)
+@ENABLE_BOOST_TESTS_TRUE@am_UnitTests_basics_suite_OBJECTS = UnitTests/Basics/UnitTests_basics_suite-Runner.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-conversions-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-csv-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-files-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-fpconv-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-json-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-json-utilities-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-hashes-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-pointer-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-associative-multi-pointer-nohashcache-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-skiplist-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-priorityqueue-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-buffer-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-utf8-normalize-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-utf8-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-string-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-structure-size-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-vector-pointer-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-vector-test.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-EndpointTest.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-StringBufferTest.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-StringUtilsTest.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-PathEnumeratorTest.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/UnitTests_basics_suite-AttributeNameParserTest.$(OBJEXT)
 UnitTests_basics_suite_OBJECTS = $(am_UnitTests_basics_suite_OBJECTS)
 am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Geo/Runner.cpp \
 	UnitTests/Geo/georeg.cpp arangod/GeoIndex/GeoIndex.cpp
-@ENABLE_MAINTAINER_MODE_TRUE@am_UnitTests_geo_suite_OBJECTS = UnitTests/Geo/UnitTests_geo_suite-Runner.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Geo/UnitTests_geo_suite-georeg.$(OBJEXT) \
-@ENABLE_MAINTAINER_MODE_TRUE@	arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
+@ENABLE_BOOST_TESTS_TRUE@am_UnitTests_geo_suite_OBJECTS = UnitTests/Geo/UnitTests_geo_suite-Runner.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Geo/UnitTests_geo_suite-georeg.$(OBJEXT) \
+@ENABLE_BOOST_TESTS_TRUE@	arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
 am_bin_arangob_OBJECTS =  \
 	arangosh/ArangoShell/bin_arangob-ArangoClient.$(OBJEXT) \
@@ -1816,55 +1816,55 @@ CLIENT_OPT := \
 	--no-colors \
 	--quiet
 
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_CPPFLAGS = \
-@ENABLE_MAINTAINER_MODE_TRUE@        -I@top_srcdir@/3rdParty/velocypack/include \
-@ENABLE_MAINTAINER_MODE_TRUE@        -I@top_srcdir@/arangod \
-@ENABLE_MAINTAINER_MODE_TRUE@        -I@top_srcdir@/lib \
-@ENABLE_MAINTAINER_MODE_TRUE@        @ICU_CPPFLAGS@ \
-@ENABLE_MAINTAINER_MODE_TRUE@        @BOOST_CPPFLAGS@
+@ENABLE_BOOST_TESTS_TRUE@UnitTests_basics_suite_CPPFLAGS = \
+@ENABLE_BOOST_TESTS_TRUE@        -I@top_srcdir@/3rdParty/velocypack/include \
+@ENABLE_BOOST_TESTS_TRUE@        -I@top_srcdir@/arangod \
+@ENABLE_BOOST_TESTS_TRUE@        -I@top_srcdir@/lib \
+@ENABLE_BOOST_TESTS_TRUE@        @ICU_CPPFLAGS@ \
+@ENABLE_BOOST_TESTS_TRUE@        @BOOST_CPPFLAGS@
 
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_LDADD = \
-@ENABLE_MAINTAINER_MODE_TRUE@        -L@top_builddir@/3rdParty/velocypack/include \
-@ENABLE_MAINTAINER_MODE_TRUE@        -L@top_builddir@/lib \
-@ENABLE_MAINTAINER_MODE_TRUE@        -larango \
-@ENABLE_MAINTAINER_MODE_TRUE@        -lboost_unit_test_framework \
-@ENABLE_MAINTAINER_MODE_TRUE@        @ICU_LDFLAGS@
+@ENABLE_BOOST_TESTS_TRUE@UnitTests_basics_suite_LDADD = \
+@ENABLE_BOOST_TESTS_TRUE@        -L@top_builddir@/3rdParty/velocypack/include \
+@ENABLE_BOOST_TESTS_TRUE@        -L@top_builddir@/lib \
+@ENABLE_BOOST_TESTS_TRUE@        -larango \
+@ENABLE_BOOST_TESTS_TRUE@        -lboost_unit_test_framework \
+@ENABLE_BOOST_TESTS_TRUE@        @ICU_LDFLAGS@
 
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_SOURCES = \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/Runner.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/conversions-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/csv-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/files-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/fpconv-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/json-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/json-utilities-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/hashes-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/associative-pointer-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/associative-multi-pointer-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/associative-multi-pointer-nohashcache-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/skiplist-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/priorityqueue-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/string-buffer-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/string-utf8-normalize-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/string-utf8-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/string-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/structure-size-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/vector-pointer-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/vector-test.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/EndpointTest.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/StringBufferTest.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/StringUtilsTest.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/PathEnumeratorTest.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/AttributeNameParserTest.cpp 
+@ENABLE_BOOST_TESTS_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
+@ENABLE_BOOST_TESTS_TRUE@UnitTests_basics_suite_SOURCES = \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/Runner.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/conversions-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/csv-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/files-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/fpconv-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/json-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/json-utilities-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/hashes-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/associative-pointer-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/associative-multi-pointer-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/associative-multi-pointer-nohashcache-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/skiplist-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/priorityqueue-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/string-buffer-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/string-utf8-normalize-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/string-utf8-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/string-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/structure-size-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/vector-pointer-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/vector-test.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/EndpointTest.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/StringBufferTest.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/StringUtilsTest.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/PathEnumeratorTest.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Basics/AttributeNameParserTest.cpp 
 
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib @BOOST_CPPFLAGS@
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
-@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_SOURCES = \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Geo/Runner.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Geo/georeg.cpp \
-@ENABLE_MAINTAINER_MODE_TRUE@	arangod/GeoIndex/GeoIndex.cpp
+@ENABLE_BOOST_TESTS_TRUE@UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib @BOOST_CPPFLAGS@
+@ENABLE_BOOST_TESTS_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+@ENABLE_BOOST_TESTS_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
+@ENABLE_BOOST_TESTS_TRUE@UnitTests_geo_suite_SOURCES = \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Geo/Runner.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	UnitTests/Geo/georeg.cpp \
+@ENABLE_BOOST_TESTS_TRUE@	arangod/GeoIndex/GeoIndex.cpp
 
 
 ################################################################################
@@ -10476,28 +10476,28 @@ unittests-config:
 
 .PHONY: unittests-boost
 
-@ENABLE_MAINTAINER_MODE_TRUE@unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
-@ENABLE_MAINTAINER_MODE_TRUE@	@echo
-@ENABLE_MAINTAINER_MODE_TRUE@	@echo "================================================================================"
-@ENABLE_MAINTAINER_MODE_TRUE@	@echo "<< BOOST TESTS                                                                >>"
-@ENABLE_MAINTAINER_MODE_TRUE@	@echo "================================================================================"
-@ENABLE_MAINTAINER_MODE_TRUE@	@echo
+@ENABLE_BOOST_TESTS_TRUE@unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
+@ENABLE_BOOST_TESTS_TRUE@	@echo
+@ENABLE_BOOST_TESTS_TRUE@	@echo "================================================================================"
+@ENABLE_BOOST_TESTS_TRUE@	@echo "<< BOOST TESTS                                                                >>"
+@ENABLE_BOOST_TESTS_TRUE@	@echo "================================================================================"
+@ENABLE_BOOST_TESTS_TRUE@	@echo
 
-@ENABLE_MAINTAINER_MODE_TRUE@	test "x$(SKIP_BOOST)" == "x1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "x$(FORCE)" == "x1"
-@ENABLE_MAINTAINER_MODE_TRUE@	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
+@ENABLE_BOOST_TESTS_TRUE@	test "x$(SKIP_BOOST)" == "x1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "x$(FORCE)" == "x1"
+@ENABLE_BOOST_TESTS_TRUE@	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
 
-@ENABLE_MAINTAINER_MODE_TRUE@	@echo
+@ENABLE_BOOST_TESTS_TRUE@	@echo
 
-@ENABLE_MAINTAINER_MODE_FALSE@unittests-boost:
-@ENABLE_MAINTAINER_MODE_FALSE@	@echo
-@ENABLE_MAINTAINER_MODE_FALSE@	@echo "================================================================================"
-@ENABLE_MAINTAINER_MODE_FALSE@	@echo "<< BOOST TESTS                                                                >>"
-@ENABLE_MAINTAINER_MODE_FALSE@	@echo "================================================================================"
-@ENABLE_MAINTAINER_MODE_FALSE@	@echo
+@ENABLE_BOOST_TESTS_FALSE@unittests-boost:
+@ENABLE_BOOST_TESTS_FALSE@	@echo
+@ENABLE_BOOST_TESTS_FALSE@	@echo "================================================================================"
+@ENABLE_BOOST_TESTS_FALSE@	@echo "<< BOOST TESTS                                                                >>"
+@ENABLE_BOOST_TESTS_FALSE@	@echo "================================================================================"
+@ENABLE_BOOST_TESTS_FALSE@	@echo
 
-@ENABLE_MAINTAINER_MODE_FALSE@	@echo "to enable boost unit-tests, install Boost test and configure with --enable-maintainer-mode"
+@ENABLE_BOOST_TESTS_FALSE@	@echo "to enable boost unit-tests, install Boost test and configure with --enable-boost-tests"
 
-@ENABLE_MAINTAINER_MODE_FALSE@	@echo
+@ENABLE_BOOST_TESTS_FALSE@	@echo
 
 ################################################################################
 ### @brief CONVENIENCE TARGET TO EXECUTE A SINGLE TEST ON SERVER AND CLIENT
