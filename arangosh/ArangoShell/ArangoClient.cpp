@@ -470,7 +470,7 @@ void ArangoClient::parse(ProgramOptions& options,
 
       TRI_SetStdinVisibility(true);
 #else
-      getline(cin, _password);
+      getline(std::cin, _password);
 #endif
       printLine("");
     }
@@ -551,7 +551,7 @@ void ArangoClient::printLine(std::string const& s, bool forceNewLine) {
     // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
     // fprintf(stdout, "%s\r\n", s.c_str());
     TRI_vector_string_t subStrings = TRI_SplitString(s.c_str(), '\n');
-    bool hasNewLines = (s.find("\n") != string::npos) | forceNewLine;
+    bool hasNewLines = (s.find("\n") != std::string::npos) | forceNewLine;
     if (hasNewLines) {
       for (size_t i = 0; i < subStrings._length; i++) {
         _printLine(subStrings._buffer[i]);

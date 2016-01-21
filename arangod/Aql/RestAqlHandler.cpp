@@ -34,7 +34,7 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/server.h"
 
-
+using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::aql;
 
