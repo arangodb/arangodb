@@ -33,8 +33,8 @@
 #include "VocBase/VocShaper.h"
 
 using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-
 using namespace arangodb::traverser;
 
 ////////////////////////////////////////////////////////////////////////////////
