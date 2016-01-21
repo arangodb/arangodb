@@ -632,17 +632,44 @@ if (ICU_LIB_PATH)
   link_directories(${ICU_LIB_PATH})
 endif ()
 
-################################################################################
-### @brief BOOST
-################################################################################
+# OS type ------------------------------------------------------------
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  set (Boost_USE_STATIC_LIBS ON)
+  set(WINDOWS TRUE)
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(LINUX TRUE)
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  set(MACOSX TRUE)
+endif()
 
-set(BOOST_VERSION "1.58.0" CACHE string "BOOST version")
+# Boost --------------------------------------------------------------
+find_package(Boost COMPONENTS unit_test_framework)
+if (${Boost_FOUND})
+  include_directories(${Boost_INCLUDE_DIRS})
+  add_definitions(-DBoost_MAJOR_VERSION=${Boost_MAJOR_VERSION})
+  add_definitions(-DBoost_MINOR_VERSION=${Boost_MINOR_VERSION})
+  link_directories (${BOOST_LIBRARYDIR})
+else()
+  message ("Boost unit test framework not found. Unit tests are disabled.")
+endif()
 
-set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost/${BOOST_VERSION} CACHE path "BOOST include path")
+# OpenSSL -----------------------------------------------------------
+find_package(OpenSSL REQUIRED)
+include_directories(${OPENSSL_INCLUDE_DIR})
 
-if (BOOST_INCLUDE)
-  include_directories(${BOOST_INCLUDE})
-endif ()
+# V8/ICU ------------------------------------------------------------
+#find_package(V8)
+#include_directories(${OPENSSL_INCLUDE_DIR})
+set (V8_BUILD_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION})
+set (V8_INCLUDE_DIR ${V8_BUILD_DIR}/include)
+set (V8_LIBRARIES_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/x64.release)
+set (ICU_LIBRARIES icui18n;icuuc;icudata)
+set (V8_LIBRARIES v8_base;v8_libbase;v8_libplatform;v8_nosnapshot)
+link_directories(${V8_LIBRARIES_DIR})
+
+# BISON -------------------------------------------------------------
+find_package (BISON)
+
 
 ################################################################################
 ### @brief LIBEV
@@ -672,23 +699,23 @@ add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 ### @brief OPENSSL
 ################################################################################
 
-if (MSVC)
-  set(OPENSSL_LIBS ssleay;libeay CACHE string "OPENSSL libraries")
-elseif (RASPBIAN)
-  set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
-else ()
-  set(OPENSSL_INCLUDE "" CACHE path "OPENSSL include path")
-  set(OPENSSL_LIB_PATH "" CACHE path "OPENSSL library path")
-  set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
-endif ()
+#if (MSVC)
+#  set(OPENSSL_LIBS ssleay;libeay CACHE string "OPENSSL libraries")
+#elseif (RASPBIAN)
+#  set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
+#else ()
+#  set(OPENSSL_INCLUDE "" CACHE path "OPENSSL include path")
+#  set(OPENSSL_LIB_PATH "" CACHE path "OPENSSL library path")
+#  set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
+#endif ()
 
-if (OPENSSL_INCLUDE)
-  include_directories(${OPENSSL_INCLUDE})
-endif ()
+#if (OPENSSL_INCLUDE)
+#  include_directories(${OPENSSL_INCLUDE})
+#endif ()
 
-if (OPENSSL_LIB_PATH)
-  link_directories(${OPENSSL_LIB_PATH})
-endif ()
+#if (OPENSSL_LIB_PATH)
+#  link_directories(${OPENSSL_LIB_PATH})
+#endif ()
 
 ################################################################################
 ### @brief LINENOISE

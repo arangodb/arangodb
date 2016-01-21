@@ -22,6 +22,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 ################################################################################
 
 include_directories(../3rdParty/velocypack/include)
+include_directories(${V8_INCLUDE_DIR})
 
 if (MSVC)
   generate_product_version(
@@ -48,11 +49,12 @@ target_link_libraries(
     ${BIN_ARANGOB}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
+    ${ICU_LIBRARIES}
+    ${V8_LIBRARIES}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
 )
 
@@ -99,11 +101,12 @@ target_link_libraries(
     ${BIN_ARANGODUMP}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
+    ${ICU_LIBRARIES}
+    ${V8_LIBRARIES}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
 )
 
@@ -151,11 +154,12 @@ target_link_libraries(
     ${BIN_ARANGOIMP}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
+    ${ICU_LIBRARIES}
+    ${V8_LIBRARIES}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
 )
 
@@ -201,11 +205,12 @@ target_link_libraries(
     ${BIN_ARANGORESTORE}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
+    ${ICU_LIBRARIES}
+    ${V8_LIBRARIES}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
 )
 
@@ -254,12 +259,12 @@ target_link_libraries(
     ${LIB_ARANGO_V8}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${V8_LIBS}
+    ${ICU_LIBRARIES}
+    ${V8_LIBRARIES}
     ${BT_LIBS}
-    ${ICU_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
 )
 

@@ -40,6 +40,7 @@ endif ()
 
 include_directories(../3rdParty/linenoise-ng/include)
 include_directories(../3rdParty/linenoise-ng/src)
+include_directories(${V8_INCLUDE_DIR})
 add_definitions("-DTRI_HAVE_LINENOISE")
 
 SET(LIB_ARANGO_CONSOLE
