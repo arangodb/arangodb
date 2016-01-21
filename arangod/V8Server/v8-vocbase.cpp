@@ -2763,16 +2763,38 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
     // check if the collection is from the same database
     if (collection != nullptr && collection->_vocbase == vocbase) {
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-      TRI_vocbase_col_status_e status = collection->_status;
-      TRI_voc_cid_t cid = collection->_cid;
-      uint32_t internalVersion = collection->_internalVersion;
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      TRI_GET_GLOBALS();
+
+      bool lock = true;
+      auto ctx = static_cast<arangodb::V8TransactionContext*>(
+          v8g->_transactionContext);
+      if (ctx != nullptr && ctx->getParentTransaction() != nullptr) {
+        TRI_transaction_t* trx = ctx->getParentTransaction();
+        if (TRI_IsContainedCollectionTransaction(trx, collection->_cid)) {
+          lock = false;
+        }
+      }
+        
+      TRI_vocbase_col_status_e status;
+      TRI_voc_cid_t cid;
+      uint32_t internalVersion;
+
+      if (lock) {
+        TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+        status = collection->_status;
+        cid = collection->_cid;
+        internalVersion = collection->_internalVersion;
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      }
+      else {
+        status = collection->_status;
+        cid = collection->_cid;
+        internalVersion = collection->_internalVersion;
+      }
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
           collection->_isLocal) {
-        TRI_GET_GLOBALS();
 
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);

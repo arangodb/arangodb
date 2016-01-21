@@ -845,7 +845,8 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
       new arangodb::StandaloneTransactionContext(), document->_vocbase,
       document->_info.id());
-  trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true); // already locked by guard above
+  trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true); // already locked above
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, true);

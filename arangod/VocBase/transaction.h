@@ -104,7 +104,8 @@ typedef enum {
   TRI_TRANSACTION_HINT_NO_ABORT_MARKER = 16,
   TRI_TRANSACTION_HINT_NO_THROTTLING = 32,
   TRI_TRANSACTION_HINT_TRY_LOCK = 64,
-  TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK = 128
+  TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK = 128,
+  TRI_TRANSACTION_HINT_NO_USAGE_LOCK = 256
 } TRI_transaction_hint_e;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,6 +249,12 @@ bool TRI_IsLockedCollectionTransaction(TRI_transaction_collection_t const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsLockedCollectionTransaction(TRI_transaction_collection_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a collection is contained in a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsContainedCollectionTransaction(TRI_transaction_t*, TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin a transaction

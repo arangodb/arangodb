@@ -483,7 +483,8 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
 
     if (trxCollection->_collection == nullptr) {
       // open the collection
-      if (!HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
+      if (!HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER) && 
+          !HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
         // use and usage-lock
         TRI_vocbase_col_status_e status;
         LOG_TRX(trx, nestingLevel, "using collection %llu",
@@ -602,7 +603,8 @@ static int UnuseCollections(TRI_transaction_t* trx, int nestingLevel) {
 
 static int ReleaseCollections(TRI_transaction_t* trx, int nestingLevel) {
   TRI_ASSERT(nestingLevel == 0);
-  if (HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
+  if (HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER) ||
+      HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -877,7 +879,8 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction(
   }
 
   if (trxCollection->_collection == nullptr) {
-    if (!HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
+    if (!HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER) ||
+        !HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
       // not opened. probably a mistake made by the caller
       return nullptr;
     } else {
@@ -1053,6 +1056,25 @@ bool TRI_IsLockedCollectionTransaction(
 bool TRI_IsLockedCollectionTransaction(
     TRI_transaction_collection_t const* trxCollection) {
   return IsLocked(trxCollection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a collection is used in a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsContainedCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid) {
+  size_t const n = trx->_collections._length;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto trxCollection = static_cast<TRI_transaction_collection_t const*>(
+        TRI_AtVectorPointer(&trx->_collections, i));
+
+    if (trxCollection->_cid == cid) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
