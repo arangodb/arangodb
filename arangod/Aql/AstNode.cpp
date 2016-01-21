@@ -38,6 +38,8 @@
 #include <iostream>
 #endif
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 #include <array>
 
 using namespace triagens::aql;
@@ -1236,6 +1238,24 @@ TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   }
 
   return node;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the node value
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
+  std::unique_ptr<TRI_json_t> tmp(toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+  return triagens::basics::JsonHelper::toVelocyPack(tmp.get());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the node
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> AstNode::toVelocyPack(bool verbose) const {
+  std::unique_ptr<TRI_json_t> tmp(toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
+  return triagens::basics::JsonHelper::toVelocyPack(tmp.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
