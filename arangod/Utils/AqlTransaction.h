@@ -109,6 +109,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int processCollection (triagens::aql::Collection* collection) {
+          int state = setupState();
+      
+          if (state != TRI_ERROR_NO_ERROR) {
+            return state;
+          }
+
           if (ServerState::instance()->isCoordinator()) {
             return processCollectionCoordinator(collection);
           }

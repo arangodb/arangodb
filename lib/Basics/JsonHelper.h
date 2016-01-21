@@ -802,6 +802,9 @@ namespace triagens {
           c._zone = _zone;
           if (_json != nullptr) {
             c._json = TRI_CopyJson(TRI_MemoryZone(_zone), _json);
+            if (c._json == nullptr) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+            }
           }
           else {
             c._json = nullptr;

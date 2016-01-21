@@ -220,6 +220,8 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
     return nullptr;
   }
 
+  TRI_ASSERT(array->_nrAlloc > 0);
+
   // compute the hash
   uint64_t hash = array->hashKey(array, key);
   uint64_t i = hash % array->_nrAlloc;
@@ -247,6 +249,10 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
 
 void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array,
                                              void const* element) {
+  if (array->_nrUsed == 0) {
+    return nullptr;
+  }
+
   // compute the hash
   uint64_t const hash = array->hashElement(array, element);
   uint64_t const n = array->_nrAlloc;

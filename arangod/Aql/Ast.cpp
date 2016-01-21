@@ -152,6 +152,10 @@ Ast::~Ast () {
 TRI_json_t* Ast::toJson (TRI_memory_zone_t* zone,
                          bool verbose) const {
   TRI_json_t* json = TRI_CreateArrayJson(zone);
+  
+  if (json == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   try {
     _root->toJson(json, zone, verbose);

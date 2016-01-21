@@ -26,11 +26,11 @@
 /// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "TraversalBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
-#include "Aql/TraversalBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterTraverser.h"
@@ -57,6 +57,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
     _vertexReg(0),
     _edgeReg(0),
     _pathReg(0),
+    _resolver(nullptr),
     _expressions(ep->expressions()),
     _hasV8Expression(false) {
 

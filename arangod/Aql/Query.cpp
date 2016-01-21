@@ -827,6 +827,10 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
         // iterate over result, return it and store it in query cache
         std::unique_ptr<TRI_json_t> cacheResult(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
 
+        if (cacheResult == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
           auto doc = value->getDocumentCollection(resultRegister);

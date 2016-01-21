@@ -44,6 +44,7 @@ using JsonHelper = triagens::basics::JsonHelper;
 
 bool AqlValue::isTrue () const {
   if (_type == JSON) {
+    TRI_ASSERT(_json != nullptr);
     TRI_json_t* json = _json->json();
     if (TRI_IsBooleanJson(json) && json->_value._boolean) {
       return true;
@@ -77,6 +78,7 @@ bool AqlValue::isTrue () const {
 void AqlValue::destroy () {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       delete _json;
       _json = nullptr;
       break;
@@ -117,6 +119,7 @@ void AqlValue::destroy () {
 std::string AqlValue::getTypeString () const {
   switch (_type) {
     case JSON: 
+      TRI_ASSERT(_json != nullptr);
       return std::string("json (") + std::string(TRI_GetTypeStringJson(_json->json())) + std::string(")");
     case SHAPED: 
       return "shaped";
@@ -138,6 +141,7 @@ std::string AqlValue::getTypeString () const {
 AqlValue AqlValue::clone () const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       return AqlValue(new Json(_json->copy()));
     }
 
@@ -181,6 +185,7 @@ AqlValue AqlValue::clone () const {
 
 AqlValue AqlValue::shallowClone () const {
   if (_type == JSON) {
+    TRI_ASSERT(_json != nullptr);
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, _json->json(), Json::NOFREE));
   }
 
@@ -195,6 +200,7 @@ AqlValue AqlValue::shallowClone () const {
 bool AqlValue::isString () const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
       return TRI_IsStringJson(json);
     }
@@ -218,6 +224,7 @@ bool AqlValue::isString () const {
 bool AqlValue::isNumber () const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
       return TRI_IsNumberJson(json);
     }
@@ -241,6 +248,7 @@ bool AqlValue::isNumber () const {
 bool AqlValue::isBoolean () const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
       return TRI_IsBooleanJson(json);
     }
@@ -263,6 +271,7 @@ bool AqlValue::isBoolean () const {
 bool AqlValue::isArray () const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
       return TRI_IsArrayJson(json);
     }
@@ -291,6 +300,7 @@ bool AqlValue::isArray () const {
 bool AqlValue::isObject () const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
       return TRI_IsObjectJson(json);
     }
@@ -316,6 +326,7 @@ bool AqlValue::isObject () const {
 bool AqlValue::isNull (bool emptyIsNull) const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
       return json == nullptr || json->_type == TRI_JSON_NULL;
     }
@@ -345,6 +356,7 @@ triagens::basics::Json AqlValue::at (triagens::arango::AqlTransaction* trx,
                                      size_t i) const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
       if (TRI_IsArrayJson(json)) {
         if (i < TRI_LengthArrayJson(json)) {
@@ -393,6 +405,7 @@ triagens::basics::Json AqlValue::at (triagens::arango::AqlTransaction* trx,
 size_t AqlValue::arraySize () const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
 
       if (TRI_IsArrayJson(json)) {
@@ -431,6 +444,7 @@ size_t AqlValue::arraySize () const {
 int64_t AqlValue::toInt64 () const {
   switch (_type) {
     case JSON: 
+      TRI_ASSERT(_json != nullptr);
       return TRI_ToInt64Json(_json->json());
     case RANGE: {
       size_t rangeSize = _range->size();
@@ -456,6 +470,7 @@ int64_t AqlValue::toInt64 () const {
 double AqlValue::toNumber (bool& failed) const {
   switch (_type) {
     case JSON: 
+      TRI_ASSERT(_json != nullptr);
       return TRI_ToDoubleJson(_json->json(), failed);
     case RANGE: {
       size_t rangeSize = _range->size();
@@ -481,6 +496,7 @@ double AqlValue::toNumber (bool& failed) const {
 std::string AqlValue::toString () const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
       TRI_ASSERT(TRI_IsStringJson(json));
       return std::string(json->_value._string.data, json->_value._string.length - 1);
@@ -507,6 +523,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial (v8::Isolate* isolate,
                                              std::unordered_set<std::string> const& attributes,
                                              TRI_document_collection_t const* document) const {
   TRI_ASSERT_EXPENSIVE(_type == JSON);
+  TRI_ASSERT(_json != nullptr);
 
   TRI_json_t const* json = _json->json();
 
@@ -616,8 +633,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (v8::Isolate* isolate,
     }
 
     case EMPTY: {
-      return v8::Null(isolate); // TODO: FIXME decide if we really want this...---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-      return v8::Undefined(isolate);
+      return v8::Null(isolate); 
     }
   }
       
@@ -634,6 +650,7 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
                        bool copy) const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       if (copy) {
         return _json->copy();
       }
@@ -693,8 +710,7 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
     }
 
     case EMPTY: {
-      return Json(Json::Null); // TODO FIXME: decide if we really want this...--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-      return triagens::basics::Json();
+      return Json(Json::Null); 
     }
   }
 
@@ -709,6 +725,7 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
                          TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       return TRI_FastHashJson(_json->json());
     }
 
@@ -1146,6 +1163,8 @@ int AqlValue::Compare (triagens::arango::AqlTransaction* trx,
     }
 
     case AqlValue::JSON: {
+      TRI_ASSERT(left._json != nullptr);
+      TRI_ASSERT(right._json != nullptr);
       return TRI_CompareValuesJson(left._json->json(), right._json->json(), compareUtf8);
     }
 

@@ -86,16 +86,19 @@ namespace triagens {
       explicit AqlValue (triagens::basics::Json* json)
         : _json(json), 
           _type(JSON) {
+        TRI_ASSERT(_json != nullptr);
       }
       
       explicit AqlValue (TRI_df_marker_t const* marker)
         : _marker(marker), 
           _type(SHAPED) {
+        TRI_ASSERT(_marker != nullptr);
       }
       
       explicit AqlValue (std::vector<AqlItemBlock*>* vector)
         : _vector(vector), 
           _type(DOCVEC) {
+        TRI_ASSERT(_vector != nullptr);
       }
 
       AqlValue (int64_t low, int64_t high) 

@@ -99,6 +99,14 @@ void TRI_FreeVector (TRI_memory_zone_t*, TRI_vector_t*);
 static inline size_t TRI_LengthVector (TRI_vector_t const* vector) {
   return static_cast<size_t>(vector->_lengthX);
 }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns capacity of vector
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t TRI_CapacityVector(TRI_vector_t const* vector) {
+  return static_cast<size_t>(vector->_capacityX);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures a vector has space for extraCapacity more items

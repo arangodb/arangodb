@@ -804,7 +804,13 @@ AqlValue Expression::executeSimpleExpressionReference (AstNode const* node,
     auto it = _variables.find(v);
     if (it != _variables.end()) {
       *collection = nullptr;
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (*it).second))); //, Json::NOFREE));
+      auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (*it).second);
+
+      if (copy == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, copy));
     }
   }
 
@@ -1142,7 +1148,13 @@ AqlValue Expression::executeSimpleExpressionExpansion (AstNode const* node,
         bool const isArray = TRI_IsArrayJson(item);
 
         if (! isArray || level == levels) {
-          flattened->add(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, item));
+          auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, item);
+
+          if (copy == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          flattened->add(copy);
         } 
         else if (isArray && level < levels) {
           flatten(item, level + 1);
