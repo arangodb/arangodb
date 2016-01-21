@@ -26,9 +26,7 @@
 #include "VocBase/VocShaper.h"
 
 TRI_relation_index_operator_t::~TRI_relation_index_operator_t() {
-  if (_parameters != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
-  }
+  // _parameters fill automatically free
   if (_fields != nullptr) {
     // _fields contains _numFields shapedJson objects
     for (size_t i = 0; i < _numFields; ++i) {
@@ -47,7 +45,7 @@ TRI_relation_index_operator_t::~TRI_relation_index_operator_t() {
 
 TRI_index_operator_t* TRI_CreateIndexOperator(
     TRI_index_operator_type_e operatorType, TRI_index_operator_t* leftOperand,
-    TRI_index_operator_t* rightOperand, TRI_json_t* parameters,
+    TRI_index_operator_t* rightOperand, std::shared_ptr<VPackBuilder> parameters,
     VocShaper* shaper, size_t numFields) {
   switch (operatorType) {
     case TRI_AND_INDEX_OPERATOR: {
@@ -67,14 +65,4 @@ TRI_index_operator_t* TRI_CreateIndexOperator(
 
     default: { return nullptr; }
   }  // end of switch statement
-}
-
-TRI_index_operator_t* TRI_CreateIndexOperator(
-    TRI_index_operator_type_e operatorType, TRI_index_operator_t* leftOperand,
-    TRI_index_operator_t* rightOperand, VPackSlice const& parameters,
-    VocShaper* shaper, size_t numFields) {
-  std::unique_ptr<TRI_json_t> tmp(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(parameters));
-  return TRI_CreateIndexOperator(operatorType, leftOperand, rightOperand,
-                                 tmp.release(), shaper, numFields);
 }
