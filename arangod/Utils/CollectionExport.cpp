@@ -31,7 +31,6 @@
 #include "Basics/JsonHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionReadLocker.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"

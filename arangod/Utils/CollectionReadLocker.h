@@ -31,8 +31,8 @@
 #define ARANGODB_UTILS_COLLECTION_READ_LOCKER_H 1
 
 #include "Basics/Common.h"
-
 #include "VocBase/document-collection.h"
+#include "VocBase/transaction.h"
 
 namespace triagens {
   namespace arango {
@@ -62,7 +62,7 @@ namespace triagens {
             _doLock(false) {
 
           if (doLock) {
-            _document->beginRead();
+            _document->beginReadTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
             _doLock = true;
           }
         }
