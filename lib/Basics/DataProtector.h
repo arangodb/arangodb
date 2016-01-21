@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,8 +160,8 @@ class DataProtector {
   }
 };
 
-}  // namespace triagens::basics
-}  // namespace triagens
+}  // namespace arangodb::basics
+}  // namespace arangodb
 
 #endif
 

@@ -40,7 +40,7 @@
 #include "Basics/socket-utils.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class StringBuffer;
 }

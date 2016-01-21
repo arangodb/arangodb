@@ -29,10 +29,8 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 
-using namespace std;
-using namespace triagens::arango;
-using namespace triagens::basics;
-
+using namespace arangodb;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single instance of ServerState - will live as long as the server is
@@ -853,12 +851,12 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
 
       if (it != result._values.end()) {
         VPackSlice slice = it->second._vpack->slice();
-        id = triagens::basics::VelocyPackHelper::getStringValue(slice, "ID", "");
+        id = arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID", "");
         if (id.empty()) {
           LOG_ERROR("ID not set!");
           return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
         }
-        std::string description = triagens::basics::VelocyPackHelper::getStringValue(
+        std::string description = arangodb::basics::VelocyPackHelper::getStringValue(
             slice, "Description", "");
         if (!description.empty()) {
           setDescription(description);
@@ -920,12 +918,8 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
 
     while (it != result._values.end()) {
       VPackSlice slice = (*it).second._vpack->slice();
-      std::string name;
-      if (slice.isString()) {
-        name = slice.copyString();
-      } else {
-        name = "";
-      }
+      std::string name =
+          arangodb::basics::VelocyPackHelper::getStringValue(slice, "");
 
       if (name == id) {
         role = ServerState::ROLE_SECONDARY;
@@ -939,5 +933,3 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
 
   return role;
 }
-
-

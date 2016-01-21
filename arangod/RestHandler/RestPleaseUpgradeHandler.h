@@ -25,12 +25,9 @@
 #define ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
 
 #include "Basics/Common.h"
-
 #include "HttpServer/HttpHandler.h"
 
-
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document request handler
@@ -53,7 +50,6 @@ class RestPleaseUpgradeHandler : public rest::HttpHandler {
 
   void handleError(const basics::Exception&) override;
 };
-}
 }
 
 #endif

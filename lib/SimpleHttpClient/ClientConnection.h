@@ -30,7 +30,7 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +48,7 @@ class ClientConnection final : public GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  ClientConnection(triagens::rest::Endpoint* endpoint, double, double, size_t);
+  ClientConnection(arangodb::rest::Endpoint* endpoint, double, double, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
@@ -93,7 +93,7 @@ class ClientConnection final : public GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  bool readClientConnection(triagens::basics::StringBuffer&,
+  bool readClientConnection(arangodb::basics::StringBuffer&,
                             bool& connectionClosed) override;
 
   //////////////////////////////////////////////////////////////////////////////

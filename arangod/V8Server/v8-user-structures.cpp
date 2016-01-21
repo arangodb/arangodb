@@ -34,13 +34,14 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 
+using namespace arangodb;
 
 struct KeySpaceElement {
   KeySpaceElement() = delete;
 
   KeySpaceElement(char const* k, size_t length, TRI_json_t* json)
       : key(nullptr), json(json) {
-    key = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, k, length);
+    key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, k, length);
     if (key == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -794,14 +795,14 @@ class KeySpace {
   }
 
  private:
-  triagens::basics::ReadWriteLock _lock;
+  arangodb::basics::ReadWriteLock _lock;
   TRI_associative_pointer_t _hash;
 };
 
 
 struct UserStructures {
   struct {
-    triagens::basics::ReadWriteLock lock;
+    arangodb::basics::ReadWriteLock lock;
     std::unordered_map<std::string, KeySpace*> data;
   } hashes;
 };

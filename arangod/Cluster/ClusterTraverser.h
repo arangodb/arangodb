@@ -26,8 +26,7 @@
 
 #include "VocBase/Traverser.h"
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class CollectionNameResolver;
 class Transaction;
 
@@ -62,9 +61,9 @@ class ClusterTraverser : public Traverser {
 
   TraversalPath* next() override;
 
-  triagens::basics::Json* edgeToJson(std::string const&) const;
+  arangodb::basics::Json* edgeToJson(std::string const&) const;
 
-  triagens::basics::Json* vertexToJson(std::string const&) const;
+  arangodb::basics::Json* vertexToJson(std::string const&) const;
 
  private:
   
@@ -119,7 +118,7 @@ class ClusterTraverser : public Traverser {
   /// @brief internal cursor to enumerate the paths of a graph
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<triagens::basics::PathEnumerator<std::string, std::string,
+  std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string,
                                                    size_t>> _enumerator;
 };
 
@@ -127,24 +126,23 @@ class ClusterTraversalPath : public TraversalPath {
  public:
   ClusterTraversalPath(
       ClusterTraverser const* traverser,
-      const triagens::basics::EnumeratedPath<std::string, std::string>& path)
+      const arangodb::basics::EnumeratedPath<std::string, std::string>& path)
       : _path(path), _traverser(traverser) {}
 
-  triagens::basics::Json* pathToJson(Transaction*, CollectionNameResolver*);
+  arangodb::basics::Json* pathToJson(Transaction*, CollectionNameResolver*);
 
-  triagens::basics::Json* lastEdgeToJson(Transaction*, CollectionNameResolver*);
+  arangodb::basics::Json* lastEdgeToJson(Transaction*, CollectionNameResolver*);
 
-  triagens::basics::Json* lastVertexToJson(Transaction*,
+  arangodb::basics::Json* lastVertexToJson(Transaction*,
                                            CollectionNameResolver*);
 
  private:
-  triagens::basics::EnumeratedPath<std::string, std::string> _path;
+  arangodb::basics::EnumeratedPath<std::string, std::string> _path;
 
   ClusterTraverser const* _traverser;
 };
 
 }  // traverser
-}  // arango
 }  // triagens
 
 #endif

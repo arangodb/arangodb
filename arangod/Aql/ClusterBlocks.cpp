@@ -27,18 +27,19 @@
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "V8/v8-globals.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
-using namespace triagens::aql;
+using namespace arangodb;
+using namespace arangodb::aql;
 
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
-using StringBuffer = triagens::basics::StringBuffer;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
+using StringBuffer = arangodb::basics::StringBuffer;
 
 // uncomment the following to get some debugging information
 #if 0
@@ -311,7 +312,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   size_t nrRegs = example->getNrRegs();
 
   auto res = std::make_unique<AqlItemBlock>(
-      toSend, static_cast<triagens::aql::RegisterId>(nrRegs));
+      toSend, static_cast<arangodb::aql::RegisterId>(nrRegs));
   // automatically deleted if things go wrong
 
   for (RegisterId i = 0; i < nrRegs; i++) {
@@ -1115,7 +1116,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     cur->destroyValue(_pos, _regId);
 
     // overwrite with new value
-    cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(
+    cur->setValue(_pos, _regId, AqlValue(new arangodb::basics::Json(
                                     TRI_UNKNOWN_MEM_ZONE, obj)));
 
     json = obj;
@@ -1153,7 +1154,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
         cur->destroyValue(_pos, _regId);
 
         // overwrite with new value
-        cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(
+        cur->setValue(_pos, _regId, AqlValue(new arangodb::basics::Json(
                                         TRI_UNKNOWN_MEM_ZONE, obj)));
         json = obj;
       }
@@ -1184,20 +1185,20 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
       cur->destroyValue(_pos, _regId);
 
       // overwrite with new value
-      cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(
+      cur->setValue(_pos, _regId, AqlValue(new arangodb::basics::Json(
                                       TRI_UNKNOWN_MEM_ZONE, obj)));
       json = obj;
     }
   }
 
-  // std::cout << "JSON: " << triagens::basics::JsonHelper::toString(json) <<
+  // std::cout << "JSON: " << arangodb::basics::JsonHelper::toString(json) <<
   // "\n";
 
   std::string shardId;
   bool usesDefaultShardingAttributes;
-  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto const planId =
-      triagens::basics::StringUtils::itoa(_collection->getPlanId());
+      arangodb::basics::StringUtils::itoa(_collection->getPlanId());
 
   int res = clusterInfo->getResponsibleShard(planId, json, true, shardId,
                                              usesDefaultShardingAttributes);
@@ -1223,7 +1224,6 @@ std::string DistributeBlock::createKey() const {
   uint64_t uid = ci->uniqid();
   return std::to_string(uid);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief local helper to throw an exception if a HTTP request went wrong
@@ -1335,9 +1335,9 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _isResponsibleForInitCursor(en->isResponsibleForInitCursor()) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT_EXPENSIVE(
-      (triagens::arango::ServerState::instance()->isCoordinator() &&
+      (arangodb::ServerState::instance()->isCoordinator() &&
        ownName.empty()) ||
-      (!triagens::arango::ServerState::instance()->isCoordinator() &&
+      (!arangodb::ServerState::instance()->isCoordinator() &&
        !ownName.empty()));
 }
 
@@ -1348,7 +1348,7 @@ RemoteBlock::~RemoteBlock() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
-    triagens::rest::HttpRequest::HttpRequestType type,
+    arangodb::rest::HttpRequest::HttpRequestType type,
     std::string const& urlPart, std::string const& body) const {
   ENTER_BLOCK
   ClusterComm* cc = ClusterComm::instance();
@@ -1362,21 +1362,21 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
   }
 
   auto currentThread =
-      triagens::rest::DispatcherThread::currentDispatcherThread;
+      arangodb::rest::DispatcherThread::currentDispatcherThread;
 
   if (currentThread != nullptr) {
-    triagens::rest::DispatcherThread::currentDispatcherThread->block();
+    arangodb::rest::DispatcherThread::currentDispatcherThread->block();
   }
 
   auto result = cc->syncRequest(
       clientTransactionId, coordTransactionId, _server, type,
-      std::string("/_db/") + triagens::basics::StringUtils::urlEncode(
+      std::string("/_db/") + arangodb::basics::StringUtils::urlEncode(
                                  _engine->getQuery()->trx()->vocbase()->_name) +
           urlPart + _queryId,
       body, headers, defaultTimeOut);
 
   if (currentThread != nullptr) {
-    triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
+    arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
   }
 
   return result;
@@ -1525,7 +1525,7 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
     return nullptr;
   }
 
-  return new triagens::aql::AqlItemBlock(responseBodyJson);
+  return new arangodb::aql::AqlItemBlock(responseBodyJson);
   LEAVE_BLOCK
 }
 

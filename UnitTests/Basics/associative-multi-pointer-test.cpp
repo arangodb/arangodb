@@ -42,7 +42,7 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 #define INIT_MULTI \
-  triagens::basics::AssocMulti<void, void, uint32_t, true> a1( \
+  arangodb::basics::AssocMulti<void, void, uint32_t, true> a1( \
       HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElementByKey);
 
 #define DESTROY_MULTI ;

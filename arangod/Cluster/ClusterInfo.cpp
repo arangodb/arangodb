@@ -33,8 +33,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "VocBase/server.h"
 
 #include <velocypack/Iterator.h>
@@ -47,9 +47,9 @@
 #pragma warning(disable : 4503)
 #endif
 
-using namespace std;
-using namespace triagens::arango;
-using triagens::basics::JsonHelper;
+using namespace arangodb;
+
+using arangodb::basics::JsonHelper;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +74,7 @@ static inline int setErrormsg(int ourerrno, std::string& errorMsg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool hasError(VPackSlice const& slice) {
-  return triagens::basics::VelocyPackHelper::getBooleanValue(slice, "error", false);
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,13 +86,13 @@ static std::string extractErrorMessage(std::string const& shardId,
   std::string msg = " shardID:" + shardId + ": ";
 
   // add error message text
-  msg += triagens::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+  msg += arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
 
   // add error number
   if (slice.hasKey("errorNum")) {
     VPackSlice const errorNum = slice.get("errorNum");
     if (errorNum.isNumber()) {
-      msg += " (errNum=" + triagens::basics::StringUtils::itoa(
+      msg += " (errNum=" + arangodb::basics::StringUtils::itoa(
                                errorNum.getNumericValue<uint32_t>()) +
              ")";
     }
@@ -505,7 +505,7 @@ void ClusterInfo::loadPlannedDatabases() {
       std::string const& name = (*it).first;
       // TODO: _plannedDatabases need to be moved to velocypack
       // Than this can be merged to swap
-      TRI_json_t* options = triagens::basics::VelocyPackHelper::velocyPackToJson((*it).second._vpack->slice());
+      TRI_json_t* options = arangodb::basics::VelocyPackHelper::velocyPackToJson((*it).second._vpack->slice());
 
       // steal the VelocyPack
       (*it).second._vpack.reset();
@@ -596,7 +596,7 @@ void ClusterInfo::loadCurrentDatabases() {
       // each entry consists of a database id and a collection id, separated by
       // '/'
       std::vector<std::string> parts =
-          triagens::basics::StringUtils::split(key, '/');
+          arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.empty()) {
         ++it;
@@ -619,7 +619,7 @@ void ClusterInfo::loadCurrentDatabases() {
         //
         // TODO: _plannedDatabases need to be moved to velocypack
         // Than this can be merged to swap
-        TRI_json_t* json = triagens::basics::VelocyPackHelper::velocyPackToJson((*it).second._vpack->slice());
+        TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson((*it).second._vpack->slice());
 
         // steal the VelocyPack
         (*it).second._vpack.reset();
@@ -691,7 +691,7 @@ void ClusterInfo::loadPlannedCollections() {
       // each entry consists of a database id and a collection id, separated by
       // '/'
       std::vector<std::string> parts =
-          triagens::basics::StringUtils::split(key, '/');
+          arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.size() != 2) {
         // invalid entry
@@ -714,12 +714,12 @@ void ClusterInfo::loadPlannedCollections() {
       }
 
       // TODO: The Collection info has to store VPack instead of JSON
-      TRI_json_t* json = triagens::basics::VelocyPackHelper::velocyPackToJson(
+      TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
           (*it).second._vpack->slice());
       // steal the velocypack
       (*it).second._vpack.reset();
 
-      auto collectionData = make_shared<CollectionInfo>(json);
+      auto collectionData = std::make_shared<CollectionInfo>(json);
       auto shardKeys = std::make_shared<std::vector<std::string>>(
           collectionData->shardKeys());
       newShardKeys.insert(make_pair(collection, shardKeys));
@@ -809,9 +809,9 @@ std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
 /// @brief get properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
+arangodb::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
     CollectionInfo const& collection) {
-  triagens::arango::VocbaseCollectionInfo info(collection);
+  arangodb::VocbaseCollectionInfo info(collection);
   return info;
 }
 
@@ -901,7 +901,7 @@ void ClusterInfo::loadCurrentCollections() {
       // each entry consists of a database id, a collection id, and a shardID,
       // separated by '/'
       std::vector<std::string> parts =
-          triagens::basics::StringUtils::split(key, '/');
+          arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.size() != 3) {
         // invalid entry
@@ -925,7 +925,7 @@ void ClusterInfo::loadCurrentCollections() {
       }
 
       // TODO: The Collection info has to store VPack instead of JSON
-      TRI_json_t* json = triagens::basics::VelocyPackHelper::velocyPackToJson(
+      TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
           (*it).second._vpack->slice());
       // steal the velocypack
       (*it).second._vpack.reset();
@@ -1042,7 +1042,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
     res = ac.casValue("Plan/Databases/" + name, slice, false, 0.0, realTimeout);
     if (!res.successful()) {
       if (res._statusCode ==
-          triagens::rest::HttpResponse::PRECONDITION_FAILED) {
+          arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
         return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
       }
 
@@ -1077,11 +1077,11 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         bool tmpHaveError = false;
         for (it = res._values.begin(); it != res._values.end(); ++it) {
           VPackSlice slice = (*it).second._vpack->slice();
-          if (triagens::basics::VelocyPackHelper::getBooleanValue(
+          if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                   slice, "error", false)) {
             tmpHaveError = true;
             tmpMsg += " DBServer:" + it->first + ":";
-            tmpMsg += triagens::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+            tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
             if (slice.hasKey("errorNum")) {
               VPackSlice errorNum = slice.get("errorNum");
               if (errorNum.isNumber()) {
@@ -1230,7 +1230,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     AllCollections::const_iterator it = _plannedCollections.find(databaseName);
     if (it != _plannedCollections.end()) {
       std::string const name =
-          triagens::basics::VelocyPackHelper::getStringValue(json, "name",
+          arangodb::basics::VelocyPackHelper::getStringValue(json, "name",
                                                              "");
 
       DatabaseCollections::const_iterator it2 = (*it).second.find(name);
@@ -1282,10 +1282,10 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         bool tmpHaveError = false;
         for (auto const& p : res._values) {
           VPackSlice const slice = p.second._vpack->slice();
-          if (triagens::basics::VelocyPackHelper::getBooleanValue(slice, "error", false)) {
+          if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false)) {
             tmpHaveError = true;
             tmpMsg += " shardID:" + p.first + ":";
-            tmpMsg += triagens::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+            tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
             if (slice.hasKey("errorNum")) {
               VPackSlice const errorNum = slice.get("errorNum");
               if (errorNum.isNumber()) {
@@ -1441,7 +1441,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
     }
 
     std::unique_ptr<TRI_json_t> copy(
-        triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
     if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -1519,7 +1519,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
     }
 
     TRI_vocbase_col_status_e old = static_cast<TRI_vocbase_col_status_e>(
-        triagens::basics::VelocyPackHelper::getNumericValue<int>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "status", static_cast<int>(TRI_VOC_COL_STATUS_CORRUPTED)));
 
     if (old == status) {
@@ -1527,7 +1527,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_NO_ERROR;
     }
 
-    std::unique_ptr<TRI_json_t> copy(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+    std::unique_ptr<TRI_json_t> copy(arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
     if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -1574,7 +1574,7 @@ int ClusterInfo::ensureIndexCoordinator(
   VPackSlice const idxSlice = slice.get("id");
   if (idxSlice.isString()) {
     // use predefined index id
-    iid = triagens::basics::StringUtils::uint64(idxSlice.copyString());
+    iid = arangodb::basics::StringUtils::uint64(idxSlice.copyString());
   }
 
   if (iid == 0) {
@@ -1582,7 +1582,7 @@ int ClusterInfo::ensureIndexCoordinator(
     iid = uniqid();
   }
 
-  std::string const idString = triagens::basics::StringUtils::itoa(iid);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   std::string const key = "Plan/Collections/" + databaseName + "/" + collectionID;
   AgencyCommResult previous = ac.getValues(key, false);
@@ -1623,7 +1623,7 @@ int ClusterInfo::ensureIndexCoordinator(
       }
 
       std::shared_ptr<VPackBuilder> tmp =
-          triagens::basics::JsonHelper::toVelocyPack(c->getIndexes());
+          arangodb::basics::JsonHelper::toVelocyPack(c->getIndexes());
       numberOfShards = c->numberOfShards();
       VPackSlice const indexes = tmp->slice();
 
@@ -1636,7 +1636,7 @@ int ClusterInfo::ensureIndexCoordinator(
         }
 
         for (auto const& other : VPackArrayIterator(indexes)) {
-          if (triagens::basics::VelocyPackHelper::compare(
+          if (arangodb::basics::VelocyPackHelper::compare(
                     type, other.get("type"), false) != 0) {
             // compare index types first. they must match
             continue;
@@ -1648,7 +1648,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
           if (isSame) {
             // found an existing index...
-            resultJson = triagens::basics::VelocyPackHelper::velocyPackToJson(
+            resultJson = arangodb::basics::VelocyPackHelper::velocyPackToJson(
                 other);
             TRI_Insert3ObjectJson(
                 TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
@@ -1681,7 +1681,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
       // now create a new index
       collectionBuilder =
-          triagens::basics::JsonHelper::toVelocyPack(c->getJson());
+          arangodb::basics::JsonHelper::toVelocyPack(c->getJson());
     }
     VPackSlice const collectionSlice = collectionBuilder->slice();
 
@@ -1779,7 +1779,7 @@ int ClusterInfo::ensureIndexCoordinator(
                 // Returns the specific error number if set, or the general
                 // error
                 // otherwise
-                return triagens::basics::VelocyPackHelper::getNumericValue<int>(
+                return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
                     v, "errorNum", TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
               }
 
@@ -1805,7 +1805,7 @@ int ClusterInfo::ensureIndexCoordinator(
           VPackValueLength l = indexFinder.length();
           indexFinder = indexFinder.at(l - 1); // Get the last index
           TRI_ASSERT(indexFinder.isObject());
-          resultJson = triagens::basics::VelocyPackHelper::velocyPackToJson(indexFinder);
+          resultJson = arangodb::basics::VelocyPackHelper::velocyPackToJson(indexFinder);
           TRI_Insert3ObjectJson(
               TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
               TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
@@ -1840,7 +1840,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   double const interval = getPollInterval();
 
   int numberOfShards = 0;
-  std::string const idString = triagens::basics::StringUtils::itoa(iid);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   std::string const key = "Plan/Collections/" + databaseName + "/" + collectionID;
   AgencyCommResult previous = ac.getValues(key, false);
@@ -1940,7 +1940,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
     }
 
-    auto tmp = triagens::basics::JsonHelper::toVelocyPack(collectionJson);
+    auto tmp = arangodb::basics::JsonHelper::toVelocyPack(collectionJson);
     AgencyCommResult result =
         ac.casValue(key, it->second._vpack->slice(), tmp->slice(), 0.0, 0.0);
 
@@ -2049,9 +2049,8 @@ void ClusterInfo::loadServers() {
     while (it != result._values.end()) {
       VPackSlice const slice = it->second._vpack->slice();
       if (slice.isObject() && slice.hasKey("endpoint")) {
-        std::string server = triagens::basics::VelocyPackHelper::getStringValue(
+        std::string server = arangodb::basics::VelocyPackHelper::getStringValue(
             slice, "endpoint", "");
-
         newServers.emplace(std::make_pair((*it).first, server));
       }
       ++it;
@@ -2180,12 +2179,9 @@ void ClusterInfo::loadCurrentCoordinators() {
 
     for (; it != result._values.end(); ++it) {
       VPackSlice const slice = it->second._vpack->slice();
-      if (slice.isString()) {
-        newCoordinators.emplace(
-            std::make_pair((*it).first, slice.copyString()));
-      } else {
-        newCoordinators.emplace(std::make_pair((*it).first, ""));
-      }
+      newCoordinators.emplace(std::make_pair(
+          (*it).first,
+          arangodb::basics::VelocyPackHelper::getStringValue(slice, "")));
     }
 
     // Now set the new value:
@@ -2240,11 +2236,9 @@ void ClusterInfo::loadCurrentDBServers() {
 
     for (; it != result._values.end(); ++it) {
       VPackSlice const slice = it->second._vpack->slice();
-      if (slice.isString()) {
-        newDBServers.emplace(std::make_pair((*it).first, slice.copyString()));
-      } else {
-        newDBServers.emplace(std::make_pair((*it).first, ""));
-      }
+      newDBServers.emplace(std::make_pair(
+          (*it).first,
+          arangodb::basics::VelocyPackHelper::getStringValue(slice, "")));
     }
 
     // Now set the new value:
@@ -2331,10 +2325,7 @@ std::string ClusterInfo::getTargetServerEndpoint(ServerID const& serverID) {
 
     if (it != result._values.end()) {
       VPackSlice const slice = it->second._vpack->slice();
-      if (slice.isString()) {
-        return slice.copyString();
-      }
-      return "";
+      return arangodb::basics::VelocyPackHelper::getStringValue(slice, "");
     }
   }
 
@@ -2441,7 +2432,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int tries = 0;
   std::shared_ptr<std::vector<std::string>> shardKeysPtr;
-  char const** shardKeys = nullptr;
+  std::unique_ptr<char const*[]> shardKeys;
   std::shared_ptr<std::vector<ShardID>> shards;
   bool found = false;
 
@@ -2458,18 +2449,16 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
         auto it2 = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
-          shardKeys = new char const* [shardKeysPtr->size()];
-          if (shardKeys != nullptr) {
-            size_t i;
-            for (i = 0; i < shardKeysPtr->size(); ++i) {
-              shardKeys[i] = shardKeysPtr->at(i).c_str();
-            }
-            usesDefaultShardingAttributes =
-                shardKeysPtr->size() == 1 &&
-                shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
-            found = true;
-            break;  // all OK
+          shardKeys.reset(new char const*[shardKeysPtr->size()]);
+          size_t i;
+          for (i = 0; i < shardKeysPtr->size(); ++i) {
+            shardKeys[i] = shardKeysPtr->at(i).c_str();
           }
+          usesDefaultShardingAttributes =
+              shardKeysPtr->size() == 1 &&
+              shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
+          found = true;
+          break;  // all OK
         }
       }
     }
@@ -2485,14 +2474,12 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int error;
   uint64_t hash = TRI_HashJsonByAttributes(
-      json, shardKeys, (int)shardKeysPtr->size(), docComplete, &error);
+      json, shardKeys.get(), (int)shardKeysPtr->size(), docComplete, &error);
   static char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static size_t const len = 52;
   // To improve our hash function:
   hash = TRI_FnvHashBlock(hash, magicPhrase, len);
-
-  delete[] shardKeys;
 
   shardID = shards->at(hash % shards->size());
   return error;
@@ -2571,7 +2558,7 @@ ClusterInfo::FollowerInfo ClusterInfo::getFollowerInfo(ShardID& c) {
 ClusterInfo::FollowerInfo ClusterInfo::newFollowerInfo(ShardID& c,
                                                        int64_t& index) {
   // Mutex must already be locked, which is done in the getFollowerInfo methods
-  auto v = make_shared<std::vector<ServerID> const>();
+  auto v = std::make_shared<std::vector<ServerID> const>();
   _followerInfos.push_back(v);
   try {
     index = static_cast<int64_t>(_followerInfos.size() - 1);
@@ -2598,7 +2585,7 @@ void ClusterInfo::addFollower(ShardID& c, ServerID const& s) {
   auto it = _followerInfoTable.find(c);
   TRI_ASSERT(it != _followerInfoTable.end());
   size_t pos = static_cast<size_t>(it->second);
-  auto v = make_shared<std::vector<ServerID>>(*_followerInfos[pos]);
+  auto v = std::make_shared<std::vector<ServerID>>(*_followerInfos[pos]);
   v->push_back(s);
   _followerInfos[pos] = v;  // will cast to std::vector<ServerID> const
   // Now tell the agency:
@@ -2618,7 +2605,7 @@ void ClusterInfo::removeFollower(ShardID& c, ServerID const& s) {
   auto it = _followerInfoTable.find(c);
   TRI_ASSERT(it != _followerInfoTable.end());
   size_t pos = static_cast<size_t>(it->second);
-  auto v = make_shared<std::vector<ServerID>>();
+  auto v = std::make_shared<std::vector<ServerID>>();
   v->reserve(_followerInfos[pos]->size() - 1);
   for (auto const& i : *_followerInfos[pos]) {
     if (i != s) {

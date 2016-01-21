@@ -817,7 +817,7 @@ void TRI_SetProcessTitle(char const* title) {
       size_t i = 0;
 
       while (environ[i]) {
-        newEnviron[i] = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, environ[i]);
+        newEnviron[i] = TRI_DuplicateString(TRI_CORE_MEM_ZONE, environ[i]);
         ++i;
       }
       // pad with a null pointer so we know the end of the array
@@ -952,7 +952,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
     TRI_UnlockMutex(&ExternalProcessesLock);
     status._errorMessage =
         std::string("the pid you're looking for is not in our list: ") +
-        triagens::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
+        arangodb::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
     status._status = TRI_EXT_NOT_FOUND;
     LOG_WARNING("checkExternal: pid not found: %d", (int)pid._pid);
 
@@ -978,7 +978,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
       if (wait) {
         status._errorMessage =
             std::string("waitpid returned 0 for pid while it shouldn't ") +
-            triagens::basics::StringUtils::itoa(external->_pid);
+            arangodb::basics::StringUtils::itoa(external->_pid);
 
         if (WIFEXITED(loc)) {
           external->_status = TRI_EXT_TERMINATED;
@@ -1002,7 +1002,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
                   (int)external->_pid, (int)wait, TRI_last_error());
       status._errorMessage =
           std::string("waitpid returned error for pid ") +
-          triagens::basics::StringUtils::itoa(external->_pid) +
+          arangodb::basics::StringUtils::itoa(external->_pid) +
           std::string(": ") + std::string(TRI_last_error());
     } else if (static_cast<TRI_pid_t>(external->_pid) ==
                static_cast<TRI_pid_t>(res)) {
@@ -1024,8 +1024,8 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
                   (int)external->_pid, (int)res);
       status._errorMessage =
           std::string("unexpected waitpid result for pid ") +
-          triagens::basics::StringUtils::itoa(external->_pid) +
-          std::string(": ") + triagens::basics::StringUtils::itoa(res);
+          arangodb::basics::StringUtils::itoa(external->_pid) +
+          std::string(": ") + arangodb::basics::StringUtils::itoa(res);
     }
 #else
     {
@@ -1041,7 +1041,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
                       (unsigned int)external->_pid, windowsErrorBuf);
           status._errorMessage =
               std::string("could not wait for subprocess with PID '") +
-              triagens::basics::StringUtils::itoa(
+              arangodb::basics::StringUtils::itoa(
                   static_cast<int64_t>(external->_pid)) +
               std::string("'") + windowsErrorBuf;
           status._exitStatus = GetLastError();
@@ -1071,7 +1071,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
                         (unsigned int)external->_pid, windowsErrorBuf);
             status._errorMessage =
                 std::string("could not wait for subprocess with PID '") +
-                triagens::basics::StringUtils::itoa(
+                arangodb::basics::StringUtils::itoa(
                     static_cast<int64_t>(external->_pid)) +
                 std::string("'") + windowsErrorBuf;
             status._exitStatus = GetLastError();
@@ -1089,7 +1089,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
                       (unsigned int)external->_pid);
           status._errorMessage =
               std::string("exit status could not be determined for PID '") +
-              triagens::basics::StringUtils::itoa(
+              arangodb::basics::StringUtils::itoa(
                   static_cast<int64_t>(external->_pid)) +
               std::string("'");
         } else {
@@ -1114,9 +1114,9 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
                 (int)external->_exitStatus);
     status._errorMessage =
         std::string("unexpected process status ") +
-        triagens::basics::StringUtils::itoa(external->_status) +
+        arangodb::basics::StringUtils::itoa(external->_status) +
         std::string(": ") +
-        triagens::basics::StringUtils::itoa(external->_exitStatus);
+        arangodb::basics::StringUtils::itoa(external->_exitStatus);
   }
 
   status._status = external->_status;

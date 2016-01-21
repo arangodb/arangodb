@@ -35,11 +35,9 @@
 
 struct TRI_transaction_s;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class StandaloneTransactionContext final : public TransactionContext {
-  
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -107,8 +105,6 @@ class StandaloneTransactionContext final : public TransactionContext {
   VPackOptions _options;
 };
 }
-}
 
 #endif
-
 

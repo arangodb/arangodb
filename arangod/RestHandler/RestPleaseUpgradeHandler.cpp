@@ -23,17 +23,13 @@
 
 #include "RestPleaseUpgradeHandler.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-using namespace std;
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
     : HttpHandler(request) {}
-
-
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 

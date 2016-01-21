@@ -153,6 +153,24 @@ function explainSuite () {
         assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { id: cn + "/testkey" + i }));
         assertEqual([ i ], AQL_EXECUTE(query, { id: cn + "/testkey" + i }).json);
       }
+    },
+
+    testInvalidValuesinList : function () {
+      var query = "FOR x IN @idList FOR i IN " + cn + " FILTER i._id == x SORT i.value RETURN i.value";
+      var bindParams = {
+        idList: [
+          null,
+          cn + "/testkey1", // Find this
+          "blub/bla",
+          "noKey",
+          cn + "/testkey2", // And this
+          123456,
+          { "the": "foxx", "is": "wrapped", "in":"objects"},
+          [15, "man", "on", "the", "dead", "mans", "chest"],
+          cn + "/testkey3" // And this
+        ]
+      };
+      assertEqual([ 1, 2, 3], AQL_EXECUTE(query, bindParams).json);
     }
 
   };

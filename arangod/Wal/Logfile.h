@@ -42,7 +42,7 @@
 
 #define LOGFILE_LEGEND_CACHE_BUCKETS 8
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 

@@ -30,10 +30,9 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/KeyGenerator.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_shaped_json_t
@@ -120,8 +119,8 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesJs(
     result->ForceSet(_ToKey,
                      TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
   } else if (type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* m =
-        reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
+    arangodb::wal::edge_marker_t const* m =
+        reinterpret_cast<arangodb::wal::edge_marker_t const*>(marker);
 
     // _from
     len = resolver->getCollectionNameCluster(buffer, m->_fromCid);
@@ -203,8 +202,8 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesShaped(
     result->ForceSet(_ToKey,
                      TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
   } else if (type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* m =
-        reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
+    arangodb::wal::edge_marker_t const* m =
+        reinterpret_cast<arangodb::wal::edge_marker_t const*>(marker);
 
     // _from
     len = resolver->getCollectionNameCluster(buffer, m->_fromCid);
@@ -241,7 +240,7 @@ static void WeakDocumentDitchCallback(const v8::WeakCallbackData<
   auto persistent = data.GetParameter();
   auto myDitch = v8::Local<v8::External>::New(isolate, *persistent);
 
-  auto ditch = static_cast<triagens::arango::DocumentDitch*>(myDitch->Value());
+  auto ditch = static_cast<arangodb::DocumentDitch*>(myDitch->Value());
   TRI_ASSERT(ditch != nullptr);
 
   TRI_GET_GLOBALS();
@@ -272,8 +271,8 @@ static void WeakDocumentDitchCallback(const v8::WeakCallbackData<
 
 v8::Handle<v8::Value> TRI_WrapShapedJson(
     v8::Isolate* isolate,
-    triagens::arango::CollectionNameResolver const* resolver,
-    triagens::arango::DocumentDitch* ditch, TRI_voc_cid_t cid,
+    arangodb::CollectionNameResolver const* resolver,
+    arangodb::DocumentDitch* ditch, TRI_voc_cid_t cid,
     TRI_document_collection_t* collection, void const* data) {
   v8::EscapableHandleScope scope(isolate);
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(data);
@@ -372,7 +371,7 @@ static void KeysOfShapedJson(const v8::PropertyCallbackInfo<v8::Array>& args) {
     TRI_V8_RETURN(v8::Array::New(isolate));
   }
 
-  auto ditch = static_cast<triagens::arango::DocumentDitch*>(
+  auto ditch = static_cast<arangodb::DocumentDitch*>(
       v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))
           ->Value());
   TRI_document_collection_t* collection = ditch->collection();
@@ -449,7 +448,7 @@ static void KeysOfShapedJson(const v8::PropertyCallbackInfo<v8::Array>& args) {
 static void CopyAttributes(v8::Isolate* isolate, v8::Handle<v8::Object> self,
                            void* marker,
                            char const* excludeAttribute = nullptr) {
-  auto ditch = static_cast<triagens::arango::DocumentDitch*>(
+  auto ditch = static_cast<arangodb::DocumentDitch*>(
       v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))
           ->Value());
   TRI_document_collection_t* collection = ditch->collection();
@@ -608,7 +607,7 @@ static void MapGetNamedShapedJson(
     }
 
     // get the underlying collection
-    auto ditch = static_cast<triagens::arango::DocumentDitch*>(
+    auto ditch = static_cast<arangodb::DocumentDitch*>(
         v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))
             ->Value());
     TRI_ASSERT(ditch != nullptr);
@@ -778,7 +777,7 @@ static void PropertyQueryShapedJson(
     }
 
     // get underlying collection
-    auto ditch = static_cast<triagens::arango::DocumentDitch*>(
+    auto ditch = static_cast<arangodb::DocumentDitch*>(
         v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_DITCH))
             ->Value());
     TRI_document_collection_t* collection = ditch->collection();

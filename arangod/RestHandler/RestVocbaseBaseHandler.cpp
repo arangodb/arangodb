@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVocbaseBaseHandler.h"
-
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
@@ -38,10 +37,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
@@ -323,8 +322,8 @@ void RestVocbaseBaseHandler::generateDocument(
           std::string((char*)marker + marker->_offsetToKey))));
       builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
     } else if (type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* marker =
-          static_cast<triagens::wal::edge_marker_t const*>(
+      arangodb::wal::edge_marker_t const* marker =
+          static_cast<arangodb::wal::edge_marker_t const*>(
               mptr.getDataPtr());  // PROTECTED by trx passed from above
       std::string from(std::move(DocumentHelper::assembleDocumentId(
           resolver->getCollectionNameCluster(marker->_fromCid),
@@ -349,7 +348,7 @@ void RestVocbaseBaseHandler::generateDocument(
         shapedJson, mptr.getDataPtr());  // PROTECTED by trx passed from above
 
     std::unique_ptr<TRI_json_t> augmented(
-        triagens::basics::VelocyPackHelper::velocyPackToJson(builder.slice()));
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(builder.slice()));
     TRI_StringifyAugmentedShapedJson(shaper, &buffer, &shapedJson,
                                      augmented.get());
 
@@ -450,7 +449,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     default:
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "failed with error: " + string(TRI_errno_string(res)));
+                    "failed with error: " + std::string(TRI_errno_string(res)));
   }
 }
 
@@ -606,7 +605,7 @@ int RestVocbaseBaseHandler::parseDocumentId(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, pos + 1, end - pos - 1);
+  key = TRI_DuplicateString(TRI_CORE_MEM_ZONE, pos + 1, end - pos - 1);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -624,7 +623,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   if (found) {
     _nolockHeaderSet = new std::unordered_set<std::string>();
     _nolockHeaderSet->insert(std::string(shardId));
-    triagens::arango::Transaction::_makeNolockHeaders = _nolockHeaderSet;
+    arangodb::Transaction::_makeNolockHeaders = _nolockHeaderSet;
   }
 }
 
@@ -634,7 +633,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    triagens::arango::Transaction::_makeNolockHeaders = nullptr;
+    arangodb::Transaction::_makeNolockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }

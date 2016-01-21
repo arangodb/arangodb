@@ -31,11 +31,9 @@
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class CollectionExport;
-
 
 typedef TRI_voc_tick_t CursorId;
 
@@ -89,7 +87,7 @@ class Cursor {
 
   virtual size_t count() const = 0;
 
-  virtual void dump(triagens::basics::StringBuffer&) = 0;
+  virtual void dump(arangodb::basics::StringBuffer&) = 0;
 
   
  protected:
@@ -120,7 +118,7 @@ class JsonCursor : public Cursor {
 
   size_t count() const override final;
 
-  void dump(triagens::basics::StringBuffer&) override final;
+  void dump(arangodb::basics::StringBuffer&) override final;
 
   
  private:
@@ -137,7 +135,7 @@ class JsonCursor : public Cursor {
 
 class ExportCursor : public Cursor {
  public:
-  ExportCursor(TRI_vocbase_t*, CursorId, triagens::arango::CollectionExport*,
+  ExportCursor(TRI_vocbase_t*, CursorId, arangodb::CollectionExport*,
                size_t, double, bool);
 
   ~ExportCursor();
@@ -150,17 +148,15 @@ class ExportCursor : public Cursor {
 
   size_t count() const override final;
 
-  void dump(triagens::basics::StringBuffer&) override final;
+  void dump(arangodb::basics::StringBuffer&) override final;
 
   
  private:
   TRI_vocbase_t* _vocbase;
-  triagens::arango::CollectionExport* _ex;
+  arangodb::CollectionExport* _ex;
   size_t const _size;
 };
 }
-}
 
 #endif
-
 

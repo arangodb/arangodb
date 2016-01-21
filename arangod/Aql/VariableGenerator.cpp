@@ -24,8 +24,8 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/Exceptions.h"
 
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +136,7 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Variable* VariableGenerator::createVariable(
-    triagens::basics::Json const& json) {
+    arangodb::basics::Json const& json) {
   auto variable = new Variable(json);
 
   auto existing = getVariable(variable->id);
@@ -193,7 +193,7 @@ std::string VariableGenerator::nextName() {
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json VariableGenerator::toJson(
+arangodb::basics::Json VariableGenerator::toJson(
     TRI_memory_zone_t* zone) const {
   Json jsonAllVariablesList(Json::Array, _variables.size());
 

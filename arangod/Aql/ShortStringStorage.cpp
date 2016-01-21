@@ -24,7 +24,7 @@
 #include "ShortStringStorage.h"
 #include "Basics/Exceptions.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////

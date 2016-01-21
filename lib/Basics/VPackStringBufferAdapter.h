@@ -26,7 +26,7 @@
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 class VPackStringBufferAdapter final : public VPackSink {

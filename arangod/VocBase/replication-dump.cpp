@@ -41,7 +41,7 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 
-using namespace triagens;
+using namespace arangodb;
 
 
 
@@ -135,11 +135,11 @@ static char const* NameFromCid(TRI_replication_dump_t* dump,
 static int AppendCollection(
     TRI_replication_dump_t* dump, TRI_voc_cid_t cid,
     bool translateCollectionIds, bool failOnUnknown,
-    triagens::arango::CollectionNameResolver* resolver) {
+    arangodb::CollectionNameResolver* resolver) {
   if (translateCollectionIds) {
     if (cid > 0) {
       std::string name;
-      if (triagens::arango::ServerState::instance()->isDBServer()) {
+      if (arangodb::ServerState::instance()->isDBServer()) {
         name = resolver->getCollectionNameCluster(cid);
       } else {
         name = resolver->getCollectionName(cid);
@@ -267,7 +267,7 @@ static int AppendContext(TRI_replication_dump_t* dump,
 static int StringifyMarkerDump(
     TRI_replication_dump_t* dump, TRI_document_collection_t* document,
     TRI_df_marker_t const* marker, bool withTicks, bool translateCollectionIds,
-    bool failOnUnknown, triagens::arango::CollectionNameResolver* resolver) {
+    bool failOnUnknown, arangodb::CollectionNameResolver* resolver) {
   // This covers two cases:
   //   1. document is not nullptr and marker points into a data file
   //   2. document is a nullptr and marker points into a WAL file
@@ -453,7 +453,7 @@ static int StringifyMarkerDump(
 /// @brief append the document attributes of a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static int AppendDocument(triagens::wal::document_marker_t const* marker,
+static int AppendDocument(arangodb::wal::document_marker_t const* marker,
                           TRI_replication_dump_t* dump) {
   TRI_shaped_json_t shaped;
   shaped._sid = marker->_shape;
@@ -510,7 +510,7 @@ static int AppendDocument(triagens::wal::document_marker_t const* marker,
       auto p = reinterpret_cast<int64_t const*>(legend);
       legend += *p;
     }
-    triagens::basics::LegendReader lr(legend);
+    arangodb::basics::LegendReader lr(legend);
     if (!TRI_StringifyArrayShapedJson(&lr, dump->_buffer, &shaped, true)) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -525,7 +525,7 @@ static int AppendDocument(triagens::wal::document_marker_t const* marker,
 
 static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
                                       TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<triagens::wal::document_marker_t const*>(marker);
+  auto m = reinterpret_cast<arangodb::wal::document_marker_t const*>(marker);
 
   int res = AppendContext(dump, m->_databaseId, m->_collectionId);
 
@@ -565,7 +565,7 @@ static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
 
 static int StringifyWalMarkerEdge(TRI_replication_dump_t* dump,
                                   TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
+  auto m = reinterpret_cast<arangodb::wal::edge_marker_t const*>(marker);
 
   int res = AppendContext(dump, m->_databaseId, m->_collectionId);
 
@@ -601,7 +601,7 @@ static int StringifyWalMarkerEdge(TRI_replication_dump_t* dump,
   APPEND_STRING(dump->_buffer, "\"");
 
   res = AppendDocument(
-      reinterpret_cast<triagens::wal::document_marker_t const*>(m), dump);
+      reinterpret_cast<arangodb::wal::document_marker_t const*>(m), dump);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -618,7 +618,7 @@ static int StringifyWalMarkerEdge(TRI_replication_dump_t* dump,
 
 static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
                                     TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<triagens::wal::remove_marker_t const*>(marker);
+  auto m = reinterpret_cast<arangodb::wal::remove_marker_t const*>(marker);
 
   int res = AppendContext(dump, m->_databaseId, m->_collectionId);
 
@@ -630,7 +630,7 @@ static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_transactionId);
   APPEND_STRING(dump->_buffer, "\",\"key\":\"");
   APPEND_STRING(dump->_buffer,
-                (char const*)m + sizeof(triagens::wal::remove_marker_t));
+                (char const*)m + sizeof(arangodb::wal::remove_marker_t));
   APPEND_STRING(dump->_buffer, "\",\"rev\":\"");
   APPEND_UINT64(dump->_buffer, m->_revisionId);
   APPEND_STRING(dump->_buffer, "\"");
@@ -646,7 +646,7 @@ static int StringifyWalMarkerTransaction(TRI_replication_dump_t* dump,
                                          TRI_df_marker_t const* marker) {
   // note: the data layout of begin / commit / abort markers is identical, so
   // we cast to a begin transaction marker in all cases
-  auto m = reinterpret_cast<triagens::wal::transaction_begin_marker_t const*>(
+  auto m = reinterpret_cast<arangodb::wal::transaction_begin_marker_t const*>(
       marker);
 
   APPEND_STRING(dump->_buffer, "\"database\":\"");
@@ -664,7 +664,7 @@ static int StringifyWalMarkerTransaction(TRI_replication_dump_t* dump,
 
 static int StringifyWalMarkerCreateCollection(TRI_replication_dump_t* dump,
                                               TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<triagens::wal::collection_create_marker_t const*>(
+  auto m = reinterpret_cast<arangodb::wal::collection_create_marker_t const*>(
       marker);
 
   APPEND_STRING(dump->_buffer, "\"database\":\"");
@@ -674,7 +674,7 @@ static int StringifyWalMarkerCreateCollection(TRI_replication_dump_t* dump,
   APPEND_STRING(dump->_buffer, "\",\"collection\":");
   APPEND_STRING(
       dump->_buffer,
-      (char const*)m + sizeof(triagens::wal::collection_create_marker_t));
+      (char const*)m + sizeof(arangodb::wal::collection_create_marker_t));
   char const* cname = NameFromCid(dump, m->_collectionId);
   if (cname != nullptr) {
     APPEND_STRING(dump->_buffer, ",\"cname\":\"");
@@ -692,7 +692,7 @@ static int StringifyWalMarkerCreateCollection(TRI_replication_dump_t* dump,
 static int StringifyWalMarkerDropCollection(TRI_replication_dump_t* dump,
                                             TRI_df_marker_t const* marker) {
   auto m =
-      reinterpret_cast<triagens::wal::collection_drop_marker_t const*>(marker);
+      reinterpret_cast<arangodb::wal::collection_drop_marker_t const*>(marker);
 
   APPEND_STRING(dump->_buffer, "\"database\":\"");
   APPEND_UINT64(dump->_buffer, m->_databaseId);
@@ -714,7 +714,7 @@ static int StringifyWalMarkerDropCollection(TRI_replication_dump_t* dump,
 
 static int StringifyWalMarkerRenameCollection(TRI_replication_dump_t* dump,
                                               TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<triagens::wal::collection_rename_marker_t const*>(
+  auto m = reinterpret_cast<arangodb::wal::collection_rename_marker_t const*>(
       marker);
 
   APPEND_STRING(dump->_buffer, "\"database\":\"");
@@ -729,7 +729,7 @@ static int StringifyWalMarkerRenameCollection(TRI_replication_dump_t* dump,
   APPEND_STRING(dump->_buffer, "\",\"collection\":{\"name\":\"");
   APPEND_STRING(
       dump->_buffer,
-      (char const*)m + sizeof(triagens::wal::collection_rename_marker_t));
+      (char const*)m + sizeof(arangodb::wal::collection_rename_marker_t));
   APPEND_STRING(dump->_buffer, "\"}");
 
   return TRI_ERROR_NO_ERROR;
@@ -741,7 +741,7 @@ static int StringifyWalMarkerRenameCollection(TRI_replication_dump_t* dump,
 
 static int StringifyWalMarkerChangeCollection(TRI_replication_dump_t* dump,
                                               TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<triagens::wal::collection_change_marker_t const*>(
+  auto m = reinterpret_cast<arangodb::wal::collection_change_marker_t const*>(
       marker);
 
   APPEND_STRING(dump->_buffer, "\"database\":\"");
@@ -756,7 +756,7 @@ static int StringifyWalMarkerChangeCollection(TRI_replication_dump_t* dump,
   APPEND_STRING(dump->_buffer, "\",\"collection\":");
   APPEND_STRING(
       dump->_buffer,
-      (char const*)m + sizeof(triagens::wal::collection_change_marker_t));
+      (char const*)m + sizeof(arangodb::wal::collection_change_marker_t));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -768,7 +768,7 @@ static int StringifyWalMarkerChangeCollection(TRI_replication_dump_t* dump,
 static int StringifyWalMarkerCreateIndex(TRI_replication_dump_t* dump,
                                          TRI_df_marker_t const* marker) {
   auto m =
-      reinterpret_cast<triagens::wal::index_create_marker_t const*>(marker);
+      reinterpret_cast<arangodb::wal::index_create_marker_t const*>(marker);
 
   APPEND_STRING(dump->_buffer, "\"database\":\"");
   APPEND_UINT64(dump->_buffer, m->_databaseId);
@@ -783,7 +783,7 @@ static int StringifyWalMarkerCreateIndex(TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_indexId);
   APPEND_STRING(dump->_buffer, "\",\"index\":");
   APPEND_STRING(dump->_buffer,
-                (char const*)m + sizeof(triagens::wal::index_create_marker_t));
+                (char const*)m + sizeof(arangodb::wal::index_create_marker_t));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -794,7 +794,7 @@ static int StringifyWalMarkerCreateIndex(TRI_replication_dump_t* dump,
 
 static int StringifyWalMarkerDropIndex(TRI_replication_dump_t* dump,
                                        TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<triagens::wal::index_drop_marker_t const*>(marker);
+  auto m = reinterpret_cast<arangodb::wal::index_drop_marker_t const*>(marker);
 
   APPEND_STRING(dump->_buffer, "\"database\":\"");
   APPEND_UINT64(dump->_buffer, m->_databaseId);
@@ -980,37 +980,37 @@ static TRI_voc_tick_t GetDatabaseFromWalMarker(TRI_df_marker_t const* marker) {
 
   switch (marker->_type) {
     case TRI_WAL_MARKER_ATTRIBUTE:
-      return GetDatabaseId<triagens::wal::attribute_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::attribute_marker_t>(marker);
     case TRI_WAL_MARKER_SHAPE:
-      return GetDatabaseId<triagens::wal::shape_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::shape_marker_t>(marker);
     case TRI_WAL_MARKER_DOCUMENT:
-      return GetDatabaseId<triagens::wal::document_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::document_marker_t>(marker);
     case TRI_WAL_MARKER_EDGE:
-      return GetDatabaseId<triagens::wal::edge_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::edge_marker_t>(marker);
     case TRI_WAL_MARKER_REMOVE:
-      return GetDatabaseId<triagens::wal::remove_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::remove_marker_t>(marker);
     case TRI_WAL_MARKER_BEGIN_TRANSACTION:
-      return GetDatabaseId<triagens::wal::transaction_begin_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::transaction_begin_marker_t>(marker);
     case TRI_WAL_MARKER_COMMIT_TRANSACTION:
-      return GetDatabaseId<triagens::wal::transaction_commit_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::transaction_commit_marker_t>(marker);
     case TRI_WAL_MARKER_ABORT_TRANSACTION:
-      return GetDatabaseId<triagens::wal::transaction_abort_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::transaction_abort_marker_t>(marker);
     case TRI_WAL_MARKER_CREATE_COLLECTION:
-      return GetDatabaseId<triagens::wal::collection_create_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::collection_create_marker_t>(marker);
     case TRI_WAL_MARKER_DROP_COLLECTION:
-      return GetDatabaseId<triagens::wal::collection_drop_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::collection_drop_marker_t>(marker);
     case TRI_WAL_MARKER_RENAME_COLLECTION:
-      return GetDatabaseId<triagens::wal::collection_rename_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::collection_rename_marker_t>(marker);
     case TRI_WAL_MARKER_CHANGE_COLLECTION:
-      return GetDatabaseId<triagens::wal::collection_change_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::collection_change_marker_t>(marker);
     case TRI_WAL_MARKER_CREATE_INDEX:
-      return GetDatabaseId<triagens::wal::index_create_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::index_create_marker_t>(marker);
     case TRI_WAL_MARKER_DROP_INDEX:
-      return GetDatabaseId<triagens::wal::index_drop_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::index_drop_marker_t>(marker);
     case TRI_WAL_MARKER_CREATE_DATABASE:
-      return GetDatabaseId<triagens::wal::database_create_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::database_create_marker_t>(marker);
     case TRI_WAL_MARKER_DROP_DATABASE:
-      return GetDatabaseId<triagens::wal::database_drop_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::database_drop_marker_t>(marker);
     default: { return 0; }
   }
 }
@@ -1033,27 +1033,27 @@ static TRI_voc_tick_t GetCollectionFromWalMarker(
     TRI_df_marker_t const* marker) {
   switch (marker->_type) {
     case TRI_WAL_MARKER_ATTRIBUTE:
-      return GetCollectionId<triagens::wal::attribute_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::attribute_marker_t>(marker);
     case TRI_WAL_MARKER_SHAPE:
-      return GetCollectionId<triagens::wal::shape_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::shape_marker_t>(marker);
     case TRI_WAL_MARKER_DOCUMENT:
-      return GetCollectionId<triagens::wal::document_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::document_marker_t>(marker);
     case TRI_WAL_MARKER_EDGE:
-      return GetCollectionId<triagens::wal::edge_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::edge_marker_t>(marker);
     case TRI_WAL_MARKER_REMOVE:
-      return GetCollectionId<triagens::wal::remove_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::remove_marker_t>(marker);
     case TRI_WAL_MARKER_CREATE_COLLECTION:
-      return GetCollectionId<triagens::wal::collection_create_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::collection_create_marker_t>(marker);
     case TRI_WAL_MARKER_DROP_COLLECTION:
-      return GetCollectionId<triagens::wal::collection_drop_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::collection_drop_marker_t>(marker);
     case TRI_WAL_MARKER_RENAME_COLLECTION:
-      return GetCollectionId<triagens::wal::collection_rename_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::collection_rename_marker_t>(marker);
     case TRI_WAL_MARKER_CHANGE_COLLECTION:
-      return GetCollectionId<triagens::wal::collection_change_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::collection_change_marker_t>(marker);
     case TRI_WAL_MARKER_CREATE_INDEX:
-      return GetCollectionId<triagens::wal::index_create_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::index_create_marker_t>(marker);
     case TRI_WAL_MARKER_DROP_INDEX:
-      return GetCollectionId<triagens::wal::index_drop_marker_t>(marker);
+      return GetCollectionId<arangodb::wal::index_drop_marker_t>(marker);
     default: { return 0; }
   }
 }
@@ -1078,19 +1078,19 @@ static TRI_voc_tid_t GetTransactionFromWalMarker(
 
   switch (marker->_type) {
     case TRI_WAL_MARKER_DOCUMENT:
-      return GetTransactionId<triagens::wal::document_marker_t>(marker);
+      return GetTransactionId<arangodb::wal::document_marker_t>(marker);
     case TRI_WAL_MARKER_EDGE:
-      return GetTransactionId<triagens::wal::edge_marker_t>(marker);
+      return GetTransactionId<arangodb::wal::edge_marker_t>(marker);
     case TRI_WAL_MARKER_REMOVE:
-      return GetTransactionId<triagens::wal::remove_marker_t>(marker);
+      return GetTransactionId<arangodb::wal::remove_marker_t>(marker);
     case TRI_WAL_MARKER_BEGIN_TRANSACTION:
-      return GetTransactionId<triagens::wal::transaction_begin_marker_t>(
+      return GetTransactionId<arangodb::wal::transaction_begin_marker_t>(
           marker);
     case TRI_WAL_MARKER_COMMIT_TRANSACTION:
-      return GetTransactionId<triagens::wal::transaction_commit_marker_t>(
+      return GetTransactionId<arangodb::wal::transaction_commit_marker_t>(
           marker);
     case TRI_WAL_MARKER_ABORT_TRANSACTION:
-      return GetTransactionId<triagens::wal::transaction_abort_marker_t>(
+      return GetTransactionId<arangodb::wal::transaction_abort_marker_t>(
           marker);
     default: { return 0; }
   }
@@ -1167,7 +1167,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                           bool withTicks, bool translateCollectionIds,
                           bool failOnUnknown,
-                          triagens::arango::CollectionNameResolver* resolver) {
+                          arangodb::CollectionNameResolver* resolver) {
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
@@ -1368,7 +1368,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(col->_collection != nullptr);
 
-  triagens::arango::CollectionNameResolver resolver(col->_vocbase);
+  arangodb::CollectionNameResolver resolver(col->_vocbase);
   TRI_document_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
@@ -1411,8 +1411,8 @@ int TRI_DumpLogReplication(
 
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
-  std::vector<triagens::wal::Logfile*> logfiles =
-      triagens::wal::LogfileManager::instance()->getLogfilesForTickRange(
+  std::vector<arangodb::wal::Logfile*> logfiles =
+      arangodb::wal::LogfileManager::instance()->getLogfilesForTickRange(
           tickMin, tickMax, fromTickIncluded);
 
   // setup some iteration state
@@ -1432,11 +1432,11 @@ int TRI_DumpLogReplication(
     size_t const n = logfiles.size();
 
     for (size_t i = 0; i < n; ++i) {
-      triagens::wal::Logfile* logfile = logfiles[i];
+      arangodb::wal::Logfile* logfile = logfiles[i];
 
       char const* ptr;
       char const* end;
-      triagens::wal::LogfileManager::instance()->getActiveLogfileRegion(
+      arangodb::wal::LogfileManager::instance()->getActiveLogfileRegion(
           logfile, ptr, end);
 
       while (ptr < end) {
@@ -1501,14 +1501,14 @@ int TRI_DumpLogReplication(
         break;
       }
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
 
   // always return the logfiles we have used
-  triagens::wal::LogfileManager::instance()->returnLogfiles(logfiles);
+  arangodb::wal::LogfileManager::instance()->returnLogfiles(logfiles);
 
   if (outputAsArray) {
     TRI_AppendStringStringBuffer(dump->_buffer, "\n]");
@@ -1547,8 +1547,8 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
-  std::vector<triagens::wal::Logfile*> logfiles =
-      triagens::wal::LogfileManager::instance()->getLogfilesForTickRange(
+  std::vector<arangodb::wal::Logfile*> logfiles =
+      arangodb::wal::LogfileManager::instance()->getLogfilesForTickRange(
           tickMin, tickMax, fromTickIncluded);
 
   // setup some iteration state
@@ -1561,11 +1561,11 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
     // iterate over the datafiles found
     size_t const n = logfiles.size();
     for (size_t i = 0; i < n; ++i) {
-      triagens::wal::Logfile* logfile = logfiles[i];
+      arangodb::wal::Logfile* logfile = logfiles[i];
 
       char const* ptr;
       char const* end;
-      triagens::wal::LogfileManager::instance()->getActiveLogfileRegion(
+      arangodb::wal::LogfileManager::instance()->getActiveLogfileRegion(
           logfile, ptr, end);
 
       // LOG_INFO("scanning logfile %d", (int) i);
@@ -1607,17 +1607,17 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
         if (marker->_type == TRI_WAL_MARKER_BEGIN_TRANSACTION) {
           auto m = reinterpret_cast<
-              triagens::wal::transaction_begin_marker_t const*>(marker);
+              arangodb::wal::transaction_begin_marker_t const*>(marker);
           transactions.emplace(m->_transactionId, foundTick);
           // LOG_INFO("found begin: %llu", m->_transactionId);
         } else if (marker->_type == TRI_WAL_MARKER_COMMIT_TRANSACTION) {
           auto m = reinterpret_cast<
-              triagens::wal::transaction_commit_marker_t const*>(marker);
+              arangodb::wal::transaction_commit_marker_t const*>(marker);
           transactions.erase(m->_transactionId);
           // LOG_INFO("found commit: %llu", m->_transactionId);
         } else if (marker->_type == TRI_WAL_MARKER_ABORT_TRANSACTION) {
           auto m = reinterpret_cast<
-              triagens::wal::transaction_abort_marker_t const*>(marker);
+              arangodb::wal::transaction_abort_marker_t const*>(marker);
           transactions.erase(m->_transactionId);
           // LOG_INFO("found abort: %llu", m->_transactionId);
         }
@@ -1653,14 +1653,14 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
     dump->_fromTickIncluded = fromTickIncluded;
     dump->_lastFoundTick = lastFoundTick;
     // LOG_INFO("last tick2: %llu", lastFoundTick);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
 
   // always return the logfiles we have used
-  triagens::wal::LogfileManager::instance()->returnLogfiles(logfiles);
+  arangodb::wal::LogfileManager::instance()->returnLogfiles(logfiles);
 
   return res;
 }

@@ -30,7 +30,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 typedef std::unordered_map<std::string, std::pair<TRI_json_t const*, bool>>

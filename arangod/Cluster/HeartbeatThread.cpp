@@ -41,21 +41,19 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::HeartbeatThread(
-    TRI_server_t* server, triagens::rest::ApplicationDispatcher* dispatcher,
+    TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
     ApplicationV8* applicationV8, uint64_t interval,
     uint64_t maxFailsBeforeWarning)
-    : Thread("heartbeat"),
+    : Thread("Heartbeat"),
       _server(server),
       _dispatcher(dispatcher),
       _applicationV8(applicationV8),
@@ -81,7 +79,6 @@ HeartbeatThread::HeartbeatThread(
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::~HeartbeatThread() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
@@ -206,7 +203,7 @@ void HeartbeatThread::runDBServer() {
         if (it != result._values.end()) {
           // there is a plan version
           uint64_t planVersion =
-              triagens::basics::VelocyPackHelper::stringUInt64(
+              arangodb::basics::VelocyPackHelper::stringUInt64(
                   it->second._vpack->slice());
 
           if (planVersion > lastPlanVersionNoticed) {
@@ -315,10 +312,9 @@ void HeartbeatThread::runCoordinator() {
 
       if (it != result._values.end()) {
         // there is a plan version
-        
-        uint64_t planVersion =
-            triagens::basics::VelocyPackHelper::stringUInt64(
-                it->second._vpack->slice());
+
+        uint64_t planVersion = arangodb::basics::VelocyPackHelper::stringUInt64(
+            it->second._vpack->slice());
 
         if (planVersion > lastPlanVersionNoticed) {
           if (handlePlanChangeCoordinator(planVersion)) {
@@ -337,8 +333,8 @@ void HeartbeatThread::runCoordinator() {
           result._values.begin();
       if (it != result._values.end()) {
         // there is a UserVersion
-        uint64_t userVersion =
-          triagens::basics::VelocyPackHelper::stringUInt64(it->second._vpack->slice());
+        uint64_t userVersion = arangodb::basics::VelocyPackHelper::stringUInt64(
+            it->second._vpack->slice());
         if (userVersion != oldUserVersion) {
           // reload user cache for all databases
           std::vector<DatabaseID> dbs =
@@ -529,7 +525,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       if (options.hasKey("id")) {
         VPackSlice const v = options.get("id"); 
         if (v.isString()) {
-          id = triagens::basics::StringUtils::uint64(v.copyString());
+          id = arangodb::basics::StringUtils::uint64(v.copyString());
         }
       }
 
@@ -626,7 +622,7 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
   }
 
   // schedule a job for the change
-  std::unique_ptr<triagens::rest::Job> job(
+  std::unique_ptr<arangodb::rest::Job> job(
       new ServerJob(this, _server, _applicationV8));
 
   if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {

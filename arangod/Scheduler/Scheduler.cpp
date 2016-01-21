@@ -38,8 +38,8 @@
 #include "Scheduler/Task.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -447,7 +447,7 @@ EventLoop Scheduler::lookupLoopById(uint64_t taskId) {
   auto&& task = taskRegistered.find(taskId);
 
   if (task == taskRegistered.end()) {
-    return nrThreads;
+    return static_cast<EventLoop>(nrThreads);
   }
 
   return task->second->eventLoop();

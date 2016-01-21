@@ -48,10 +48,8 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-
+using namespace arangodb;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut to wrap a shaped-json object in a read-only transaction
@@ -162,7 +160,7 @@ static void CalculateSkipLimitSlice(size_t length, int64_t skip, uint64_t limit,
 
 static TRI_index_operator_t* SetupConditionsSkiplist(
     v8::Isolate* isolate,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     VocShaper* shaper, v8::Handle<v8::Object> conditions) {
   size_t numEq = 0;
   size_t lastNonEq = 0;
@@ -367,7 +365,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist(
 
 static TRI_index_operator_t* SetupExampleSkiplist(
     v8::Isolate* isolate,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     VocShaper* shaper, v8::Handle<v8::Object> example) {
   TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
@@ -402,7 +400,7 @@ static TRI_index_operator_t* SetupExampleSkiplist(
     // // TODO FIX parameters to be VelocyPack in the first place
     return TRI_CreateIndexOperator(
         TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
-        triagens::basics::JsonHelper::toVelocyPack(parameters), shaper,
+        arangodb::basics::JsonHelper::toVelocyPack(parameters), shaper,
         TRI_LengthArrayJson(parameters));
   }
 
@@ -538,7 +536,7 @@ static void ExecuteSkiplistQuery(
       TRI_LookupIndexByHandle(isolate, trx.resolver(), col, args[0], false);
 
   if (idx == nullptr ||
-      idx->type() != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      idx->type() != arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -558,7 +556,7 @@ static void ExecuteSkiplistQuery(
   }
 
   std::unique_ptr<SkiplistIterator> skiplistIterator(
-      static_cast<triagens::arango::SkiplistIndex*>(idx)
+      static_cast<arangodb::SkiplistIndex*>(idx)
           ->lookup(&trx, skiplistOperator, reverse));
   delete skiplistOperator;
 
@@ -1168,11 +1166,11 @@ static void ByExampleHashIndexQuery(
                                      args[0], false);
 
   if (idx == nullptr ||
-      idx->type() != triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
+      idx->type() != arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
+  auto hashIndex = static_cast<arangodb::HashIndex*>(idx);
 
   // convert the example (index is locked by lockRead)
   TRI_hash_index_search_value_t searchValue;
@@ -1197,7 +1195,7 @@ static void ByExampleHashIndexQuery(
 
   // find the matches
   std::vector<TRI_doc_mptr_t*> list;
-  static_cast<triagens::arango::HashIndex*>(idx)
+  static_cast<arangodb::HashIndex*>(idx)
       ->lookup(&trx, &searchValue, list);
 
   // convert result
@@ -1370,8 +1368,8 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
 
       localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
     } else {
-      triagens::wal::edge_marker_t const* e =
-          reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
+      arangodb::wal::edge_marker_t const* e =
+          reinterpret_cast<arangodb::wal::edge_marker_t const*>(marker);
       std::string const extra =
           helper->_resolver->getCollectionNameCluster(e->_toCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
@@ -1638,7 +1636,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
                                      args[0], false);
 
   if (idx == nullptr ||
-      idx->type() != triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      idx->type() != arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1669,7 +1667,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto fulltextIndex = static_cast<triagens::arango::FulltextIndex*>(idx);
+  auto fulltextIndex = static_cast<arangodb::FulltextIndex*>(idx);
 
   if (isSubstringQuery) {
     TRI_FreeQueryFulltextIndex(query);
@@ -1869,8 +1867,8 @@ static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
                                      args[0], false);
 
   if (idx == nullptr ||
-      (idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-       idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
+      (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
+       idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1890,7 +1888,7 @@ static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(idx)
                              ->nearQuery(&trx, latitude, longitude, limit);
 
   if (cors != nullptr) {
@@ -1971,8 +1969,8 @@ static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
                                      args[0], false);
 
   if (idx == nullptr ||
-      (idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-       idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
+      (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
+       idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1992,7 +1990,7 @@ static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(idx)
                              ->withinQuery(&trx, latitude, longitude, radius);
 
   if (cors != nullptr) {
@@ -2068,24 +2066,24 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("documents(<keys>)");
   }
 
-  triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
-  bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
-  bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+  arangodb::basics::Json bindVars(arangodb::basics::Json::Object, 2);
+  bindVars("@collection", arangodb::basics::Json(std::string(col->_name)));
+  bindVars("keys", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
                                           TRI_ObjectToJson(isolate, args[0])));
 
-  triagens::aql::BindParameters::StripCollectionNames(
+  arangodb::aql::BindParameters::StripCollectionNames(
       TRI_LookupObjectJson(bindVars.json(), "keys"), col->_name);
 
   std::string const aql(
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
+  arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
                              aql.c_str(), aql.size(), bindVars.steal(), nullptr,
-                             triagens::aql::PART_MAIN);
+                             arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(
-      isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -2122,9 +2120,9 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("removeByKeys(<keys>)");
   }
 
-  triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
-  bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
-  bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+  arangodb::basics::Json bindVars(arangodb::basics::Json::Object, 2);
+  bindVars("@collection", arangodb::basics::Json(std::string(col->_name)));
+  bindVars("keys", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
                                           TRI_ObjectToJson(isolate, args[0])));
 
   std::string const aql(
@@ -2132,12 +2130,12 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
       "true }");
 
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
+  arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
                              aql.c_str(), aql.size(), bindVars.steal(), nullptr,
-                             triagens::aql::PART_MAIN);
+                             arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(
-      isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||

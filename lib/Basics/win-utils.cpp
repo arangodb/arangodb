@@ -38,7 +38,7 @@
 #include "Basics/tri-strings.h"
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 // .............................................................................
 // Some global variables which may be required later

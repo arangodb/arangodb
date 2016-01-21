@@ -30,7 +30,7 @@
 #include "Basics/Dictionary.h"
 #include "Basics/StringBuffer.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,6 +93,7 @@ class HttpResponse {
     PRECONDITION_REQUIRED = 428,
     TOO_MANY_REQUESTS = 429,
     REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
+    UNAVAILABLE_FOR_LEGAL_REASONS = 451,
 
     SERVER_ERROR = 500,
     NOT_IMPLEMENTED = 501,

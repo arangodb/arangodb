@@ -40,11 +40,11 @@
 #define READ_UNLOCKER_VAR_B(a) READ_UNLOCKER_VAR_A(a)
 
 #define READ_UNLOCKER(b)                                                   \
-  triagens::basics::ReadUnlocker<std::remove_reference<decltype(b)>::type> \
+  arangodb::basics::ReadUnlocker<std::remove_reference<decltype(b)>::type> \
       READ_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////

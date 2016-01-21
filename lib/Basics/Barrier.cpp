@@ -24,7 +24,7 @@
 #include "Barrier.h"
 #include "Basics/ConditionLocker.h"
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 

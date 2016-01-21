@@ -29,9 +29,7 @@
 
 struct TRI_vocbase_t;
 
-
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class ApplicationV8;
 
 class V8QueueJob : public rest::Job {
@@ -102,8 +100,6 @@ class V8QueueJob : public rest::Job {
   std::atomic<bool> _canceled;
 };
 }
-}
 
 #endif
-
 

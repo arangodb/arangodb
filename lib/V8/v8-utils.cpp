@@ -60,10 +60,10 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
-using namespace triagens::arango;
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
+
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,8 +173,8 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     char const* prologue = "(function() { ";
     char const* epilogue = "/* end-of-file */ })()";
 
-    char* contentWrapper = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE,
-                                                   prologue, content, epilogue);
+    char* contentWrapper = TRI_Concatenate3String(TRI_UNKNOWN_MEM_ZONE,
+                                                  prologue, content, epilogue);
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
@@ -288,7 +288,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
 
-  auto json = triagens::basics::ProgramOptions::getJson();
+  auto json = arangodb::basics::ProgramOptions::getJson();
 
   if (json != nullptr) {
     auto result = TRI_ObjectJson(isolate, json);
@@ -542,7 +542,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!url.empty() && url[0] == '/') {
     // a relative url. now make this an absolute URL if possible
-    auto json = triagens::basics::ProgramOptions::getJson();
+    auto json = arangodb::basics::ProgramOptions::getJson();
 
     if (json != nullptr) {
       // check if there are endpoints defined in the server options
@@ -1309,7 +1309,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   int err = 0;
-  std::string cwd = triagens::basics::FileUtils::currentDirectory(&err);
+  std::string cwd = arangodb::basics::FileUtils::currentDirectory(&err);
   if (0 != err) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(err, "cannot get current working directory");
   }
@@ -1544,7 +1544,7 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
       std::string fname = TRI_ObjectToString(file);
       TRI_PushBackVectorString(
           &filenames,
-          TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fname.c_str()));
+          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, fname.c_str()));
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
@@ -2540,9 +2540,9 @@ static void JS_RemoveRecursiveDirectory(
     std::string const path(*name);
 #ifdef _WIN32
     // windows paths are case-insensitive
-    if (!TRI_CaseEqualString2(path.c_str(), tempPath, strlen(tempPath))) {
+    if (!TRI_CaseEqualString(path.c_str(), tempPath, strlen(tempPath))) {
 #else
-    if (!TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
+    if (!TRI_EqualString(path.c_str(), tempPath, strlen(tempPath))) {
 #endif
       std::string errorMessage = std::string("directory to be removed [") +
                                  path + "] is outside of temporary path [" +

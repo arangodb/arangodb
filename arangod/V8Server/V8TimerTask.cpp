@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8TimerTask.h"
-
 #include "Basics/json.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
@@ -30,11 +29,8 @@
 #include "V8Server/V8Job.h"
 #include "VocBase/server.h"
 
-using namespace std;
-using namespace triagens::rest;
-using namespace triagens::arango;
-
-
+using namespace arangodb;
+using namespace arangodb::rest;
 
 V8TimerTask::V8TimerTask(std::string const& id, std::string const& name,
                          TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,

@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-dispatcher.h"
-
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
@@ -39,11 +38,9 @@
 #include "V8Server/V8TimerTask.h"
 #include "VocBase/server.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer

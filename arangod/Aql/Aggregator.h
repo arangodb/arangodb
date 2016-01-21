@@ -32,10 +32,9 @@
 
 struct TRI_document_collection_t;
 
-namespace triagens {
-namespace arango {
-  class AqlTransaction;
-}
+namespace arangodb {
+class AqlTransaction;
+
 namespace aql {
 
 struct Aggregator {
@@ -43,25 +42,26 @@ struct Aggregator {
   Aggregator(Aggregator const&) = delete;
   Aggregator& operator=(Aggregator const&) = delete;
 
-  explicit Aggregator(triagens::arango::AqlTransaction* trx) : trx(trx) { }
+  explicit Aggregator(arangodb::AqlTransaction* trx) : trx(trx) { }
   virtual ~Aggregator() = default;
   virtual char const* name() const = 0;
   virtual void reset() = 0;
   virtual void reduce(AqlValue const&, struct TRI_document_collection_t const*) = 0;
   virtual AqlValue stealValue() = 0;
 
-  static Aggregator* fromTypeString(triagens::arango::AqlTransaction*, std::string const&);
-  static Aggregator* fromJson(triagens::arango::AqlTransaction*, triagens::basics::Json const&,  
+  static Aggregator* fromTypeString(arangodb::AqlTransaction*, std::string const&);
+  static Aggregator* fromJson(arangodb::AqlTransaction*, arangodb::basics::Json const&,  
                               char const*);
 
   static bool isSupported(std::string const&);
+  static bool requiresInput(std::string const&);
   
-  triagens::arango::AqlTransaction* trx;
+  arangodb::AqlTransaction* trx;
 };
 
 struct AggregatorLength final : public Aggregator {
-  explicit AggregatorLength(triagens::arango::AqlTransaction* trx) : Aggregator(trx), count(0) { }
-  AggregatorLength(triagens::arango::AqlTransaction* trx, uint64_t initialCount) : Aggregator(trx), count(initialCount) { }
+  explicit AggregatorLength(arangodb::AqlTransaction* trx) : Aggregator(trx), count(0) { }
+  AggregatorLength(arangodb::AqlTransaction* trx, uint64_t initialCount) : Aggregator(trx), count(initialCount) { }
 
   char const* name() const override final {
     return "LENGTH";
@@ -75,7 +75,7 @@ struct AggregatorLength final : public Aggregator {
 };
 
 struct AggregatorMin final : public Aggregator {
-  explicit AggregatorMin(triagens::arango::AqlTransaction* trx) : Aggregator(trx), value(), coll(nullptr) { }
+  explicit AggregatorMin(arangodb::AqlTransaction* trx) : Aggregator(trx), value(), coll(nullptr) { }
   
   ~AggregatorMin();
 
@@ -92,7 +92,7 @@ struct AggregatorMin final : public Aggregator {
 };
 
 struct AggregatorMax final : public Aggregator {
-  explicit AggregatorMax(triagens::arango::AqlTransaction* trx) : Aggregator(trx), value(), coll(nullptr) { }
+  explicit AggregatorMax(arangodb::AqlTransaction* trx) : Aggregator(trx), value(), coll(nullptr) { }
   
   ~AggregatorMax();
 
@@ -109,7 +109,7 @@ struct AggregatorMax final : public Aggregator {
 };
 
 struct AggregatorSum final : public Aggregator {
-  explicit AggregatorSum(triagens::arango::AqlTransaction* trx) : Aggregator(trx), sum(0.0), invalid(false) { }
+  explicit AggregatorSum(arangodb::AqlTransaction* trx) : Aggregator(trx), sum(0.0), invalid(false) { }
   
   char const* name () const override final {
     return "SUM";
@@ -124,7 +124,7 @@ struct AggregatorSum final : public Aggregator {
 };
 
 struct AggregatorAverage final : public Aggregator {
-  explicit AggregatorAverage(triagens::arango::AqlTransaction* trx) : Aggregator(trx), count(0), sum(0.0), invalid(false) { }
+  explicit AggregatorAverage(arangodb::AqlTransaction* trx) : Aggregator(trx), count(0), sum(0.0), invalid(false) { }
   
   char const* name () const override final {
     return "AVERAGE";
@@ -140,7 +140,7 @@ struct AggregatorAverage final : public Aggregator {
 };
 
 struct AggregatorVarianceBase : public Aggregator {
-  AggregatorVarianceBase(triagens::arango::AqlTransaction* trx, bool population) : Aggregator(trx), population(population), count(0), sum(0.0), mean(0.0), invalid(false) { }
+  AggregatorVarianceBase(arangodb::AqlTransaction* trx, bool population) : Aggregator(trx), population(population), count(0), sum(0.0), mean(0.0), invalid(false) { }
 
   void reset() override final;
   void reduce(AqlValue const&, struct TRI_document_collection_t const*) override final;
@@ -153,7 +153,7 @@ struct AggregatorVarianceBase : public Aggregator {
 };
 
 struct AggregatorVariance final : public AggregatorVarianceBase {
-  AggregatorVariance(triagens::arango::AqlTransaction* trx, bool population) : AggregatorVarianceBase(trx, population) { }
+  AggregatorVariance(arangodb::AqlTransaction* trx, bool population) : AggregatorVarianceBase(trx, population) { }
   
   char const* name () const override final {
     if (population) {
@@ -166,7 +166,7 @@ struct AggregatorVariance final : public AggregatorVarianceBase {
 };
 
 struct AggregatorStddev final : public AggregatorVarianceBase {
-  AggregatorStddev(triagens::arango::AqlTransaction* trx, bool population) : AggregatorVarianceBase(trx, population) { }
+  AggregatorStddev(arangodb::AqlTransaction* trx, bool population) : AggregatorVarianceBase(trx, population) { }
   
   char const* name () const override final {
     if (population) {
@@ -179,8 +179,8 @@ struct AggregatorStddev final : public AggregatorVarianceBase {
 };
 
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

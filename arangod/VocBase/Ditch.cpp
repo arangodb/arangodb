@@ -26,9 +26,7 @@
 #include "Basics/MutexLocker.h"
 #include "VocBase/document-collection.h"
 
-using namespace triagens::arango;
-
-
+using namespace arangodb;
 
 Ditch::Ditch(Ditches* ditches, char const* filename, int line)
     : _ditches(ditches),

@@ -36,9 +36,7 @@ struct TRI_replication_log_state_s;
 struct TRI_transaction_collection_s;
 class TRI_vocbase_col_t;
 
-
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +209,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(triagens::arango::Transaction*,
+  int applyCollectionDumpMarker(arangodb::Transaction*,
                                 CollectionNameResolver const&,
                                 struct TRI_transaction_collection_s*,
                                 TRI_replication_operation_e,
@@ -222,7 +220,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreDataBatch(triagens::arango::Transaction*,
+  int processRestoreDataBatch(arangodb::Transaction*,
                               CollectionNameResolver const&,
                               struct TRI_transaction_collection_s*, bool, bool,
                               std::string&);
@@ -339,7 +337,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   static uint64_t const maxChunkSize;
 };
-}
 }
 
 #endif

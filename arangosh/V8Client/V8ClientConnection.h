@@ -31,7 +31,7 @@
 #include <v8.h>
 
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
@@ -44,7 +44,7 @@ class Endpoint;
 }
 
 
-namespace triagens {
+namespace arangodb {
 namespace v8client {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +59,7 @@ class V8ClientConnection {
   
  public:
 
-  V8ClientConnection(triagens::rest::Endpoint*, std::string, std::string const&,
+  V8ClientConnection(arangodb::rest::Endpoint*, std::string, std::string const&,
                      std::string const&, double, double, size_t, uint32_t,
                      bool);
 
@@ -137,10 +137,10 @@ class V8ClientConnection {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the simple http client
   ///
-  /// @return triagens::httpclient::SimpleHttpClient*    then client connection
+  /// @return arangodb::httpclient::SimpleHttpClient*    then client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::httpclient::SimpleHttpClient* getHttpClient();
+  arangodb::httpclient::SimpleHttpClient* getHttpClient();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief do a "GET" request
@@ -294,7 +294,7 @@ class V8ClientConnection {
   /// @brief connection
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::httpclient::GeneralClientConnection* _connection;
+  arangodb::httpclient::GeneralClientConnection* _connection;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief database name
@@ -330,13 +330,13 @@ class V8ClientConnection {
   /// @brief underlying client
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::httpclient::SimpleHttpClient* _client;
+  arangodb::httpclient::SimpleHttpClient* _client;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief last result
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::httpclient::SimpleHttpResult* _httpResult;
+  arangodb::httpclient::SimpleHttpResult* _httpResult;
 };
 }
 }

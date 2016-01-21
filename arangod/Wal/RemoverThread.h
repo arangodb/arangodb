@@ -29,7 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 class LogfileManager;

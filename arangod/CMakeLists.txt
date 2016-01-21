@@ -249,6 +249,7 @@ add_executable(
     VocBase/collection.cpp
     VocBase/compactor.cpp
     VocBase/datafile.cpp
+    VocBase/DatafileStatistics.cpp
     VocBase/Ditch.cpp
     VocBase/document-collection.cpp
     VocBase/DocumentAccessor.cpp

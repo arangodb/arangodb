@@ -26,10 +26,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/WalkerWorker.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
     
 CollectNode::CollectNode(
-    ExecutionPlan* plan, triagens::basics::Json const& base,
+    ExecutionPlan* plan, arangodb::basics::Json const& base,
     Variable const* expressionVariable, Variable const* outVariable,
     std::vector<Variable const*> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
@@ -59,9 +59,9 @@ CollectNode::~CollectNode() {
 /// @brief toJson, for CollectNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectNode::toJsonHelper(triagens::basics::Json& nodes,
+void CollectNode::toJsonHelper(arangodb::basics::Json& nodes,
                                  TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -70,11 +70,11 @@ void CollectNode::toJsonHelper(triagens::basics::Json& nodes,
 
   // group variables
   {
-    triagens::basics::Json values(triagens::basics::Json::Array,
+    arangodb::basics::Json values(arangodb::basics::Json::Array,
                                   _groupVariables.size());
 
     for (auto const& groupVariable : _groupVariables) {
-      triagens::basics::Json variable(triagens::basics::Json::Object);
+      arangodb::basics::Json variable(arangodb::basics::Json::Object);
       variable("outVariable", groupVariable.first->toJson())("inVariable",
                                                    groupVariable.second->toJson());
       values(variable);
@@ -84,14 +84,14 @@ void CollectNode::toJsonHelper(triagens::basics::Json& nodes,
   
   // aggregate variables
   {
-    triagens::basics::Json values(triagens::basics::Json::Array,
+    arangodb::basics::Json values(arangodb::basics::Json::Array,
                                   _aggregateVariables.size());
 
     for (auto const& aggregateVariable : _aggregateVariables) {
-      triagens::basics::Json variable(triagens::basics::Json::Object);
+      arangodb::basics::Json variable(arangodb::basics::Json::Object);
       variable("outVariable", aggregateVariable.first->toJson())("inVariable",
                                                      aggregateVariable.second.first->toJson());
-      variable("type", triagens::basics::Json(aggregateVariable.second.second));
+      variable("type", arangodb::basics::Json(aggregateVariable.second.second));
       values(variable);
     }
     json("aggregates", values);
@@ -108,19 +108,19 @@ void CollectNode::toJsonHelper(triagens::basics::Json& nodes,
   }
 
   if (!_keepVariables.empty()) {
-    triagens::basics::Json values(triagens::basics::Json::Array,
+    arangodb::basics::Json values(arangodb::basics::Json::Array,
                                   _keepVariables.size());
     for (auto it = _keepVariables.begin(); it != _keepVariables.end(); ++it) {
-      triagens::basics::Json variable(triagens::basics::Json::Object);
+      arangodb::basics::Json variable(arangodb::basics::Json::Object);
       variable("variable", (*it)->toJson());
       values(variable);
     }
     json("keepVariables", values);
   }
 
-  json("count", triagens::basics::Json(_count));
-  json("isDistinctCommand", triagens::basics::Json(_isDistinctCommand));
-  json("specialized", triagens::basics::Json(_specialized));
+  json("count", arangodb::basics::Json(_count));
+  json("isDistinctCommand", arangodb::basics::Json(_isDistinctCommand));
+  json("specialized", arangodb::basics::Json(_specialized));
 
   _options.toJson(json, zone);
 
@@ -210,8 +210,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
     }
     // Now depth is set correct for this node.
     if (depth >= mindepth) {
-      auto const& vars = en->getVariablesSetHere();
-      for (auto const& v : vars) {
+      for (auto const& v : en->getVariablesSetHere()) {
         if (v->isUserDefined()) {
           userVars.emplace_back(v);
         }
@@ -245,7 +244,9 @@ void CollectNode::getVariablesUsedHere(
     vars.emplace(p.second);
   }
   for (auto const& p : _aggregateVariables) {
-    vars.emplace(p.second.first);
+    if (Aggregator::requiresInput(p.second.second)) {
+      vars.emplace(p.second.first);
+    }
   }
 
   if (_expressionVariable != nullptr) {

@@ -27,7 +27,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the index
@@ -44,7 +44,7 @@ Index::~Index() {
 /// @brief get the index internals
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* Index::getInternals() const {
+arangodb::Index* Index::getInternals() const {
   if (internals == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "accessing undefined index internals");
@@ -56,7 +56,7 @@ triagens::arango::Index* Index::getInternals() const {
 /// @brief set the index internals
 ////////////////////////////////////////////////////////////////////////////////
 
-void Index::setInternals(triagens::arango::Index* idx, bool owns) {
+void Index::setInternals(arangodb::Index* idx, bool owns) {
   TRI_ASSERT(internals == nullptr);
   internals = idx;
   ownsInternals = owns;
@@ -67,8 +67,8 @@ void Index::setInternals(triagens::arango::Index* idx, bool owns) {
 /// and calculate the filter costs and number of items
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::supportsFilterCondition(triagens::aql::AstNode const* node,
-                                    triagens::aql::Variable const* reference,
+bool Index::supportsFilterCondition(arangodb::aql::AstNode const* node,
+                                    arangodb::aql::Variable const* reference,
                                     size_t itemsInIndex, size_t& estimatedItems,
                                     double& estimatedCost) const {
   if (!hasInternals()) {
@@ -84,8 +84,8 @@ bool Index::supportsFilterCondition(triagens::aql::AstNode const* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Index::supportsSortCondition(
-    triagens::aql::SortCondition const* sortCondition,
-    triagens::aql::Variable const* reference, size_t itemsInIndex,
+    arangodb::aql::SortCondition const* sortCondition,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost) const {
   if (!hasInternals()) {
     return false;
@@ -98,11 +98,11 @@ bool Index::supportsSortCondition(
 /// @brief get an iterator for the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::IndexIterator* Index::getIterator(
-    triagens::arango::Transaction* trx,
-    triagens::arango::IndexIteratorContext* context, triagens::aql::Ast* ast,
-    triagens::aql::AstNode const* condition,
-    triagens::aql::Variable const* reference, bool reverse) const {
+arangodb::IndexIterator* Index::getIterator(
+    arangodb::Transaction* trx,
+    arangodb::IndexIteratorContext* context, arangodb::aql::Ast* ast,
+    arangodb::aql::AstNode const* condition,
+    arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(hasInternals());
   return getInternals()->iteratorForCondition(trx, context, ast, condition,
                                               reference, reverse);
@@ -114,9 +114,9 @@ triagens::arango::IndexIterator* Index::getIterator(
 /// handle
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* Index::specializeCondition(
-    triagens::aql::AstNode* node,
-    triagens::aql::Variable const* reference) const {
+arangodb::aql::AstNode* Index::specializeCondition(
+    arangodb::aql::AstNode* node,
+    arangodb::aql::Variable const* reference) const {
   TRI_ASSERT(hasInternals());
   return getInternals()->specializeCondition(node, reference);
 }
@@ -126,7 +126,7 @@ triagens::aql::AstNode* Index::specializeCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         triagens::aql::Index const* index) {
+                         arangodb::aql::Index const* index) {
   stream << index->getInternals()->context();
   return stream;
 }
@@ -136,7 +136,7 @@ std::ostream& operator<<(std::ostream& stream,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         triagens::aql::Index const& index) {
+                         arangodb::aql::Index const& index) {
   stream << index.getInternals()->context();
   return stream;
 }

@@ -29,7 +29,7 @@
 
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 struct Collection;
 

@@ -27,14 +27,14 @@
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
 class Graph {
   
  public:
-  Graph(triagens::basics::Json j);
+  Graph(arangodb::basics::Json j);
 
   ~Graph() {}
 
@@ -76,7 +76,7 @@ class Graph {
   /// @brief Add Collections to the object
   //////////////////////////////////////////////////////////////////////////////
 
-  void insertVertexCollectionsFromJsonArray(triagens::basics::Json& arr);
+  void insertVertexCollectionsFromJsonArray(arangodb::basics::Json& arr);
 
   
  public:
@@ -109,11 +109,11 @@ class Graph {
   /// the caller is responsible for freeing the JSON later
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const;
+  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
 };
 
 }  // namespace aql
-}  // namespace triagens
+}  // namespace arangodb
 
 #endif
 

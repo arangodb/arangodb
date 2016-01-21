@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 
-namespace triagens {
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rest server
@@ -54,7 +54,7 @@ extern void ShutdownRest();
 
 #define TRIAGENS_REST_INITIALIZE(a, b)        \
   do {                                        \
-    triagens::rest::InitializeRest((a), (b)); \
+    arangodb::rest::InitializeRest((a), (b)); \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +63,7 @@ extern void ShutdownRest();
 
 #define TRIAGENS_REST_SHUTDOWN      \
   do {                              \
-    triagens::rest::ShutdownRest(); \
+    arangodb::rest::ShutdownRest(); \
   } while (0)
 
 #endif

@@ -26,8 +26,8 @@
 #include "Basics/StringUtils.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 static std::vector<std::string> const EmptyMapping;

@@ -28,7 +28,7 @@
 #include "HttpServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class AsyncJobManager;
 class Dispatcher;

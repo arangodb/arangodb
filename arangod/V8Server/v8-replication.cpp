@@ -30,10 +30,9 @@
 #include "Wal/LogfileManager.h"
 #include "VocBase/replication-dump.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,8 +44,8 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  triagens::wal::LogfileManagerState s =
-      triagens::wal::LogfileManager::instance()->state();
+  arangodb::wal::LogfileManagerState s =
+      arangodb::wal::LogfileManager::instance()->state();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -80,7 +79,7 @@ static void JS_TickRangesLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)ranges.size());
   uint32_t i = 0;
@@ -110,7 +109,7 @@ static void JS_FirstTickLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
 
   TRI_voc_tick_t tick = UINT64_MAX;
 
@@ -264,13 +263,13 @@ static void JS_SynchronizeReplication(
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
-  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(),
+  config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(),
                                            endpoint.size());
-  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(),
+  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
                                            database.size());
-  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(),
+  config._username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(),
                                            username.size());
-  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(),
+  config._password = TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(),
                                            password.size());
 
   if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
@@ -433,7 +432,7 @@ static void JS_ConfigureApplierReplication(
         if (config._endpoint != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._endpoint);
         }
-        config._endpoint = TRI_DuplicateString2Z(
+        config._endpoint = TRI_DuplicateString(
             TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
       }
     }
@@ -446,14 +445,14 @@ static void JS_ConfigureApplierReplication(
         if (config._database != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._database);
         }
-        config._database = TRI_DuplicateString2Z(
+        config._database = TRI_DuplicateString(
             TRI_CORE_MEM_ZONE, database.c_str(), database.size());
       }
     } else {
       if (config._database == nullptr) {
         // no database set, use current
         config._database =
-            TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+            TRI_DuplicateString(TRI_CORE_MEM_ZONE, vocbase->_name);
       }
     }
 
@@ -467,7 +466,7 @@ static void JS_ConfigureApplierReplication(
         if (config._username != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._username);
         }
-        config._username = TRI_DuplicateString2Z(
+        config._username = TRI_DuplicateString(
             TRI_CORE_MEM_ZONE, username.c_str(), username.size());
       }
     }
@@ -480,7 +479,7 @@ static void JS_ConfigureApplierReplication(
         if (config._password != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._password);
         }
-        config._password = TRI_DuplicateString2Z(
+        config._password = TRI_DuplicateString(
             TRI_CORE_MEM_ZONE, password.c_str(), password.size());
       }
     }

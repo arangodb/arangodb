@@ -32,9 +32,7 @@
 
 struct TRI_server_t;
 
-
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class HeartbeatThread;
 class ApplicationV8;
 
@@ -42,7 +40,7 @@ class ApplicationV8;
 /// @brief general server job
 ////////////////////////////////////////////////////////////////////////////////
 
-class ServerJob : public triagens::rest::Job {
+class ServerJob : public arangodb::rest::Job {
  private:
   ServerJob(ServerJob const&) = delete;
   ServerJob& operator=(ServerJob const&) = delete;
@@ -143,7 +141,6 @@ class ServerJob : public triagens::rest::Job {
 
   bool _abandon;
 };
-}
 }
 
 #endif

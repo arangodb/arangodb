@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationV8.h"
+
 #include "Actions/actions.h"
-#include "Aql/QueryRegistry.h"
 #include "ApplicationServer/ApplicationServer.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
@@ -32,13 +33,14 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/WorkMonitor.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
-#include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/ApplicationDispatcher.h"
+#include "Dispatcher/DispatcherThread.h"
 #include "Rest/HttpRequest.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "Scheduler/Scheduler.h"
@@ -54,15 +56,15 @@
 #include "VocBase/server.h"
 
 #include "3rdParty/valgrind/valgrind.h"
+
 #include <libplatform/libplatform.h>
 #include <thread>
 
-using namespace triagens;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
-using namespace std;
+using namespace arangodb;
+using namespace arangodb::basics;
 
+using namespace arangodb::rest;
+using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the routing cache
@@ -108,7 +110,6 @@ static std::string DeprecatedPath;
 
 static bool DeprecatedOption;
 
-
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +119,7 @@ namespace {
 class V8GcThread : public Thread {
  public:
   explicit V8GcThread(ApplicationV8* applicationV8)
-      : Thread("v8-gc"),
+      : Thread("V8GarbageCollector"),
         _applicationV8(applicationV8),
         _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {}
 
@@ -150,8 +151,6 @@ class V8GcThread : public Thread {
   std::atomic<uint64_t> _lastGcStamp;
 };
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global method
@@ -243,11 +242,8 @@ void ApplicationV8::V8Context::handleCancelationCleanup() {
       TRI_V8_ASCII_STRING("context cleanup method"), false);
 }
 
-
-
-
 ApplicationV8::ApplicationV8(TRI_server_t* server,
-                             triagens::aql::QueryRegistry* queryRegistry,
+                             arangodb::aql::QueryRegistry* queryRegistry,
                              ApplicationScheduler* scheduler,
                              ApplicationDispatcher* dispatcher)
     : ApplicationFeature("V8"),
@@ -281,9 +277,7 @@ ApplicationV8::ApplicationV8(TRI_server_t* server,
   TRI_ASSERT(_server != nullptr);
 }
 
-
 ApplicationV8::~ApplicationV8() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the concurrency
@@ -375,14 +369,14 @@ ApplicationV8::V8Context* ApplicationV8::enterContext(TRI_vocbase_t* vocbase,
         _dirtyContexts.pop_back();
       } else {
         auto currentThread =
-            triagens::rest::DispatcherThread::currentDispatcherThread;
+            arangodb::rest::DispatcherThread::currentDispatcherThread;
 
         if (currentThread != nullptr) {
-          triagens::rest::DispatcherThread::currentDispatcherThread->block();
+          arangodb::rest::DispatcherThread::currentDispatcherThread->block();
         }
         guard.wait();
         if (currentThread != nullptr) {
-          triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
+          arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
         }
       }
     }
@@ -644,6 +638,8 @@ void ApplicationV8::collectGarbage() {
     gc->updateGcStamp(lastGc);
 
     if (context != nullptr) {
+      arangodb::CustomWorkStack custom("V8 GC", (uint64_t)context->_id);
+
       LOG_TRACE(
           "collecting V8 garbage in context #%d, numExecutions: %d, hasActive: "
           "%d, wasDirty: %d",
@@ -913,8 +909,6 @@ void ApplicationV8::prepareServer() {
   }
 }
 
-
-
 void ApplicationV8::setupOptions(
     std::map<std::string, basics::ProgramOptionsDescription>& options) {
   options["Javascript Options:help-admin"](
@@ -943,7 +937,6 @@ void ApplicationV8::setupOptions(
           "javascript.package-path", &DeprecatedPath,
           "one or more directories separated by semi-colons (deprecated)");
 }
-
 
 bool ApplicationV8::prepare() {
   // check the startup path
@@ -1000,7 +993,6 @@ bool ApplicationV8::prepare() {
   return true;
 }
 
-
 bool ApplicationV8::prepare2() {
   size_t nrInstances = _nrInstances;
   v8::V8::InitializeICU();
@@ -1015,7 +1007,7 @@ bool ApplicationV8::prepare2() {
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts = new V8Context* [nrInstances];
+    _contexts = new V8Context*[nrInstances];
   }
 
   std::vector<std::thread> threads;
@@ -1031,7 +1023,6 @@ bool ApplicationV8::prepare2() {
   return _ok;
 }
 
-
 bool ApplicationV8::start() {
   TRI_ASSERT(_gcThread == nullptr);
   _gcThread = new V8GcThread(this);
@@ -1040,7 +1031,6 @@ bool ApplicationV8::start() {
   _gcFinished = false;
   return true;
 }
-
 
 void ApplicationV8::close() {
   _stopping = true;
@@ -1066,7 +1056,6 @@ void ApplicationV8::close() {
     guard.wait(100000);
   }
 }
-
 
 void ApplicationV8::stop() {
   // send all busy contexts a termate signal
@@ -1125,7 +1114,6 @@ void ApplicationV8::stop() {
   // delete GC thread after all action threads have been stopped
   delete _gcThread;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine which of the free contexts should be picked for the GC
@@ -1265,17 +1253,15 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     }
 
     std::string modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" +
-                         TRI_DIR_SEPARATOR_STR + "modules;" + _startupPath +
-                         TRI_DIR_SEPARATOR_STR + "common" +
-                         TRI_DIR_SEPARATOR_STR + "modules;" + _startupPath +
-                         TRI_DIR_SEPARATOR_STR + "node";
+                              TRI_DIR_SEPARATOR_STR + "modules;" +
+                              _startupPath + TRI_DIR_SEPARATOR_STR + "common" +
+                              TRI_DIR_SEPARATOR_STR + "modules;" +
+                              _startupPath + TRI_DIR_SEPARATOR_STR + "node";
 
     TRI_InitV8Buffer(isolate, localContext);
     TRI_InitV8Conversions(localContext);
     TRI_InitV8Utils(isolate, localContext, _startupPath, modulesPath);
-#ifdef TRI_ENABLE_FAILURE_TESTS
     TRI_InitV8DebugUtils(isolate, localContext, _startupPath, modulesPath);
-#endif
     TRI_InitV8Shell(isolate, localContext);
 
     {
@@ -1438,14 +1424,13 @@ void ApplicationV8::shutdownV8Instance(size_t i) {
       availableTime *= 10;
       int tries = 0;
 
-      while (tries++ < 10 &&  
+      while (tries++ < 10 &&
              TRI_RunGarbageCollectionV8(isolate, availableTime)) {
         if (tries > 3) {
           LOG_WARNING("waiting for garbage v8 collection to end");
         }
       }
-    }
-    else {
+    } else {
       TRI_RunGarbageCollectionV8(isolate, availableTime);
     }
 
@@ -1472,5 +1457,3 @@ void ApplicationV8::shutdownV8Instance(size_t i) {
 
   LOG_TRACE("closed V8 context #%d", (int)i);
 }
-
-

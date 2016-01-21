@@ -227,16 +227,10 @@ int TRI_ParseQueryFulltextIndex(TRI_fulltext_query_t* query,
 
     // get command
     if (split != nullptr) {
-      if (TRI_CaseEqualString2(start, "prefix:", strlen("prefix:"))) {
+      if (TRI_CaseEqualString(start, "prefix:", strlen("prefix:"))) {
         match = TRI_FULLTEXT_PREFIX;
       }
-      // 2013-01-17: deactivated substring matching as there is no
-      // implementation for it
-      // else if (TRI_CaseEqualString2(start, "substring:",
-      // strlen("substring:"))) {
-      //   match = TRI_FULLTEXT_SUBSTRING;
-      // }
-      else if (TRI_CaseEqualString2(start, "complete:", strlen("complete:"))) {
+      else if (TRI_CaseEqualString(start, "complete:", strlen("complete:"))) {
         match = TRI_FULLTEXT_COMPLETE;
       }
 

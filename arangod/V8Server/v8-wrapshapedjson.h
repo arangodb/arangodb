@@ -32,8 +32,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_WrapShapedJson(
-    v8::Isolate* isolate, triagens::arango::CollectionNameResolver const*,
-    triagens::arango::DocumentDitch*, TRI_voc_cid_t, TRI_document_collection_t*,
+    v8::Isolate* isolate, arangodb::CollectionNameResolver const*,
+    arangodb::DocumentDitch*, TRI_voc_cid_t, TRI_document_collection_t*,
     void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson(v8::Isolate* isolate, T& trx,
   auto ditch = trx.ditch(cid);
   TRI_ASSERT(ditch != nullptr);
 
-  triagens::arango::CollectionNameResolver const* resolver = trx.resolver();
+  arangodb::CollectionNameResolver const* resolver = trx.resolver();
   TRI_document_collection_t* collection = trx.documentCollection(cid);
 
   TRI_ASSERT(collection != nullptr);

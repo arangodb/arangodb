@@ -30,7 +30,7 @@
 #include <condition_variable>
 #include <thread>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 

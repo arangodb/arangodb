@@ -42,12 +42,11 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
-#include "velocypack/Builder.h"
+#include <velocypack/Builder.h>
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the unique flag from the data
@@ -90,13 +89,13 @@ static bool IsIndexHandle(v8::Handle<v8::Value> const arg,
   }
 
   size_t split;
-  if (triagens::arango::Index::validateHandle(*str, &split)) {
+  if (arangodb::Index::validateHandle(*str, &split)) {
     collectionName = std::string(*str, split);
     iid = TRI_UInt64String2(*str + split + 1, str.length() - split - 1);
     return true;
   }
 
-  if (triagens::arango::Index::validateId(*str)) {
+  if (arangodb::Index::validateId(*str)) {
     iid = TRI_UInt64String2(*str, str.length());
     return true;
   }
@@ -361,7 +360,7 @@ static int EnhanceJsonIndexCap(v8::Isolate* isolate,
   }
 
   if (byteSize < 0 ||
-      (byteSize > 0 && byteSize < triagens::arango::CapConstraint::MinSize)) {
+      (byteSize > 0 && byteSize < arangodb::CapConstraint::MinSize)) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
@@ -387,8 +386,8 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
 
   // extract index type
-  triagens::arango::Index::IndexType type =
-      triagens::arango::Index::TRI_IDX_TYPE_UNKNOWN;
+  arangodb::Index::IndexType type =
+      arangodb::Index::TRI_IDX_TYPE_UNKNOWN;
 
   if (obj->Has(TRI_V8_ASCII_STRING("type")) &&
       obj->Get(TRI_V8_ASCII_STRING("type"))->IsString()) {
@@ -415,16 +414,16 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
       }
     }
 
-    type = triagens::arango::Index::type(t.c_str());
+    type = arangodb::Index::type(t.c_str());
   }
 
-  if (type == triagens::arango::Index::TRI_IDX_TYPE_UNKNOWN) {
+  if (type == arangodb::Index::TRI_IDX_TYPE_UNKNOWN) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
   if (create) {
-    if (type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-        type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (type == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+        type == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
       // creating these indexes yourself is forbidden
       return TRI_ERROR_FORBIDDEN;
     }
@@ -448,7 +447,7 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
   }
 
-  char const* idxType = triagens::arango::Index::typeName(type);
+  char const* idxType = arangodb::Index::typeName(type);
   TRI_Insert3ObjectJson(
       TRI_UNKNOWN_MEM_ZONE, json, "type",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idxType, strlen(idxType)));
@@ -456,39 +455,39 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
   int res = TRI_ERROR_INTERNAL;
 
   switch (type) {
-    case triagens::arango::Index::TRI_IDX_TYPE_UNKNOWN:
-    case triagens::arango::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
+    case arangodb::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
     }
 
-    case triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-    case triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX:
-    case triagens::arango::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
       break;
     }
 
-    case triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
       res = EnhanceJsonIndexGeo1(isolate, obj, json, create);
       break;
 
-    case triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
       res = EnhanceJsonIndexGeo2(isolate, obj, json, create);
       break;
 
-    case triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX:
       res = EnhanceJsonIndexHash(isolate, obj, json, create);
       break;
 
-    case triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
       res = EnhanceJsonIndexSkiplist(isolate, obj, json, create);
       break;
 
-    case triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
       res = EnhanceJsonIndexFulltext(isolate, obj, json, create);
       break;
 
-    case triagens::arango::Index::TRI_IDX_TYPE_CAP_CONSTRAINT:
+    case arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT:
       res = EnhanceJsonIndexCap(isolate, obj, json);
       break;
   }
@@ -516,9 +515,9 @@ static void EnsureIndexCoordinator(
 
   TRI_json_t* resultJson = nullptr;
   std::string errorMsg;
-  auto tmp = triagens::basics::JsonHelper::toVelocyPack(json);
+  auto tmp = arangodb::basics::JsonHelper::toVelocyPack(json);
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
-      databaseName, cid, tmp->slice(), create, &triagens::arango::Index::Compare,
+      databaseName, cid, tmp->slice(), create, &arangodb::Index::Compare,
       resultJson, errorMsg, 360.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -560,8 +559,8 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  triagens::arango::Index::IndexType const type =
-      triagens::arango::Index::type(value->_value._string.data);
+  arangodb::Index::IndexType const type =
+      arangodb::Index::type(value->_value._string.data);
 
   // extract unique flag
   bool unique = false;
@@ -607,8 +606,8 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
         auto last = attributes.back();
         if (last.find("[*]") != std::string::npos) {
-          if (type != triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX &&
-              type != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+          if (type != arangodb::Index::TRI_IDX_TYPE_HASH_INDEX &&
+              type != arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
             // expansion used in index type that does not support it
             TRI_V8_THROW_EXCEPTION_MESSAGE(
                 TRI_ERROR_BAD_PARAMETER,
@@ -657,19 +656,19 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   bool created = false;
-  triagens::arango::Index* idx = nullptr;
+  arangodb::Index* idx = nullptr;
 
   switch (type) {
-    case triagens::arango::Index::TRI_IDX_TYPE_UNKNOWN:
-    case triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-    case triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX:
-    case triagens::arango::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
-    case triagens::arango::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
+    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
       // these indexes cannot be created directly
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    case triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX: {
       if (attributes.size() != 1) {
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
@@ -681,45 +680,45 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::GeoIndex2*>(
+        idx = static_cast<arangodb::GeoIndex2*>(
             TRI_EnsureGeoIndex1DocumentCollection(
                 &trx, document, iid, attributes[0], geoJson, created));
       } else {
-        idx = static_cast<triagens::arango::GeoIndex2*>(
+        idx = static_cast<arangodb::GeoIndex2*>(
             TRI_LookupGeoIndex1DocumentCollection(document, attributes[0],
                                                   geoJson));
       }
       break;
     }
 
-    case triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
       if (attributes.size() != 2) {
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::GeoIndex2*>(
+        idx = static_cast<arangodb::GeoIndex2*>(
             TRI_EnsureGeoIndex2DocumentCollection(
                 &trx, document, iid, attributes[0], attributes[1], created));
       } else {
-        idx = static_cast<triagens::arango::GeoIndex2*>(
+        idx = static_cast<arangodb::GeoIndex2*>(
             TRI_LookupGeoIndex2DocumentCollection(document, attributes[0],
                                                   attributes[1]));
       }
       break;
     }
 
-    case triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
       if (attributes.empty()) {
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::HashIndex*>(
+        idx = static_cast<arangodb::HashIndex*>(
             TRI_EnsureHashIndexDocumentCollection(
                 &trx, document, iid, attributes, sparse, unique, created));
       } else {
-        idx = static_cast<triagens::arango::HashIndex*>(
+        idx = static_cast<arangodb::HashIndex*>(
             TRI_LookupHashIndexDocumentCollection(document, attributes,
                                                   sparsity, unique));
       }
@@ -727,24 +726,24 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
       break;
     }
 
-    case triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
       if (attributes.empty()) {
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::SkiplistIndex*>(
+        idx = static_cast<arangodb::SkiplistIndex*>(
             TRI_EnsureSkiplistIndexDocumentCollection(
                 &trx, document, iid, attributes, sparse, unique, created));
       } else {
-        idx = static_cast<triagens::arango::SkiplistIndex*>(
+        idx = static_cast<arangodb::SkiplistIndex*>(
             TRI_LookupSkiplistIndexDocumentCollection(document, attributes,
                                                       sparsity, unique));
       }
       break;
     }
 
-    case triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
       if (attributes.size() != 1) {
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
@@ -759,18 +758,18 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::FulltextIndex*>(
+        idx = static_cast<arangodb::FulltextIndex*>(
             TRI_EnsureFulltextIndexDocumentCollection(
                 &trx, document, iid, attributes[0], minWordLength, created));
       } else {
-        idx = static_cast<triagens::arango::FulltextIndex*>(
+        idx = static_cast<arangodb::FulltextIndex*>(
             TRI_LookupFulltextIndexDocumentCollection(document, attributes[0],
                                                       minWordLength));
       }
       break;
     }
 
-    case triagens::arango::Index::TRI_IDX_TYPE_CAP_CONSTRAINT: {
+    case arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT: {
       size_t size = 0;
       TRI_json_t const* value = TRI_LookupObjectJson(json, "size");
       if (TRI_IsNumberJson(value)) {
@@ -784,11 +783,11 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::Index*>(
+        idx = static_cast<arangodb::Index*>(
             TRI_EnsureCapConstraintDocumentCollection(&trx, document, iid, size,
                                                       byteSize, created));
       } else {
-        idx = static_cast<triagens::arango::Index*>(
+        idx = static_cast<arangodb::Index*>(
             TRI_LookupCapConstraintDocumentCollection(document));
       }
       break;
@@ -1042,7 +1041,7 @@ static void CreateCollectionCoordinator(
     CollectionNameResolver resolver(vocbase);
     TRI_voc_cid_t otherCid =
         resolver.getCollectionIdCluster(distributeShardsLike);
-    std::string otherCidString = triagens::basics::StringUtils::itoa(otherCid);
+    std::string otherCidString = arangodb::basics::StringUtils::itoa(otherCid);
     std::shared_ptr<CollectionInfo> collInfo =
         ci->getCollection(databaseName, otherCidString);
     auto shards = collInfo->shardIds();
@@ -1109,19 +1108,19 @@ static void CreateCollectionCoordinator(
 
       // create a dummy primary index
       TRI_document_collection_t* doc = nullptr;
-      std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(
-          new triagens::arango::PrimaryIndex(doc));
+      std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
+          new arangodb::PrimaryIndex(doc));
 
       auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-      triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
+      arangodb::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
 
       if (collectionType == TRI_COL_TYPE_EDGE) {
         // create a dummy edge index
         auto edgeIndex =
-            std::make_unique<triagens::arango::EdgeIndex>(id, nullptr);
+            std::make_unique<arangodb::EdgeIndex>(id, nullptr);
 
         idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-        triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
+        arangodb::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
       }
     }
   }
@@ -1270,8 +1269,8 @@ static void JS_DropIndexVocbaseCol(
     TRI_V8_RETURN_FALSE();
   }
 
-  if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      idx->type() == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+  if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+      idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1399,9 +1398,9 @@ static void JS_GetIndexesVocbaseCol(
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupIndexByHandle(
+arangodb::Index* TRI_LookupIndexByHandle(
     v8::Isolate* isolate,
-    triagens::arango::CollectionNameResolver const* resolver,
+    arangodb::CollectionNameResolver const* resolver,
     TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val,
     bool ignoreNotFound) {
   // reset the collection identifier

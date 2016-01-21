@@ -28,7 +28,7 @@
 #include "Basics/tri-strings.h"
 
 using namespace std;
-using namespace triagens;
+using namespace arangodb;
 using namespace arangodb;
 
 

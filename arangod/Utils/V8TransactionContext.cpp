@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Utils/V8TransactionContext.h"
+#include "V8TransactionContext.h"
 #include "Storage/Options.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/transaction.h"
@@ -29,8 +29,7 @@
 #include "V8/v8-globals.h"
 #include <v8.h>
 
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the context

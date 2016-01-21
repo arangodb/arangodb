@@ -284,7 +284,7 @@ struct TRI_AutoOutOfScope {
 // --SECTIONS--                                               triagens namespace
 // -----------------------------------------------------------------------------
 
-namespace triagens {
+namespace arangodb {
 typedef TRI_blob_t blob_t;
 typedef TRI_datetime_t datetime_t;
 typedef TRI_date_t date_t;

@@ -31,7 +31,7 @@
 #include "Basics/json.h"
 #include "Basics/StringBuffer.h"
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

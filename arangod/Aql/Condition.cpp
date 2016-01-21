@@ -38,18 +38,18 @@
 #pragma warning(disable : 4503)
 #endif
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 using CompareResult = ConditionPartCompareResult;
 
 struct PermutationState {
-  PermutationState(triagens::aql::AstNode const* value, size_t n)
+  PermutationState(arangodb::aql::AstNode const* value, size_t n)
       : value(value), current(0), n(n) {}
 
-  triagens::aql::AstNode const* getValue() const {
-    if (value->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_AND ||
-        value->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_OR ||
-        value->type == triagens::aql::NODE_TYPE_OPERATOR_NARY_AND ||
-        value->type == triagens::aql::NODE_TYPE_OPERATOR_NARY_OR) {
+  arangodb::aql::AstNode const* getValue() const {
+    if (value->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND ||
+        value->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_OR ||
+        value->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND ||
+        value->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_OR) {
       TRI_ASSERT(current < n);
       return value->getMember(current);
     }
@@ -58,7 +58,7 @@ struct PermutationState {
     return value;
   }
 
-  triagens::aql::AstNode const* value;
+  arangodb::aql::AstNode const* value;
   size_t current;
   size_t const n;
 };
@@ -173,7 +173,7 @@ ConditionPart::ConditionPart(Variable const* variable,
 
 ConditionPart::ConditionPart(
     Variable const* variable,
-    std::vector<triagens::basics::AttributeName> const& attributeNames,
+    std::vector<arangodb::basics::AttributeName> const& attributeNames,
     AstNode const* operatorNode, AttributeSideType side, void* data)
     : ConditionPart(variable, "", operatorNode, side, data) {
   TRI_AttributeNamesToString(attributeNames, attributeName, false);
@@ -293,7 +293,7 @@ Condition::~Condition() {
 ////////////////////////////////////////////////////////////////////////////////
 
 Condition* Condition::fromJson(ExecutionPlan* plan,
-                               triagens::basics::Json const& json) {
+                               arangodb::basics::Json const& json) {
   auto condition = std::make_unique<Condition>(plan->getAst());
 
   if (json.isObject() && json.members() != 0) {
@@ -644,7 +644,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
       auto rhs = operand->getMember(1);
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>
+        std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
             result;
 
         if (lhs->isAttributeAccessForVariable(result) &&
@@ -660,7 +660,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
 
       if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           rhs->type == NODE_TYPE_EXPANSION) {
-        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>
+        std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
             result;
 
         if (rhs->isAttributeAccessForVariable(result) &&
@@ -824,7 +824,7 @@ bool Condition::sortOrs(Variable const* variable,
     auto rhs = operand->getMember(1);
 
     if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
           result;
 
       if (rhs->isConstant() && lhs->isAttributeAccessForVariable(result) &&
@@ -844,7 +844,7 @@ bool Condition::sortOrs(Variable const* variable,
 
     if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
         rhs->type == NODE_TYPE_EXPANSION) {
-      std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
           result;
 
       if (lhs->isConstant() && rhs->isAttributeAccessForVariable(result) &&
@@ -1262,7 +1262,7 @@ void Condition::optimize(ExecutionPlan* plan) {
 void Condition::storeAttributeAccess(VariableUsageType& variableUsage,
                                      AstNode const* node, size_t position,
                                      AttributeSideType side) {
-  std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       result;
 
   if (!node->isAttributeAccessForVariable(result)) {
@@ -1332,7 +1332,7 @@ void Condition::validateAst(AstNode const* node, int level) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Condition::canRemove(ConditionPart const& me,
-                          triagens::aql::AstNode const* otherCondition) const {
+                          arangodb::aql::AstNode const* otherCondition) const {
   TRI_ASSERT(otherCondition != nullptr);
   TRI_ASSERT(otherCondition->type == NODE_TYPE_OPERATOR_NARY_OR);
 
@@ -1348,7 +1348,7 @@ bool Condition::canRemove(ConditionPart const& me,
       auto rhs = operand->getMember(1);
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>
+        std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
             result;
 
         if (lhs->isAttributeAccessForVariable(result)) {
@@ -1370,7 +1370,7 @@ bool Condition::canRemove(ConditionPart const& me,
 
       if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           rhs->type == NODE_TYPE_EXPANSION) {
-        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>
+        std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
             result;
 
         if (rhs->isAttributeAccessForVariable(result)) {

@@ -25,9 +25,9 @@
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::httpclient;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::httpclient;
 using namespace std;
 
 

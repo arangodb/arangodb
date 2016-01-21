@@ -34,7 +34,7 @@
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -706,8 +706,8 @@ class SkipList {
 
 };  // class SkipList
 
-}  // namespace triagens::basics
-}  // namespace triagens
+}  // namespace arangodb::basics
+}  // namespace arangodb
 
 #endif
 

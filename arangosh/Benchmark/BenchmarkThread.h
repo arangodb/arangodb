@@ -37,12 +37,12 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arangob {
 
 
 
-class BenchmarkThread : public triagens::basics::Thread {
+class BenchmarkThread : public arangodb::basics::Thread {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief construct the benchmark thread
@@ -166,7 +166,7 @@ class BenchmarkThread : public triagens::basics::Thread {
       } else {
         try {
           executeBatchRequest(numOps);
-        } catch (triagens::basics::Exception const& ex) {
+        } catch (arangodb::basics::Exception const& ex) {
           LOG_FATAL_AND_EXIT("Caught exception during test execution: %d %s",
                              ex.code(), ex.what());
         } catch (std::bad_alloc const&) {
@@ -512,13 +512,13 @@ class BenchmarkThread : public triagens::basics::Thread {
   /// @brief underlying client
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::httpclient::SimpleHttpClient* _client;
+  arangodb::httpclient::SimpleHttpClient* _client;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connection to the server
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::httpclient::GeneralClientConnection* _connection;
+  arangodb::httpclient::GeneralClientConnection* _connection;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief thread offset value

@@ -33,7 +33,7 @@
 #include "Scheduler/TaskManager.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 class AsyncJobManager;
@@ -253,7 +253,7 @@ class HttpServer : protected TaskManager {
   /// @brief mutex for comm tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _commTasksLock;
+  arangodb::basics::Mutex _commTasksLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief active comm tasks

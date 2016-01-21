@@ -29,7 +29,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 class VelocyPackHelper {
@@ -80,6 +80,12 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a string value, or the default value if it is not a string
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::string getStringValue(VPackSlice const&, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string sub-element, or the default value if it does not

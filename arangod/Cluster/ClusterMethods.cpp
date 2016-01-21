@@ -38,12 +38,10 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a numeric value from an hierarchical VelocyPack
@@ -58,7 +56,7 @@ static T ExtractFigure(VPackSlice const& slice, char const* group,
   if (!g.isObject()) {
     return static_cast<T>(0);
   }
-  return triagens::basics::VelocyPackHelper::getNumericValue<T>(g, name, 0);
+  return arangodb::basics::VelocyPackHelper::getNumericValue<T>(g, name, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +101,7 @@ void mergeResponseHeaders(HttpResponse* response,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::map<std::string, std::string> getForwardableRequestHeaders(
-    triagens::rest::HttpRequest* request) {
+    arangodb::rest::HttpRequest* request) {
   std::map<std::string, std::string> const& headers = request->headers();
   std::map<std::string, std::string>::const_iterator it = headers.begin();
 
@@ -212,7 +210,7 @@ int usersOnCoordinator(std::string const& dbname, VPackBuilder& result,
 
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+        arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/simple/all", body,
         headers, nullptr, 10.0);
   }
@@ -224,8 +222,8 @@ int usersOnCoordinator(std::string const& dbname, VPackBuilder& result,
     for (count = (int)shards->size(); count > 0; count--) {
       auto res = cc->wait("", coordTransactionID, 0, "", timeout);
       if (res.status == CL_COMM_RECEIVED) {
-        if (res.answer_code == triagens::rest::HttpResponse::OK ||
-            res.answer_code == triagens::rest::HttpResponse::CREATED) {
+        if (res.answer_code == arangodb::rest::HttpResponse::OK ||
+            res.answer_code == arangodb::rest::HttpResponse::CREATED) {
           std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
           VPackSlice answer = answerBuilder->slice();
 
@@ -283,7 +281,7 @@ int revisionOnCoordinator(std::string const& dbname,
         new std::map<std::string, std::string>());
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+        arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/revision",
         std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
@@ -295,7 +293,7 @@ int revisionOnCoordinator(std::string const& dbname,
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == triagens::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
 
@@ -360,7 +358,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
         new std::map<std::string, std::string>());
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+        arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/figures",
         std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
@@ -372,7 +370,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == triagens::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
 
@@ -384,7 +382,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<TRI_voc_ssize_t>(figures, "alive", "count");
             result->_numberDead +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "count");
-            result->_numberDeletion +=
+            result->_numberDeletions +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "deletion");
             result->_numberShapes +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "shapes", "count");
@@ -423,7 +421,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<int64_t>(figures, "shapefiles", "fileSize");
 
             result->_numberDocumentDitches +=
-                triagens::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+                arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
                     figures, "documentReferences", 0);
           }
           nrok++;
@@ -469,7 +467,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
         new std::map<std::string, std::string>());
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+        arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/count",
         std::shared_ptr<std::string>(nullptr), headers, nullptr, 300.0);
@@ -480,13 +478,13 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == triagens::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
 
         if (answer.isObject()) {
           // add to the total
-          result += triagens::basics::VelocyPackHelper::getNumericValue<uint64_t>(answer, "count", 0);
+          result += arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(answer, "count", 0);
           nrok++;
         }
       }
@@ -508,10 +506,10 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     VPackSlice const& slice, std::map<std::string, std::string> const& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   return createDocumentOnCoordinator(dbname, collname, waitForSync, json,
                                      headers, responseCode, resultHeaders,
                                      resultBody);
@@ -525,7 +523,7 @@ int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     std::unique_ptr<TRI_json_t>& json,
     std::map<std::string, std::string> const& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
     std::string& resultBody) {
   // Set a few variables needed for our work:
@@ -556,7 +554,7 @@ int createDocumentOnCoordinator(
   if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
-    _key = triagens::basics::StringUtils::itoa(uid);
+    _key = arangodb::basics::StringUtils::itoa(uid);
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(),
                           TRI_VOC_ATTRIBUTE_KEY,
                           TRI_CreateStringReferenceJson(
@@ -588,7 +586,7 @@ int createDocumentOnCoordinator(
   // Send a synchronous request to that shard using ClusterComm:
   auto res = cc->syncRequest(
       "", TRI_NewTickServer(), "shard:" + shardID,
-      triagens::rest::HttpRequest::HTTP_REQUEST_POST,
+      arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
       "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection=" +
           StringUtils::urlEncode(shardID) + "&waitForSync=" +
           (waitForSync ? "true" : "false"),
@@ -608,7 +606,7 @@ int createDocumentOnCoordinator(
     // this can be 400 or 404, we simply forward the result.
     // We intentionally fall through here.
   }
-  responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>(
+  responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
       res->result->getHttpReturnCode());
   resultHeaders = res->result->getHeaderFields();
   resultBody.assign(res->result->getBody().c_str(),
@@ -624,7 +622,7 @@ int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, std::string const& key,
     TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -676,7 +674,7 @@ int deleteDocumentOnCoordinator(
     // Send a synchronous request to that shard using ClusterComm:
     auto res = cc->syncRequest(
         "", TRI_NewTickServer(), "shard:" + shardID,
-        triagens::rest::HttpRequest::HTTP_REQUEST_DELETE,
+        arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE,
         "/_db/" + dbname + "/_api/document/" + StringUtils::urlEncode(shardID) +
             "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
             (waitForSync ? "true" : "false") + revstr + policystr,
@@ -695,7 +693,7 @@ int deleteDocumentOnCoordinator(
       // this can be 400 or 404, we simply forward the result.
       // We intentionally fall through here.
     }
-    responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>(
+    responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
         res->result->getHttpReturnCode());
     resultHeaders = res->result->getHeaderFields();
     resultBody.assign(res->result->getBody().c_str(),
@@ -711,7 +709,7 @@ int deleteDocumentOnCoordinator(
     std::unique_ptr<std::map<std::string, std::string>> headersCopy(
         new std::map<std::string, std::string>(*headers));
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     triagens::rest::HttpRequest::HTTP_REQUEST_DELETE,
+                     arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document/" + StringUtils::urlEncode(p.first) +
                          "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
@@ -725,7 +723,7 @@ int deleteDocumentOnCoordinator(
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
+      if (res.answer_code != arangodb::rest::HttpResponse::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res.answer_code;
@@ -769,7 +767,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
     std::unique_ptr<std::map<std::string, std::string>> headers(
         new std::map<std::string, std::string>());
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                     arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/collection/" + p.first + "/truncate",
                      std::shared_ptr<std::string>(nullptr), headers, nullptr,
@@ -781,7 +779,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   for (count = (unsigned int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == triagens::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
         nrok++;
       }
     }
@@ -803,7 +801,7 @@ int getDocumentOnCoordinator(
     TRI_voc_rid_t const rev,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     bool generateDocument,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -840,11 +838,11 @@ int getDocumentOnCoordinator(
   if (rev != 0) {
     revstr = "?rev=" + StringUtils::itoa(rev);
   }
-  triagens::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::rest::HttpRequest::HttpRequestType reqType;
   if (generateDocument) {
-    reqType = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
+    reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_GET;
   } else {
-    reqType = triagens::rest::HttpRequest::HTTP_REQUEST_HEAD;
+    reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_HEAD;
   }
 
   if (usesDefaultShardingAttributes) {
@@ -873,7 +871,7 @@ int getDocumentOnCoordinator(
       // this can be 400 or 404, we simply forward the result.
       // We intentionally fall through here.
     }
-    responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>(
+    responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
         res->result->getHttpReturnCode());
     resultHeaders = res->result->getHeaderFields();
     resultBody.assign(res->result->getBody().c_str(),
@@ -901,7 +899,7 @@ int getDocumentOnCoordinator(
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
+      if (res.answer_code != arangodb::rest::HttpResponse::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res.answer_code;
@@ -923,7 +921,7 @@ static void insertIntoShardMap(
     ClusterInfo* ci, std::string const& dbname, std::string const& documentId,
     std::unordered_map<ShardID, std::vector<std::string>>& shardMap) {
   std::vector<std::string> splitId =
-      triagens::basics::StringUtils::split(documentId, '/');
+      arangodb::basics::StringUtils::split(documentId, '/');
   TRI_ASSERT(splitId.size() == 2);
 
   // First determine the collection ID from the name:
@@ -936,8 +934,8 @@ static void insertIntoShardMap(
   std::string collid = StringUtils::itoa(collinfo->id());
   if (collinfo->usesDefaultShardKeys()) {
     // We only need add one resp. shard
-    triagens::basics::Json partial(triagens::basics::Json::Object, 1);
-    partial.set("_key", triagens::basics::Json(splitId[1]));
+    arangodb::basics::Json partial(arangodb::basics::Json::Object, 1);
+    partial.set("_key", arangodb::basics::Json(splitId[1]));
     bool usesDefaultShardingAttributes;
     ShardID shardID;
 
@@ -1000,19 +998,19 @@ int getFilteredDocumentsOnCoordinator(
   for (auto const& shard : shardRequestMap) {
     std::unique_ptr<std::map<std::string, std::string>> headersCopy(
         new std::map<std::string, std::string>(*headers));
-    triagens::basics::Json reqBody(triagens::basics::Json::Object, 2);
-    reqBody("collection", triagens::basics::Json(static_cast<std::string>(
+    arangodb::basics::Json reqBody(arangodb::basics::Json::Object, 2);
+    reqBody("collection", arangodb::basics::Json(static_cast<std::string>(
                               shard.first)));  // ShardID is a string
-    triagens::basics::Json keyList(triagens::basics::Json::Array,
+    arangodb::basics::Json keyList(arangodb::basics::Json::Array,
                                    shard.second.size());
     for (auto const& key : shard.second) {
-      keyList.add(triagens::basics::Json(key));
+      keyList.add(arangodb::basics::Json(key));
     }
     reqBody("keys", keyList.steal());
     if (!expressions.empty()) {
-      triagens::basics::Json filter(Json::Array, expressions.size());
+      arangodb::basics::Json filter(Json::Array, expressions.size());
       for (auto const& e : expressions) {
-        triagens::basics::Json tmp(Json::Object);
+        arangodb::basics::Json tmp(Json::Object);
         e->toJson(tmp, TRI_UNKNOWN_MEM_ZONE);
         filter.add(tmp.steal());
       }
@@ -1021,7 +1019,7 @@ int getFilteredDocumentsOnCoordinator(
     auto bodyString = std::make_shared<std::string>(reqBody.toString());
 
     cc->asyncRequest("", coordTransactionID, "shard:" + shard.first,
-                     triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                     arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/simple/lookup-by-keys",
                      bodyString, headersCopy, nullptr, 60.0);
@@ -1031,18 +1029,18 @@ int getFilteredDocumentsOnCoordinator(
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       std::unique_ptr<TRI_json_t> resultBody(
-          triagens::basics::JsonHelper::fromString(res.answer->body(),
+          arangodb::basics::JsonHelper::fromString(res.answer->body(),
                                                    res.answer->bodySize()));
       if (!TRI_IsObjectJson(resultBody.get())) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "Received an invalid result in cluster.");
       }
-      bool isError = triagens::basics::JsonHelper::checkAndGetBooleanValue(
+      bool isError = arangodb::basics::JsonHelper::checkAndGetBooleanValue(
           resultBody.get(), "error");
       if (isError) {
-        int errorNum = triagens::basics::JsonHelper::getNumericValue<int>(
+        int errorNum = arangodb::basics::JsonHelper::getNumericValue<int>(
             resultBody.get(), "errorNum", TRI_ERROR_INTERNAL);
-        std::string message = triagens::basics::JsonHelper::getStringValue(
+        std::string message = arangodb::basics::JsonHelper::getStringValue(
             resultBody.get(), "errorMessage", "");
         THROW_ARANGO_EXCEPTION_MESSAGE(errorNum, message);
       }
@@ -1056,7 +1054,7 @@ int getFilteredDocumentsOnCoordinator(
       for (size_t k = 0; k < resCount; ++k) {
         try {
           TRI_json_t* element = TRI_LookupArrayJson(documents, k);
-          std::string id = triagens::basics::JsonHelper::checkAndGetStringValue(
+          std::string id = arangodb::basics::JsonHelper::checkAndGetStringValue(
               element, "_id");
           result.emplace(id, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, element));
           documentIds.erase(id);
@@ -1071,7 +1069,7 @@ int getFilteredDocumentsOnCoordinator(
           TRI_json_t* element = TRI_LookupArrayJson(filtered, k);
           std::string def;
           std::string id =
-              triagens::basics::JsonHelper::getStringValue(element, def);
+              arangodb::basics::JsonHelper::getStringValue(element, def);
           documentIds.erase(id);
         }
       }
@@ -1087,7 +1085,7 @@ int getFilteredDocumentsOnCoordinator(
 
 int getAllDocumentsOnCoordinator(
     std::string const& dbname, std::string const& collname, std::string const& returnType,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::string& contentType, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1106,7 +1104,7 @@ int getAllDocumentsOnCoordinator(
     std::unique_ptr<std::map<std::string, std::string>> headers(
         new std::map<std::string, std::string>());
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                     arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document?collection=" + p.first + "&type=" +
                          StringUtils::urlEncode(returnType),
@@ -1115,11 +1113,11 @@ int getAllDocumentsOnCoordinator(
   }
   // Now listen to the results:
   int count;
-  responseCode = triagens::rest::HttpResponse::OK;
+  responseCode = arangodb::rest::HttpResponse::OK;
   contentType = "application/json; charset=utf-8";
 
-  triagens::basics::Json result(triagens::basics::Json::Object);
-  triagens::basics::Json documents(triagens::basics::Json::Array);
+  arangodb::basics::Json result(arangodb::basics::Json::Object);
+  arangodb::basics::Json documents(arangodb::basics::Json::Array);
 
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
@@ -1128,7 +1126,7 @@ int getAllDocumentsOnCoordinator(
       return TRI_ERROR_CLUSTER_TIMEOUT;
     }
     if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
-        res.answer_code == triagens::rest::HttpResponse::NOT_FOUND) {
+        res.answer_code == arangodb::rest::HttpResponse::NOT_FOUND) {
       cc->drop("", coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }
@@ -1160,7 +1158,7 @@ int getAllDocumentsOnCoordinator(
 
   result("documents", documents);
 
-  resultBody = triagens::basics::JsonHelper::toString(result.json());
+  resultBody = arangodb::basics::JsonHelper::toString(result.json());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1172,14 +1170,14 @@ int getAllDocumentsOnCoordinator(
 int getAllEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::string& contentType, std::string& resultBody) {
-  triagens::basics::Json result(triagens::basics::Json::Object);
+  arangodb::basics::Json result(arangodb::basics::Json::Object);
   std::vector<traverser::TraverserExpression*> expTmp;
   int res =
       getFilteredEdgesOnCoordinator(dbname, collname, vertex, direction, expTmp,
                                     responseCode, contentType, result);
-  resultBody = triagens::basics::JsonHelper::toString(result.json());
+  resultBody = arangodb::basics::JsonHelper::toString(result.json());
   return res;
 }
 
@@ -1187,8 +1185,8 @@ int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::string& contentType, triagens::basics::Json& result) {
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::string& contentType, arangodb::basics::Json& result) {
   TRI_ASSERT(result.isObject());
   TRI_ASSERT(result.members() == 0);
 
@@ -1213,9 +1211,9 @@ int getFilteredEdgesOnCoordinator(
   }
   auto reqBodyString = std::make_shared<std::string>();
   if (!expressions.empty()) {
-    triagens::basics::Json body(Json::Array, expressions.size());
+    arangodb::basics::Json body(Json::Array, expressions.size());
     for (auto& e : expressions) {
-      triagens::basics::Json tmp(Json::Object);
+      arangodb::basics::Json tmp(Json::Object);
       e->toJson(tmp, TRI_UNKNOWN_MEM_ZONE);
       body.add(tmp.steal());
     }
@@ -1225,19 +1223,19 @@ int getFilteredEdgesOnCoordinator(
     std::unique_ptr<std::map<std::string, std::string>> headers(
         new std::map<std::string, std::string>());
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                     arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" +
                          p.first + queryParameters,
                      reqBodyString, headers, nullptr, 3600.0);
   }
   // Now listen to the results:
   int count;
-  responseCode = triagens::rest::HttpResponse::OK;
+  responseCode = arangodb::rest::HttpResponse::OK;
   contentType = "application/json; charset=utf-8";
   size_t filtered = 0;
   size_t scannedIndex = 0;
 
-  triagens::basics::Json documents(triagens::basics::Json::Array);
+  arangodb::basics::Json documents(arangodb::basics::Json::Array);
 
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
@@ -1259,11 +1257,11 @@ int getFilteredEdgesOnCoordinator(
       return TRI_ERROR_INTERNAL;
     }
 
-    bool const isError = triagens::basics::JsonHelper::checkAndGetBooleanValue(
+    bool const isError = arangodb::basics::JsonHelper::checkAndGetBooleanValue(
         shardResult.get(), "error");
     if (isError) {
       // shared returned an error
-      return triagens::basics::JsonHelper::getNumericValue<int>(
+      return arangodb::basics::JsonHelper::getNumericValue<int>(
           shardResult.get(), "errorNum", TRI_ERROR_INTERNAL);
     }
 
@@ -1284,24 +1282,24 @@ int getFilteredEdgesOnCoordinator(
       documents.transfer(doc);
     }
 
-    TRI_json_t* stats = triagens::basics::JsonHelper::getObjectElement(
+    TRI_json_t* stats = arangodb::basics::JsonHelper::getObjectElement(
         shardResult.get(), "stats");
     // We do not own stats, do not delete it.
 
     if (stats != nullptr) {
-      filtered += triagens::basics::JsonHelper::getNumericValue<size_t>(
+      filtered += arangodb::basics::JsonHelper::getNumericValue<size_t>(
           stats, "filtered", 0);
-      scannedIndex += triagens::basics::JsonHelper::getNumericValue<size_t>(
+      scannedIndex += arangodb::basics::JsonHelper::getNumericValue<size_t>(
           stats, "scannedIndex", 0);
     }
   }
 
   result("edges", documents);
 
-  triagens::basics::Json stats(triagens::basics::Json::Object, 2);
+  arangodb::basics::Json stats(arangodb::basics::Json::Object, 2);
   stats("scannedIndex",
-        triagens::basics::Json(static_cast<int32_t>(scannedIndex)));
-  stats("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
+        arangodb::basics::Json(static_cast<int32_t>(scannedIndex)));
+  stats("filtered", arangodb::basics::Json(static_cast<int32_t>(filtered)));
   result("stats", stats);
 
   return TRI_ERROR_NO_ERROR;
@@ -1319,10 +1317,10 @@ int modifyDocumentOnCoordinator(
     bool mergeObjects,  // only counts for isPatch == true
     VPackSlice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   return modifyDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
       mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
@@ -1340,7 +1338,7 @@ int modifyDocumentOnCoordinator(
     bool mergeObjects,  // only counts for isPatch == true
     std::unique_ptr<TRI_json_t>& json,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1391,9 +1389,9 @@ int modifyDocumentOnCoordinator(
   if (rev != 0) {
     revstr = "&rev=" + StringUtils::itoa(rev);
   }
-  triagens::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::rest::HttpRequest::HttpRequestType reqType;
   if (isPatch) {
-    reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PATCH;
+    reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_PATCH;
     if (!keepNull) {
       revstr += "&keepNull=false";
     }
@@ -1403,7 +1401,7 @@ int modifyDocumentOnCoordinator(
       revstr += "&mergeObjects=false";
     }
   } else {
-    reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PUT;
+    reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_PUT;
   }
 
   std::string policystr;
@@ -1443,9 +1441,9 @@ int modifyDocumentOnCoordinator(
       // We intentionally fall through here.
     }
     // Now we have to distinguish whether we still have to go the slow way:
-    responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>(
+    responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
         res->result->getHttpReturnCode());
-    if (responseCode < triagens::rest::HttpResponse::BAD) {
+    if (responseCode < arangodb::rest::HttpResponse::BAD) {
       // OK, we are done, let's report:
       resultHeaders = res->result->getHeaderFields();
       resultBody.assign(res->result->getBody().c_str(),
@@ -1473,7 +1471,7 @@ int modifyDocumentOnCoordinator(
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
+      if (res.answer_code != arangodb::rest::HttpResponse::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res.answer_code;
@@ -1498,7 +1496,7 @@ int modifyDocumentOnCoordinator(
 int createEdgeOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     std::unique_ptr<TRI_json_t>& json, char const* from, char const* to,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1526,7 +1524,7 @@ int createEdgeOnCoordinator(
   if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
-    _key = triagens::basics::StringUtils::itoa(uid);
+    _key = arangodb::basics::StringUtils::itoa(uid);
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "_key",
                           TRI_CreateStringReferenceJson(
                               TRI_UNKNOWN_MEM_ZONE, _key.c_str(), _key.size()));
@@ -1554,7 +1552,7 @@ int createEdgeOnCoordinator(
   std::map<std::string, std::string> headers;
   auto res = cc->syncRequest(
       "", TRI_NewTickServer(), "shard:" + shardID,
-      triagens::rest::HttpRequest::HTTP_REQUEST_POST,
+      arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
       "/_db/" + dbname + "/_api/edge?collection=" +
           StringUtils::urlEncode(shardID) + "&waitForSync=" +
           (waitForSync ? "true" : "false") + "&from=" +
@@ -1575,7 +1573,7 @@ int createEdgeOnCoordinator(
     // this can be 400 or 404, we simply forward the result.
     // We intentionally fall through here.
   }
-  responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>(
+  responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
       res->result->getHttpReturnCode());
   resultHeaders = res->result->getHeaderFields();
   resultBody.assign(res->result->getBody().c_str(),
@@ -1601,7 +1599,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
         new std::map<std::string, std::string>());
     // set collection name (shard id)
     cc->asyncRequest("", coordTransactionID, "server:" + *it,
-                     triagens::rest::HttpRequest::HTTP_REQUEST_PUT, url, body,
+                     arangodb::rest::HttpRequest::HTTP_REQUEST_PUT, url, body,
                      headers, nullptr, 120.0);
   }
 
@@ -1611,7 +1609,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   for (count = (int)DBservers.size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == triagens::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
         nrok++;
       }
     }
@@ -1624,7 +1622,6 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   return TRI_ERROR_NO_ERROR;
 }
 
-}  // namespace arango
-}  // namespace triagens
+}  // namespace arangodb
 
 

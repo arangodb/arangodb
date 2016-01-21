@@ -28,7 +28,7 @@
 #include "Basics/Thread.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class DispatcherQueue;
 class Job;

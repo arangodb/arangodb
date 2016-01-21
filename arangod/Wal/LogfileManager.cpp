@@ -42,7 +42,7 @@
 #include "Wal/Slots.h"
 #include "Wal/SynchronizerThread.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the logfile manager singleton
@@ -202,7 +202,7 @@ void LogfileManager::initialize(std::string* path, TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::setupOptions(
-    std::map<std::string, triagens::basics::ProgramOptionsDescription>&
+    std::map<std::string, arangodb::basics::ProgramOptionsDescription>&
         options) {
   options["Write-ahead log options:help-wal"](
       "wal.allow-oversize-entries", &_allowOversizeEntries,
@@ -1744,7 +1744,7 @@ int LogfileManager::readShutdownInfo() {
   std::string const filename = shutdownFilename();
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = triagens::basics::VelocyPackHelper::velocyPackFromFile(filename);
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
   } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
@@ -1755,7 +1755,7 @@ int LogfileManager::readShutdownInfo() {
   }
 
   uint64_t lastTick =
-      triagens::basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
+      arangodb::basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(lastTick));
 
   if (lastTick > 0) {
@@ -1763,12 +1763,12 @@ int LogfileManager::readShutdownInfo() {
   }
 
   // read id of last collected logfile (maybe 0)
-  uint64_t lastCollectedId = triagens::basics::VelocyPackHelper::stringUInt64(
+  uint64_t lastCollectedId = arangodb::basics::VelocyPackHelper::stringUInt64(
       slice.get("lastCollected"));
 
   // read if of last sealed logfile (maybe 0)
   uint64_t lastSealedId =
-      triagens::basics::VelocyPackHelper::stringUInt64(slice.get("lastSealed"));
+      arangodb::basics::VelocyPackHelper::stringUInt64(slice.get("lastSealed"));
 
   if (lastSealedId < lastCollectedId) {
     // should not happen normally
@@ -1776,7 +1776,7 @@ int LogfileManager::readShutdownInfo() {
   }
 
   std::string const shutdownTime =
-      triagens::basics::VelocyPackHelper::getStringValue(slice, "shutdownTime",
+      arangodb::basics::VelocyPackHelper::getStringValue(slice, "shutdownTime",
                                                          "");
   if (shutdownTime.empty()) {
     LOG_TRACE("no previous shutdown time found");
@@ -1845,7 +1845,7 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
       // grab a lock so no two threads can write the shutdown info at the same
       // time
       MUTEX_LOCKER(_shutdownFileLock);
-      ok = triagens::basics::VelocyPackHelper::velocyPackToFile(
+      ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
           filename.c_str(), builder.slice(), true);
     }
 

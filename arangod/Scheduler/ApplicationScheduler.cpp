@@ -36,8 +36,8 @@
 #include "Scheduler/SignalTask.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 namespace {
@@ -197,8 +197,8 @@ class Sigusr1Task : public SignalTask {
 class SchedulerReporterTask : public PeriodicTask {
  public:
   SchedulerReporterTask(Scheduler* scheduler, double _reportInterval)
-      : Task("Scheduler-Reporter"),
-        PeriodicTask("Scheduler-Reporter", 1.0, _reportInterval),
+      : Task("SchedulerReporter"),
+        PeriodicTask("SchedulerReporter", 1.0, _reportInterval),
         _scheduler(scheduler) {}
 
  public:
@@ -403,7 +403,7 @@ void ApplicationScheduler::setupOptions(
 
 
 bool ApplicationScheduler::afterOptionParsing(
-    triagens::basics::ProgramOptions& options) {
+    arangodb::basics::ProgramOptions& options) {
   // show io backends
   if (options.has("show-io-backends")) {
     std::cout << "available io backends are: "

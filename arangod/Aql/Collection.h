@@ -29,7 +29,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 struct Index;
 

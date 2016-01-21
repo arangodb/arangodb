@@ -27,7 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +159,7 @@ void AllocatorThread::run() {
         LOG_ERROR("unable to create new WAL reserve logfile: %s",
                   TRI_errno_string(res));
       }
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
       LOG_ERROR("got unexpected error in allocatorThread: %s",
                 TRI_errno_string(res));

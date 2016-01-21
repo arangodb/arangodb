@@ -39,8 +39,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class SingleCollectionTransaction : public Transaction {
   
@@ -136,14 +135,14 @@ class SingleCollectionTransaction : public Transaction {
   /// is called in two different ways
   //////////////////////////////////////////////////////////////////////////////
 
-  inline triagens::arango::DocumentDitch* ditch() {
+  inline arangodb::DocumentDitch* ditch() {
     TRI_transaction_collection_t* trxCollection = this->trxCollection();
     TRI_ASSERT(trxCollection->_ditch != nullptr);
 
     return trxCollection->_ditch;
   }
 
-  inline triagens::arango::DocumentDitch* ditch(TRI_voc_cid_t) {
+  inline arangodb::DocumentDitch* ditch(TRI_voc_cid_t) {
     return ditch();
   }
 
@@ -266,8 +265,6 @@ class SingleCollectionTransaction : public Transaction {
   TRI_transaction_type_e _accessType;
 };
 }
-}
 
 #endif
-
 

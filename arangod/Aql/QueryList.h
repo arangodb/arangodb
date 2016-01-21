@@ -32,16 +32,16 @@
 
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 class Query;
 
 
 struct QueryEntry {
-  QueryEntry(triagens::aql::Query const*, double);
+  QueryEntry(arangodb::aql::Query const*, double);
 
-  triagens::aql::Query const* query;
+  arangodb::aql::Query const* query;
   double const started;
 };
 
@@ -216,7 +216,7 @@ class QueryList {
   /// @brief r/w lock for the list
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::ReadWriteLock _lock;
+  arangodb::basics::ReadWriteLock _lock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of current queries

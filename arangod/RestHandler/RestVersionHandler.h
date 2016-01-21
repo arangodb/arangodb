@@ -32,10 +32,10 @@ namespace arangodb {
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestVersionHandler : public triagens::admin::RestBaseHandler {
+class RestVersionHandler : public arangodb::admin::RestBaseHandler {
  public:
 
-  explicit RestVersionHandler(triagens::rest::HttpRequest*);
+  explicit RestVersionHandler(arangodb::rest::HttpRequest*);
 
  public:
 

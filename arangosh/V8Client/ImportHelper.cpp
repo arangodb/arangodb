@@ -38,9 +38,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ static bool IsDecimal(char const* field, size_t fieldLength) {
   return true;
 }
 
-namespace triagens {
+namespace arangodb {
 namespace v8client {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -683,7 +683,7 @@ void ImportHelper::handleResult(SimpleHttpResult* result) {
   }
 
   // get the "error" flag. This returns a pointer, not a copy
-  if (triagens::basics::VelocyPackHelper::getBooleanValue(body, "error",
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error",
                                                           false)) {
     _hasError = true;
 
@@ -695,19 +695,19 @@ void ImportHelper::handleResult(SimpleHttpResult* result) {
   }
 
   // look up the "created" flag
-  _numberCreated += triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+  _numberCreated += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
       body, "created", 0);
 
   // look up the "errors" flag
-  _numberErrors += triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+  _numberErrors += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
       body, "errors", 0);
 
   // look up the "updated" flag
-  _numberUpdated += triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+  _numberUpdated += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
       body, "updated", 0);
 
   // look up the "ignored" flag
-  _numberIgnored += triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+  _numberIgnored += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
       body, "ignored", 0);
 }
 }

@@ -39,7 +39,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a collection is volatile
@@ -410,7 +410,7 @@ int RecoverState::executeSingleOperation(
 
   try {
     trx = new SingleWriteTransactionType(
-        new triagens::arango::StandaloneTransactionContext(), vocbase,
+        new arangodb::StandaloneTransactionContext(), vocbase,
         collectionId);
 
     if (trx == nullptr) {
@@ -439,7 +439,7 @@ int RecoverState::executeSingleOperation(
 
     // commit the operation
     res = trx->commit();
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -1064,7 +1064,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
       TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
 
-      bool ok = triagens::basics::VelocyPackHelper::velocyPackToFile(
+      bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
           filename, slice, vocbase->_settings.forceSyncProperties);
 
       if (!ok) {
@@ -1181,7 +1181,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
       slice = b2.slice();
 
-      triagens::arango::VocbaseCollectionInfo info(vocbase, name.c_str(),
+      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(),
                                                    slice);
 
       WaitForDeletion(vocbase, collectionId,
@@ -1469,14 +1469,14 @@ int RecoverState::abortOpenTransactions() {
 
       AbortTransactionMarker marker(databaseId, transactionId);
       SlotInfoCopy slotInfo =
-          triagens::wal::LogfileManager::instance()->allocateAndWrite(
+          arangodb::wal::LogfileManager::instance()->allocateAndWrite(
               marker.mem(), marker.size(), false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
       }
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -1525,8 +1525,8 @@ int RecoverState::fillIndexes() {
     // activate secondary indexes
     document->useSecondaryIndexes(true);
 
-    triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new triagens::arango::StandaloneTransactionContext(),
+    arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
+        new arangodb::StandaloneTransactionContext(),
         collection->_vocbase, document->_info.id());
 
     int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);

@@ -113,7 +113,7 @@ Edge collections are collections that store edges.
 
 !SUBSECTION Edge Definition
 
-Edge definitions are parts of the definition of `named grahps`. They describe which edge collections connect which vertex collections.
+Edge definitions are parts of the definition of `named graphs`. They describe which edge collections connect which vertex collections.
 
 !SUBSECTION General Graph
 

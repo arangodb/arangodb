@@ -27,10 +27,10 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 
-using namespace triagens::basics;
-using namespace triagens::aql;
+using namespace arangodb::basics;
+using namespace arangodb::aql;
 
-SortNode::SortNode(ExecutionPlan* plan, triagens::basics::Json const& base,
+SortNode::SortNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
                    SortElementVector const& elements, bool stable)
     : ExecutionNode(plan, base), _elements(elements), _stable(stable) {}
 
@@ -38,24 +38,24 @@ SortNode::SortNode(ExecutionPlan* plan, triagens::basics::Json const& base,
 /// @brief toJson, for SortNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void SortNode::toJsonHelper(triagens::basics::Json& nodes,
+void SortNode::toJsonHelper(arangodb::basics::Json& nodes,
                             TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
-  triagens::basics::Json values(triagens::basics::Json::Array,
+  arangodb::basics::Json values(arangodb::basics::Json::Array,
                                 _elements.size());
   for (auto it = _elements.begin(); it != _elements.end(); ++it) {
-    triagens::basics::Json element(triagens::basics::Json::Object);
+    arangodb::basics::Json element(arangodb::basics::Json::Object);
     element("inVariable", (*it).first->toJson())(
-        "ascending", triagens::basics::Json((*it).second));
+        "ascending", arangodb::basics::Json((*it).second));
     values(element);
   }
   json("elements", values);
-  json("stable", triagens::basics::Json(_stable));
+  json("stable", arangodb::basics::Json(_stable));
 
   // And add it:
   nodes(json);
@@ -136,7 +136,7 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SortInformation SortNode::getSortInformation(
-    ExecutionPlan* plan, triagens::basics::StringBuffer* buffer) const {
+    ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
   SortInformation result;
 
   auto elements = getElements();

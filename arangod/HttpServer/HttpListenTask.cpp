@@ -26,7 +26,7 @@
 
 #include "HttpServer/HttpServer.h"
 
-using namespace triagens::rest;
+using namespace arangodb::rest;
 
 
 

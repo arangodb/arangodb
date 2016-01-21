@@ -46,12 +46,10 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
-using namespace triagens::arango;
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -63,13 +61,13 @@ ArangoClient BaseClient("arangorestore");
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::GeneralClientConnection* Connection = nullptr;
+arangodb::httpclient::GeneralClientConnection* Connection = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP client
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::SimpleHttpClient* Client = nullptr;
+arangodb::httpclient::SimpleHttpClient* Client = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief chunk size
@@ -278,10 +276,10 @@ static std::string GetHttpErrorMessage(SimpleHttpResult* result) {
     VPackSlice const body = parsedBody->slice();
 
     std::string const& errorMessage =
-        triagens::basics::VelocyPackHelper::getStringValue(body, "errorMessage",
+        arangodb::basics::VelocyPackHelper::getStringValue(body, "errorMessage",
                                                            "");
     int const errorNum =
-        triagens::basics::VelocyPackHelper::getNumericValue<int>(body,
+        arangodb::basics::VelocyPackHelper::getNumericValue<int>(body,
                                                                  "errorNum", 0);
     if (errorMessage != "" && errorNum > 0) {
       details =
@@ -301,18 +299,18 @@ static std::string GetHttpErrorMessage(SimpleHttpResult* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int TryCreateDatabase(std::string const& name) {
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json("name", triagens::basics::Json(name));
+  arangodb::basics::Json json(arangodb::basics::Json::Object);
+  json("name", arangodb::basics::Json(name));
 
-  triagens::basics::Json user(triagens::basics::Json::Object);
-  user("username", triagens::basics::Json(BaseClient.username()));
-  user("passwd", triagens::basics::Json(BaseClient.password()));
+  arangodb::basics::Json user(arangodb::basics::Json::Object);
+  user("username", arangodb::basics::Json(BaseClient.username()));
+  user("passwd", arangodb::basics::Json(BaseClient.password()));
 
-  triagens::basics::Json users(triagens::basics::Json::Array);
+  arangodb::basics::Json users(arangodb::basics::Json::Array);
   users.add(user);
   json("users", users);
 
-  std::string const body(triagens::basics::JsonHelper::toString(json.json()));
+  std::string const body(arangodb::basics::JsonHelper::toString(json.json()));
 
   std::unique_ptr<SimpleHttpResult> response(
       Client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/database",
@@ -364,13 +362,13 @@ static std::string GetArangoVersion() {
 
       // look up "server" value
       std::string const server =
-          triagens::basics::VelocyPackHelper::getStringValue(body, "server",
+          arangodb::basics::VelocyPackHelper::getStringValue(body, "server",
                                                              "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
         // look up "version" value
-        version = triagens::basics::VelocyPackHelper::getStringValue(
+        version = arangodb::basics::VelocyPackHelper::getStringValue(
             body, "version", "");
       }
     } catch (...) {
@@ -406,7 +404,7 @@ static bool GetArangoIsCluster() {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();
-      role = triagens::basics::VelocyPackHelper::getStringValue(body, "role",
+      role = arangodb::basics::VelocyPackHelper::getStringValue(body, "role",
                                                                 "UNDEFINED");
     } catch (...) {
       // No action
@@ -539,8 +537,8 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
   VPackSlice const& right = r.get("parameters");
 
   int leftType =
-      triagens::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
-  int rightType = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
+  int rightType = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
       right, "type", 0);
 
   if (leftType != rightType) {
@@ -548,9 +546,9 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
   }
 
   std::string leftName =
-      triagens::basics::VelocyPackHelper::getStringValue(left, "name", "");
+      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
   std::string rightName =
-      triagens::basics::VelocyPackHelper::getStringValue(right, "name", "");
+      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
 
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
@@ -593,7 +591,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
 
         std::string const fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + file;
         std::shared_ptr<VPackBuilder> fileContentBuilder =
-            triagens::basics::VelocyPackHelper::velocyPackFromFile(fqn);
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(fqn);
         VPackSlice const fileContent = fileContentBuilder->slice();
 
         if (!fileContent.isObject()) {
@@ -610,14 +608,14 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         }
 
         std::string const cname =
-            triagens::basics::VelocyPackHelper::getStringValue(parameters,
+            arangodb::basics::VelocyPackHelper::getStringValue(parameters,
                                                                "name", "");
 
         bool overwriteName = false;
 
         if (cname != name &&
             name !=
-                (cname + "_" + triagens::rest::SslInterface::sslMD5(cname))) {
+                (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname))) {
           // file has a different name than found in structure file
           if (ImportStructure) {
             // we cannot go on if there is a mismatch
@@ -667,9 +665,9 @@ static int ProcessInputDirectory(std::string& errorMsg) {
       VPackSlice const parameters = collection.get("parameters");
       VPackSlice const indexes = collection.get("indexes");
       std::string const cname =
-          triagens::basics::VelocyPackHelper::getStringValue(parameters, "name",
+          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
-      int type = triagens::basics::VelocyPackHelper::getNumericValue<int>(
+      int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           parameters, "type", 2);
 
       std::string const collectionType(type == 2 ? "document" : "edge");
@@ -678,11 +676,11 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         // re-create collection
         if (Progress) {
           if (Overwrite) {
-            cout << "# Re-creating " << collectionType << " collection '"
-                 << cname << "'..." << endl;
+            std::cout << "# Re-creating " << collectionType << " collection '"
+                 << cname << "'..." << std::endl;
           } else {
-            cout << "# Creating " << collectionType << " collection '" << cname
-                 << "'..." << endl;
+            std::cout << "# Creating " << collectionType << " collection '" << cname
+                 << "'..." << std::endl;
           }
         }
 
@@ -690,7 +688,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
 
         if (res != TRI_ERROR_NO_ERROR) {
           if (Force) {
-            cerr << errorMsg << endl;
+            std::cerr << errorMsg << std::endl;
             continue;
           }
           return TRI_ERROR_INTERNAL;
@@ -702,7 +700,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         // import data. check if we have a datafile
         std::string datafile =
             InputDirectory + TRI_DIR_SEPARATOR_STR + cname + "_" +
-            triagens::rest::SslInterface::sslMD5(cname) + ".data.json";
+            arangodb::rest::SslInterface::sslMD5(cname) + ".data.json";
         if (!TRI_ExistsFile(datafile.c_str())) {
           datafile =
               InputDirectory + TRI_DIR_SEPARATOR_STR + cname + ".data.json";
@@ -712,8 +710,8 @@ static int ProcessInputDirectory(std::string& errorMsg) {
           // found a datafile
 
           if (Progress) {
-            cout << "# Loading data into " << collectionType << " collection '"
-                 << cname << "'..." << endl;
+            std::cout << "# Loading data into " << collectionType << " collection '"
+                 << cname << "'..." << std::endl;
           }
 
           int fd = TRI_OPEN(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
@@ -792,7 +790,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
                 }
 
                 if (Force) {
-                  cerr << errorMsg << endl;
+                  std::cerr << errorMsg << std::endl;
                   continue;
                 }
 
@@ -817,15 +815,15 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         if (indexes.length() > 0) {
           // we actually have indexes
           if (Progress) {
-            cout << "# Creating indexes for collection '" << cname << "'..."
-                 << endl;
+            std::cout << "# Creating indexes for collection '" << cname << "'..."
+                 << std::endl;
           }
 
           int res = SendRestoreIndexes(collection, errorMsg);
 
           if (res != TRI_ERROR_NO_ERROR) {
             if (Force) {
-              cerr << errorMsg << endl;
+              std::cerr << errorMsg << std::endl;
               continue;
             }
             return TRI_ERROR_INTERNAL;
@@ -901,14 +899,14 @@ int main(int argc, char* argv[]) {
   // .............................................................................
 
   if (InputDirectory == "" || !TRI_IsDirectory(InputDirectory.c_str())) {
-    cerr << "Error: input directory '" << InputDirectory << "' does not exist"
-         << endl;
+    std::cerr << "Error: input directory '" << InputDirectory << "' does not exist"
+         << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (!ImportStructure && !ImportData) {
-    cerr << "Error: must specify either --create-collection or --import-data"
-         << endl;
+    std::cerr << "Error: must specify either --create-collection or --import-data"
+         << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -919,8 +917,8 @@ int main(int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == nullptr) {
-    cerr << "Error: invalid value for --server.endpoint ('"
-         << BaseClient.endpointString() << "')" << endl;
+    std::cerr << "Error: invalid value for --server.endpoint ('"
+         << BaseClient.endpointString() << "')" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -941,15 +939,15 @@ int main(int argc, char* argv[]) {
     // database not found, but database creation requested
 
     std::string old = BaseClient.databaseName();
-    cout << "Creating database '" << old << "'" << endl;
+    std::cout << "Creating database '" << old << "'" << std::endl;
 
     BaseClient.setDatabaseName("_system");
 
     int res = TryCreateDatabase(old);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      cerr << "Could not create database '" << old << "'" << endl;
-      cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
+      std::cerr << "Could not create database '" << old << "'" << std::endl;
+      std::cerr << "Error message: '" << Client->getErrorMessage() << "'" << std::endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
@@ -961,28 +959,28 @@ int main(int argc, char* argv[]) {
   }
 
   if (!Connection->isConnected()) {
-    cerr << "Could not connect to endpoint "
-         << BaseClient.endpointServer()->getSpecification() << endl;
-    cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
+    std::cerr << "Could not connect to endpoint "
+         << BaseClient.endpointServer()->getSpecification() << std::endl;
+    std::cerr << "Error message: '" << Client->getErrorMessage() << "'" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // successfully connected
-  cout << "Server version: " << versionString << endl;
+  std::cout << "Server version: " << versionString << std::endl;
 
   // validate server version
   int major = 0;
   int minor = 0;
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    cerr << "Error: invalid server version '" << versionString << "'" << endl;
+    std::cerr << "Error: invalid server version '" << versionString << "'" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (major < 1 || major > 2 || (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
-    cerr << "Error: got incompatible server version '" << versionString << "'"
-         << endl;
+    std::cerr << "Error: got incompatible server version '" << versionString << "'"
+         << std::endl;
     if (!Force) {
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
@@ -994,8 +992,8 @@ int main(int argc, char* argv[]) {
   }
 
   if (Progress) {
-    cout << "# Connected to ArangoDB '"
-         << BaseClient.endpointServer()->getSpecification() << "'" << endl;
+    std::cout << "# Connected to ArangoDB '"
+         << BaseClient.endpointServer()->getSpecification() << "'" << std::endl;
   }
 
   memset(&Stats, 0, sizeof(Stats));
@@ -1006,30 +1004,30 @@ int main(int argc, char* argv[]) {
   try {
     res = ProcessInputDirectory(errorMsg);
   } catch (std::exception const& ex) {
-    cerr << "Error: caught exception " << ex.what() << endl;
+    std::cerr << "Error: caught exception " << ex.what() << std::endl;
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    cerr << "Error: caught unknown exception" << endl;
+    std::cerr << "Error: caught unknown exception" << std::endl;
     res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (!errorMsg.empty()) {
-      cerr << "Error: " << errorMsg << endl;
+      std::cerr << "Error: " << errorMsg << std::endl;
     } else {
-      cerr << "An error occurred" << endl;
+      std::cerr << "An error occurred" << std::endl;
     }
     ret = EXIT_FAILURE;
   }
 
   if (Progress) {
     if (ImportData) {
-      cout << "Processed " << Stats._totalCollections << " collection(s), "
+      std::cout << "Processed " << Stats._totalCollections << " collection(s), "
            << "read " << Stats._totalRead << " byte(s) from datafiles, "
-           << "sent " << Stats._totalBatches << " batch(es)" << endl;
+           << "sent " << Stats._totalBatches << " batch(es)" << std::endl;
     } else if (ImportStructure) {
-      cout << "Processed " << Stats._totalCollections << " collection(s)"
-           << endl;
+      std::cout << "Processed " << Stats._totalCollections << " collection(s)"
+           << std::endl;
     }
   }
 

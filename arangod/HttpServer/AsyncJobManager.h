@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class AsyncCallbackContext;
 class HttpServerJob;

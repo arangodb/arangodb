@@ -28,7 +28,7 @@
 
 #include <openssl/ssl.h>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 

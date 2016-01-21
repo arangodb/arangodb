@@ -25,13 +25,9 @@
 #define ARANGOD_REST_HANDLER_REST_BATCH_HANDLER_H 1
 
 #include "Basics/Common.h"
-
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container for complete multipart message
@@ -109,7 +105,6 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
 
   bool extractPart(SearchHelper*);
 };
-}
 }
 
 #endif

@@ -30,13 +30,9 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
-namespace arango {
-class CollectionNameResolver;
-}
-}
-
 namespace arangodb {
+class CollectionNameResolver;
+
 class StorageOptions {
  public:
   StorageOptions();
@@ -49,7 +45,7 @@ class StorageOptions {
   static VPackOptions getJsonToDocumentTemplate();
   static VPackOptions getNonDocumentTemplate();
   static VPackCustomTypeHandler* createCustomHandler(
-      triagens::arango::CollectionNameResolver const*);
+      arangodb::CollectionNameResolver const*);
 
  private:
   std::unique_ptr<VPackAttributeTranslator> _translator;

@@ -29,7 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arangob {
 
 
@@ -151,7 +151,7 @@ class BenchmarkCounter {
   /// @brief mutex protecting the counter
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _mutex;
+  arangodb::basics::Mutex _mutex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current value

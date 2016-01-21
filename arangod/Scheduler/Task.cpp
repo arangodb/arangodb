@@ -27,7 +27,7 @@
 #include "Basics/json.h"
 #include "Scheduler/Scheduler.h"
 
-using namespace triagens::rest;
+using namespace arangodb::rest;
 using namespace std;
 
 namespace {

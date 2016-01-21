@@ -46,18 +46,17 @@
 struct TRI_json_t;
 struct TRI_vector_pointer_s;
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 namespace traverser {
 class TraverserExpression;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge headers of a DB server response into the current response
 ////////////////////////////////////////////////////////////////////////////////
 
-void mergeResponseHeaders(triagens::rest::HttpResponse* response,
+void mergeResponseHeaders(arangodb::rest::HttpResponse* response,
                           std::map<std::string, std::string> const& headers);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +64,7 @@ void mergeResponseHeaders(triagens::rest::HttpResponse* response,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::map<std::string, std::string> getForwardableRequestHeaders(
-    triagens::rest::HttpRequest* request);
+    arangodb::rest::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two JSON
@@ -112,7 +111,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     VPackSlice const& slice, std::map<std::string, std::string> const& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +122,7 @@ int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     std::unique_ptr<TRI_json_t>& json,
     std::map<std::string, std::string> const& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +134,7 @@ int deleteDocumentOnCoordinator(
     std::string const& key, TRI_voc_rid_t const rev,
     TRI_doc_update_policy_e policy, bool waitForSync,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +146,7 @@ int getDocumentOnCoordinator(
     std::string const& key, TRI_voc_rid_t const rev,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     bool generateDocument,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +170,7 @@ int getFilteredDocumentsOnCoordinator(
 int getAllDocumentsOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& returnType,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::string& contentType, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +180,7 @@ int getAllDocumentsOnCoordinator(
 int getAllEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::string& contentType, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,8 +192,8 @@ int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::string& contentType, triagens::basics::Json& resultJson);
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::string& contentType, arangodb::basics::Json& resultJson);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
@@ -208,7 +207,7 @@ int modifyDocumentOnCoordinator(
     bool mergeObjects,  // only counts for isPatch == true
     VPackSlice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +222,7 @@ int modifyDocumentOnCoordinator(
     bool mergeObjects,  // only counts for isPatch == true
     std::unique_ptr<TRI_json_t>& json,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +232,7 @@ int modifyDocumentOnCoordinator(
 int createEdgeOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     std::unique_ptr<TRI_json_t>& json, char const* from, char const* to,
-    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,9 +248,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 
 int flushWalOnAllDBServers(bool, bool);
 
-}  // namespace arango
-}  // namespace triagens
+}  // namespace arangodb
 
 #endif
-
 

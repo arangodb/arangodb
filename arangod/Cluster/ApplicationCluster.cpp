@@ -37,15 +37,15 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/server.h"
 
-using namespace triagens;
-using namespace triagens::basics;
-using namespace triagens::arango;
+using namespace arangodb;
+using namespace arangodb::basics;
+
 
 
 
 
 ApplicationCluster::ApplicationCluster(
-    TRI_server_t* server, triagens::rest::ApplicationDispatcher* dispatcher,
+    TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
     ApplicationV8* applicationV8)
     : ApplicationFeature("Sharding"),
       _server(server),
@@ -170,7 +170,7 @@ bool ApplicationCluster::prepare() {
 
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
     std::string const unified =
-        triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
+        arangodb::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
 
     if (unified.empty()) {
       LOG_FATAL_AND_EXIT(
@@ -290,7 +290,7 @@ bool ApplicationCluster::start() {
 
   // now we can validate --cluster.my-address
   std::string const unified =
-      triagens::rest::Endpoint::getUnifiedForm(_myAddress);
+      arangodb::rest::Endpoint::getUnifiedForm(_myAddress);
 
   if (unified.empty()) {
     LOG_FATAL_AND_EXIT(
@@ -327,7 +327,7 @@ bool ApplicationCluster::start() {
       if (it != result._values.end()) {
         VPackSlice slice = (*it).second._vpack->slice();
         _heartbeatInterval =
-            triagens::basics::VelocyPackHelper::stringUInt64(slice);
+            arangodb::basics::VelocyPackHelper::stringUInt64(slice);
 
         LOG_INFO("using heartbeat interval value '%llu ms' from agency",
                  (unsigned long long)_heartbeatInterval);

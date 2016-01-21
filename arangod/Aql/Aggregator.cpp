@@ -23,10 +23,10 @@
 
 #include "Aggregator.h"
 
-using namespace triagens::basics;
-using namespace triagens::aql;
+using namespace arangodb::basics;
+using namespace arangodb::aql;
   
-Aggregator* Aggregator::fromTypeString(triagens::arango::AqlTransaction* trx, std::string const& type) {
+Aggregator* Aggregator::fromTypeString(arangodb::AqlTransaction* trx, std::string const& type) {
   if (type == "LENGTH" || type == "COUNT") {
     return new AggregatorLength(trx);
   }
@@ -60,10 +60,10 @@ Aggregator* Aggregator::fromTypeString(triagens::arango::AqlTransaction* trx, st
   return nullptr;
 }
 
-Aggregator* Aggregator::fromJson(triagens::arango::AqlTransaction* trx,
-                                 triagens::basics::Json const& json,  
+Aggregator* Aggregator::fromJson(arangodb::AqlTransaction* trx,
+                                 arangodb::basics::Json const& json,  
                                  char const* variableName) {
-  triagens::basics::Json variableJson = json.get(variableName);
+  arangodb::basics::Json variableJson = json.get(variableName);
 
   if (variableJson.isString()) {
     std::string const type(variableJson.json()->_value._string.data, variableJson.json()->_value._string.length - 1);
@@ -87,7 +87,16 @@ bool Aggregator::isSupported(std::string const& type) {
   );
 }
 
-  
+bool Aggregator::requiresInput(std::string const& type) {
+  if (type == "LENGTH" || type == "COUNT") {
+    // LENGTH/COUNT do not require its input parameter, so 
+    // it can be optimized away
+    return false;
+  }
+  // all other functions require their input
+  return true;
+}
+
 void AggregatorLength::reset() {
   count = 0;
 }
@@ -123,7 +132,7 @@ void AggregatorMin::reduce(AqlValue const& cmpValue,
   
 AqlValue AggregatorMin::stealValue() {
   if (value.isEmpty()) {
-    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
   }
   AqlValue copy = value;
   value.erase();
@@ -150,7 +159,7 @@ void AggregatorMax::reduce(AqlValue const& cmpValue,
 
 AqlValue AggregatorMax::stealValue() {
   if (value.isEmpty()) {
-    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
   }
   AqlValue copy = value;
   value.erase();
@@ -184,10 +193,10 @@ void AggregatorSum::reduce(AqlValue const& cmpValue,
 
 AqlValue AggregatorSum::stealValue() {
   if (invalid || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
   }
 
-  return AqlValue(new triagens::basics::Json(sum));
+  return AqlValue(new arangodb::basics::Json(sum));
 }
 
 void AggregatorAverage::reset() {
@@ -219,12 +228,12 @@ void AggregatorAverage::reduce(AqlValue const& cmpValue,
 
 AqlValue AggregatorAverage::stealValue() {
   if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
   }
 
   TRI_ASSERT(count > 0);
 
-  return AqlValue(new triagens::basics::Json(sum / static_cast<double>(count)));
+  return AqlValue(new arangodb::basics::Json(sum / static_cast<double>(count)));
 }
 
 void AggregatorVarianceBase::reset() {
@@ -259,29 +268,29 @@ void AggregatorVarianceBase::reduce(AqlValue const& cmpValue,
 
 AqlValue AggregatorVariance::stealValue() {
   if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
   }
 
   TRI_ASSERT(count > 0);
 
   if (!population) {
     TRI_ASSERT(count > 1);
-    return AqlValue(new triagens::basics::Json(sum / static_cast<double>(count - 1)));
+    return AqlValue(new arangodb::basics::Json(sum / static_cast<double>(count - 1)));
   }
-  return AqlValue(new triagens::basics::Json(sum / static_cast<double>(count)));
+  return AqlValue(new arangodb::basics::Json(sum / static_cast<double>(count)));
 }
 
 AqlValue AggregatorStddev::stealValue() {
   if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(new triagens::basics::Json(triagens::basics::Json::Null));
+    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
   }
 
   TRI_ASSERT(count > 0);
 
   if (!population) {
     TRI_ASSERT(count > 1);
-    return AqlValue(new triagens::basics::Json(sqrt(sum / static_cast<double>(count - 1))));
+    return AqlValue(new arangodb::basics::Json(sqrt(sum / static_cast<double>(count - 1))));
   }
-  return AqlValue(new triagens::basics::Json(sqrt(sum / static_cast<double>(count))));
+  return AqlValue(new arangodb::basics::Json(sqrt(sum / static_cast<double>(count))));
 }
 

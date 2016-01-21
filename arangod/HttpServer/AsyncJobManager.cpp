@@ -29,8 +29,8 @@
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServerJob.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 using namespace std;
 
 
@@ -38,7 +38,7 @@ using namespace std;
 /// @brief AsyncCallbackContext
 ////////////////////////////////////////////////////////////////////////////////
 
-class triagens::rest::AsyncCallbackContext {
+class arangodb::rest::AsyncCallbackContext {
   
  public:
 

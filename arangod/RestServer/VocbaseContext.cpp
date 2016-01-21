@@ -22,9 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
-
-#include "Basics/MutexLocker.h"
 #include "Basics/logging.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Rest/ConnectionInfo.h"
@@ -32,17 +31,16 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex SidLock;
+static arangodb::basics::Mutex SidLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid cache
@@ -282,7 +280,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
 
   char const* auth = _request->header("authorization", found);
 
-  if (!found || !TRI_CaseEqualString2(auth, "basic ", 6)) {
+  if (!found || !TRI_CaseEqualString(auth, "basic ", 6)) {
     return HttpResponse::UNAUTHORIZED;
   }
 
@@ -358,7 +356,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   if (mustChange) {
     if ((_request->requestType() == HttpRequest::HTTP_REQUEST_PUT ||
          _request->requestType() == HttpRequest::HTTP_REQUEST_PATCH) &&
-        TRI_EqualString2(_request->requestPath(), "/_api/user/", 11)) {
+        TRI_EqualString(_request->requestPath(), "/_api/user/", 11)) {
       return HttpResponse::OK;
     }
 

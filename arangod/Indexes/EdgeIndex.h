@@ -32,23 +32,21 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class SortCondition;
 }
 
-namespace arango {
-
 class EdgeIndexIterator final : public IndexIterator {
  public:
-  typedef triagens::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
+  typedef arangodb::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
                                        uint32_t, true> TRI_EdgeIndexHash_t;
 
   TRI_doc_mptr_t* next() override;
 
   void reset() override;
 
-  EdgeIndexIterator(triagens::arango::Transaction* trx,
+  EdgeIndexIterator(arangodb::Transaction* trx,
                     TRI_EdgeIndexHash_t const* index,
                     std::vector<TRI_edge_header_t>& searchValues)
       : _trx(trx),
@@ -67,7 +65,7 @@ class EdgeIndexIterator final : public IndexIterator {
   }
 
  private:
-  triagens::arango::Transaction* _trx;
+  arangodb::Transaction* _trx;
   TRI_EdgeIndexHash_t const* _index;
   std::vector<TRI_edge_header_t> _keys;
   size_t _position;
@@ -94,7 +92,7 @@ class EdgeIndex final : public Index {
   /// @brief typedef for hash tables
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef triagens::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
+  typedef arangodb::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
                                        uint32_t, true> TRI_EdgeIndexHash_t;
 
   
@@ -117,10 +115,10 @@ class EdgeIndex final : public Index {
 
   void toVelocyPackFigures(VPackBuilder&) const override final;
 
-  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -128,14 +126,14 @@ class EdgeIndex final : public Index {
   /// by next
   //////////////////////////////////////////////////////////////////////////////
 
-  void lookup(triagens::arango::Transaction*, TRI_edge_index_iterator_t const*,
+  void lookup(arangodb::Transaction*, TRI_edge_index_iterator_t const*,
               std::vector<TRI_doc_mptr_copy_t>&, TRI_doc_mptr_copy_t*&, size_t);
 
-  int batchInsert(triagens::arango::Transaction*,
+  int batchInsert(arangodb::Transaction*,
                   std::vector<TRI_doc_mptr_t const*> const*,
                   size_t) override final;
 
-  int sizeHint(triagens::arango::Transaction*, size_t) override final;
+  int sizeHint(arangodb::Transaction*, size_t) override final;
 
   bool hasBatchInsert() const override final { return true; }
 
@@ -143,19 +141,19 @@ class EdgeIndex final : public Index {
 
   TRI_EdgeIndexHash_t* to() { return _edgesTo; }
 
-  bool supportsFilterCondition(triagens::aql::AstNode const*,
-                               triagens::aql::Variable const*, size_t, size_t&,
+  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+                               arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(triagens::arango::Transaction*,
+  IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
-                                      triagens::aql::Ast*,
-                                      triagens::aql::AstNode const*,
-                                      triagens::aql::Variable const*,
+                                      arangodb::aql::Ast*,
+                                      arangodb::aql::AstNode const*,
+                                      arangodb::aql::Variable const*,
                                       bool) const override;
 
-  triagens::aql::AstNode* specializeCondition(
-      triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
   
  private:
@@ -164,9 +162,9 @@ class EdgeIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   IndexIterator* createIterator(
-      triagens::arango::Transaction*, IndexIteratorContext*,
-      triagens::aql::AstNode const*,
-      std::vector<triagens::aql::AstNode const*> const&) const;
+      arangodb::Transaction*, IndexIteratorContext*,
+      arangodb::aql::AstNode const*,
+      std::vector<arangodb::aql::AstNode const*> const&) const;
 
   
  private:
@@ -188,7 +186,6 @@ class EdgeIndex final : public Index {
 
   size_t _numBuckets;
 };
-}
 }
 
 #endif

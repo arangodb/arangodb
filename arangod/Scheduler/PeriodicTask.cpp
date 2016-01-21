@@ -29,7 +29,7 @@
 #include "Scheduler/Scheduler.h"
 
 using namespace std;
-using namespace triagens::rest;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors

@@ -33,8 +33,8 @@
 #include "Scheduler/PeriodicTask.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 namespace {
@@ -46,8 +46,8 @@ namespace {
 class DispatcherReporterTask : public PeriodicTask {
  public:
   DispatcherReporterTask(Dispatcher* dispatcher, double reportInterval)
-      : Task("Dispatcher-Reporter"),
-        PeriodicTask("Dispatcher-Reporter", 0.0, reportInterval),
+      : Task("DispatcherReporter"),
+        PeriodicTask("DispatcherReporter", 0.0, reportInterval),
         _dispatcher(dispatcher) {}
 
  public:

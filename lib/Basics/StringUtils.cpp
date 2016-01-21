@@ -205,7 +205,7 @@ bool isLowSurrugate(uint32_t number) {
 }
 }
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 namespace StringUtils {
 

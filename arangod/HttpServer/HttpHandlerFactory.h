@@ -31,7 +31,7 @@
 #include "Rest/HttpResponse.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 struct ConnectionInfo;
 class HttpHandler;

@@ -29,7 +29,7 @@
 #include "Rest/Endpoint.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +55,7 @@ class GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralClientConnection(triagens::rest::Endpoint* endpoint, double, double,
+  GeneralClientConnection(arangodb::rest::Endpoint* endpoint, double, double,
                           size_t);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -70,14 +70,14 @@ class GeneralClientConnection {
   /// @brief create a new connection from an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneralClientConnection* factory(triagens::rest::Endpoint*, double,
+  static GeneralClientConnection* factory(arangodb::rest::Endpoint*, double,
                                           double, size_t, uint32_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::Endpoint const* getEndpoint() const { return _endpoint; }
+  arangodb::rest::Endpoint const* getEndpoint() const { return _endpoint; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string representation of the connection endpoint
@@ -127,7 +127,7 @@ class GeneralClientConnection {
   /// @brief read data from endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRead(double, triagens::basics::StringBuffer&,
+  bool handleRead(double, arangodb::basics::StringBuffer&,
                   bool& connectionClosed);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -178,7 +178,7 @@ class GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual bool readClientConnection(triagens::basics::StringBuffer&,
+  virtual bool readClientConnection(arangodb::basics::StringBuffer&,
                                     bool& porgress) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -199,7 +199,7 @@ class GeneralClientConnection {
   /// @brief endpoint to connect to
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::Endpoint* _endpoint;
+  arangodb::rest::Endpoint* _endpoint;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request timeout (in seconds)

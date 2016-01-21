@@ -36,7 +36,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class Ast;
 struct AstNode;
@@ -49,7 +49,7 @@ struct Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  explicit Index(triagens::arango::Index* idx)
+  explicit Index(arangodb::Index* idx)
       : id(idx->id()),
         type(idx->type()),
         unique(false),
@@ -59,26 +59,26 @@ struct Index {
         internals(idx) {
     TRI_ASSERT(internals != nullptr);
 
-    if (type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    if (type == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
       unique = true;
-    } else if (type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX ||
-               type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    } else if (type == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX ||
+               type == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
       sparse = idx->sparse();
       unique = idx->unique();
     }
   }
 
   explicit Index(VPackSlice const& slice)
-      : id(triagens::basics::StringUtils::uint64(
-            triagens::basics::VelocyPackHelper::checkAndGetStringValue(slice,
+      : id(arangodb::basics::StringUtils::uint64(
+            arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice,
                                                                        "id"))),
-        type(triagens::arango::Index::type(
-            triagens::basics::VelocyPackHelper::checkAndGetStringValue(slice,
+        type(arangodb::Index::type(
+            arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice,
                                                                        "type")
                 .c_str())),
-        unique(triagens::basics::VelocyPackHelper::getBooleanValue(
+        unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
             slice, "unique", false)),
-        sparse(triagens::basics::VelocyPackHelper::getBooleanValue(
+        sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
             slice, "sparse", false)),
         ownsInternals(false),
         fields(),
@@ -92,7 +92,7 @@ struct Index {
       for (auto const& name : VPackArrayIterator(f)) {
 
         if (name.isString()) {
-          std::vector<triagens::basics::AttributeName> parsedAttributes;
+          std::vector<arangodb::basics::AttributeName> parsedAttributes;
           TRI_ParseAttributeString(name.copyString(), parsedAttributes);
           fields.emplace_back(parsedAttributes);
         }
@@ -105,25 +105,25 @@ struct Index {
 
   ~Index();
 
-  triagens::basics::Json toJson() const {
-    triagens::basics::Json json(triagens::basics::Json::Object);
+  arangodb::basics::Json toJson() const {
+    arangodb::basics::Json json(arangodb::basics::Json::Object);
 
     json("type",
-         triagens::basics::Json(triagens::arango::Index::typeName(type)))(
-        "id", triagens::basics::Json(triagens::basics::StringUtils::itoa(id)))(
-        "unique", triagens::basics::Json(unique))(
-        "sparse", triagens::basics::Json(sparse));
+         arangodb::basics::Json(arangodb::Index::typeName(type)))(
+        "id", arangodb::basics::Json(arangodb::basics::StringUtils::itoa(id)))(
+        "unique", arangodb::basics::Json(unique))(
+        "sparse", arangodb::basics::Json(sparse));
 
     if (hasSelectivityEstimate()) {
       json("selectivityEstimate",
-           triagens::basics::Json(selectivityEstimate()));
+           arangodb::basics::Json(selectivityEstimate()));
     }
 
-    triagens::basics::Json f(triagens::basics::Json::Array);
+    arangodb::basics::Json f(arangodb::basics::Json::Array);
     for (auto const& field : fields) {
       std::string tmp;
       TRI_AttributeNamesToString(field, tmp);
-      f.add(triagens::basics::Json(tmp));
+      f.add(arangodb::basics::Json(tmp));
     }
 
     json("fields", f);
@@ -148,15 +148,15 @@ struct Index {
 
   inline bool hasInternals() const { return (internals != nullptr); }
 
-  triagens::arango::Index* getInternals() const;
+  arangodb::Index* getInternals() const;
 
-  void setInternals(triagens::arango::Index*, bool);
+  void setInternals(arangodb::Index*, bool);
 
   bool isSorted() const {
     try {
       return getInternals()->isSorted();
     } catch (...) {
-      return type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
+      return type == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
     }
   }
 
@@ -165,8 +165,8 @@ struct Index {
   /// and calculate the filter costs and number of items
   //////////////////////////////////////////////////////////////////////////////
 
-  bool supportsFilterCondition(triagens::aql::AstNode const*,
-                               triagens::aql::Variable const*, size_t, size_t&,
+  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+                               arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -174,18 +174,18 @@ struct Index {
   /// and calculate the sort costs
   //////////////////////////////////////////////////////////////////////////////
 
-  bool supportsSortCondition(triagens::aql::SortCondition const*,
-                             triagens::aql::Variable const*, size_t,
+  bool supportsSortCondition(arangodb::aql::SortCondition const*,
+                             arangodb::aql::Variable const*, size_t,
                              double&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an iterator for the index
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::IndexIterator* getIterator(
-      triagens::arango::Transaction*, triagens::arango::IndexIteratorContext*,
-      triagens::aql::Ast*, triagens::aql::AstNode const*,
-      triagens::aql::Variable const*, bool) const;
+  arangodb::IndexIterator* getIterator(
+      arangodb::Transaction*, arangodb::IndexIteratorContext*,
+      arangodb::aql::Ast*, arangodb::aql::AstNode const*,
+      arangodb::aql::Variable const*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief specialize the condition for the index
@@ -193,26 +193,26 @@ struct Index {
   /// handle
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::AstNode* specializeCondition(
-      triagens::aql::AstNode*, triagens::aql::Variable const*) const;
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
 
   
  public:
   TRI_idx_iid_t const id;
-  triagens::arango::Index::IndexType type;
+  arangodb::Index::IndexType type;
   bool unique;
   bool sparse;
   bool ownsInternals;
-  std::vector<std::vector<triagens::basics::AttributeName>> fields;
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
  private:
-  triagens::arango::Index* internals;
+  arangodb::Index* internals;
 };
 }
 }
 
-std::ostream& operator<<(std::ostream&, triagens::aql::Index const*);
-std::ostream& operator<<(std::ostream&, triagens::aql::Index const&);
+std::ostream& operator<<(std::ostream&, arangodb::aql::Index const*);
+std::ostream& operator<<(std::ostream&, arangodb::aql::Index const&);
 
 #endif
 

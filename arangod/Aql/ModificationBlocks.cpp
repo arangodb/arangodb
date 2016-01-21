@@ -30,11 +30,11 @@
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
-using namespace triagens::aql;
 
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
+using namespace arangodb::aql;
+
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 
 ModificationBlock::ModificationBlock(ExecutionEngine* engine,
@@ -65,7 +65,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
   }
 
   // check if we're a DB server in a cluster
-  _isDBServer = triagens::arango::ServerState::instance()->isDBServer();
+  _isDBServer = arangodb::ServerState::instance()->isDBServer();
 
   if (_isDBServer) {
     _usesDefaultSharding = _collection->usesDefaultSharding();
@@ -205,7 +205,7 @@ bool ModificationBlock::isShardKeyChange(TRI_json_t const* oldJson,
 
   auto planId = _collection->documentCollection()->_info.planId();
   auto vocbase = static_cast<ModificationNode const*>(_exeNode)->_vocbase;
-  return triagens::arango::shardKeysChanged(
+  return arangodb::shardKeysChanged(
       vocbase->_name, std::to_string(planId), oldJson, newJson, isPatch);
 }
 

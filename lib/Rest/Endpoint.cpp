@@ -35,8 +35,8 @@
 #include "Rest/EndpointIpV6.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 

@@ -27,13 +27,10 @@
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class Dispatcher;
 }
-
-namespace arango {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shard control request handler
@@ -64,7 +61,6 @@ class RestShardHandler : public admin::RestBaseHandler {
 
   rest::Dispatcher* TRI_UNUSED _dispatcher;
 };
-}
 }
 
 #endif

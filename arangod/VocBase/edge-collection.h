@@ -63,7 +63,7 @@ struct TRI_edge_index_iterator_t {
       : _direction(direction), _edge(cid, nullptr) {
     TRI_ASSERT(key != nullptr);
 
-    _edge._key = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, key);
+    _edge._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, key);
 
     if (_edge._key == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -74,7 +74,7 @@ struct TRI_edge_index_iterator_t {
                             char const* key)
       : _direction(direction), _edge({cid, nullptr}) {
     TRI_ASSERT(key != nullptr);
-    _edge._key = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, key);
+    _edge._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, key);
     if (_edge._key == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -97,7 +97,7 @@ struct TRI_edge_index_iterator_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
-    triagens::arango::Transaction*, struct TRI_document_collection_t*,
+    arangodb::Transaction*, struct TRI_document_collection_t*,
     TRI_edge_direction_e, TRI_voc_cid_t, TRI_voc_key_t const);
 
 #endif

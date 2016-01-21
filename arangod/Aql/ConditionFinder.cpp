@@ -27,8 +27,8 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 
-using namespace triagens::aql;
-using EN = triagens::aql::ExecutionNode;
+using namespace arangodb::aql;
+using EN = arangodb::aql::ExecutionNode;
 
 bool ConditionFinder::before(ExecutionNode* en) {
   switch (en->getType()) {

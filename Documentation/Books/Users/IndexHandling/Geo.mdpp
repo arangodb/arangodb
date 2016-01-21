@@ -107,3 +107,7 @@ geo indexes are always sparse, meaning that documents that do not contain
 the index attributes or have non-numeric values in the index attributes
 will not be indexed.
 
+!SUBSUBSECTION Related topics
+
+ArangoDB AQL geographic features are described in [AQL Geo functions](../Aql/GeoFunctions.md)
+

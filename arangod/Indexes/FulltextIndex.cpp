@@ -30,8 +30,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extraction context
@@ -100,7 +99,7 @@ FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
                              TRI_document_collection_t* collection,
                              std::string const& attribute, int minWordLength)
     : Index(iid, collection,
-            std::vector<std::vector<triagens::basics::AttributeName>>{
+            std::vector<std::vector<arangodb::basics::AttributeName>>{
                 {{attribute, false}}},
             false, true),
       _pid(0),
@@ -150,7 +149,7 @@ void FulltextIndex::toVelocyPack(VPackBuilder& builder,
   builder.add("minLength", VPackValue(_minWordLength));
 }
 
-int FulltextIndex::insert(triagens::arango::Transaction*,
+int FulltextIndex::insert(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
@@ -176,7 +175,7 @@ int FulltextIndex::insert(triagens::arango::Transaction*,
   return res;
 }
 
-int FulltextIndex::remove(triagens::arango::Transaction*,
+int FulltextIndex::remove(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool) {
   TRI_DeleteDocumentFulltextIndex(_fulltextIndex,
                                   (TRI_fulltext_doc_t)((uintptr_t)doc));

@@ -33,7 +33,7 @@
 #include "Dispatcher/Dispatcher.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class DispatcherThread;
 class Job;

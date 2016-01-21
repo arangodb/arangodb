@@ -27,9 +27,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace triagens::arango;
-
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new geo index, type "geo1"
@@ -37,7 +35,7 @@ using namespace triagens::arango;
 
 GeoIndex2::GeoIndex2(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<TRI_shape_pid_t> const& paths, bool geoJson)
     : Index(iid, collection, fields, false, true),
       _paths(paths),
@@ -63,7 +61,7 @@ GeoIndex2::GeoIndex2(
 
 GeoIndex2::GeoIndex2(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<TRI_shape_pid_t> const& paths)
     : Index(iid, collection, fields, false, true),
       _paths(paths),
@@ -150,7 +148,7 @@ void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   builder.add("sparse", VPackValue(true));
 }
 
-int GeoIndex2::insert(triagens::arango::Transaction*, TRI_doc_mptr_t const* doc,
+int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                       bool) {
   auto shaper =
       _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -202,7 +200,7 @@ int GeoIndex2::insert(triagens::arango::Transaction*, TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
 
-int GeoIndex2::remove(triagens::arango::Transaction*, TRI_doc_mptr_t const* doc,
+int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                       bool) {
   TRI_shaped_json_t shapedJson;
 
@@ -241,7 +239,7 @@ int GeoIndex2::remove(triagens::arango::Transaction*, TRI_doc_mptr_t const* doc,
 /// @brief looks up all points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::withinQuery(triagens::arango::Transaction* trx,
+GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx,
                                        double lat, double lon,
                                        double radius) const {
   GeoCoordinate gc;
@@ -255,7 +253,7 @@ GeoCoordinates* GeoIndex2::withinQuery(triagens::arango::Transaction* trx,
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::nearQuery(triagens::arango::Transaction* trx,
+GeoCoordinates* GeoIndex2::nearQuery(arangodb::Transaction* trx,
                                      double lat, double lon,
                                      size_t count) const {
   GeoCoordinate gc;

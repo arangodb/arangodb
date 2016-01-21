@@ -33,8 +33,6 @@
 
 #define INITIAL_SIZE (11)
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new element
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,9 +202,12 @@ void* TRI_LookupByKeyAssociativePointer(TRI_associative_pointer_t* array,
     return nullptr;
   }
 
+  TRI_ASSERT(array->_nrAlloc > 0);
+
   // compute the hash
-  uint64_t hash = array->hashKey(array, key);
-  uint64_t i = hash % array->_nrAlloc;
+  uint64_t const hash = array->hashKey(array, key);
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i = hash % n;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -216,7 +217,7 @@ void* TRI_LookupByKeyAssociativePointer(TRI_associative_pointer_t* array,
   // search the table
   while (array->_table[i] != nullptr &&
          !array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
+    i = TRI_IncModU64(i, n);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
@@ -232,9 +233,16 @@ void* TRI_LookupByKeyAssociativePointer(TRI_associative_pointer_t* array,
 
 void* TRI_LookupByElementAssociativePointer(TRI_associative_pointer_t* array,
                                             void const* element) {
+  if (array->_nrUsed == 0) {
+    return nullptr;
+  }
+
   // compute the hash
   uint64_t const hash = array->hashElement(array, element);
   uint64_t const n = array->_nrAlloc;
+
+  TRI_ASSERT(n > 0);
+
   uint64_t i, k;
   i = k = hash % n;
 

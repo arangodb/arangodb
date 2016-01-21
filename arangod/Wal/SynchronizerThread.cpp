@@ -31,7 +31,7 @@
 #include "Wal/Slots.h"
 #include "Wal/SyncRegion.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 
 
@@ -118,7 +118,7 @@ void SynchronizerThread::run() {
             break;
           }
         }
-      } catch (triagens::basics::Exception const& ex) {
+      } catch (arangodb::basics::Exception const& ex) {
         int res = ex.code();
         LOG_ERROR("got unexpected error in synchronizerThread: %s",
                   TRI_errno_string(res));

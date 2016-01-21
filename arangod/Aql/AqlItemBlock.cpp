@@ -24,10 +24,10 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,7 +523,7 @@ AqlItemBlock* AqlItemBlock::concatenate(
 ///                      such that actual indices start at 2
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlItemBlock::toJson(triagens::arango::AqlTransaction* trx) const {
+Json AqlItemBlock::toJson(arangodb::AqlTransaction* trx) const {
   Json json(Json::Object, 6);
   json("nrItems", Json(static_cast<double>(_nrItems)))(
       "nrRegs", Json(static_cast<double>(_nrRegs)));

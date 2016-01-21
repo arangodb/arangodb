@@ -27,8 +27,8 @@
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/TraversalNode.h"
 
-using namespace triagens::aql;
-using EN = triagens::aql::ExecutionNode;
+using namespace arangodb::aql;
+using EN = arangodb::aql::ExecutionNode;
 
 static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
                                             TraversalNode* tn,

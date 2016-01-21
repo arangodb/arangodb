@@ -33,7 +33,7 @@
 
 #include <list>
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 class GeneralClientConnection;
 }
@@ -42,9 +42,7 @@ namespace rest {
 class Endpoint;
 }
 
-namespace arango {
 class AgencyComm;
-
 
 struct AgencyEndpoint {
   
@@ -52,8 +50,8 @@ struct AgencyEndpoint {
   /// @brief creates an agency endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyEndpoint(triagens::rest::Endpoint*,
-                 triagens::httpclient::GeneralClientConnection*);
+  AgencyEndpoint(arangodb::rest::Endpoint*,
+                 arangodb::httpclient::GeneralClientConnection*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys an agency endpoint
@@ -66,13 +64,13 @@ struct AgencyEndpoint {
   /// @brief the endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::Endpoint* _endpoint;
+  arangodb::rest::Endpoint* _endpoint;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::httpclient::GeneralClientConnection* _connection;
+  arangodb::httpclient::GeneralClientConnection* _connection;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the endpoint is busy
@@ -556,7 +554,7 @@ class AgencyComm {
   /// @brief sends an HTTP request to the agency, handling failover
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendWithFailover(triagens::rest::HttpRequest::HttpRequestType, double,
+  bool sendWithFailover(arangodb::rest::HttpRequest::HttpRequestType, double,
                         AgencyCommResult&, std::string const&,
                         std::string const&, bool);
 
@@ -564,8 +562,8 @@ class AgencyComm {
   /// @brief sends data to the URL
   //////////////////////////////////////////////////////////////////////////////
 
-  bool send(triagens::httpclient::GeneralClientConnection*,
-            triagens::rest::HttpRequest::HttpRequestType, double,
+  bool send(arangodb::httpclient::GeneralClientConnection*,
+            arangodb::rest::HttpRequest::HttpRequestType, double,
             AgencyCommResult&, std::string const&, std::string const&);
 
   
@@ -594,7 +592,7 @@ class AgencyComm {
   /// @brief endpoints lock
   //////////////////////////////////////////////////////////////////////////////
 
-  static triagens::basics::ReadWriteLock _globalLock;
+  static arangodb::basics::ReadWriteLock _globalLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief all endpoints
@@ -627,8 +625,6 @@ class AgencyComm {
   static unsigned long const MaxSleepTime = 50000;
 };
 }
-}
 
 #endif
-
 

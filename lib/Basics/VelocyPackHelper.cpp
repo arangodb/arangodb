@@ -34,7 +34,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-using VelocyPackHelper = triagens::basics::VelocyPackHelper;
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 struct AttributeSorter {
   bool operator() (std::string const& l, std::string const& r) const {
@@ -105,6 +105,18 @@ std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string value, or the default value if it is not a string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
+                                             std::string const& defaultValue) {
+  if (!slice.isString()) {
+    return defaultValue;
+  }
+  return slice.copyString();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or the default value if it does not
 /// exist
 /// or it is not a string
@@ -126,7 +138,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 
 uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
   if (slice.isString()) {
-    return triagens::basics::StringUtils::uint64(slice.copyString());
+    return arangodb::basics::StringUtils::uint64(slice.copyString());
   }
   if (slice.isNumber()) {
     return slice.getNumericValue<uint64_t>();
@@ -171,7 +183,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
 
   TRI_string_buffer_t buffer;
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-  triagens::basics::VPackStringBufferAdapter bufferAdapter(&buffer);
+  arangodb::basics::VPackStringBufferAdapter bufferAdapter(&buffer);
   try {
     VPackDumper dumper(&bufferAdapter);
     dumper.dump(slice);

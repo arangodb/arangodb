@@ -34,7 +34,7 @@ struct TRI_json_t;
 struct TRI_program_options_s;
 struct TRI_PO_section_s;
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 

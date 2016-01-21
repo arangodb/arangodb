@@ -41,7 +41,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -393,7 +393,7 @@ class AssocMulti {
 
     typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
 
-    triagens::basics::Mutex bucketMapLocker;
+    arangodb::basics::Mutex bucketMapLocker;
 
     std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
 
@@ -1424,8 +1424,8 @@ class AssocMulti {
   }
 };
 
-}  // namespace triagens::basics
-}  // namespace triagens
+}  // namespace arangodb::basics
+}  // namespace arangodb
 
 #endif
 

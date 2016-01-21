@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Job.h"
-
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Dispatcher/DispatcherQueue.h"
@@ -31,11 +30,9 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new V8 job
@@ -127,7 +124,7 @@ void V8Job::work() {
                 "caught non-catchable exception (aka termination) in job");
           }
         }
-      } catch (triagens::basics::Exception const& ex) {
+      } catch (arangodb::basics::Exception const& ex) {
         LOG_ERROR("caught exception in V8 job: %s %s",
                   TRI_errno_string(ex.code()), ex.what());
       } catch (std::bad_alloc const&) {

@@ -25,8 +25,8 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
-using Json = triagens::basics::Json;
-using CollectionNameResolver = triagens::arango::CollectionNameResolver;
+using Json = arangodb::basics::Json;
+using CollectionNameResolver = arangodb::CollectionNameResolver;
 
 Json TRI_ExpandShapedJson(VocShaper* shaper,
                           CollectionNameResolver const* resolver,
@@ -34,7 +34,12 @@ Json TRI_ExpandShapedJson(VocShaper* shaper,
                           TRI_df_marker_t const* marker) {
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
-  Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
+
+  auto s = TRI_JsonShapedJson(shaper, &shaped);
+  if (s == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  Json json(shaper->memoryZone(), s);
 
   // append the internal attributes
 

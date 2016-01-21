@@ -32,10 +32,10 @@ namespace arangodb {
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestDebugHandler : public triagens::arango::RestVocbaseBaseHandler {
+class RestDebugHandler : public arangodb::RestVocbaseBaseHandler {
  public:
 
-  explicit RestDebugHandler(triagens::rest::HttpRequest*);
+  explicit RestDebugHandler(arangodb::rest::HttpRequest*);
 
  public:
 

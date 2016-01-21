@@ -29,7 +29,7 @@
 #include "Aql/QueryResult.h"
 #include <v8.h>
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 

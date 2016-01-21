@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class ApplicationServer;
 

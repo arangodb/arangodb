@@ -31,8 +31,8 @@
 
 #include <iomanip>
 
-using namespace triagens;
-using namespace triagens::basics;
+using namespace arangodb;
+using namespace arangodb::basics;
 using namespace std;
 
 // -----------------------------------------------------------------------------

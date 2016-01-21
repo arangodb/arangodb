@@ -28,7 +28,7 @@
 #include "Basics/logging.h"
 #endif
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 ////////////////////////////////////////////////////////////////////////////////

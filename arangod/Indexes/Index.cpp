@@ -25,7 +25,6 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
-#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
@@ -39,11 +38,11 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::arango;
+using namespace arangodb;
 
 Index::Index(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : _iid(iid),
       _collection(collection),
@@ -61,14 +60,14 @@ Index::Index(
 ////////////////////////////////////////////////////////////////////////////////
 
 Index::Index(VPackSlice const& slice)
-    : _iid(triagens::basics::StringUtils::uint64(
-          triagens::basics::VelocyPackHelper::checkAndGetStringValue(slice,
+    : _iid(arangodb::basics::StringUtils::uint64(
+          arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice,
                                                                      "id"))),
       _collection(nullptr),
       _fields(),
-      _unique(triagens::basics::VelocyPackHelper::getBooleanValue(
+      _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "unique", false)),
-      _sparse(triagens::basics::VelocyPackHelper::getBooleanValue(
+      _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "sparse", false)),
       _selectivityEstimate(0.0) {
   VPackSlice const fields = slice.get("fields");
@@ -87,13 +86,13 @@ Index::Index(VPackSlice const& slice)
                                      "invalid index description");
     }
 
-    std::vector<triagens::basics::AttributeName> parsedAttributes;
+    std::vector<arangodb::basics::AttributeName> parsedAttributes;
     TRI_ParseAttributeString(name.copyString(), parsedAttributes);
     _fields.emplace_back(parsedAttributes);
   }
 
   _selectivityEstimate =
-      triagens::basics::VelocyPackHelper::getNumericValue<double>(
+      arangodb::basics::VelocyPackHelper::getNumericValue<double>(
           slice, "selectivityEstimate", 0.0);
 }
 
@@ -245,7 +244,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
   TRI_ASSERT(lhsType.isString());
 
   // type must be identical
-  if (triagens::basics::VelocyPackHelper::compare(lhsType, rhs.get("type"),
+  if (arangodb::basics::VelocyPackHelper::compare(lhsType, rhs.get("type"),
                                                   false) != 0) {
     return false;
   }
@@ -256,7 +255,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
   // unique must be identical if present
   VPackSlice value = lhs.get("unique");
   if (value.isBoolean()) {
-    if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("unique"),
+    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("unique"),
                                                     false) != 0) {
       return false;
     }
@@ -265,7 +264,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
   // sparse must be identical if present
   value = lhs.get("sparse");
   if (value.isBoolean()) {
-    if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("sparse"),
+    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("sparse"),
                                                     false) != 0) {
       return false;
     }
@@ -275,7 +274,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     // geoJson must be identical if present
     value = lhs.get("geoJson");
     if (value.isBoolean()) {
-      if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("geoJson"),
+      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("geoJson"),
                                                       false) != 0) {
         return false;
       }
@@ -284,7 +283,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     // minLength
     value = lhs.get("minLength");
     if (value.isNumber()) {
-      if (triagens::basics::VelocyPackHelper::compare(
+      if (arangodb::basics::VelocyPackHelper::compare(
               value, rhs.get("minLength"), false) != 0) {
         return false;
       }
@@ -293,7 +292,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     // size, byteSize
     value = lhs.get("size");
     if (value.isNumber()) {
-      if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("size"),
+      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("size"),
                                                       false) != 0) {
         return false;
       }
@@ -301,7 +300,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
 
     value = lhs.get("byteSize");
     if (value.isNumber()) {
-      if (triagens::basics::VelocyPackHelper::compare(
+      if (arangodb::basics::VelocyPackHelper::compare(
               value, rhs.get("byteSize"), false) != 0) {
         return false;
       }
@@ -328,7 +327,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
         bool found = false;
 
         for (auto const& vr : VPackArrayIterator(r)) {
-          if (triagens::basics::VelocyPackHelper::compare(v, vr, false) == 0) {
+          if (arangodb::basics::VelocyPackHelper::compare(v, vr, false) == 0) {
             found = true;
             break;
           }
@@ -339,7 +338,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
         }
       }
     } else {
-      if (triagens::basics::VelocyPackHelper::compare(value, rhs.get("fields"),
+      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("fields"),
                                                       false) != 0) {
         return false;
       }
@@ -445,13 +444,13 @@ void Index::toVelocyPackFigures(VPackBuilder& builder) const {
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json Index::toJson(TRI_memory_zone_t* zone,
+arangodb::basics::Json Index::toJson(TRI_memory_zone_t* zone,
                                      bool withFigures) const {
   // Only compatibility
   auto builder = toVelocyPack(withFigures);
-  triagens::basics::Json json(
+  arangodb::basics::Json json(
       zone,
-      triagens::basics::VelocyPackHelper::velocyPackToJson(builder->slice()));
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(builder->slice()));
   return json;
 }
 
@@ -460,11 +459,11 @@ triagens::basics::Json Index::toJson(TRI_memory_zone_t* zone,
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json Index::toJsonFigures(TRI_memory_zone_t* zone) const {
+arangodb::basics::Json Index::toJsonFigures(TRI_memory_zone_t* zone) const {
   auto builder = toVelocyPackFigures();
-  triagens::basics::Json json(
+  arangodb::basics::Json json(
       zone,
-      triagens::basics::VelocyPackHelper::velocyPackToJson(builder->slice()));
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(builder->slice()));
   return json;
 }
 
@@ -480,7 +479,7 @@ double Index::selectivityEstimate() const {
 /// @brief default implementation for selectivityEstimate
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::batchInsert(triagens::arango::Transaction*,
+int Index::batchInsert(arangodb::Transaction*,
                        std::vector<TRI_doc_mptr_t const*> const*, size_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -489,7 +488,7 @@ int Index::batchInsert(triagens::arango::Transaction*,
 /// @brief default implementation for postInsert
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::postInsert(triagens::arango::Transaction*,
+int Index::postInsert(arangodb::Transaction*,
                       struct TRI_transaction_collection_s*,
                       struct TRI_doc_mptr_t const*) {
   // do nothing
@@ -509,7 +508,7 @@ int Index::cleanup() {
 /// @brief default implementation for sizeHint
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::sizeHint(triagens::arango::Transaction*, size_t) {
+int Index::sizeHint(arangodb::Transaction*, size_t) {
   // do nothing
   return TRI_ERROR_NO_ERROR;
 }
@@ -524,8 +523,8 @@ bool Index::hasBatchInsert() const { return false; }
 /// @brief default implementation for supportsFilterCondition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::supportsFilterCondition(triagens::aql::AstNode const* node,
-                                    triagens::aql::Variable const* reference,
+bool Index::supportsFilterCondition(arangodb::aql::AstNode const* node,
+                                    arangodb::aql::Variable const* reference,
                                     size_t itemsInIndex, size_t& estimatedItems,
                                     double& estimatedCost) const {
   // by default, no filter conditions are supported
@@ -538,8 +537,8 @@ bool Index::supportsFilterCondition(triagens::aql::AstNode const* node,
 /// @brief default implementation for supportsSortCondition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::supportsSortCondition(triagens::aql::SortCondition const*,
-                                  triagens::aql::Variable const*,
+bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
+                                  arangodb::aql::Variable const*,
                                   size_t itemsInIndex,
                                   double& estimatedCost) const {
   // by default, no sort conditions are supported
@@ -556,8 +555,8 @@ bool Index::supportsSortCondition(triagens::aql::SortCondition const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* Index::iteratorForCondition(
-    triagens::arango::Transaction*, IndexIteratorContext*, triagens::aql::Ast*,
-    triagens::aql::AstNode const*, triagens::aql::Variable const*, bool) const {
+    arangodb::Transaction*, IndexIteratorContext*, arangodb::aql::Ast*,
+    arangodb::aql::AstNode const*, arangodb::aql::Variable const*, bool) const {
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
   return nullptr;
@@ -567,8 +566,8 @@ IndexIterator* Index::iteratorForCondition(
 /// @brief specializes the condition for use with the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* Index::specializeCondition(
-    triagens::aql::AstNode* node, triagens::aql::Variable const*) const {
+arangodb::aql::AstNode* Index::specializeCondition(
+    arangodb::aql::AstNode* node, arangodb::aql::Variable const*) const {
   return node;
 }
 
@@ -576,19 +575,19 @@ triagens::aql::AstNode* Index::specializeCondition(
 /// @brief perform some base checks for an index condition part
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::canUseConditionPart(triagens::aql::AstNode const* access,
-                                triagens::aql::AstNode const* other,
-                                triagens::aql::AstNode const* op,
-                                triagens::aql::Variable const* reference,
+bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
+                                arangodb::aql::AstNode const* other,
+                                arangodb::aql::AstNode const* op,
+                                arangodb::aql::Variable const* reference,
                                 bool isExecution) const {
   if (_sparse) {
-    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
+    if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;
     }
 
-    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-        (other->type == triagens::aql::NODE_TYPE_EXPANSION ||
-         other->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
+    if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+        (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
+         other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
       // value IN a.b  OR  value IN a.b[*]
       if (!access->isConstant()) {
         return false;
@@ -599,8 +598,8 @@ bool Index::canUseConditionPart(triagens::aql::AstNode const* access,
         return false;
       }
       */
-    } else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-               access->type == triagens::aql::NODE_TYPE_EXPANSION) {
+    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+               access->type == arangodb::aql::NODE_TYPE_EXPANSION) {
       // value[*] IN a.b
       if (!other->isConstant()) {
         return false;
@@ -611,29 +610,29 @@ bool Index::canUseConditionPart(triagens::aql::AstNode const* access,
         return false;
       }
       */
-    } else if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    } else if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values
       if (!other->isConstant()) {
         return false;
       }
 
-      if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
-          op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
+      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+          op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
         // <  and  <= are not supported with sparse indexes as this may include
         // null values
         return false;
       }
 
       if (other->isNullValue() &&
-          (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-           op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
+          (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+           op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
         // ==  and  >= null are not supported with sparse indexes for the same
         // reason
         return false;
       }
 
-      if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-          other->type == triagens::aql::NODE_TYPE_ARRAY) {
+      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+          other->type == arangodb::aql::NODE_TYPE_ARRAY) {
         size_t const n = other->numMembers();
 
         for (size_t i = 0; i < n; ++i) {
@@ -652,14 +651,14 @@ bool Index::canUseConditionPart(triagens::aql::AstNode const* access,
 
   // test if the reference variable is contained on both side of the expression
   std::unordered_set<aql::Variable const*> variables;
-  if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-      (other->type == triagens::aql::NODE_TYPE_EXPANSION ||
-       other->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
+  if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+      (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
+       other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
-    triagens::aql::Ast::getReferencedVariables(access, variables);
+    arangodb::aql::Ast::getReferencedVariables(access, variables);
   } else {
     // a.b == value  OR  a.b IN values
-    triagens::aql::Ast::getReferencedVariables(other, variables);
+    arangodb::aql::Ast::getReferencedVariables(other, variables);
   }
   if (variables.find(reference) != variables.end()) {
     // yes. then we cannot use an index here
@@ -674,7 +673,7 @@ bool Index::canUseConditionPart(triagens::aql::AstNode const* access,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         triagens::arango::Index const* index) {
+                         arangodb::Index const* index) {
   stream << index->context();
   return stream;
 }
@@ -684,7 +683,7 @@ std::ostream& operator<<(std::ostream& stream,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         triagens::arango::Index const& index) {
+                         arangodb::Index const& index) {
   stream << index.context();
   return stream;
 }

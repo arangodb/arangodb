@@ -34,7 +34,7 @@
 #include <boost/lockfree/queue.hpp>
 
 using namespace arangodb;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief singleton
@@ -129,6 +129,7 @@ static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
     case WorkType::THREAD:
       b->add("type", VPackValue("thread"));
       b->add("name", VPackValue(desc->_data.thread->name()));
+      b->add("number", VPackValue(desc->_data.thread->threadNumber()));
       b->add("status", VPackValue(VPackValueType::Object));
       desc->_data.thread->addStatus(b);
       b->close();
@@ -156,7 +157,7 @@ WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
     : _type(type), _destroy(true), _prev(prev) {}
 
 
-WorkMonitor::WorkMonitor() : Thread("Work Monitor"), _stopping(false) {}
+WorkMonitor::WorkMonitor() : Thread("WorkMonitor"), _stopping(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty WorkDescription
@@ -336,6 +337,10 @@ void WorkMonitor::requestWorkOverview(uint64_t taskId) {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the main event loop, wait for requests and delete old descriptions
+////////////////////////////////////////////////////////////////////////////////
+
 void WorkMonitor::run() {
   uint32_t const maxSleep = 100 * 1000;
   uint32_t const minSleep = 100;
@@ -427,17 +432,14 @@ void WorkMonitor::run() {
   }
 }
 
-
 CustomWorkStack::CustomWorkStack(char const* type, char const* text,
                                  size_t length) {
   WorkMonitor::pushCustom(type, text, length);
 }
 
-
 CustomWorkStack::CustomWorkStack(char const* type, uint64_t id) {
   WorkMonitor::pushCustom(type, id);
 }
-
 
 CustomWorkStack::~CustomWorkStack() { WorkMonitor::popCustom(); }
 

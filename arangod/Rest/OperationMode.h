@@ -28,7 +28,7 @@
 
 #include "Basics/ProgramOptions.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 
@@ -53,7 +53,7 @@ class OperationMode {
   //////////////////////////////////////////////////////////////////////////////
 
   static server_operation_mode_e determineMode(
-      const triagens::basics::ProgramOptions& options) {
+      const arangodb::basics::ProgramOptions& options) {
     if (options.has("console")) {
       return MODE_CONSOLE;
     } else if (options.has("javascript.unit-tests")) {

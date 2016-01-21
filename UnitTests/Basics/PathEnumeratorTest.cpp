@@ -29,8 +29,8 @@
 
 #include "Basics/Traverser.h"
 
-using namespace triagens;
-using namespace triagens::basics;
+using namespace arangodb;
+using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

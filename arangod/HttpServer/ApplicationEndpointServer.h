@@ -34,7 +34,7 @@
 #include "HttpServer/HttpHandlerFactory.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class ApplicationDispatcher;
 class ApplicationScheduler;

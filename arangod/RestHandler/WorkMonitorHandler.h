@@ -31,10 +31,10 @@ namespace arangodb {
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class WorkMonitorHandler : public triagens::admin::RestBaseHandler {
+class WorkMonitorHandler : public arangodb::admin::RestBaseHandler {
  public:
 
-  explicit WorkMonitorHandler(triagens::rest::HttpRequest*);
+  explicit WorkMonitorHandler(arangodb::rest::HttpRequest*);
 
  public:
 

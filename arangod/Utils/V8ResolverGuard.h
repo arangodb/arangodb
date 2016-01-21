@@ -32,8 +32,7 @@
 #include "V8/v8-globals.h"
 #include <v8.h>
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class V8ResolverGuard {
   
@@ -96,8 +95,6 @@ class V8ResolverGuard {
   bool _ownResolver;
 };
 }
-}
 
 #endif
-
 

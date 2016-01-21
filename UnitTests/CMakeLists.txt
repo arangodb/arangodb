@@ -61,6 +61,7 @@ add_executable(
     Basics/EndpointTest.cpp
     Basics/StringBufferTest.cpp
     Basics/StringUtilsTest.cpp
+    ../lib/Basics/WorkMonitorDummy.cpp
 )
 
 target_link_libraries(
@@ -84,6 +85,7 @@ add_executable(
     ${TEST_GEO_SUITE}
     Geo/Runner.cpp
     Geo/georeg.cpp
+    ../lib/Basics/WorkMonitorDummy.cpp
     ../arangod/GeoIndex/GeoIndex.cpp
 )
 

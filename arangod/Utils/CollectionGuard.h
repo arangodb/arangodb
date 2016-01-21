@@ -29,9 +29,7 @@
 #include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 class CollectionGuard {
   
@@ -84,7 +82,7 @@ class CollectionGuard {
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(restoreOriginalStatus) {
     if (name != nullptr && *name >= '0' && *name <= '9') {
-      TRI_voc_cid_t id = triagens::basics::StringUtils::uint64(name);
+      TRI_voc_cid_t id = arangodb::basics::StringUtils::uint64(name);
       _collection = TRI_UseCollectionByIdVocBase(_vocbase, id, _originalStatus);
     } else {
       _collection =
@@ -156,8 +154,6 @@ class CollectionGuard {
   bool _restoreOriginalStatus;
 };
 }
-}
 
 #endif
-
 

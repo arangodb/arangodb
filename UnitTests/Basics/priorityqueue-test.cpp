@@ -77,7 +77,7 @@ BOOST_FIXTURE_TEST_SUITE(CPriorityQueueTest, CPriorityQueueSetup)
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_deque_case) {
-  triagens::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
   BOOST_CHECK_EQUAL(0, (int) pq.size());
   BOOST_CHECK_EQUAL(true, pq.empty());
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_heap_case) {
-  triagens::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
   BOOST_CHECK_EQUAL(0, (int) pq.size());
   BOOST_CHECK_EQUAL(true, pq.empty());
@@ -261,7 +261,7 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
-  triagens::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
   BOOST_CHECK_EQUAL(0, (int) pq.size());
   BOOST_CHECK_EQUAL(true, pq.empty());
@@ -355,7 +355,7 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
-  triagens::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
   BOOST_CHECK_EQUAL(0, (int) pq.size());
   BOOST_CHECK_EQUAL(true, pq.empty());

@@ -31,6 +31,8 @@
 static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
                                   TRI_json_t const* lhs, TRI_json_t const* rhs,
                                   bool nullMeansRemove, bool mergeObjects) {
+  TRI_ASSERT(lhs != nullptr);
+
   std::unique_ptr<TRI_json_t> result(TRI_CopyJson(zone, lhs));
 
   if (result == nullptr) {
@@ -142,6 +144,10 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
     return nullptr;
   }
 
+  if (TRI_CapacityVector(&(keys.get()->_value._objects)) < n) {
+    return nullptr;
+  }
+
   n = TRI_LengthVector(&lhs->_value._objects);
 
   for (size_t i = 0; i < n; i += 2) {
@@ -168,7 +174,6 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
   // array is now sorted
   return TRI_UniquifyArrayJson(keys.get());
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two json values
@@ -236,6 +241,8 @@ int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE: {
       // same for STRING and STRING_REFERENCE
+      TRI_ASSERT(lhs->_value._string.data != nullptr);
+      TRI_ASSERT(rhs->_value._string.data != nullptr);
       int res;
       size_t const nl = lhs->_value._string.length - 1;
       size_t const nr = rhs->_value._string.length - 1;

@@ -27,9 +27,7 @@
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query request handler
@@ -69,7 +67,6 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
 
   bool clearCache();
 };
-}
 }
 
 #endif

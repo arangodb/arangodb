@@ -29,7 +29,7 @@
 #include "ApplicationServer/ApplicationFeature.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class ApplicationServer;
 class Scheduler;

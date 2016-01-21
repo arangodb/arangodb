@@ -35,19 +35,41 @@
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 #include "Basics/WorkMonitor.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief local thread number
+////////////////////////////////////////////////////////////////////////////////
+
+static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
+
+#ifndef TRI_HAVE_GETTID
+
+namespace {
+std::atomic_uint_fast64_t NEXT_THREAD_ID(1);
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static started with access to the private variables
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::startThread(void* arg) {
+#ifdef TRI_HAVE_GETTID
+  LOCAL_THREAD_NUMBER = (uint64_t)_gettid();
+#else
+  LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);
+#endif
+
   Thread* ptr = static_cast<Thread*>(arg);
+
+  ptr->_threadNumber = LOCAL_THREAD_NUMBER;
 
   WorkMonitor::pushThread(ptr);
 
@@ -62,7 +84,6 @@ void Thread::startThread(void* arg) {
   WorkMonitor::popThread(ptr);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the process id
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,16 +94,13 @@ TRI_pid_t Thread::currentProcessId() { return TRI_CurrentProcessId(); }
 /// @brief returns the thread process id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_pid_t Thread::currentThreadProcessId() {
-  return TRI_CurrentThreadProcessId();
-}
+uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the thread id
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_tid_t Thread::currentThreadId() { return TRI_CurrentThreadId(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a thread
@@ -137,7 +155,6 @@ Thread::~Thread() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the thread is chatty on shutdown
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,7 +174,13 @@ std::string const& Thread::name() const { return _name; }
 bool Thread::isRunning() { return _running; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a thread identifier
+/// @brief returns the thread number
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t Thread::threadNumber() const { return _threadNumber; }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the system thread identifier
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_tid_t Thread::threadId() { return _threadId; }
@@ -175,9 +198,8 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
   _started = true;
 
-  std::string text = "[" + _name + "]";
   bool ok =
-      TRI_StartThread(&_thread, &_threadId, text.c_str(), &startThread, this);
+      TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
   if (!ok) {
     LOG_ERROR("could not start thread '%s': %s", _name.c_str(),
@@ -292,7 +314,6 @@ void Thread::addStatus(VPackBuilder* b) {
   b->add("affinity", VPackValue(_affinity));
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows asynchronous cancelation
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,7 +339,6 @@ void Thread::allowAsynchronousCancelation() {
     _asynchronousCancelation = true;
   }
 }
-
 
 void Thread::runMe() {
   if (_asynchronousCancelation) {
@@ -354,5 +374,3 @@ void Thread::runMe() {
     locker.broadcast();
   }
 }
-
-

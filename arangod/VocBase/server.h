@@ -35,7 +35,7 @@
 
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class QueryRegistry;
 }
@@ -64,16 +64,16 @@ struct TRI_server_t {
 
   std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
-  // triagens::basics::DataProtector<64>
-  triagens::basics::DataProtector _databasesProtector;
-  triagens::basics::Mutex _databasesMutex;
+  // arangodb::basics::DataProtector<64>
+  arangodb::basics::DataProtector _databasesProtector;
+  arangodb::basics::Mutex _databasesMutex;
 
   TRI_thread_t _databaseManager;
 
   TRI_vocbase_defaults_t _defaults;
-  triagens::rest::ApplicationEndpointServer* _applicationEndpointServer;
-  triagens::basics::ThreadPool* _indexPool;
-  std::atomic<triagens::aql::QueryRegistry*> _queryRegistry;
+  arangodb::rest::ApplicationEndpointServer* _applicationEndpointServer;
+  arangodb::basics::ThreadPool* _indexPool;
+  std::atomic<arangodb::aql::QueryRegistry*> _queryRegistry;
 
   char* _basePath;
   char* _databasePath;
@@ -98,8 +98,8 @@ extern size_t PageSize;
 /// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitServer(TRI_server_t*, triagens::rest::ApplicationEndpointServer*,
-                   triagens::basics::ThreadPool*, char const*, char const*,
+int TRI_InitServer(TRI_server_t*, arangodb::rest::ApplicationEndpointServer*,
+                   arangodb::basics::ThreadPool*, char const*, char const*,
                    TRI_vocbase_defaults_t const*, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
