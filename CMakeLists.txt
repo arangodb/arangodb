@@ -51,6 +51,10 @@ set(ARANGO_IMP_FRIENDLY_STRING  "arangoimp - import CSV files into ArangoDB")
 set(ARANGO_RESTORE_HELP_LINK    "arangrestore - import dumpfiles created with arangodump into ArangoDB")
 set(ARANGOSH_HELP_LINK          "arangosh - commandline client of ArangoDB")
 
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/local-configuration.h.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/local-configuration.h")
+
 
 ################################################################################
 ### @brief BUILD_PACKAGE
