@@ -422,13 +422,21 @@ dnl ----------------------------------------------------------------------------
 BOOST_VERSION="1.58.0"
 BOOST_CPPFLAGS="-I${srcdir}/3rdParty/boost/${BOOST_VERSION}"
 
+AC_ARG_ENABLE(boost-tests,
+  AS_HELP_STRING([--enable-boost-tests], [generate the unittests based on boost (default: $USE_MAINTAINER_MODE)]),
+  [tr_BOOST_TESTS="${enableval:-yes}"],
+  [tr_BOOST_TESTS="$USE_MAINTAINER_MODE"]
+)
+
+AM_CONDITIONAL(ENABLE_BOOST_TESTS, test "x$tr_BOOST_TESTS" = xyes)
+
 AC_SUBST(BOOST_VERSION)
 AC_SUBST(BOOST_CPPFLAGS)
 
 LIB_INFO="$LIB_INFO|BOOST: 3rdParty version"
 LIB_INFO="$LIB_INFO|BOOST VERSION: ${BOOST_VERSION}"
-
 LIB_INFO="$LIB_INFO|BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|BOOST_TESTS: ${tr_BOOST_TESTS}"
 LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
