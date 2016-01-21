@@ -3147,7 +3147,7 @@ static void CreateDatabaseCoordinator(
   uint64_t const id = ClusterInfo::instance()->uniqid();
   VPackBuilder builder;
   try {
-    builder.openObject();
+    VPackObjectBuilder b(&builder);
     std::string const idString(StringUtils::itoa(id));
 
     builder.add("id", VPackValue(idString));
@@ -3165,7 +3165,6 @@ static void CreateDatabaseCoordinator(
 
     std::string const serverId(ServerState::instance()->getId());
     builder.add("coordinator", VPackValue(serverId));
-
   } catch (VPackException const& e) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
