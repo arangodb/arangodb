@@ -103,7 +103,7 @@ if (typeof internal.arango !== 'undefined') {
 exports.plainServerVersion = function() {
   if (internal.arango) {
     let version = internal.arango.getVersion();
-    let devel = version.match(/(.*)-(rc[0-9]*|devel)$/);
+    let devel = version.match(/(.*)-((alpha|beta|devel|rc)[0-9]*)$/);
 
     if (devel !== null) {
       version = devel[1];
