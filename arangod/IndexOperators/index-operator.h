@@ -29,6 +29,11 @@
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 
+namespace arangodb {
+  namespace velocypack {
+    class Slice;
+  }
+}
 class VocShaper;
 
 
@@ -155,6 +160,9 @@ TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e,
                                               TRI_index_operator_t*,
                                               TRI_index_operator_t*,
                                               TRI_json_t*, VocShaper*, size_t);
+
+TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e,
+                                              TRI_index_operator_t*,
+                                              TRI_index_operator_t*,
+                                              arangodb::velocypack::Slice const&, VocShaper*, size_t);
 #endif
-
-

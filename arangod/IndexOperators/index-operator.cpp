@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index-operator.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/VocShaper.h"
 
 TRI_relation_index_operator_t::~TRI_relation_index_operator_t() {
@@ -68,4 +69,12 @@ TRI_index_operator_t* TRI_CreateIndexOperator(
   }  // end of switch statement
 }
 
-
+TRI_index_operator_t* TRI_CreateIndexOperator(
+    TRI_index_operator_type_e operatorType, TRI_index_operator_t* leftOperand,
+    TRI_index_operator_t* rightOperand, VPackSlice const& parameters,
+    VocShaper* shaper, size_t numFields) {
+  std::unique_ptr<TRI_json_t> tmp(
+      triagens::basics::VelocyPackHelper::velocyPackToJson(parameters));
+  return TRI_CreateIndexOperator(operatorType, leftOperand, rightOperand,
+                                 tmp.release(), shaper, numFields);
+}
