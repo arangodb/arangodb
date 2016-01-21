@@ -2199,8 +2199,16 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   TRI_DestroyVector(&openState._operations);
 
   // update the real statistics for the collection
-  for (auto& it : openState._stats) {
-    document->_datafileStatistics.create(it.first, *(it.second));
+  try {
+    for (auto& it : openState._stats) {
+      document->_datafileStatistics.create(it.first, *(it.second));
+    }
+  }
+  catch (basics::Exception const& ex) {
+    return ex.code();
+  }
+  catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
 
   return TRI_ERROR_NO_ERROR;
