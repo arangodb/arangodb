@@ -24,7 +24,7 @@
 #include "ThreadPool.h"
 #include "Basics/WorkerThread.h"
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 

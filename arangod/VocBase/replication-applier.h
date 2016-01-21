@@ -247,7 +247,7 @@ class TRI_replication_applier_t {
  public:
   TRI_server_t* _server;
   TRI_vocbase_t* _vocbase;
-  mutable triagens::basics::ReadWriteLock _statusLock;
+  mutable arangodb::basics::ReadWriteLock _statusLock;
   std::atomic<bool> _terminateThread;
   TRI_replication_applier_state_t _state;
   TRI_replication_applier_configuration_t _configuration;

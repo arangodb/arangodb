@@ -29,7 +29,7 @@
 #include "ApplicationServer/ApplicationServer.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class ProgramOptionsDescription;
 }

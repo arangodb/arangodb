@@ -36,7 +36,7 @@
 
 struct TRI_json_t;
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class Json;
 }
@@ -73,7 +73,7 @@ class Expression {
   /// @brief constructor, using JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  Expression(Ast*, triagens::basics::Json const&);
+  Expression(Ast*, arangodb::basics::Json const&);
 
 
   ~Expression();
@@ -144,15 +144,15 @@ class Expression {
   /// @brief return a Json representation of the expression
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson(TRI_memory_zone_t* zone, bool verbose) const {
-    return triagens::basics::Json(zone, _node->toJson(zone, verbose));
+  arangodb::basics::Json toJson(TRI_memory_zone_t* zone, bool verbose) const {
+    return arangodb::basics::Json(zone, _node->toJson(zone, verbose));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute the expression
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue execute(triagens::arango::AqlTransaction* trx, AqlItemBlock const*,
+  AqlValue execute(arangodb::AqlTransaction* trx, AqlItemBlock const*,
                    size_t, std::vector<Variable const*> const&,
                    std::vector<RegisterId> const&,
                    TRI_document_collection_t const**);
@@ -229,7 +229,7 @@ class Expression {
   /// types
   //////////////////////////////////////////////////////////////////////////////
 
-  void stringify(triagens::basics::StringBuffer*) const;
+  void stringify(arangodb::basics::StringBuffer*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stringify an expression, if it is not too long
@@ -238,7 +238,7 @@ class Expression {
   /// types
   //////////////////////////////////////////////////////////////////////////////
 
-  void stringifyIfNotTooLong(triagens::basics::StringBuffer*) const;
+  void stringifyIfNotTooLong(arangodb::basics::StringBuffer*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief replace variables in the expression with other variables
@@ -267,6 +267,7 @@ class Expression {
   
  private:
   void setVariable(Variable const* variable, TRI_json_t const* value) {
+    TRI_ASSERT(value != nullptr);
     _variables.emplace(variable, value);
   }
 
@@ -279,7 +280,7 @@ class Expression {
   bool findInArray(AqlValue const&, AqlValue const&,
                    TRI_document_collection_t const*,
                    TRI_document_collection_t const*,
-                   triagens::arango::AqlTransaction*, AstNode const*) const;
+                   arangodb::AqlTransaction*, AstNode const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief analyze the expression (determine its type etc.)
@@ -300,7 +301,7 @@ class Expression {
 
   AqlValue executeSimpleExpression(AstNode const*,
                                    TRI_document_collection_t const**,
-                                   triagens::arango::AqlTransaction*,
+                                   arangodb::AqlTransaction*,
                                    AqlItemBlock const*, size_t,
                                    std::vector<Variable const*> const&,
                                    std::vector<RegisterId> const&, bool);
@@ -310,7 +311,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionAttributeAccess(
-      AstNode const*, triagens::arango::AqlTransaction*, AqlItemBlock const*,
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*,
       size_t, std::vector<Variable const*> const&,
       std::vector<RegisterId> const&);
 
@@ -319,7 +320,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionIndexedAccess(
-      AstNode const*, triagens::arango::AqlTransaction*, AqlItemBlock const*,
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*,
       size_t, std::vector<Variable const*> const&,
       std::vector<RegisterId> const&);
 
@@ -328,7 +329,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionArray(AstNode const*,
-                                        triagens::arango::AqlTransaction*,
+                                        arangodb::AqlTransaction*,
                                         AqlItemBlock const*, size_t,
                                         std::vector<Variable const*> const&,
                                         std::vector<RegisterId> const&);
@@ -338,7 +339,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionObject(AstNode const*,
-                                         triagens::arango::AqlTransaction*,
+                                         arangodb::AqlTransaction*,
                                          AqlItemBlock const*, size_t,
                                          std::vector<Variable const*> const&,
                                          std::vector<RegisterId> const&);
@@ -365,7 +366,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionFCall(AstNode const*,
-                                        triagens::arango::AqlTransaction*,
+                                        arangodb::AqlTransaction*,
                                         AqlItemBlock const*, size_t,
                                         std::vector<Variable const*> const&,
                                         std::vector<RegisterId> const&);
@@ -375,7 +376,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionRange(AstNode const*,
-                                        triagens::arango::AqlTransaction*,
+                                        arangodb::AqlTransaction*,
                                         AqlItemBlock const*, size_t,
                                         std::vector<Variable const*> const&,
                                         std::vector<RegisterId> const&);
@@ -385,7 +386,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionNot(AstNode const*,
-                                      triagens::arango::AqlTransaction*,
+                                      arangodb::AqlTransaction*,
                                       AqlItemBlock const*, size_t,
                                       std::vector<Variable const*> const&,
                                       std::vector<RegisterId> const&);
@@ -395,7 +396,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionAndOr(AstNode const*,
-                                        triagens::arango::AqlTransaction*,
+                                        arangodb::AqlTransaction*,
                                         AqlItemBlock const*, size_t,
                                         std::vector<Variable const*> const&,
                                         std::vector<RegisterId> const&);
@@ -405,7 +406,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionComparison(
-      AstNode const*, triagens::arango::AqlTransaction*, AqlItemBlock const*,
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*,
       size_t, std::vector<Variable const*> const&,
       std::vector<RegisterId> const&);
 
@@ -414,7 +415,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionTernary(AstNode const*,
-                                          triagens::arango::AqlTransaction*,
+                                          arangodb::AqlTransaction*,
                                           AqlItemBlock const*, size_t,
                                           std::vector<Variable const*> const&,
                                           std::vector<RegisterId> const&);
@@ -424,7 +425,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionExpansion(AstNode const*,
-                                            triagens::arango::AqlTransaction*,
+                                            arangodb::AqlTransaction*,
                                             AqlItemBlock const*, size_t,
                                             std::vector<Variable const*> const&,
                                             std::vector<RegisterId> const&);
@@ -435,7 +436,7 @@ class Expression {
 
   AqlValue executeSimpleExpressionIterator(AstNode const*,
                                            TRI_document_collection_t const**,
-                                           triagens::arango::AqlTransaction*,
+                                           arangodb::AqlTransaction*,
                                            AqlItemBlock const*, size_t,
                                            std::vector<Variable const*> const&,
                                            std::vector<RegisterId> const&);
@@ -445,7 +446,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionArithmetic(
-      AstNode const*, triagens::arango::AqlTransaction*, AqlItemBlock const*,
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*,
       size_t, std::vector<Variable const*> const&,
       std::vector<RegisterId> const&);
 
@@ -531,7 +532,7 @@ class Expression {
   /// @brief buffer for temporary strings
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::StringBuffer _buffer;
+  arangodb::basics::StringBuffer _buffer;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief variables only temporarily valid during execution
@@ -563,8 +564,8 @@ class Expression {
   static TRI_json_t const FalseJson;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

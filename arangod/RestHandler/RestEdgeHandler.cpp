@@ -33,10 +33,10 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a string if defined, nop otherwise
@@ -219,7 +219,7 @@ bool RestEdgeHandler::createDocument() {
     generateSaved(trx, cid, mptr);
 
     return true;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::bad_alloc const&) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
@@ -243,13 +243,13 @@ bool RestEdgeHandler::createDocumentCoordinator(std::string const& collname,
                                                 char const* to) {
   std::string const& dbname = _request->databaseName();
 
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
   std::unique_ptr<TRI_json_t> json(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(document));
-  int error = triagens::arango::createEdgeOnCoordinator(
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(document));
+  int error = arangodb::createEdgeOnCoordinator(
       dbname, collname, waitForSync, json, from, to, responseCode,
       resultHeaders, resultBody);
 
@@ -261,10 +261,10 @@ bool RestEdgeHandler::createDocumentCoordinator(std::string const& collname,
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   createResponse(responseCode);
-  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+  arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
 
-  return responseCode >= triagens::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::HttpResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

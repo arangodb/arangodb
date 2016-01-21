@@ -238,7 +238,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   virtual void toVelocyPack(VPackBuilder&) const override;
 
  private:
-  triagens::basics::Mutex _lock;
+  arangodb::basics::Mutex _lock;
 
   uint64_t _lastValue;  // last value assigned
 

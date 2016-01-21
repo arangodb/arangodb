@@ -27,15 +27,14 @@
 #include "Basics/Common.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Version.h>
 #include <velocypack/velocypack-aliases.h>
-
 
 struct TRI_json_t;
 struct TRI_memory_zone_s;
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
-
 
 class Version {
   
@@ -85,6 +84,12 @@ class Version {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string getLibevVersion();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get vpack version
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::string getVPackVersion();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get zlib version
@@ -145,7 +150,6 @@ class Version {
   //////////////////////////////////////////////////////////////////////////////
 
   static void getVPack(VPackBuilder&);
-
   
  public:
   static std::map<std::string, std::string> Values;

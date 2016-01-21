@@ -49,7 +49,7 @@
 
 using namespace std;
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 namespace FileUtils {
 

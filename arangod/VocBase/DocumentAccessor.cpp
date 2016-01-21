@@ -30,7 +30,7 @@
 
 
 DocumentAccessor::DocumentAccessor(
-    triagens::arango::CollectionNameResolver const* resolver,
+    arangodb::CollectionNameResolver const* resolver,
     TRI_document_collection_t* document, TRI_doc_mptr_t const* mptr)
     : _resolver(resolver),
       _document(document),
@@ -55,7 +55,7 @@ DocumentAccessor::DocumentAccessor(VPackSlice const& slice)
       _mptr(nullptr),
       _json(),
       _current(nullptr) {
-  _current = triagens::basics::VelocyPackHelper::velocyPackToJson(slice);
+  _current = arangodb::basics::VelocyPackHelper::velocyPackToJson(slice);
   TRI_ASSERT(_current != nullptr);
 }
 
@@ -167,7 +167,7 @@ DocumentAccessor& DocumentAccessor::at(int64_t index) {
   return *this;
 }
 
-triagens::basics::Json DocumentAccessor::toJson() {
+arangodb::basics::Json DocumentAccessor::toJson() {
   if (_current == nullptr) {
     // we're still pointing to the original document
     auto shaper = _document->getShaper();
@@ -175,7 +175,7 @@ triagens::basics::Json DocumentAccessor::toJson() {
     // fetch document from mptr
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _mptr->getDataPtr());
-    triagens::basics::Json json(shaper->memoryZone(),
+    arangodb::basics::Json json(shaper->memoryZone(),
                                 TRI_JsonShapedJson(shaper, &shaped));
 
     // add internal attributes
@@ -185,10 +185,10 @@ triagens::basics::Json DocumentAccessor::toJson() {
     std::string id(_resolver->getCollectionName(_document->_info.id()));
     id.push_back('/');
     id.append(key);
-    json(TRI_VOC_ATTRIBUTE_ID, triagens::basics::Json(id));
+    json(TRI_VOC_ATTRIBUTE_ID, arangodb::basics::Json(id));
     json(TRI_VOC_ATTRIBUTE_REV,
-         triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_mptr))));
-    json(TRI_VOC_ATTRIBUTE_KEY, triagens::basics::Json(key));
+         arangodb::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_mptr))));
+    json(TRI_VOC_ATTRIBUTE_KEY, arangodb::basics::Json(key));
 
     if (TRI_IS_EDGE_MARKER(_mptr)) {
       // _from
@@ -196,14 +196,14 @@ triagens::basics::Json DocumentAccessor::toJson() {
           TRI_EXTRACT_MARKER_FROM_CID(_mptr)));
       from.push_back('/');
       from.append(TRI_EXTRACT_MARKER_FROM_KEY(_mptr));
-      json(TRI_VOC_ATTRIBUTE_FROM, triagens::basics::Json(from));
+      json(TRI_VOC_ATTRIBUTE_FROM, arangodb::basics::Json(from));
 
       // _to
       std::string to(_resolver->getCollectionNameCluster(
           TRI_EXTRACT_MARKER_TO_CID(_mptr)));
       to.push_back('/');
       to.append(TRI_EXTRACT_MARKER_TO_KEY(_mptr));
-      json(TRI_VOC_ATTRIBUTE_TO, triagens::basics::Json(to));
+      json(TRI_VOC_ATTRIBUTE_TO, arangodb::basics::Json(to));
     }
 
     return json;
@@ -215,18 +215,18 @@ triagens::basics::Json DocumentAccessor::toJson() {
     // steal the JSON
     TRI_json_t* value = _json.release();
     setToNull();
-    return triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, value);
+    return arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, value);
   }
 
   TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _current);
 
   if (copy != nullptr) {
     _json.release();
-    return triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, copy);
+    return arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, copy);
   }
   // fall-through intentional
 
-  return triagens::basics::Json(triagens::basics::Json::Null);
+  return arangodb::basics::Json(arangodb::basics::Json::Null);
 }
 
 

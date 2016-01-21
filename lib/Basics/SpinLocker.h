@@ -42,18 +42,18 @@
 #ifdef TRI_SHOW_LOCK_TIME
 
 #define SPIN_LOCKER(b)                                                   \
-  triagens::basics::SpinLocker SPIN_LOCKER_VAR_B(__LINE__)(&b, __FILE__, \
+  arangodb::basics::SpinLocker SPIN_LOCKER_VAR_B(__LINE__)(&b, __FILE__, \
                                                            __LINE__)
 
 #else
 
 #define SPIN_LOCKER(b) \
-  triagens::basics::SpinLocker SPIN_LOCKER_VAR_B(__LINE__)(&b)
+  arangodb::basics::SpinLocker SPIN_LOCKER_VAR_B(__LINE__)(&b)
 
 #endif
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -33,7 +33,7 @@
 #include "HttpServer/HttpsServer.h"
 #include "Scheduler/Scheduler.h"
 
-using namespace triagens::rest;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,9 +69,6 @@ HttpsCommTask::~HttpsCommTask() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   // setup base class
@@ -91,7 +88,7 @@ bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
 
   if (_ssl == nullptr) {
     LOG_DEBUG("cannot build new SSL connection: %s",
-              triagens::basics::lastSSLError().c_str());
+              arangodb::basics::lastSSLError().c_str());
 
     shutdownSsl(false);
     return false;  // terminate ourselves, ssl is nullptr
@@ -111,9 +108,6 @@ bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool HttpsCommTask::handleEvent(EventToken token, EventType revents) {
   // try to accept the SSL connection
@@ -165,9 +159,6 @@ bool HttpsCommTask::handleEvent(EventToken token, EventType revents) {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool HttpsCommTask::fillReadBuffer() {
   if (nullptr == _ssl) {
@@ -183,9 +174,6 @@ bool HttpsCommTask::fillReadBuffer() {
   return trySSLRead();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool HttpsCommTask::handleWrite() {
   if (nullptr == _ssl) {
@@ -229,7 +217,7 @@ bool HttpsCommTask::trySSLAccept() {
   // shutdown of connection
   if (res == 0) {
     LOG_DEBUG("SSL_accept failed: %s",
-              triagens::basics::lastSSLError().c_str());
+              arangodb::basics::lastSSLError().c_str());
 
     shutdownSsl(false);
     return false;
@@ -245,7 +233,7 @@ bool HttpsCommTask::trySSLAccept() {
   }
 
   LOG_TRACE("error in SSL handshake: %s",
-            triagens::basics::lastSSLError().c_str());
+            arangodb::basics::lastSSLError().c_str());
 
   shutdownSsl(false);
   return false;
@@ -272,7 +260,7 @@ again:
       case SSL_ERROR_SSL:
         LOG_DEBUG("received SSL error (bytes read %d, socket %d): %s", nr,
                   (int)TRI_get_fd_or_handle_of_socket(_commSocket),
-                  triagens::basics::lastSSLError().c_str());
+                  arangodb::basics::lastSSLError().c_str());
 
         shutdownSsl(false);
         return false;
@@ -301,7 +289,7 @@ again:
       case SSL_ERROR_SYSCALL:
         if (res != 0) {
           LOG_DEBUG("SSL_read returned syscall error with: %s",
-                    triagens::basics::lastSSLError().c_str());
+                    arangodb::basics::lastSSLError().c_str());
         } else if (nr == 0) {
           LOG_DEBUG(
               "SSL_read returned syscall error because an EOF was received");
@@ -315,7 +303,7 @@ again:
 
       default:
         LOG_DEBUG("received error with %d and %d: %s", res, nr,
-                  triagens::basics::lastSSLError().c_str());
+                  arangodb::basics::lastSSLError().c_str());
 
         shutdownSsl(false);
         return false;
@@ -386,7 +374,7 @@ bool HttpsCommTask::trySSLWrite() {
         case SSL_ERROR_SYSCALL:
           if (res != 0) {
             LOG_DEBUG("SSL_write returned syscall error with: %s",
-                      triagens::basics::lastSSLError().c_str());
+                      arangodb::basics::lastSSLError().c_str());
           } else if (nr == 0) {
             LOG_DEBUG(
                 "SSL_write returned syscall error because an EOF was received");
@@ -400,7 +388,7 @@ bool HttpsCommTask::trySSLWrite() {
 
         default:
           LOG_DEBUG("received error with %d and %d: %s", res, nr,
-                    triagens::basics::lastSSLError().c_str());
+                    arangodb::basics::lastSSLError().c_str());
 
           shutdownSsl(false);
           return false;
@@ -454,7 +442,7 @@ void HttpsCommTask::shutdownSsl(bool initShutdown) {
 
           if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
             LOG_DEBUG("received shutdown error with %d, %d: %s", res, err,
-                      triagens::basics::lastSSLError().c_str());
+                      arangodb::basics::lastSSLError().c_str());
             break;
           }
         }

@@ -22,16 +22,46 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 
+#include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-using VelocyPackHelper = triagens::basics::VelocyPackHelper;
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
+struct AttributeSorter {
+  bool operator() (std::string const& l, std::string const& r) const {
+    return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
+  }
+};
+
+static int TypeWeight(VPackSlice const& slice) {
+  switch (slice.type()) {
+    case VPackValueType::Bool:
+      return 1;
+    case VPackValueType::Double:
+    case VPackValueType::Int:
+    case VPackValueType::UInt:
+    case VPackValueType::SmallInt:
+      return 2;
+    case VPackValueType::String:
+      return 3;
+    case VPackValueType::Array:
+      return 4;
+    case VPackValueType::Object:
+      return 5;
+    default:
+      // All other values have equal weight
+      return 0;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default if it is does not exist
@@ -82,6 +112,17 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
   return sub.copyString();
 }
 
+uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
+  if (slice.isString()) {
+    std::string tmp = slice.copyString();
+    return TRI_UInt64String(tmp.c_str()); 
+  }
+  if (slice.isNumber()) {
+    return slice.getNumericValue<uint64_t>();
+  }
+  return 0;
+}
+
 TRI_json_t* VelocyPackHelper::velocyPackToJson(VPackSlice const& slice) {
   return JsonHelper::fromString(slice.toJson());
 }
@@ -119,7 +160,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
 
   TRI_string_buffer_t buffer;
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-  triagens::basics::VPackStringBufferAdapter bufferAdapter(&buffer);
+  arangodb::basics::VPackStringBufferAdapter bufferAdapter(&buffer);
   try {
     VPackDumper dumper(&bufferAdapter);
     dumper.dump(slice);
@@ -234,4 +275,129 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
   TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 
   return true;
+}
+
+int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
+                              bool useUTF8) {
+  {
+    int lWeight = TypeWeight(lhs);
+    int rWeight = TypeWeight(rhs);
+
+    if (lWeight < rWeight) {
+      return -1;
+    }
+
+    if (lWeight > rWeight) {
+      return 1;
+    }
+
+    TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
+  }
+
+  // lhs and rhs have equal weights
+  if (lhs.isNone() || rhs.isNone()) {
+    // either lhs or rhs is none. we cannot be sure here that both are
+    // nones.
+    // there can also exist the situation that lhs is a none and rhs is a
+    // null value
+    // (or vice versa). Anyway, the compare value is the same for both,
+    return 0;
+  }
+
+  switch (lhs.type()) {
+    case VPackValueType::None:
+    case VPackValueType::Null:
+      return 0;  // null == null;
+    case VPackValueType::Bool: {
+      bool left = lhs.getBoolean();
+      bool right = rhs.getBoolean();
+      if (left == right) {
+        return 0;
+      }
+      if (!left && right) {
+        return -1;
+      }
+      return 1;
+    }
+    case VPackValueType::Double:
+    case VPackValueType::Int:
+    case VPackValueType::UInt:
+    case VPackValueType::SmallInt: {
+      double left = lhs.getNumericValue<double>();
+      double right = rhs.getNumericValue<double>();
+      if (left == right) {
+        return 0;
+      }
+      if (left < right) {
+        return -1;
+      }
+      return 1;
+    }
+    case VPackValueType::String: {
+      int res;
+      VPackValueLength nl;
+      VPackValueLength nr;
+      char const* left = lhs.getString(nl);
+      char const* right = rhs.getString(nr);
+      if (useUTF8) {
+        res = TRI_compare_utf8(left, nl, right, nr);
+      } else {
+        size_t len = static_cast<size_t>(nl < nr ? nl : nr);
+        res = memcmp(left, right, len);
+      }
+      if (res < 0) {
+        return -1;
+      } else if (res > 0) {
+        return 1;
+      }
+      // res == 0
+      if (nl == nr) {
+        return 0;
+      }
+      // res == 0, but different string lengths
+      return nl < nr ? -1 : 1;
+    }
+    case VPackValueType::Array: {
+      VPackValueLength const nl = lhs.length();
+      VPackValueLength const nr = rhs.length();
+      VPackValueLength const n = (std::max)(nr, nl);
+      for (VPackValueLength i = 0; i < n; ++i) {
+        VPackSlice lhsValue;
+        if (i < nl) {
+          lhsValue = lhs.at(i);
+        }
+        VPackSlice rhsValue;
+        if (i < nr) {
+          rhsValue = rhs.at(i);
+        }
+
+        int result = compare(lhsValue, rhsValue, useUTF8);
+        if (result != 0) {
+          return result;
+        }
+      }
+      return 0;
+    }
+    case VPackValueType::Object: {
+      std::set<std::string, AttributeSorter> keys;
+      VPackCollection::keys(lhs, keys);
+      VPackCollection::keys(rhs, keys);
+      for (auto const& key : keys) {
+        VPackSlice lhsValue = lhs.get(key);
+        VPackSlice rhsValue = rhs.get(key);
+
+        int result = compare(lhsValue, rhsValue, useUTF8);
+        if (result != 0) {
+          return result;
+        }
+      }
+
+      return 0;
+    }
+    default:
+      // Contains all other ValueTypes of VelocyPack.
+      // They are not used in ArangoDB so this cannot occur
+      TRI_ASSERT(false);
+      return 0;
+  }
 }

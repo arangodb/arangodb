@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE (tst_2) {
 
   std::string testString((const char*) gruessgott1);
   std::string expectString((const char*) lower);
-  std::string resultString = triagens::basics::Utf8Helper::DefaultUtf8Helper.toLowerCase(testString);
+  std::string resultString = arangodb::basics::Utf8Helper::DefaultUtf8Helper.toLowerCase(testString);
   BOOST_CHECK_EQUAL(expectString, resultString);
   
   len = 0;
@@ -156,19 +156,19 @@ BOOST_AUTO_TEST_CASE (tst_2) {
 BOOST_AUTO_TEST_CASE (tst_3) {
   std::string testString   = "aäoöuüAÄOÖUÜ";
   std::string expectString = "aäoöuüaäoöuü";
-  std::string resultString = triagens::basics::Utf8Helper::DefaultUtf8Helper.toLowerCase(testString);
+  std::string resultString = arangodb::basics::Utf8Helper::DefaultUtf8Helper.toLowerCase(testString);
   BOOST_CHECK_EQUAL(expectString, resultString);
 
   testString   = "aäoöuüAÄOÖUÜ";
   expectString = "AÄOÖUÜAÄOÖUÜ";
-  resultString = triagens::basics::Utf8Helper::DefaultUtf8Helper.toUpperCase(testString);
+  resultString = arangodb::basics::Utf8Helper::DefaultUtf8Helper.toUpperCase(testString);
   BOOST_CHECK_EQUAL(expectString, resultString);
 }
 
 BOOST_AUTO_TEST_CASE (tst_4) {
   std::string testString   = "Der Müller geht in die Post.";
   
-  TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, true);
+  TRI_vector_string_t* words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, true);
   BOOST_CHECK(words != NULL);
   
   BOOST_CHECK_EQUAL(5, (int) words->_length);
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE (tst_4) {
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
   
 
-  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, true);
+  words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, true);
   BOOST_CHECK(words != NULL);
   
   BOOST_CHECK_EQUAL(3, (int) words->_length);
@@ -191,14 +191,14 @@ BOOST_AUTO_TEST_CASE (tst_4) {
     
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
 
-  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, UINT32_MAX, true);
+  words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, UINT32_MAX, true);
   BOOST_CHECK(words == NULL);
 }
 
 BOOST_AUTO_TEST_CASE (tst_5) {
   std::string testString   = "Der Müller geht in die Post.";
   
-  TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, false);
+  TRI_vector_string_t* words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, false);
   BOOST_CHECK(words != NULL);
   
   BOOST_CHECK_EQUAL(5, (int) words->_length);
@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE (tst_5) {
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
   
 
-  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, false);
+  words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, false);
   BOOST_CHECK(words != NULL);
   
   BOOST_CHECK_EQUAL(3, (int) words->_length);
@@ -221,7 +221,7 @@ BOOST_AUTO_TEST_CASE (tst_5) {
     
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
 
-  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, UINT32_MAX, false);
+  words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, UINT32_MAX, false);
   BOOST_CHECK(words == NULL);
 }
 

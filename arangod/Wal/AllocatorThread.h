@@ -31,7 +31,7 @@
 #include "Basics/Thread.h"
 #include "Basics/WriteLocker.h"
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 class LogfileManager;

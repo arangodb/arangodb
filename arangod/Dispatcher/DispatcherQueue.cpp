@@ -31,7 +31,7 @@
 #include "Dispatcher/Job.h"
 
 using namespace std;
-using namespace triagens::rest;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors
@@ -455,7 +455,7 @@ bool DispatcherQueue::notEnoughThreads() {
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::setProcessorAffinity(const std::vector<size_t>& cores) {
+void DispatcherQueue::setProcessorAffinity(std::vector<size_t> const& cores) {
   _affinityCores = cores;
 }
 

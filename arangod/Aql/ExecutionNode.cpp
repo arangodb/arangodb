@@ -35,9 +35,8 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::aql;
+using namespace arangodb::basics;
+using namespace arangodb::aql;
 
 const static bool Optional = true;
 
@@ -104,9 +103,9 @@ void ExecutionNode::validateType(int type) {
 
 void ExecutionNode::getSortElements(SortElementVector& elements,
                                     ExecutionPlan* plan,
-                                    triagens::basics::Json const& oneNode,
+                                    arangodb::basics::Json const& oneNode,
                                     char const* which) {
-  triagens::basics::Json jsonElements = oneNode.get("elements");
+  arangodb::basics::Json jsonElements = oneNode.get("elements");
 
   if (!jsonElements.isArray()) {
     std::string error = std::string("unexpected value for ") +
@@ -118,7 +117,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
   elements.reserve(len);
 
   for (size_t i = 0; i < len; i++) {
-    triagens::basics::Json oneJsonElement =
+    arangodb::basics::Json oneJsonElement =
         jsonElements.at(static_cast<int>(i));
     bool ascending =
         JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
@@ -128,7 +127,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
 }
 
 ExecutionNode* ExecutionNode::fromJsonFactory(
-    ExecutionPlan* plan, triagens::basics::Json const& oneNode) {
+    ExecutionPlan* plan, arangodb::basics::Json const& oneNode) {
   auto JsonString = oneNode.toString();
 
   int nodeTypeID =
@@ -165,24 +164,24 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
       Variable* outVariable =
           varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
 
-      triagens::basics::Json jsonGroups = oneNode.get("groups");
+      arangodb::basics::Json jsonGroups = oneNode.get("groups");
       if (!jsonGroups.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                        "invalid groups definition");
       }
       
-      triagens::basics::Json jsonAggregates = oneNode.get("aggregates");
+      arangodb::basics::Json jsonAggregates = oneNode.get("aggregates");
       if (!jsonAggregates.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                        "invalid aggregates definition");
       }
 
       std::vector<Variable const*> keepVariables;
-      triagens::basics::Json jsonKeepVariables = oneNode.get("keepVariables");
+      arangodb::basics::Json jsonKeepVariables = oneNode.get("keepVariables");
       if (jsonKeepVariables.isArray()) {
         size_t const n = jsonKeepVariables.size();
         for (size_t i = 0; i < n; i++) {
-          triagens::basics::Json keepVariable =
+          arangodb::basics::Json keepVariable =
               jsonKeepVariables.at(static_cast<int>(i));
           Variable const* variable =
               varFromJson(plan->getAst(), keepVariable, "variable");
@@ -196,7 +195,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         size_t const len = jsonGroups.size();
         groupVariables.reserve(len);
         for (size_t i = 0; i < len; i++) {
-          triagens::basics::Json oneJsonGroup =
+          arangodb::basics::Json oneJsonGroup =
               jsonGroups.at(static_cast<int>(i));
           Variable* outVar =
               varFromJson(plan->getAst(), oneJsonGroup, "outVariable");
@@ -213,7 +212,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         size_t const len = jsonAggregates.size();
         aggregateVariables.reserve(len);
         for (size_t i = 0; i < len; i++) {
-          triagens::basics::Json oneJsonAggregate =
+          arangodb::basics::Json oneJsonAggregate =
               jsonAggregates.at(static_cast<int>(i));
           Variable* outVar =
               varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
@@ -284,7 +283,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionNode::ExecutionNode(ExecutionPlan* plan,
-                             triagens::basics::Json const& json)
+                             arangodb::basics::Json const& json)
     : _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
       _estimatedCost(0.0),
       _estimatedCostSet(false),
@@ -415,14 +414,14 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 /// @brief toJson, export an ExecutionNode to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json ExecutionNode::toJson(TRI_memory_zone_t* zone,
+arangodb::basics::Json ExecutionNode::toJson(TRI_memory_zone_t* zone,
                                              bool verbose) const {
-  triagens::basics::Json nodes =
-      triagens::basics::Json(triagens::basics::Json::Array, 10);
+  arangodb::basics::Json nodes =
+      arangodb::basics::Json(arangodb::basics::Json::Array, 10);
   toJsonHelper(nodes, zone, verbose);
 
-  triagens::basics::Json json =
-      triagens::basics::Json(triagens::basics::Json::Object, 1)("nodes", nodes);
+  arangodb::basics::Json json =
+      arangodb::basics::Json(arangodb::basics::Json::Object, 1)("nodes", nodes);
 
   return json;
 }
@@ -614,124 +613,123 @@ ExecutionNode const* ExecutionNode::getLoop() const {
   return nullptr;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief factory for (optional) variables from json.
+/// @brief factory for (optional) variables from json
 ////////////////////////////////////////////////////////////////////////////////
 
 Variable* ExecutionNode::varFromJson(Ast* ast,
-                                     triagens::basics::Json const& base,
+                                     arangodb::basics::Json const& base,
                                      char const* variableName, bool optional) {
-  triagens::basics::Json variableJson = base.get(variableName);
+  arangodb::basics::Json variableJson = base.get(variableName);
 
   if (variableJson.isEmpty()) {
     if (optional) {
       return nullptr;
-    } else {
-      std::string msg;
-      msg +=
-          "Mandatory variable \"" + std::string(variableName) + "\" not found.";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
-    }
-  } else {
-    return ast->variables()->createVariable(variableJson);
-  }
+    } 
+    
+    std::string msg;
+    msg +=
+        "Mandatory variable \"" + std::string(variableName) + "\" not found.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  } 
+
+  return ast->variables()->createVariable(variableJson);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJsonHelper, for a generic node
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json ExecutionNode::toJsonHelperGeneric(
-    triagens::basics::Json& nodes, TRI_memory_zone_t* zone,
+arangodb::basics::Json ExecutionNode::toJsonHelperGeneric(
+    arangodb::basics::Json& nodes, TRI_memory_zone_t* zone,
     bool verbose) const {
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
     _dependencies[i]->toJsonHelper(nodes, zone, verbose);
   }
 
-  triagens::basics::Json json(triagens::basics::Json::Object, 5);
-  json("type", triagens::basics::Json(getTypeString()));
+  arangodb::basics::Json json(arangodb::basics::Json::Object, 5);
+  json("type", arangodb::basics::Json(getTypeString()));
 
   if (verbose) {
-    json("typeID", triagens::basics::Json(static_cast<int>(getType())));
+    json("typeID", arangodb::basics::Json(static_cast<int>(getType())));
   }
 
-  triagens::basics::Json deps(triagens::basics::Json::Array, n);
+  arangodb::basics::Json deps(arangodb::basics::Json::Array, n);
   for (size_t i = 0; i < n; i++) {
-    deps(triagens::basics::Json(static_cast<double>(_dependencies[i]->id())));
+    deps(arangodb::basics::Json(static_cast<double>(_dependencies[i]->id())));
   }
   json("dependencies", deps);
 
   if (verbose) {
-    triagens::basics::Json parents(triagens::basics::Json::Array,
+    arangodb::basics::Json parents(arangodb::basics::Json::Array,
                                    _parents.size());
     for (size_t i = 0; i < _parents.size(); i++) {
-      parents(triagens::basics::Json(static_cast<double>(_parents[i]->id())));
+      parents(arangodb::basics::Json(static_cast<double>(_parents[i]->id())));
     }
     json("parents", parents);
   }
 
-  json("id", triagens::basics::Json(static_cast<double>(id())));
+  json("id", arangodb::basics::Json(static_cast<double>(id())));
   size_t nrItems = 0;
-  json("estimatedCost", triagens::basics::Json(getCost(nrItems)));
+  json("estimatedCost", arangodb::basics::Json(getCost(nrItems)));
   json("estimatedNrItems",
-       triagens::basics::Json(static_cast<double>(nrItems)));
+       arangodb::basics::Json(static_cast<double>(nrItems)));
 
   if (verbose) {
-    json("depth", triagens::basics::Json(static_cast<double>(_depth)));
+    json("depth", arangodb::basics::Json(static_cast<double>(_depth)));
 
     if (_registerPlan) {
-      triagens::basics::Json jsonVarInfoList(triagens::basics::Json::Array,
+      arangodb::basics::Json jsonVarInfoList(arangodb::basics::Json::Array,
                                              _registerPlan->varInfo.size());
       for (auto const& oneVarInfo : _registerPlan->varInfo) {
-        triagens::basics::Json jsonOneVarInfoArray(
-            triagens::basics::Json::Object, 2);
+        arangodb::basics::Json jsonOneVarInfoArray(
+            arangodb::basics::Json::Object, 2);
         jsonOneVarInfoArray(
             "VariableId",
-            triagens::basics::Json(static_cast<double>(oneVarInfo.first)))(
-            "depth", triagens::basics::Json(
+            arangodb::basics::Json(static_cast<double>(oneVarInfo.first)))(
+            "depth", arangodb::basics::Json(
                          static_cast<double>(oneVarInfo.second.depth)))(
-            "RegisterId", triagens::basics::Json(static_cast<double>(
+            "RegisterId", arangodb::basics::Json(static_cast<double>(
                               oneVarInfo.second.registerId)));
         jsonVarInfoList(jsonOneVarInfoArray);
       }
       json("varInfoList", jsonVarInfoList);
 
-      triagens::basics::Json jsonNRRegsList(triagens::basics::Json::Array,
+      arangodb::basics::Json jsonNRRegsList(arangodb::basics::Json::Array,
                                             _registerPlan->nrRegs.size());
       for (auto const& oneRegisterID : _registerPlan->nrRegs) {
         jsonNRRegsList(
-            triagens::basics::Json(static_cast<double>(oneRegisterID)));
+            arangodb::basics::Json(static_cast<double>(oneRegisterID)));
       }
       json("nrRegs", jsonNRRegsList);
 
-      triagens::basics::Json jsonNRRegsHereList(
-          triagens::basics::Json::Array, _registerPlan->nrRegsHere.size());
+      arangodb::basics::Json jsonNRRegsHereList(
+          arangodb::basics::Json::Array, _registerPlan->nrRegsHere.size());
       for (auto const& oneRegisterID : _registerPlan->nrRegsHere) {
         jsonNRRegsHereList(
-            triagens::basics::Json(static_cast<double>(oneRegisterID)));
+            arangodb::basics::Json(static_cast<double>(oneRegisterID)));
       }
       json("nrRegsHere", jsonNRRegsHereList);
-      json("totalNrRegs", triagens::basics::Json(
+      json("totalNrRegs", arangodb::basics::Json(
                               static_cast<double>(_registerPlan->totalNrRegs)));
     } else {
       json("varInfoList",
-           triagens::basics::Json(triagens::basics::Json::Array));
-      json("nrRegs", triagens::basics::Json(triagens::basics::Json::Array));
-      json("nrRegsHere", triagens::basics::Json(triagens::basics::Json::Array));
-      json("totalNrRegs", triagens::basics::Json(0.0));
+           arangodb::basics::Json(arangodb::basics::Json::Array));
+      json("nrRegs", arangodb::basics::Json(arangodb::basics::Json::Array));
+      json("nrRegsHere", arangodb::basics::Json(arangodb::basics::Json::Array));
+      json("totalNrRegs", arangodb::basics::Json(0.0));
     }
 
-    triagens::basics::Json jsonRegsToClearList(triagens::basics::Json::Array,
+    arangodb::basics::Json jsonRegsToClearList(arangodb::basics::Json::Array,
                                                _regsToClear.size());
     for (auto const& oneRegisterID : _regsToClear) {
       jsonRegsToClearList(
-          triagens::basics::Json(static_cast<double>(oneRegisterID)));
+          arangodb::basics::Json(static_cast<double>(oneRegisterID)));
     }
     json("regsToClear", jsonRegsToClearList);
 
-    triagens::basics::Json jsonVarsUsedLaterList(triagens::basics::Json::Array,
+    arangodb::basics::Json jsonVarsUsedLaterList(arangodb::basics::Json::Array,
                                                  _varsUsedLater.size());
     for (auto const& oneVarUsedLater : _varsUsedLater) {
       jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
@@ -739,7 +737,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric(
 
     json("varsUsedLater", jsonVarsUsedLaterList);
 
-    triagens::basics::Json jsonvarsValidList(triagens::basics::Json::Array,
+    arangodb::basics::Json jsonvarsValidList(arangodb::basics::Json::Array,
                                              _varsValid.size());
     for (auto const& oneVarUsedLater : _varsValid) {
       jsonvarsValidList.add(oneVarUsedLater->toJson());
@@ -1188,12 +1186,12 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SingletonNode::SingletonNode(ExecutionPlan* plan,
-                             triagens::basics::Json const& base)
+                             arangodb::basics::Json const& base)
     : ExecutionNode(plan, base) {}
 
-void SingletonNode::toJsonHelper(triagens::basics::Json& nodes,
+void SingletonNode::toJsonHelper(arangodb::basics::Json& nodes,
                                  TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -1215,7 +1213,7 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
 
 
 EnumerateCollectionNode::EnumerateCollectionNode(
-    ExecutionPlan* plan, triagens::basics::Json const& base)
+    ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
@@ -1227,10 +1225,10 @@ EnumerateCollectionNode::EnumerateCollectionNode(
 /// @brief toJson, for EnumerateCollectionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void EnumerateCollectionNode::toJsonHelper(triagens::basics::Json& nodes,
+void EnumerateCollectionNode::toJsonHelper(arangodb::basics::Json& nodes,
                                            TRI_memory_zone_t* zone,
                                            bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -1238,10 +1236,10 @@ void EnumerateCollectionNode::toJsonHelper(triagens::basics::Json& nodes,
   }
 
   // Now put info about vocbase and cid in there
-  json("database", triagens::basics::Json(_vocbase->_name))(
-      "collection", triagens::basics::Json(_collection->getName()))(
+  json("database", arangodb::basics::Json(_vocbase->_name))(
+      "collection", arangodb::basics::Json(_collection->getName()))(
       "outVariable", _outVariable->toJson())("random",
-                                             triagens::basics::Json(_random));
+                                             arangodb::basics::Json(_random));
 
   // And add it:
   nodes(json);
@@ -1285,7 +1283,7 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
 
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
-                                     triagens::basics::Json const& base)
+                                     arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
@@ -1294,10 +1292,10 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
 /// @brief toJson, for EnumerateListNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void EnumerateListNode::toJsonHelper(triagens::basics::Json& nodes,
+void EnumerateListNode::toJsonHelper(arangodb::basics::Json& nodes,
                                      TRI_memory_zone_t* zone,
                                      bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
@@ -1387,7 +1385,7 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
 }
 
 
-LimitNode::LimitNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _offset(JsonHelper::checkAndGetNumericValue<decltype(_offset)>(
           base.json(), "offset")),
@@ -1400,17 +1398,17 @@ LimitNode::LimitNode(ExecutionPlan* plan, triagens::basics::Json const& base)
 // @brief toJson, for LimitNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void LimitNode::toJsonHelper(triagens::basics::Json& nodes,
+void LimitNode::toJsonHelper(arangodb::basics::Json& nodes,
                              TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
   // Now put info about offset and limit in
-  json("offset", triagens::basics::Json(static_cast<double>(_offset)))(
-      "limit", triagens::basics::Json(static_cast<double>(_limit)))(
-      "fullCount", triagens::basics::Json(_fullCount));
+  json("offset", arangodb::basics::Json(static_cast<double>(_offset)))(
+      "limit", arangodb::basics::Json(static_cast<double>(_limit)))(
+      "fullCount", arangodb::basics::Json(_fullCount));
 
   // And add it:
   nodes(json);
@@ -1431,7 +1429,7 @@ double LimitNode::estimateCost(size_t& nrItems) const {
 
 
 CalculationNode::CalculationNode(ExecutionPlan* plan,
-                                 triagens::basics::Json const& base)
+                                 arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _conditionVariable(
           varFromJson(plan->getAst(), base, "conditionVariable", true)),
@@ -1443,10 +1441,10 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
 /// @brief toJson, for CalculationNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void CalculationNode::toJsonHelper(triagens::basics::Json& nodes,
+void CalculationNode::toJsonHelper(arangodb::basics::Json& nodes,
                                    TRI_memory_zone_t* zone,
                                    bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -1454,14 +1452,14 @@ void CalculationNode::toJsonHelper(triagens::basics::Json& nodes,
   }
 
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
-      "outVariable", _outVariable->toJson())(
-      "canThrow", triagens::basics::Json(_expression->canThrow()));
+       "outVariable", _outVariable->toJson())(
+       "canThrow", arangodb::basics::Json(_expression->canThrow()));
 
   if (_conditionVariable != nullptr) {
     json("conditionVariable", _conditionVariable->toJson());
   }
 
-  json("expressionType", triagens::basics::Json(_expression->typeString()));
+  json("expressionType", arangodb::basics::Json(_expression->typeString()));
 
   // And add it:
   nodes(json);
@@ -1502,7 +1500,7 @@ double CalculationNode::estimateCost(size_t& nrItems) const {
 
 
 SubqueryNode::SubqueryNode(ExecutionPlan* plan,
-                           triagens::basics::Json const& base)
+                           arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _subquery(nullptr),
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
@@ -1511,9 +1509,9 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan,
 /// @brief toJson, for SubqueryNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void SubqueryNode::toJsonHelper(triagens::basics::Json& nodes,
+void SubqueryNode::toJsonHelper(arangodb::basics::Json& nodes,
                                 TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
@@ -1695,7 +1693,7 @@ bool SubqueryNode::canThrow() {
 }
 
 
-FilterNode::FilterNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+FilterNode::FilterNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
@@ -1703,9 +1701,9 @@ FilterNode::FilterNode(ExecutionPlan* plan, triagens::basics::Json const& base)
 /// @brief toJson, for FilterNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void FilterNode::toJsonHelper(triagens::basics::Json& nodes,
+void FilterNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
@@ -1750,7 +1748,7 @@ double FilterNode::estimateCost(size_t& nrItems) const {
 }
 
 
-ReturnNode::ReturnNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
@@ -1758,9 +1756,9 @@ ReturnNode::ReturnNode(ExecutionPlan* plan, triagens::basics::Json const& base)
 /// @brief toJson, for ReturnNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReturnNode::toJsonHelper(triagens::basics::Json& nodes,
+void ReturnNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -1806,9 +1804,9 @@ double ReturnNode::estimateCost(size_t& nrItems) const {
 /// @brief toJson, for NoResultsNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void NoResultsNode::toJsonHelper(triagens::basics::Json& nodes,
+void NoResultsNode::toJsonHelper(arangodb::basics::Json& nodes,
                                  TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {

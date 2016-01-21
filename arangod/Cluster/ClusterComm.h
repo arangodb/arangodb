@@ -37,12 +37,9 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 class ClusterCommThread;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a client transaction ID
@@ -319,7 +316,7 @@ class ClusterComm {
   std::list<ClusterCommOperation*> toSend;
   std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
       toSendByOpID;
-  triagens::basics::ConditionVariable somethingToSend;
+  arangodb::basics::ConditionVariable somethingToSend;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief received queue with lock and index
@@ -329,7 +326,7 @@ class ClusterComm {
   std::list<ClusterCommOperation*> received;
   std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
       receivedByOpID;
-  triagens::basics::ConditionVariable somethingReceived;
+  arangodb::basics::ConditionVariable somethingReceived;
 
   // Note: If you really have to lock both `somethingToSend`
   // and `somethingReceived` at the same time (usually you should
@@ -455,7 +452,7 @@ class ClusterCommThread : public basics::Thread {
   /// @brief condition variable for ClusterCommThread
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::ConditionVariable _condition;
+  arangodb::basics::ConditionVariable _condition;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stop flag
@@ -463,8 +460,7 @@ class ClusterCommThread : public basics::Thread {
 
   volatile sig_atomic_t _stop;
 };
-}  // namespace arango
-}  // namespace triagens
+}  // namespace arangodb
 
 #endif
 

@@ -33,7 +33,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
@@ -84,7 +84,7 @@ class RemoteNode : public ExecutionNode {
     return _isResponsibleForInitCursor;
   }
 
-  RemoteNode(ExecutionPlan*, triagens::basics::Json const& base);
+  RemoteNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -96,7 +96,7 @@ class RemoteNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -172,7 +172,7 @@ class RemoteNode : public ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   void queryId(QueryId queryId) {
-    _queryId = triagens::basics::StringUtils::itoa(queryId);
+    _queryId = arangodb::basics::StringUtils::itoa(queryId);
   }
 
  private:
@@ -233,7 +233,7 @@ class ScatterNode : public ExecutionNode {
               Collection const* collection)
       : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection) {}
 
-  ScatterNode(ExecutionPlan*, triagens::basics::Json const& base);
+  ScatterNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -245,7 +245,7 @@ class ScatterNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -327,7 +327,7 @@ class DistributeNode : public ExecutionNode {
     // just delegates to the other constructor
   }
 
-  DistributeNode(ExecutionPlan*, triagens::basics::Json const& base);
+  DistributeNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -339,7 +339,7 @@ class DistributeNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -432,7 +432,7 @@ class GatherNode : public ExecutionNode {
              Collection const* collection)
       : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection) {}
 
-  GatherNode(ExecutionPlan*, triagens::basics::Json const& base,
+  GatherNode(ExecutionPlan*, arangodb::basics::Json const& base,
              SortElementVector const& elements);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -445,7 +445,7 @@ class GatherNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -533,8 +533,8 @@ class GatherNode : public ExecutionNode {
   Collection const* _collection;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

@@ -30,13 +30,13 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
 struct CollectionScanner {
   
-  CollectionScanner(triagens::arango::AqlTransaction*,
+  CollectionScanner(arangodb::AqlTransaction*,
                     TRI_transaction_collection_t*);
 
   virtual ~CollectionScanner();
@@ -55,16 +55,16 @@ struct CollectionScanner {
 
   virtual int forward(size_t, size_t&) = 0;
 
-  triagens::arango::AqlTransaction* trx;
+  arangodb::AqlTransaction* trx;
   TRI_transaction_collection_t* trxCollection;
   uint64_t totalCount;
-  triagens::basics::BucketPosition position;
+  arangodb::basics::BucketPosition position;
 };
 
 
 struct RandomCollectionScanner final : public CollectionScanner {
   
-  RandomCollectionScanner(triagens::arango::AqlTransaction*,
+  RandomCollectionScanner(arangodb::AqlTransaction*,
                           TRI_transaction_collection_t*);
 
   int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) override;
@@ -73,14 +73,14 @@ struct RandomCollectionScanner final : public CollectionScanner {
 
   int forward(size_t, size_t&) override;
 
-  triagens::basics::BucketPosition initialPosition;
+  arangodb::basics::BucketPosition initialPosition;
   uint64_t step;
 };
 
 
 struct LinearCollectionScanner final : public CollectionScanner {
   
-  LinearCollectionScanner(triagens::arango::AqlTransaction*,
+  LinearCollectionScanner(arangodb::AqlTransaction*,
                           TRI_transaction_collection_t*);
 
   int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) override;

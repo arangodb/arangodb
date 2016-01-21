@@ -30,7 +30,7 @@
 
 struct TRI_df_marker_s;
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 class Slots;

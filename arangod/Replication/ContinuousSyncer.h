@@ -34,13 +34,12 @@ struct TRI_json_t;
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 
 namespace httpclient {
 class SimpleHttpResult;
 }
 
-namespace arango {
 class ReplicationTransaction;
 
 enum RestrictType : uint32_t {
@@ -272,7 +271,6 @@ class ContinuousSyncer : public Syncer {
   std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*>
       _ongoingTransactions;
 };
-}
 }
 
 #endif

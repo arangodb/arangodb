@@ -30,7 +30,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 struct ExecutionStats {
@@ -40,7 +40,7 @@ struct ExecutionStats {
   /// @brief instantiate the statistics from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  ExecutionStats(triagens::basics::Json const& jsonStats);
+  ExecutionStats(arangodb::basics::Json const& jsonStats);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief convert the statistics to VelocyPack
@@ -58,13 +58,13 @@ struct ExecutionStats {
   /// @brief convert the statistics to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson() const;
+  arangodb::basics::Json toJson() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create empty statistics for JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  static triagens::basics::Json toJsonStatic();
+  static arangodb::basics::Json toJsonStatic();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sumarize two sets of ExecutionStats

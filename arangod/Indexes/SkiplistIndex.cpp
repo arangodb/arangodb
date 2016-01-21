@@ -32,23 +32,23 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace triagens::arango;
-using Json = triagens::basics::Json;
+using namespace arangodb;
 
+using Json = arangodb::basics::Json;
 
-static size_t sortWeight(triagens::aql::AstNode const* node) {
+static size_t sortWeight(arangodb::aql::AstNode const* node) {
   switch (node->type) {
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       return 1;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
       return 2;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
       return 3;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       return 4;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       return 5;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
       return 6;
     default:
       return 42;
@@ -379,7 +379,7 @@ bool SkiplistIterator::findHelperIntervalValid(
 
   int compareResult =
       _index->CmpElmElm(lNode->document(), rNode->document(),
-                        triagens::basics::SKIPLIST_CMP_TOTORDER);
+                        arangodb::basics::SKIPLIST_CMP_TOTORDER);
   return (compareResult == -1);
   // Since we know that the nodes are not neighbours, we can guarantee
   // at least one document in the interval.
@@ -407,7 +407,7 @@ bool SkiplistIterator::findHelperIntervalIntersectionValid(
     compareResult = 1;
   } else {
     compareResult = _index->CmpElmElm(lNode->document(), rNode->document(),
-                                      triagens::basics::SKIPLIST_CMP_TOTORDER);
+                                      arangodb::basics::SKIPLIST_CMP_TOTORDER);
   }
 
   if (compareResult < 1) {
@@ -428,7 +428,7 @@ bool SkiplistIterator::findHelperIntervalIntersectionValid(
     compareResult = -1;
   } else {
     compareResult = _index->CmpElmElm(lNode->document(), rNode->document(),
-                                      triagens::basics::SKIPLIST_CMP_TOTORDER);
+                                      arangodb::basics::SKIPLIST_CMP_TOTORDER);
   }
 
   if (compareResult < 1) {
@@ -739,7 +739,7 @@ void SkiplistIndexIterator::reset() {
 
 SkiplistIndex::SkiplistIndex(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : PathBasedIndex(iid, collection, fields, unique, sparse, true),
       CmpElmElm(this),
@@ -776,12 +776,12 @@ size_t SkiplistIndex::memory() const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json SkiplistIndex::toJson(TRI_memory_zone_t* zone,
+arangodb::basics::Json SkiplistIndex::toJson(TRI_memory_zone_t* zone,
                                              bool withFigures) const {
   auto json = Index::toJson(zone, withFigures);
 
-  json("unique", triagens::basics::Json(zone, _unique))(
-      "sparse", triagens::basics::Json(zone, _sparse));
+  json("unique", arangodb::basics::Json(zone, _unique))(
+      "sparse", arangodb::basics::Json(zone, _sparse));
 
   return json;
 }
@@ -790,10 +790,10 @@ triagens::basics::Json SkiplistIndex::toJson(TRI_memory_zone_t* zone,
 /// @brief return a JSON representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json SkiplistIndex::toJsonFigures(
+arangodb::basics::Json SkiplistIndex::toJsonFigures(
     TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
+  arangodb::basics::Json json(arangodb::basics::Json::Object);
+  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
   _skiplistIndex->appendToJson(zone, json);
 
   return json;
@@ -803,7 +803,7 @@ triagens::basics::Json SkiplistIndex::toJsonFigures(
 /// @brief inserts a document into a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex::insert(triagens::arango::Transaction*,
+int SkiplistIndex::insert(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool) {
   std::vector<TRI_index_element_t*> elements;
 
@@ -821,7 +821,8 @@ int SkiplistIndex::insert(triagens::arango::Transaction*,
   // insert into the index. the memory for the element will be owned or freed
   // by the index
 
-  size_t count = elements.size();
+  size_t const count = elements.size();
+
   for (size_t i = 0; i < count; ++i) {
     res = _skiplistIndex->insert(elements[i]);
 
@@ -851,20 +852,38 @@ int SkiplistIndex::insert(triagens::arango::Transaction*,
 /// @brief removes a document from a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex::remove(triagens::arango::Transaction*,
+int SkiplistIndex::remove(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool) {
   std::vector<TRI_index_element_t*> elements;
 
   int res = fillElement(elements, doc);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    for (auto& it : elements) {
+      // free all elements to prevent leak
+      TRI_index_element_t::free(it);
+    }
+
+    return res;
+  }
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index
 
-  size_t count = elements.size();
+  size_t const count = elements.size();
+
   for (size_t i = 0; i < count; ++i) {
-    res = _skiplistIndex->remove(elements[i]);
+    int result = _skiplistIndex->remove(elements[i]);
+    
+    // we may be looping through this multiple times, and if an error
+    // occurs, we want to keep it
+    if (result != TRI_ERROR_NO_ERROR) {
+      res = result;
+    }
+
     TRI_index_element_t::free(elements[i]);
   }
+
   return res;
 }
 
@@ -876,7 +895,7 @@ int SkiplistIndex::remove(triagens::arango::Transaction*,
 /// the TRI_index_operator_t* and the SkiplistIterator* results
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIterator* SkiplistIndex::lookup(triagens::arango::Transaction* trx,
+SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
                                         TRI_index_operator_t* slOperator,
                                         bool reverse) const {
   TRI_ASSERT(slOperator != nullptr);
@@ -939,7 +958,7 @@ int SkiplistIndex::KeyElementComparator::operator()(
 int SkiplistIndex::ElementElementComparator::operator()(
     TRI_index_element_t const* leftElement,
     TRI_index_element_t const* rightElement,
-    triagens::basics::SkipListCmpType cmptype) const {
+    arangodb::basics::SkipListCmpType cmptype) const {
   TRI_ASSERT(nullptr != leftElement);
   TRI_ASSERT(nullptr != rightElement);
 
@@ -972,7 +991,7 @@ int SkiplistIndex::ElementElementComparator::operator()(
   // otherwise.
   // ...........................................................................
 
-  if (triagens::basics::SKIPLIST_CMP_PREORDER == cmptype) {
+  if (arangodb::basics::SKIPLIST_CMP_PREORDER == cmptype) {
     return 0;
   }
 
@@ -992,26 +1011,26 @@ int SkiplistIndex::ElementElementComparator::operator()(
 }
 
 bool SkiplistIndex::accessFitsIndex(
-    triagens::aql::AstNode const* access, triagens::aql::AstNode const* other,
-    triagens::aql::AstNode const* op, triagens::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&
+    arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
+    arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
         found,
     bool isExecution) const {
   if (!this->canUseConditionPart(access, other, op, reference, isExecution)) {
     return false;
   }
 
-  triagens::aql::AstNode const* what = access;
-  std::pair<triagens::aql::Variable const*,
-            std::vector<triagens::basics::AttributeName>> attributeData;
+  arangodb::aql::AstNode const* what = access;
+  std::pair<arangodb::aql::Variable const*,
+            std::vector<arangodb::basics::AttributeName>> attributeData;
 
-  if (op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+  if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     if (!what->isAttributeAccessForVariable(attributeData) ||
         attributeData.first != reference) {
       // this access is not referencing this collection
       return false;
     }
-    if (triagens::basics::TRI_AttributeNamesHaveExpansion(
+    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
             attributeData.second)) {
       // doc.value[*] == 'value'
       return false;
@@ -1023,12 +1042,12 @@ bool SkiplistIndex::accessFitsIndex(
   } else {
     // ok, we do have an IN here... check if it's something like 'value' IN
     // doc.value[*]
-    TRI_ASSERT(op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN);
+    TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
     bool canUse = false;
 
     if (what->isAttributeAccessForVariable(attributeData) &&
         attributeData.first == reference &&
-        !triagens::basics::TRI_AttributeNamesHaveExpansion(
+        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
             attributeData.second) &&
         attributeMatches(attributeData.second)) {
       // doc.value IN 'value'
@@ -1050,7 +1069,7 @@ bool SkiplistIndex::accessFitsIndex(
     }
   }
 
-  std::vector<triagens::basics::AttributeName> const& fieldNames =
+  std::vector<arangodb::basics::AttributeName> const& fieldNames =
       attributeData.second;
 
   for (size_t i = 0; i < _fields.size(); ++i) {
@@ -1060,12 +1079,12 @@ bool SkiplistIndex::accessFitsIndex(
     }
 
     if (this->isAttributeExpanded(i) &&
-        op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // If this attribute is correct or not, it could only serve for IN
       continue;
     }
 
-    bool match = triagens::basics::AttributeName::isIdentical(_fields[i],
+    bool match = arangodb::basics::AttributeName::isIdentical(_fields[i],
                                                               fieldNames, true);
 
     if (match) {
@@ -1073,7 +1092,7 @@ bool SkiplistIndex::accessFitsIndex(
       auto it = found.find(i);
 
       if (it == found.end()) {
-        found.emplace(i, std::vector<triagens::aql::AstNode const*>{op});
+        found.emplace(i, std::vector<arangodb::aql::AstNode const*>{op});
       } else {
         (*it).second.emplace_back(op);
       }
@@ -1089,20 +1108,20 @@ bool SkiplistIndex::accessFitsIndex(
 }
 
 void SkiplistIndex::matchAttributes(
-    triagens::aql::AstNode const* node,
-    triagens::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference,
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
         found,
     size_t& values, bool isExecution) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
 
     switch (op->type) {
-      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         TRI_ASSERT(op->numMembers() == 2);
         accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
                         found, isExecution);
@@ -1110,7 +1129,7 @@ void SkiplistIndex::matchAttributes(
                         found, isExecution);
         break;
 
-      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
                             found, isExecution)) {
           auto m = op->getMember(1);
@@ -1129,10 +1148,10 @@ void SkiplistIndex::matchAttributes(
 }
 
 bool SkiplistIndex::supportsFilterCondition(
-    triagens::aql::AstNode const* node,
-    triagens::aql::Variable const* reference, size_t itemsInIndex,
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
+  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   size_t values = 0;
   matchAttributes(node, reference, found, values, false);
 
@@ -1154,8 +1173,8 @@ bool SkiplistIndex::supportsFilterCondition(
     auto const& nodes = (*it).second;
     bool containsEquality = false;
     for (size_t j = 0; j < nodes.size(); ++j) {
-      if (nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-          nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      if (nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+          nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         containsEquality = true;
         break;
       }
@@ -1228,8 +1247,8 @@ bool SkiplistIndex::supportsFilterCondition(
 }
 
 bool SkiplistIndex::supportsSortCondition(
-    triagens::aql::SortCondition const* sortCondition,
-    triagens::aql::Variable const* reference, size_t itemsInIndex,
+    arangodb::aql::SortCondition const* sortCondition,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost) const {
   TRI_ASSERT(sortCondition != nullptr);
 
@@ -1262,9 +1281,9 @@ bool SkiplistIndex::supportsSortCondition(
 }
 
 IndexIterator* SkiplistIndex::iteratorForCondition(
-    triagens::arango::Transaction* trx, IndexIteratorContext* context,
-    triagens::aql::Ast* ast, triagens::aql::AstNode const* node,
-    triagens::aql::Variable const* reference, bool reverse) const {
+    arangodb::Transaction* trx, IndexIteratorContext* context,
+    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, bool reverse) const {
   // Create the skiplistOperator for the IndexLookup
   if (node == nullptr) {
     // We have no condition, we just use sort
@@ -1287,7 +1306,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     return new SkiplistIndexIterator(trx, this, searchValues, reverse);
   }
 
-  std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
+  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   size_t unused = 0;
   matchAttributes(node, reference, found, unused, true);
 
@@ -1297,13 +1316,13 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
   // Handle the first attributes. They can only be == or IN and only
   // one node per attribute
 
-  auto getValueAccess = [&](triagens::aql::AstNode const* comp,
-                            triagens::aql::AstNode const*& access,
-                            triagens::aql::AstNode const*& value) -> bool {
+  auto getValueAccess = [&](arangodb::aql::AstNode const* comp,
+                            arangodb::aql::AstNode const*& access,
+                            arangodb::aql::AstNode const*& value) -> bool {
     access = comp->getMember(0);
     value = comp->getMember(1);
-    std::pair<triagens::aql::Variable const*,
-              std::vector<triagens::basics::AttributeName>> paramPair;
+    std::pair<arangodb::aql::Variable const*,
+              std::vector<arangodb::basics::AttributeName>> paramPair;
     if (!(access->isAttributeAccessForVariable(paramPair) &&
           paramPair.first == reference)) {
       access = comp->getMember(1);
@@ -1338,18 +1357,18 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     }
     auto comp = it->second[0];
     TRI_ASSERT(comp->numMembers() == 2);
-    triagens::aql::AstNode const* access = nullptr;
-    triagens::aql::AstNode const* value = nullptr;
+    arangodb::aql::AstNode const* access = nullptr;
+    arangodb::aql::AstNode const* value = nullptr;
     getValueAccess(comp, access, value);
     // We found an access for this field
-    if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // This is an equalityCheck, we can continue with the next field
       permutationStates.emplace_back(
           PermutationState(comp->type, value, usedFields, 1));
       TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-    } else if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       if (isAttributeExpanded(usedFields)) {
         permutationStates.emplace_back(PermutationState(
             aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 1));
@@ -1386,8 +1405,8 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
 
       for (auto& comp : rangeConditions) {
         TRI_ASSERT(comp->numMembers() == 2);
-        triagens::aql::AstNode const* access = nullptr;
-        triagens::aql::AstNode const* value = nullptr;
+        arangodb::aql::AstNode const* access = nullptr;
+        arangodb::aql::AstNode const* value = nullptr;
         bool isReverseOrder = getValueAccess(comp, access, value);
 
         auto setBorder = [&](bool isLower, bool includeBound) -> void {
@@ -1405,16 +1424,16 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
         };
         // This is not an equalityCheck, set lower or upper
         switch (comp->type) {
-          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
             setBorder(false, false);
             break;
-          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
             setBorder(false, true);
             break;
-          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
             setBorder(true, false);
             break;
-          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
             setBorder(true, true);
             break;
           default:
@@ -1552,14 +1571,14 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
 /// @brief specializes the condition for use with the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* SkiplistIndex::specializeCondition(
-    triagens::aql::AstNode* node,
-    triagens::aql::Variable const* reference) const {
-  std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
+arangodb::aql::AstNode* SkiplistIndex::specializeCondition(
+    arangodb::aql::AstNode* node,
+    arangodb::aql::Variable const* reference) const {
+  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   size_t values = 0;
   matchAttributes(node, reference, found, values, false);
 
-  std::vector<triagens::aql::AstNode const*> children;
+  std::vector<arangodb::aql::AstNode const*> children;
   bool lastContainsEquality = true;
 
   for (size_t i = 0; i < _fields.size(); ++i) {
@@ -1574,8 +1593,8 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition(
     auto& nodes = (*it).second;
     bool containsEquality = false;
     for (size_t j = 0; j < nodes.size(); ++j) {
-      if (nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-          nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      if (nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+          nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         containsEquality = true;
         break;
       }
@@ -1588,7 +1607,7 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition(
 
     std::sort(
         nodes.begin(), nodes.end(),
-        [](triagens::aql::AstNode const* lhs, triagens::aql::AstNode const* rhs)
+        [](arangodb::aql::AstNode const* lhs, arangodb::aql::AstNode const* rhs)
             -> bool { return sortWeight(lhs) < sortWeight(rhs); });
 
     lastContainsEquality = containsEquality;
@@ -1614,7 +1633,7 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition(
 }
 
 bool SkiplistIndex::isDuplicateOperator(
-    triagens::aql::AstNode const* node,
+    arangodb::aql::AstNode const* node,
     std::unordered_set<int> const& operatorsFound) const {
   auto type = node->type;
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
@@ -1623,44 +1642,44 @@ bool SkiplistIndex::isDuplicateOperator(
   }
 
   if (operatorsFound.find(
-          static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
+          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
           operatorsFound.end() ||
       operatorsFound.find(
-          static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
+          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
           operatorsFound.end()) {
     return true;
   }
 
   bool duplicate = false;
   switch (type) {
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
       duplicate = operatorsFound.find(static_cast<int>(
-                      triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE)) !=
+                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE)) !=
                   operatorsFound.end();
       break;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       duplicate = operatorsFound.find(static_cast<int>(
-                      triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT)) !=
+                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT)) !=
                   operatorsFound.end();
       break;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       duplicate = operatorsFound.find(static_cast<int>(
-                      triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE)) !=
+                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) !=
                   operatorsFound.end();
       break;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
       duplicate = operatorsFound.find(static_cast<int>(
-                      triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT)) !=
+                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT)) !=
                   operatorsFound.end();
       break;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       duplicate = operatorsFound.find(static_cast<int>(
-                      triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
+                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
                   operatorsFound.end();
       break;
-    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
       duplicate = operatorsFound.find(static_cast<int>(
-                      triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
+                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
                   operatorsFound.end();
       break;
     default: {

@@ -25,12 +25,9 @@
 #define ARANGOD_UTILS_COLLECTION_WRITE_LOCKER_H 1
 
 #include "Basics/Common.h"
-
 #include "VocBase/document-collection.h"
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 class CollectionWriteLocker {
   
@@ -83,8 +80,6 @@ class CollectionWriteLocker {
   bool _doLock;
 };
 }
-}
 
 #endif
-
 

@@ -25,14 +25,10 @@
 #define ARANGOD_REST_HANDLER_REST_QUERY_HANDLER_H 1
 
 #include "Basics/Common.h"
-
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class ApplicationV8;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document request handler
@@ -46,15 +42,9 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   bool isDirect() const override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   status_t execute() override;
 
@@ -116,7 +106,6 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   ApplicationV8* _applicationV8;
 };
-}
 }
 
 #endif

@@ -29,7 +29,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/threads.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -156,7 +156,7 @@ class DeadlockDetector {
   /// @brief lock for managing the readers
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _readersLock;
+  arangodb::basics::Mutex _readersLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief readers that are blocked on writers
@@ -165,8 +165,8 @@ class DeadlockDetector {
   std::unordered_map<TRI_tid_t, TRI_tid_t> _readersBlocked;
 };
 
-}  // namespace triagens::basics
-}  // namespace triagens
+}  // namespace arangodb::basics
+}  // namespace arangodb
 
 #endif
 

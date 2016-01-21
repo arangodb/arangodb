@@ -40,11 +40,11 @@
 #define WRITE_UNLOCKER_VAR_B(a) WRITE_UNLOCKER_VAR_A(a)
 
 #define WRITE_UNLOCKER(b)                                                   \
-  triagens::basics::WriteUnlocker<std::remove_reference<decltype(b)>::type> \
+  arangodb::basics::WriteUnlocker<std::remove_reference<decltype(b)>::type> \
       WRITE_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////

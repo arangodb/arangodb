@@ -33,11 +33,9 @@
 
 struct TRI_vocbase_t;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class ReplicationTransaction : public Transaction {
-  
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -102,7 +100,6 @@ class ReplicationTransaction : public Transaction {
 
   TRI_voc_tid_t _externalId;
 };
-}
 }
 
 #endif

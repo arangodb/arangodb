@@ -25,7 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/QueryResult.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -30,7 +30,7 @@
 #include "Basics/Mutex.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class DispatcherQueue;
 class DispatcherThread;
@@ -142,8 +142,7 @@ class Dispatcher {
   /// @brief sets the process affinity
   //////////////////////////////////////////////////////////////////////////////
 
-  void setProcessorAffinity(size_t id, const std::vector<size_t>& cores);
-
+  void setProcessorAffinity(size_t id, std::vector<size_t> const& cores);
   
  private:
   //////////////////////////////////////////////////////////////////////////////

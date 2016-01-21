@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Functions.h"
+#include "Functions.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
@@ -42,10 +42,10 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
 
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
-using CollectionNameResolver = triagens::arango::CollectionNameResolver;
-using VertexId = triagens::arango::traverser::VertexId;
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
+using CollectionNameResolver = arangodb::CollectionNameResolver;
+using VertexId = arangodb::traverser::VertexId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread-local cache for compiled regexes
@@ -53,7 +53,6 @@ using VertexId = triagens::arango::traverser::VertexId;
 
 thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
     nullptr;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear the regex cache in a thread
@@ -139,7 +138,7 @@ static std::string BuildRegexPattern(char const* ptr, size_t length,
 /// @brief extract a function parameter from the arguments list
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json ExtractFunctionParameter(triagens::arango::AqlTransaction* trx,
+static Json ExtractFunctionParameter(arangodb::AqlTransaction* trx,
                                      FunctionParameters const& parameters,
                                      size_t position, bool copy) {
   if (position >= parameters.size()) {
@@ -155,12 +154,12 @@ static Json ExtractFunctionParameter(triagens::arango::AqlTransaction* trx,
 /// @brief register warning
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RegisterWarning(triagens::aql::Query* query,
+static void RegisterWarning(arangodb::aql::Query* query,
                             char const* functionName, int code) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = triagens::basics::Exception::FillExceptionString(code, functionName);
+    msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
   } else {
     msg.append("in function '");
     msg.append(functionName);
@@ -175,10 +174,34 @@ static void RegisterWarning(triagens::aql::Query* query,
 /// @brief register usage of an invalid function argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RegisterInvalidArgumentWarning(triagens::aql::Query* query,
+static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
                                            char const* functionName) {
   RegisterWarning(query, functionName,
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief safely copies a TRI_json_t
+/// "safely" here means the function will neither accept a nullptr as input
+/// nor will ever return a nullptr
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* SafeCopyJson(TRI_json_t const* src) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(src != nullptr);
+#endif
+
+  if (src == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src);
+
+  if (copy == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  return copy;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +228,7 @@ static double ValueToNumber(TRI_json_t const* json, bool& isValid) {
     case TRI_JSON_STRING_REFERENCE: {
       try {
         std::string const str =
-            triagens::basics::JsonHelper::getStringValue(json, "");
+            arangodb::basics::JsonHelper::getStringValue(json, "");
         size_t behind = 0;
         double value = std::stod(str, &behind);
         while (behind < str.size()) {
@@ -274,7 +297,7 @@ static bool ValueToBoolean(TRI_json_t const* json) {
 /// @brief extract a boolean parameter from an array
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool GetBooleanParameter(triagens::arango::AqlTransaction* trx,
+static bool GetBooleanParameter(arangodb::AqlTransaction* trx,
                                 FunctionParameters const& parameters,
                                 size_t startParameter, bool defaultValue) {
   size_t const n = parameters.size();
@@ -292,8 +315,8 @@ static bool GetBooleanParameter(triagens::arango::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractKeys(std::unordered_set<std::string>& names,
-                        triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+                        arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters,
                         size_t startParameter, char const* functionName) {
   size_t const n = parameters.size();
@@ -303,7 +326,7 @@ static void ExtractKeys(std::unordered_set<std::string>& names,
 
     if (param.isString()) {
       TRI_json_t const* json = param.json();
-      names.emplace(triagens::basics::JsonHelper::getStringValue(json, ""));
+      names.emplace(arangodb::basics::JsonHelper::getStringValue(json, ""));
     } else if (param.isNumber()) {
       TRI_json_t const* json = param.json();
       double number = json->_value._number;
@@ -323,7 +346,7 @@ static void ExtractKeys(std::unordered_set<std::string>& names,
         auto v = static_cast<TRI_json_t const*>(
             TRI_AtVector(&p->_value._objects, j));
         if (TRI_IsStringJson(v)) {
-          names.emplace(triagens::basics::JsonHelper::getStringValue(v, ""));
+          names.emplace(arangodb::basics::JsonHelper::getStringValue(v, ""));
         } else {
           RegisterInvalidArgumentWarning(query, functionName);
         }
@@ -336,7 +359,7 @@ static void ExtractKeys(std::unordered_set<std::string>& names,
 /// @brief append the JSON value to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AppendAsString(triagens::basics::StringBuffer& buffer,
+static void AppendAsString(arangodb::basics::StringBuffer& buffer,
                            TRI_json_t const* json) {
   TRI_json_type_e const type =
       (json == nullptr ? TRI_JSON_UNUSED : json->_type);
@@ -361,7 +384,7 @@ static void AppendAsString(triagens::basics::StringBuffer& buffer,
     }
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE: {
-      buffer.appendText(triagens::basics::JsonHelper::getStringValue(json, ""));
+      buffer.appendText(arangodb::basics::JsonHelper::getStringValue(json, ""));
       break;
     }
     case TRI_JSON_ARRAY: {
@@ -502,7 +525,7 @@ static inline Json ExpandShapedJson(VocShaper* shaper,
 ///        Returns null if the document does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json ReadDocument(triagens::arango::AqlTransaction* trx,
+static Json ReadDocument(arangodb::AqlTransaction* trx,
                          CollectionNameResolver const* resolver,
                          TRI_voc_cid_t cid, char const* key) {
   auto collection = trx->trxCollection(cid);
@@ -538,7 +561,7 @@ static Json ReadDocument(triagens::arango::AqlTransaction* trx,
 /// @brief function to filter the given list of mptr
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FilterDocuments(triagens::arango::ExampleMatcher const* matcher,
+static void FilterDocuments(arangodb::ExampleMatcher const* matcher,
                             TRI_voc_cid_t cid,
                             std::vector<TRI_doc_mptr_copy_t>& toFilter) {
   if (matcher == nullptr) {
@@ -555,20 +578,20 @@ static void FilterDocuments(triagens::arango::ExampleMatcher const* matcher,
   }
 }
 
-static void RequestEdges(triagens::basics::Json const& vertexJson,
-                         triagens::arango::AqlTransaction* trx,
+static void RequestEdges(arangodb::basics::Json const& vertexJson,
+                         arangodb::AqlTransaction* trx,
                          CollectionNameResolver const* resolver,
                          VocShaper* shaper, TRI_voc_cid_t cid,
                          TRI_document_collection_t* collection,
                          TRI_edge_direction_e direction,
-                         triagens::arango::ExampleMatcher const* matcher,
-                         bool includeVertices, triagens::basics::Json& result) {
+                         arangodb::ExampleMatcher const* matcher,
+                         bool includeVertices, arangodb::basics::Json& result) {
   std::string vertexId;
   if (vertexJson.isString()) {
     vertexId =
-        triagens::basics::JsonHelper::getStringValue(vertexJson.json(), "");
+        arangodb::basics::JsonHelper::getStringValue(vertexJson.json(), "");
   } else if (vertexJson.isObject()) {
-    vertexId = triagens::basics::JsonHelper::getStringValue(vertexJson.json(),
+    vertexId = arangodb::basics::JsonHelper::getStringValue(vertexJson.json(),
                                                             "_id", "");
   } else {
     // Nothing to do.
@@ -577,7 +600,7 @@ static void RequestEdges(triagens::basics::Json const& vertexJson,
   }
 
   std::vector<std::string> parts =
-      triagens::basics::StringUtils::split(vertexId, "/");
+      arangodb::basics::StringUtils::split(vertexId, "/");
   if (parts.size() != 2) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                    vertexId);
@@ -659,8 +682,8 @@ void Functions::DestroyThreadContext() { ClearRegexCache(); }
 /// @brief function IS_NULL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsNull(triagens::aql::Query*,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::IsNull(arangodb::aql::Query*,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isNull()));
@@ -670,8 +693,8 @@ AqlValue Functions::IsNull(triagens::aql::Query*,
 /// @brief function IS_BOOL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsBool(triagens::aql::Query*,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::IsBool(arangodb::aql::Query*,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isBoolean()));
@@ -681,8 +704,8 @@ AqlValue Functions::IsBool(triagens::aql::Query*,
 /// @brief function IS_NUMBER
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsNumber(triagens::aql::Query*,
-                             triagens::arango::AqlTransaction* trx,
+AqlValue Functions::IsNumber(arangodb::aql::Query*,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isNumber()));
@@ -692,8 +715,8 @@ AqlValue Functions::IsNumber(triagens::aql::Query*,
 /// @brief function IS_STRING
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsString(triagens::aql::Query*,
-                             triagens::arango::AqlTransaction* trx,
+AqlValue Functions::IsString(arangodb::aql::Query*,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isString()));
@@ -703,8 +726,8 @@ AqlValue Functions::IsString(triagens::aql::Query*,
 /// @brief function IS_ARRAY
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsArray(triagens::aql::Query*,
-                            triagens::arango::AqlTransaction* trx,
+AqlValue Functions::IsArray(arangodb::aql::Query*,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isArray()));
@@ -714,8 +737,8 @@ AqlValue Functions::IsArray(triagens::aql::Query*,
 /// @brief function IS_OBJECT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsObject(triagens::aql::Query*,
-                             triagens::arango::AqlTransaction* trx,
+AqlValue Functions::IsObject(arangodb::aql::Query*,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isObject()));
@@ -725,8 +748,8 @@ AqlValue Functions::IsObject(triagens::aql::Query*,
 /// @brief function TO_NUMBER
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ToNumber(triagens::aql::Query*,
-                             triagens::arango::AqlTransaction* trx,
+AqlValue Functions::ToNumber(arangodb::aql::Query*,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -743,17 +766,21 @@ AqlValue Functions::ToNumber(triagens::aql::Query*,
 /// @brief function TO_STRING
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ToString(triagens::aql::Query*,
-                             triagens::arango::AqlTransaction* trx,
+AqlValue Functions::ToString(arangodb::aql::Query*,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
 
   AppendAsString(buffer, value.json());
   size_t length = buffer.length();
   std::unique_ptr<TRI_json_t> j(
       TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, buffer.steal(), length));
+
+  if (j == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
   j.release();
@@ -764,8 +791,8 @@ AqlValue Functions::ToString(triagens::aql::Query*,
 /// @brief function TO_BOOL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ToBool(triagens::aql::Query*,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::ToBool(arangodb::aql::Query*,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -776,22 +803,22 @@ AqlValue Functions::ToBool(triagens::aql::Query*,
 /// @brief function TO_ARRAY
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ToArray(triagens::aql::Query*,
-                            triagens::arango::AqlTransaction* trx,
+AqlValue Functions::ToArray(arangodb::aql::Query*,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
   if (value.isBoolean() || value.isNumber() || value.isString()) {
     // return array with single member
     Json array(Json::Array, 1);
-    array.add(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value.json()));
+    array.add(SafeCopyJson(value.json()));
 
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
   }
   if (value.isArray()) {
     // return copy of the original array
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                             TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value.json())));
+                             SafeCopyJson(value.json())));
   }
   if (value.isObject()) {
     // return an array with the attribute values
@@ -802,7 +829,7 @@ AqlValue Functions::ToArray(triagens::aql::Query*,
     for (size_t i = 1; i < n; i += 2) {
       auto v = static_cast<TRI_json_t const*>(
           TRI_AtVector(&source->_value._objects, i));
-      array.add(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, v));
+      array.add(SafeCopyJson(v));
     }
 
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
@@ -816,8 +843,8 @@ AqlValue Functions::ToArray(triagens::aql::Query*,
 /// @brief function LENGTH
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Length(triagens::aql::Query*,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Length(arangodb::aql::Query*,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   if (!parameters.empty() && parameters[0].first.isArray()) {
     // shortcut!
@@ -885,8 +912,8 @@ AqlValue Functions::Length(triagens::aql::Query*,
 /// @brief function FIRST
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::First(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::First(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   if (parameters.size() < 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -915,8 +942,8 @@ AqlValue Functions::First(triagens::aql::Query* query,
 /// @brief function LAST
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Last(triagens::aql::Query* query,
-                         triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Last(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   if (parameters.size() < 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -947,8 +974,8 @@ AqlValue Functions::Last(triagens::aql::Query* query,
 /// @brief function NTH
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Nth(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Nth(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   if (parameters.size() < 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -993,10 +1020,10 @@ AqlValue Functions::Nth(triagens::aql::Query* query,
 /// @brief function CONCAT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Concat(triagens::aql::Query*,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Concat(arangodb::aql::Query*,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
 
   size_t const n = parameters.size();
 
@@ -1034,6 +1061,10 @@ AqlValue Functions::Concat(triagens::aql::Query*,
   size_t length = buffer.length();
   std::unique_ptr<TRI_json_t> j(
       TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, buffer.steal(), length));
+  
+  if (j == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
   j.release();
@@ -1044,8 +1075,8 @@ AqlValue Functions::Concat(triagens::aql::Query*,
 /// @brief function LIKE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Like(triagens::aql::Query* query,
-                         triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Like(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   if (parameters.size() < 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -1054,7 +1085,7 @@ AqlValue Functions::Like(triagens::aql::Query* query,
   }
 
   bool const caseInsensitive = GetBooleanParameter(trx, parameters, 2, false);
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
 
   // build pattern from parameter #1
   auto const regex = ExtractFunctionParameter(trx, parameters, 1, false);
@@ -1076,7 +1107,7 @@ AqlValue Functions::Like(triagens::aql::Query* query,
 
   if (matcher == nullptr) {
     matcher =
-        triagens::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
 
     try {
       if (RegexCache == nullptr) {
@@ -1103,7 +1134,7 @@ AqlValue Functions::Like(triagens::aql::Query* query,
   AppendAsString(buffer, value.json());
 
   bool error = false;
-  bool const result = triagens::basics::Utf8Helper::DefaultUtf8Helper.matches(
+  bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
       matcher, buffer.c_str(), buffer.length(), error);
 
   if (error) {
@@ -1119,8 +1150,8 @@ AqlValue Functions::Like(triagens::aql::Query* query,
 /// @brief function PASSTHRU
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Passthru(triagens::aql::Query*,
-                             triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Passthru(arangodb::aql::Query*,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   if (parameters.empty()) {
     return AqlValue(new Json(Json::Null));
@@ -1134,8 +1165,8 @@ AqlValue Functions::Passthru(triagens::aql::Query*,
 /// @brief function UNSET
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Unset(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Unset(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1173,11 +1204,7 @@ AqlValue Functions::Unset(triagens::aql::Query* query,
 
     if (TRI_IsStringJson(key) &&
         names.find(key->_value._string.data) == names.end()) {
-      auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
-
-      if (copy == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
+      auto copy = SafeCopyJson(value);
 
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, j.get(),
                             key->_value._string.data, copy);
@@ -1193,8 +1220,8 @@ AqlValue Functions::Unset(triagens::aql::Query* query,
 /// @brief function UNSET_RECURSIVE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::UnsetRecursive(triagens::aql::Query* query,
-                                   triagens::arango::AqlTransaction* trx,
+AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
+                                   arangodb::AqlTransaction* trx,
                                    FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1241,7 +1268,7 @@ AqlValue Functions::UnsetRecursive(triagens::aql::Query* query,
         if (TRI_IsObjectJson(v)) {
           copy = func(v, names);
         } else {
-          copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, v);
+          copy = SafeCopyJson(v);
         }
 
         if (copy == nullptr) {
@@ -1265,8 +1292,8 @@ AqlValue Functions::UnsetRecursive(triagens::aql::Query* query,
 /// @brief function KEEP
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Keep(triagens::aql::Query* query,
-                         triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Keep(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1297,7 +1324,7 @@ AqlValue Functions::Keep(triagens::aql::Query* query,
 
     if (TRI_IsStringJson(key) &&
         names.find(key->_value._string.data) != names.end()) {
-      auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
+      auto copy = SafeCopyJson(value);
 
       if (copy == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1317,8 +1344,8 @@ AqlValue Functions::Keep(triagens::aql::Query* query,
 /// @brief function MERGE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Merge(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Merge(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1402,8 +1429,8 @@ AqlValue Functions::Merge(triagens::aql::Query* query,
 /// @brief function MERGE_RECURSIVE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::MergeRecursive(triagens::aql::Query* query,
-                                   triagens::arango::AqlTransaction* trx,
+AqlValue Functions::MergeRecursive(arangodb::aql::Query* query,
+                                   arangodb::AqlTransaction* trx,
                                    FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1487,8 +1514,8 @@ AqlValue Functions::MergeRecursive(triagens::aql::Query* query,
 /// @brief function HAS
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Has(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Has(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1510,7 +1537,7 @@ AqlValue Functions::Has(triagens::aql::Query* query,
   char const* p;
 
   if (!name.isString()) {
-    triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+    arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
     AppendAsString(buffer, name.json());
     p = buffer.c_str();
   } else {
@@ -1525,8 +1552,8 @@ AqlValue Functions::Has(triagens::aql::Query* query,
 /// @brief function ATTRIBUTES
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Attributes(triagens::aql::Query* query,
-                               triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Attributes(arangodb::aql::Query* query,
+                               arangodb::AqlTransaction* trx,
                                FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1595,7 +1622,7 @@ AqlValue Functions::Attributes(triagens::aql::Query* query,
     auto key = static_cast<TRI_json_t const*>(
         TRI_AddressVector(&valueJson->_value._objects, it.second));
 
-    result.add(Json(triagens::basics::JsonHelper::getStringValue(key, "")));
+    result.add(Json(arangodb::basics::JsonHelper::getStringValue(key, "")));
   }
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
@@ -1605,8 +1632,8 @@ AqlValue Functions::Attributes(triagens::aql::Query* query,
 /// @brief function VALUES
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Values(triagens::aql::Query* query,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Values(arangodb::aql::Query* query,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -1657,7 +1684,7 @@ AqlValue Functions::Values(triagens::aql::Query* query,
     auto value = static_cast<TRI_json_t const*>(
         TRI_AddressVector(&valueJson->_value._objects, i + 1));
     result.add(
-        Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value)));
+        Json(TRI_UNKNOWN_MEM_ZONE, SafeCopyJson(value)));
   }
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
@@ -1667,8 +1694,8 @@ AqlValue Functions::Values(triagens::aql::Query* query,
 /// @brief function MIN
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Min(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Min(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1697,7 +1724,7 @@ AqlValue Functions::Min(triagens::aql::Query* query,
 
   if (minValue != nullptr) {
     std::unique_ptr<TRI_json_t> result(
-        TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, minValue));
+        SafeCopyJson(minValue));
 
     if (result != nullptr) {
       auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
@@ -1713,8 +1740,8 @@ AqlValue Functions::Min(triagens::aql::Query* query,
 /// @brief function MAX
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Max(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Max(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1744,7 +1771,7 @@ AqlValue Functions::Max(triagens::aql::Query* query,
 
   if (maxValue != nullptr) {
     std::unique_ptr<TRI_json_t> result(
-        TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, maxValue));
+        SafeCopyJson(maxValue));
 
     if (result != nullptr) {
       auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
@@ -1760,8 +1787,8 @@ AqlValue Functions::Max(triagens::aql::Query* query,
 /// @brief function SUM
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Sum(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Sum(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1808,8 +1835,8 @@ AqlValue Functions::Sum(triagens::aql::Query* query,
 /// @brief function AVERAGE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Average(triagens::aql::Query* query,
-                            triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Average(arangodb::aql::Query* query,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -1857,12 +1884,12 @@ AqlValue Functions::Average(triagens::aql::Query* query,
 /// @brief function MD5
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Md5(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Md5(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   AppendAsString(buffer, value.json());
 
   // create md5
@@ -1870,14 +1897,14 @@ AqlValue Functions::Md5(triagens::aql::Query* query,
   char* p = &hash[0];
   size_t length;
 
-  triagens::rest::SslInterface::sslMD5(buffer.c_str(), buffer.length(), p,
+  arangodb::rest::SslInterface::sslMD5(buffer.c_str(), buffer.length(), p,
                                        length);
 
   // as hex
   char hex[33];
   p = &hex[0];
 
-  triagens::rest::SslInterface::sslHEX(hash, 16, p, length);
+  arangodb::rest::SslInterface::sslHEX(hash, 16, p, length);
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, hex, 32));
 }
@@ -1886,12 +1913,12 @@ AqlValue Functions::Md5(triagens::aql::Query* query,
 /// @brief function SHA1
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Sha1(triagens::aql::Query* query,
-                         triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Sha1(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   AppendAsString(buffer, value.json());
 
   // create sha1
@@ -1899,14 +1926,14 @@ AqlValue Functions::Sha1(triagens::aql::Query* query,
   char* p = &hash[0];
   size_t length;
 
-  triagens::rest::SslInterface::sslSHA1(buffer.c_str(), buffer.length(), p,
+  arangodb::rest::SslInterface::sslSHA1(buffer.c_str(), buffer.length(), p,
                                         length);
 
   // as hex
   char hex[41];
   p = &hex[0];
 
-  triagens::rest::SslInterface::sslHEX(hash, 20, p, length);
+  arangodb::rest::SslInterface::sslHEX(hash, 20, p, length);
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, hex, 40));
 }
@@ -1915,8 +1942,8 @@ AqlValue Functions::Sha1(triagens::aql::Query* query,
 /// @brief function UNIQUE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Unique(triagens::aql::Query* query,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Unique(arangodb::aql::Query* query,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -1932,9 +1959,9 @@ AqlValue Functions::Unique(triagens::aql::Query* query,
     return AqlValue(new Json(Json::Null));
   }
 
-  std::unordered_set<TRI_json_t const*, triagens::basics::JsonHash,
-                     triagens::basics::JsonEqual>
-      values(512, triagens::basics::JsonHash(), triagens::basics::JsonEqual());
+  std::unordered_set<TRI_json_t const*, arangodb::basics::JsonHash,
+                     arangodb::basics::JsonEqual>
+      values(512, arangodb::basics::JsonHash(), arangodb::basics::JsonEqual());
 
   TRI_json_t const* valueJson = value.json();
   size_t const n = TRI_LengthArrayJson(valueJson);
@@ -1952,14 +1979,13 @@ AqlValue Functions::Unique(triagens::aql::Query* query,
 
   std::unique_ptr<TRI_json_t> result(
       TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, values.size()));
+  
+  if (result == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   for (auto const& it : values) {
-    auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it);
-
-    if (copy == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
+    auto copy = SafeCopyJson(it);
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), copy);
   }
 
@@ -1972,8 +1998,8 @@ AqlValue Functions::Unique(triagens::aql::Query* query,
 /// @brief function SORTED_UNIQUE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::SortedUnique(triagens::aql::Query* query,
-                                 triagens::arango::AqlTransaction* trx,
+AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -1989,7 +2015,7 @@ AqlValue Functions::SortedUnique(triagens::aql::Query* query,
     return AqlValue(new Json(Json::Null));
   }
 
-  std::set<TRI_json_t const*, triagens::basics::JsonLess<true>> values;
+  std::set<TRI_json_t const*, arangodb::basics::JsonLess<true>> values;
 
   TRI_json_t const* valueJson = value.json();
   size_t const n = TRI_LengthArrayJson(valueJson);
@@ -2007,9 +2033,13 @@ AqlValue Functions::SortedUnique(triagens::aql::Query* query,
 
   std::unique_ptr<TRI_json_t> result(
       TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, values.size()));
+  
+  if (result == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   for (auto const& it : values) {
-    auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it);
+    auto copy = SafeCopyJson(it);
 
     if (copy == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -2027,8 +2057,8 @@ AqlValue Functions::SortedUnique(triagens::aql::Query* query,
 /// @brief function UNION
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Union(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Union(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2040,6 +2070,10 @@ AqlValue Functions::Union(triagens::aql::Query* query,
 
   std::unique_ptr<TRI_json_t> result(
       TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 16));
+
+  if (result == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   for (size_t i = 0; i < n; ++i) {
     auto value = ExtractFunctionParameter(trx, parameters, i, false);
@@ -2065,11 +2099,7 @@ AqlValue Functions::Union(triagens::aql::Query* query,
     // this passes ownership for the JSON contens into result
     for (size_t j = 0; j < nrValues; ++j) {
       TRI_json_t* copy =
-          TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_LookupArrayJson(valueJson, j));
-
-      if (copy == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
+          SafeCopyJson(TRI_LookupArrayJson(valueJson, j));
 
       TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), copy);
 
@@ -2092,8 +2122,8 @@ AqlValue Functions::Union(triagens::aql::Query* query,
 /// @brief function UNION_DISTINCT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::UnionDistinct(triagens::aql::Query* query,
-                                  triagens::arango::AqlTransaction* trx,
+AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
+                                  arangodb::AqlTransaction* trx,
                                   FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2103,9 +2133,9 @@ AqlValue Functions::UnionDistinct(triagens::aql::Query* query,
         (int)2, (int)Function::MaxArguments);
   }
 
-  std::unordered_set<TRI_json_t*, triagens::basics::JsonHash,
-                     triagens::basics::JsonEqual>
-      values(512, triagens::basics::JsonHash(), triagens::basics::JsonEqual());
+  std::unordered_set<TRI_json_t*, arangodb::basics::JsonHash,
+                     arangodb::basics::JsonEqual>
+      values(512, arangodb::basics::JsonHash(), arangodb::basics::JsonEqual());
 
   auto freeValues = [&values]() -> void {
     for (auto& it : values) {
@@ -2135,7 +2165,7 @@ AqlValue Functions::UnionDistinct(triagens::aql::Query* query,
 
         if (values.find(value) == values.end()) {
           std::unique_ptr<TRI_json_t> copy(
-              TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value));
+              SafeCopyJson(value));
 
           if (copy == nullptr) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -2183,8 +2213,8 @@ AqlValue Functions::UnionDistinct(triagens::aql::Query* query,
 /// @brief function INTERSECTION
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Intersection(triagens::aql::Query* query,
-                                 triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Intersection(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2194,9 +2224,9 @@ AqlValue Functions::Intersection(triagens::aql::Query* query,
         (int)2, (int)Function::MaxArguments);
   }
 
-  std::unordered_map<TRI_json_t*, size_t, triagens::basics::JsonHash,
-                     triagens::basics::JsonEqual>
-      values(512, triagens::basics::JsonHash(), triagens::basics::JsonEqual());
+  std::unordered_map<TRI_json_t*, size_t, arangodb::basics::JsonHash,
+                     arangodb::basics::JsonEqual>
+      values(512, arangodb::basics::JsonHash(), arangodb::basics::JsonEqual());
 
   auto freeValues = [&values]() -> void {
     for (auto& it : values) {
@@ -2228,11 +2258,7 @@ AqlValue Functions::Intersection(triagens::aql::Query* query,
         if (i == 0) {
           // round one
           std::unique_ptr<TRI_json_t> copy(
-              TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value));
-
-          if (copy == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
+              SafeCopyJson(value));
 
           TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2303,7 +2329,7 @@ AqlValue Functions::Intersection(triagens::aql::Query* query,
 /// @brief Transforms VertexId to Json
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json VertexIdToJson(triagens::arango::AqlTransaction* trx,
+static Json VertexIdToJson(arangodb::AqlTransaction* trx,
                            CollectionNameResolver const* resolver,
                            VertexId const& id) {
   auto collection = trx->trxCollection(id.cid);
@@ -2329,6 +2355,9 @@ static Json VertexIdToJson(triagens::arango::AqlTransaction* trx,
   int res = trx->readSingle(collection, &mptr, id.key);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      return Json(Json::Null);
+    }
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -2349,7 +2378,7 @@ static std::string VertexIdToString(CollectionNameResolver const* resolver,
 /// @brief Transforms an unordered_map<VertexId> to AQL json values
 ////////////////////////////////////////////////////////////////////////////////
 
-static AqlValue VertexIdsToAqlValue(triagens::arango::AqlTransaction* trx,
+static AqlValue VertexIdsToAqlValue(arangodb::AqlTransaction* trx,
                                     CollectionNameResolver const* resolver,
                                     std::unordered_set<VertexId>& ids,
                                     bool includeData = false) {
@@ -2375,11 +2404,11 @@ static AqlValue VertexIdsToAqlValue(triagens::arango::AqlTransaction* trx,
 /// @brief function NEIGHBORS
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Neighbors(triagens::aql::Query* query,
-                              triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Neighbors(arangodb::aql::Query* query,
+                              arangodb::AqlTransaction* trx,
                               FunctionParameters const& parameters) {
   size_t const n = parameters.size();
-  triagens::arango::traverser::NeighborsOptions opts;
+  arangodb::traverser::NeighborsOptions opts;
 
   if (n < 4 || n > 6) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -2554,7 +2583,7 @@ AqlValue Functions::Neighbors(triagens::aql::Query* query,
   }
 
   std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
-  triagens::basics::ScopeGuard guard{[]() -> void {},
+  arangodb::basics::ScopeGuard guard{[]() -> void {},
                                      [&edgeCollectionInfos]() -> void {
                                        for (auto& p : edgeCollectionInfos) {
                                          delete p;
@@ -2576,8 +2605,8 @@ AqlValue Functions::Neighbors(triagens::aql::Query* query,
 /// @brief function NEAR
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Near(triagens::aql::Query* query,
-                         triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Near(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2666,11 +2695,11 @@ AqlValue Functions::Near(triagens::aql::Query* query,
                                   colName.c_str());
   }
 
-  triagens::arango::Index* index = nullptr;
+  arangodb::Index* index = nullptr;
 
   for (auto const& idx : document->allIndexes()) {
-    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
       index = idx;
       break;
     }
@@ -2686,7 +2715,7 @@ AqlValue Functions::Near(triagens::aql::Query* query,
   }
 
   GeoCoordinates* cors =
-      static_cast<triagens::arango::GeoIndex2*>(index)
+      static_cast<arangodb::GeoIndex2*>(index)
           ->nearQuery(trx, latitude.json()->_value._number,
                       longitude.json()->_value._number, limitValue);
 
@@ -2756,8 +2785,8 @@ AqlValue Functions::Near(triagens::aql::Query* query,
 /// @brief function WITHIN
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Within(triagens::aql::Query* query,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Within(arangodb::aql::Query* query,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -2832,11 +2861,11 @@ AqlValue Functions::Within(triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  triagens::arango::Index* index = nullptr;
+  arangodb::Index* index = nullptr;
 
   for (auto const& idx : document->allIndexes()) {
-    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
       index = idx;
       break;
     }
@@ -2852,7 +2881,7 @@ AqlValue Functions::Within(triagens::aql::Query* query,
   }
 
   GeoCoordinates* cors =
-      static_cast<triagens::arango::GeoIndex2*>(index)->withinQuery(
+      static_cast<arangodb::GeoIndex2*>(index)->withinQuery(
           trx, latitude.json()->_value._number,
           longitude.json()->_value._number, radius.json()->_value._number);
 
@@ -2940,8 +2969,8 @@ static void FlattenList(Json array, size_t maxDepth, size_t curDepth,
 /// @brief function FLATTEN
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Flatten(triagens::aql::Query* query,
-                            triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Flatten(arangodb::aql::Query* query,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n == 0 || n > 2) {
@@ -2978,8 +3007,8 @@ AqlValue Functions::Flatten(triagens::aql::Query* query,
 /// @brief function ZIP
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Zip(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Zip(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   if (parameters.size() != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3000,7 +3029,7 @@ AqlValue Functions::Zip(triagens::aql::Query* query,
   Json result(Json::Object, n);
 
   // Buffer will temporarily hold the keys
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
   for (size_t i = 0; i < n; ++i) {
     buffer.reset();
     AppendAsString(buffer, keysJson.at(i).json());
@@ -3013,8 +3042,8 @@ AqlValue Functions::Zip(triagens::aql::Query* query,
 /// @brief function PARSE_IDENTIFIER
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ParseIdentifier(triagens::aql::Query* query,
-                                    triagens::arango::AqlTransaction* trx,
+AqlValue Functions::ParseIdentifier(arangodb::aql::Query* query,
+                                    arangodb::AqlTransaction* trx,
                                     FunctionParameters const& parameters) {
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3028,9 +3057,9 @@ AqlValue Functions::ParseIdentifier(triagens::aql::Query* query,
   }
   if (value.isString()) {
     std::string identifier =
-        triagens::basics::JsonHelper::getStringValue(value.json(), "");
+        arangodb::basics::JsonHelper::getStringValue(value.json(), "");
     std::vector<std::string> parts =
-        triagens::basics::StringUtils::split(identifier, "/");
+        arangodb::basics::StringUtils::split(identifier, "/");
     if (parts.size() == 2) {
       Json result(Json::Object, 2);
       result.set("collection", Json(parts[0]));
@@ -3048,8 +3077,8 @@ AqlValue Functions::ParseIdentifier(triagens::aql::Query* query,
 /// @brief function Minus
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Minus(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Minus(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3104,7 +3133,7 @@ AqlValue Functions::Minus(triagens::aql::Query* query,
 }
 
 static void RegisterCollectionInTransaction(
-    triagens::arango::AqlTransaction* trx, std::string const& collectionName,
+    arangodb::AqlTransaction* trx, std::string const& collectionName,
     TRI_voc_cid_t& cid, TRI_transaction_collection_t*& collection) {
   TRI_ASSERT(collection == nullptr);
   cid = trx->resolver()->getCollectionId(collectionName);
@@ -3139,14 +3168,14 @@ static void RegisterCollectionInTransaction(
 ///        The collection has to be locked by the transaction before
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json getDocumentByIdentifier(triagens::arango::AqlTransaction* trx,
+static Json getDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     CollectionNameResolver const* resolver,
                                     TRI_transaction_collection_t* collection,
                                     TRI_voc_cid_t const& cid,
                                     std::string const& collectionName,
                                     std::string const& identifier) {
   std::vector<std::string> parts =
-      triagens::basics::StringUtils::split(identifier, "/");
+      arangodb::basics::StringUtils::split(identifier, "/");
 
   TRI_doc_mptr_copy_t mptr;
   if (parts.size() == 1) {
@@ -3178,11 +3207,11 @@ static Json getDocumentByIdentifier(triagens::arango::AqlTransaction* trx,
 /// found
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json getDocumentByIdentifier(triagens::arango::AqlTransaction* trx,
+static Json getDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     CollectionNameResolver const* resolver,
                                     std::string const& identifier) {
   std::vector<std::string> parts =
-      triagens::basics::StringUtils::split(identifier, "/");
+      arangodb::basics::StringUtils::split(identifier, "/");
 
   if (parts.size() != 2) {
     return Json(Json::Null);
@@ -3192,7 +3221,7 @@ static Json getDocumentByIdentifier(triagens::arango::AqlTransaction* trx,
   TRI_voc_cid_t cid = 0;
   try {
     RegisterCollectionInTransaction(trx, collectionName, cid, collection);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     // don't throw if collection is not found
     if (ex.code() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       return Json(Json::Null);
@@ -3215,8 +3244,8 @@ static Json getDocumentByIdentifier(triagens::arango::AqlTransaction* trx,
 /// @brief function Document
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Document(triagens::aql::Query* query,
-                             triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Document(arangodb::aql::Query* query,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3233,7 +3262,7 @@ AqlValue Functions::Document(triagens::aql::Query* query,
 
     if (id.isString()) {
       std::string identifier =
-          triagens::basics::JsonHelper::getStringValue(id.json(), "");
+          arangodb::basics::JsonHelper::getStringValue(id.json(), "");
       Json result = getDocumentByIdentifier(trx, resolver, identifier);
       return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
     } else if (id.isArray()) {
@@ -3244,13 +3273,13 @@ AqlValue Functions::Document(triagens::aql::Query* query,
         try {
           if (next.isString()) {
             std::string identifier =
-                triagens::basics::JsonHelper::getStringValue(next.json(), "");
+                arangodb::basics::JsonHelper::getStringValue(next.json(), "");
             Json tmp = getDocumentByIdentifier(trx, resolver, identifier);
             if (!tmp.isNull()) {
               result.add(tmp);
             }
           }
-        } catch (triagens::basics::Exception const&) {
+        } catch (arangodb::basics::Exception const&) {
           // Ignore all ArangoDB exceptions here
         }
       }
@@ -3264,7 +3293,7 @@ AqlValue Functions::Document(triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   std::string collectionName =
-      triagens::basics::JsonHelper::getStringValue(collectionJson.json(), "");
+      arangodb::basics::JsonHelper::getStringValue(collectionJson.json(), "");
 
   TRI_transaction_collection_t* collection = nullptr;
   TRI_voc_cid_t cid;
@@ -3272,7 +3301,7 @@ AqlValue Functions::Document(triagens::aql::Query* query,
 
   try {
     RegisterCollectionInTransaction(trx, collectionName, cid, collection);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     // don't throw if collection is not found
     if (ex.code() != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       throw;
@@ -3286,7 +3315,7 @@ AqlValue Functions::Document(triagens::aql::Query* query,
       return AqlValue(new Json(Json::Null));
     }
     std::string identifier =
-        triagens::basics::JsonHelper::getStringValue(id.json(), "");
+        arangodb::basics::JsonHelper::getStringValue(id.json(), "");
     Json result = getDocumentByIdentifier(trx, resolver, collection, cid,
                                           collectionName, identifier);
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
@@ -3301,14 +3330,14 @@ AqlValue Functions::Document(triagens::aql::Query* query,
       try {
         if (next.isString()) {
           std::string identifier =
-              triagens::basics::JsonHelper::getStringValue(next.json(), "");
+              arangodb::basics::JsonHelper::getStringValue(next.json(), "");
           Json tmp = getDocumentByIdentifier(trx, resolver, collection, cid,
                                              collectionName, identifier);
           if (!tmp.isNull()) {
             result.add(tmp);
           }
         }
-      } catch (triagens::basics::Exception const&) {
+      } catch (arangodb::basics::Exception const&) {
         // Ignore all ArangoDB exceptions here
       }
     }
@@ -3322,8 +3351,8 @@ AqlValue Functions::Document(triagens::aql::Query* query,
 /// @brief function Edges
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Edges(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Edges(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3338,7 +3367,7 @@ AqlValue Functions::Edges(triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   std::string collectionName =
-      triagens::basics::JsonHelper::getStringValue(collectionJson.json(), "");
+      arangodb::basics::JsonHelper::getStringValue(collectionJson.json(), "");
 
   TRI_transaction_collection_t* collection = nullptr;
   TRI_voc_cid_t cid;
@@ -3384,7 +3413,7 @@ AqlValue Functions::Edges(triagens::aql::Query* query,
   auto resolver = trx->resolver();
 
   auto shaper = collection->_collection->_collection->getShaper();
-  std::unique_ptr<triagens::arango::ExampleMatcher> matcher;
+  std::unique_ptr<arangodb::ExampleMatcher> matcher;
   if (n > 3) {
     // We might have examples
     Json exampleJson = ExtractFunctionParameter(trx, parameters, 3, false);
@@ -3426,9 +3455,9 @@ AqlValue Functions::Edges(triagens::aql::Query* query,
       }
       if (buildMatcher) {
         try {
-          matcher.reset(new triagens::arango::ExampleMatcher(exampleJson.json(),
+          matcher.reset(new arangodb::ExampleMatcher(exampleJson.json(),
                                                              shaper, resolver));
-        } catch (triagens::basics::Exception const& e) {
+        } catch (arangodb::basics::Exception const& e) {
           if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
             throw;
           }
@@ -3446,7 +3475,7 @@ AqlValue Functions::Edges(triagens::aql::Query* query,
     // We have options
     Json options = ExtractFunctionParameter(trx, parameters, 4, false);
     if (options.isObject() && options.has("includeVertices")) {
-      includeVertices = triagens::basics::JsonHelper::getBooleanValue(
+      includeVertices = arangodb::basics::JsonHelper::getBooleanValue(
           options.json(), "includeVertices", false);
     }
   }
@@ -3475,8 +3504,8 @@ AqlValue Functions::Edges(triagens::aql::Query* query,
 /// @brief function ROUND
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Round(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Round(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3498,8 +3527,8 @@ AqlValue Functions::Round(triagens::aql::Query* query,
 /// @brief function ABS
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Abs(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Abs(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3521,8 +3550,8 @@ AqlValue Functions::Abs(triagens::aql::Query* query,
 /// @brief function CEIL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Ceil(triagens::aql::Query* query,
-                         triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Ceil(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3544,8 +3573,8 @@ AqlValue Functions::Ceil(triagens::aql::Query* query,
 /// @brief function FLOOR
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Floor(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Floor(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3567,8 +3596,8 @@ AqlValue Functions::Floor(triagens::aql::Query* query,
 /// @brief function SQRT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Sqrt(triagens::aql::Query* query,
-                         triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Sqrt(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3593,8 +3622,8 @@ AqlValue Functions::Sqrt(triagens::aql::Query* query,
 /// @brief function POW
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Pow(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Pow(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3621,8 +3650,8 @@ AqlValue Functions::Pow(triagens::aql::Query* query,
 /// @brief function RAND
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Rand(triagens::aql::Query* query,
-                         triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Rand(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3641,8 +3670,8 @@ AqlValue Functions::Rand(triagens::aql::Query* query,
 /// @brief function FIRST_DOCUMENT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::FirstDocument(triagens::aql::Query* query,
-                                  triagens::arango::AqlTransaction* trx,
+AqlValue Functions::FirstDocument(arangodb::aql::Query* query,
+                                  arangodb::AqlTransaction* trx,
                                   FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -3659,8 +3688,8 @@ AqlValue Functions::FirstDocument(triagens::aql::Query* query,
 /// @brief function FIRST_LIST
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::FirstList(triagens::aql::Query* query,
-                              triagens::arango::AqlTransaction* trx,
+AqlValue Functions::FirstList(arangodb::aql::Query* query,
+                              arangodb::AqlTransaction* trx,
                               FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -3677,8 +3706,8 @@ AqlValue Functions::FirstList(triagens::aql::Query* query,
 /// @brief function PUSH
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Push(triagens::aql::Query* query,
-                         triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Push(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -3714,8 +3743,8 @@ AqlValue Functions::Push(triagens::aql::Query* query,
 /// @brief function POP
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Pop(triagens::aql::Query* query,
-                        triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Pop(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -3747,8 +3776,8 @@ AqlValue Functions::Pop(triagens::aql::Query* query,
 /// @brief function APPEND
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Append(triagens::aql::Query* query,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Append(arangodb::aql::Query* query,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -3799,8 +3828,8 @@ AqlValue Functions::Append(triagens::aql::Query* query,
 /// @brief function UNSHIFT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Unshift(triagens::aql::Query* query,
-                            triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Unshift(arangodb::aql::Query* query,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -3849,8 +3878,8 @@ AqlValue Functions::Unshift(triagens::aql::Query* query,
 /// @brief function SHIFT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Shift(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Shift(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -3882,8 +3911,8 @@ AqlValue Functions::Shift(triagens::aql::Query* query,
 /// @brief function REMOVE_VALUE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::RemoveValue(triagens::aql::Query* query,
-                                triagens::arango::AqlTransaction* trx,
+AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
+                                arangodb::AqlTransaction* trx,
                                 FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -3934,8 +3963,8 @@ AqlValue Functions::RemoveValue(triagens::aql::Query* query,
 /// @brief function REMOVE_VALUES
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::RemoveValues(triagens::aql::Query* query,
-                                 triagens::arango::AqlTransaction* trx,
+AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2) {
@@ -3976,8 +4005,8 @@ AqlValue Functions::RemoveValues(triagens::aql::Query* query,
 /// @brief function REMOVE_NTH
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::RemoveNth(triagens::aql::Query* query,
-                              triagens::arango::AqlTransaction* trx,
+AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
+                              arangodb::AqlTransaction* trx,
                               FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2) {
@@ -4019,8 +4048,8 @@ AqlValue Functions::RemoveNth(triagens::aql::Query* query,
 /// @brief function NOT_NULL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::NotNull(triagens::aql::Query* query,
-                            triagens::arango::AqlTransaction* trx,
+AqlValue Functions::NotNull(arangodb::aql::Query* query,
+                            arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -4036,8 +4065,8 @@ AqlValue Functions::NotNull(triagens::aql::Query* query,
 /// @brief function CURRENT_DATABASE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::CurrentDatabase(triagens::aql::Query* query,
-                                    triagens::arango::AqlTransaction* trx,
+AqlValue Functions::CurrentDatabase(arangodb::aql::Query* query,
+                                    arangodb::AqlTransaction* trx,
                                     FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 0) {
@@ -4052,8 +4081,8 @@ AqlValue Functions::CurrentDatabase(triagens::aql::Query* query,
 /// @brief function COLLECTION_COUNT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::CollectionCount(triagens::aql::Query* query,
-                                    triagens::arango::AqlTransaction* trx,
+AqlValue Functions::CollectionCount(arangodb::aql::Query* query,
+                                    arangodb::AqlTransaction* trx,
                                     FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4110,8 +4139,8 @@ AqlValue Functions::CollectionCount(triagens::aql::Query* query,
 /// @brief function VARIANCE_SAMPLE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::VarianceSample(triagens::aql::Query* query,
-                                   triagens::arango::AqlTransaction* trx,
+AqlValue Functions::VarianceSample(arangodb::aql::Query* query,
+                                   arangodb::AqlTransaction* trx,
                                    FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4147,8 +4176,8 @@ AqlValue Functions::VarianceSample(triagens::aql::Query* query,
 /// @brief function VARIANCE_POPULATION
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::VariancePopulation(triagens::aql::Query* query,
-                                       triagens::arango::AqlTransaction* trx,
+AqlValue Functions::VariancePopulation(arangodb::aql::Query* query,
+                                       arangodb::AqlTransaction* trx,
                                        FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4185,8 +4214,8 @@ AqlValue Functions::VariancePopulation(triagens::aql::Query* query,
 /// @brief function STDDEV_SAMPLE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::StdDevSample(triagens::aql::Query* query,
-                                 triagens::arango::AqlTransaction* trx,
+AqlValue Functions::StdDevSample(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4222,8 +4251,8 @@ AqlValue Functions::StdDevSample(triagens::aql::Query* query,
 /// @brief function STDDEV_POPULATION
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::StdDevPopulation(triagens::aql::Query* query,
-                                     triagens::arango::AqlTransaction* trx,
+AqlValue Functions::StdDevPopulation(arangodb::aql::Query* query,
+                                     arangodb::AqlTransaction* trx,
                                      FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4259,8 +4288,8 @@ AqlValue Functions::StdDevPopulation(triagens::aql::Query* query,
 /// @brief function MEDIAN
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Median(triagens::aql::Query* query,
-                           triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Median(arangodb::aql::Query* query,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 1) {
@@ -4298,8 +4327,8 @@ AqlValue Functions::Median(triagens::aql::Query* query,
 /// @brief function PERCENTILE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Percentile(triagens::aql::Query* query,
-                               triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Percentile(arangodb::aql::Query* query,
+                               arangodb::AqlTransaction* trx,
                                FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -4341,7 +4370,7 @@ AqlValue Functions::Percentile(triagens::aql::Query* query,
       return AqlValue(new Json(Json::Null));
     }
     std::string method =
-        triagens::basics::JsonHelper::getStringValue(methodJson.json(), "");
+        arangodb::basics::JsonHelper::getStringValue(methodJson.json(), "");
     if (method == "interpolation") {
       useInterpolation = true;
     } else if (method == "rank") {
@@ -4402,8 +4431,8 @@ AqlValue Functions::Percentile(triagens::aql::Query* query,
 /// @brief function RANGE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Range(triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Range(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -4456,8 +4485,8 @@ AqlValue Functions::Range(triagens::aql::Query* query,
 /// @brief function POSITION
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Position(triagens::aql::Query* query,
-                             triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Position(arangodb::aql::Query* query,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
@@ -4501,8 +4530,8 @@ AqlValue Functions::Position(triagens::aql::Query* query,
 /// @brief function FULLTEXT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Fulltext(triagens::aql::Query* query,
-                             triagens::arango::AqlTransaction* trx,
+AqlValue Functions::Fulltext(arangodb::aql::Query* query,
+                             arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -4586,15 +4615,15 @@ AqlValue Functions::Fulltext(triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  triagens::arango::Index* index = nullptr;
+  arangodb::Index* index = nullptr;
 
-  std::vector<std::vector<triagens::basics::AttributeName>> const search(
-      {{triagens::basics::AttributeName(attributeName, false)}});
+  std::vector<std::vector<arangodb::basics::AttributeName>> const search(
+      {{arangodb::basics::AttributeName(attributeName, false)}});
 
   for (auto const& idx : document->allIndexes()) {
-    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
-      if (triagens::basics::AttributeName::isIdentical(idx->fields(), search,
+      if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
                                                        false)) {
         // match!
         index = idx;
@@ -4628,7 +4657,7 @@ AqlValue Functions::Fulltext(triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto fulltextIndex = static_cast<triagens::arango::FulltextIndex*>(index);
+  auto fulltextIndex = static_cast<arangodb::FulltextIndex*>(index);
   // note: the following call will free "ft"!
   TRI_fulltext_result_t* queryResult =
       TRI_QueryFulltextIndex(fulltextIndex->internals(), ft);

@@ -38,8 +38,8 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/Task.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 #ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
 #define SCHEDULER_LOCKER(a) SPIN_LOCKER(a)
@@ -47,11 +47,9 @@ using namespace triagens::rest;
 #define SCHEDULER_LOCKER(a) MUTEX_LOCKER(a)
 #endif
 
-
-
 SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
                                  bool defaultLoop)
-    : Thread("scheduler"),
+    : Thread("Scheduler"),
       _scheduler(scheduler),
       _defaultLoop(defaultLoop),
       _loop(loop),
@@ -65,9 +63,7 @@ SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
   allowAsynchronousCancelation();
 }
 
-
 SchedulerThread::~SchedulerThread() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the scheduler thread is up and running
@@ -209,11 +205,6 @@ void SchedulerThread::signalTask(std::unique_ptr<TaskData>& data) {
   _taskData.push(data.release());
   _scheduler->wakeupLoop(_loop);
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::run() {
   LOG_TRACE("scheduler thread started (%llu)", (unsigned long long)threadId());
@@ -359,10 +350,6 @@ void SchedulerThread::run() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 void SchedulerThread::addStatus(VPackBuilder* b) {
   Thread::addStatus(b);
   b->add("stopping", VPackValue(_stopping.load()));
@@ -370,5 +357,3 @@ void SchedulerThread::addStatus(VPackBuilder* b) {
   b->add("stopped", VPackValue(_stopped.load()));
   b->add("numberTasks", VPackValue(_numberTasks.load()));
 }
-
-

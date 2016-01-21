@@ -40,9 +40,9 @@
 
 #include <array>
 
-using namespace triagens::aql;
-using JsonHelper = triagens::basics::JsonHelper;
-using Json = triagens::basics::Json;
+using namespace arangodb::aql;
+using JsonHelper = arangodb::basics::JsonHelper;
+using Json = arangodb::basics::Json;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +147,6 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_RANGE), "range"},
     {static_cast<int>(NODE_TYPE_NOP), "no-op"},
     {static_cast<int>(NODE_TYPE_COLLECT_COUNT), "collect with count"},
-    {static_cast<int>(NODE_TYPE_COLLECT_EXPRESSION), "collect with expression"},
     {static_cast<int>(NODE_TYPE_CALCULATED_OBJECT_ELEMENT),
      "calculated object element"},
     {static_cast<int>(NODE_TYPE_EXAMPLE), "example"},
@@ -159,7 +158,6 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_COLLECTION_LIST), "collection list"},
     {static_cast<int>(NODE_TYPE_OPERATOR_NARY_AND), "n-ary and"},
     {static_cast<int>(NODE_TYPE_OPERATOR_NARY_OR), "n-ary or"},
-    {static_cast<int>(NODE_TYPE_COLLECT_AGGREGATE), "collect with aggregate"},
     {static_cast<int>(NODE_TYPE_AGGREGATIONS), "aggregations array"}};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +265,7 @@ static TRI_json_type_e GetNodeCompareType(AstNode const* node) {
 ///  -  1 LHS being greater then RHS
 ////////////////////////////////////////////////////////////////////////////////
 
-int triagens::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
+int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
                                    bool compareUtf8) {
   TRI_ASSERT_EXPENSIVE(lhs != nullptr);
   TRI_ASSERT_EXPENSIVE(rhs != nullptr);
@@ -352,7 +350,7 @@ int triagens::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
     size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
 
     for (size_t i = 0; i < n; ++i) {
-      int res = triagens::aql::CompareAstNodes(lhs->getMember(i),
+      int res = arangodb::aql::CompareAstNodes(lhs->getMember(i),
                                                rhs->getMember(i), compareUtf8);
 
       if (res != 0) {
@@ -467,7 +465,7 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
 /// @brief create the node from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode::AstNode(Ast* ast, triagens::basics::Json const& json)
+AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
   TRI_ASSERT_EXPENSIVE(flags == 0);
   TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
@@ -572,8 +570,6 @@ AstNode::AstNode(Ast* ast, triagens::basics::Json const& json)
     case NODE_TYPE_UPSERT:
     case NODE_TYPE_COLLECT:
     case NODE_TYPE_COLLECT_COUNT:
-    case NODE_TYPE_COLLECT_EXPRESSION:
-    case NODE_TYPE_COLLECT_AGGREGATE:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
@@ -642,7 +638,7 @@ AstNode::AstNode(Ast* ast, triagens::basics::Json const& json)
 
 AstNode::AstNode(std::function<void(AstNode*)> registerNode,
                  std::function<char const*(std::string const&)> registerString,
-                 triagens::basics::Json const& json)
+                 arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
   TRI_ASSERT_EXPENSIVE(flags == 0);
   TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
@@ -722,8 +718,6 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_UPSERT:
     case NODE_TYPE_COLLECT:
     case NODE_TYPE_COLLECT_COUNT:
-    case NODE_TYPE_COLLECT_EXPRESSION:
-    case NODE_TYPE_COLLECT_AGGREGATE:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
@@ -810,7 +804,7 @@ bool AstNode::isOnlyEqualityMatch() const {
 
   for (size_t i = 0; i < numMembers(); ++i) {
     auto op = getMember(i);
-    if (op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       return false;
     }
   }
@@ -926,7 +920,7 @@ void AstNode::sort() {
 
   std::sort(members.begin(), members.end(),
             [](AstNode const* lhs, AstNode const* rhs) {
-              return (triagens::aql::CompareAstNodes(lhs, rhs, false) < 0);
+              return (arangodb::aql::CompareAstNodes(lhs, rhs, false) < 0);
             });
 
   setFlag(DETERMINED_SORTED, VALUE_SORTED);
@@ -969,7 +963,7 @@ std::string const& AstNode::getValueTypeString() const {
 std::string AstNode::toString(AstNode const* node) {
   std::unique_ptr<TRI_json_t> json(node->toJson(TRI_UNKNOWN_MEM_ZONE, false));
 
-  return triagens::basics::JsonHelper::toString(json.get());
+  return arangodb::basics::JsonHelper::toString(json.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1003,7 +997,7 @@ void AstNode::validateValueType(int type) {
 /// @brief fetch a node's type from json
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNodeType AstNode::getNodeTypeFromJson(triagens::basics::Json const& json) {
+AstNodeType AstNode::getNodeTypeFromJson(arangodb::basics::Json const& json) {
   int type = JsonHelper::checkAndGetNumericValue<int>(json.json(), "typeID");
   validateType(type);
   return static_cast<AstNodeType>(type);
@@ -1372,7 +1366,7 @@ AstNode* AstNode::castToString(Ast* ast) {
   TRI_ASSERT(isConstant());
 
   // stringify node
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   stringify(&buffer, false, false);
 
   char const* value =
@@ -1528,7 +1522,7 @@ bool AstNode::isFalse() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::isAttributeAccessForVariable(
-    std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>&
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&
         result) const {
   if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION) {
     return false;
@@ -1547,7 +1541,7 @@ bool AstNode::isAttributeAccessForVariable(
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       result.second.insert(
           result.second.begin(),
-          triagens::basics::AttributeName(
+          arangodb::basics::AttributeName(
               std::string(node->getStringValue(), node->getStringLength()),
               expandNext));
       node = node->getMember(0);
@@ -2074,7 +2068,7 @@ AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
 /// (only for objects that do not contain dynamic attributes)
 ////////////////////////////////////////////////////////////////////////////////
 
-void AstNode::stringify(triagens::basics::StringBuffer* buffer, bool verbose,
+void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
                         bool failIfLong) const {
   // any arrays/objects with more values than this will not be stringified if
   // failIfLonf is set to true!
@@ -2328,7 +2322,7 @@ void AstNode::stringify(triagens::basics::StringBuffer* buffer, bool verbose,
 }
 
 std::string AstNode::toString() const {
-  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   stringify(&buffer, false, false);
   return std::string(buffer.c_str(), buffer.length());
 }
@@ -2439,8 +2433,6 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_COLLECT_COUNT:
-    case NODE_TYPE_COLLECT_EXPRESSION:
-    case NODE_TYPE_COLLECT_AGGREGATE:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
     case NODE_TYPE_UPSERT:
@@ -2582,8 +2574,6 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_COLLECT_COUNT:
-    case NODE_TYPE_COLLECT_EXPRESSION:
-    case NODE_TYPE_COLLECT_AGGREGATE:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
     case NODE_TYPE_UPSERT:
@@ -2607,7 +2597,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
 /// this method is used when generated JavaScript code for the node!
 ////////////////////////////////////////////////////////////////////////////////
 
-void AstNode::appendValue(triagens::basics::StringBuffer* buffer) const {
+void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   TRI_ASSERT(type == NODE_TYPE_VALUE);
 
   switch (value.type) {
@@ -2651,9 +2641,9 @@ void AstNode::appendValue(triagens::basics::StringBuffer* buffer) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         triagens::aql::AstNode const* node) {
+                         arangodb::aql::AstNode const* node) {
   if (node != nullptr) {
-    stream << triagens::aql::AstNode::toString(node);
+    stream << arangodb::aql::AstNode::toString(node);
   }
   return stream;
 }
@@ -2663,8 +2653,8 @@ std::ostream& operator<<(std::ostream& stream,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         triagens::aql::AstNode const& node) {
-  stream << triagens::aql::AstNode::toString(&node);
+                         arangodb::aql::AstNode const& node) {
+  stream << arangodb::aql::AstNode::toString(&node);
   return stream;
 }
 

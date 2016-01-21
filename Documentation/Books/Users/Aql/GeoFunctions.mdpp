@@ -55,3 +55,9 @@ with an error.
       
       /* will check if the point (lat 4, lon 7) is contained inside the polygon */
       RETURN IS_IN_POLYGON([ [ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 10 ] ], [ 7, 4 ], true)
+
+
+!SUBSUBSECTION Related topics
+
+ArangoDB geographic indexing feature is described in [Geo indexes](../IndexHandling/Geo.md)  
+

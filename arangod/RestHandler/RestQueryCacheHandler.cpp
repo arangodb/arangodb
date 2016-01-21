@@ -22,31 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestQueryCacheHandler.h"
-
 #include "Aql/QueryCache.h"
 #include "Rest/HttpRequest.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-using namespace triagens::aql;
-
+using namespace arangodb;
+using namespace arangodb::aql;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 RestQueryCacheHandler::RestQueryCacheHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestQueryCacheHandler::isDirect() const { return false; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestQueryCacheHandler::execute() {
   // extract the sub-request type
@@ -83,7 +72,7 @@ HttpHandler::status_t RestQueryCacheHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryCacheHandler::clearCache() {
-  auto queryCache = triagens::aql::QueryCache::instance();
+  auto queryCache = arangodb::aql::QueryCache::instance();
   queryCache->invalidate();
   try {
     VPackBuilder result;
@@ -105,7 +94,7 @@ bool RestQueryCacheHandler::clearCache() {
 
 bool RestQueryCacheHandler::readProperties() {
   try {
-    auto queryCache = triagens::aql::QueryCache::instance();
+    auto queryCache = arangodb::aql::QueryCache::instance();
 
     VPackBuilder result = queryCache->properties();
     VPackSlice slice = result.slice();
@@ -113,11 +102,11 @@ bool RestQueryCacheHandler::readProperties() {
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
                                     __LINE__);
     handleError(err);
   } catch (...) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 
@@ -153,7 +142,7 @@ bool RestQueryCacheHandler::replaceProperties() {
     return true;
   }
 
-  auto queryCache = triagens::aql::QueryCache::instance();
+  auto queryCache = arangodb::aql::QueryCache::instance();
 
   try {
     std::pair<std::string, size_t> cacheProperties;
@@ -176,11 +165,11 @@ bool RestQueryCacheHandler::replaceProperties() {
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
                                     __LINE__);
     handleError(err);
   } catch (...) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 

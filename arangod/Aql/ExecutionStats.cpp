@@ -24,9 +24,9 @@
 #include "Aql/ExecutionStats.h"
 #include "Basics/Exceptions.h"
 
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +106,7 @@ ExecutionStats::ExecutionStats()
       filtered(0),
       fullCount(-1) {}
 
-ExecutionStats::ExecutionStats(triagens::basics::Json const& jsonStats) {
+ExecutionStats::ExecutionStats(arangodb::basics::Json const& jsonStats) {
   if (!jsonStats.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "stats is not an object");

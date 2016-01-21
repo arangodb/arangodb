@@ -30,8 +30,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extraction context
@@ -100,7 +99,7 @@ FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
                              TRI_document_collection_t* collection,
                              std::string const& attribute, int minWordLength)
     : Index(iid, collection,
-            std::vector<std::vector<triagens::basics::AttributeName>>{
+            std::vector<std::vector<arangodb::basics::AttributeName>>{
                 {{attribute, false}}},
             false, true),
       _pid(0),
@@ -140,16 +139,16 @@ size_t FulltextIndex::memory() const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json FulltextIndex::toJson(TRI_memory_zone_t* zone,
+arangodb::basics::Json FulltextIndex::toJson(TRI_memory_zone_t* zone,
                                              bool withFigures) const {
   auto json = Index::toJson(zone, withFigures);
 
   // hard-coded
-  json("unique", triagens::basics::Json(false))("sparse",
-                                                triagens::basics::Json(true));
+  json("unique", arangodb::basics::Json(false))("sparse",
+                                                arangodb::basics::Json(true));
 
   json("minLength",
-       triagens::basics::Json(zone, static_cast<double>(_minWordLength)));
+       arangodb::basics::Json(zone, static_cast<double>(_minWordLength)));
 
   return json;
 }
@@ -158,15 +157,15 @@ triagens::basics::Json FulltextIndex::toJson(TRI_memory_zone_t* zone,
 /// @brief return a JSON representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json FulltextIndex::toJsonFigures(
+arangodb::basics::Json FulltextIndex::toJsonFigures(
     TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
+  arangodb::basics::Json json(arangodb::basics::Json::Object);
+  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
 
   return json;
 }
 
-int FulltextIndex::insert(triagens::arango::Transaction*,
+int FulltextIndex::insert(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
@@ -192,7 +191,7 @@ int FulltextIndex::insert(triagens::arango::Transaction*,
   return res;
 }
 
-int FulltextIndex::remove(triagens::arango::Transaction*,
+int FulltextIndex::remove(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool) {
   TRI_DeleteDocumentFulltextIndex(_fulltextIndex,
                                   (TRI_fulltext_doc_t)((uintptr_t)doc));

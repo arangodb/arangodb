@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class AsyncCallbackContext;
 class HttpServerJob;
@@ -163,20 +163,20 @@ class AsyncJobManager {
   /// @brief returns the list of pending jobs
   //////////////////////////////////////////////////////////////////////////////
 
-  const std::vector<AsyncJobResult::IdType> pending(size_t maxCount);
+  std::vector<AsyncJobResult::IdType> pending(size_t maxCount);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the list of done jobs
   //////////////////////////////////////////////////////////////////////////////
 
-  const std::vector<AsyncJobResult::IdType> done(size_t maxCount);
+  std::vector<AsyncJobResult::IdType> done(size_t maxCount);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the list of jobs by status
   //////////////////////////////////////////////////////////////////////////////
 
-  const std::vector<AsyncJobResult::IdType> byStatus(AsyncJobResult::Status,
-                                                     size_t maxCount);
+  std::vector<AsyncJobResult::IdType> byStatus(AsyncJobResult::Status,
+                                               size_t maxCount);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes an async job

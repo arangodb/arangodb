@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +57,7 @@ struct CollectOptions {
   /// @brief constructor, using JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  CollectOptions(triagens::basics::Json const&);
+  CollectOptions(arangodb::basics::Json const&);
 
   
   //////////////////////////////////////////////////////////////////////////////
@@ -70,7 +70,7 @@ struct CollectOptions {
   /// @brief convert the options to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJson(triagens::basics::Json&, TRI_memory_zone_t*) const;
+  void toJson(arangodb::basics::Json&, TRI_memory_zone_t*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the aggregation method from a string
@@ -89,8 +89,8 @@ struct CollectOptions {
   CollectMethod method;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

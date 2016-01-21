@@ -23,9 +23,9 @@
 
 #include "Aql/ModificationOptions.h"
 
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 ModificationOptions::ModificationOptions(Json const& json) {
   Json obj = json.get("modificationFlags");
@@ -41,7 +41,7 @@ ModificationOptions::ModificationOptions(Json const& json) {
       JsonHelper::getBooleanValue(obj.json(), "readCompleteInput", true);
 }
 
-void ModificationOptions::toJson(triagens::basics::Json& json,
+void ModificationOptions::toJson(arangodb::basics::Json& json,
                                  TRI_memory_zone_t* zone) const {
   Json flags;
 

@@ -24,7 +24,7 @@
 
 #include "ConditionVariable.h"
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 ////////////////////////////////////////////////////////////////////////////////

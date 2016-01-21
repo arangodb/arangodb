@@ -27,12 +27,9 @@
 #include "Rest/HttpRequest.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 RestActionHandler::RestActionHandler(HttpRequest* request,
                                      action_options_t* data)
@@ -44,15 +41,9 @@ RestActionHandler::RestActionHandler(HttpRequest* request,
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestActionHandler::isDirect() const { return _action == nullptr; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestActionHandler::execute() {
   TRI_action_result_t result;
@@ -98,9 +89,6 @@ HttpHandler::status_t RestActionHandler::execute() {
   return status_t(result.isValid ? HANDLER_DONE : HANDLER_FAILED);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }
 

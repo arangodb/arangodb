@@ -44,13 +44,12 @@ typedef struct {
                                // fields indexed
 } TRI_skiplist_index_key_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class SortCondition;
 struct Variable;
 }
 
-namespace arango {
 class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,7 +69,7 @@ class SkiplistIterator {
   
  private:
   // Shorthand for the skiplist node
-  typedef triagens::basics::SkipListNode<TRI_skiplist_index_key_t,
+  typedef arangodb::basics::SkipListNode<TRI_skiplist_index_key_t,
                                          TRI_index_element_t> Node;
 
   struct SkiplistIteratorInterval {
@@ -139,7 +138,7 @@ class SkiplistIterator {
 
 class SkiplistIndexIterator final : public IndexIterator {
  public:
-  SkiplistIndexIterator(triagens::arango::Transaction* trx,
+  SkiplistIndexIterator(arangodb::Transaction* trx,
                         SkiplistIndex const* index,
                         std::vector<TRI_index_operator_t*> op, bool reverse)
       : _trx(trx),
@@ -161,7 +160,7 @@ class SkiplistIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  triagens::arango::Transaction* _trx;
+  arangodb::Transaction* _trx;
   SkiplistIndex const* _index;
   std::vector<TRI_index_operator_t*> _operators;
   bool _reverse;
@@ -183,7 +182,7 @@ class SkiplistIndex final : public PathBasedIndex {
   struct ElementElementComparator {
     int operator()(TRI_index_element_t const* leftElement,
                    TRI_index_element_t const* rightElement,
-                   triagens::basics::SkipListCmpType cmptype) const;
+                   arangodb::basics::SkipListCmpType cmptype) const;
 
     explicit ElementElementComparator(SkiplistIndex* idx) { _idx = idx; }
 
@@ -195,7 +194,7 @@ class SkiplistIndex final : public PathBasedIndex {
   friend struct KeyElementComparator;
   friend struct ElementElementComparator;
 
-  typedef triagens::basics::SkipList<TRI_skiplist_index_key_t,
+  typedef arangodb::basics::SkipList<TRI_skiplist_index_key_t,
                                      TRI_index_element_t> TRI_Skiplist;
 
   
@@ -204,7 +203,7 @@ class SkiplistIndex final : public PathBasedIndex {
 
   SkiplistIndex(
       TRI_idx_iid_t, struct TRI_document_collection_t*,
-      std::vector<std::vector<triagens::basics::AttributeName>> const&, bool,
+      std::vector<std::vector<arangodb::basics::AttributeName>> const&, bool,
       bool);
 
   explicit SkiplistIndex(struct TRI_json_t const*);
@@ -223,13 +222,13 @@ class SkiplistIndex final : public PathBasedIndex {
 
   size_t memory() const override final;
 
-  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
 
-  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -241,48 +240,48 @@ class SkiplistIndex final : public PathBasedIndex {
   /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
   //////////////////////////////////////////////////////////////////////////////
 
-  SkiplistIterator* lookup(triagens::arango::Transaction*,
+  SkiplistIterator* lookup(arangodb::Transaction*,
                            TRI_index_operator_t*, bool) const;
 
-  bool supportsFilterCondition(triagens::aql::AstNode const*,
-                               triagens::aql::Variable const*, size_t, size_t&,
+  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+                               arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  bool supportsSortCondition(triagens::aql::SortCondition const*,
-                             triagens::aql::Variable const*, size_t,
+  bool supportsSortCondition(arangodb::aql::SortCondition const*,
+                             arangodb::aql::Variable const*, size_t,
                              double&) const override;
 
-  IndexIterator* iteratorForCondition(triagens::arango::Transaction*,
+  IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
-                                      triagens::aql::Ast*,
-                                      triagens::aql::AstNode const*,
-                                      triagens::aql::Variable const*,
+                                      arangodb::aql::Ast*,
+                                      arangodb::aql::AstNode const*,
+                                      arangodb::aql::Variable const*,
                                       bool) const override;
 
-  triagens::aql::AstNode* specializeCondition(
-      triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
   
  private:
-  bool isDuplicateOperator(triagens::aql::AstNode const*,
+  bool isDuplicateOperator(arangodb::aql::AstNode const*,
                            std::unordered_set<int> const&) const;
 
   int _CmpElmElm(TRI_index_element_t const* leftElement,
                  TRI_index_element_t const* rightElement,
-                 triagens::basics::SkipListCmpType cmptype);
+                 arangodb::basics::SkipListCmpType cmptype);
 
   int _CmpKeyElm(TRI_skiplist_index_key_t const* leftKey,
                  TRI_index_element_t const* rightElement);
 
   bool accessFitsIndex(
-      triagens::aql::AstNode const*, triagens::aql::AstNode const*,
-      triagens::aql::AstNode const*, triagens::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
+      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
       bool) const;
 
   void matchAttributes(
-      triagens::aql::AstNode const*, triagens::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
       size_t&, bool) const;
 
   
@@ -297,7 +296,6 @@ class SkiplistIndex final : public PathBasedIndex {
 
   TRI_Skiplist* _skiplistIndex;
 };
-}
 }
 
 #endif

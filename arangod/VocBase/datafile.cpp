@@ -72,7 +72,11 @@ static void CloseDatafile(TRI_datafile_t* const datafile) {
   TRI_ASSERT(datafile->_state != TRI_DF_STATE_CLOSED);
 
   if (datafile->isPhysical(datafile)) {
-    TRI_CLOSE(datafile->_fd);
+    int res = TRI_CLOSE(datafile->_fd);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to close datafile '%s': %d", datafile->getName(datafile), res);
+    }
   }
 
   datafile->_state = TRI_DF_STATE_CLOSED;
@@ -107,21 +111,6 @@ static bool SyncDatafile(const TRI_datafile_t* const datafile,
   }
 
   return TRI_MSync(datafile->_fd, begin, end);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate the datafile to a specific length
-////////////////////////////////////////////////////////////////////////////////
-
-static int TruncateDatafile(TRI_datafile_t* const datafile,
-                            const off_t length) {
-  if (datafile->isPhysical(datafile)) {
-    // only physical files can be truncated
-    return ftruncate(datafile->_fd, length);
-  }
-
-  // for anonymous regions, this is a non-op
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,6 +326,7 @@ static void InitDatafile(TRI_datafile_t* datafile, char* filename, int fd,
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
 
+  datafile->_initSize    = maximalSize;
   datafile->_maximalSize = maximalSize;
   datafile->_currentSize = currentSize;
   datafile->_footerSize = sizeof(TRI_df_footer_marker_t);
@@ -364,7 +354,6 @@ static void InitDatafile(TRI_datafile_t* datafile, char* filename, int fd,
   datafile->close = &CloseDatafile;
   datafile->destroy = &DestroyDatafile;
   datafile->sync = &SyncDatafile;
-  datafile->truncate = &TruncateDatafile;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -468,7 +457,7 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
   memcpy(data, datafile->_data, vocSize);
 
   // patch the datafile structure
-  res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd,
+  res = TRI_UNMMFile(datafile->_data, datafile->_initSize, datafile->_fd,
                      &datafile->_mmHandle);
 
   if (res < 0) {
@@ -489,6 +478,8 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
   datafile->_data = static_cast<char*>(data);
   datafile->_next = (char*)(data) + vocSize;
   datafile->_currentSize = vocSize;
+  // do not change _initSize!
+  TRI_ASSERT(datafile->_initSize == datafile->_maximalSize);
   datafile->_maximalSize = static_cast<TRI_voc_size_t>(maximalSize);
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
@@ -596,7 +587,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
       entry._status = 4;
 
       auto&& diagnosis = DiagnoseMarker(marker, end);
-      entry._diagnosis = TRI_DuplicateString2Z(
+      entry._diagnosis = TRI_DuplicateString(
           TRI_UNKNOWN_MEM_ZONE, diagnosis.c_str(), diagnosis.size());
 
       scan._endPosition = currentSize;
@@ -610,7 +601,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
       entry._status = 4;
 
       auto&& diagnosis = DiagnoseMarker(marker, end);
-      entry._diagnosis = TRI_DuplicateString2Z(
+      entry._diagnosis = TRI_DuplicateString(
           TRI_UNKNOWN_MEM_ZONE, diagnosis.c_str(), diagnosis.size());
 
       scan._endPosition = currentSize;
@@ -626,7 +617,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
       entry._status = 5;
 
       auto&& diagnosis = DiagnoseMarker(marker, end);
-      entry._diagnosis = TRI_DuplicateString2Z(
+      entry._diagnosis = TRI_DuplicateString(
           TRI_UNKNOWN_MEM_ZONE, diagnosis.c_str(), diagnosis.size());
 
       scan._status = 4;
@@ -640,27 +631,27 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
                         reinterpret_cast<TRI_doc_document_key_marker_t const*>(
                             marker)->_offsetKey;
       entry._key =
-          TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
+          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
     } else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
       char const* ptr =
           reinterpret_cast<char const*>(marker) +
           reinterpret_cast<TRI_doc_deletion_key_marker_t*>(marker)->_offsetKey;
       entry._key =
-          TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
+          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
     } else if (marker->_type == TRI_DF_MARKER_SHAPE) {
       char* p = ((char*)marker) + sizeof(TRI_df_shape_marker_t);
       TRI_shape_t* l = (TRI_shape_t*)p;
       std::string tmp("shape #");
       tmp.append(std::to_string(l->_sid));
       entry._key =
-          TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
+          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
     } else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
       TRI_shape_aid_t aid =
           reinterpret_cast<TRI_df_attribute_marker_t const*>(marker)->_aid;
       std::string tmp("attribute #");
       tmp.append(std::to_string(aid));
       entry._key =
-          TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
+          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
     }
 
     TRI_PushBackVector(&scan._entries, &entry);
@@ -827,6 +818,7 @@ static bool FixDatafile(TRI_datafile_t* datafile, TRI_voc_size_t currentSize) {
       datafile->getName(datafile));
 
   datafile->_currentSize = currentSize;
+  TRI_ASSERT(datafile->_initSize == datafile->_maximalSize);
   datafile->_maximalSize = static_cast<TRI_voc_size_t>(currentSize);
   datafile->_next = datafile->_data + datafile->_currentSize;
   datafile->_full = true;
@@ -1341,29 +1333,25 @@ TRI_datafile_t* TRI_CreateDatafile(char const* filename, TRI_voc_fid_t fid,
 
 TRI_datafile_t* TRI_CreateAnonymousDatafile(TRI_voc_fid_t fid,
                                             TRI_voc_size_t maximalSize) {
-  TRI_datafile_t* datafile;
-  ssize_t res;
-  void* data;
-  void* mmHandle;
-  int flags;
-  int fd;
-
 #ifdef TRI_MMAP_ANONYMOUS
   // fd -1 is required for "real" anonymous regions
-  fd = -1;
-  flags = TRI_MMAP_ANONYMOUS | MAP_SHARED;
+  int fd = -1;
+  int flags = TRI_MMAP_ANONYMOUS | MAP_SHARED;
 #else
   // ugly workaround if MAP_ANONYMOUS is not available
-  fd = TRI_OPEN("/dev/zero", O_RDWR | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN("/dev/zero", O_RDWR | TRI_O_CLOEXEC);
+
   if (fd == -1) {
     return nullptr;
   }
 
-  flags = MAP_PRIVATE;
+  int flags = MAP_PRIVATE;
 #endif
 
   // memory map the data
-  res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags, fd,
+  void* data;
+  void* mmHandle;
+  ssize_t res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags, fd,
                    &mmHandle, 0, &data);
 
 #ifdef MAP_ANONYMOUS
@@ -1382,7 +1370,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile(TRI_voc_fid_t fid,
   }
 
   // create datafile structure
-  datafile = static_cast<TRI_datafile_t*>(
+  TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
 
   if (datafile == nullptr) {
@@ -1896,7 +1884,7 @@ TRI_datafile_t* TRI_OpenDatafile(char const* filename, bool ignoreFailures) {
 bool TRI_CloseDatafile(TRI_datafile_t* datafile) {
   if (datafile->_state == TRI_DF_STATE_READ ||
       datafile->_state == TRI_DF_STATE_WRITE) {
-    int res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize,
+    int res = TRI_UNMMFile(datafile->_data, datafile->_initSize,
                            datafile->_fd, &datafile->_mmHandle);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2017,40 +2005,15 @@ int TRI_SealDatafile(TRI_datafile_t* datafile) {
   // everything is now synced
   datafile->_synced = datafile->_written;
 
-  /*
-    TODO: do we have to unmap file? That is, release the memory which has been
-    allocated for
-          this file? At the moment the windows of function TRI_ProtectMMFile
-    does nothing.
-  */
   TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ,
                     datafile->_fd, &datafile->_mmHandle);
 
-  // truncate datafile
+  // seal datafile
   if (ok) {
-#ifdef _WIN32
-    res = 0;
-/*
-res = ftruncate(datafile->_fd, datafile->_currentSize);
-Linux centric problems:
-  Under windows can not reduce size of the memory mapped file without unmapping
-it!
-  However, apparently we may have users
-*/
-#else
-    res = datafile->truncate(datafile, datafile->_currentSize);
-#endif
-
-    if (res < 0) {
-      LOG_ERROR("cannot truncate datafile '%s': %s",
-                datafile->getName(datafile), TRI_last_error());
-      datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      datafile->_state = TRI_DF_STATE_WRITE_ERROR;
-      ok = false;
-    }
-
     datafile->_isSealed = true;
     datafile->_state = TRI_DF_STATE_READ;
+    // note: _initSize must remain constant
+    TRI_ASSERT(datafile->_initSize == datafile->_maximalSize);
     datafile->_maximalSize = datafile->_currentSize;
   }
 

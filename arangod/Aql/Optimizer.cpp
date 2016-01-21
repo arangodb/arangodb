@@ -26,11 +26,11 @@
 #include "Aql/OptimizerRules.h"
 #include "Cluster/ServerState.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 
-triagens::basics::Mutex Optimizer::SetupLock;
+arangodb::basics::Mutex Optimizer::SetupLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief list of all rules
@@ -102,7 +102,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
                            std::vector<std::string> const& rulesSpecification,
                            bool inspectSimplePlans) {
   if (!inspectSimplePlans &&
-      !triagens::arango::ServerState::instance()->isCoordinator() &&
+      !arangodb::ServerState::instance()->isCoordinator() &&
       plan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
@@ -478,9 +478,9 @@ void Optimizer::setupRules() {
   registerRule("remove-sort-rand", removeSortRandRule, removeSortRandRule_pass5,
                true);
 
-  // remove INTO from COLLECT
-  registerRule("remove-collect-into", removeCollectIntoRule,
-               removeCollectIntoRule_pass5, true);
+  // remove unused INTO variable from COLLECT, or unused aggregates
+  registerRule("remove-collect-variables", removeCollectVariablesRule,
+               removeCollectVariablesRule_pass5, true);
 
   // remove unused out variables for data-modification queries
   registerRule("remove-data-modification-out-variables",
@@ -541,7 +541,7 @@ void Optimizer::setupRules() {
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                patchUpdateStatementsRule_pass9, true);
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster
     registerRule("scatter-in-cluster", scatterInClusterRule,
                  scatterInClusterRule_pass10, false);

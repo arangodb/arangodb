@@ -39,7 +39,7 @@ struct TRI_server_t;
 struct TRI_vocbase_defaults_t;
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class ThreadPool;
 }
@@ -55,10 +55,8 @@ class HttpServer;
 class HttpsServer;
 }
 
-namespace arango {
 class ApplicationV8;
 class ApplicationCluster;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -79,15 +77,9 @@ class ArangoServer : public rest::AnyServer {
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   void buildApplicationServer();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   int startupServer();
 
@@ -147,7 +139,7 @@ class ArangoServer : public rest::AnyServer {
   /// @brief defineHandlers, define "_api" and "_admin" handlers
   //////////////////////////////////////////////////////////////////////////////
 
-  void defineHandlers(triagens::rest::HttpHandlerFactory* factory);
+  void defineHandlers(arangodb::rest::HttpHandlerFactory* factory);
 
   
  private:
@@ -191,7 +183,7 @@ class ArangoServer : public rest::AnyServer {
   /// @brief cluster application feature
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::ApplicationCluster* _applicationCluster;
+  arangodb::ApplicationCluster* _applicationCluster;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief asynchronous job manager
@@ -395,14 +387,14 @@ class ArangoServer : public rest::AnyServer {
   /// @brief ptr to pair used for job manager rest handler
   //////////////////////////////////////////////////////////////////////////////
 
-  std::pair<triagens::rest::Dispatcher*, triagens::rest::AsyncJobManager*>*
+  std::pair<arangodb::rest::Dispatcher*, arangodb::rest::AsyncJobManager*>*
       _pairForJobHandler;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief thread pool for background parallel index creation
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::ThreadPool* _indexPool;
+  arangodb::basics::ThreadPool* _indexPool;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief use thread affinity
@@ -411,8 +403,6 @@ class ArangoServer : public rest::AnyServer {
   uint32_t _threadAffinity;
 };
 }
-}
 
 #endif
-
 

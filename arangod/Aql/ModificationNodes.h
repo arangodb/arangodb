@@ -34,7 +34,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 struct Collection;
 class ExecutionBlock;
@@ -68,13 +68,13 @@ class ModificationNode : public ExecutionNode {
     TRI_ASSERT(_collection != nullptr);
   }
 
-  ModificationNode(ExecutionPlan*, triagens::basics::Json const& json);
+  ModificationNode(ExecutionPlan*, arangodb::basics::Json const& json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void toJsonHelper(triagens::basics::Json& json,
+  virtual void toJsonHelper(arangodb::basics::Json& json,
                             TRI_memory_zone_t* zone, bool) const override;
 
   
@@ -210,7 +210,7 @@ class RemoveNode : public ModificationNode {
     TRI_ASSERT(_inVariable != nullptr);
   }
 
-  RemoveNode(ExecutionPlan*, triagens::basics::Json const& base);
+  RemoveNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -222,7 +222,7 @@ class RemoveNode : public ModificationNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -280,7 +280,7 @@ class InsertNode : public ModificationNode {
     // _outVariable might be a nullptr
   }
 
-  InsertNode(ExecutionPlan*, triagens::basics::Json const& base);
+  InsertNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -292,7 +292,7 @@ class InsertNode : public ModificationNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -355,7 +355,7 @@ class UpdateNode : public ModificationNode {
     // _inKeyVariable might be a nullptr
   }
 
-  UpdateNode(ExecutionPlan*, triagens::basics::Json const& base);
+  UpdateNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -367,7 +367,7 @@ class UpdateNode : public ModificationNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -447,7 +447,7 @@ class ReplaceNode : public ModificationNode {
     // _inKeyVariable might be a nullptr
   }
 
-  ReplaceNode(ExecutionPlan*, triagens::basics::Json const& base);
+  ReplaceNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -459,7 +459,7 @@ class ReplaceNode : public ModificationNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -545,7 +545,7 @@ class UpsertNode : public ModificationNode {
     TRI_ASSERT(_outVariableOld == nullptr);
   }
 
-  UpsertNode(ExecutionPlan*, triagens::basics::Json const& base);
+  UpsertNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -557,7 +557,7 @@ class UpsertNode : public ModificationNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -616,8 +616,8 @@ class UpsertNode : public ModificationNode {
   bool const _isReplace;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

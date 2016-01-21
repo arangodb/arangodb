@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "auth.h"
-
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Indexes/PrimaryIndex.h"
@@ -37,8 +36,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a string
@@ -163,7 +161,7 @@ static VocbaseAuthInfo* AuthFromVelocyPack(VPackSlice const& slice) {
   active = activeSlice.getBool();
 
   // extract "changePassword" attribute
-  bool mustChange = triagens::basics::VelocyPackHelper::getBooleanValue(
+  bool mustChange = arangodb::basics::VelocyPackHelper::getBooleanValue(
       slice, "changePassword", false);
   auto result = std::make_unique<VocbaseAuthInfo>(
       userSlice.copyString(), methodSlice.copyString(), saltSlice.copyString(),
@@ -202,7 +200,7 @@ static VocbaseAuthInfo* ConvertAuthInfo(TRI_vocbase_t* vocbase,
   }
 
   std::shared_ptr<VPackBuilder> parsed =
-      triagens::basics::JsonHelper::toVelocyPack(json.get());
+      arangodb::basics::JsonHelper::toVelocyPack(json.get());
   std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(parsed->slice()));
   return auth.release();  // maybe a nullptr
 }
@@ -449,7 +447,7 @@ char* TRI_CheckCacheAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
       TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash));
 
   if (cached != nullptr) {
-    username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, cached->_username);
+    username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, cached->_username);
     *mustChange = cached->_mustChange;
   }
 
@@ -528,22 +526,22 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
 
   try {
     if (strcmp(passwordMethod, "sha1") == 0) {
-      triagens::rest::SslInterface::sslSHA1(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA1(salted, n + p, crypted,
                                             cryptedLength);
     } else if (strcmp(passwordMethod, "sha512") == 0) {
-      triagens::rest::SslInterface::sslSHA512(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA512(salted, n + p, crypted,
                                               cryptedLength);
     } else if (strcmp(passwordMethod, "sha384") == 0) {
-      triagens::rest::SslInterface::sslSHA384(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA384(salted, n + p, crypted,
                                               cryptedLength);
     } else if (strcmp(passwordMethod, "sha256") == 0) {
-      triagens::rest::SslInterface::sslSHA256(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA256(salted, n + p, crypted,
                                               cryptedLength);
     } else if (strcmp(passwordMethod, "sha224") == 0) {
-      triagens::rest::SslInterface::sslSHA224(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslSHA224(salted, n + p, crypted,
                                               cryptedLength);
     } else if (strcmp(passwordMethod, "md5") == 0) {
-      triagens::rest::SslInterface::sslMD5(salted, n + p, crypted,
+      arangodb::rest::SslInterface::sslMD5(salted, n + p, crypted,
                                            cryptedLength);
     } else {
       // invalid algorithm...
@@ -580,8 +578,8 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
             TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_cache_t), false));
 
     if (cached != nullptr) {
-      cached->_hash = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, hash);
-      cached->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, username);
+      cached->_hash = TRI_DuplicateString(TRI_CORE_MEM_ZONE, hash);
+      cached->_username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, username);
       cached->_mustChange = auth->mustChange();
 
       if (cached->_hash == nullptr || cached->_username == nullptr) {

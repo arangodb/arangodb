@@ -27,7 +27,7 @@
 #undef DEBUG_WAL
 #undef DEBUG_WAL_DETAIL
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 
 
@@ -1041,7 +1041,7 @@ DocumentMarker::~DocumentMarker() {}
 /// @brief store legend in marker
 ////////////////////////////////////////////////////////////////////////////////
 
-void DocumentMarker::storeLegend(triagens::basics::JsonLegend& legend) {
+void DocumentMarker::storeLegend(arangodb::basics::JsonLegend& legend) {
   legend.dump((void*)this->legend());
 }
 
@@ -1174,7 +1174,7 @@ EdgeMarker::~EdgeMarker() {}
 /// @brief store legend in marker
 ////////////////////////////////////////////////////////////////////////////////
 
-void EdgeMarker::storeLegend(triagens::basics::JsonLegend& legend) {
+void EdgeMarker::storeLegend(arangodb::basics::JsonLegend& legend) {
   legend.dump((void*)this->legend());
 }
 

@@ -25,16 +25,14 @@
 #include "Aql/AstNode.h"
 #include "Basics/logging.h"
 
-using namespace triagens::arango;
+using namespace arangodb;
 
-
-
-triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
+arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
     const {
-  if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+  if (type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     TRI_ASSERT(current == 0);
     return value;
-  } else if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+  } else if (type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     TRI_ASSERT(n > 0);
     TRI_ASSERT(current < n);
     return value->getMember(current);
@@ -51,7 +49,7 @@ triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
 
 PathBasedIndex::PathBasedIndex(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse, bool allowPartialIndex)
     : Index(iid, collection, fields, unique, sparse),
       _shaper(_collection->getShaper()),

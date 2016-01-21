@@ -340,7 +340,7 @@ unittests-config:
 
 .PHONY: unittests-boost
 
-if ENABLE_MAINTAINER_MODE
+if ENABLE_BOOST_TESTS
 
 unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 	@echo
@@ -397,7 +397,9 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/StringBufferTest.cpp \
 	UnitTests/Basics/StringUtilsTest.cpp \
 	UnitTests/Basics/PathEnumeratorTest.cpp \
-	UnitTests/Basics/AttributeNameParserTest.cpp 
+	UnitTests/Basics/AttributeNameParserTest.cpp \
+	UnitTests/Basics/VelocyPackHelper-test.cpp \
+	lib/Basics/WorkMonitorDummy.cpp
 
 UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib @BOOST_CPPFLAGS@
 UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
@@ -406,7 +408,8 @@ UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 UnitTests_geo_suite_SOURCES = \
 	UnitTests/Geo/Runner.cpp \
 	UnitTests/Geo/georeg.cpp \
-	arangod/GeoIndex/GeoIndex.cpp
+	arangod/GeoIndex/GeoIndex.cpp \
+	lib/Basics/WorkMonitorDummy.cpp
 
 else
 
@@ -417,7 +420,7 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	@echo "to enable boost unit-tests, install Boost test and configure with --enable-maintainer-mode"
+	@echo "to enable boost unit-tests, install Boost test and configure with --enable-boost-tests"
 
 	@echo
 endif
@@ -644,7 +647,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-down.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
-			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-collect-variables.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-filter-covered-by-index.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-calculations.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-or.js \

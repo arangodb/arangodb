@@ -46,27 +46,27 @@
 #ifdef TRI_SHOW_LOCK_TIME
 
 #define READ_LOCKER(b)                                                   \
-  triagens::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
+  arangodb::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
       READ_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
 #define READ_LOCKER_EVENTUAL(b, t)                                       \
-  triagens::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
+  arangodb::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
       READ_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
 
 #else
 
 #define READ_LOCKER(b)                                                   \
-  triagens::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
+  arangodb::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
       READ_LOCKER_VAR_B(__LINE__)(&b)
 
 #define READ_LOCKER_EVENTUAL(b, t)                                       \
-  triagens::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
+  arangodb::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
       READ_LOCKER_VAR_B(__LINE__)(&b, t)
 
 #endif
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////

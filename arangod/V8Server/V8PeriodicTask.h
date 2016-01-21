@@ -31,13 +31,12 @@
 struct TRI_json_t;
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class Dispatcher;
 class Scheduler;
 }
 
-namespace arango {
 class ApplicationV8;
 
 class V8PeriodicTask : public rest::PeriodicTask {
@@ -85,7 +84,7 @@ class V8PeriodicTask : public rest::PeriodicTask {
   /// @brief V8 dealer
   //////////////////////////////////////////////////////////////////////////////
 
-  arango::ApplicationV8* _v8Dealer;
+  ApplicationV8* _v8Dealer;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispatcher
@@ -118,8 +117,6 @@ class V8PeriodicTask : public rest::PeriodicTask {
   bool _allowUseDatabase;
 };
 }
-}
 
 #endif
-
 

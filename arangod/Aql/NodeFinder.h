@@ -28,7 +28,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 

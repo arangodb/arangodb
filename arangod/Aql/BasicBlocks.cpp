@@ -26,11 +26,10 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::arango;
-using namespace triagens::aql;
 
-using Json = triagens::basics::Json;
+using namespace arangodb::aql;
+
+using Json = arangodb::basics::Json;
 
 
 ////////////////////////////////////////////////////////////////////////////////

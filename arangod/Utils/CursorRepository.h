@@ -32,11 +32,9 @@
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class CollectionExport;
-
 
 class CursorRepository {
   
@@ -69,7 +67,7 @@ class CursorRepository {
   /// @brief creates a cursor and stores it in the registry
   //////////////////////////////////////////////////////////////////////////////
 
-  ExportCursor* createFromExport(triagens::arango::CollectionExport*, size_t,
+  ExportCursor* createFromExport(arangodb::CollectionExport*, size_t,
                                  double, bool);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -116,7 +114,7 @@ class CursorRepository {
   /// @brief mutex for the cursors repository
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _lock;
+  arangodb::basics::Mutex _lock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of current cursors
@@ -130,7 +128,6 @@ class CursorRepository {
 
   static size_t const MaxCollectCount;
 };
-}
 }
 
 #endif

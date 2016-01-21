@@ -603,7 +603,6 @@
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_HAVE_GETTID 1
 #define TRI_HAVE_GMTIME_S 1
 #define TRI_HAVE_LOCALTIME_S 1
 #define TRI_HAVE_STRTOI64 1

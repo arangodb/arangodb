@@ -42,14 +42,13 @@
 #include "Wal/Slots.h"
 #include "Wal/SynchronizerThread.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the logfile manager singleton
 ////////////////////////////////////////////////////////////////////////////////
 
 static LogfileManager* Instance = nullptr;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum value for --wal.throttle-when-pending
@@ -95,8 +94,6 @@ static inline uint32_t MinSlots() { return 1024 * 8; }
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the logfile manager
@@ -181,7 +178,6 @@ LogfileManager::~LogfileManager() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the logfile manager instance
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,13 +197,13 @@ void LogfileManager::initialize(std::string* path, TRI_server_t* server) {
   Instance = new LogfileManager(server, path);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::setupOptions(std::map<
-    std::string, triagens::basics::ProgramOptionsDescription>& options) {
+void LogfileManager::setupOptions(
+    std::map<std::string, arangodb::basics::ProgramOptionsDescription>&
+        options) {
   options["Write-ahead log options:help-wal"](
       "wal.allow-oversize-entries", &_allowOversizeEntries,
       "allow entries that are bigger than --wal.logfile-size")(
@@ -237,9 +233,6 @@ void LogfileManager::setupOptions(std::map<
       "maximum wait time per operation when write-throttled (in milliseconds)");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::prepare() {
   static bool Prepared = false;
@@ -331,9 +324,6 @@ bool LogfileManager::prepare() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::start() {
   static bool started = false;
@@ -388,9 +378,6 @@ bool LogfileManager::start() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::open() {
   static bool opened = false;
@@ -527,15 +514,9 @@ bool LogfileManager::open() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::close() {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::stop() {
   if (!_startCalled) {
@@ -584,7 +565,6 @@ void LogfileManager::stop() {
     LOG_ERROR("could not write WAL shutdown info: %s", TRI_errno_string(res));
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a transaction
@@ -1625,7 +1605,6 @@ LogfileManager::runningTransactions() {
       count, lastCollectedId, lastSealedId);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a logfile in the file system
 ////////////////////////////////////////////////////////////////////////////////
@@ -1763,15 +1742,20 @@ void LogfileManager::closeLogfiles() {
 
 int LogfileManager::readShutdownInfo() {
   std::string const filename = shutdownFilename();
-
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename.c_str(), nullptr));
-
-  if (json == nullptr) {
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+  } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
 
-  uint64_t lastTick = basics::JsonHelper::stringUInt64(json.get(), "tick");
+  VPackSlice slice = builder->slice();
+  if (!slice.isObject()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  uint64_t lastTick =
+      arangodb::basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(lastTick));
 
   if (lastTick > 0) {
@@ -1779,20 +1763,21 @@ int LogfileManager::readShutdownInfo() {
   }
 
   // read id of last collected logfile (maybe 0)
-  uint64_t lastCollectedId =
-      basics::JsonHelper::stringUInt64(json.get(), "lastCollected");
+  uint64_t lastCollectedId = arangodb::basics::VelocyPackHelper::stringUInt64(
+      slice.get("lastCollected"));
 
   // read if of last sealed logfile (maybe 0)
   uint64_t lastSealedId =
-      basics::JsonHelper::stringUInt64(json.get(), "lastSealed");
+      arangodb::basics::VelocyPackHelper::stringUInt64(slice.get("lastSealed"));
 
   if (lastSealedId < lastCollectedId) {
     // should not happen normally
     lastSealedId = lastCollectedId;
   }
 
-  std::string const shutdownTime(
-      basics::JsonHelper::getStringValue(json.get(), "shutdownTime", ""));
+  std::string const shutdownTime =
+      arangodb::basics::VelocyPackHelper::getStringValue(slice, "shutdownTime",
+                                                         "");
   if (shutdownTime.empty()) {
     LOG_TRACE("no previous shutdown time found");
   } else {
@@ -1824,59 +1809,54 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
 
   std::string const filename = shutdownFilename();
 
-  std::unique_ptr<TRI_json_t> json(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
+  try {
+    VPackBuilder builder;
+    builder.openObject();
 
-  if (json == nullptr) {
+    // create local copies of the instance variables while holding the read lock
+    Logfile::IdType lastCollectedId;
+    Logfile::IdType lastSealedId;
+
+    {
+      MUTEX_LOCKER(_idLock);
+      lastCollectedId = _lastCollectedId;
+      lastSealedId = _lastSealedId;
+    }
+
+    std::string val;
+
+    val = basics::StringUtils::itoa(TRI_CurrentTickServer());
+    builder.add("tick", VPackValue(val));
+
+    val = basics::StringUtils::itoa(lastCollectedId);
+    builder.add("lastCollected", VPackValue(val));
+
+    val = basics::StringUtils::itoa(lastSealedId);
+    builder.add("lastSealed", VPackValue(val));
+
+    if (writeShutdownTime) {
+      std::string const t(getTimeString());
+      builder.add("shutdownTime", VPackValue(t));
+    }
+    builder.close();
+
+    bool ok;
+    {
+      // grab a lock so no two threads can write the shutdown info at the same
+      // time
+      MUTEX_LOCKER(_shutdownFileLock);
+      ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
+          filename.c_str(), builder.slice(), true);
+    }
+
+    if (!ok) {
+      LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
+      return TRI_ERROR_CANNOT_WRITE_FILE;
+    }
+  } catch (...) {
     LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
 
     return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // create local copies of the instance variables while holding the read lock
-  Logfile::IdType lastCollectedId;
-  Logfile::IdType lastSealedId;
-
-  {
-    MUTEX_LOCKER(_idLock);
-    lastCollectedId = _lastCollectedId;
-    lastSealedId = _lastSealedId;
-  }
-
-  std::string val;
-
-  val = basics::StringUtils::itoa(TRI_CurrentTickServer());
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "tick",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
-
-  val = basics::StringUtils::itoa(lastCollectedId);
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "lastCollected",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
-
-  val = basics::StringUtils::itoa(lastSealedId);
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "lastSealed",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
-
-  if (writeShutdownTime) {
-    std::string const t(getTimeString());
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, json.get(), "shutdownTime",
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, t.c_str(), t.size()));
-  }
-
-  bool ok;
-  {
-    // grab a lock so no two threads can write the shutdown info at the same
-    // time
-    MUTEX_LOCKER(_shutdownFileLock);
-    ok = TRI_SaveJson(filename.c_str(), json.get(), true);
-  }
-
-  if (!ok) {
-    LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
-    return TRI_ERROR_CANNOT_WRITE_FILE;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2280,5 +2260,4 @@ std::string LogfileManager::getTimeString() {
 
   return std::string(buffer, len);
 }
-
 

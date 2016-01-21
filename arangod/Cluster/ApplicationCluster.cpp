@@ -36,15 +36,15 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/server.h"
 
-using namespace triagens;
-using namespace triagens::basics;
-using namespace triagens::arango;
+using namespace arangodb;
+using namespace arangodb::basics;
+
 
 
 
 
 ApplicationCluster::ApplicationCluster(
-    TRI_server_t* server, triagens::rest::ApplicationDispatcher* dispatcher,
+    TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
     ApplicationV8* applicationV8)
     : ApplicationFeature("Sharding"),
       _server(server),
@@ -81,9 +81,6 @@ ApplicationCluster::~ApplicationCluster() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationCluster::setupOptions(
     std::map<std::string, basics::ProgramOptionsDescription>& options) {
@@ -113,9 +110,6 @@ void ApplicationCluster::setupOptions(
       "disable the kickstarter functionality");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::prepare() {
   // set authentication data
@@ -175,7 +169,7 @@ bool ApplicationCluster::prepare() {
 
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
     std::string const unified =
-        triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
+        arangodb::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
 
     if (unified.empty()) {
       LOG_FATAL_AND_EXIT(
@@ -275,9 +269,6 @@ bool ApplicationCluster::prepare() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::start() {
   if (!enabled()) {
@@ -298,7 +289,7 @@ bool ApplicationCluster::start() {
 
   // now we can validate --cluster.my-address
   std::string const unified =
-      triagens::rest::Endpoint::getUnifiedForm(_myAddress);
+      arangodb::rest::Endpoint::getUnifiedForm(_myAddress);
 
   if (unified.empty()) {
     LOG_FATAL_AND_EXIT(
@@ -334,7 +325,7 @@ bool ApplicationCluster::start() {
 
       if (it != result._values.end()) {
         _heartbeatInterval =
-            triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
 
         LOG_INFO("using heartbeat interval value '%llu ms' from agency",
                  (unsigned long long)_heartbeatInterval);
@@ -373,9 +364,6 @@ bool ApplicationCluster::start() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::open() {
   if (!enabled()) {
@@ -487,9 +475,6 @@ bool ApplicationCluster::open() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationCluster::close() {
   if (!enabled()) {
@@ -507,9 +492,6 @@ void ApplicationCluster::close() {
   comm.sendServerState(0.0);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationCluster::stop() {
   if (!enabled()) {

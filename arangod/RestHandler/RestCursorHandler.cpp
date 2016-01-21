@@ -37,25 +37,18 @@
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::arango;
-using namespace triagens::rest;
-
-
+using namespace arangodb;
+using namespace arangodb::rest;
 
 RestCursorHandler::RestCursorHandler(
-    HttpRequest* request, std::pair<triagens::arango::ApplicationV8*,
-                                    triagens::aql::QueryRegistry*>* pair)
+    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
+                                    arangodb::aql::QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
       _queryRegistry(pair->second),
       _queryLock(),
       _query(nullptr),
       _queryKilled(false) {}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestCursorHandler::execute() {
   // extract the sub-request type
@@ -81,9 +74,6 @@ HttpHandler::status_t RestCursorHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestCursorHandler::cancel() { return cancelQuery(); }
 
@@ -118,13 +108,13 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   VPackValueLength l;
   char const* queryString = querySlice.getString(l);
 
-  triagens::aql::Query query(
+  arangodb::aql::Query query(
       _applicationV8, false, _vocbase, queryString, static_cast<size_t>(l),
       (!bindVars.isNone()
-           ? triagens::basics::VelocyPackHelper::velocyPackToJson(bindVars)
+           ? arangodb::basics::VelocyPackHelper::velocyPackToJson(bindVars)
            : nullptr),
-      triagens::basics::VelocyPackHelper::velocyPackToJson(options),
-      triagens::aql::PART_MAIN);
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(options),
+      arangodb::aql::PART_MAIN);
 
   registerQuery(&query);
   auto queryResult = query.execute(_queryRegistry);
@@ -145,10 +135,10 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     createResponse(HttpResponse::CREATED);
     _response->setContentType("application/json; charset=utf-8");
 
-    triagens::basics::Json extra = buildExtra(queryResult);
+    arangodb::basics::Json extra = buildExtra(queryResult);
 
     size_t batchSize =
-        triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
             options, "batchSize", 1000);
     size_t const n = TRI_LengthArrayJson(queryResult.json);
 
@@ -156,28 +146,28 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       // result is smaller than batchSize and will be returned directly. no need
       // to create a cursor
 
-      triagens::basics::Json result(triagens::basics::Json::Object, 7);
+      arangodb::basics::Json result(arangodb::basics::Json::Object, 7);
       result.set("result",
-                 triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json,
-                                        triagens::basics::Json::AUTOFREE));
+                 arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json,
+                                        arangodb::basics::Json::AUTOFREE));
       queryResult.json = nullptr;
 
-      result.set("hasMore", triagens::basics::Json(false));
+      result.set("hasMore", arangodb::basics::Json(false));
 
-      if (triagens::basics::VelocyPackHelper::getBooleanValue(options, "count",
+      if (arangodb::basics::VelocyPackHelper::getBooleanValue(options, "count",
                                                               false)) {
-        result.set("count", triagens::basics::Json(static_cast<double>(n)));
+        result.set("count", arangodb::basics::Json(static_cast<double>(n)));
       }
 
-      result.set("cached", triagens::basics::Json(queryResult.cached));
+      result.set("cached", arangodb::basics::Json(queryResult.cached));
       if (queryResult.cached) {
         result.set("extra",
-                   triagens::basics::Json(triagens::basics::Json::Object));
+                   arangodb::basics::Json(arangodb::basics::Json::Object));
       } else {
         result.set("extra", extra);
       }
-      result.set("error", triagens::basics::Json(false));
-      result.set("code", triagens::basics::Json(
+      result.set("error", arangodb::basics::Json(false));
+      result.set("code", arangodb::basics::Json(
                              static_cast<double>(_response->responseCode())));
 
       result.dump(_response->body());
@@ -185,18 +175,18 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     }
 
     // result is bigger than batchSize, and a cursor will be created
-    auto cursors = static_cast<triagens::arango::CursorRepository*>(
+    auto cursors = static_cast<arangodb::CursorRepository*>(
         _vocbase->_cursorRepository);
     TRI_ASSERT(cursors != nullptr);
 
-    double ttl = triagens::basics::VelocyPackHelper::getNumericValue<double>(
+    double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
         options, "ttl", 30);
-    bool count = triagens::basics::VelocyPackHelper::getBooleanValue(
+    bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "count", false);
 
     // steal the query JSON, cursor will take over the ownership
     auto j = queryResult.json;
-    triagens::arango::JsonCursor* cursor = cursors->createFromJson(
+    arangodb::JsonCursor* cursor = cursors->createFromJson(
         j, batchSize, extra.steal(), ttl, count, queryResult.cached);
     queryResult.json = nullptr;
 
@@ -221,7 +211,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::registerQuery(triagens::aql::Query* query) {
+void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
   MUTEX_LOCKER(_queryLock);
 
   TRI_ASSERT(_query == nullptr);
@@ -331,32 +321,32 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
 /// several values
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json RestCursorHandler::buildExtra(
-    triagens::aql::QueryResult& queryResult) const {
+arangodb::basics::Json RestCursorHandler::buildExtra(
+    arangodb::aql::QueryResult& queryResult) const {
   // build "extra" attribute
-  triagens::basics::Json extra(triagens::basics::Json::Object);
+  arangodb::basics::Json extra(arangodb::basics::Json::Object);
   VPackSlice stats = queryResult.stats.slice();
 
   if (!stats.isNone()) {
     extra.set("stats",
-              triagens::basics::Json(
+              arangodb::basics::Json(
                   TRI_UNKNOWN_MEM_ZONE,
-                  triagens::basics::VelocyPackHelper::velocyPackToJson(stats),
-                  triagens::basics::Json::AUTOFREE));
+                  arangodb::basics::VelocyPackHelper::velocyPackToJson(stats),
+                  arangodb::basics::Json::AUTOFREE));
   }
   if (queryResult.profile != nullptr) {
     extra.set("profile",
-              triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.profile,
-                                     triagens::basics::Json::AUTOFREE));
+              arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.profile,
+                                     arangodb::basics::Json::AUTOFREE));
     queryResult.profile = nullptr;
   }
   if (queryResult.warnings == nullptr) {
     extra.set("warnings",
-              triagens::basics::Json(triagens::basics::Json::Array));
+              arangodb::basics::Json(arangodb::basics::Json::Array));
   } else {
     extra.set("warnings",
-              triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.warnings,
-                                     triagens::basics::Json::AUTOFREE));
+              arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.warnings,
+                                     arangodb::basics::Json::AUTOFREE));
     queryResult.warnings = nullptr;
   }
 
@@ -388,7 +378,7 @@ void RestCursorHandler::createCursor() {
     VPackSlice body = parsedBody.get()->slice();
 
     processQuery(body);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::bad_alloc const&) {
@@ -418,12 +408,12 @@ void RestCursorHandler::modifyCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<triagens::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::CursorRepository*>(
       _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<triagens::arango::CursorId>(
-      triagens::basics::StringUtils::uint64(id));
+  auto cursorId = static_cast<arangodb::CursorId>(
+      arangodb::basics::StringUtils::uint64(id));
   bool busy;
   auto cursor = cursors->find(cursorId, busy);
 
@@ -450,7 +440,7 @@ void RestCursorHandler::modifyCursor() {
     _response->body().appendChar('}');
 
     cursors->release(cursor);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     cursors->release(cursor);
 
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
@@ -476,12 +466,12 @@ void RestCursorHandler::deleteCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<triagens::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::CursorRepository*>(
       _vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<triagens::arango::CursorId>(
-      triagens::basics::StringUtils::uint64(id));
+  auto cursorId = static_cast<arangodb::CursorId>(
+      arangodb::basics::StringUtils::uint64(id));
   bool found = cursors->remove(cursorId);
 
   if (!found) {
@@ -492,10 +482,10 @@ void RestCursorHandler::deleteCursor() {
   createResponse(HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
 
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json.set("id", triagens::basics::Json(id));  // id as a string!
-  json.set("error", triagens::basics::Json(false));
-  json.set("code", triagens::basics::Json(
+  arangodb::basics::Json json(arangodb::basics::Json::Object);
+  json.set("id", arangodb::basics::Json(id));  // id as a string!
+  json.set("error", arangodb::basics::Json(false));
+  json.set("code", arangodb::basics::Json(
                        static_cast<double>(_response->responseCode())));
 
   json.dump(_response->body());

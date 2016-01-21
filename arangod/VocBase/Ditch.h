@@ -25,21 +25,17 @@
 #define ARANGOD_VOC_BASE_DITCH_H 1
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
 #include "Basics/Mutex.h"
 
 #include <functional>
-
 
 struct TRI_document_collection_t;
 struct TRI_collection_t;
 struct TRI_datafile_s;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class Ditches;
-
 
 class Ditch {
   friend class Ditches;
@@ -274,7 +270,7 @@ class UnloadCollectionDitch : public Ditch {
 class DropCollectionDitch : public Ditch {
  public:
   DropCollectionDitch(
-      triagens::arango::Ditches* ditches, struct TRI_collection_t* collection,
+      arangodb::Ditches* ditches, struct TRI_collection_t* collection,
       void* data, std::function<bool(struct TRI_collection_t*, void*)> callback,
       char const* filename, int line);
 
@@ -441,12 +437,11 @@ class Ditches {
  private:
   struct TRI_document_collection_t* _collection;
 
-  triagens::basics::Mutex _lock;
+  arangodb::basics::Mutex _lock;
   Ditch* _begin;
   Ditch* _end;
   uint64_t _numDocumentDitches;
 };
-}
 }
 
 #endif

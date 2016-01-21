@@ -28,7 +28,7 @@
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 struct AstNode;
 
@@ -115,7 +115,7 @@ class SortCondition {
 
   size_t coveredAttributes(
       Variable const*,
-      std::vector<std::vector<triagens::basics::AttributeName>> const&) const;
+      std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
   
  private:
@@ -130,7 +130,7 @@ class SortCondition {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::pair<Variable const*,
-                        std::vector<triagens::basics::AttributeName>>> _fields;
+                        std::vector<arangodb::basics::AttributeName>>> _fields;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the sort is unidirectional

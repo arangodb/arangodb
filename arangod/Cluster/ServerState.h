@@ -27,9 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 class ServerState {
   
@@ -527,7 +525,7 @@ class ServerState {
   /// @brief r/w lock for state
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::ReadWriteLock _lock;
+  arangodb::basics::ReadWriteLock _lock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the server role
@@ -559,7 +557,6 @@ class ServerState {
 
   bool _clusterEnabled;
 };
-}
 }
 
 #endif

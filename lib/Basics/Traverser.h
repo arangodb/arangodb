@@ -34,7 +34,7 @@
 #include <stack>
 #include <thread>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -473,7 +473,7 @@ class PathFinder {
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef triagens::basics::PriorityQueue<VertexId, Step, EdgeWeight> PQueue;
+  typedef arangodb::basics::PriorityQueue<VertexId, Step, EdgeWeight> PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief information for each thread
@@ -626,7 +626,7 @@ class PathFinder {
         //    path we would have found it here
         //    => No path possible. Set bingo, intermediate is empty.
         _pathFinder->_bingo = true;
-      } catch (triagens::basics::Exception const& ex) {
+      } catch (arangodb::basics::Exception const& ex) {
         _pathFinder->_resultCode = ex.code();
       } catch (std::bad_alloc const&) {
         _pathFinder->_resultCode = TRI_ERROR_OUT_OF_MEMORY;

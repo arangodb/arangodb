@@ -30,7 +30,7 @@
 #include "Basics/random.h"
 #include "Basics/RandomGenerator.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 void InitializeBasics(int argv, char* argc[]) {
   TRIAGENS_C_INITIALIZE(argv, argc);

@@ -38,8 +38,8 @@
 #include "Scheduler/Task.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -441,13 +441,13 @@ Task* Scheduler::lookupTaskById(uint64_t taskId) {
 /// @brief returns the loop for a task id
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t Scheduler::lookupLoopById(uint64_t taskId) {
+EventLoop Scheduler::lookupLoopById(uint64_t taskId) {
   MUTEX_LOCKER(schedulerLock);
 
   auto&& task = taskRegistered.find(taskId);
 
   if (task == taskRegistered.end()) {
-    return nrThreads;
+    return static_cast<EventLoop>(nrThreads);
   }
 
   return task->second->eventLoop();

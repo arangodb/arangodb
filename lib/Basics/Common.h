@@ -133,10 +133,6 @@ typedef long suseconds_t;
 #include "Basics/make_unique.h"
 #include "Basics/memory.h"
 #include "Basics/structures.h"
-#undef TRI_WITHIN_COMMON
-
-
-#define TRI_WITHIN_COMMON 1
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON
@@ -288,7 +284,7 @@ struct TRI_AutoOutOfScope {
 // --SECTIONS--                                               triagens namespace
 // -----------------------------------------------------------------------------
 
-namespace triagens {
+namespace arangodb {
 typedef TRI_blob_t blob_t;
 typedef TRI_datetime_t datetime_t;
 typedef TRI_date_t date_t;

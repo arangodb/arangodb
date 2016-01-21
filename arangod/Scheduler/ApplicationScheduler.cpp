@@ -36,8 +36,8 @@
 #include "Scheduler/SignalTask.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 namespace {
@@ -197,8 +197,8 @@ class Sigusr1Task : public SignalTask {
 class SchedulerReporterTask : public PeriodicTask {
  public:
   SchedulerReporterTask(Scheduler* scheduler, double _reportInterval)
-      : Task("Scheduler-Reporter"),
-        PeriodicTask("Scheduler-Reporter", 1.0, _reportInterval),
+      : Task("SchedulerReporter"),
+        PeriodicTask("SchedulerReporter", 1.0, _reportInterval),
         _scheduler(scheduler) {}
 
  public:
@@ -361,9 +361,6 @@ void ApplicationScheduler::disableControlCHandler() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
@@ -404,12 +401,9 @@ void ApplicationScheduler::setupOptions(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::afterOptionParsing(
-    triagens::basics::ProgramOptions& options) {
+    arangodb::basics::ProgramOptions& options) {
   // show io backends
   if (options.has("show-io-backends")) {
     std::cout << "available io backends are: "
@@ -423,9 +417,6 @@ bool ApplicationScheduler::afterOptionParsing(
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::prepare() {
   if (_disabled) {
@@ -437,9 +428,6 @@ bool ApplicationScheduler::prepare() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::start() {
   if (_disabled) {
@@ -473,9 +461,6 @@ bool ApplicationScheduler::start() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::open() {
   if (_disabled) {
@@ -489,9 +474,6 @@ bool ApplicationScheduler::open() {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::stop() {
   if (_disabled) {

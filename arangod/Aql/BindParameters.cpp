@@ -32,7 +32,7 @@
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -24,9 +24,9 @@
 #include "Aql/CollectOptions.h"
 #include "Basics/Exceptions.h"
 
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor, using JSON
@@ -54,7 +54,7 @@ bool CollectOptions::canUseHashMethod() const {
 /// @brief convert the options to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectOptions::toJson(triagens::basics::Json& json,
+void CollectOptions::toJson(arangodb::basics::Json& json,
                                 TRI_memory_zone_t* zone) const {
   Json options = Json(Json::Object, 1)("method", Json(methodToString(method)));
   json("collectOptions", options);

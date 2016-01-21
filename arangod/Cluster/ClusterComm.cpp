@@ -31,16 +31,14 @@
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
 
-using namespace std;
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global callback for asynchronous REST handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::arango::ClusterCommRestCallback(
-    std::string& coordinator, triagens::rest::HttpResponse* response) {
+void arangodb::ClusterCommRestCallback(
+    std::string& coordinator, arangodb::rest::HttpResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
 
@@ -152,7 +150,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 ClusterCommResult const ClusterComm::asyncRequest(
     ClientTransactionID const clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    triagens::rest::HttpRequest::HttpRequestType reqtype,
+    arangodb::rest::HttpRequest::HttpRequestType reqtype,
     std::string const& path, std::shared_ptr<std::string const> body,
     std::unique_ptr<std::map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout) {
@@ -175,12 +173,12 @@ ClusterCommResult const ClusterComm::asyncRequest(
       }
     }
     LOG_DEBUG("Responsible server: %s", op->result.serverID.c_str());
-    if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
-      auto it = triagens::arango::Transaction::_makeNolockHeaders->find(
+      auto it = arangodb::Transaction::_makeNolockHeaders->find(
           op->result.shardID);
-      if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found our shard\n";
         (*headerFields)["X-Arango-Nolock"] = op->result.shardID;
@@ -225,7 +223,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
 
   // LOCKING-DEBUG
   // std::cout << "asyncRequest: sending " <<
-  // triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB
+  // arangodb::rest::HttpRequest::translateMethod(reqtype) << " request to DB
   // server '" << op->serverID << ":" << path << "\n" << *(body.get()) << "\n";
   // for (auto& h : *(op->headerFields)) {
   //   std::cout << h.first << ":" << h.second << std::endl;
@@ -238,7 +236,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
     CONDITION_LOCKER(locker, somethingToSend);
     toSend.push_back(op.get());
     TRI_ASSERT(nullptr != op.get());
-    list<ClusterCommOperation*>::iterator i = toSend.end();
+    std::list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[op->result.operationID] = --i;
   }
   LOG_DEBUG("In asyncRequest, put into queue %llu",
@@ -272,7 +270,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    triagens::rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+    arangodb::rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
     std::string const& body, std::map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
   std::map<std::string, std::string> headersCopy(headerFields);
@@ -305,12 +303,12 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       res->status = CL_COMM_ERROR;
       return res;
     }
-    if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
       auto it =
-          triagens::arango::Transaction::_makeNolockHeaders->find(res->shardID);
-      if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+          arangodb::Transaction::_makeNolockHeaders->find(res->shardID);
+      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found this shard: " << res->shardID << std::endl;
         headersCopy["X-Arango-Nolock"] = res->shardID;
@@ -350,17 +348,17 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       }
     } else {
       LOG_DEBUG("sending %s request to DB server '%s': %s",
-                triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
+                arangodb::rest::HttpRequest::translateMethod(reqtype).c_str(),
                 res->serverID.c_str(), body.c_str());
       // LOCKING-DEBUG
       // std::cout << "syncRequest: sending " <<
-      // triagens::rest::HttpRequest::translateMethod(reqtype) << " request to
+      // arangodb::rest::HttpRequest::translateMethod(reqtype) << " request to
       // DB server '" << res->serverID << ":" << path << "\n" << body << "\n";
       // for (auto& h : headersCopy) {
       //   std::cout << h.first << ":" << h.second << std::endl;
       // }
       // std::cout << std::endl;
-      auto client = std::make_unique<triagens::httpclient::SimpleHttpClient>(
+      auto client = std::make_unique<arangodb::httpclient::SimpleHttpClient>(
           connection->_connection, endTime - currentTime, false);
       client->keepConnectionOnDestruction(true);
 
@@ -502,8 +500,8 @@ ClusterCommResult const ClusterComm::wait(
   }
 
   // tell Dispatcher that we are waiting:
-  if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-    triagens::rest::DispatcherThread::currentDispatcherThread->block();
+  if (arangodb::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+    arangodb::rest::DispatcherThread::currentDispatcherThread->block();
   }
 
   if (0 != operationID) {
@@ -523,9 +521,9 @@ ClusterCommResult const ClusterComm::wait(
           res.operationID = operationID;
           res.status = CL_COMM_DROPPED;
           // tell Dispatcher that we are back in business
-          if (triagens::rest::DispatcherThread::currentDispatcherThread !=
+          if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
               nullptr) {
-            triagens::rest::DispatcherThread::currentDispatcherThread
+            arangodb::rest::DispatcherThread::currentDispatcherThread
                 ->unblock();
           }
           return res;
@@ -539,9 +537,9 @@ ClusterCommResult const ClusterComm::wait(
           receivedByOpID.erase(i);
           received.erase(q);
           // tell Dispatcher that we are back in business
-          if (triagens::rest::DispatcherThread::currentDispatcherThread !=
+          if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
               nullptr) {
-            triagens::rest::DispatcherThread::currentDispatcherThread
+            arangodb::rest::DispatcherThread::currentDispatcherThread
                 ->unblock();
           }
           return op->result;
@@ -578,9 +576,9 @@ ClusterCommResult const ClusterComm::wait(
             ClusterCommResult res = op->result;
             delete op;
             // tell Dispatcher that we are back in business
-            if (triagens::rest::DispatcherThread::currentDispatcherThread !=
+            if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
                 nullptr) {
-              triagens::rest::DispatcherThread::currentDispatcherThread
+              arangodb::rest::DispatcherThread::currentDispatcherThread
                   ->unblock();
             }
             return res;
@@ -607,9 +605,9 @@ ClusterCommResult const ClusterComm::wait(
         res.shardID = shardID;
         res.status = CL_COMM_DROPPED;
         // tell Dispatcher that we are back in business
-        if (triagens::rest::DispatcherThread::currentDispatcherThread !=
+        if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
             nullptr) {
-          triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
+          arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
         }
         return res;
       }
@@ -630,8 +628,8 @@ ClusterCommResult const ClusterComm::wait(
   res.shardID = shardID;
   res.status = CL_COMM_TIMEOUT;
   // tell Dispatcher that we are back in business
-  if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-    triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
+  if (arangodb::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+    arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
   }
   return res;
 }
@@ -714,7 +712,7 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
-                              triagens::rest::HttpResponse* responseToSend) {
+                              arangodb::rest::HttpResponse* responseToSend) {
   // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
   size_t start = 0;
@@ -722,7 +720,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
   LOG_DEBUG("In asyncAnswer, seeing %s", coordinatorHeader.c_str());
   pos = coordinatorHeader.find(":", start);
-  if (pos == string::npos) {
+  if (pos == std::string::npos) {
     LOG_ERROR("Could not find coordinator ID in X-Arango-Coordinator");
     return;
   }
@@ -762,7 +760,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   LOG_DEBUG("asyncAnswer: sending PUT request to DB server '%s'",
             coordinatorID.c_str());
 
-  auto client = std::make_unique<triagens::httpclient::SimpleHttpClient>(
+  auto client = std::make_unique<arangodb::httpclient::SimpleHttpClient>(
       connection->_connection, 3600.0, false);
   client->keepConnectionOnDestruction(true);
 
@@ -791,7 +789,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                  triagens::rest::HttpRequest* answer) {
+                                  arangodb::rest::HttpRequest* answer) {
   // First take apart the header to get the operaitonID:
   OperationID operationID;
   size_t start = 0;
@@ -800,13 +798,13 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
   LOG_DEBUG("In processAnswer, seeing %s", coordinatorHeader.c_str());
 
   pos = coordinatorHeader.find(":", start);
-  if (pos == string::npos) {
+  if (pos == std::string::npos) {
     return std::string("could not find coordinator ID in 'X-Arango-Coordinator'");
   }
   // coordinatorID = coordinatorHeader.substr(start,pos-start);
   start = pos + 1;
   pos = coordinatorHeader.find(":", start);
-  if (pos == string::npos) {
+  if (pos == std::string::npos) {
     return std::string("could not find operationID in 'X-Arango-Coordinator'");
   }
   operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
@@ -1029,18 +1027,18 @@ void ClusterCommThread::run() {
             } else {
               if (nullptr != op->body.get()) {
                 LOG_DEBUG("sending %s request to DB server '%s': %s",
-                          triagens::rest::HttpRequest::translateMethod(
+                          arangodb::rest::HttpRequest::translateMethod(
                               op->reqtype).c_str(),
                           op->result.serverID.c_str(), op->body->c_str());
               } else {
                 LOG_DEBUG("sending %s request to DB server '%s'",
-                          triagens::rest::HttpRequest::translateMethod(
+                          arangodb::rest::HttpRequest::translateMethod(
                               op->reqtype).c_str(),
                           op->result.serverID.c_str());
               }
 
               auto client =
-                  std::make_unique<triagens::httpclient::SimpleHttpClient>(
+                  std::make_unique<arangodb::httpclient::SimpleHttpClient>(
                       connection->_connection, op->endTime - currentTime,
                       false);
               client->keepConnectionOnDestruction(true);
@@ -1073,7 +1071,7 @@ void ClusterCommThread::run() {
                   op->result.status = CL_COMM_ERROR;
                   op->result.errorMessage = "HTTP error, status ";
                   op->result.errorMessage +=
-                      triagens::basics::StringUtils::itoa(
+                      arangodb::basics::StringUtils::itoa(
                           op->result.result->getHttpReturnCode());
                 }
               }

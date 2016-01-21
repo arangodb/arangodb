@@ -253,10 +253,8 @@ void TRI_set_errno_string(int error, char const* msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* TRI_errno_string(int error) {
-  TRI_error_t* entry;
-
-  entry = (TRI_error_t*)TRI_LookupByKeyAssociativePointer(&ErrorMessages,
-                                                          (void const*)&error);
+  auto entry = static_cast<TRI_error_t*>(TRI_LookupByKeyAssociativePointer(&ErrorMessages,
+                                                          (void const*)&error));
 
   if (entry == nullptr) {
     // return a hard-coded string as not all callers check for nullptr
@@ -267,8 +265,6 @@ char const* TRI_errno_string(int error) {
 
   return entry->_message;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the error messages

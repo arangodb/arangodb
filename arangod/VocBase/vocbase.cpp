@@ -167,15 +167,15 @@ static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::DropCollectionMarker marker(vocbase->_id, collectionId);
-    triagens::wal::SlotInfoCopy slotInfo =
-        triagens::wal::LogfileManager::instance()->allocateAndWrite(marker,
+    arangodb::wal::DropCollectionMarker marker(vocbase->_id, collectionId);
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -248,9 +248,9 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
 
   auto ditches = collection->_collection->ditches();
 
-  if (ditches->contains(triagens::arango::Ditch::TRI_DITCH_DOCUMENT) ||
-      ditches->contains(triagens::arango::Ditch::TRI_DITCH_REPLICATION) ||
-      ditches->contains(triagens::arango::Ditch::TRI_DITCH_COMPACTION)) {
+  if (ditches->contains(arangodb::Ditch::TRI_DITCH_DOCUMENT) ||
+      ditches->contains(arangodb::Ditch::TRI_DITCH_REPLICATION) ||
+      ditches->contains(arangodb::Ditch::TRI_DITCH_COMPACTION)) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     // still some ditches left...
@@ -399,8 +399,8 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
 
       char* newFilename;
 
-      tmp1 = TRI_DuplicateString2(first, firstLen);
-      tmp2 = TRI_DuplicateString2(second, secondLen);
+      tmp1 = TRI_DuplicateString(first, firstLen);
+      tmp2 = TRI_DuplicateString(second, secondLen);
       tmp3 = TRI_Concatenate2String("deleted-", tmp2);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
@@ -577,7 +577,7 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_col_t* CreateCollection(
-    TRI_vocbase_t* vocbase, triagens::arango::VocbaseCollectionInfo& parameters,
+    TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo& parameters,
     TRI_voc_cid_t& cid, bool writeMarker, VPackBuilder& builder) {
   TRI_ASSERT(!builder.isClosed());
   std::string name = parameters.name();
@@ -684,8 +684,8 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
 
     else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
       try {
-        triagens::arango::VocbaseCollectionInfo info =
-            triagens::arango::VocbaseCollectionInfo::fromFile(
+        arangodb::VocbaseCollectionInfo info =
+            arangodb::VocbaseCollectionInfo::fromFile(
                 collection->_path, vocbase, newName, true);
 
         int res = info.saveToFile(collection->_path,
@@ -695,7 +695,7 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
           return TRI_set_errno(res);
         }
 
-      } catch (triagens::basics::Exception const& e) {
+      } catch (arangodb::basics::Exception const& e) {
         return TRI_set_errno(e.code());
       }
 
@@ -748,7 +748,7 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
   collection->_internalVersion++;
 
   // invalidate all entries for the two collections
-  triagens::aql::QueryCache::instance()->invalidate(
+  arangodb::aql::QueryCache::instance()->invalidate(
       vocbase, std::vector<char const*>{oldName, newName});
 
   return TRI_ERROR_NO_ERROR;
@@ -834,8 +834,8 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
       int res = TRI_ERROR_NO_ERROR;
 
       try {
-        triagens::arango::VocbaseCollectionInfo info =
-            triagens::arango::VocbaseCollectionInfo::fromFile(
+        arangodb::VocbaseCollectionInfo info =
+            arangodb::VocbaseCollectionInfo::fromFile(
                 file.c_str(), vocbase,
                 "",  // Name is unused
                 true);
@@ -883,11 +883,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
 
               if (res == TRI_ERROR_NO_ERROR &&
                   info.version() < TRI_COL_VERSION_20) {
-                res = TRI_UpgradeCollection20(vocbase, file.c_str(), info);
-              }
-
-              if (res != TRI_ERROR_NO_ERROR) {
-                LOG_ERROR("upgrading collection '%s' failed.",
+                LOG_ERROR("format of collection '%s' is too old",
                           info.namec_str());
 
                 regfree(&re);
@@ -925,7 +921,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
           LOG_DEBUG("added document collection from '%s'", file.c_str());
         }
 
-      } catch (triagens::basics::Exception const& e) {
+      } catch (arangodb::basics::Exception const& e) {
         char* tmpfile = TRI_Concatenate2File(file.c_str(), ".tmp");
 
         if (TRI_ExistsFile(tmpfile)) {
@@ -1014,7 +1010,7 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     // check if there is a deferred drop action going on for this collection
     if (collection->_collection->ditches()->contains(
-            triagens::arango::Ditch::TRI_DITCH_COLLECTION_DROP)) {
+            arangodb::Ditch::TRI_DITCH_COLLECTION_DROP)) {
       // drop call going on, we must abort
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1124,7 +1120,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
-  triagens::aql::QueryCache::instance()->invalidate(vocbase, collection->_name);
+  arangodb::aql::QueryCache::instance()->invalidate(vocbase, collection->_name);
 
   // .............................................................................
   // collection already deleted
@@ -1145,8 +1141,8 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
 
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
     try {
-      triagens::arango::VocbaseCollectionInfo info =
-          triagens::arango::VocbaseCollectionInfo::fromFile(
+      arangodb::VocbaseCollectionInfo info =
+          arangodb::VocbaseCollectionInfo::fromFile(
               collection->_path, collection->_vocbase, collection->_name, true);
       if (!info.deleted()) {
         info.setDeleted(true);
@@ -1154,7 +1150,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
         // we don't need to fsync if we are in the recovery phase
         bool doSync =
             (vocbase->_settings.forceSyncProperties &&
-             !triagens::wal::LogfileManager::instance()->isInRecovery());
+             !arangodb::wal::LogfileManager::instance()->isInRecovery());
 
         int res = info.saveToFile(collection->_path, doSync);
 
@@ -1165,7 +1161,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
         }
       }
 
-    } catch (triagens::basics::Exception const& e) {
+    } catch (arangodb::basics::Exception const& e) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       return TRI_set_errno(e.code());
@@ -1207,7 +1203,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
     collection->_collection->_info.setDeleted(true);
 
     bool doSync = (vocbase->_settings.forceSyncProperties &&
-                   !triagens::wal::LogfileManager::instance()->isInRecovery());
+                   !arangodb::wal::LogfileManager::instance()->isInRecovery());
     VPackSlice slice;
     int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, slice,
                                        doSync);
@@ -1282,8 +1278,8 @@ static int ScanTrxCollection(TRI_vocbase_t* vocbase) {
   int res = TRI_ERROR_INTERNAL;
 
   {
-    triagens::arango::SingleCollectionReadOnlyTransaction trx(
-        new triagens::arango::StandaloneTransactionContext(), vocbase,
+    arangodb::SingleCollectionReadOnlyTransaction trx(
+        new arangodb::StandaloneTransactionContext(), vocbase,
         collection->_cid);
 
     res = trx.begin();
@@ -1357,7 +1353,7 @@ void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
   std::string path = std::string(filename, strlen(filename));
 
   std::shared_ptr<VPackBuilder> fileInfoBuilder =
-      triagens::basics::VelocyPackHelper::velocyPackFromFile(path);
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(path);
   builder.add("parameters", fileInfoBuilder->slice());
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
@@ -1401,7 +1397,7 @@ void TRI_vocbase_col_t::toVelocyPackIndexes(VPackBuilder& builder,
       char* fqn = TRI_Concatenate2File(_path, file.c_str());
       std::string path = std::string(fqn, strlen(fqn));
       std::shared_ptr<VPackBuilder> indexVPack =
-          triagens::basics::VelocyPackHelper::velocyPackFromFile(path);
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(path);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
 
       VPackSlice const indexSlice = indexVPack->slice();
@@ -1517,7 +1513,7 @@ TRI_vocbase_t* TRI_OpenVocBase(TRI_server_t* server, char const* path,
 
   // start cleanup thread
   TRI_InitThread(&vocbase->_cleanup);
-  TRI_StartThread(&vocbase->_cleanup, nullptr, "[cleanup]", TRI_CleanupVocBase,
+  TRI_StartThread(&vocbase->_cleanup, nullptr, "Cleanup", TRI_CleanupVocBase,
                   vocbase);
 
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(server, vocbase);
@@ -1620,7 +1616,7 @@ void TRI_StartCompactorVocBase(TRI_vocbase_t* vocbase) {
   LOG_TRACE("starting compactor for database '%s'", vocbase->_name);
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
-  TRI_StartThread(&vocbase->_compactor, nullptr, "[compactor]",
+  TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
                   TRI_CompactorVocBase, vocbase);
   vocbase->_hasCompactor = true;
 }
@@ -1799,7 +1795,7 @@ char* TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found->_name);
+  return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, found->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1853,7 +1849,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
       // support lookup by id, too
       try {
         TRI_voc_cid_t id =
-            triagens::basics::StringUtils::uint64(name, strlen(name));
+            arangodb::basics::StringUtils::uint64(name, strlen(name));
         found = static_cast<TRI_vocbase_col_t*>(
             TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
       } catch (...) {
@@ -1870,7 +1866,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
   } else {
     // collection not found. now create it
     VPackBuilder builder;  // DO NOT FILL IT
-    triagens::arango::VocbaseCollectionInfo parameter(
+    arangodb::VocbaseCollectionInfo parameter(
         vocbase, name, (TRI_col_type_e)type,
         (TRI_voc_size_t)vocbase->_settings.defaultMaximalSize, builder.slice());
     TRI_vocbase_col_t* collection =
@@ -1890,7 +1886,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
-    TRI_vocbase_t* vocbase, triagens::arango::VocbaseCollectionInfo& parameters,
+    TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo& parameters,
     TRI_voc_cid_t cid, bool writeMarker) {
   // check that the name does not contain any strange characters
   if (!TRI_IsAllowedNameCollection(parameters.isSystem(),
@@ -1926,10 +1922,10 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::CreateCollectionMarker marker(vocbase->_id, cid,
+    arangodb::wal::CreateCollectionMarker marker(vocbase->_id, cid,
                                                  slice.toJson());
-    triagens::wal::SlotInfoCopy slotInfo =
-        triagens::wal::LogfileManager::instance()->allocateAndWrite(marker,
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -1937,7 +1933,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
     }
 
     return collection;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -2038,7 +2034,7 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
   TRI_ASSERT(collection != nullptr);
 
   if (!collection->_canDrop &&
-      !triagens::wal::LogfileManager::instance()->isInRecovery()) {
+      !arangodb::wal::LogfileManager::instance()->isInRecovery()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 
@@ -2052,7 +2048,7 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
     }
 
     if (state == DROP_PERFORM) {
-      if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+      if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
         DropCollectionCallback(nullptr, collection);
       } else {
         // add callback for dropping
@@ -2093,7 +2089,7 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
   // old name should be different
-  char* oldName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, collection->_name);
+  char* oldName = TRI_DuplicateString(TRI_CORE_MEM_ZONE, collection->_name);
 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2146,10 +2142,10 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
   if (res == TRI_ERROR_NO_ERROR && writeMarker) {
     // now log the operation
     try {
-      triagens::wal::RenameCollectionMarker marker(
+      arangodb::wal::RenameCollectionMarker marker(
           vocbase->_id, collection->_cid, std::string(newName));
-      triagens::wal::SlotInfoCopy slotInfo =
-          triagens::wal::LogfileManager::instance()->allocateAndWrite(marker,
+      arangodb::wal::SlotInfoCopy slotInfo =
+          arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                       false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -2157,7 +2153,7 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
       }
 
       return TRI_ERROR_NO_ERROR;
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
@@ -2430,12 +2426,12 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
       _isOwnAppsDirectory(true),
       _oldTransactions(nullptr),
       _replicationApplier(nullptr) {
-  _queries = new triagens::aql::QueryList(this);
-  _cursorRepository = new triagens::arango::CursorRepository(this);
-  _collectionKeys = new triagens::arango::CollectionKeysRepository();
+  _queries = new arangodb::aql::QueryList(this);
+  _cursorRepository = new arangodb::CursorRepository(this);
+  _collectionKeys = new arangodb::CollectionKeysRepository();
 
-  _path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
-  _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
+  _path = TRI_DuplicateString(TRI_CORE_MEM_ZONE, path);
+  _name = TRI_DuplicateString(TRI_CORE_MEM_ZONE, name);
 
   // use the defaults provided
   defaults->applyToVocBase(this);

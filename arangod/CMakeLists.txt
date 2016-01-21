@@ -176,7 +176,6 @@ add_executable(
     RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp
     RestHandler/RestDebugHandler.cpp
-    RestHandler/RestDebugHelperHandler.cpp
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
@@ -250,6 +249,7 @@ add_executable(
     VocBase/collection.cpp
     VocBase/compactor.cpp
     VocBase/datafile.cpp
+    VocBase/DatafileStatistics.cpp
     VocBase/Ditch.cpp
     VocBase/document-collection.cpp
     VocBase/DocumentAccessor.cpp

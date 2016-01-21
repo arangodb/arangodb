@@ -40,21 +40,19 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::HeartbeatThread(
-    TRI_server_t* server, triagens::rest::ApplicationDispatcher* dispatcher,
+    TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
     ApplicationV8* applicationV8, uint64_t interval,
     uint64_t maxFailsBeforeWarning)
-    : Thread("heartbeat"),
+    : Thread("Heartbeat"),
       _server(server),
       _dispatcher(dispatcher),
       _applicationV8(applicationV8),
@@ -80,7 +78,6 @@ HeartbeatThread::HeartbeatThread(
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::~HeartbeatThread() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
@@ -205,7 +202,7 @@ void HeartbeatThread::runDBServer() {
         if (it != result._values.end()) {
           // there is a plan version
           uint64_t planVersion =
-              triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+              arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
 
           if (planVersion > lastPlanVersionNoticed) {
             lastPlanVersionNoticed = planVersion;
@@ -314,7 +311,7 @@ void HeartbeatThread::runCoordinator() {
       if (it != result._values.end()) {
         // there is a plan version
         uint64_t planVersion =
-            triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
 
         if (planVersion > lastPlanVersionNoticed) {
           if (handlePlanChangeCoordinator(planVersion)) {
@@ -334,7 +331,7 @@ void HeartbeatThread::runCoordinator() {
       if (it != result._values.end()) {
         // there is a UserVersion
         uint64_t userVersion =
-            triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
         if (userVersion != oldUserVersion) {
           // reload user cache for all databases
           std::vector<DatabaseID> dbs =
@@ -526,7 +523,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       TRI_voc_tick_t id = 0;
       TRI_json_t const* v = TRI_LookupObjectJson(options, "id");
       if (TRI_IsStringJson(v)) {
-        id = triagens::basics::StringUtils::uint64(v->_value._string.data);
+        id = arangodb::basics::StringUtils::uint64(v->_value._string.data);
       }
 
       if (id > 0) {
@@ -622,7 +619,7 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
   }
 
   // schedule a job for the change
-  std::unique_ptr<triagens::rest::Job> job(
+  std::unique_ptr<arangodb::rest::Job> job(
       new ServerJob(this, _server, _applicationV8));
 
   if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {
@@ -657,7 +654,7 @@ bool HeartbeatThread::handleStateChange(AgencyCommResult& result,
     lastCommandIndex = (*it).second._index;
 
     std::string const command =
-        triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
+        arangodb::basics::JsonHelper::getStringValue((*it).second._json, "");
     ServerState::StateEnum newState = ServerState::stringToState(command);
 
     if (newState != ServerState::STATE_UNDEFINED) {
@@ -702,24 +699,25 @@ bool HeartbeatThread::sendState() {
 
 bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
   bool result = false;
-  TRI_json_t* json = nullptr;
+  VPackBuilder builder;
+  builder.openArray();
 
   LOG_TRACE("fetching users for database '%s'", vocbase->_name);
 
-  int res = usersOnCoordinator(std::string(vocbase->_name), json, 10.0);
+  int res = usersOnCoordinator(std::string(vocbase->_name), builder, 10.0);
 
   if (res == TRI_ERROR_NO_ERROR) {
+    builder.close();
+    VPackSlice users = builder.slice();
     // we were able to read from the _users collection
-    TRI_ASSERT(TRI_IsArrayJson(json));
+    TRI_ASSERT(users.isArray());
 
-    if (TRI_LengthArrayJson(json) == 0) {
+    if (users.length() == 0) {
       // no users found, now insert initial default user
       TRI_InsertInitialAuthInfo(vocbase);
     } else {
       // users found in collection, insert them into cache
-      std::shared_ptr<VPackBuilder> transformed =
-          triagens::basics::JsonHelper::toVelocyPack(json);
-      TRI_PopulateAuthInfo(vocbase, transformed->slice());
+      TRI_PopulateAuthInfo(vocbase, users);
     }
 
     result = true;
@@ -733,10 +731,6 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
     // _users collection is not yet available
     // try again next time
     result = false;
-  }
-
-  if (json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
   if (result) {

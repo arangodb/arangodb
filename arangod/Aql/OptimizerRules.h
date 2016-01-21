@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 #include "Aql/Optimizer.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -58,10 +58,10 @@ void removeUnnecessaryFiltersRule(Optimizer*, ExecutionPlan*,
                                   Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove INTO of a COLLECT if not used
+/// @brief remove unused INTO variable from COLLECT, or unused aggregates
 ////////////////////////////////////////////////////////////////////////////////
 
-void removeCollectIntoRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeCollectVariablesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief propagate constant attributes in FILTERs
@@ -268,7 +268,7 @@ void mergeFilterIntoTraversalRule(Optimizer* opt, ExecutionPlan* plan,
                                   Optimizer::Rule const* rule);
 
 }  // namespace aql
-}  // namespace triagens
+}  // namespace arangodb
 
 #endif
 

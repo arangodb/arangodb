@@ -26,8 +26,7 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context for an index iterator
@@ -55,7 +54,7 @@ CollectionNameResolver const* IndexIteratorContext::getResolver() const {
 }
 
 bool IndexIteratorContext::isCluster() const {
-  return triagens::arango::ServerState::instance()->isRunningInCluster();
+  return arangodb::ServerState::instance()->isRunningInCluster();
 }
 
 int IndexIteratorContext::resolveId(char const* handle, TRI_voc_cid_t& cid,
@@ -67,7 +66,7 @@ int IndexIteratorContext::resolveId(char const* handle, TRI_voc_cid_t& cid,
   }
 
   if (*handle >= '0' && *handle <= '9') {
-    cid = triagens::basics::StringUtils::uint64(handle, p - handle);
+    cid = arangodb::basics::StringUtils::uint64(handle, p - handle);
   } else {
     std::string const name(handle, p - handle);
     cid = getResolver()->getCollectionIdCluster(name);

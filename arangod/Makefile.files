@@ -134,7 +134,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestCursorHandler.cpp \
 	arangod/RestHandler/RestDebugHandler.cpp \
-	arangod/RestHandler/RestDebugHelperHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestEdgesHandler.cpp \
@@ -207,6 +206,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/collection.cpp \
 	arangod/VocBase/compactor.cpp \
 	arangod/VocBase/datafile.cpp \
+	arangod/VocBase/DatafileStatistics.cpp \
 	arangod/VocBase/Ditch.cpp \
 	arangod/VocBase/document-collection.cpp \
 	arangod/VocBase/DocumentAccessor.cpp \

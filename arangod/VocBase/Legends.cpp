@@ -24,8 +24,8 @@
 #include "Legends.h"
 
 using namespace std;
-using namespace triagens;
-using namespace triagens::basics;
+using namespace arangodb;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Data format of a legend in memory:

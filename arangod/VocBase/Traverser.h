@@ -35,10 +35,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 namespace traverser {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Template for a vertex id. Is simply a pair of cid and key
@@ -63,7 +61,7 @@ struct VertexId {
   }
 
   std::string toString(
-      triagens::arango::CollectionNameResolver const* resolver) const {
+      arangodb::CollectionNameResolver const* resolver) const {
     return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
   }
 };
@@ -76,20 +74,20 @@ typedef VertexId EdgeId;
 ////////////////////////////////////////////////////////////////////////////////
 
 VertexId IdStringToVertexId(
-    triagens::arango::CollectionNameResolver const* resolver,
+    arangodb::CollectionNameResolver const* resolver,
     std::string const& vertex);
 
 
 class TraverserExpression {
  public:
   bool isEdgeAccess;
-  triagens::aql::AstNodeType comparisonType;
-  triagens::aql::AstNode const* varAccess;
-  std::unique_ptr<triagens::basics::Json> compareTo;
+  arangodb::aql::AstNodeType comparisonType;
+  arangodb::aql::AstNode const* varAccess;
+  std::unique_ptr<arangodb::basics::Json> compareTo;
 
   TraverserExpression(bool pisEdgeAccess,
-                      triagens::aql::AstNodeType pcomparisonType,
-                      triagens::aql::AstNode const* pvarAccess)
+                      arangodb::aql::AstNodeType pcomparisonType,
+                      arangodb::aql::AstNode const* pvarAccess)
       : isEdgeAccess(pisEdgeAccess),
         comparisonType(pcomparisonType),
         varAccess(pvarAccess),
@@ -106,7 +104,7 @@ class TraverserExpression {
     }
   }
 
-  void toJson(triagens::basics::Json& json, TRI_memory_zone_t* zone) const;
+  void toJson(arangodb::basics::Json& json, TRI_memory_zone_t* zone) const;
 
   bool matchesCheck(TRI_doc_mptr_t& element,
                     TRI_document_collection_t* collection,
@@ -121,15 +119,15 @@ class TraverserExpression {
  protected:
   TraverserExpression()
       : isEdgeAccess(false),
-        comparisonType(triagens::aql::NODE_TYPE_ROOT),
+        comparisonType(arangodb::aql::NODE_TYPE_ROOT),
         varAccess(nullptr),
         compareTo(nullptr) {}
 
  private:
-  bool recursiveCheck(triagens::aql::AstNode const*, DocumentAccessor&) const;
+  bool recursiveCheck(arangodb::aql::AstNode const*, DocumentAccessor&) const;
 
   // Required when creating this expression without AST
-  std::vector<std::unique_ptr<triagens::aql::AstNode const>> _nodeRegister;
+  std::vector<std::unique_ptr<arangodb::aql::AstNode const>> _nodeRegister;
   std::vector<std::string*> _stringRegister;
 };
 
@@ -153,21 +151,21 @@ class TraversalPath {
   ///        }
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual triagens::basics::Json* pathToJson(Transaction*,
+  virtual arangodb::basics::Json* pathToJson(Transaction*,
                                              CollectionNameResolver*) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge on the path as Json
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual triagens::basics::Json* lastEdgeToJson(Transaction*,
+  virtual arangodb::basics::Json* lastEdgeToJson(Transaction*,
                                                  CollectionNameResolver*) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as Json
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual triagens::basics::Json* lastVertexToJson(Transaction*,
+  virtual arangodb::basics::Json* lastVertexToJson(Transaction*,
                                                    CollectionNameResolver*) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -352,15 +350,14 @@ class Traverser {
 };
 
 }  // traverser
-}  // arango
-}  // triagens
+}  // arangodb
 
 
 namespace std {
 template <>
-struct hash<triagens::arango::traverser::VertexId> {
+struct hash<arangodb::traverser::VertexId> {
  public:
-  size_t operator()(triagens::arango::traverser::VertexId const& s) const {
+  size_t operator()(arangodb::traverser::VertexId const& s) const {
     size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
     size_t h2 = TRI_FnvHashString(s.key);
     return h1 ^ (h2 << 1);
@@ -368,19 +365,19 @@ struct hash<triagens::arango::traverser::VertexId> {
 };
 
 template <>
-struct equal_to<triagens::arango::traverser::VertexId> {
+struct equal_to<arangodb::traverser::VertexId> {
  public:
-  bool operator()(triagens::arango::traverser::VertexId const& s,
-                  triagens::arango::traverser::VertexId const& t) const {
+  bool operator()(arangodb::traverser::VertexId const& s,
+                  arangodb::traverser::VertexId const& t) const {
     return s.cid == t.cid && strcmp(s.key, t.key) == 0;
   }
 };
 
 template <>
-struct less<triagens::arango::traverser::VertexId> {
+struct less<arangodb::traverser::VertexId> {
  public:
-  bool operator()(triagens::arango::traverser::VertexId const& lhs,
-                  triagens::arango::traverser::VertexId const& rhs) {
+  bool operator()(arangodb::traverser::VertexId const& lhs,
+                  arangodb::traverser::VertexId const& rhs) {
     if (lhs.cid != rhs.cid) {
       return lhs.cid < rhs.cid;
     }

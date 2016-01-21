@@ -33,7 +33,7 @@
 #include <chrono>
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // random helper functions
@@ -427,7 +427,7 @@ class UniformGenerator {
 // random helper class
 // -----------------------------------------------------------------------------
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 namespace Random {
 

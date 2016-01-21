@@ -32,9 +32,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 class CollectionNameResolver {
   
@@ -62,7 +60,7 @@ class CollectionNameResolver {
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id
       return static_cast<TRI_voc_cid_t>(
-          triagens::basics::StringUtils::uint64(name));
+          arangodb::basics::StringUtils::uint64(name));
     }
 
     TRI_vocbase_col_t const* collection = getCollectionStruct(name);
@@ -81,7 +79,7 @@ class CollectionNameResolver {
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id
       return getCollectionType(getCollectionName(static_cast<TRI_voc_cid_t>(
-          triagens::basics::StringUtils::uint64(name))));
+          arangodb::basics::StringUtils::uint64(name))));
     }
 
     TRI_vocbase_col_t const* collection = getCollectionStruct(name);
@@ -123,7 +121,7 @@ class CollectionNameResolver {
     }
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id
-      return (TRI_voc_cid_t)triagens::basics::StringUtils::uint64(name);
+      return (TRI_voc_cid_t)arangodb::basics::StringUtils::uint64(name);
     }
 
     // We have to look up the collection info:
@@ -151,7 +149,7 @@ class CollectionNameResolver {
       // name is a numeric id
       return getCollectionTypeCluster(
           getCollectionName(static_cast<TRI_voc_cid_t>(
-              triagens::basics::StringUtils::uint64(name))));
+              arangodb::basics::StringUtils::uint64(name))));
     }
 
     // We have to look up the collection info:
@@ -194,7 +192,7 @@ class CollectionNameResolver {
           }
         } else {
           // DBserver case of a shard:
-          name = triagens::basics::StringUtils::itoa(found->_planId);
+          name = arangodb::basics::StringUtils::itoa(found->_planId);
           std::shared_ptr<CollectionInfo> ci =
               ClusterInfo::instance()->getCollection(found->_dbName, name);
           name = ci->name();  // can be empty, if collection unknown
@@ -252,7 +250,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   void getCollectionName(TRI_voc_cid_t cid,
-                         triagens::basics::StringBuffer& buffer) const {
+                         arangodb::basics::StringBuffer& buffer) const {
     auto const& it = _resolvedIds.find(cid);
 
     if (it != _resolvedIds.end()) {
@@ -279,7 +277,7 @@ class CollectionNameResolver {
     while (tries++ < 2) {
       std::shared_ptr<CollectionInfo> ci =
           ClusterInfo::instance()->getCollection(
-              _vocbase->_name, triagens::basics::StringUtils::itoa(cid));
+              _vocbase->_name, arangodb::basics::StringUtils::itoa(cid));
       std::string name = ci->name();
 
       if (name.empty()) {
@@ -311,7 +309,7 @@ class CollectionNameResolver {
     while (tries++ < 2) {
       std::shared_ptr<CollectionInfo> ci =
           ClusterInfo::instance()->getCollection(
-              _vocbase->_name, triagens::basics::StringUtils::itoa(cid));
+              _vocbase->_name, arangodb::basics::StringUtils::itoa(cid));
       std::string name = ci->name();
 
       if (name.empty()) {
@@ -332,7 +330,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   void getCollectionNameCluster(TRI_voc_cid_t cid,
-                                triagens::basics::StringBuffer& buffer) const {
+                                arangodb::basics::StringBuffer& buffer) const {
     if (!ServerState::instance()->isRunningInCluster()) {
       return getCollectionName(cid, buffer);
     }
@@ -342,7 +340,7 @@ class CollectionNameResolver {
     while (tries++ < 2) {
       std::shared_ptr<CollectionInfo> ci =
           ClusterInfo::instance()->getCollection(
-              _vocbase->_name, triagens::basics::StringUtils::itoa(cid));
+              _vocbase->_name, arangodb::basics::StringUtils::itoa(cid));
       std::string name = ci->name();
 
       if (name.empty()) {
@@ -378,8 +376,6 @@ class CollectionNameResolver {
   mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
 };
 }
-}
 
 #endif
-
 

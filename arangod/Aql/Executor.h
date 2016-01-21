@@ -32,7 +32,7 @@
 
 struct TRI_json_t;
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class StringBuffer;
 }
@@ -244,7 +244,7 @@ class Executor {
   /// @brief create the string buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::StringBuffer* initializeBuffer();
+  arangodb::basics::StringBuffer* initializeBuffer();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compile a V8 function from the code contained in the buffer
@@ -258,7 +258,7 @@ class Executor {
   /// @brief a string buffer used for operations
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::StringBuffer* _buffer;
+  arangodb::basics::StringBuffer* _buffer;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mapping from literal array/objects to register ids

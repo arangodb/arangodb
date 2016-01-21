@@ -28,7 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +88,7 @@ void RemoverThread::run() {
       if (stop == 0) {
         worked = _logfileManager->removeLogfiles();
       }
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
       LOG_ERROR("got unexpected error in removerThread::run: %s",
                 TRI_errno_string(res));

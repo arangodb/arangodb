@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -61,7 +61,7 @@ class Barrier {
   /// @brief condition variable
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::ConditionVariable _condition;
+  arangodb::basics::ConditionVariable _condition;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of non-joined tasks
@@ -95,8 +95,8 @@ class BarrierTask {
   Barrier* _barrier;
 };
 
-}  // namespace triagens::basics
-}  // namespace triagens
+}  // namespace arangodb::basics
+}  // namespace arangodb
 
 #endif
 

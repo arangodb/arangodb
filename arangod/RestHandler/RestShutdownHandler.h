@@ -29,7 +29,7 @@
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 
-namespace triagens {
+namespace arangodb {
 namespace admin {
 
 
@@ -45,9 +45,6 @@ class RestShutdownHandler : public RestBaseHandler {
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   bool isDirect() const override;
 
@@ -63,7 +60,7 @@ class RestShutdownHandler : public RestBaseHandler {
   /// @brief application server
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::rest::ApplicationServer* _applicationServer;
+  arangodb::rest::ApplicationServer* _applicationServer;
 };
 }
 }

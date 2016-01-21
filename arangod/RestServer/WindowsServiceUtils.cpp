@@ -33,9 +33,9 @@
 
 #include <signal.h>
 
-using namespace triagens;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb;
+using namespace arangodb::rest;
+
 
 #ifdef _WIN32
 
@@ -632,6 +632,10 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 bool TRI_ParseMoreArgs(int argc, char* argv[]) {
   SetUnhandledExceptionFilter(unhandledExceptionHandler);
 
+#if 0
+  /// this is slower than valgrind: 
+  _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF | _CRTDBG_CHECK_ALWAYS_DF );
+#endif
   if (1 < argc) {
     if (TRI_EqualString(argv[1], "--install-service")) {
       InstallService(argc, argv);

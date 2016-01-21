@@ -36,7 +36,7 @@
 /// @brief class for storing a request result
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 
 class SimpleHttpResult {
@@ -128,13 +128,13 @@ class SimpleHttpResult {
   /// @brief returns the http body
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::StringBuffer& getBody();
+  arangodb::basics::StringBuffer& getBody();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the http body
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::StringBuffer const& getBody() const;
+  arangodb::basics::StringBuffer const& getBody() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the http body as velocypack
@@ -236,7 +236,7 @@ class SimpleHttpResult {
   bool _deflated;
 
   // body content
-  triagens::basics::StringBuffer _resultBody;
+  arangodb::basics::StringBuffer _resultBody;
 
   // request result type
   enum resultTypes _requestResultType;

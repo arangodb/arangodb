@@ -24,13 +24,13 @@
 #include "AttributeNameParser.h"
 #include "Exceptions.h"
 
-using AttributeName = triagens::basics::AttributeName;
+using AttributeName = arangodb::basics::AttributeName;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two attribute name vectors
 ////////////////////////////////////////////////////////////////////////////////
 
-bool triagens::basics::AttributeName::isIdentical(
+bool arangodb::basics::AttributeName::isIdentical(
     std::vector<AttributeName> const& lhs,
     std::vector<AttributeName> const& rhs, bool ignoreExpansionInLast) {
   if (lhs.size() != rhs.size()) {
@@ -59,7 +59,7 @@ bool triagens::basics::AttributeName::isIdentical(
 /// matches
 ////////////////////////////////////////////////////////////////////////////////
 
-bool triagens::basics::AttributeName::namesMatch(
+bool arangodb::basics::AttributeName::namesMatch(
     std::vector<AttributeName> const& lhs,
     std::vector<AttributeName> const& rhs) {
   if (lhs.size() != rhs.size()) {
@@ -78,7 +78,7 @@ bool triagens::basics::AttributeName::namesMatch(
 /// @brief compare two attribute name vectors
 ////////////////////////////////////////////////////////////////////////////////
 
-bool triagens::basics::AttributeName::isIdentical(
+bool arangodb::basics::AttributeName::isIdentical(
     std::vector<std::vector<AttributeName>> const& lhs,
     std::vector<std::vector<AttributeName>> const& rhs,
     bool ignoreExpansionInLast) {
@@ -96,7 +96,7 @@ bool triagens::basics::AttributeName::isIdentical(
   return true;
 }
 
-void triagens::basics::TRI_ParseAttributeString(
+void arangodb::basics::TRI_ParseAttributeString(
     std::string const& input, std::vector<AttributeName>& result) {
   size_t parsedUntil = 0;
   size_t const length = input.length();
@@ -123,7 +123,7 @@ void triagens::basics::TRI_ParseAttributeString(
   }
 }
 
-void triagens::basics::TRI_AttributeNamesToString(
+void arangodb::basics::TRI_AttributeNamesToString(
     std::vector<AttributeName> const& input, std::string& result,
     bool excludeExpansion) {
   TRI_ASSERT(result.empty());
@@ -141,7 +141,7 @@ void triagens::basics::TRI_AttributeNamesToString(
   }
 }
 
-void triagens::basics::TRI_AttributeNamesJoinNested(
+void arangodb::basics::TRI_AttributeNamesJoinNested(
     std::vector<AttributeName> const& input, std::vector<std::string>& result,
     bool onlyFirst) {
   TRI_ASSERT(result.empty());
@@ -167,7 +167,7 @@ void triagens::basics::TRI_AttributeNamesJoinNested(
   result.emplace_back(tmp);
 }
 
-bool triagens::basics::TRI_AttributeNamesHaveExpansion(
+bool arangodb::basics::TRI_AttributeNamesHaveExpansion(
     std::vector<AttributeName> const& input) {
   for (auto& it : input) {
     if (it.shouldExpand) {
@@ -182,7 +182,7 @@ bool triagens::basics::TRI_AttributeNamesHaveExpansion(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         triagens::basics::AttributeName const* name) {
+                         arangodb::basics::AttributeName const* name) {
   stream << name->name;
   if (name->shouldExpand) {
     stream << "[*]";
@@ -195,7 +195,7 @@ std::ostream& operator<<(std::ostream& stream,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         triagens::basics::AttributeName const& name) {
+                         arangodb::basics::AttributeName const& name) {
   stream << name.name;
   if (name.shouldExpand) {
     stream << "[*]";
@@ -209,7 +209,7 @@ std::ostream& operator<<(std::ostream& stream,
 
 std::ostream& operator<<(
     std::ostream& stream,
-    std::vector<triagens::basics::AttributeName> const* attributes) {
+    std::vector<arangodb::basics::AttributeName> const* attributes) {
   size_t const n = attributes->size();
   for (size_t i = 0; i < n; ++i) {
     if (i > 0) {
@@ -226,7 +226,7 @@ std::ostream& operator<<(
 
 std::ostream& operator<<(
     std::ostream& stream,
-    std::vector<triagens::basics::AttributeName> const& attributes) {
+    std::vector<arangodb::basics::AttributeName> const& attributes) {
   size_t const n = attributes.size();
   for (size_t i = 0; i < n; ++i) {
     if (i > 0) {

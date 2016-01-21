@@ -6,13 +6,9 @@
 /*eslint-enable */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript modules
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,7 +25,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Alan Plum
-/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2015-2016, ArangoDB GmbH, Cologne, Germany
 ///
 /// Based on Node.js 4.1.0 /lib/module.js:
 ///
@@ -375,7 +371,7 @@ Module._resolveDbModule = function (request) {
     request = '/' + request;
   }
   var dbModule = Module._dbCache[request];
-  if (!dbModule) {
+  if (!dbModule && internal.db._modules !== undefined) {
     dbModule = internal.db._modules.firstExample({path: request});
     if (!dbModule) {
       // try again, but prefix module with '/db' as some modules seem

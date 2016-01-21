@@ -21,12 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Variable.h"
+#include "Variable.h"
 #include "Basics/JsonHelper.h"
 
-using namespace triagens::aql;
-using namespace triagens::basics;
-
+using namespace arangodb::aql;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of $OLD variable
@@ -54,7 +53,7 @@ char const* const Variable::NAME_CURRENT = "$CURRENT";
 Variable::Variable(std::string const& name, VariableId id)
     : name(name), value(nullptr), id(id) {}
 
-Variable::Variable(triagens::basics::Json const& json)
+Variable::Variable(arangodb::basics::Json const& json)
     : Variable(
           JsonHelper::checkAndGetStringValue(json.json(), "name"),
           JsonHelper::checkAndGetNumericValue<VariableId>(json.json(), "id")) {}
@@ -70,10 +69,10 @@ Variable::~Variable() {}
 /// @brief return a JSON representation of the variable
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json Variable::toJson() const {
-  triagens::basics::Json json(triagens::basics::Json::Object, 2);
-  json("id", triagens::basics::Json(static_cast<double>(id)))(
-      "name", triagens::basics::Json(name));
+arangodb::basics::Json Variable::toJson() const {
+  arangodb::basics::Json json(arangodb::basics::Json::Object, 2);
+  json("id", arangodb::basics::Json(static_cast<double>(id)))(
+      "name", arangodb::basics::Json(name));
 
   return json;
 }

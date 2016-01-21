@@ -59,7 +59,6 @@
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
-#include "RestHandler/RestDebugHelperHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
@@ -91,10 +90,10 @@
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::admin;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::admin;
+
 using namespace std;
 
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
@@ -220,7 +219,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   // And now some handlers which are registered in both /_api and /_admin
   factory->addPrefixHandler(
       "/_api/job",
-      RestHandlerCreator<triagens::admin::RestJobHandler>::createData<
+      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
@@ -229,15 +228,10 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<RestVersionHandler>::createNoData,
       nullptr);
 
-  factory->addHandler(
-      "/_api/debug-helper",
-      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData,
-      nullptr);
-
   // And now the _admin handlers
   factory->addPrefixHandler(
       "/_admin/job",
-      RestHandlerCreator<triagens::admin::RestJobHandler>::createData<
+      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
@@ -246,15 +240,10 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<RestVersionHandler>::createNoData,
       nullptr);
 
-  factory->addHandler(
-      "/_admin/debug-helper",
-      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData,
-      nullptr);
-
   // further admin handlers
   factory->addHandler(
       "/_admin/log",
-      RestHandlerCreator<triagens::admin::RestAdminLogHandler>::createNoData,
+      RestHandlerCreator<arangodb::admin::RestAdminLogHandler>::createNoData,
       nullptr);
 
   factory->addHandler(
@@ -272,7 +261,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 
   factory->addPrefixHandler(
       "/_admin/shutdown",
-      RestHandlerCreator<triagens::admin::RestShutdownHandler>::createData<
+      RestHandlerCreator<arangodb::admin::RestShutdownHandler>::createData<
           void*>,
       static_cast<void*>(_applicationServer));
 }
@@ -284,7 +273,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(
-    triagens::rest::HttpRequest* request, TRI_server_t* server) {
+    arangodb::rest::HttpRequest* request, TRI_server_t* server) {
   // get the request endpoint
   ConnectionInfo const& ci = request->connectionInfo();
   std::string const& endpoint = ci.endpoint;
@@ -344,7 +333,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(
 /// @brief add the context to a request
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SetRequestContext(triagens::rest::HttpRequest* request,
+static bool SetRequestContext(arangodb::rest::HttpRequest* request,
                               void* data) {
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
@@ -361,7 +350,7 @@ static bool SetRequestContext(triagens::rest::HttpRequest* request,
   }
 
   VocbaseContext* ctx =
-      new triagens::arango::VocbaseContext(request, server, vocbase);
+      new arangodb::VocbaseContext(request, server, vocbase);
 
   if (ctx == nullptr) {
     // out of memory
@@ -442,9 +431,6 @@ ArangoServer::~ArangoServer() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer() {
   _applicationServer =
@@ -478,10 +464,6 @@ void ArangoServer::buildApplicationServer() {
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
-
-  if (_applicationScheduler == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
 
   _applicationScheduler->allowMultiScheduler(true);
   _applicationDispatcher->setApplicationScheduler(_applicationScheduler);
@@ -796,13 +778,13 @@ void ArangoServer::buildApplicationServer() {
                                          _throwCollectionNotLoadedError);
 
   // set global query tracking flag
-  triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);
+  arangodb::aql::Query::DisableQueryTracking(_disableQueryTracking);
 
   // configure the query cache
   {
     std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
                                                    _queryCacheMaxResults};
-    triagens::aql::QueryCache::instance()->setProperties(cacheProperties);
+    arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
   }
 
   // .............................................................................
@@ -867,9 +849,6 @@ void ArangoServer::buildApplicationServer() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer() {
   TRI_InitializeStatistics();
@@ -1325,7 +1304,7 @@ void ArangoServer::runStartupChecks() {
     std::string const filename("/proc/cpu/alignment");
     try {
       std::string const cpuAlignment =
-          triagens::basics::FileUtils::slurp(filename);
+          arangodb::basics::FileUtils::slurp(filename);
       auto start = cpuAlignment.find("User faults:");
 
       if (start != std::string::npos) {
@@ -1576,7 +1555,7 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
           } else {
             ok = TRI_ObjectToDouble(result) == 0;
           }
-        } catch (triagens::basics::Exception const& ex) {
+        } catch (arangodb::basics::Exception const& ex) {
           LOG_ERROR("caught exception %s: %s", TRI_errno_string(ex.code()),
                     ex.what());
           ok = false;
@@ -1619,7 +1598,7 @@ void ArangoServer::openDatabases(bool checkVersion, bool performUpgrade,
 
   if (_indexThreads > 0) {
     _indexPool =
-        new triagens::basics::ThreadPool(_indexThreads, "IndexBuilder");
+        new arangodb::basics::ThreadPool(_indexThreads, "IndexBuilder");
   }
 
   int res = TRI_InitServer(_server, _applicationEndpointServer, _indexPool,

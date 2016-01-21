@@ -40,9 +40,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define SingleWriteTransactionType \
-  triagens::arango::SingleCollectionWriteTransaction<1>
+  arangodb::SingleCollectionWriteTransaction<1>
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 

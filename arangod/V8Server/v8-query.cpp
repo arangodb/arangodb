@@ -47,10 +47,8 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-
+using namespace arangodb;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut to wrap a shaped-json object in a read-only transaction
@@ -96,7 +94,7 @@ static v8::Handle<v8::Value> EmptyResult(v8::Isolate* isolate) {
 /// @brief extracts skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractSkipAndLimit(const v8::FunctionCallbackInfo<v8::Value>& args,
+static void ExtractSkipAndLimit(v8::FunctionCallbackInfo<v8::Value> const& args,
                                 size_t pos, int64_t& skip, uint64_t& limit) {
   skip = 0;
   limit = UINT64_MAX;
@@ -161,7 +159,7 @@ static void CalculateSkipLimitSlice(size_t length, int64_t skip, uint64_t limit,
 
 static TRI_index_operator_t* SetupConditionsSkiplist(
     v8::Isolate* isolate,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     VocShaper* shaper, v8::Handle<v8::Object> conditions) {
   TRI_index_operator_t* lastOperator = nullptr;
   size_t numEq = 0;
@@ -360,7 +358,7 @@ MEM_ERROR:
 
 static TRI_index_operator_t* SetupExampleSkiplist(
     v8::Isolate* isolate,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     VocShaper* shaper, v8::Handle<v8::Object> example) {
   TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
@@ -409,7 +407,7 @@ static int SetupSearchValue(
     std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths,
     v8::Handle<v8::Object> example, VocShaper* shaper,
     TRI_hash_index_search_value_t& result, std::string& errorMessage,
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
 
   // extract attribute paths
@@ -459,7 +457,7 @@ static int SetupSearchValue(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExecuteSkiplistQuery(
-    const v8::FunctionCallbackInfo<v8::Value>& args,
+    v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& signature, query_t type) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -529,7 +527,7 @@ static void ExecuteSkiplistQuery(
       TRI_LookupIndexByHandle(isolate, trx.resolver(), col, args[0], false);
 
   if (idx == nullptr ||
-      idx->type() != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      idx->type() != arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -549,7 +547,7 @@ static void ExecuteSkiplistQuery(
   }
 
   std::unique_ptr<SkiplistIterator> skiplistIterator(
-      static_cast<triagens::arango::SkiplistIndex*>(idx)
+      static_cast<arangodb::SkiplistIndex*>(idx)
           ->lookup(&trx, skiplistOperator, reverse));
   delete skiplistOperator;
 
@@ -704,7 +702,7 @@ static int StoreGeoResult(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EdgesQuery(TRI_edge_direction_e direction,
-                       const v8::FunctionCallbackInfo<v8::Value>& args) {
+                       v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -853,7 +851,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 /// @brief selects all documents from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_AllQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -937,7 +935,7 @@ static void JS_AllQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @LIT{null} if the collection is empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_AnyQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -987,7 +985,7 @@ static void JS_AnyQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief selects documents by example (not using any index)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ByExampleQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1122,7 +1120,7 @@ static void JS_ByExampleQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 static void ByExampleHashIndexQuery(
     SingleCollectionReadOnlyTransaction& trx,
     TRI_vocbase_col_t const* collection,
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1159,11 +1157,11 @@ static void ByExampleHashIndexQuery(
                                      args[0], false);
 
   if (idx == nullptr ||
-      idx->type() != triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
+      idx->type() != arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
+  auto hashIndex = static_cast<arangodb::HashIndex*>(idx);
 
   // convert the example (index is locked by lockRead)
   TRI_hash_index_search_value_t searchValue;
@@ -1188,7 +1186,7 @@ static void ByExampleHashIndexQuery(
 
   // find the matches
   std::vector<TRI_doc_mptr_t*> list;
-  static_cast<triagens::arango::HashIndex*>(idx)
+  static_cast<arangodb::HashIndex*>(idx)
       ->lookup(&trx, &searchValue, list);
 
   // convert result
@@ -1232,7 +1230,7 @@ static void ByExampleHashIndexQuery(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByExampleHashIndex(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1276,7 +1274,7 @@ static void JS_ByExampleHashIndex(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByConditionSkiplist(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   std::string const signature(
       "BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>, "
@@ -1291,7 +1289,7 @@ static void JS_ByConditionSkiplist(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ByExampleSkiplist(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   std::string const signature(
       "BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>, <reverse>)");
@@ -1361,8 +1359,8 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
 
       localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
     } else {
-      triagens::wal::edge_marker_t const* e =
-          reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
+      arangodb::wal::edge_marker_t const* e =
+          reinterpret_cast<arangodb::wal::edge_marker_t const*>(marker);
       std::string const extra =
           helper->_resolver->getCollectionNameCluster(e->_toCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
@@ -1403,7 +1401,7 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ChecksumCollection(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1497,7 +1495,7 @@ static void JS_ChecksumCollection(
 /// @brief was docuBlock edgeCollectionEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_EdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_ANY, args);
   TRI_V8_TRY_CATCH_END
@@ -1507,7 +1505,7 @@ static void JS_EdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock edgeCollectionInEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_InEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_IN, args);
   TRI_V8_TRY_CATCH_END
@@ -1517,7 +1515,7 @@ static void JS_InEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock edgeCollectionOutEdges
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_OutEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_OUT, args);
   TRI_V8_TRY_CATCH_END
@@ -1527,7 +1525,7 @@ static void JS_OutEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief selects the n first documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_FirstQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_FirstQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1615,7 +1613,7 @@ static void JS_FirstQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
                           TRI_vocbase_col_t const* collection,
-                          const v8::FunctionCallbackInfo<v8::Value>& args) {
+                          v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1629,7 +1627,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
                                      args[0], false);
 
   if (idx == nullptr ||
-      idx->type() != triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      idx->type() != arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1660,7 +1658,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto fulltextIndex = static_cast<triagens::arango::FulltextIndex*>(idx);
+  auto fulltextIndex = static_cast<arangodb::FulltextIndex*>(idx);
 
   if (isSubstringQuery) {
     TRI_FreeQueryFulltextIndex(query);
@@ -1713,7 +1711,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
 /// @brief was docuBlock collectionFulltext
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_FulltextQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1756,7 +1754,7 @@ static void JS_FulltextQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief selects the n last documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LastQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_LastQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1845,7 +1843,7 @@ static void JS_LastQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
                       TRI_vocbase_col_t const* collection,
-                      const v8::FunctionCallbackInfo<v8::Value>& args) {
+                      v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1860,8 +1858,8 @@ static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
                                      args[0], false);
 
   if (idx == nullptr ||
-      (idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-       idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
+      (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
+       idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1881,7 +1879,7 @@ static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(idx)
                              ->nearQuery(&trx, latitude, longitude, limit);
 
   if (cors != nullptr) {
@@ -1900,7 +1898,7 @@ static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
 /// @brief selects points near a given coordinate
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_NearQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1947,7 +1945,7 @@ static void JS_NearQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
                         TRI_vocbase_col_t const* collection,
-                        const v8::FunctionCallbackInfo<v8::Value>& args) {
+                        v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1962,8 +1960,8 @@ static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
                                      args[0], false);
 
   if (idx == nullptr ||
-      (idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-       idx->type() != triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
+      (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
+       idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1983,7 +1981,7 @@ static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(idx)
                              ->withinQuery(&trx, latitude, longitude, radius);
 
   if (cors != nullptr) {
@@ -2002,7 +2000,7 @@ static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
 /// @brief selects points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_WithinQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_WithinQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2044,7 +2042,7 @@ static void JS_WithinQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock collectionLookupByKeys
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LookupByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2059,24 +2057,24 @@ static void JS_LookupByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("documents(<keys>)");
   }
 
-  triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
-  bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
-  bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+  arangodb::basics::Json bindVars(arangodb::basics::Json::Object, 2);
+  bindVars("@collection", arangodb::basics::Json(std::string(col->_name)));
+  bindVars("keys", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
                                           TRI_ObjectToJson(isolate, args[0])));
 
-  triagens::aql::BindParameters::StripCollectionNames(
+  arangodb::aql::BindParameters::StripCollectionNames(
       TRI_LookupObjectJson(bindVars.json(), "keys"), col->_name);
 
   std::string const aql(
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
+  arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
                              aql.c_str(), aql.size(), bindVars.steal(), nullptr,
-                             triagens::aql::PART_MAIN);
+                             arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(
-      isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -2098,7 +2096,7 @@ static void JS_LookupByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock collectionRemoveByKeys
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RemoveByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2113,9 +2111,9 @@ static void JS_RemoveByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("removeByKeys(<keys>)");
   }
 
-  triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
-  bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
-  bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+  arangodb::basics::Json bindVars(arangodb::basics::Json::Object, 2);
+  bindVars("@collection", arangodb::basics::Json(std::string(col->_name)));
+  bindVars("keys", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
                                           TRI_ObjectToJson(isolate, args[0])));
 
   std::string const aql(
@@ -2123,12 +2121,12 @@ static void JS_RemoveByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
       "true }");
 
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
+  arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
                              aql.c_str(), aql.size(), bindVars.steal(), nullptr,
-                             triagens::aql::PART_MAIN);
+                             arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(
-      isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||

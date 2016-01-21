@@ -33,8 +33,8 @@
 #include "Scheduler/PeriodicTask.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 namespace {
@@ -46,8 +46,8 @@ namespace {
 class DispatcherReporterTask : public PeriodicTask {
  public:
   DispatcherReporterTask(Dispatcher* dispatcher, double reportInterval)
-      : Task("Dispatcher-Reporter"),
-        PeriodicTask("Dispatcher-Reporter", 0.0, reportInterval),
+      : Task("DispatcherReporter"),
+        PeriodicTask("DispatcherReporter", 0.0, reportInterval),
         _dispatcher(dispatcher) {}
 
  public:
@@ -160,16 +160,13 @@ size_t ApplicationDispatcher::numberOfThreads() {
 /// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::setProcessorAffinity(const std::vector<size_t>& cores) {
+void ApplicationDispatcher::setProcessorAffinity(std::vector<size_t> const& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
 #endif
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
@@ -178,9 +175,6 @@ void ApplicationDispatcher::setupOptions(
                                        "dispatcher report interval");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::prepare() {
   if (_disabled) {
@@ -192,9 +186,6 @@ bool ApplicationDispatcher::prepare() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::start() {
   if (_disabled) {
@@ -206,15 +197,9 @@ bool ApplicationDispatcher::start() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::open() { return true; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::close() {
   if (_disabled) {
@@ -226,9 +211,6 @@ void ApplicationDispatcher::close() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::stop() {
   if (_disabled) {

@@ -34,7 +34,7 @@
 
 struct TRI_json_t;
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class ConditionVariable;
 }
@@ -215,7 +215,7 @@ class Scheduler : private TaskManager {
   /// @brief returns the loop for a task id
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t lookupLoopById(uint64_t);
+  EventLoop lookupLoopById(uint64_t);
 
  public:
   //////////////////////////////////////////////////////////////////////////////

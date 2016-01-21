@@ -26,15 +26,14 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::aql;
+using namespace arangodb::aql;
+using JsonHelper = arangodb::basics::JsonHelper;
 
-const static bool Optional = true;
+static bool const Optional = true;
 
 
 ModificationNode::ModificationNode(ExecutionPlan* plan,
-                                   triagens::basics::Json const& base)
+                                   arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
@@ -52,11 +51,11 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-void ModificationNode::toJsonHelper(triagens::basics::Json& json,
+void ModificationNode::toJsonHelper(arangodb::basics::Json& json,
                                     TRI_memory_zone_t* zone, bool) const {
   // Now put info about vocbase and cid in there
-  json("database", triagens::basics::Json(_vocbase->_name))(
-      "collection", triagens::basics::Json(_collection->getName()));
+  json("database", arangodb::basics::Json(_vocbase->_name))(
+      "collection", arangodb::basics::Json(_collection->getName()));
 
   // add out variables
   if (_outVariableOld != nullptr) {
@@ -89,7 +88,7 @@ double ModificationNode::estimateCost(size_t& nrItems) const {
 }
 
 
-RemoveNode::RemoveNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
@@ -97,9 +96,9 @@ RemoveNode::RemoveNode(ExecutionPlan* plan, triagens::basics::Json const& base)
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-void RemoveNode::toJsonHelper(triagens::basics::Json& nodes,
+void RemoveNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -141,7 +140,7 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 
-InsertNode::InsertNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+InsertNode::InsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
@@ -149,9 +148,9 @@ InsertNode::InsertNode(ExecutionPlan* plan, triagens::basics::Json const& base)
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-void InsertNode::toJsonHelper(triagens::basics::Json& nodes,
+void InsertNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -193,7 +192,7 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 
-UpdateNode::UpdateNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
       _inKeyVariable(
@@ -203,9 +202,9 @@ UpdateNode::UpdateNode(ExecutionPlan* plan, triagens::basics::Json const& base)
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-void UpdateNode::toJsonHelper(triagens::basics::Json& nodes,
+void UpdateNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -264,7 +263,7 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
-                         triagens::basics::Json const& base)
+                         arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
       _inKeyVariable(
@@ -274,9 +273,9 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan,
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReplaceNode::toJsonHelper(triagens::basics::Json& nodes,
+void ReplaceNode::toJsonHelper(arangodb::basics::Json& nodes,
                                TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -334,7 +333,7 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 
-UpsertNode::UpsertNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
       _insertVariable(varFromJson(plan->getAst(), base, "insertVariable")),
@@ -346,9 +345,9 @@ UpsertNode::UpsertNode(ExecutionPlan* plan, triagens::basics::Json const& base)
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-void UpsertNode::toJsonHelper(triagens::basics::Json& nodes,
+void UpsertNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
@@ -360,7 +359,7 @@ void UpsertNode::toJsonHelper(triagens::basics::Json& nodes,
   json("inDocVariable", _inDocVariable->toJson());
   json("insertVariable", _insertVariable->toJson());
   json("updateVariable", _updateVariable->toJson());
-  json("isReplace", triagens::basics::Json(_isReplace));
+  json("isReplace", arangodb::basics::Json(_isReplace));
 
   // And add it:
   nodes(json);

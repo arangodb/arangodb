@@ -46,9 +46,7 @@
 
 #include <velocypack/Options.h>
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 class Transaction {
   using VPackOptions = arangodb::velocypack::Options;
@@ -357,7 +355,7 @@ class Transaction {
   /// @brief order a ditch for a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::DocumentDitch* orderDitch(
+  arangodb::DocumentDitch* orderDitch(
       TRI_transaction_collection_t* trxCollection) {
     TRI_ASSERT(_trx != nullptr);
     TRI_ASSERT(trxCollection != nullptr);
@@ -389,7 +387,7 @@ class Transaction {
 
   int readIncremental(TRI_transaction_collection_t*,
                       std::vector<TRI_doc_mptr_copy_t>&,
-                      triagens::basics::BucketPosition&, uint64_t, uint64_t&,
+                      arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
                       uint64_t, uint64_t&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -400,8 +398,8 @@ class Transaction {
 
   int readRandom(TRI_transaction_collection_t*,
                  std::vector<TRI_doc_mptr_copy_t>&,
-                 triagens::basics::BucketPosition&,
-                 triagens::basics::BucketPosition&, uint64_t, uint64_t&,
+                 arangodb::basics::BucketPosition&,
+                 arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
                  uint64_t&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -420,7 +418,7 @@ class Transaction {
           this, trxCollection, (TRI_voc_key_t)key.c_str(), rid, nullptr,
           &updatePolicy, !isLocked(trxCollection, TRI_TRANSACTION_WRITE),
           forceSync);
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       return ex.code();
     } catch (...) {
       return TRI_ERROR_INTERNAL;
@@ -464,7 +462,7 @@ class Transaction {
              TRI_doc_mptr_copy_t* mptr, VPackSlice const& slice,
              void const* data, bool forceSync) {
     std::unique_ptr<TRI_json_t> json(
-        triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
     return create(trxCollection, mptr, json.get(), data, forceSync);
   }
 
@@ -512,7 +510,7 @@ class Transaction {
       return TRI_ReadShapedJsonDocumentCollection(
           this, trxCollection, (TRI_voc_key_t)key.c_str(), mptr,
           !isLocked(trxCollection, TRI_TRANSACTION_READ));
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       return ex.code();
     } catch (...) {
       return TRI_ERROR_INTERNAL;
@@ -550,6 +548,13 @@ class Transaction {
 
   
  protected:
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the setup state
+  //////////////////////////////////////////////////////////////////////////////
+
+  int setupState () { return _setupState; }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection
   //////////////////////////////////////////////////////////////////////////////
@@ -791,7 +796,7 @@ class Transaction {
           this, trxCollection, key, rid, nullptr, mptr, shaped,
           static_cast<TRI_document_edge_t const*>(data), lock, forceSync,
           false);
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       return ex.code();
     } catch (...) {
       return TRI_ERROR_INTERNAL;
@@ -820,7 +825,7 @@ class Transaction {
           this, trxCollection, (const TRI_voc_key_t)key.c_str(), rid, nullptr,
           mptr, shaped, &updatePolicy,
           !isLocked(trxCollection, TRI_TRANSACTION_WRITE), forceSync);
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       return ex.code();
     } catch (...) {
       return TRI_ERROR_INTERNAL;
@@ -860,7 +865,7 @@ class Transaction {
           break;
         }
       }
-    } catch (triagens::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
@@ -1085,7 +1090,6 @@ class Transaction {
  public:
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
 };
-}
 }
 
 #endif

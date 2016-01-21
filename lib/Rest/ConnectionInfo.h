@@ -30,7 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Rest/Endpoint.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////

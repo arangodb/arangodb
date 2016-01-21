@@ -42,12 +42,10 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
-using namespace triagens::arango;
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -285,14 +283,14 @@ int main(int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == nullptr) {
-    cerr << "invalid value for --server.endpoint ('"
-         << BaseClient.endpointString() << "')" << endl;
+    std::cerr << "invalid value for --server.endpoint ('"
+         << BaseClient.endpointString() << "')" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // create a connection
   {
-    std::unique_ptr<triagens::httpclient::GeneralClientConnection> connection;
+    std::unique_ptr<arangodb::httpclient::GeneralClientConnection> connection;
 
     connection.reset(GeneralClientConnection::factory(
         BaseClient.endpointServer(), BaseClient.requestTimeout(),
@@ -300,7 +298,7 @@ int main(int argc, char* argv[]) {
         BaseClient.sslProtocol()));
 
     if (connection == nullptr) {
-      cerr << "out of memory" << endl;
+      std::cerr << "out of memory" << std::endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
@@ -317,37 +315,37 @@ int main(int argc, char* argv[]) {
       client.getServerVersion();
 
       if (!connection->isConnected()) {
-        cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
+        std::cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
              << "', database: '" << BaseClient.databaseName()
-             << "', username: '" << BaseClient.username() << "'" << endl;
-        cerr << "Error message: '" << client.getErrorMessage() << "'" << endl;
+             << "', username: '" << BaseClient.username() << "'" << std::endl;
+        std::cerr << "Error message: '" << client.getErrorMessage() << "'" << std::endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
       // successfully connected
-      cout << "Connected to ArangoDB '"
+      std::cout << "Connected to ArangoDB '"
            << BaseClient.endpointServer()->getSpecification() << "', version "
            << client.getServerVersion() << ", database: '"
            << BaseClient.databaseName() << "', username: '"
-           << BaseClient.username() << "'" << endl;
+           << BaseClient.username() << "'" << std::endl;
 
-      cout << "----------------------------------------" << endl;
-      cout << "database:         " << BaseClient.databaseName() << endl;
-      cout << "collection:       " << CollectionName << endl;
-      cout << "create:           " << (CreateCollection ? "yes" : "no") << endl;
-      cout << "file:             " << FileName << endl;
-      cout << "type:             " << TypeImport << endl;
+      std::cout << "----------------------------------------" << std::endl;
+      std::cout << "database:         " << BaseClient.databaseName() << std::endl;
+      std::cout << "collection:       " << CollectionName << std::endl;
+      std::cout << "create:           " << (CreateCollection ? "yes" : "no") << std::endl;
+      std::cout << "file:             " << FileName << std::endl;
+      std::cout << "type:             " << TypeImport << std::endl;
 
       if (TypeImport == "csv") {
-        cout << "quote:            " << Quote << endl;
-        cout << "separator:        " << Separator << endl;
+        std::cout << "quote:            " << Quote << std::endl;
+        std::cout << "separator:        " << Separator << std::endl;
       }
 
-      cout << "connect timeout:  " << BaseClient.connectTimeout() << endl;
-      cout << "request timeout:  " << BaseClient.requestTimeout() << endl;
-      cout << "----------------------------------------" << endl;
+      std::cout << "connect timeout:  " << BaseClient.connectTimeout() << std::endl;
+      std::cout << "request timeout:  " << BaseClient.requestTimeout() << std::endl;
+      std::cout << "----------------------------------------" << std::endl;
 
-      triagens::v8client::ImportHelper ih(&client, ChunkSize);
+      arangodb::v8client::ImportHelper ih(&client, ChunkSize);
 
       // create colletion
       if (CreateCollection) {
@@ -366,7 +364,7 @@ int main(int argc, char* argv[]) {
       if (Quote.length() <= 1) {
         ih.setQuote(Quote);
       } else {
-        cerr << "Wrong length of quote character." << endl;
+        std::cerr << "Wrong length of quote character." << std::endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
@@ -374,32 +372,32 @@ int main(int argc, char* argv[]) {
       if (Separator.length() == 1) {
         ih.setSeparator(Separator);
       } else {
-        cerr << "Separator must be exactly one character." << endl;
+        std::cerr << "Separator must be exactly one character." << std::endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
       // collection name
       if (CollectionName == "") {
-        cerr << "Collection name is missing." << endl;
+        std::cerr << "Collection name is missing." << std::endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
       // filename
       if (FileName == "") {
-        cerr << "File name is missing." << endl;
+        std::cerr << "File name is missing." << std::endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
       if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
         if (!FileUtils::exists(FileName)) {
-          cerr << "Cannot open file '" << FileName << "'. File not found."
-               << endl;
+          std::cerr << "Cannot open file '" << FileName << "'. File not found."
+               << std::endl;
         } else if (FileUtils::isDirectory(FileName)) {
-          cerr << "Specified file '" << FileName
-               << "' is a directory. Please use a regular file." << endl;
+          std::cerr << "Specified file '" << FileName
+               << "' is a directory. Please use a regular file." << std::endl;
         } else {
-          cerr << "Cannot open '" << FileName << "'. Invalid file type."
-               << endl;
+          std::cerr << "Cannot open '" << FileName << "'. Invalid file type."
+               << std::endl;
         }
 
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
@@ -412,8 +410,8 @@ int main(int argc, char* argv[]) {
 
       if (OnDuplicateAction != "error" && OnDuplicateAction != "update" &&
           OnDuplicateAction != "replace" && OnDuplicateAction != "ignore") {
-        cerr << "Invalid value for '--on-duplicate'. Possible values: 'error', "
-                "'update', 'replace', 'ignore'." << endl;
+        std::cerr << "Invalid value for '--on-duplicate'. Possible values: 'error', "
+                "'update', 'replace', 'ignore'." << std::endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
@@ -424,49 +422,49 @@ int main(int argc, char* argv[]) {
 
         // import type
         if (TypeImport == "csv") {
-          cout << "Starting CSV import..." << endl;
+          std::cout << "Starting CSV import..." << std::endl;
           ok = ih.importDelimited(CollectionName, FileName,
-                                  triagens::v8client::ImportHelper::CSV);
+                                  arangodb::v8client::ImportHelper::CSV);
         }
 
         else if (TypeImport == "tsv") {
-          cout << "Starting TSV import..." << endl;
+          std::cout << "Starting TSV import..." << std::endl;
           ih.setQuote("");
           ih.setSeparator("\\t");
           ok = ih.importDelimited(CollectionName, FileName,
-                                  triagens::v8client::ImportHelper::TSV);
+                                  arangodb::v8client::ImportHelper::TSV);
         }
 
         else if (TypeImport == "json") {
-          cout << "Starting JSON import..." << endl;
+          std::cout << "Starting JSON import..." << std::endl;
           ok = ih.importJson(CollectionName, FileName);
         }
 
         else {
-          cerr << "Wrong type '" << TypeImport << "'." << endl;
+          std::cerr << "Wrong type '" << TypeImport << "'." << std::endl;
           TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
         }
 
-        cout << endl;
+        std::cout << std::endl;
 
         // give information about import
         if (ok) {
-          cout << "created:          " << ih.getNumberCreated() << endl;
-          cout << "warnings/errors:  " << ih.getNumberErrors() << endl;
-          cout << "updated/replaced: " << ih.getNumberUpdated() << endl;
-          cout << "ignored:          " << ih.getNumberIgnored() << endl;
+          std::cout << "created:          " << ih.getNumberCreated() << std::endl;
+          std::cout << "warnings/errors:  " << ih.getNumberErrors() << std::endl;
+          std::cout << "updated/replaced: " << ih.getNumberUpdated() << std::endl;
+          std::cout << "ignored:          " << ih.getNumberIgnored() << std::endl;
 
           if (TypeImport == "csv" || TypeImport == "tsv") {
-            cout << "lines read:       " << ih.getReadLines() << endl;
+            std::cout << "lines read:       " << ih.getReadLines() << std::endl;
           }
 
         } else {
-          cerr << "error message:    " << ih.getErrorMessage() << endl;
+          std::cerr << "error message:    " << ih.getErrorMessage() << std::endl;
         }
       } catch (std::exception const& ex) {
-        cerr << "Caught exception " << ex.what() << " during import" << endl;
+        std::cerr << "Caught exception " << ex.what() << " during import" << std::endl;
       } catch (...) {
-        cerr << "Got an unknown exception during import" << endl;
+        std::cerr << "Got an unknown exception during import" << std::endl;
       }
     }
   }

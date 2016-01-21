@@ -33,7 +33,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -291,35 +291,6 @@ class JsonHelper {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JsonException, an exception class for the Json class
-////////////////////////////////////////////////////////////////////////////////
-
-class JsonException : public virtual std::exception {
-  std::string _msg;
-
- public:
-  JsonException() : _msg("Json exception") {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
-    _msg += std::string("\n\n");
-    TRI_GetBacktrace(_msg);
-    _msg += std::string("\n\n");
-#endif
-#endif
-  }
-  JsonException(std::string msg) : _msg(msg) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
-    _msg += std::string("\n\n");
-    TRI_GetBacktrace(_msg);
-    _msg += std::string("\n\n");
-#endif
-#endif
-  }
-  char const* what() const noexcept { return _msg.c_str(); }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Json, a class to fabricate TRI_json_t* conveniently
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -369,7 +340,7 @@ class Json {
     }
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -436,7 +407,7 @@ class Json {
     _json = TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, x);
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -449,7 +420,7 @@ class Json {
     _json = TRI_CreateBooleanJson(z, x);
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -464,7 +435,7 @@ class Json {
     _json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(x));
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -477,7 +448,7 @@ class Json {
     _json = TRI_CreateNumberJson(z, static_cast<double>(x));
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -492,7 +463,7 @@ class Json {
     _json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, x);
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -505,7 +476,7 @@ class Json {
     _json = TRI_CreateNumberJson(z, x);
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -520,7 +491,7 @@ class Json {
     _json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, x, strlen(x));
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -535,7 +506,7 @@ class Json {
     _json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, x, length);
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -549,7 +520,7 @@ class Json {
     _json = TRI_CreateStringCopyJson(z, x, strlen(x));
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -563,7 +534,7 @@ class Json {
     _json = TRI_CreateStringCopyJson(z, x, length);
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -578,7 +549,7 @@ class Json {
     _json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, x.c_str(), x.size());
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -592,7 +563,7 @@ class Json {
     _json = TRI_CreateStringCopyJson(z, x.c_str(), x.size());
 
     if (_json == nullptr) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -711,6 +682,9 @@ class Json {
     c._zone = _zone;
     if (_json != nullptr) {
       c._json = TRI_CopyJson(TRI_MemoryZone(_zone), _json);
+      if (c._json == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
     } else {
       c._json = nullptr;
     }
@@ -728,7 +702,7 @@ class Json {
 
   Json& set(char const* name, Json sub) {
     if (!TRI_IsObjectJson(_json)) {
-      throw JsonException("Json is no object");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no object");
     }
     TRI_Insert3ObjectJson(TRI_MemoryZone(_zone), _json, name, sub.steal());
     return *this;
@@ -736,7 +710,7 @@ class Json {
 
   Json& set(std::string const& name, Json sub) {
     if (!TRI_IsObjectJson(_json)) {
-      throw JsonException("Json is no object");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no object");
     }
     TRI_Insert3ObjectJson(TRI_MemoryZone(_zone), _json, name.c_str(),
                           sub.steal());
@@ -745,14 +719,14 @@ class Json {
 
   bool unset(char const* name) {
     if (!TRI_IsObjectJson(_json)) {
-      throw JsonException("Json is no object");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no object");
     }
     return TRI_DeleteObjectJson(TRI_MemoryZone(_zone), _json, name);
   }
 
   bool unset(std::string const& name) {
     if (!TRI_IsObjectJson(_json)) {
-      throw JsonException("Json is no object");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no object");
     }
     return TRI_DeleteObjectJson(TRI_MemoryZone(_zone), _json, name.c_str());
   }
@@ -765,7 +739,7 @@ class Json {
 
   Json& set(char const* name, TRI_json_t* sub) {
     if (!TRI_IsObjectJson(_json)) {
-      throw JsonException("Json is no object");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no object");
     }
     TRI_Insert3ObjectJson(TRI_MemoryZone(_zone), _json, name, sub);
     return *this;
@@ -782,7 +756,7 @@ class Json {
 
   Json get(char const* name) const {
     if (!TRI_IsObjectJson(_json)) {
-      throw JsonException("Json is no object");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no object");
     }
     return Json(TRI_MemoryZone(_zone), TRI_LookupObjectJson(_json, name),
                 NOFREE);
@@ -806,7 +780,7 @@ class Json {
 
   bool has(char const* name) const {
     if (!TRI_IsObjectJson(_json)) {
-      throw JsonException("Json is no object");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no object");
     }
     return (TRI_LookupObjectJson(_json, name) != nullptr);
   }
@@ -821,7 +795,7 @@ class Json {
 
   Json& add(Json sub) {
     if (!TRI_IsArrayJson(_json)) {
-      throw JsonException("Json is no array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no array");
     }
     TRI_PushBack3ArrayJson(TRI_MemoryZone(_zone), _json, sub.steal());
     return *this;
@@ -836,7 +810,7 @@ class Json {
 
   Json& add(TRI_json_t* sub) {
     if (!TRI_IsArrayJson(_json)) {
-      throw JsonException("Json is no array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no array");
     }
     TRI_PushBack3ArrayJson(TRI_MemoryZone(_zone), _json, sub);
     return *this;
@@ -851,7 +825,7 @@ class Json {
 
   Json& transfer(TRI_json_t* json) {
     if (!TRI_IsArrayJson(_json)) {
-      throw JsonException("Json is no array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no array");
     }
     TRI_PushBack2ArrayJson(_json, json);
     TRI_InitNullJson(json);
@@ -864,11 +838,11 @@ class Json {
 
   Json& reserve(size_t n) {
     if (!TRI_IsArrayJson(_json)) {
-      throw JsonException("Json is no array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no array");
     }
 
     if (TRI_ReserveVector(&_json->_value._objects, n) != TRI_ERROR_NO_ERROR) {
-      throw JsonException("Json: out of memory");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     return *this;
   }
@@ -899,7 +873,7 @@ class Json {
 
   Json at(int pos) const {
     if (!TRI_IsArrayJson(_json)) {
-      throw JsonException("Json is no array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no array");
     }
     TRI_json_t* j;
     if (pos >= 0) {
@@ -985,7 +959,7 @@ class Json {
 
   size_t size() const {
     if (!TRI_IsArrayJson(_json)) {
-      throw JsonException("Json is no array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no array");
     }
     return TRI_LengthVector(&_json->_value._objects);
   }
@@ -996,7 +970,7 @@ class Json {
 
   size_t members() const {
     if (!TRI_IsObjectJson(_json)) {
-      throw JsonException("Json is no object");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is no object");
     }
     return TRI_LengthVector(&_json->_value._objects) / 2;
   }
@@ -1022,12 +996,12 @@ class Json {
   /// @brief appends JSON to a string buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  void dump(triagens::basics::StringBuffer& buffer) const {
+  void dump(arangodb::basics::StringBuffer& buffer) const {
     if (_json != nullptr) {
       int res = TRI_StringifyJson(buffer.stringBuffer(), _json);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        throw JsonException("Json: out of memory");
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
     }
   }
@@ -1055,8 +1029,8 @@ class Json {
 }
 }
 
-std::ostream& operator<<(std::ostream&, triagens::basics::Json const*);
-std::ostream& operator<<(std::ostream&, triagens::basics::Json const&);
+std::ostream& operator<<(std::ostream&, arangodb::basics::Json const*);
+std::ostream& operator<<(std::ostream&, arangodb::basics::Json const&);
 std::ostream& operator<<(std::ostream&, TRI_json_t const*);
 std::ostream& operator<<(std::ostream&, TRI_json_t const&);
 

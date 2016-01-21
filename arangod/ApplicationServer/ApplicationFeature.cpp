@@ -23,8 +23,8 @@
 
 #include "ApplicationFeature.h"
 
-using namespace triagens;
-using namespace triagens::rest;
+using namespace arangodb;
+using namespace arangodb::rest;
 using namespace std;
 
 

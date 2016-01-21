@@ -23,26 +23,16 @@
 
 #include "RestPleaseUpgradeHandler.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-using namespace std;
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
     : HttpHandler(request) {}
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
   createResponse(HttpResponse::OK);
@@ -62,9 +52,6 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void RestPleaseUpgradeHandler::handleError(const Exception&) {}
 

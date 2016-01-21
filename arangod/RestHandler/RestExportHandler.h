@@ -26,13 +26,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Utils/CollectionExport.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Utils/CollectionExport.h"
 
-
-namespace triagens {
-
-namespace arango {
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document request handler
@@ -46,9 +43,6 @@ class RestExportHandler : public RestVocbaseBaseHandler {
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   status_t execute() override;
 
@@ -86,7 +80,6 @@ class RestExportHandler : public RestVocbaseBaseHandler {
 
   CollectionExport::Restrictions _restrictions;
 };
-}
 }
 
 #endif

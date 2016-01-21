@@ -30,7 +30,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <deque>
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -165,7 +165,7 @@ class Optimizer {
     removeSortRandRule_pass5 = 720,
 
     // remove INTO for COLLECT if appropriate
-    removeCollectIntoRule_pass5 = 740,
+    removeCollectVariablesRule_pass5 = 740,
 
     // propagate constant attributes in FILTERs
     propagateConstantAttributesRule_pass5 = 750,
@@ -617,7 +617,7 @@ class Optimizer {
   /// @brief mutex to protect rule setup
   //////////////////////////////////////////////////////////////////////////////
 
-  static triagens::basics::Mutex SetupLock;
+  static arangodb::basics::Mutex SetupLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current set of plans to be optimized
@@ -645,6 +645,6 @@ class Optimizer {
 };
 
 }  // namespace aql
-}  // namespace triagens
+}  // namespace arangodb
 #endif
 

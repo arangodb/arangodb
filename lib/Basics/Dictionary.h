@@ -30,7 +30,7 @@
 #include "Basics/AssociativeArray.h"
 #include "Basics/hashes.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 

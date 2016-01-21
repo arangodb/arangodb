@@ -128,10 +128,10 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   TRI_json_t const* value = TRI_LookupObjectJson(json.get(), "database");
 
   if (!TRI_IsStringJson(value)) {
-    config->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+    config->_database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, vocbase->_name);
   } else {
     config->_database =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                               value->_value._string.length - 1);
   }
 
@@ -140,7 +140,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 
   if (TRI_IsStringJson(value)) {
     config->_username =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                               value->_value._string.length - 1);
   }
 
@@ -148,7 +148,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 
   if (TRI_IsStringJson(value)) {
     config->_password =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                               value->_value._string.length - 1);
   }
 
@@ -294,7 +294,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
     config->_autoStart = false;
   } else {
     config->_endpoint =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                               value->_value._string.length - 1);
   }
 
@@ -323,13 +323,13 @@ static std::unique_ptr<TRI_json_t> JsonApplyState(
   }
 
   std::string const safeResumeTick =
-      triagens::basics::StringUtils::itoa(state->_safeResumeTick);
+      arangodb::basics::StringUtils::itoa(state->_safeResumeTick);
   std::string const lastProcessedContinuousTick =
-      triagens::basics::StringUtils::itoa(state->_lastProcessedContinuousTick);
+      arangodb::basics::StringUtils::itoa(state->_lastProcessedContinuousTick);
   std::string const lastAppliedContinuousTick =
-      triagens::basics::StringUtils::itoa(state->_lastAppliedContinuousTick);
+      arangodb::basics::StringUtils::itoa(state->_lastAppliedContinuousTick);
   std::string const serverId =
-      triagens::basics::StringUtils::itoa(state->_serverId);
+      arangodb::basics::StringUtils::itoa(state->_serverId);
 
   TRI_Insert3ObjectJson(
       TRI_UNKNOWN_MEM_ZONE, json.get(), "serverId",
@@ -361,7 +361,7 @@ static std::unique_ptr<TRI_json_t> JsonApplyState(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ApplyThread(void* data) {
-  auto syncer = static_cast<triagens::arango::ContinuousSyncer*>(data);
+  auto syncer = static_cast<arangodb::ContinuousSyncer*>(data);
 
   try {
     syncer->run();
@@ -648,7 +648,7 @@ TRI_json_t* TRI_JsonConfigurationReplicationApplier(
     TRI_replication_applier_configuration_t const* config) {
   try {
     std::shared_ptr<VPackBuilder> tmp = config->toVelocyPack(false);
-    return triagens::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
+    return arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
   } catch (...) {
     return nullptr;
   }
@@ -722,7 +722,7 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
 
   if (applier->_state._progressMsg != nullptr) {
     state->_progressMsg =
-        TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, applier->_state._progressMsg);
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, applier->_state._progressMsg);
   } else {
     state->_progressMsg = nullptr;
   }
@@ -731,7 +731,7 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
          sizeof(state->_progressTime));
 
   if (applier->_state._lastError._msg != nullptr) {
-    state->_lastError._msg = TRI_DuplicateStringZ(
+    state->_lastError._msg = TRI_DuplicateString(
         TRI_CORE_MEM_ZONE, applier->_state._lastError._msg);
   } else {
     state->_lastError._msg = nullptr;
@@ -747,7 +747,7 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
 TRI_json_t* TRI_JsonReplicationApplier(TRI_replication_applier_t* applier) {
   try {
     std::shared_ptr<VPackBuilder> builder = applier->toVelocyPack();
-    return triagens::basics::VelocyPackHelper::velocyPackToJson(
+    return arangodb::basics::VelocyPackHelper::velocyPackToJson(
         builder->slice());
   } catch (...) {
     return nullptr;
@@ -953,25 +953,25 @@ void TRI_CopyConfigurationReplicationApplier(
     TRI_replication_applier_configuration_t const* src,
     TRI_replication_applier_configuration_t* dst) {
   if (src->_endpoint != nullptr) {
-    dst->_endpoint = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_endpoint);
+    dst->_endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, src->_endpoint);
   } else {
     dst->_endpoint = nullptr;
   }
 
   if (src->_database != nullptr) {
-    dst->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_database);
+    dst->_database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, src->_database);
   } else {
     dst->_database = nullptr;
   }
 
   if (src->_username != nullptr) {
-    dst->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_username);
+    dst->_username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, src->_username);
   } else {
     dst->_username = nullptr;
   }
 
   if (src->_password != nullptr) {
-    dst->_password = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_password);
+    dst->_password = TRI_DuplicateString(TRI_CORE_MEM_ZONE, src->_password);
   } else {
     dst->_password = nullptr;
   }
@@ -1038,7 +1038,7 @@ int TRI_SaveConfigurationReplicationApplier(
   TRI_json_t* json;
   try {
     std::shared_ptr<VPackBuilder> tmp = config->toVelocyPack(false);
-    json = triagens::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
+    json = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1120,7 +1120,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
                       "no database configured");
   }
 
-  auto syncer = std::make_unique<triagens::arango::ContinuousSyncer>(
+  auto syncer = std::make_unique<arangodb::ContinuousSyncer>(
       _server, _vocbase, &_configuration, initialTick, useTick);
 
   // reset error
@@ -1139,7 +1139,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
 
   TRI_InitThread(&_thread);
 
-  if (!TRI_StartThread(&_thread, nullptr, "[applier]", ApplyThread,
+  if (!TRI_StartThread(&_thread, nullptr, "Applier", ApplyThread,
                        static_cast<void*>(syncer.get()))) {
     return TRI_ERROR_INTERNAL;
   }
@@ -1396,7 +1396,7 @@ bool TRI_replication_applier_t::wait(uint64_t sleepTime) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_replication_applier_t::setProgress(char const* msg, bool lock) {
-  char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, msg);
+  char* copy = TRI_DuplicateString(TRI_CORE_MEM_ZONE, msg);
 
   if (copy == nullptr) {
     return;
@@ -1463,14 +1463,14 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
     throw;
   }
 
-  triagens::basics::ScopeGuard guard{
+  arangodb::basics::ScopeGuard guard{
       []() -> void {},
       [&state, &config]()
           -> void { TRI_DestroyStateReplicationApplier(&state); }};
 
   std::unique_ptr<TRI_json_t> stateJson(JsonState(&state));
   std::shared_ptr<arangodb::velocypack::Builder> b =
-      triagens::basics::JsonHelper::toVelocyPack(stateJson.get());
+      arangodb::basics::JsonHelper::toVelocyPack(stateJson.get());
   builder.add("state", b->slice());
 
   // add server info
@@ -1529,7 +1529,7 @@ int TRI_replication_applier_t::doSetError(int errorCode, char const* msg) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
   }
 
-  _state._lastError._msg = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, realMsg);
+  _state._lastError._msg = TRI_DuplicateString(TRI_CORE_MEM_ZONE, realMsg);
 
   return errorCode;
 }

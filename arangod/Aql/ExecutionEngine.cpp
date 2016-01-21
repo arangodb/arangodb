@@ -45,9 +45,9 @@
 #include "Cluster/ClusterComm.h"
 #include "VocBase/server.h"
 
-using namespace triagens::aql;
-using namespace triagens::arango;
-using Json = triagens::basics::Json;
+using namespace arangodb::aql;
+
+using Json = arangodb::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create a block
@@ -340,7 +340,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   enum EngineLocation { COORDINATOR, DBSERVER };
 
   struct EngineInfo {
-    EngineInfo(EngineLocation location, size_t id, triagens::aql::QueryPart p,
+    EngineInfo(EngineLocation location, size_t id, arangodb::aql::QueryPart p,
                size_t idOfRemoteNode)
         : location(location),
           id(id),
@@ -376,7 +376,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     EngineLocation const location;
     size_t const id;
     std::vector<ExecutionNode*> nodes;
-    triagens::aql::QueryPart part;  // only relevant for DBserver parts
+    arangodb::aql::QueryPart part;  // only relevant for DBserver parts
     size_t idOfRemoteNode;          // id of the remote node
     // in the original plan that needs this engine
   };
@@ -432,7 +432,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   /// @brief generatePlanForOneShard
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json generatePlanForOneShard(size_t nr,
+  arangodb::basics::Json generatePlanForOneShard(size_t nr,
                                                  EngineInfo const& info,
                                                  QueryId& connectedId,
                                                  std::string const& shardId,
@@ -450,7 +450,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       if (current->getType() == ExecutionNode::REMOTE) {
         // update the remote node with the information about the query
         static_cast<RemoteNode*>(clone)->server(
-            "server:" + triagens::arango::ServerState::instance()->getId());
+            "server:" + arangodb::ServerState::instance()->getId());
         static_cast<RemoteNode*>(clone)->ownName(shardId);
         static_cast<RemoteNode*>(clone)->queryId(connectedId);
         // only one of the remote blocks is responsible for forwarding the
@@ -476,7 +476,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   //////////////////////////////////////////////////////////////////////////////
 
   void distributePlanToShard(
-      triagens::arango::CoordTransactionID& coordTransactionID,
+      arangodb::CoordTransactionID& coordTransactionID,
       EngineInfo const& info, Collection* collection, QueryId& connectedId,
       std::string const& shardId, TRI_json_t* jsonPlan) {
     // create a JSON representation of the plan
@@ -498,7 +498,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                       query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
 
     result.set("plan", jsonNodesList);
-    if (info.part == triagens::aql::PART_MAIN) {
+    if (info.part == arangodb::aql::PART_MAIN) {
       result.set("part", Json("main"));
     } else {
       result.set("part", Json("dependent"));
@@ -513,14 +513,14 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     options.set("optimizer", optimizerOptions);
     result.set("options", options);
     auto body = std::make_shared<std::string const>(
-        triagens::basics::JsonHelper::toString(result.json()));
+        arangodb::basics::JsonHelper::toString(result.json()));
 
     // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get())
     // << "\n";
 
-    auto cc = triagens::arango::ClusterComm::instance();
+    auto cc = arangodb::ClusterComm::instance();
 
-    std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(
+    std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
                                         collection->vocbase->_name) +
                           "/_api/aql/instantiate");
 
@@ -528,7 +528,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         new std::map<std::string, std::string>());
     (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
     auto res = cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
-                                triagens::rest::HttpRequest::HTTP_REQUEST_POST,
+                                arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
                                 url, body, headers, nullptr, 30.0);
   }
 
@@ -537,8 +537,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   //////////////////////////////////////////////////////////////////////////////
 
   void aggregateQueryIds(
-      EngineInfo const& info, triagens::arango::ClusterComm*& cc,
-      triagens::arango::CoordTransactionID& coordTransactionID,
+      EngineInfo const& info, arangodb::ClusterComm*& cc,
+      arangodb::CoordTransactionID& coordTransactionID,
       Collection* collection) {
     // pick up the remote query ids
     auto shardIds = collection->shardIds();
@@ -549,27 +549,27 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     for (count = (int)shardIds->size(); count > 0; count--) {
       auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
 
-      if (res.status == triagens::arango::CL_COMM_RECEIVED) {
-        if (res.answer_code == triagens::rest::HttpResponse::OK ||
-            res.answer_code == triagens::rest::HttpResponse::CREATED ||
-            res.answer_code == triagens::rest::HttpResponse::ACCEPTED) {
+      if (res.status == arangodb::CL_COMM_RECEIVED) {
+        if (res.answer_code == arangodb::rest::HttpResponse::OK ||
+            res.answer_code == arangodb::rest::HttpResponse::CREATED ||
+            res.answer_code == arangodb::rest::HttpResponse::ACCEPTED) {
           // query instantiated without problems
           nrok++;
 
           // pick up query id from response
-          triagens::basics::Json response(
+          arangodb::basics::Json response(
               TRI_UNKNOWN_MEM_ZONE,
-              triagens::basics::JsonHelper::fromString(res.answer->body()));
-          std::string queryId = triagens::basics::JsonHelper::getStringValue(
+              arangodb::basics::JsonHelper::fromString(res.answer->body()));
+          std::string queryId = arangodb::basics::JsonHelper::getStringValue(
               response.json(), "queryId", "");
 
           // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " <<
           // res.answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode <<
           // " SHARDID:"  << res.shardID << ", QUERYID: " << queryId << "\n";
           std::string theID =
-              triagens::basics::StringUtils::itoa(info.idOfRemoteNode) + ":" +
+              arangodb::basics::StringUtils::itoa(info.idOfRemoteNode) + ":" +
               res.shardID;
-          if (info.part == triagens::aql::PART_MAIN) {
+          if (info.part == arangodb::aql::PART_MAIN) {
             queryIds.emplace(theID, queryId + "*");
           } else {
             queryIds.emplace(theID, queryId);
@@ -602,9 +602,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // std::cout << "distributePlansToShards: " << info.id << std::endl;
     Collection* collection = info.getCollection();
     // now send the plan to the remote servers
-    triagens::arango::CoordTransactionID coordTransactionID =
+    arangodb::CoordTransactionID coordTransactionID =
         TRI_NewTickServer();
-    auto cc = triagens::arango::ClusterComm::instance();
+    auto cc = arangodb::ClusterComm::instance();
     TRI_ASSERT(cc != nullptr);
 
     // iterate over all shards of the collection
@@ -696,7 +696,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
           for (auto const& shardId : *shardIds) {
             std::string theId =
-                triagens::basics::StringUtils::itoa(remoteNode->id()) + ":" +
+                arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" +
                 shardId;
             auto it = queryIds.find(theId);
             if (it == queryIds.end()) {
@@ -772,9 +772,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             throw;
           }
           try {
-            std::string queryId = triagens::basics::StringUtils::itoa(id);
+            std::string queryId = arangodb::basics::StringUtils::itoa(id);
             std::string theID =
-                triagens::basics::StringUtils::itoa(it->idOfRemoteNode) + "/" +
+                arangodb::basics::StringUtils::itoa(it->idOfRemoteNode) + "/" +
                 engine->getQuery()->vocbase()->_name;
             queryIds.emplace(theID, queryId);
           } catch (...) {
@@ -859,11 +859,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     QueryRegistry* queryRegistry, Query* query, ExecutionPlan* plan,
     bool planRegisters) {
-  auto role = triagens::arango::ServerState::instance()->getRole();
+  auto role = arangodb::ServerState::instance()->getRole();
   bool const isCoordinator =
-      triagens::arango::ServerState::instance()->isCoordinator(role);
+      arangodb::ServerState::instance()->isCoordinator(role);
   bool const isDBServer =
-      triagens::arango::ServerState::instance()->isDBServer(role);
+      arangodb::ServerState::instance()->isDBServer(role);
 
   ExecutionEngine* engine = nullptr;
 
@@ -936,7 +936,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           if (pos != std::string::npos) {
             // std::cout << "Setting lockedShards for query ID "
             //          << queryId << std::endl;
-            QueryId qId = triagens::basics::StringUtils::uint64(queryId);
+            QueryId qId = arangodb::basics::StringUtils::uint64(queryId);
             TRI_vocbase_t* vocbase = query->vocbase();
             Query* q = queryRegistry->open(vocbase, qId);
             q->engine()->setLockedShards(
@@ -950,18 +950,18 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           std::string const& shardId = p.first;
           std::string const& queryId = p.second;
           // Lock shard on DBserver:
-          triagens::arango::CoordTransactionID coordTransactionID =
+          arangodb::CoordTransactionID coordTransactionID =
               TRI_NewTickServer();
-          auto cc = triagens::arango::ClusterComm::instance();
+          auto cc = arangodb::ClusterComm::instance();
           TRI_vocbase_t* vocbase = query->vocbase();
           std::string const url(
               "/_db/" +
-              triagens::basics::StringUtils::urlEncode(vocbase->_name) +
+              arangodb::basics::StringUtils::urlEncode(vocbase->_name) +
               "/_api/aql/lock/" + queryId);
           std::map<std::string, std::string> headers;
           auto res =
               cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                              triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                              arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                               url, "{}", headers, 30.0);
           if (res->status != CL_COMM_SENT) {
             std::string message("could not lock all shards");
@@ -986,20 +986,20 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
             // So this is a remote one on a DBserver:
             std::string shardId = theId.substr(pos + 1);
             // Remove query from DBserver:
-            triagens::arango::CoordTransactionID coordTransactionID =
+            arangodb::CoordTransactionID coordTransactionID =
                 TRI_NewTickServer();
-            auto cc = triagens::arango::ClusterComm::instance();
+            auto cc = arangodb::ClusterComm::instance();
             if (queryId.back() == '*') {
               queryId.pop_back();
             }
             std::string const url(
                 "/_db/" +
-                triagens::basics::StringUtils::urlEncode(vocbase->_name) +
+                arangodb::basics::StringUtils::urlEncode(vocbase->_name) +
                 "/_api/aql/shutdown/" + queryId);
             std::map<std::string, std::string> headers;
             auto res =
                 cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                                triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                                arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                                 url, "{\"code\": 0}", headers, 120.0);
             // Ignore result, we need to try to remove all.
             // However, log the incident if we have an errorMessage.
@@ -1013,7 +1013,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
             // Remove query from registry:
             try {
               queryRegistry->destroy(
-                  vocbase, triagens::basics::StringUtils::uint64(queryId),
+                  vocbase, arangodb::basics::StringUtils::uint64(queryId),
                   TRI_ERROR_INTERNAL);
             } catch (...) {
               // Ignore problems

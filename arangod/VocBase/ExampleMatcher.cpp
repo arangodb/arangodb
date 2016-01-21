@@ -31,9 +31,8 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/VocShaper.h"
 
-using namespace std;
-using namespace triagens::arango;
-using namespace triagens::basics;
+using namespace arangodb;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up shaped json values
@@ -93,10 +92,10 @@ void ExampleMatcher::fillExampleDefinition(
           std::string keyVal = TRI_ObjectToString(val);
           if (TRI_VOC_ATTRIBUTE_KEY == key) {
             def._internal.insert(
-                make_pair(internalAttr::key, DocumentId(0, keyVal)));
+                std::make_pair(internalAttr::key, DocumentId(0, keyVal)));
           } else if (TRI_VOC_ATTRIBUTE_REV == key) {
             def._internal.insert(
-                make_pair(internalAttr::rev, DocumentId(0, keyVal)));
+                std::make_pair(internalAttr::rev, DocumentId(0, keyVal)));
           } else {
             // We need a Collection Name Resolver here now!
             V8ResolverGuard resolverGuard(vocbase);
@@ -105,15 +104,15 @@ void ExampleMatcher::fillExampleDefinition(
             std::string colName = keyVal.substr(0, keyVal.find("/"));
             keyVal = keyVal.substr(keyVal.find("/") + 1, keyVal.length());
             if (TRI_VOC_ATTRIBUTE_ID == key) {
-              def._internal.insert(make_pair(
+              def._internal.insert(std::make_pair(
                   internalAttr::id,
                   DocumentId(resolver->getCollectionId(colName), keyVal)));
             } else if (TRI_VOC_ATTRIBUTE_FROM == key) {
-              def._internal.insert(make_pair(
+              def._internal.insert(std::make_pair(
                   internalAttr::from,
                   DocumentId(resolver->getCollectionId(colName), keyVal)));
             } else if (TRI_VOC_ATTRIBUTE_TO == key) {
-              def._internal.insert(make_pair(
+              def._internal.insert(std::make_pair(
                   internalAttr::to,
                   DocumentId(resolver->getCollectionId(colName), keyVal)));
             } else {
@@ -152,7 +151,7 @@ void ExampleMatcher::fillExampleDefinition(
     char const* _key = strchr(example->_value._string.data, '/');
     if (_key != nullptr) {
       _key += 1;
-      def._internal.insert(make_pair(internalAttr::key, DocumentId(0, _key)));
+      def._internal.insert(std::make_pair(internalAttr::key, DocumentId(0, _key)));
       return;
     }
     THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
@@ -184,23 +183,23 @@ void ExampleMatcher::fillExampleDefinition(
           std::string keyVal(jsonValue->_value._string.data);
           if (TRI_VOC_ATTRIBUTE_KEY == key) {
             def._internal.insert(
-                make_pair(internalAttr::key, DocumentId(0, keyVal)));
+                std::make_pair(internalAttr::key, DocumentId(0, keyVal)));
           } else if (TRI_VOC_ATTRIBUTE_REV == key) {
             def._internal.insert(
-                make_pair(internalAttr::rev, DocumentId(0, keyVal)));
+                std::make_pair(internalAttr::rev, DocumentId(0, keyVal)));
           } else {
             std::string colName = keyVal.substr(0, keyVal.find("/"));
             keyVal = keyVal.substr(keyVal.find("/") + 1, keyVal.length());
             if (TRI_VOC_ATTRIBUTE_ID == key) {
-              def._internal.insert(make_pair(
+              def._internal.insert(std::make_pair(
                   internalAttr::id,
                   DocumentId(resolver->getCollectionId(colName), keyVal)));
             } else if (TRI_VOC_ATTRIBUTE_FROM == key) {
-              def._internal.insert(make_pair(
+              def._internal.insert(std::make_pair(
                   internalAttr::from,
                   DocumentId(resolver->getCollectionId(colName), keyVal)));
             } else if (TRI_VOC_ATTRIBUTE_TO == key) {
-              def._internal.insert(make_pair(
+              def._internal.insert(std::make_pair(
                   internalAttr::to,
                   DocumentId(resolver->getCollectionId(colName), keyVal)));
             } else {
@@ -313,7 +312,7 @@ ExampleMatcher::ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
         ExampleMatcher::fillExampleDefinition(TRI_LookupArrayJson(example, i),
                                               resolver, def);
         definitions.emplace_back(std::move(def));
-      } catch (triagens::basics::Exception& e) {
+      } catch (arangodb::basics::Exception& e) {
         if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
           CleanupShapes(def._values);
           ExampleMatcher::cleanup();
@@ -354,7 +353,7 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       // Match _rev
       it = def._internal.find(internalAttr::rev);
       if (it != def._internal.end()) {
-        if (triagens::basics::StringUtils::uint64(it->second.key) !=
+        if (arangodb::basics::StringUtils::uint64(it->second.key) !=
             mptr->_rid) {
           goto nextExample;
         }
@@ -372,6 +371,9 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       // Match _to
       it = def._internal.find(internalAttr::to);
       if (it != def._internal.end()) {
+        if (! TRI_IS_EDGE_MARKER(mptr)) {
+          goto nextExample;
+        }
         if (it->second.cid != TRI_EXTRACT_MARKER_TO_CID(mptr)) {
           goto nextExample;
         }
@@ -383,6 +385,9 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       // Match _from
       it = def._internal.find(internalAttr::from);
       if (it != def._internal.end()) {
+        if (! TRI_IS_EDGE_MARKER(mptr)) {
+          goto nextExample;
+        }
         if (it->second.cid != TRI_EXTRACT_MARKER_FROM_CID(mptr)) {
           goto nextExample;
         }

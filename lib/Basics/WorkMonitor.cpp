@@ -34,7 +34,7 @@
 #include <boost/lockfree/queue.hpp>
 
 using namespace arangodb;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief singleton
@@ -129,6 +129,7 @@ static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
     case WorkType::THREAD:
       b->add("type", VPackValue("thread"));
       b->add("name", VPackValue(desc->_data.thread->name()));
+      b->add("number", VPackValue(desc->_data.thread->threadNumber()));
       b->add("status", VPackValue(VPackValueType::Object));
       desc->_data.thread->addStatus(b);
       b->close();
@@ -151,18 +152,12 @@ static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
     : _type(type), _destroy(true), _prev(prev) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
-WorkMonitor::WorkMonitor() : Thread("Work Monitor"), _stopping(false) {}
+WorkMonitor::WorkMonitor() : Thread("WorkMonitor"), _stopping(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty WorkDescription
@@ -341,13 +336,14 @@ void WorkMonitor::requestWorkOverview(uint64_t taskId) {
   WORK_OVERVIEW.push(taskId);
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief the main event loop, wait for requests and delete old descriptions
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::run() {
-  const uint32_t maxSleep = 100 * 1000;
-  const uint32_t minSleep = 100;
+  uint32_t const maxSleep = 100 * 1000;
+  uint32_t const minSleep = 100;
   uint32_t s = minSleep;
 
   // clean old entries and create summary if requested
@@ -375,6 +371,8 @@ void WorkMonitor::run() {
         VPackBuilder b;
 
         b.add(VPackValue(VPackValueType::Object));
+
+        b.add("time", VPackValue(TRI_microtime()));
         b.add("work", VPackValue(VPackValueType::Array));
 
         {
@@ -434,26 +432,14 @@ void WorkMonitor::run() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
 CustomWorkStack::CustomWorkStack(char const* type, char const* text,
                                  size_t length) {
   WorkMonitor::pushCustom(type, text, length);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
 CustomWorkStack::CustomWorkStack(char const* type, uint64_t id) {
   WorkMonitor::pushCustom(type, id);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 CustomWorkStack::~CustomWorkStack() { WorkMonitor::popCustom(); }
 

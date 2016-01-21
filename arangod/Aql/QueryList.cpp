@@ -29,10 +29,10 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
-QueryEntry::QueryEntry(triagens::aql::Query const* query, double started)
+QueryEntry::QueryEntry(arangodb::aql::Query const* query, double started)
     : query(query), started(started) {}
 
 
@@ -216,7 +216,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
     auto entry = (*it).second;
     queryString.assign(entry->query->queryString(),
                        entry->query->queryLength());
-    const_cast<triagens::aql::Query*>(entry->query)->killed(true);
+    const_cast<arangodb::aql::Query*>(entry->query)->killed(true);
   }
 
   // log outside the lock

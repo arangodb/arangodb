@@ -29,11 +29,11 @@
 #include "GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 using namespace std;
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,7 +410,7 @@ void SimpleHttpClient::setUserNamePassword(std::string const& prefix,
                                            std::string const& username,
                                            std::string const& password) {
   std::string value =
-      triagens::basics::StringUtils::encodeBase64(username + ":" + password);
+      arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
 
   _pathToBasicAuth.push_back(make_pair(prefix, value));
 }
@@ -850,17 +850,17 @@ void SimpleHttpClient::processChunkedBody() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult* result) {
-  triagens::basics::StringBuffer const& body = result->getBody();
+  arangodb::basics::StringBuffer const& body = result->getBody();
   std::string details;
 
   std::unique_ptr<TRI_json_t> json(
-      triagens::basics::JsonHelper::fromString(body.c_str(), body.length()));
+      arangodb::basics::JsonHelper::fromString(body.c_str(), body.length()));
 
   if (json != nullptr) {
     std::string const errorMessage =
-        triagens::basics::JsonHelper::getStringValue(json.get(), "errorMessage",
+        arangodb::basics::JsonHelper::getStringValue(json.get(), "errorMessage",
                                                      "");
-    int errorNum = triagens::basics::JsonHelper::getNumericValue<int>(
+    int errorNum = arangodb::basics::JsonHelper::getNumericValue<int>(
         json.get(), "errorNum", 0);
 
     if (errorMessage != "" && errorNum > 0) {
@@ -870,7 +870,7 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult* result) {
   }
 
   return "got error from server: HTTP " +
-         triagens::basics::StringUtils::itoa(result->getHttpReturnCode()) +
+         arangodb::basics::StringUtils::itoa(result->getHttpReturnCode()) +
          " (" + result->getHttpReturnMessage() + ")" + details;
 }
 
@@ -898,13 +898,13 @@ std::string SimpleHttpClient::getServerVersion() {
 
     if (json != nullptr) {
       // look up "server" value
-      std::string const server = triagens::basics::JsonHelper::getStringValue(
+      std::string const server = arangodb::basics::JsonHelper::getStringValue(
           json.get(), "server", "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
         // look up "version" value
-        version = triagens::basics::JsonHelper::getStringValue(json.get(),
+        version = arangodb::basics::JsonHelper::getStringValue(json.get(),
                                                                "version", "");
       }
     }

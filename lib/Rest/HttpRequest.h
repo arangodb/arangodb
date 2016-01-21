@@ -37,7 +37,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +119,7 @@ class HttpRequest {
   /// @brief append the request method string to a string buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  static void appendMethod(HttpRequestType, triagens::basics::StringBuffer*);
+  static void appendMethod(HttpRequestType, arangodb::basics::StringBuffer*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the expected content-type for a subpart

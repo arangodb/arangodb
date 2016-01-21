@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 #include "v8-vocbaseprivate.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
@@ -65,17 +63,14 @@
 #include <unicode/dtfmtsym.h>
 
 #include <v8.h>
+#include <iostream>
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::arango::traverser;
-using namespace triagens::rest;
 using namespace arangodb;
-
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::traverser;
 
 extern bool TRI_ENABLE_STATISTICS;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_t
@@ -100,10 +95,10 @@ int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
 
 struct CollectionDitchInfo {
-  triagens::arango::DocumentDitch* ditch;
+  arangodb::DocumentDitch* ditch;
   TRI_transaction_collection_t* col;
 
-  CollectionDitchInfo(triagens::arango::DocumentDitch* ditch,
+  CollectionDitchInfo(arangodb::DocumentDitch* ditch,
                       TRI_transaction_collection_t* col)
       : ditch(ditch), col(col) {}
 };
@@ -141,7 +136,7 @@ static v8::Handle<v8::Object> WrapClass(
 /// @brief executes a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -371,7 +366,7 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
         TRI_V8_RETURN(result);
       }
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   } catch (std::bad_alloc const&) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -399,7 +394,7 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock walPropertiesSet
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_PropertiesWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -407,7 +402,7 @@ static void JS_PropertiesWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("properties(<object>)");
   }
 
-  auto l = triagens::wal::LogfileManager::instance();
+  auto l = arangodb::wal::LogfileManager::instance();
 
   if (args.Length() == 1) {
     // set the properties
@@ -473,7 +468,7 @@ static void JS_PropertiesWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock walFlush
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_FlushWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -520,7 +515,7 @@ static void JS_FlushWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_RETURN_TRUE();
   }
 
-  res = triagens::wal::LogfileManager::instance()->flush(
+  res = arangodb::wal::LogfileManager::instance()->flush(
       waitForSync, waitForCollector, writeShutdownFile);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -537,7 +532,7 @@ static void JS_FlushWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_WaitCollectorWal(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -570,7 +565,7 @@ static void JS_WaitCollectorWal(
     timeout = TRI_ObjectToDouble(args[1]);
   }
 
-  int res = triagens::wal::LogfileManager::instance()->waitForCollectorQueue(
+  int res = arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
       col->_cid, timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -586,12 +581,12 @@ static void JS_WaitCollectorWal(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TransactionsWal(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   auto const& info =
-      triagens::wal::LogfileManager::instance()->runningTransactions();
+      arangodb::wal::LogfileManager::instance()->runningTransactions();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -629,7 +624,7 @@ static void JS_TransactionsWal(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NormalizeString(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -646,7 +641,7 @@ static void JS_NormalizeString(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_EnableNativeBacktraces(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -654,7 +649,7 @@ static void JS_EnableNativeBacktraces(
     TRI_V8_THROW_EXCEPTION_USAGE("ENABLE_NATIVE_BACKTRACES(<value>)");
   }
 
-  triagens::basics::Exception::SetVerbose(TRI_ObjectToBoolean(args[0]));
+  arangodb::basics::Exception::SetVerbose(TRI_ObjectToBoolean(args[0]));
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -666,7 +661,7 @@ extern V8LineEditor* theConsole;
 /// @brief starts a debugging console
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Debug(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_Debug(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
 
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING("debug loop"));
@@ -718,7 +713,7 @@ static void JS_Debug(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief compare two UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CompareString(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CompareString(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -747,7 +742,7 @@ static void JS_CompareString(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetIcuTimezones(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -780,7 +775,7 @@ static void JS_GetIcuTimezones(
 /// @brief get list of locales
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_GetIcuLocales(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_GetIcuLocales(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -809,7 +804,7 @@ static void JS_GetIcuLocales(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief format datetime
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_FormatDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -869,7 +864,7 @@ static void JS_FormatDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief parse datetime
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ParseDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -930,33 +925,24 @@ static void JS_ParseDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ReloadAuthCoordinator(TRI_vocbase_t* vocbase) {
-  TRI_json_t* json = nullptr;
-  bool result;
+  VPackBuilder builder;
+  builder.openArray();
 
-  int res = usersOnCoordinator(std::string(vocbase->_name), json, 60.0);
+  int res = usersOnCoordinator(std::string(vocbase->_name), builder, 60.0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ASSERT(json != nullptr);
-
-    std::shared_ptr<VPackBuilder> transformed =
-        triagens::basics::JsonHelper::toVelocyPack(json);
-    result = TRI_PopulateAuthInfo(vocbase, transformed->slice());
-  } else {
-    result = false;
+    builder.close();
+    return TRI_PopulateAuthInfo(vocbase, builder.slice());
   }
 
-  if (json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  }
-
-  return result;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the authentication info from collection _users
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ReloadAuth(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -988,7 +974,7 @@ static void JS_ReloadAuth(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief parses an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ParseAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1010,9 +996,9 @@ static void JS_ParseAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& queryString = TRI_ObjectToString(args[0]);
 
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, vocbase,
+  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
                              queryString.c_str(), queryString.size(), nullptr,
-                             nullptr, triagens::aql::PART_MAIN);
+                             nullptr, arangodb::aql::PART_MAIN);
 
   auto parseResult = query.parse();
 
@@ -1062,7 +1048,7 @@ static void JS_ParseAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// this function is called from aql.js
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_WarningAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1084,7 +1070,7 @@ static void JS_WarningAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
     int code = static_cast<int>(TRI_ObjectToInt64(args[0]));
     std::string const&& message = TRI_ObjectToString(args[1]);
 
-    auto query = static_cast<triagens::aql::Query*>(v8g->_query);
+    auto query = static_cast<arangodb::aql::Query*>(v8g->_query);
     query->registerWarning(code, message.c_str());
   }
 
@@ -1096,7 +1082,7 @@ static void JS_WarningAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief explains an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExplainAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1143,10 +1129,10 @@ static void JS_ExplainAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, vocbase,
+  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
                              queryString.c_str(), queryString.size(),
                              parameters.release(), options.release(),
-                             triagens::aql::PART_MAIN);
+                             arangodb::aql::PART_MAIN);
 
   auto queryResult = query.explain();
 
@@ -1193,7 +1179,7 @@ static void JS_ExplainAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief executes an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExecuteAqlJson(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1224,14 +1210,14 @@ static void JS_ExecuteAqlJson(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, vocbase,
+  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
                              Json(TRI_UNKNOWN_MEM_ZONE, queryjson.release()),
-                             options.get(), triagens::aql::PART_MAIN);
+                             options.get(), arangodb::aql::PART_MAIN);
 
   options.release();
 
   auto queryResult = query.execute(
-      static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+      static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
@@ -1269,7 +1255,7 @@ static void JS_ExecuteAqlJson(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief executes an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExecuteAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1317,16 +1303,16 @@ static void JS_ExecuteAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, vocbase,
+  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
                              queryString.c_str(), queryString.size(),
                              parameters.get(), options.get(),
-                             triagens::aql::PART_MAIN);
+                             arangodb::aql::PART_MAIN);
 
   options.release();
   parameters.release();
 
   auto queryResult = query.executeV8(
-      isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED) {
@@ -1370,7 +1356,7 @@ static void JS_ExecuteAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesPropertiesAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1380,7 +1366,7 @@ static void JS_QueriesPropertiesAql(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
 
   if (args.Length() > 1) {
@@ -1442,7 +1428,7 @@ static void JS_QueriesPropertiesAql(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesCurrentAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1456,7 +1442,7 @@ static void JS_QueriesCurrentAql(
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CURRENT()");
   }
 
-  auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
 
   try {
@@ -1489,7 +1475,7 @@ static void JS_QueriesCurrentAql(
 /// @brief returns the list of slow running queries or clears the list
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_QueriesSlowAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1499,7 +1485,7 @@ static void JS_QueriesSlowAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
 
   if (args.Length() == 1) {
@@ -1541,7 +1527,7 @@ static void JS_QueriesSlowAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief kills an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_QueriesKillAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_QueriesKillAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1557,7 +1543,7 @@ static void JS_QueriesKillAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   auto id = TRI_ObjectToUInt64(args[0], true);
 
-  auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
 
   auto res = queryList->kill(id);
@@ -1575,13 +1561,13 @@ static void JS_QueriesKillAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryIsKilledAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
   if (v8g->_query != nullptr &&
-      static_cast<triagens::aql::Query*>(v8g->_query)->killed()) {
+      static_cast<arangodb::aql::Query*>(v8g->_query)->killed()) {
     TRI_V8_RETURN_TRUE();
   }
 
@@ -1594,7 +1580,7 @@ static void JS_QueryIsKilledAql(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryCachePropertiesAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1608,7 +1594,7 @@ static void JS_QueryCachePropertiesAql(
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_PROPERTIES(<properties>)");
   }
 
-  auto queryCache = triagens::aql::QueryCache::instance();
+  auto queryCache = arangodb::aql::QueryCache::instance();
 
   if (args.Length() == 1) {
     // called with options
@@ -1644,7 +1630,7 @@ static void JS_QueryCachePropertiesAql(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryCacheInvalidateAql(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1658,7 +1644,7 @@ static void JS_QueryCacheInvalidateAql(
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_INVALIDATE()");
   }
 
-  triagens::aql::QueryCache::instance()->invalidate();
+  arangodb::aql::QueryCache::instance()->invalidate();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1667,7 +1653,7 @@ static void JS_QueryCacheInvalidateAql(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ThrowCollectionNotLoaded(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1698,7 +1684,7 @@ static v8::Local<v8::String> VertexIdToString(
     v8::Isolate* isolate, CollectionNameResolver const* resolver,
     VertexId const& id) {
   return TRI_V8_STD_STRING(
-      (resolver->getCollectionName(id.cid) + "/" + string(id.key)));
+      (resolver->getCollectionName(id.cid) + "/" + std::string(id.key)));
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms EdgeId to v8String
@@ -1708,7 +1694,7 @@ static v8::Local<v8::String> EdgeIdToString(
     v8::Isolate* isolate, CollectionNameResolver const* resolver,
     EdgeId const& id) {
   return TRI_V8_STD_STRING(
-      (resolver->getCollectionName(id.cid) + "/" + string(id.key)));
+      (resolver->getCollectionName(id.cid) + "/" + std::string(id.key)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2082,7 +2068,7 @@ class AttributeWeightCalculator {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryShortestPath(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2225,7 +2211,7 @@ static void JS_QueryShortestPath(
   std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
   std::vector<VertexCollectionInfo*> vertexCollectionInfos;
 
-  triagens::basics::ScopeGuard guard{
+  arangodb::basics::ScopeGuard guard{
       []() -> void {},
       [&edgeCollectionInfos, &vertexCollectionInfos]() -> void {
         for (auto& p : edgeCollectionInfos) {
@@ -2383,7 +2369,7 @@ static void JS_QueryShortestPath(
 
 static v8::Handle<v8::Value> VertexIdsToV8(
     v8::Isolate* isolate, ExplicitTransaction* trx,
-    CollectionNameResolver const* resolver, unordered_set<VertexId>& ids,
+    CollectionNameResolver const* resolver, std::unordered_set<VertexId>& ids,
     std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
     bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
@@ -2410,7 +2396,7 @@ static v8::Handle<v8::Value> VertexIdsToV8(
 /// @brief Executes a Neighbors computation
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2548,7 +2534,7 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
   std::vector<VertexCollectionInfo*> vertexCollectionInfos;
 
-  triagens::basics::ScopeGuard guard{
+  arangodb::basics::ScopeGuard guard{
       []() -> void {},
       [&edgeCollectionInfos, &vertexCollectionInfos]() -> void {
         for (auto& p : edgeCollectionInfos) {
@@ -2644,7 +2630,7 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief sleeps and checks for query abortion in between
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_QuerySleepAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_QuerySleepAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2654,7 +2640,7 @@ static void JS_QuerySleepAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_GET_GLOBALS();
-  triagens::aql::Query* query = static_cast<triagens::aql::Query*>(v8g->_query);
+  arangodb::aql::Query* query = static_cast<arangodb::aql::Query*>(v8g->_query);
 
   if (query == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_QUERY_NOT_FOUND);
@@ -2777,16 +2763,38 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
     // check if the collection is from the same database
     if (collection != nullptr && collection->_vocbase == vocbase) {
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-      TRI_vocbase_col_status_e status = collection->_status;
-      TRI_voc_cid_t cid = collection->_cid;
-      uint32_t internalVersion = collection->_internalVersion;
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      TRI_GET_GLOBALS();
+
+      bool lock = true;
+      auto ctx = static_cast<arangodb::V8TransactionContext*>(
+          v8g->_transactionContext);
+      if (ctx != nullptr && ctx->getParentTransaction() != nullptr) {
+        TRI_transaction_t* trx = ctx->getParentTransaction();
+        if (TRI_IsContainedCollectionTransaction(trx, collection->_cid)) {
+          lock = false;
+        }
+      }
+        
+      TRI_vocbase_col_status_e status;
+      TRI_voc_cid_t cid;
+      uint32_t internalVersion;
+
+      if (lock) {
+        TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+        status = collection->_status;
+        cid = collection->_cid;
+        internalVersion = collection->_internalVersion;
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      }
+      else {
+        status = collection->_status;
+        cid = collection->_cid;
+        internalVersion = collection->_internalVersion;
+      }
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
           collection->_isLocal) {
-        TRI_GET_GLOBALS();
 
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);
@@ -2864,7 +2872,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 /// @brief was docuBlock databaseVersion
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_VersionServer(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2875,7 +2883,7 @@ static void JS_VersionServer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock databasePath
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_PathDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2892,7 +2900,7 @@ static void JS_PathDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock databaseId
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_IdDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2909,7 +2917,7 @@ static void JS_IdDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief was docuBlock databaseName
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_NameDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2927,7 +2935,7 @@ static void JS_NameDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsSystemDatabase(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2944,7 +2952,7 @@ static void JS_IsSystemDatabase(
 /// @brief was docuBlock databaseUseDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_UseDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3005,7 +3013,7 @@ static void JS_UseDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ListDatabasesCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3035,7 +3043,7 @@ static void ListDatabasesCoordinator(
         headers["Authentication"] = TRI_ObjectToString(args[2]);
         auto res =
             cc->syncRequest("", 0, "server:" + sid,
-                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                            arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
                             "/_api/database/user", std::string(""), headers, 0.0);
 
         if (res->status == CL_COMM_SENT) {
@@ -3075,7 +3083,7 @@ static void ListDatabasesCoordinator(
 /// @brief was docuBlock databaseListDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListDatabases(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ListDatabases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3142,7 +3150,7 @@ static void JS_ListDatabases(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CreateDatabaseCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3256,7 +3264,7 @@ static void CreateDatabaseCoordinator(
 /// @brief was docuBlock databaseCreateDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CreateDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3399,7 +3407,7 @@ static void JS_CreateDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DropDatabaseCoordinator(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3422,7 +3430,7 @@ static void DropDatabaseCoordinator(
   std::string errorMsg;
 
   // clear local sid cache for database
-  triagens::arango::VocbaseContext::clearSid(name);
+  arangodb::VocbaseContext::clearSid(name);
 
   int res = ci->dropDatabaseCoordinator(name, errorMsg, 120.0);
 
@@ -3453,7 +3461,7 @@ static void DropDatabaseCoordinator(
 /// @brief was docuBlock databaseDropDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_DropDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3491,7 +3499,7 @@ static void JS_DropDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   // clear local sid cache for the database
-  triagens::arango::VocbaseContext::clearSid(name);
+  arangodb::VocbaseContext::clearSid(name);
 
   // run the garbage collection in case the database held some objects which can
   // now be freed
@@ -3508,7 +3516,7 @@ static void JS_DropDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @FUN{LIST_ENDPOINTS}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListEndpoints(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3565,7 +3573,7 @@ static void JS_ListEndpoints(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseVertex(const v8::FunctionCallbackInfo<v8::Value>& args,
+int TRI_ParseVertex(v8::FunctionCallbackInfo<v8::Value> const& args,
                     CollectionNameResolver const* resolver, TRI_voc_cid_t& cid,
                     std::unique_ptr<char[]>& key,
                     v8::Handle<v8::Value> const val) {
@@ -3678,9 +3686,9 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate,
-                         triagens::arango::ApplicationV8* applicationV8,
+                         arangodb::ApplicationV8* applicationV8,
                          v8::Handle<v8::Context> context,
-                         triagens::aql::QueryRegistry* queryRegistry,
+                         arangodb::aql::QueryRegistry* queryRegistry,
                          TRI_server_t* server, TRI_vocbase_t* vocbase,
                          JSLoader* loader, size_t threadNumber) {
   v8::HandleScope scope(isolate);

@@ -30,7 +30,7 @@
 #include <iterator>
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 
@@ -665,7 +665,7 @@ TRI_json_t* ProgramOptionsDescription::getDefault(
 /// @brief computes all names
 ////////////////////////////////////////////////////////////////////////////////
 
-void ProgramOptionsDescription::fillAllNames(const std::set<std::string>& help,
+void ProgramOptionsDescription::fillAllNames(std::set<std::string> const& help,
                                              std::map<std::string, std::string>& names) const {
   for (std::vector<std::string>::const_iterator i = _optionNames.begin();
        i != _optionNames.end(); ++i) {
@@ -763,8 +763,8 @@ void ProgramOptionsDescription::fillAllNames(const std::set<std::string>& help,
 /// @brief returns the usage message for given sections
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string ProgramOptionsDescription::usageString(const std::set<std::string>& help,
-                                              const std::map<std::string, std::string>& names,
+std::string ProgramOptionsDescription::usageString(std::set<std::string> const& help,
+                                              std::map<std::string, std::string> const& names,
                                               size_t oWidth) const {
   // extract help-able sub-descriptions
   std::vector<ProgramOptionsDescription> subDescriptions;
@@ -818,7 +818,7 @@ std::string ProgramOptionsDescription::usageString(const std::set<std::string>& 
 /// @brief constructs the usage string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string ProgramOptionsDescription::usageString(const std::map<std::string, std::string>& names,
+std::string ProgramOptionsDescription::usageString(std::map<std::string, std::string> const& names,
                                               size_t oWidth) const {
   // the usage string without a headline
   std::string desc = "";

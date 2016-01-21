@@ -70,7 +70,6 @@ function optimizerAggregateTestSuite () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT WITH COUNT g AGGREGATE length = LENGTH(i) RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE WITH COUNT RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE length = LENGTH(i) WITH COUNT RETURN 1");
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE length = LENGTH(i) INTO group RETURN 1");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,7 +398,7 @@ function optimizerAggregateTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAggregateShaped : function () {
-      var query = "FOR j IN " + c.name() + " COLLECT doc = j AGGREGATE length = LENGTH(j) RETURN doc";
+      var query = "FOR j IN " + c.name() + " COLLECT doc = j AGGREGATE length = LENGTH(j) RETURN { doc, length }";
 
       var results = AQL_EXECUTE(query);
       // expectation is that we get 1000 different docs and do not crash (issue #1265)

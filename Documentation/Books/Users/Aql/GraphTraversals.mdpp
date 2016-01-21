@@ -34,6 +34,7 @@ Now it walks to one of the direct neighbors of **A**, say **B** (NOTE: ordering 
 ![traversal graph step 2](../Graphs/traversal_graph2.png)
 
 The query will remember the state (red circle) and will emit the first result **A** -> **B** (black box).
+This will also prevent the traverser to be trapped in cycles.
 Now again it will visit one of the direct neighbors of **B**, say **E**:
 
 ![traversal graph step 3](../Graphs/traversal_graph3.png)

@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/EnumerateCollectionBlock.h"
+#include "EnumerateCollectionBlock.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/CollectionScanner.h"
@@ -29,11 +29,10 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::arango;
-using namespace triagens::aql;
 
-using Json = triagens::basics::Json;
+using namespace arangodb::aql;
+
+using Json = arangodb::basics::Json;
 
 
 EnumerateCollectionBlock::EnumerateCollectionBlock(
@@ -205,7 +204,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   inheritRegisters(cur, res.get(), _pos);
 
   // set our collection for our output register
-  res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs),
+  res->setDocumentCollection(static_cast<arangodb::aql::RegisterId>(curRegs),
                              _trx->documentCollection(_collection->cid()));
 
   for (size_t j = 0; j < toSend; j++) {
@@ -222,7 +221,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setShaped(j, static_cast<triagens::aql::RegisterId>(curRegs),
+      res->setShaped(j, static_cast<arangodb::aql::RegisterId>(curRegs),
                      reinterpret_cast<TRI_df_marker_t const*>(
                          _documents[_posInDocuments].getDataPtr()));
       // No harm done, if the setValue throws!

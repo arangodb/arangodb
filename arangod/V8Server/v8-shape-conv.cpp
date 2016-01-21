@@ -33,7 +33,7 @@
 #include "VocBase/VocShaper.h"
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 // #define DEBUG_JSON_SHAPER 1
 

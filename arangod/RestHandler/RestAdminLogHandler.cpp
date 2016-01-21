@@ -28,10 +28,10 @@
 #include "Rest/HttpRequest.h"
 
 using namespace std;
-using namespace triagens;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::admin;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::admin;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,9 +62,6 @@ RestAdminLogHandler::RestAdminLogHandler(rest::HttpRequest* request)
     : RestBaseHandler(request) {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestAdminLogHandler::isDirect() const { return true; }
 

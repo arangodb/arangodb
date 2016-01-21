@@ -29,7 +29,7 @@
 #include "Aql/types.h"
 #include <v8.h>
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
@@ -72,7 +72,7 @@ struct V8Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue execute(v8::Isolate* isolate, Query* query,
-                   triagens::arango::AqlTransaction*, AqlItemBlock const*,
+                   arangodb::AqlTransaction*, AqlItemBlock const*,
                    size_t, std::vector<Variable const*> const&,
                    std::vector<RegisterId> const&);
 

@@ -129,7 +129,7 @@ void opensslCleanup() {
 // initialization
 // -----------------------------------------------------------------------------
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 void InitializeRest(int argc, char* argv[]) {
   TRIAGENS_BASICS_INITIALIZE(argc, argv);

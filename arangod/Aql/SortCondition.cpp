@@ -24,7 +24,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/AstNode.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 
@@ -62,10 +62,10 @@ SortCondition::SortCondition(
     auto node = _expressions[i].first;
 
     if (node != nullptr && node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      std::vector<triagens::basics::AttributeName> fieldNames;
+      std::vector<arangodb::basics::AttributeName> fieldNames;
       while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         fieldNames.emplace_back(
-            triagens::basics::AttributeName(node->getStringValue()));
+            arangodb::basics::AttributeName(node->getStringValue()));
         node = node->getMember(0);
       }
       if (node->type == NODE_TYPE_REFERENCE) {
@@ -79,7 +79,7 @@ SortCondition::SortCondition(
     if (!handled) {
       _fields.emplace_back(
           std::pair<Variable const*,
-                    std::vector<triagens::basics::AttributeName>>());
+                    std::vector<arangodb::basics::AttributeName>>());
       _onlyAttributeAccess = false;
     }
   }
@@ -119,10 +119,10 @@ SortCondition::SortCondition(
       auto node = (*it).second;
 
       if (node != nullptr && node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        std::vector<triagens::basics::AttributeName> fieldNames;
+        std::vector<arangodb::basics::AttributeName> fieldNames;
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           fieldNames.emplace_back(
-              triagens::basics::AttributeName(node->getStringValue()));
+              arangodb::basics::AttributeName(node->getStringValue()));
           node = node->getMember(0);
         }
 
@@ -138,7 +138,7 @@ SortCondition::SortCondition(
     if (!handled) {
       _fields.emplace_back(
           std::pair<Variable const*,
-                    std::vector<triagens::basics::AttributeName>>());
+                    std::vector<arangodb::basics::AttributeName>>());
       _onlyAttributeAccess = false;
     }
   }
@@ -162,7 +162,7 @@ SortCondition::~SortCondition() {}
 
 size_t SortCondition::coveredAttributes(
     Variable const* reference,
-    std::vector<std::vector<triagens::basics::AttributeName>> const&
+    std::vector<std::vector<arangodb::basics::AttributeName>> const&
         indexAttributes) const {
   size_t numAttributes = 0;
 

@@ -40,12 +40,12 @@ db._executeTransaction({
     read: "users"
   },
   action: function () {
-    // execute an AQL query that traverses a graph starting at a "users" vertex. 
-    // it is yet unknown into which other collections the query will traverse 
+    /* execute an AQL query that traverses a graph starting at a "users" vertex. 
+       it is yet unknown into which other collections the query will traverse */
     db._createStatement({ 
       query: "FOR t IN TRAVERSAL(users, connections, "users/1234", "any", { }) RETURN t"
     }).execute().toArray().forEach(function (d) {
-      // ...
+      /* ... */
     });
   }
 });
@@ -66,12 +66,12 @@ db._executeTransaction({
     allowImplicit: false
   },
   action: function () {
-    // the below query will now fail because the collection connections has not 
-    // been specified in the list of collections used by the transaction
+    /* the below query will now fail because the collection connections has not 
+       been specified in the list of collections used by the transaction */
     db._createStatement({ 
       query: "FOR t IN TRAVERSAL(users, connections, "users/1234", "any", { }) RETURN t"
     }).execute().toArray().forEach(function (d) {
-      // ...
+      /* ... */
     });
   }
 });
@@ -100,12 +100,12 @@ db._executeTransaction({
   action: function () {
     var db = require("@arangodb").db;
 
-    // write into c1 (announced)
+    /* write into c1 (announced) */
     db.c1.insert({ foo: "bar" });
 
-    // some operation here that takes long to execute...
+    /* some operation here that takes long to execute... */
 
-    // read from c2 (unannounced)
+    /* read from c2 (unannounced) */
     db.c2.toArray();
   }
 });
@@ -122,12 +122,12 @@ db._executeTransaction({
   action: function () {
     var db = require("@arangodb").db;
 
-    // write into c2 (announced)
+    /* write into c2 (announced) */
     db.c2.insert({ bar: "baz" });
     
-    // some operation here that takes long to execute...
+    /* some operation here that takes long to execute... */
     
-    // read from c1 (unannounced)
+    /* read from c1 (unannounced) */
     db.c1.toArray();
   }
 });

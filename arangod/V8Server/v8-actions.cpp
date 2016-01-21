@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
-
 #include "Actions/actions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -47,11 +46,9 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
@@ -63,8 +60,6 @@ static TRI_action_result_t ExecuteActionVocbase(
 ////////////////////////////////////////////////////////////////////////////////
 
 static ApplicationV8* GlobalV8Dealer = nullptr;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action description for V8
@@ -94,9 +89,6 @@ class v8_action_t : public TRI_action_t {
     _callbacks[isolate].Reset(isolate, callback);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, HttpRequest* request,
                               Mutex* dataLock, void** data) {
@@ -184,9 +176,6 @@ class v8_action_t : public TRI_action_t {
     return result;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   bool cancel(Mutex* dataLock, void** data) {
     {
@@ -732,7 +721,7 @@ static TRI_action_result_t ExecuteActionVocbase(
   try {
     callback->Call(callback, 2, args);
     errorCode = TRI_ERROR_NO_ERROR;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     errorCode = ex.code();
     errorMessage = ex.what();
   } catch (std::bad_alloc const&) {
@@ -795,7 +784,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 /// @FUN{internal.defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_DefineAction(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
@@ -861,7 +850,7 @@ static void JS_DefineAction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExecuteGlobalContextFunction(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -896,7 +885,7 @@ static void JS_ExecuteGlobalContextFunction(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetCurrentRequest(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
@@ -915,7 +904,7 @@ static void JS_GetCurrentRequest(
 /// @FUN{internal.rawRequestBody()}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RawRequestBody(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -929,7 +918,7 @@ static void JS_RawRequestBody(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Handle<v8::Value> property = obj->Get(TRI_V8_ASCII_STRING("internals"));
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
-      auto request = static_cast<triagens::rest::HttpRequest*>(e->Value());
+      auto request = static_cast<arangodb::rest::HttpRequest*>(e->Value());
 
       if (request != nullptr) {
         V8Buffer* buffer =
@@ -950,7 +939,7 @@ static void JS_RawRequestBody(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @FUN{internal.rawRequestBody()}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RequestParts(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -964,7 +953,7 @@ static void JS_RequestParts(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Handle<v8::Value> property = obj->Get(TRI_V8_ASCII_STRING("internals"));
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
-      auto request = static_cast<triagens::rest::HttpRequest*>(e->Value());
+      auto request = static_cast<arangodb::rest::HttpRequest*>(e->Value());
 
       char const* beg = request->body();
       char const* end = beg + request->bodySize();
@@ -1119,7 +1108,7 @@ static void JS_RequestParts(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetCurrentResponse(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
@@ -1136,7 +1125,7 @@ static void JS_GetCurrentResponse(
 /// @brief sendChunk
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_SendChunk(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_SendChunk(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1164,7 +1153,7 @@ static void JS_SendChunk(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief createSid
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CreateSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CreateSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1191,7 +1180,7 @@ static void JS_CreateSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief clearSid
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ClearSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ClearSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1217,7 +1206,7 @@ static void JS_ClearSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief accessSid
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_AccessSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_AccessSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1290,7 +1279,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 static bool clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path, // Note: Has to be properly encoded!
-    triagens::rest::HttpRequest::HttpRequestType const& method,
+    arangodb::rest::HttpRequest::HttpRequestType const& method,
     std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1338,7 +1327,7 @@ static bool clusterSendToAllServers(
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugSegfault(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_DebugSegfault(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1367,7 +1356,7 @@ static void JS_DebugSegfault(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static void JS_DebugSetFailAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1389,7 +1378,7 @@ static void JS_DebugSetFailAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      triagens::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
+                                      arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1410,7 +1399,7 @@ static void JS_DebugSetFailAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 static void JS_DebugRemoveFailAt(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1432,7 +1421,7 @@ static void JS_DebugRemoveFailAt(
 
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      triagens::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+                                      arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1443,10 +1432,58 @@ static void JS_DebugRemoveFailAt(
 }
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears all failure points
+///
+/// @FUN{internal.debugClearFailAt()}
+///
+/// Remove all points for intentional system failures
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_DebugClearFailAt(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("debugClearFailAt()");
+  }
+
+// if failure testing is not enabled, this is a no-op
+#ifdef TRI_ENABLE_FAILURE_TESTS
+  TRI_ClearFailurePointsDebugging();
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_GET_GLOBALS();
+
+    if (v8g->_vocbase == nullptr) {
+      TRI_V8_THROW_EXCEPTION_MEMORY();
+    }
+    std::string dbname(v8g->_vocbase->_name);
+
+    int res = clusterSendToAllServers(
+        dbname, "_admin/debug/failat",
+        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE,
+        "");
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
+#endif
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           std::string const& startupPath,
                           std::string const& modules) {
 // debugging functions
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
+                               JS_DebugClearFailAt);
 #ifdef TRI_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),
@@ -1459,6 +1496,4 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_DebugRemoveFailAt);
 #endif
 }
-
-
 

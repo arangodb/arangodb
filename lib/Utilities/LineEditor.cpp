@@ -26,7 +26,7 @@
 #include "Utilities/ShellBase.h"
 
 using namespace std;
-using namespace triagens;
+using namespace arangodb;
 using namespace arangodb;
 
 

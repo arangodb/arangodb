@@ -32,8 +32,7 @@
 struct TRI_document_collection_t;
 struct TRI_vocbase_t;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class CollectionGuard;
 class DocumentDitch;
@@ -100,26 +99,26 @@ class CollectionKeys {
   /// @brief dumps keys into the JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpKeys(triagens::basics::Json&, size_t, size_t) const;
+  void dumpKeys(arangodb::basics::Json&, size_t, size_t) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps documents into the JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpDocs(triagens::basics::Json&, size_t, size_t,
+  void dumpDocs(arangodb::basics::Json&, size_t, size_t,
                 TRI_json_t const*) const;
 
-  void dumpDocs(triagens::basics::Json&, size_t, size_t,
+  void dumpDocs(arangodb::basics::Json&, size_t, size_t,
                 VPackSlice const&) const;
 
   
  private:
   struct TRI_vocbase_t* _vocbase;
-  triagens::arango::CollectionGuard* _guard;
+  arangodb::CollectionGuard* _guard;
   struct TRI_document_collection_t* _document;
-  triagens::arango::DocumentDitch* _ditch;
+  arangodb::DocumentDitch* _ditch;
   std::string const _name;
-  triagens::arango::CollectionNameResolver _resolver;
+  arangodb::CollectionNameResolver _resolver;
   TRI_voc_tick_t _blockerId;
   std::vector<TRI_df_marker_t const*>* _markers;
 
@@ -130,8 +129,6 @@ class CollectionKeys {
   bool _isUsed;
 };
 }
-}
 
 #endif
-
 

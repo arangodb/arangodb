@@ -36,20 +36,13 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 RestImportHandler::RestImportHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request), _onDuplicateAction(DUPLICATE_ERROR) {}
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestImportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
@@ -154,7 +147,7 @@ bool RestImportHandler::extractComplete() const {
 /// @brief create a position string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string RestImportHandler::positionise(size_t i) const {
+std::string RestImportHandler::positionize(size_t i) const {
   return std::string("at position " + StringUtils::itoa(i) + ": ");
 }
 
@@ -183,13 +176,13 @@ std::string RestImportHandler::buildParseError(size_t i,
       part = part.substr(0, 255) + "...";
     }
 
-    return positionise(i) +
+    return positionize(i) +
            "invalid JSON type (expecting object, probably parse error), "
            "offending context: " +
            part;
   }
 
-  return positionise(i) +
+  return positionize(i) +
          "invalid JSON type (expecting object, probably parse error)";
 }
 
@@ -212,7 +205,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
     }
 
     std::string errorMsg =
-        positionise(i) +
+        positionize(i) +
         "invalid JSON type (expecting object), offending document: " + part;
 
     registerError(result, errorMsg);
@@ -228,11 +221,11 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
     std::string to;
 
     try {
-      from = triagens::basics::VelocyPackHelper::checkAndGetStringValue(
+      from = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
           slice, TRI_VOC_ATTRIBUTE_FROM);
-      to = triagens::basics::VelocyPackHelper::checkAndGetStringValue(
+      to = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
           slice, TRI_VOC_ATTRIBUTE_TO);
-    } catch (triagens::basics::Exception const&) {
+    } catch (arangodb::basics::Exception const&) {
       std::string part = VPackDumper::toString(slice);
       if (part.size() > 255) {
         // UTF-8 chars in string will be escaped so we can truncate it at any
@@ -241,7 +234,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
       }
 
       std::string errorMsg =
-          positionise(i) +
+          positionize(i) +
           "missing '_from' or '_to' attribute, offending document: " + part;
 
       registerError(result, errorMsg);
@@ -311,7 +304,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 
           if (old != nullptr) {
             std::unique_ptr<TRI_json_t> json(
-                triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+                arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
             std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(
                 TRI_UNKNOWN_MEM_ZONE, old.get(), json.get(), false, true));
 
@@ -353,7 +346,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
     }
 
     std::string errorMsg =
-        positionise(i) + "creating document failed with error '" +
+        positionize(i) + "creating document failed with error '" +
         TRI_errno_string(res) + "', offending document: " + part;
 
     registerError(result, errorMsg);
@@ -878,7 +871,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
     VPackSlice const& keys, VPackSlice const& values, std::string& errorMsg,
     size_t lineNumber) {
   if (!values.isArray()) {
-    errorMsg = positionise(lineNumber) + "no valid JSON array data";
+    errorMsg = positionize(lineNumber) + "no valid JSON array data";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
   }
 
@@ -887,8 +880,8 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
   VPackValueLength const m = values.length();
 
   if (n != m) {
-    errorMsg = positionise(lineNumber) + "wrong number of JSON values (got " +
-               to_string(m) + ", expected " + to_string(n) + ")";
+    errorMsg = positionize(lineNumber) + "wrong number of JSON values (got " +
+               std::to_string(m) + ", expected " + std::to_string(n) + ")";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
   }
 
