@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, globalstrict: true */
-/*global describe, beforeEach, it, expect*/
+/*global describe, beforeEach, it*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Spec for foxx manager
@@ -31,6 +31,11 @@
 'use strict';
 
 var FoxxManager = require("@arangodb/foxx/manager");
+var expect = require('expect.js');
+
+FoxxManager.update();
+
+var list = FoxxManager.availableJson("match-engines");
 
 describe("Foxx Manager", function() {
 
@@ -38,80 +43,89 @@ describe("Foxx Manager", function() {
     FoxxManager.update();
   });
 
-  it("should fetch apps from the appstore", function() {
-    var list = FoxxManager.availableJson("match-engines");
-    var i, app, l = list.length;
-    expect(l).toBeGreaterThan(0);
-    for (i = 0; i < l; ++i) {
-      app = list[i];
-      expect(app.name).toBeDefined("App has no name");
-      expect(app.latestVersion).toBeDefined("App " + app.name + " has no latestVersion.");
-      expect(app.author).toBeDefined("App " + app.name + " has no author.");
-      expect(app.description).toBeDefined("App " + app.name + " has no description");
-    }
+  it("should fetch services from the servicestore", function() {
+    expect(list).to.not.be.empty();
   });
 
-  it("should be able to install all apps from appstore", function() {
-    var mount = "/unittest/testApps";
+  var checkManifest = function(service) {
+    it('should have proper name and author', function() {
+      expect(service).to.have.property('name');
+      expect(service.name).to.not.be.empty();
+      expect(service).to.have.property('latestVersion');
+      expect(service.latestVersion).to.not.be.empty();
+      expect(service).to.have.property('description');
+      expect(service.description).to.not.be.empty();
+    });
+  };
+
+  var i, l = list.length;
+  for (i = 0; i < l; ++i) {
+    checkManifest(list[i]);
+  }
+
+  var testInstall = function(service){
+    var mount = "/unittest/testServices";
     try { 
       FoxxManager.uninstall(mount, { force: true });
     } catch(e) {
     }
-    var list = FoxxManager.availableJson("match-engines");
-    var i, app, l = list.length;
-    for (i = 0; i < l; ++i) {
-      app = list[i];
-      if (app.name === "sessions-example-app") {
-        // this app cannot be installed at the moment
-        continue;
-        /*
+    if (service.name === "sessions-example-app") {
+      return;
+      // this service cannot be installed at the moment
+      /*
         var arangodb = require("@arangodb");
         var errors = arangodb.errors;
         // Requires oauth2 to be installed
         try {
-          FoxxManager.uninstall("/oauth2", { force: true });
+        FoxxManager.uninstall("/oauth2", { force: true });
         } catch(err) {
         }
         try {
-          FoxxManager.install(app.name, mount);
-          expect(true).toBeFalsy("Installing sessions-example-app should require oauth2");
+        FoxxManager.install(service.name, mount);
+        expect(true).toBeFalsy("Installing sessions-example-app should require oauth2");
         } catch(e) {
-          expect(e.errorNum).toEqual(errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code);
-          try {
-            FoxxManager.install("oauth2", "/oauth2");
-          } catch(err) {
-            expect(e).toBeUndefined("Could not install oauth2");
-            continue;
-          }
-          try {
-            FoxxManager.install(app.name, mount);
-            FoxxManager.uninstall(mount);
-          } catch(err2) {
-            expect(err2).toBeUndefined("Could not install " + app.name);
-            try {
-              FoxxManager.uninstall(mount, { force: true });
-            } catch(err) {
-            }
-          }
-          try {
-            FoxxManager.uninstall("/oauth2", {force: true});
-          } catch(err) {
-          }
-        }
-        */
-      } else {
+        expect(e.errorNum).toEqual(errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code);
         try {
-          FoxxManager.install(app.name, mount);
-          FoxxManager.uninstall(mount);
-        } catch(e) {
-          expect(e).toBeUndefined("Could not install " + app.name + " - \n" + e.stack);
-          try {
-            FoxxManager.uninstall(mount, { force: true });
-          } catch(err) {
-          }
+        FoxxManager.install("oauth2", "/oauth2");
+        } catch(err) {
+        expect(e).toBeUndefined("Could not install oauth2");
+        continue;
+        }
+        try {
+        FoxxManager.install(service.name, mount);
+        FoxxManager.uninstall(mount);
+        } catch(err2) {
+        expect(err2).toBeUndefined("Could not install " + service.name);
+        try {
+        FoxxManager.uninstall(mount, { force: true });
+        } catch(err) {
+        }
+        }
+        try {
+        FoxxManager.uninstall("/oauth2", {force: true});
+        } catch(err) {
+        }
+        }
+      */
+    } else {
+      try {
+        FoxxManager.install(service.name, mount);
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e).to.not.be.undefined()
+        ("Could not install " + service.name + " - \n" + e.stack);
+        try {
+          FoxxManager.uninstall(mount, { force: true });
+        } catch(err) {
         }
       }
     }
+  };
+
+  list.forEach(function(service) {
+    it("should be able to install '" + service.name + "' from store", function() {
+      testInstall(service);
+    });
   });
 
 });
