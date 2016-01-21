@@ -3156,11 +3156,12 @@ static void CreateDatabaseCoordinator(
     builder.add("name", VPackValue(valueString));
 
     if (args.Length() > 1) {
-      builder.add("options", VPackValue(VPackValueType::Object));
-      int res = TRI_V8ToVPack(isolate, builder, args[1], false);
+      VPackBuilder tmpBuilder;
+      int res = TRI_V8ToVPack(isolate, tmpBuilder, args[1], false);
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_V8_THROW_EXCEPTION_MEMORY();
       }
+      builder.add("options", tmpBuilder.slice());
     }
 
     std::string const serverId(ServerState::instance()->getId());
