@@ -97,11 +97,14 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _pathOutVariable(nullptr),
     _graphObj(nullptr),
     _condition(nullptr) {
+
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(graph != nullptr);
+
   std::unique_ptr<arango::CollectionNameResolver> resolver(new arango::CollectionNameResolver(vocbase));
+
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     _graphJson = triagens::basics::Json(triagens::basics::Json::Array, edgeCollectionCount);
@@ -122,6 +125,9 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
         _graphJson = triagens::basics::Json(graphName);
         _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
+        if (_graphObj == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+        }
 
         auto eColls = _graphObj->edgeCollections();
         for (const auto& n: eColls) {
@@ -213,6 +219,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _direction(direction),
     _CalculationNodeId(0),
    _condition(nullptr) {
+
   for (auto& it : edgeColls) {
     _edgeColls.push_back(it);
   }
@@ -271,6 +278,10 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     graphName = JsonHelper::checkAndGetStringValue(base.json(), "graph");
     if (base.has("graphDefinition")) {
       _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
+
+      if (_graphObj == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+      }
 
       auto eColls = _graphObj->edgeCollections();
       for (const auto& n: eColls) {
@@ -492,8 +503,16 @@ double TraversalNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(incoming);
   double expectedEdgesPerDepth = 0;
   auto collections = _plan->getAst()->query()->collections();
+
   for (auto const& it : _edgeColls) {
     auto collection = collections->get(it);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected pointer for collection");
+    }
+
+    TRI_ASSERT(collection != nullptr);
+
     for (auto const& index : collection->getIndexes()) {
       if (index->type == triagens::arango::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         // We can only use Edge Index
@@ -516,7 +535,6 @@ void TraversalNode::fillTraversalOptions (triagens::arango::traverser::Traverser
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remember the condition to execute for early traversal abortion.
@@ -549,7 +567,7 @@ void TraversalNode::storeSimpleExpression (bool isEdgeAccess,
   auto it = _expressions.find(indexAccess);
 
   if (it == _expressions.end()) {
-    std::vector<triagens::arango::traverser::TraverserExpression* > sec;
+    std::vector<triagens::arango::traverser::TraverserExpression*> sec;
     _expressions.emplace(indexAccess, sec);
     it = _expressions.find(indexAccess);
   }

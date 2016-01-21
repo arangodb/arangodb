@@ -1135,13 +1135,13 @@ AstNode* Ast::createNodeCalculatedObjectElement (AstNode const* attributeName,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeCollectionList (AstNode const* edgeCollections) {
-
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
   TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY);
 
   for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
     auto eC = edgeCollections->getMember(i);
+
     if (eC->isStringValue()) {
       _query->collections()->add(eC->getStringValue(), TRI_TRANSACTION_READ);
     } // else bindParameter use default for collection bindVar

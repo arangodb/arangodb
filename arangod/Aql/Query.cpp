@@ -1511,11 +1511,13 @@ triagens::arango::TransactionContext* Query::createTransactionContext () {
 
 Graph const* Query::lookupGraphByName (std::string &name) {
   auto it = _graphs.find(name);
+
   if (it != _graphs.end()) {
     return it->second;
   }
 
   auto g = triagens::arango::lookupGraphByName (_vocbase, name);
+
   if (g != nullptr) {
     _graphs.emplace(name, g);
   }

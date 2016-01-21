@@ -30,6 +30,9 @@
 #ifndef ARANGODB_GRAPHS_H
 #define ARANGODB_GRAPHS_H 1
 
+#include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
+
 namespace triagens {
   namespace aql {
 
@@ -44,7 +47,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       public:
 
-        Graph (triagens::basics::Json j);
+        Graph (triagens::basics::Json const& j);
 
         ~Graph () {
         }
@@ -52,6 +55,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
+
       private: 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,13 +120,13 @@ namespace triagens {
 /// @brief Add an edge collection to this graphs definition
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addEdgeCollection (std::string);
+        void addEdgeCollection (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Add a vertex collection to this graphs definition
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addVertexCollection (std::string);
+        void addVertexCollection (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the graph

@@ -342,10 +342,11 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
   }
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr->getDataPtr());
-  for (auto def : definitions) {
+  for (auto& def : definitions) {
     if (def._internal.size() > 0) {
       // Match _key
       auto it = def._internal.find(internalAttr::key);
+
       if (it != def._internal.end()) {
         if (strcmp(it->second.key.c_str(), TRI_EXTRACT_MARKER_KEY(mptr)) != 0) {
           goto nextExample;
@@ -371,6 +372,9 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
       // Match _to
       it = def._internal.find(internalAttr::to);
       if (it != def._internal.end()) {
+        if (! TRI_IS_EDGE_MARKER(mptr)) {
+          goto nextExample;
+        }
         if (it->second.cid != TRI_EXTRACT_MARKER_TO_CID(mptr)) {
           goto nextExample;
         }
@@ -381,6 +385,9 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
       // Match _from
       it = def._internal.find(internalAttr::from);
       if (it != def._internal.end()) {
+        if (! TRI_IS_EDGE_MARKER(mptr)) {
+          goto nextExample;
+        }
         if (it->second.cid != TRI_EXTRACT_MARKER_FROM_CID(mptr)) {
           goto nextExample;
         }
