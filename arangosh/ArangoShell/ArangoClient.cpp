@@ -167,11 +167,10 @@ ArangoClient::ArangoClient (char const* appName)
     _sslProtocol(4) {
 
   TRI_SetApplicationName(appName);
-  char* p = TRI_GetTempPath();
+  std::string p = TRI_GetTempPath();
 
-  if (p != nullptr) {
+  if (p.empty()) {
     _tempPath = string(p);
-    TRI_Free(TRI_CORE_MEM_ZONE, p);
   }
 }
 

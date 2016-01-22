@@ -1218,14 +1218,8 @@ static void JS_GetTempPath (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("getTempPath()");
   }
 
-  char* path = TRI_GetUserTempPath();
-
-  if (path == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  v8::Handle<v8::Value> result = TRI_V8_STRING(path);
-  TRI_Free(TRI_CORE_MEM_ZONE, path);
+  std::string path = TRI_GetUserTempPath();
+  v8::Handle<v8::Value> result = TRI_V8_STRING(path.c_str());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -2719,30 +2713,23 @@ static void JS_RemoveRecursiveDirectory (const v8::FunctionCallbackInfo<v8::Valu
 
   if (! force) {
     // check if we're inside the temp directory. force will override this check
-    char* tempPath = TRI_GetUserTempPath();
+    std::string tempPath = TRI_GetUserTempPath();
 
-    if (tempPath == nullptr || strlen(tempPath) < 6) {
-      // some security measure so we don't accidently delete all our files
-      if (tempPath != 0) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
-      }
-
+    // some security measure so we don't accidently delete all our files
+    if (tempPath.size() < 6) {
       TRI_V8_THROW_EXCEPTION_PARAMETER("temporary directory name is too short. will not remove directory");
     }
 
     const string path(*name);
 #ifdef _WIN32
     // windows paths are case-insensitive
-    if (! TRI_CaseEqualString2(path.c_str(), tempPath, strlen(tempPath))) {
+    if (! TRI_CaseEqualString2(path.c_str(), tempPath.c_str(), tempPath.size())) {
 #else
-    if (! TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
+    if (! TRI_EqualString2(path.c_str(), tempPath.c_str(), tempPath.size())) {
 #endif
       std::string errorMessage = std::string("directory to be removed [") + path + "] is outside of temporary path [" + tempPath + "]";
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
       TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
     }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
   }
 
   int res = TRI_RemoveDirectory(*name);
