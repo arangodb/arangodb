@@ -92,8 +92,6 @@ bool _newLine() {
 #endif
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore sequence used for prompt length calculation (starting point)
 ///
@@ -109,8 +107,6 @@ char const* ArangoClient::PROMPT_IGNORE_START = "\001";
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* ArangoClient::PROMPT_IGNORE_END = "\002";
-
-
 
 ArangoClient::ArangoClient(char const* appName)
     : _configFile(),
@@ -149,16 +145,14 @@ ArangoClient::ArangoClient(char const* appName)
       _requestTimeout(DEFAULT_REQUEST_TIMEOUT),
       _sslProtocol(4) {
   TRI_SetApplicationName(appName);
-  char* p = TRI_GetTempPath();
+  std::string p = TRI_GetTempPath();
 
-  if (p != nullptr) {
+  if (p.empty()) {
     _tempPath = std::string(p);
-    TRI_Free(TRI_CORE_MEM_ZONE, p);
   }
 }
 
 ArangoClient::~ArangoClient() { delete _endpointServer; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up a program-specific help message
@@ -922,5 +916,3 @@ double ArangoClient::requestTimeout() const { return _requestTimeout; }
 ////////////////////////////////////////////////////////////////////////////////
 
 uint32_t ArangoClient::sslProtocol() const { return _sslProtocol; }
-
-
