@@ -41,6 +41,8 @@
 #include <sys/file.h>
 #endif
 
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
@@ -54,7 +56,7 @@
 #include <tchar.h>
 #endif
 
-using namespace std;
+using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
@@ -86,7 +88,7 @@ static bool Initialized = false;
 /// @brief user-defined temporary path
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* TempPath;
+static std::string TempPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief names of blocking files
@@ -1635,7 +1637,7 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 /// @brief returns the binary name without any path or suffix
 ////////////////////////////////////////////////////////////////////////////////
 
-string TRI_BinaryName (const char* argv0) {
+std::string TRI_BinaryName (const char* argv0) {
   char* name;
   char* p;
   char* e;
@@ -1651,7 +1653,7 @@ string TRI_BinaryName (const char* argv0) {
     }
   }
 
-  string result = name;
+  std::string result = name;
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
 
   return result;
@@ -1661,7 +1663,7 @@ string TRI_BinaryName (const char* argv0) {
 /// @brief locates the directory containing the program
 ////////////////////////////////////////////////////////////////////////////////
 
-string TRI_LocateBinaryPath (char const* argv0) {
+std::string TRI_LocateBinaryPath (char const* argv0) {
   char const* p;
   char* binaryPath = nullptr;
 
@@ -1685,10 +1687,10 @@ string TRI_LocateBinaryPath (char const* argv0) {
         --q;
       }
 
-      return string(buff);
+      return std::string(buff);
     }
 
-    return string();
+    return std::string();
   }
 
 #endif
@@ -1745,7 +1747,7 @@ string TRI_LocateBinaryPath (char const* argv0) {
     }
   }
 
-  string result = (binaryPath == nullptr) ? "" : binaryPath;
+  std::string result = (binaryPath == nullptr) ? "" : binaryPath;
 
   if (binaryPath != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
@@ -2083,22 +2085,66 @@ void TRI_SetApplicationName (char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-// This must be exactly 14 Ys and 6 Xs because it will be overwritten
-// and these are the maximum lengths!
-static char TRI_TempPath[] = "/tmp/YYYYYYYYYYYYYYXXXXXX";
-static bool TRI_TempPathIsSet = false;
 
-static void TRI_TempPathCleaner (void) {
-  if (TRI_TempPathIsSet) {
-    rmdir(TRI_TempPath);
-    TRI_TempPathIsSet = false;
+static Mutex SystemTempPathMutex;
+static std::unique_ptr<char> SystemTempPath;
+
+static void SystemTempPathCleaner (void) {
+  MUTEX_LOCKER(SystemTempPathMutex);
+
+  char* path = SystemTempPath.get();
+
+  if (path != nullptr) {
+    rmdir(path);
   }
 }
-#endif
 
-char* TRI_GetTempPath () {
+std::string TRI_GetTempPath () {
+  MUTEX_LOCKER(SystemTempPathMutex);
 
-#ifdef _WIN32
+  char* path = SystemTempPath.get();
+
+  if (path == nullptr) {
+    std::string system = "";
+    char const* v = getenv("TMPDIR");
+
+    // create the template
+    if (v == nullptr || *v == '\0') {
+      system = "/tmp/";
+    }
+    else if (v[strlen(v) - 1] == '/') {
+      system = v;
+    }
+    else {
+      system = std::string(v) + "/";
+    }
+
+    system += std::string(TRI_ApplicationName) + "_XXXXXX";
+
+    // copy to a character array
+    SystemTempPath.reset(new char[system.size() + 1]);
+    path = SystemTempPath.get();
+    TRI_CopyString(path, system.c_str(), system.size());
+
+    // fill template
+    char* res = mkdtemp(SystemTempPath.get());
+
+    if (res == nullptr) {
+      system = "/tmp/arangodb";
+      SystemTempPath.reset(new char[system.size() + 1]);
+      path = SystemTempPath.get();
+      TRI_CopyString(path, system.c_str(), system.size());
+    }
+    
+    atexit(SystemTempPathCleaner);
+  }
+
+  return std::string(path);
+}
+
+#else
+
+std::string TRI_GetTempPath () {
 
   // ..........................................................................
   // Unfortunately we generally have little control on whether or not the
@@ -2201,29 +2247,12 @@ char* TRI_GetTempPath () {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, temp);
   }
 
-  return result;
-#else
-  if (! TRI_TempPathIsSet) {
-    // Note that TRI_TempPath has space for /tmp/YYYYYYYYYYXXXXXX
-    if (TRI_ApplicationName != nullptr) {
-      strcpy(TRI_TempPath, "/tmp/");
-      strncat(TRI_TempPath, TRI_ApplicationName, 13);
-      strcat(TRI_TempPath, "_XXXXXX");
-    }
-    else {
-      strcpy(TRI_TempPath, "/tmp/arangodb_XXXXXX");
-    }
-    char* res = mkdtemp(TRI_TempPath);
-    if (res == nullptr) {
-      strcpy(TRI_TempPath, "/tmp/arangodb");
-      return TRI_DuplicateString(TRI_TempPath);
-    }
-    atexit(TRI_TempPathCleaner);
-    TRI_TempPathIsSet = true;
-  }
-  return TRI_DuplicateString(TRI_TempPath);
-#endif
+  std::string r = result;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  return r;
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a temporary file name
@@ -2237,16 +2266,14 @@ int TRI_GetTempName (char const* directory,
   char* dir;
   int tries;
 
-  char* temp = TRI_GetUserTempPath();
+  std::string temp = TRI_GetUserTempPath();
 
   if (directory != nullptr) {
-    dir = TRI_Concatenate2File(temp, directory);
+    dir = TRI_Concatenate2File(temp.c_str(), directory);
   }
   else {
-    dir = TRI_DuplicateString(temp);
+    dir = TRI_DuplicateString(temp.c_str());
   }
-
-  TRI_Free(TRI_CORE_MEM_ZONE, temp);
 
   // remove trailing PATH_SEPARATOR
   RemoveTrailingSeparator(dir);
@@ -2320,31 +2347,20 @@ int TRI_GetTempName (char const* directory,
 /// temp path if none is specified
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetUserTempPath (void) {
-  if (TempPath == nullptr) {
+std::string TRI_GetUserTempPath (void) {
+  if (TempPath.empty()) {
     return TRI_GetTempPath();
   }
 
-  return TRI_DuplicateString(TempPath);
+  return TempPath;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a new user-defined temp path
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetUserTempPath (char* path) {
-  if (TempPath != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, TempPath);
-  }
-
-  if (path == nullptr) {
-    // unregister user-defined temp path
-    TempPath = nullptr;
-  }
-  else {
-    // copy the user-defined temp path
-    TempPath = TRI_DuplicateString(path);
-  }
+void TRI_SetUserTempPath (std::string const& path) {
+  TempPath = path;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2451,9 +2467,6 @@ size_t TRI_GetNullBufferSizeFiles () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitializeFiles (void) {
-  // clear user-defined temp path
-  TempPath = nullptr;
-  
   memset(TRI_GetNullBufferFiles(), 0, TRI_GetNullBufferSizeFiles());
 }
 
@@ -2464,10 +2477,6 @@ void TRI_InitializeFiles (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles (void) {
-  if (TempPath != nullptr) {
-    // free any user-defined temp-path
-    TRI_FreeString(TRI_CORE_MEM_ZONE, TempPath);
-  }
 }
 
 // -----------------------------------------------------------------------------

@@ -661,6 +661,8 @@ ENABLE_V8_DEBUG_FALSE
 ENABLE_V8_DEBUG_TRUE
 BOOST_CPPFLAGS
 BOOST_VERSION
+ENABLE_BOOST_TESTS_FALSE
+ENABLE_BOOST_TESTS_TRUE
 LEXLIB
 LEX_OUTPUT_ROOT
 LEX
@@ -843,6 +845,7 @@ enable_maintainer_mode
 enable_failure_tests
 with_bison
 with_backtrace
+enable_boost_tests
 enable_v8_debug
 enable_console
 enable_tcmalloc
@@ -1505,6 +1508,8 @@ Optional Features:
                           enable make rules and dependencies not useful (and
                           sometimes confusing) to the casual installer
   --enable-failure-tests  enable failure testing (default: no)
+  --enable-boost-tests    generate the unittests based on boost (default:
+                          $USE_MAINTAINER_MODE)
   --enable-v8-debug       build debug version of V8 (default: no)
   --enable-console        enable console support (default: linenoise)
   --enable-tcmalloc       use system-installed tcmalloc library (default: no)
@@ -7461,13 +7466,31 @@ done
 BOOST_VERSION="1.58.0"
 BOOST_CPPFLAGS="-I${srcdir}/3rdParty/boost/${BOOST_VERSION}"
 
+# Check whether --enable-boost-tests was given.
+if test "${enable_boost_tests+set}" = set; then :
+  enableval=$enable_boost_tests; tr_BOOST_TESTS="${enableval:-yes}"
+else
+  tr_BOOST_TESTS="$USE_MAINTAINER_MODE"
+
+fi
+
+
+ if test "x$tr_BOOST_TESTS" = xyes; then
+  ENABLE_BOOST_TESTS_TRUE=
+  ENABLE_BOOST_TESTS_FALSE='#'
+else
+  ENABLE_BOOST_TESTS_TRUE='#'
+  ENABLE_BOOST_TESTS_FALSE=
+fi
+
+
 
 
 
 LIB_INFO="$LIB_INFO|BOOST: 3rdParty version"
 LIB_INFO="$LIB_INFO|BOOST VERSION: ${BOOST_VERSION}"
-
 LIB_INFO="$LIB_INFO|BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|BOOST_TESTS: ${tr_BOOST_TESTS}"
 LIB_INFO="$LIB_INFO|."
 
 
@@ -8627,6 +8650,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_FAILURE_TESTS_TRUE}" && test -z "${ENABLE_FAILURE_TESTS_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_FAILURE_TESTS\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_BOOST_TESTS_TRUE}" && test -z "${ENABLE_BOOST_TESTS_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_BOOST_TESTS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_V8_DEBUG_TRUE}" && test -z "${ENABLE_V8_DEBUG_FALSE}"; then
