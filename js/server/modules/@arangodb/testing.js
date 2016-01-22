@@ -1531,6 +1531,7 @@ function rubyTests (options, ssl) {
           for (var j = 0; j < jsonResult.examples.length; j ++){
             parseRspecJson(jsonResult.examples[j], result[te], jsonResult.summary.duration);
           }
+          result[te].duration = jsonResult.summary.duration;
         }
         catch (x) {
           print("Failed to parse rspec result: " + x);
@@ -1644,41 +1645,47 @@ testFuncs.arangosh = function (options) {
   var args = makeTestingArgsClient(options);
   var arangosh = fs.join("bin","arangosh");
 
+  var ret = {
+      "suiteName": "ArangoshExitCodeTest",
+      "testArangoshExitCodeFail": {},
+      "testArangoshExitCodeSuccess": {},
+      "total": 2
+  };
+
+  //////////////////////////////////////////////////////////////////////
   print("Starting arangosh with exception throwing script:");
-  args["javascript.execute-string"] =  "throw('foo')";
+  args["javascript.execute-string"] = "throw('foo')";
+  var startTime = time();
   var rc = executeExternalAndWait(arangosh, toArgv(args));
+  var deltaTime = time() - startTime;
   var failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
   if (!failSuccess) {
+    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
+      yaml.safeDump(rc);
     failed += 1;
   }
-
+  ret.testArangoshExitCodeFail['status'] = failSuccess;
+  ret.testArangoshExitCodeFail['duration'] = deltaTime;
+  print("Status: " + ((failSuccess)? "SUCCESS" : "FAIL") + "\n");
+  
+  //////////////////////////////////////////////////////////////////////
   print("Starting arangosh with regular terminating script:");
   args["javascript.execute-string"] =  ";";
+  startTime = time();
   rc = executeExternalAndWait(arangosh, toArgv(args));
+  var deltaTime2 = time() - startTime;
   var successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
   if (!successSuccess) {
+    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
+      yaml.safeDump(rc);
     failed += 1;
   }
+  print("Status: " + ((successSuccess)? "SUCCESS" : "FAIL") + "\n");
 
-  return [
-    {
-      "suiteName": "ArangoshExitCodeTest",
-      "testArangoshExitCodeFail":
-      {
-        "status": failSuccess,
-        "duration": 0
-      },
-      "testArangoshExitCodeSuccess":
-      {
-        "status": successSuccess,
-        "duration": 0
-      },
-     "duration": 0,
-     "status": failSuccess && successSuccess,
-     "failed": failed,
-     "total": 2
-    }
-  ];
+  //////////////////////////////////////////////////////////////////////
+  ret["status"]   = failSuccess && successSuccess;
+  ret["duration"] =  deltaTime2 + deltaTime;
+  return ret;
 };
 
 var impTodo = [
