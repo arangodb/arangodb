@@ -30,11 +30,10 @@
 namespace arangodb {
 namespace aql {
 
-
 class Graph {
   
  public:
-  Graph(arangodb::basics::Json j);
+  Graph(arangodb::basics::Json const&);
 
   ~Graph() {}
 

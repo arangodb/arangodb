@@ -38,7 +38,6 @@
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts an attribute id from a marker
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,8 +297,6 @@ static bool EqualNameKeyAttributePath(TRI_associative_pointer_t*,
                                 ee->_aidLength * sizeof(TRI_shape_aid_t));
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a shaper
 ////////////////////////////////////////////////////////////////////////////////
@@ -453,6 +450,11 @@ TRI_shape_pid_t VocShaper::lookupAttributePathByName(char const* name) {
 
 char const* VocShaper::attributeNameShapePid(TRI_shape_pid_t pid) {
   TRI_shape_path_t const* path = lookupAttributePathByPid(pid);
+
+  if (path == nullptr) {
+    return nullptr;
+  }
+
   char const* e = (char const*)path;
 
   return e + sizeof(TRI_shape_path_t) +
@@ -520,6 +522,22 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
 
       TRI_IF_FAILURE("ShaperWriteAttributeMarker") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      
+      {
+        // make room for one more element
+        WRITE_LOCKER(_attributeIdsLock);
+        if (! TRI_ReserveAssociativePointer(&_attributeIds, _attributeIds._nrUsed + 1)) {
+          return 0;
+        }
+      }
+
+      {
+        // make room for one more element
+        WRITE_LOCKER(_attributeNamesLock);
+        if (! TRI_ReserveAssociativePointer(&_attributeNames, _attributeNames._nrUsed + 1)) {
+          return 0;
+        }
       }
 
       // write marker into wal
@@ -620,6 +638,14 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
 
     TRI_IF_FAILURE("ShaperWriteShapeMarker") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    {
+      // make room for one more element
+      WRITE_LOCKER(_shapeDictionaryLock);
+      if (! TRI_ReserveAssociativePointer(&_shapeDictionary, _shapeDictionary._nrUsed + 1)) {
+        return 0;
+      }
     }
 
     // write marker into wal
@@ -1186,6 +1212,24 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
          name, len + 1);
 
   TRI_Free(_memoryZone, aids);
+      
+  {
+    // make room for one more element
+    WRITE_LOCKER(_attributePathsByNameLock);
+    if (! TRI_ReserveAssociativePointer(&_attributePathsByName, _attributePathsByName._nrUsed + 1)) {
+      TRI_Free(_memoryZone, result);
+      return nullptr;
+    }
+  }
+  
+  {
+    // make room for one more element
+    WRITE_LOCKER(_attributePathsByPidLock);
+    if (! TRI_ReserveAssociativePointer(&_attributePathsByPid, _attributePathsByPid._nrUsed + 1)) {
+      TRI_Free(_memoryZone, result);
+      return nullptr;
+    }
+  }
 
   {
     WRITE_LOCKER(_attributePathsByNameLock);
@@ -1214,7 +1258,6 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
   // return pid
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief temporary structure for attributes

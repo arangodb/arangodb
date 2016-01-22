@@ -517,6 +517,8 @@ void TRI_InitObjectJson(TRI_memory_zone_t* zone, TRI_json_t* result,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyJson(TRI_memory_zone_t* zone, TRI_json_t* object) {
+  TRI_ASSERT(object != nullptr);
+
   switch (object->_type) {
     case TRI_JSON_UNUSED:
     case TRI_JSON_NULL:
@@ -550,6 +552,7 @@ void TRI_DestroyJson(TRI_memory_zone_t* zone, TRI_json_t* object) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeJson(TRI_memory_zone_t* zone, TRI_json_t* object) {
+  TRI_ASSERT(object != nullptr);
   TRI_DestroyJson(zone, object);
   TRI_Free(zone, object);
 }
@@ -893,6 +896,8 @@ bool TRI_DeleteObjectJson(TRI_memory_zone_t* zone, TRI_json_t* object,
 
 bool TRI_ReplaceObjectJson(TRI_memory_zone_t* zone, TRI_json_t* object,
                            char const* name, TRI_json_t const* replacement) {
+  TRI_ASSERT(replacement != nullptr);
+  TRI_ASSERT(object != nullptr);
   TRI_ASSERT(object->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(name != nullptr);
 

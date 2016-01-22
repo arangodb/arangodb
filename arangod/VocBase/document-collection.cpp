@@ -262,6 +262,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
           return TRI_ERROR_DEADLOCK;
         }
         wasBlocked = true;
+        LOG_TRACE("waiting for read-lock on collection '%s'", _info.name().c_str());
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -290,6 +291,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.setReaderUnblocked(this);
+      LOG_TRACE("timed out waiting for read-lock on collection '%s'", _info.name().c_str());
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -339,6 +341,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
           return TRI_ERROR_DEADLOCK;
         }
         wasBlocked = true;
+        LOG_TRACE("waiting for write-lock on collection '%s'", _info.name().c_str());
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -367,6 +370,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.setReaderUnblocked(this);
+      LOG_TRACE("timed out waiting for write-lock on collection '%s'", _info.name().c_str());
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }

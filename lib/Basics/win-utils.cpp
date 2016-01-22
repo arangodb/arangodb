@@ -506,6 +506,23 @@ int TRI_MapSystemError(DWORD error) {
   }
 }
 
+static HANDLE hEventLog = INVALID_HANDLE_VALUE;
+
+int TRI_InitWindowsEventLog(void) {
+  hEventLog = RegisterEventSource(NULL, "ArangoDB");
+  if (NULL == hEventLog) {
+    // well, fail then.
+    return 0;
+  }
+  return 1;
+}
+
+void TRI_CloseWindowsEventlog(void) {
+  DeregisterEventSource(hEventLog);
+  hEventLog = INVALID_HANDLE_VALUE;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
 /// we rather are keen on logging something at all then on being able to work
@@ -522,14 +539,10 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   char linebuf[32];
   LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
 
-  HANDLE hEventLog = NULL;
 
-  hEventLog = RegisterEventSource(NULL, "ArangoDB");
-  if (NULL == hEventLog) {
-    // well, fail then.
+  if (!TRI_InitWindowsEventLog()) {
     return;
   }
-
   snprintf(linebuf, sizeof(linebuf), "%d", line);
 
   DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
@@ -541,7 +554,8 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                    NULL)) {
     // well, fail then...
   }
-  DeregisterEventSource(hEventLog);
+
+  TRI_CloseWindowsEventlog();
 }
 
 

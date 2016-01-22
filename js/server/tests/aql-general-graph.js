@@ -50,9 +50,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
   var e2 = "UnitTestsAhuacatlEdge2";
   var or = "UnitTestsAhuacatlOrphan";
 
-  var AQL_VERTICES = "FOR e IN GRAPH_VERTICES(@name, @example, @options) SORT e RETURN e";
+  var AQL_VERTICES = "FOR v IN GRAPH_VERTICES(@name, @example, @options) SORT v RETURN v";
   var AQL_EDGES = "FOR e IN GRAPH_EDGES(@name, @example, @options) SORT e.what RETURN e.what";
-  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e RETURN e";
+  var AQL_NEIGHBORS = "FOR v IN GRAPH_NEIGHBORS(@name, @example, @options) SORT v RETURN v";
 
   var startExample = [{hugo : true}, {heinz : 1}];
   var vertexExample = {_key: "v1"};
@@ -449,6 +449,52 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       assertEqual(actual[4], "v3->v8");
     },
 
+    testEdgesOutboundStartExampleRestrictedModify: function() {
+      var bindVars = {
+        name: gN,
+        '@edgeCol': e2,
+        example: startExample,
+        options: {
+          direction : 'outbound',
+          includeData: true,
+          maxDepth: 2, 
+          minDepth: 1, 
+          edgeCollectionRestriction: [e2]
+        }
+      };
+      var AQL_EDGES_MODIFY = "FOR e IN GRAPH_EDGES(@name, @example, @options) SORT e.what UPDATE e WITH {WasHere: True, When: DATE_NOW()} in @@edgeCol RETURN e.what";
+      var actual = getRawQueryResults(AQL_EDGES_MODIFY, bindVars);
+      actual = getRawQueryResults("FOR x IN UnitTestsAhuacatlEdge2 FILTER x.WasHere == True return x", {});
+      assertEqual(actual.length, 5);
+    },
+
+
+    testEdgesOutboundStartExampleRestrictedLoadVertextByDocument: function() {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'outbound',
+          includeData: true,
+          maxDepth: 2, 
+          minDepth: 1, 
+          edgeCollectionRestriction: [e2]
+        }
+      };
+      var AQL_EDGES_MODIFY =
+          "FOR e IN GRAPH_EDGES(@name, @example, @options) " +
+          "  LET fromVertex = DOCUMENT(e._from) " +
+          "  LET toVertex = DOCUMENT(e._to) " +
+          "    RETURN {edge: e, fromVertex: fromVertex, toVertex: toVertex}";
+      var actual = getRawQueryResults(AQL_EDGES_MODIFY, bindVars);
+
+      actual.forEach(function (oneEdgeSet) {
+        assertEqual(oneEdgeSet.edge._from, oneEdgeSet.fromVertex._id );
+        assertEqual(oneEdgeSet.edge._to,   oneEdgeSet.toVertex._id );
+      });
+    },
+
+
     ////////////////////////////////////////////////////////////////////////////////
     /// Test Neighbors
     ////////////////////////////////////////////////////////////////////////////////
@@ -782,6 +828,49 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
       assertEqual(actual.length, 0);
+    },
+
+    testNeighborsInboundStartExampleRestrictEdgesAndVerticesMergeIntoEdges: function () {
+
+      var bindVars = {
+        name: gN,
+        '@eCol': e1,
+        example: startExample,
+        options: {
+          includeData: true,
+          direction : 'inbound',
+          vertexCollectionRestriction: [v1, v3]
+        }
+      };
+      var AQL_NEIGHBORS1 =
+          "FOR v IN GRAPH_NEIGHBORS(@name, @example, @options) " +
+          "  SORT v._id " +
+          "    FOR e in @@eCol FILTER e._from == v._id " +
+          "      RETURN MERGE(e, {v_key: v._key, v_hugo: v.hugo, v_id: v._id})";
+      var actual = getRawQueryResults(AQL_NEIGHBORS1, bindVars);
+      assertEqual(actual.length, 2);
+    },
+
+    testNeighborsInboundStartExampleRestrictEdgesAndVerticesSubLoops: function () {
+
+      var bindVars = {
+        name: gN,
+        '@eCol': e1,
+        example: startExample,
+        options: {
+          includeData: true,
+          direction : 'inbound',
+          vertexCollectionRestriction: [v1, v3]
+        }
+      };
+      var AQL_NEIGHBORS1 =
+          "FOR edgeDoc in @@eCol "  +
+          "  LET thisVertex = DOCUMENT(edgeDoc._to) " +
+          "  LET vertices = (FOR v IN GRAPH_NEIGHBORS(@name, @example, @options) RETURN v) " +
+          "  FOR oneVertex IN vertices RETURN {hugo: thisVertex.hugo, neighborVertex: oneVertex}";
+
+      var actual = getRawQueryResults(AQL_NEIGHBORS1, bindVars);
+      assertEqual(actual.length, 4);
     }
 
   };
@@ -874,7 +963,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighbors: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v3' , 'UnitTestsAhuacatlVertex2/v6',  {direction : 'any'}) SORT e.left  RETURN e");
+      var actual = getQueryResults("FOR v IN GRAPH_COMMON_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v3' , 'UnitTestsAhuacatlVertex2/v6',  {direction : 'any'}) SORT v.left  RETURN v");
       assertEqual(actual.length, 1);
       assertEqual(actual[0].left, vertexIds.v3);
       assertEqual(actual[0].right, vertexIds.v6);
@@ -890,7 +979,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsIn: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  {direction : 'inbound'}, {direction : 'inbound'}) SORT e.left, e.right RETURN e");
+      var actual = getQueryResults("FOR v IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  {direction : 'inbound'}, {direction : 'inbound'}) SORT v.left, v.right RETURN v");
       assertEqual(actual.length, 8, "We expect one entry for each pair of vertices having at least one common neighbor");
 
       assertEqual(actual[0].left, vertexIds.v3);
@@ -945,8 +1034,8 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsOut: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', { hugo : true } , {heinz : 1}, " +
-        " {direction : 'outbound', minDepth : 1, maxDepth : 3}, {direction : 'outbound', minDepth : 1, maxDepth : 3}) SORT e.left, e.right RETURN e");
+      var actual = getQueryResults("FOR v IN GRAPH_COMMON_NEIGHBORS('bla3', { hugo : true } , {heinz : 1}, " +
+        " {direction : 'outbound', minDepth : 1, maxDepth : 3}, {direction : 'outbound', minDepth : 1, maxDepth : 3}) SORT v.left, v.right RETURN v");
 
       assertEqual(actual.length, 4, "Expect one result for each pair of vertices sharing neighbors");
 
@@ -987,16 +1076,16 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsMixedOptionsDistinctFilters: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
+      var actual = getQueryResults("FOR v IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
         "{direction : 'outbound', vertexCollectionRestriction : 'UnitTestsAhuacatlVertex1'}, " +
-        "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT e.left, e.right RETURN e");
+        "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT v.left, v.right RETURN v");
       assertEqual(actual.length, 0, "Expect one result for each pair of vertices sharing neighbors");
     },
 
     testCommonNeighborsMixedOptionsFilterBasedOnOneCollectionOnly: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
+      var actual = getQueryResults("FOR v IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
         "{direction : 'outbound', vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}, " +
-        "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT e.left, e.right RETURN e");
+        "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT v.left, v.right RETURN v");
 
       assertEqual(actual.length, 3, "Expect one result for each pair of vertices sharing neighbors");
       assertEqual(actual[0].left, vertexIds.v2);
@@ -1031,7 +1120,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCommonProperties: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', { } , {},  {}) SORT  ATTRIBUTES(e)[0] RETURN e");
+      var actual = getQueryResults("FOR v IN GRAPH_COMMON_PROPERTIES('bla3', { } , {},  {}) SORT  ATTRIBUTES(v)[0] RETURN v");
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"].length, 1);
       assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"].length, 1);
       assertEqual(actual[2]["UnitTestsAhuacatlVertex1/v3"].length, 1);
@@ -1047,14 +1136,14 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     },
 
     testCommonPropertiesWithFilters: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', {ageing : true} , {harald : 'meier'},  {}) SORT  ATTRIBUTES(e)[0]  RETURN e");
+      var actual = getQueryResults("FOR v IN GRAPH_COMMON_PROPERTIES('bla3', {ageing : true} , {harald : 'meier'},  {}) SORT  ATTRIBUTES(v)[0]  RETURN v");
       assertEqual(actual[0]["UnitTestsAhuacatlVertex2/v5"].length, 1);
       assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v6"].length, 3);
 
     },
 
     testCommonPropertiesWithFiltersAndIgnoringKeyHarald: function () {
-      var actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', {} , {},  {ignoreProperties : 'harald'}) SORT  ATTRIBUTES(e)[0]  RETURN e");
+      var actual = getQueryResults("FOR v IN GRAPH_COMMON_PROPERTIES('bla3', {} , {},  {ignoreProperties : 'harald'}) SORT  ATTRIBUTES(v)[0]  RETURN v");
 
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"].length, 1);
       assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"].length, 1);
@@ -1156,10 +1245,10 @@ function ahuacatlQueryGeneralPathsTestSuite() {
       var actual;
 
       actual = getQueryResults(
-        "FOR e IN GRAPH_PATHS('bla3') "
-        + "LET length = LENGTH(e.edges) "
-        + "SORT e.source._key, e.destination._key, length "
-        + "RETURN {src: e.source._key, dest: e.destination._key, edges: e.edges, length: length}"
+        "FOR p IN GRAPH_PATHS('bla3') "
+        + "LET length = LENGTH(p.edges) "
+        + "SORT p.source._key, p.destination._key, length "
+        + "RETURN {src: p.source._key, dest: p.destination._key, edges: p.edges, length: length}"
       );
       assertEqual(actual.length, 12);
       actual.forEach(function (p) {
@@ -1246,7 +1335,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
     testPathsWithDirectionAnyAndMaxLength1: function () {
       var actual, result = {}, i = 0, ed;
 
-      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3', {direction :'any', minLength :  1 , maxLength:  1}) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual = getQueryResults("FOR p IN GRAPH_PATHS('bla3', {direction :'any', minLength :  1 , maxLength:  1}) SORT p.source._key, p.destination._key RETURN [p.source._key, p.destination._key, p.edges]");
       actual.forEach(function (p) {
         i++;
         ed = "";
@@ -1275,7 +1364,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
     testInBoundPaths: function () {
       var actual, result = {}, i = 0, ed;
 
-      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3',  {direction : 'inbound', minLength : 1}) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual = getQueryResults("FOR p IN GRAPH_PATHS('bla3',  {direction : 'inbound', minLength : 1}) SORT p.source._key, p.destination._key RETURN [p.source._key, p.destination._key, p.edges]");
 
       actual.forEach(function (p) {
         i++;
@@ -1391,7 +1480,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     testGRAPH_TRAVERSALs: function () {
       var actual, result = [];
 
-      actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound') RETURN e");
+      actual = getQueryResults("FOR v IN GRAPH_TRAVERSAL('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound') RETURN v");
       actual = actual[0];
       actual.forEach(function (s) {
         result.push(s.vertex._key);
@@ -1411,14 +1500,14 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     testGRAPH_TRAVERSALWithExamples: function () {
       var actual;
 
-      actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL('werKenntWen', {}, 'outbound') RETURN e");
+      actual = getQueryResults("FOR v IN GRAPH_TRAVERSAL('werKenntWen', {}, 'outbound') RETURN v");
       assertEqual(actual.length , 7);
     },
 
     testGENERAL_GRAPH_TRAVERSAL_TREE: function () {
       var actual, start, middle;
 
-      actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL_TREE('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound', 'connected') RETURN e");
+      actual = getQueryResults("FOR v IN GRAPH_TRAVERSAL_TREE('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound', 'connected') RETURN v");
       start = actual[0][0][0];
 
       assertEqual(start._key, "Caesar");
@@ -1458,9 +1547,9 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       var actual;
 
       // Caesar -> Berta -> Gerda -> Dieter -> Emil
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
         " 'UnitTests_Frankfurter/Emil', {direction : 'outbound', algorithm : 'Floyd-Warshall'}) " +
-        " RETURN e");
+        " RETURN p");
       assertEqual(actual.length, 1, "Exactly one element is returned");
       var path = actual[0];
       assertTrue(path.hasOwnProperty("vertices"), "The path contains all vertices");
@@ -1471,9 +1560,9 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       ], "The correct shortest path is using these vertices");
       assertEqual(path.distance, 4, "The distance is 1 per edge");
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-        "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
-        "RETURN {vertices: e.vertices, distance: e.distance}");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
+        "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT p.vertices[0], p.vertices[LENGTH(p.vertices) - 1] " +
+        "RETURN {vertices: p.vertices, distance: p.distance}");
       assertEqual(actual.length, 17, "For each pair that has a shortest path one entry is required");
       assertEqual(actual[0], {
         vertices: [vertexIds.Anton, vertexIds.Berta],
@@ -1544,9 +1633,9 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
         distance: 2
       });
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-        "{}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
-        "RETURN {vertices: e.vertices, distance: e.distance}");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
+        "{}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT p.vertices[0], p.vertices[LENGTH(p.vertices) - 1] " +
+        "RETURN {vertices: p.vertices, distance: p.distance}");
       assertEqual(actual.length, 17, "For each pair that has a shortest path one entry is required");
       assertEqual(actual[0], {
         vertices: [vertexIds.Anton, vertexIds.Berta],
@@ -1617,9 +1706,9 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
         distance: 2
       });
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-        "{_id: 'UnitTests_Berliner/Berta'}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
-        "RETURN {vertices: e.vertices, distance: e.distance}");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
+        "{_id: 'UnitTests_Berliner/Berta'}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT p.vertices[0], p.vertices[LENGTH(p.vertices) - 1] " +
+        "RETURN {vertices: p.vertices, distance: p.distance}");
       assertEqual(actual.length, 5, "For each pair that has a shortest path one entry is required");
       assertEqual(actual[0], {
         vertices: [vertexIds.Anton, vertexIds.Berta],
@@ -1642,12 +1731,12 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
         distance: 1
       });
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
-        " 'UnitTests_Berliner/Anton', {direction : 'outbound',  weight: 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'}) RETURN e.vertices");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
+        " 'UnitTests_Berliner/Anton', {direction : 'outbound',  weight: 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'}) RETURN p.vertices");
       assertEqual(actual[0].length, 3);
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
-        " 'UnitTests_Berliner/Anton', {direction : 'outbound', algorithm : 'Floyd-Warshall'}) RETURN e.vertices");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
+        " 'UnitTests_Berliner/Anton', {direction : 'outbound', algorithm : 'Floyd-Warshall'}) RETURN p.vertices");
       assertEqual(actual[0].length, 2);
 
       actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', 'UnitTests_Hamburger/Caesar',  'UnitTests_Frankfurter/Emil', " +
@@ -1667,8 +1756,8 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     testGRAPH_SHORTEST_PATH_WITH_DIJKSTRA: function () {
       var actual;
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
-        " 'UnitTests_Frankfurter/Emil', {direction : 'outbound', algorithm : 'dijkstra'}) RETURN e");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
+        " 'UnitTests_Frankfurter/Emil', {direction : 'outbound', algorithm : 'dijkstra'}) RETURN p");
 
       assertEqual(actual.length, 1, "Exactly one element is returned");
       var path = actual[0];
@@ -1680,13 +1769,13 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       ], "The correct shortest path is using these vertices");
       assertEqual(path.distance, 4, "The distance is 1 per edge");
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
         "'UnitTests_Berliner/Anton', {direction : 'outbound', algorithm : 'dijkstra'}) " +
-        "RETURN e.vertices");
+        "RETURN p.vertices");
       assertEqual(actual[0].length, 2);
 
-      actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', 'UnitTests_Hamburger/Caesar',  'UnitTests_Frankfurter/Emil', " +
-        "{direction : 'outbound', weight: 'entfernung', defaultWeight : 80, algorithm : 'dijkstra'}) RETURN e");
+      actual = getQueryResults("FOR p IN GRAPH_DISTANCE_TO('werKenntWen', 'UnitTests_Hamburger/Caesar',  'UnitTests_Frankfurter/Emil', " +
+        "{direction : 'outbound', weight: 'entfernung', defaultWeight : 80, algorithm : 'dijkstra'}) RETURN p");
       assertEqual(actual,
         [
           {
@@ -1701,8 +1790,8 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     testGRAPH_SHOTEST_PATH_with_stopAtFirstMatch: function () {
       var actual;
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Frankfurter/Fritz', " +
-        " {gender: 'female'}, {direction : 'inbound', stopAtFirstMatch: true}) RETURN e");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Frankfurter/Fritz', " +
+        " {gender: 'female'}, {direction : 'inbound', stopAtFirstMatch: true}) RETURN p");
 
       // Find only one match, ignore the second one.
       assertEqual(actual.length, 1);
@@ -2138,9 +2227,9 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     testGRAPH_SHORTEST_PATHWithExamples_WITH_DIJKSTRA: function () {
       var actual;
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
-        "{direction : 'any', algorithm : 'dijkstra'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
-        "RETURN e");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
+        "{direction : 'any', algorithm : 'dijkstra'}) SORT p.vertices[0], p.vertices[LENGTH(p.vertices) - 1] " +
+        "RETURN p");
       assertEqual(actual.length, 4, "All connected pairs should have one entry.");
       assertEqual(actual[0].vertices, [
         vertexIds.Berta, vertexIds.Gerda, vertexIds.Dieter, vertexIds.Emil, vertexIds.Fritz
@@ -2165,8 +2254,8 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
     testGRAPH_DISTANCE_TO_WithExamples_WITH_DIJKSTRA: function () {
       var actual;
-      actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
-        "{direction : 'any'}) SORT e.startVertex, e.vertex SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex, e.distance]");
+      actual = getQueryResults("FOR p IN GRAPH_DISTANCE_TO('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
+        "{direction : 'any'}) SORT p.startVertex, p.vertex SORT p.startVertex, p.vertex RETURN [p.startVertex, p.vertex, p.distance]");
       assertEqual(actual, [
         [
           "UnitTests_Berliner/Berta",
@@ -2287,9 +2376,9 @@ function ahuacatlQueryGeneralCyclesSuite() {
 
     testGRAPH_SHORTEST_PATH: function () {
       var actual;
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-        "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
-        "RETURN {vertices: e.vertices, distance: e.distance}");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
+        "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT p.vertices[0], p.vertices[LENGTH(p.vertices) - 1] " +
+        "RETURN {vertices: p.vertices, distance: p.distance}");
       assertEqual(actual.length, 12, "Expect one entry for every connected pair.");
       assertEqual(actual[0], {
         vertices: [vertexIds.Anton, vertexIds.Berta],
@@ -2343,9 +2432,9 @@ function ahuacatlQueryGeneralCyclesSuite() {
         distance: 1
       });
 
-      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
-        "{}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
-        "RETURN {vertices: e.vertices, distance: e.distance}");
+      actual = getQueryResults("FOR p IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
+        "{}, {direction : 'inbound', algorithm : 'dijkstra'}) SORT p.vertices[0], p.vertices[LENGTH(p.vertices) - 1] " +
+        "RETURN {vertices: p.vertices, distance: p.distance}");
       assertEqual(actual.length, 12, "Expect one entry for every connected pair.");
       assertEqual(actual[0], {
         vertices: [vertexIds.Anton, vertexIds.Berta],
@@ -2634,7 +2723,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
   var c2;
   var t2;
  
-  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e._id RETURN e";
+  var AQL_NEIGHBORS = "FOR v IN GRAPH_NEIGHBORS(@name, @example, @options) SORT v._id RETURN v";
 
   return {
 

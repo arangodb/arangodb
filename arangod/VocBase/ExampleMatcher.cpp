@@ -371,6 +371,9 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       // Match _to
       it = def._internal.find(internalAttr::to);
       if (it != def._internal.end()) {
+        if (! TRI_IS_EDGE_MARKER(mptr)) {
+          goto nextExample;
+        }
         if (it->second.cid != TRI_EXTRACT_MARKER_TO_CID(mptr)) {
           goto nextExample;
         }
@@ -382,6 +385,9 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       // Match _from
       it = def._internal.find(internalAttr::from);
       if (it != def._internal.end()) {
+        if (! TRI_IS_EDGE_MARKER(mptr)) {
+          goto nextExample;
+        }
         if (it->second.cid != TRI_EXTRACT_MARKER_FROM_CID(mptr)) {
           goto nextExample;
         }
