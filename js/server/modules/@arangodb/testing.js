@@ -1361,7 +1361,7 @@ testFuncs.config = function (options) {
     return {};
   }
   var topDir = findTopDir();
-  var results = {};
+  var results = { absolut: {status: true, total: 0}, relative: {status: true, total: 0}};
   var ts = ["arangod",
             "arangob",
             "arangodump",
@@ -1380,11 +1380,15 @@ testFuncs.config = function (options) {
       "configuration" : fs.join(topDir,"etc","arangodb", test + ".conf"),
       "flatCommands"  : ["--help"]
     };
-    results[test] = executeAndWait(fs.join(topDir, "bin", test),
-                                   toArgv(args));
+    results.absolut[test] = executeAndWait(fs.join(topDir, "bin", test),
+                                           toArgv(args));
+    if (!results.absolut[test].status) {
+      results.absolut.status = false;
+    }
+    results.absolut.total++;
     print("Args for [" + test + "]:");
     print(yaml.safeDump(args));
-    print("Result: " + results[test].status);
+    print("Result: " + results.absolut[test].status);
   }
   print("--------------------------------------------------------------------------------");
   print("relative config tests");
@@ -1397,11 +1401,15 @@ testFuncs.config = function (options) {
       "flatCommands"  : ["--help"]
     };
 
-    results[test + "_rel"] = executeAndWait(fs.join(topDir,"bin", test),
+    results.relative[test] = executeAndWait(fs.join(topDir,"bin", test),
                                        toArgv(args));
+    if (!results.relative[test].status) {
+      results.relative.status = false;
+    }
+    results.relative.total++;
     print("Args for (relative) [" + test + "]:");
     print(yaml.safeDump(args));
-    print("Result: " + results[test + "_rel"].status);
+    print("Result: " + results.relative[test].status);
   }
 
   return results;
@@ -1421,6 +1429,12 @@ testFuncs.boost = function (options) {
   }
   return results;
 };
+
+function camelize(str) {
+  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function(letter, index) {
+    return index === 0 ? letter.toLowerCase() : letter.toUpperCase();
+  }).replace(/\s+/g, '');
+}
 
 function rubyTests (options, ssl) {
   var instanceInfo;
@@ -1466,31 +1480,69 @@ function rubyTests (options, ssl) {
     command = "rspec";
   }
 
+  var parseRspecJson = function(testCase, res, totalDuration) {
+    var tName = camelize(testCase.description);
+    var status = (testCase.status === "passed");
+    res[tName] = {
+      status: status,
+      message: testCase.full_description,
+      duration: totalDuration // RSpec doesn't offer per testcase time...
+    };
+    
+    res.total ++;
+
+    if (!status) {
+      var msg = yaml.safeDump(testCase);
+      print("RSpec test case falied: \n" + msg);
+      res[tName].message += "\n" +  msg;
+    }
+  };
   for (i = 0; i < files.length; i++) {
     var te = files[i];
     if (te.substr(0,4) === "api-" && te.substr(-3) === ".rb") {
       if (filterTestcaseByOptions(te, options, filtered)) {
-
-        args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
-                "--format", "d", "--require", tmpname,
-                fs.join("UnitTests","HttpInterface", te)];
-
         if (! continueTesting) {
           print("Skipping " + te + " server is gone.");
           result[te] = {status: false, message: instanceInfo.exitStatus};
           instanceInfo.exitStatus = "server is gone.";
           break;
         }
+        var resultfn = fs.join("out", "UnitTests",  te + ".json");
+        args = ["--color",
+                "-I", fs.join("UnitTests","HttpInterface"),
+                "--format", "j",
+                "--out", resultfn,
+                "--require", tmpname,
+                fs.join("UnitTests","HttpInterface", te)];
+
+
         print("\n"+ Date() + " rspec Trying ",te,"...");
 
-        result[te] = executeAndWait(command, args);
-        if (result[te].status === false) {
-          options.cleanup = false;
-          if (!options.force) {
-            break;
+        var res = executeAndWait(command, args);
+        result[te] = {
+          total: 0,
+          status: res.status
+        };
+        try {
+          var jsonResult = JSON.parse(fs.read(resultfn));
+          if (options.extremeVerbosity) {
+            print(yaml.safeDump(jsonResult));
+          }
+          for (var j = 0; j < jsonResult.examples.length; j ++){
+            parseRspecJson(jsonResult.examples[j], result[te], jsonResult.summary.duration);
+          }
+          result[te].duration = jsonResult.summary.duration;
+        }
+        catch (x) {
+          print("Failed to parse rspec result: " + x);
+          result[te]["complete_" + te] = res;
+          if (res.status === false) {
+            options.cleanup = false;
+            if (!options.force) {
+              break;
+            }
           }
         }
-
         continueTesting = checkInstanceAlive(instanceInfo, options);
 
       }
@@ -1593,41 +1645,47 @@ testFuncs.arangosh = function (options) {
   var args = makeTestingArgsClient(options);
   var arangosh = fs.join("bin","arangosh");
 
+  var ret = {
+      "suiteName": "ArangoshExitCodeTest",
+      "testArangoshExitCodeFail": {},
+      "testArangoshExitCodeSuccess": {},
+      "total": 2
+  };
+
+  //////////////////////////////////////////////////////////////////////
   print("Starting arangosh with exception throwing script:");
-  args["javascript.execute-string"] =  "throw('foo')";
+  args["javascript.execute-string"] = "throw('foo')";
+  var startTime = time();
   var rc = executeExternalAndWait(arangosh, toArgv(args));
+  var deltaTime = time() - startTime;
   var failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
   if (!failSuccess) {
+    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
+      yaml.safeDump(rc);
     failed += 1;
   }
-
+  ret.testArangoshExitCodeFail['status'] = failSuccess;
+  ret.testArangoshExitCodeFail['duration'] = deltaTime;
+  print("Status: " + ((failSuccess)? "SUCCESS" : "FAIL") + "\n");
+  
+  //////////////////////////////////////////////////////////////////////
   print("Starting arangosh with regular terminating script:");
   args["javascript.execute-string"] =  ";";
+  startTime = time();
   rc = executeExternalAndWait(arangosh, toArgv(args));
+  var deltaTime2 = time() - startTime;
   var successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
   if (!successSuccess) {
+    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
+      yaml.safeDump(rc);
     failed += 1;
   }
+  print("Status: " + ((successSuccess)? "SUCCESS" : "FAIL") + "\n");
 
-  return [
-    {
-      "suiteName": "ArangoshExitCodeTest",
-      "testArangoshExitCodeFail":
-      {
-        "status": failSuccess,
-        "duration": 0
-      },
-      "testArangoshExitCodeSuccess":
-      {
-        "status": successSuccess,
-        "duration": 0
-      },
-     "duration": 0,
-     "status": failSuccess && successSuccess,
-     "failed": failed,
-     "total": 2
-    }
-  ];
+  //////////////////////////////////////////////////////////////////////
+  ret["status"]   = failSuccess && successSuccess;
+  ret["duration"] =  deltaTime2 + deltaTime;
+  return ret;
 };
 
 var impTodo = [
@@ -1727,7 +1785,7 @@ testFuncs.upgrade = function (options) {
            };
   }
 
-  var result = {};
+  var result = {upgrade: {status: true, total: 1}};
 
   var tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
@@ -1744,13 +1802,14 @@ testFuncs.upgrade = function (options) {
   args["database.directory"] = fs.join(tmpDataDir,"data");
   fs.makeDirectoryRecursive(fs.join(tmpDataDir,"data"));
   var argv = toArgv(args).concat(["--upgrade"]);
-  result.first = executeAndWait(fs.join("bin","arangod"), argv);
+  result.upgrade.first = executeAndWait(fs.join("bin","arangod"), argv);
 
-  if (result.first !== 0 && !options.force) {
+  if (result.upgrade.first !== 0 && !options.force) {
     print("not removing " + tmpDataDir);
     return result;
   }
-  result.second = executeAndWait(fs.join("bin","arangod"), argv);
+  result.upgrade.total ++;
+  result.upgrade.second = executeAndWait(fs.join("bin","arangod"), argv);
 
   cleanupDirectories.push(tmpDataDir);
 
@@ -1999,7 +2058,7 @@ testFuncs.arangob = function (options) {
   if (instanceInfo === false) {
     return {status: false, message: "failed to start server!"};
   }
-  var results = {};
+  var results = { arangob: {status: true, total: 0}};
   var i;
   var oneResult;
   var continueTesting = true;
@@ -2017,7 +2076,7 @@ testFuncs.arangob = function (options) {
 
       if (!continueTesting) {
         print("Skipping " + benchTodo[i] + ", server is gone.");
-        results[i] = {status: false, message: instanceInfo.exitStatus};
+        results.arangob[i] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
         break;
       }
@@ -2026,8 +2085,11 @@ testFuncs.arangob = function (options) {
         args = _.extend(args, options.benchargs);
       }
       oneResult = runArangoBenchmark(options, instanceInfo, args);
-      results[i] = oneResult;
-
+      results.arangob[i] = oneResult;
+      results.arangob.total++;
+      if (!results.arangob[i].status) {
+        results.arangob.status = false;
+      }
       continueTesting = checkInstanceAlive(instanceInfo, options);
 
       if (oneResult.status !== true && !options.force) {
@@ -2359,7 +2421,9 @@ function UnitTest (which, options) {
   }
   else {
     results[which] = thisReply = testFuncs[which](options);
-    // print("Testresult:", yaml.safeDump(r));
+    if (options.extremeVerbosity) {
+      print("Testresult:", yaml.safeDump(results));
+    }
     ok = true;
     for (i in thisReply) {
       if (thisReply.hasOwnProperty(i) &&
