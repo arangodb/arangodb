@@ -863,11 +863,11 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
           vertexCollectionRestriction: [v1, v3]
         }
       };
-      AQL_NEIGHBORS1 =
-        "FOR edgeDoc in @@eCol "  +
-        "  LET thisVertex = DOCUMENT(edgeDoc._to) " +
-        "  LET vertices = (FOR v IN GRAPH_NEIGHBORS(@name, @example, @options) RETURN v) " +
-        "  FOR oneVertex IN vertices RETURN {hugo: thisVertex.hugo, neighborVertex: oneVertex}"
+      var AQL_NEIGHBORS1 =
+          "FOR edgeDoc in @@eCol "  +
+          "  LET thisVertex = DOCUMENT(edgeDoc._to) " +
+          "  LET vertices = (FOR v IN GRAPH_NEIGHBORS(@name, @example, @options) RETURN v) " +
+          "  FOR oneVertex IN vertices RETURN {hugo: thisVertex.hugo, neighborVertex: oneVertex}";
 
       var actual = getRawQueryResults(AQL_NEIGHBORS1, bindVars);
       assertEqual(actual.length, 4);
