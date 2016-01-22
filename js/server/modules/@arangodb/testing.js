@@ -1361,7 +1361,7 @@ testFuncs.config = function (options) {
     return {};
   }
   var topDir = findTopDir();
-  var results = {};
+  var results = { absolut: {status: true, total: 0}, relative: {status: true, total: 0}};
   var ts = ["arangod",
             "arangob",
             "arangodump",
@@ -1380,11 +1380,15 @@ testFuncs.config = function (options) {
       "configuration" : fs.join(topDir,"etc","arangodb", test + ".conf"),
       "flatCommands"  : ["--help"]
     };
-    results[test] = executeAndWait(fs.join(topDir, "bin", test),
-                                   toArgv(args));
+    results.absolut[test] = executeAndWait(fs.join(topDir, "bin", test),
+                                           toArgv(args));
+    if (!results.absolut[test].status) {
+      results.absolut.status = false;
+    }
+    results.absolut.total++;
     print("Args for [" + test + "]:");
     print(yaml.safeDump(args));
-    print("Result: " + results[test].status);
+    print("Result: " + results.absolut[test].status);
   }
   print("--------------------------------------------------------------------------------");
   print("relative config tests");
@@ -1397,11 +1401,15 @@ testFuncs.config = function (options) {
       "flatCommands"  : ["--help"]
     };
 
-    results[test + "_rel"] = executeAndWait(fs.join(topDir,"bin", test),
+    results.relative[test] = executeAndWait(fs.join(topDir,"bin", test),
                                        toArgv(args));
+    if (!results.relative[test].status) {
+      results.relative.status = false;
+    }
+    results.relative.total++;
     print("Args for (relative) [" + test + "]:");
     print(yaml.safeDump(args));
-    print("Result: " + results[test + "_rel"].status);
+    print("Result: " + results.relative[test].status);
   }
 
   return results;
@@ -1727,7 +1735,7 @@ testFuncs.upgrade = function (options) {
            };
   }
 
-  var result = {};
+  var result = {upgrade: {status: true, total: 1}};
 
   var tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
@@ -1744,13 +1752,14 @@ testFuncs.upgrade = function (options) {
   args["database.directory"] = fs.join(tmpDataDir,"data");
   fs.makeDirectoryRecursive(fs.join(tmpDataDir,"data"));
   var argv = toArgv(args).concat(["--upgrade"]);
-  result.first = executeAndWait(fs.join("bin","arangod"), argv);
+  result.upgrade.first = executeAndWait(fs.join("bin","arangod"), argv);
 
-  if (result.first !== 0 && !options.force) {
+  if (result.upgrade.first !== 0 && !options.force) {
     print("not removing " + tmpDataDir);
     return result;
   }
-  result.second = executeAndWait(fs.join("bin","arangod"), argv);
+  result.upgrade.total ++;
+  result.upgrade.second = executeAndWait(fs.join("bin","arangod"), argv);
 
   cleanupDirectories.push(tmpDataDir);
 
@@ -1999,7 +2008,7 @@ testFuncs.arangob = function (options) {
   if (instanceInfo === false) {
     return {status: false, message: "failed to start server!"};
   }
-  var results = {};
+  var results = { arangob: {status: true, total: 0}};
   var i;
   var oneResult;
   var continueTesting = true;
@@ -2017,7 +2026,7 @@ testFuncs.arangob = function (options) {
 
       if (!continueTesting) {
         print("Skipping " + benchTodo[i] + ", server is gone.");
-        results[i] = {status: false, message: instanceInfo.exitStatus};
+        results.arangob[i] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
         break;
       }
@@ -2026,8 +2035,11 @@ testFuncs.arangob = function (options) {
         args = _.extend(args, options.benchargs);
       }
       oneResult = runArangoBenchmark(options, instanceInfo, args);
-      results[i] = oneResult;
-
+      results.arangob[i] = oneResult;
+      results.arangob.total++;
+      if (!results.arangob[i].status) {
+        results.arangob.status = false;
+      }
       continueTesting = checkInstanceAlive(instanceInfo, options);
 
       if (oneResult.status !== true && !options.force) {

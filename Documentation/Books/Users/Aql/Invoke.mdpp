@@ -1,12 +1,17 @@
 !CHAPTER How to invoke AQL 
 
-!SECTION Executing queries
-
 You can run AQL queries from your application via the HTTP REST API. The full
 API description is available at [HTTP Interface for AQL Query Cursors](../HttpAqlQueryCursor/README.md).
 
-You can also run AQL queries from arangosh. To do so, you can use the *_query* method 
-of the *db* object. This will run the specified query in the context of the currently
+You can also run AQL queries from arangosh.
+
+!SECTION Executing queries from Arangosh 
+
+
+!SUBSECTION with db._query
+
+One can execute queries with the *_query* method of the *db* object. 
+This will run the specified query in the context of the currently
 selected database and return the query results in a cursor. The results of the cursor
 can be printed using its *toArray* method:
     
@@ -18,6 +23,8 @@ can be printed using its *toArray* method:
     db._query('FOR my IN mycollection RETURN my._key').toArray()
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 01_workWithAQL_all
+
+!SUBSUBSECTION db._query Bind parameters
 
 To pass bind parameters into a query, they can be specified as second argument to the
 *_query* method:
@@ -31,6 +38,8 @@ To pass bind parameters into a query, they can be specified as second argument t
     }).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_bindValues
+
+!SUBSUBSECTION ES6 template strings 
 
 It is also possible to use ES6 template strings for generating AQL queries. There is
 a template string generator function named *aqlQuery*:
@@ -59,6 +68,8 @@ Note: data-modification AQL queries normally do not return a result (unless the 
 contains an extra *RETURN* statement). When not using a *RETURN* statement in the query, the 
 *toArray* method will return an empty array. 
 
+!SUBSUBSECTION Statistics and extra Information
+ 
 It is always possible to retrieve statistics for a query with the *getExtra* method:
 
     @startDocuBlockInline 03_workWithAQL_getExtra
@@ -71,6 +82,9 @@ It is always possible to retrieve statistics for a query with the *getExtra* met
     @endDocuBlock 03_workWithAQL_getExtra
 
 The meaning of the statistics values is described in [Execution statistics](QueryStatistics.md).
+You also will find warnings in here; If you're designing queries on the shell be shure to also look at it.
+
+!SUBSECTION with _createStatement (ArangoStatement) 
 
 The *_query* method is a shorthand for creating an ArangoStatement object,
 executing it and iterating over the resulting cursor. If more control over the
@@ -93,8 +107,10 @@ To execute the query, use the *execute* method of the statement:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements2
 
-This has executed the query. The query results are available in a cursor
-now. The cursor can return all its results at once using the *toArray* method.
+!SUBSUBSECTION Cursors
+
+Once the query executed the query results are available in a cursor. 
+The cursor can return all its results at once using the *toArray* method.
 This is a short-cut that you can use if you want to access the full result
 set without iterating over it yourself.
 
@@ -106,6 +122,8 @@ set without iterating over it yourself.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements3
     
+
+
 Cursors can also be used to iterate over the result set document-by-document.
 To do so, use the *hasNext* and *next* methods of the cursor:
 
@@ -123,6 +141,8 @@ the results again, the query needs to be re-executed.
  
 Additionally, the iteration can be done in a forward-only fashion. There is no 
 backwards iteration or random access to elements in a cursor.    
+
+!SUBSUBSECTION ArangoStatement parameters binding
 
 To execute an AQL query using bind parameters, you need to create a statement first
 and then bind the parameters to it before execution:
@@ -175,6 +195,8 @@ making it a bit more convenient:
     } );
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements8
+
+!SUBSUBSECTION Counting with a cursor
     
 Cursors also optionally provide the total number of results. By default, they do not. 
 To make the server return the total number of results, you may set the *count* attribute to 

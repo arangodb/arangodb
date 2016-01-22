@@ -100,6 +100,8 @@ class MultiCollectionEdgeExpander {
   void operator()(VertexId& source, std::vector<ArangoDBPathFinder::Step*>& result) {
     equal_to<VertexId> eq;
     for (auto const& edgeCollection : _edgeCollections) {
+      TRI_ASSERT(edgeCollection != nullptr);
+
       auto edges = edgeCollection->getEdges(_direction, source);
 
       std::unordered_map<VertexId, size_t> candidates;
@@ -157,6 +159,7 @@ class SimpleEdgeExpander {
       : _direction(direction), _edgeCollection(edgeCollection){};
 
   void operator()(VertexId& source, std::vector<ArangoDBPathFinder::Step*>& result) {
+    TRI_ASSERT(_edgeCollection != nullptr);
     auto edges = _edgeCollection->getEdges(_direction, source);
 
     equal_to<VertexId> eq;
@@ -262,20 +265,20 @@ void BasicOptions::addEdgeFilter(v8::Isolate* isolate,
   useEdgeFilter = true;
   auto it = _edgeFilter.find(cid);
 
+  if (it != _edgeFilter.end()) {
+    return;
+  }
+
   if (example->IsArray()) {
-    if (it == _edgeFilter.end()) {
-      _edgeFilter.emplace(
-          cid, new ExampleMatcher(isolate, v8::Handle<v8::Array>::Cast(example),
-                                  shaper, errorMessage));
-    }
+    _edgeFilter.emplace(
+        cid, new ExampleMatcher(isolate, v8::Handle<v8::Array>::Cast(example),
+                                shaper, errorMessage));
   } else {
     // Has to be Object
-    if (it == _edgeFilter.end()) {
-      _edgeFilter.emplace(
-          cid,
-          new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
-                             shaper, errorMessage));
-    }
+    _edgeFilter.emplace(
+        cid,
+        new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
+                           shaper, errorMessage));
   }
 }
 
@@ -424,6 +427,7 @@ TRI_RunSimpleShortestPathSearch(std::vector<EdgeCollectionInfo*>& collectionInfo
       VertexId& v, std::vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
     equal_to<VertexId> eq;
     for (auto const& edgeCollection : collectionInfos) {
+      TRI_ASSERT(edgeCollection != nullptr);
       auto edges = edgeCollection->getEdges(forward, v);
       for (size_t j = 0; j < edges.size(); ++j) {
         EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
@@ -445,6 +449,7 @@ TRI_RunSimpleShortestPathSearch(std::vector<EdgeCollectionInfo*>& collectionInfo
       VertexId& v, std::vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
     equal_to<VertexId> eq;
     for (auto const& edgeCollection : collectionInfos) {
+      TRI_ASSERT(edgeCollection != nullptr);
       auto edges = edgeCollection->getEdges(backward, v);
       for (size_t j = 0; j < edges.size(); ++j) {
         EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
@@ -483,6 +488,8 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
   std::unordered_set<VertexId> nextDepth;
 
   for (auto const& col : collectionInfos) {
+    TRI_ASSERT(col != nullptr);
+
     for (VertexId const& start : startVertices) {
       auto edges = col->getEdges(dir, start);
       for (size_t j = 0; j < edges.size(); ++j) {
@@ -528,6 +535,7 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
   std::unordered_set<VertexId> nextDepth;
 
   for (auto const& col : collectionInfos) {
+    TRI_ASSERT(col != nullptr);
     for (VertexId const& start : startVertices) {
       auto edges = col->getEdges(dir, start);
 
@@ -572,6 +580,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
   std::unordered_set<VertexId> nextDepth;
 
   for (auto const& col : collectionInfos) {
+    TRI_ASSERT(col != nullptr);
     for (VertexId const& start : startVertices) {
       dir = TRI_EDGE_OUT;
       auto edges = col->getEdges(dir, start);
@@ -694,6 +703,12 @@ Json* SingleServerTraversalPath::edgeToJson(Transaction* trx,
                                             CollectionNameResolver* resolver,
                                             EdgeInfo const& e) {
   auto collection = trx->trxCollection(e.cid);
+
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  TRI_ASSERT(collection != nullptr);
+
   TRI_shaped_json_t shapedJson;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, &e.mptr);
   return new Json(
@@ -755,9 +770,14 @@ DepthFirstTraverser::DepthFirstTraverser(
 
 bool DepthFirstTraverser::edgeMatchesConditions(TRI_doc_mptr_t& e,
                                                 size_t& eColIdx, size_t depth) {
+  TRI_ASSERT(_expressions != nullptr);
+
   auto it = _expressions->find(depth);
+
   if (it != _expressions->end()) {
     for (auto const& exp : it->second) {
+      TRI_ASSERT(exp != nullptr);
+
       if (exp->isEdgeAccess &&
           !exp->matchesCheck(e, _edgeCols.at(eColIdx), _resolver)) {
         ++_filteredPaths;
@@ -770,12 +790,17 @@ bool DepthFirstTraverser::edgeMatchesConditions(TRI_doc_mptr_t& e,
 
 bool DepthFirstTraverser::vertexMatchesConditions(VertexId const& v,
                                                   size_t depth) {
+  TRI_ASSERT(_expressions != nullptr);
+
   auto it = _expressions->find(depth);
+
   if (it != _expressions->end()) {
     TRI_doc_mptr_copy_t mptr;
     TRI_document_collection_t* docCol = nullptr;
     bool fetchVertex = true;
     for (auto const& exp : it->second) {
+      TRI_ASSERT(exp != nullptr);
+
       if (!exp->isEdgeAccess) {
         if (fetchVertex) {
           fetchVertex = false;
@@ -809,6 +834,8 @@ bool DepthFirstTraverser::vertexMatchesConditions(VertexId const& v,
               // This needs a different check method now.
               // Innerloop here
               for (auto const& exp2 : it->second) {
+                TRI_ASSERT(exp2 != nullptr);
+
                 if (!exp2->isEdgeAccess) {
                   if (!exp2->matchesCheck(tmp.json())) {
                     ++_filteredPaths;
@@ -988,13 +1015,18 @@ void DepthFirstTraverser::_defInternalFunctions() {
 
 void DepthFirstTraverser::setStartVertex(
     arangodb::traverser::VertexId const& v) {
+  TRI_ASSERT(_expressions != nullptr);
+
   auto it = _expressions->find(0);
+
   if (it != _expressions->end()) {
     if (!it->second.empty()) {
       TRI_doc_mptr_copy_t mptr;
       TRI_document_collection_t* docCol = nullptr;
       bool fetchVertex = true;
       for (auto const& exp : it->second) {
+        TRI_ASSERT(exp != nullptr);
+
         if (!exp->isEdgeAccess) {
           if (fetchVertex) {
             fetchVertex = false;

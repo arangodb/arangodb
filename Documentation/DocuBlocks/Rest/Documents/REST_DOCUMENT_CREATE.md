@@ -71,6 +71,12 @@
 /// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
+/// @RESTRETURNCODE{409}
+/// is returned if a document with the same qualifiers in
+/// an indexed attribute conflicts with an already existing document
+/// and thus violating that uniq constraint.
+/// The response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
 /// Create a document in a collection named *products*. Note that the

@@ -33,7 +33,6 @@
 namespace arangodb {
 namespace basics {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read-write lock, slow but just using CPP11
 /// This class has two other advantages:
@@ -54,90 +53,36 @@ class ReadWriteLockCPP11 {
   
  public:
   ReadWriteLockCPP11() : _state(0), _wantWrite(false) {}
-
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief locks for writing
   //////////////////////////////////////////////////////////////////////////////
 
-  void writeLock() {
-    std::unique_lock<std::mutex> guard(_mut);
-    if (_state == 0) {
-      _state = -1;
-      return;
-    }
-    do {
-      _wantWrite = true;
-      _bell.wait(guard);
-    } while (_state != 0);
-    _state = -1;
-    _wantWrite = false;
-  }
+  void writeLock();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief locks for writing, but only tries
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tryWriteLock() {
-    std::unique_lock<std::mutex> guard(_mut);
-    if (_state == 0) {
-      _state = -1;
-      return true;
-    }
-    return false;
-  }
+  bool tryWriteLock();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief locks for reading
   //////////////////////////////////////////////////////////////////////////////
 
-  void readLock() {
-    std::unique_lock<std::mutex> guard(_mut);
-    if (!_wantWrite && _state >= 0) {
-      _state += 1;
-      return;
-    }
-    while (true) {
-      while (_wantWrite || _state < 0) {
-        _bell.wait(guard);
-      }
-      if (!_wantWrite) {
-        break;
-      }
-    }
-    _state += 1;
-  }
+  void readLock();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief locks for reading, tries only
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tryReadLock() {
-    std::unique_lock<std::mutex> guard(_mut);
-    if (!_wantWrite && _state >= 0) {
-      _state += 1;
-      return true;
-    }
-    return false;
-  }
+  bool tryReadLock();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief releases the read-lock or write-lock
   //////////////////////////////////////////////////////////////////////////////
 
-  void unlock() {
-    std::unique_lock<std::mutex> guard(_mut);
-    if (_state == -1) {
-      _state = 0;
-      _bell.notify_all();
-    } else {
-      _state -= 1;
-      if (_state == 0) {
-        _bell.notify_all();
-      }
-    }
-  }
-
+  void unlock();
   
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -169,5 +114,4 @@ class ReadWriteLockCPP11 {
 }
 
 #endif
-
 

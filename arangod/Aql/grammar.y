@@ -1187,7 +1187,11 @@ graph_collection:
       $$ = parser->ast()->createNodeValueString($1.value, $1.length);
     }
   | bind_parameter {
-      // TODO FIXME check @s
+      char const* p = $1->getStringValue();
+      size_t const len = $1->getStringLength();
+      if (len < 1 || *p != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
+      }
       $$ = $1;
     }
   ;
@@ -1220,6 +1224,11 @@ graph_subject:
     }
   | T_GRAPH bind_parameter {
       // graph name
+      char const* p = $2->getStringValue();
+      size_t const len = $2->getStringLength();
+      if (len < 1 || *p == '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
+      }
       $$ = $2;
     }
   | T_GRAPH T_QUOTED_STRING {

@@ -35,6 +35,8 @@
 #include <sys/file.h>
 #endif
 
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
@@ -48,15 +50,13 @@
 #include <tchar.h>
 #endif
 
-using namespace std;
-
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read buffer size (used for bulk file reading)
 ////////////////////////////////////////////////////////////////////////////////
 
 #define READBUFFER_SIZE 8192
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a static buffer of zeros, used to initialize files
@@ -74,7 +74,7 @@ static bool Initialized = false;
 /// @brief user-defined temporary path
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* TempPath;
+static std::string TempPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief names of blocking files
@@ -93,7 +93,6 @@ static TRI_vector_t FileDescriptors;
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_read_write_lock_t FileNamesLock;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes trailing path separators from path
@@ -272,7 +271,6 @@ static char* LocateConfigDirectoryEnv(void) {
 
   return r;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -1995,21 +1993,65 @@ void TRI_SetApplicationName(char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-// This must be exactly 14 Ys and 6 Xs because it will be overwritten
-// and these are the maximum lengths!
-static char TRI_TempPath[] = "/tmp/YYYYYYYYYYYYYYXXXXXX";
-static bool TRI_TempPathIsSet = false;
 
-static void TRI_TempPathCleaner(void) {
-  if (TRI_TempPathIsSet) {
-    rmdir(TRI_TempPath);
-    TRI_TempPathIsSet = false;
+static Mutex SystemTempPathMutex;
+static std::unique_ptr<char> SystemTempPath;
+
+static void SystemTempPathCleaner(void) {
+  MUTEX_LOCKER(SystemTempPathMutex);
+
+  char* path = SystemTempPath.get();
+
+  if (path != nullptr) {
+    rmdir(path);
   }
 }
-#endif
 
-char* TRI_GetTempPath() {
-#ifdef _WIN32
+std::string TRI_GetTempPath() {
+  MUTEX_LOCKER(SystemTempPathMutex);
+
+  char* path = SystemTempPath.get();
+
+  if (path == nullptr) {
+    std::string system = "";
+    char const* v = getenv("TMPDIR");
+
+    // create the template
+    if (v == nullptr || *v == '\0') {
+      system = "/tmp/";
+    } else if (v[strlen(v) - 1] == '/') {
+      system = v;
+    } else {
+      system = std::string(v) + "/";
+    }
+
+    system += std::string(TRI_ApplicationName) + "_XXXXXX";
+
+    // copy to a character array
+    SystemTempPath.reset(new char[system.size() + 1]);
+    path = SystemTempPath.get();
+    TRI_CopyString(path, system.c_str(), system.size());
+
+    // fill template
+    char* res = mkdtemp(SystemTempPath.get());
+
+    if (res == nullptr) {
+      system = "/tmp/arangodb";
+      SystemTempPath.reset(new char[system.size() + 1]);
+      path = SystemTempPath.get();
+      TRI_CopyString(path, system.c_str(), system.size());
+    }
+
+    atexit(SystemTempPathCleaner);
+  }
+
+  return std::string(path);
+}
+
+#else
+
+std::string TRI_GetTempPath() {
+>>>>>>> 3f93a75... fixed temp path to honor TMPDIR
 
 // ..........................................................................
 // Unfortunately we generally have little control on whether or not the
@@ -2021,121 +2063,105 @@ char* TRI_GetTempPath() {
 // ..........................................................................
 
 #define LOCAL_MAX_PATH_BUFFER 2049
-  TCHAR tempFileName[LOCAL_MAX_PATH_BUFFER];
-  TCHAR tempPathName[LOCAL_MAX_PATH_BUFFER];
-  DWORD dwReturnValue = 0;
-  UINT uReturnValue = 0;
-  HANDLE tempFileHandle = INVALID_HANDLE_VALUE;
-  BOOL ok;
-  char* result;
+TCHAR tempFileName[LOCAL_MAX_PATH_BUFFER];
+TCHAR tempPathName[LOCAL_MAX_PATH_BUFFER];
+DWORD dwReturnValue = 0;
+UINT uReturnValue = 0;
+HANDLE tempFileHandle = INVALID_HANDLE_VALUE;
+BOOL ok;
+char* result;
 
-  // ..........................................................................
-  // Attempt to locate the path where the users temporary files are stored
-  // Note we are imposing a limit of 2048+1 characters for the maximum size of a
-  // possible path
-  // ..........................................................................
+// ..........................................................................
+// Attempt to locate the path where the users temporary files are stored
+// Note we are imposing a limit of 2048+1 characters for the maximum size of a
+// possible path
+// ..........................................................................
 
-  dwReturnValue = GetTempPath(LOCAL_MAX_PATH_BUFFER, tempPathName);
+dwReturnValue = GetTempPath(LOCAL_MAX_PATH_BUFFER, tempPathName);
 
-  if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
-    // something wrong
-    LOG_TRACE("GetTempPathA failed: LOCAL_MAX_PATH_BUFFER=%d:dwReturnValue=%d",
-              LOCAL_MAX_PATH_BUFFER, dwReturnValue);
-    // attempt to simply use the current directory
-    _tcscpy(tempFileName, TEXT("."));
-  }
-
-  // ...........................................................................
-  // Having obtained the temporary path, we have to determine if we can actually
-  // write to that directory
-  // ...........................................................................
-
-  uReturnValue = GetTempFileName(tempPathName, TEXT("TRI_"), 0, tempFileName);
-
-  if (uReturnValue == 0) {
-    LOG_TRACE("GetTempFileNameA failed");
-    _tcscpy(tempFileName, TEXT("TRI_tempFile"));
-  }
-
-  tempFileHandle = CreateFile((LPTSTR)tempFileName,   // file name
-                              GENERIC_WRITE,          // open for write
-                              0,                      // do not share
-                              NULL,                   // default security
-                              CREATE_ALWAYS,          // overwrite existing
-                              FILE_ATTRIBUTE_NORMAL,  // normal file
-                              NULL);                  // no template
-
-  if (tempFileHandle == INVALID_HANDLE_VALUE) {
-    LOG_FATAL_AND_EXIT("Can not create a temporary file");
-  }
-
-  ok = CloseHandle(tempFileHandle);
-
-  if (!ok) {
-    LOG_FATAL_AND_EXIT("Can not close the handle of a temporary file");
-  }
-
-  ok = DeleteFile(tempFileName);
-
-  if (!ok) {
-    LOG_FATAL_AND_EXIT("Can not destroy a temporary file");
-  }
-
-  // ...........................................................................
-  // Whether or not UNICODE is defined, we assume that the temporary file name
-  // fits in the ascii set of characters. This is a small compromise so that
-  // temporary file names can be extra long if required.
-  // ...........................................................................
-  {
-    size_t j;
-    size_t pathSize = _tcsclen(tempPathName);
-    char* temp = static_cast<char*>(
-        TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
-
-    if (temp == nullptr) {
-      LOG_FATAL_AND_EXIT("Out of memory");
-    }
-
-    for (j = 0; j < pathSize; ++j) {
-      if (tempPathName[j] > 127) {
-        LOG_FATAL_AND_EXIT("Invalid characters in temporary path name");
-      }
-      temp[j] = (char)(tempPathName[j]);
-    }
-    temp[pathSize] = 0;
-
-    // remove trailing directory separator
-    RemoveTrailingSeparator(temp);
-
-    // ok = (WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, tempPathName,
-    // -1, temp, pathSize + 1,  NULL, NULL) != 0);
-
-    result = TRI_DuplicateString(temp);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, temp);
-  }
-
-  return result;
-#else
-  if (!TRI_TempPathIsSet) {
-    // Note that TRI_TempPath has space for /tmp/YYYYYYYYYYXXXXXX
-    if (TRI_ApplicationName != nullptr) {
-      strcpy(TRI_TempPath, "/tmp/");
-      strncat(TRI_TempPath, TRI_ApplicationName, 13);
-      strcat(TRI_TempPath, "_XXXXXX");
-    } else {
-      strcpy(TRI_TempPath, "/tmp/arangodb_XXXXXX");
-    }
-    char* res = mkdtemp(TRI_TempPath);
-    if (res == nullptr) {
-      strcpy(TRI_TempPath, "/tmp/arangodb");
-      return TRI_DuplicateString(TRI_TempPath);
-    }
-    atexit(TRI_TempPathCleaner);
-    TRI_TempPathIsSet = true;
-  }
-  return TRI_DuplicateString(TRI_TempPath);
-#endif
+if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
+  // something wrong
+  LOG_TRACE("GetTempPathA failed: LOCAL_MAX_PATH_BUFFER=%d:dwReturnValue=%d",
+            LOCAL_MAX_PATH_BUFFER, dwReturnValue);
+  // attempt to simply use the current directory
+  _tcscpy(tempFileName, TEXT("."));
 }
+
+// ...........................................................................
+// Having obtained the temporary path, we have to determine if we can actually
+// write to that directory
+// ...........................................................................
+
+uReturnValue = GetTempFileName(tempPathName, TEXT("TRI_"), 0, tempFileName);
+
+if (uReturnValue == 0) {
+  LOG_TRACE("GetTempFileNameA failed");
+  _tcscpy(tempFileName, TEXT("TRI_tempFile"));
+}
+
+tempFileHandle = CreateFile((LPTSTR)tempFileName,   // file name
+                            GENERIC_WRITE,          // open for write
+                            0,                      // do not share
+                            NULL,                   // default security
+                            CREATE_ALWAYS,          // overwrite existing
+                            FILE_ATTRIBUTE_NORMAL,  // normal file
+                            NULL);                  // no template
+
+if (tempFileHandle == INVALID_HANDLE_VALUE) {
+  LOG_FATAL_AND_EXIT("Can not create a temporary file");
+}
+
+ok = CloseHandle(tempFileHandle);
+
+if (!ok) {
+  LOG_FATAL_AND_EXIT("Can not close the handle of a temporary file");
+}
+
+ok = DeleteFile(tempFileName);
+
+if (!ok) {
+  LOG_FATAL_AND_EXIT("Can not destroy a temporary file");
+}
+
+// ...........................................................................
+// Whether or not UNICODE is defined, we assume that the temporary file name
+// fits in the ascii set of characters. This is a small compromise so that
+// temporary file names can be extra long if required.
+// ...........................................................................
+{
+  size_t j;
+  size_t pathSize = _tcsclen(tempPathName);
+  char* temp = static_cast<char*>(
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
+
+  if (temp == nullptr) {
+    LOG_FATAL_AND_EXIT("Out of memory");
+  }
+
+  for (j = 0; j < pathSize; ++j) {
+    if (tempPathName[j] > 127) {
+      LOG_FATAL_AND_EXIT("Invalid characters in temporary path name");
+    }
+    temp[j] = (char)(tempPathName[j]);
+  }
+  temp[pathSize] = 0;
+
+  // remove trailing directory separator
+  RemoveTrailingSeparator(temp);
+
+  // ok = (WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, tempPathName,
+  // -1, temp, pathSize + 1,  NULL, NULL) != 0);
+
+  result = TRI_DuplicateString(temp);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, temp);
+}
+
+std::string r = result;
+TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+return r;
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a temporary file name
@@ -2146,15 +2172,13 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
   char* dir;
   int tries;
 
-  char* temp = TRI_GetUserTempPath();
+  std::string temp = TRI_GetUserTempPath();
 
   if (directory != nullptr) {
-    dir = TRI_Concatenate2File(temp, directory);
+    dir = TRI_Concatenate2File(temp.c_str(), directory);
   } else {
-    dir = TRI_DuplicateString(temp);
+    dir = TRI_DuplicateString(temp.c_str());
   }
-
-  TRI_Free(TRI_CORE_MEM_ZONE, temp);
 
   // remove trailing PATH_SEPARATOR
   RemoveTrailingSeparator(dir);
@@ -2226,31 +2250,19 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
 /// temp path if none is specified
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetUserTempPath(void) {
-  if (TempPath == nullptr) {
+std::string TRI_GetUserTempPath(void) {
+  if (TempPath.empty()) {
     return TRI_GetTempPath();
   }
 
-  return TRI_DuplicateString(TempPath);
+  return TempPath;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a new user-defined temp path
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetUserTempPath(char* path) {
-  if (TempPath != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, TempPath);
-  }
-
-  if (path == nullptr) {
-    // unregister user-defined temp path
-    TempPath = nullptr;
-  } else {
-    // copy the user-defined temp path
-    TempPath = TRI_DuplicateString(path);
-  }
-}
+void TRI_SetUserTempPath(std::string const& path) { TempPath = path; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory
@@ -2261,8 +2273,9 @@ void TRI_SetUserTempPath(char* path) {
 #if _WIN32
 
 std::string TRI_LocateInstallDirectory() {
-  return TRI_LocateBinaryPath(nullptr) + std::string(1, TRI_DIR_SEPARATOR_CHAR) +
-         ".." + string(1, TRI_DIR_SEPARATOR_CHAR);
+  return TRI_LocateBinaryPath(nullptr) +
+         std::string(1, TRI_DIR_SEPARATOR_CHAR) + ".." +
+         string(1, TRI_DIR_SEPARATOR_CHAR);
 }
 
 #endif
@@ -2339,15 +2352,11 @@ char* TRI_GetNullBufferFiles() { return &NullBuffer[0]; }
 
 size_t TRI_GetNullBufferSizeFiles() { return sizeof(NullBuffer); }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the files subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitializeFiles(void) {
-  // clear user-defined temp path
-  TempPath = nullptr;
-
   memset(TRI_GetNullBufferFiles(), 0, TRI_GetNullBufferSizeFiles());
 }
 
@@ -2355,11 +2364,4 @@ void TRI_InitializeFiles(void) {
 /// @brief shutdown the files subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownFiles(void) {
-  if (TempPath != nullptr) {
-    // free any user-defined temp-path
-    TRI_FreeString(TRI_CORE_MEM_ZONE, TempPath);
-  }
-}
-
-
+void TRI_ShutdownFiles(void) {}
