@@ -1168,19 +1168,12 @@ static int DumpCollection(TRI_replication_dump_t* dump,
                           bool withTicks, bool translateCollectionIds,
                           bool failOnUnknown,
                           arangodb::CollectionNameResolver* resolver) {
-  TRI_string_buffer_t* buffer;
-  TRI_voc_tick_t lastFoundTick;
-  TRI_voc_tid_t lastTid;
-  int res;
-  bool hasMore;
-  bool bufferFull;
-  bool ignoreMarkers;
 
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu",
             (unsigned long long)document->_info.id(),
             (unsigned long long)dataMin, (unsigned long long)dataMax);
 
-  buffer = dump->_buffer;
+  TRI_string_buffer_t* buffer = dump->_buffer;
 
   std::vector<df_entry_t> datafiles;
 
@@ -1191,20 +1184,18 @@ static int DumpCollection(TRI_replication_dump_t* dump,
   }
 
   // setup some iteration state
-  lastFoundTick = 0;
-  lastTid = 0;
-  res = TRI_ERROR_NO_ERROR;
-  hasMore = true;
-  bufferFull = false;
-  ignoreMarkers = false;
+  TRI_voc_tick_t lastFoundTick = 0;
+  TRI_voc_tid_t lastTid = 0;
+  int res = TRI_ERROR_NO_ERROR;
+  bool hasMore = true;
+  bool bufferFull = false;
+  bool ignoreMarkers = false;
 
   size_t const n = datafiles.size();
 
   for (size_t i = 0; i < n; ++i) {
     df_entry_t const& e = datafiles[i];
     TRI_datafile_t const* datafile = e._data;
-    char const* ptr;
-    char const* end;
 
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
@@ -1214,7 +1205,8 @@ static int DumpCollection(TRI_replication_dump_t* dump,
       TRI_ASSERT(datafile->_isSealed);
     }
 
-    ptr = datafile->_data;
+    char const* ptr = datafile->_data;
+    char const* end;
 
     if (res == TRI_ERROR_NO_ERROR) {
       // no error so far. start iterating
@@ -1353,7 +1345,6 @@ static int DumpCollection(TRI_replication_dump_t* dump,
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a collection

@@ -432,6 +432,8 @@ class Transaction {
   int create(TRI_transaction_collection_t* trxCollection,
              TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
              void const* data, bool forceSync) {
+    TRI_ASSERT(json != nullptr);
+
     TRI_voc_key_t key = nullptr;
     int res = DocumentHelper::getKey(json, &key);
 
@@ -463,6 +465,11 @@ class Transaction {
              void const* data, bool forceSync) {
     std::unique_ptr<TRI_json_t> json(
         arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
+
+    if (json == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
     return create(trxCollection, mptr, json.get(), data, forceSync);
   }
 
@@ -546,15 +553,14 @@ class Transaction {
     return isLocked(trxCollection, type);
   }
 
-  
- protected:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the setup state
   //////////////////////////////////////////////////////////////////////////////
 
   int setupState () { return _setupState; }
-
+  
+ protected:
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection
   //////////////////////////////////////////////////////////////////////////////
@@ -611,6 +617,10 @@ class Transaction {
       // invalid cid
       return registerError(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
+    
+    if (_setupState != TRI_ERROR_NO_ERROR) {
+      return _setupState;
+    }
 
     const TRI_transaction_status_e status = getStatus();
 
@@ -636,6 +646,10 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int addCollection(std::string const& name, TRI_transaction_type_e type) {
+    if (_setupState != TRI_ERROR_NO_ERROR) {
+      return _setupState;
+    }
+
     if (!_isReal) {
       return addCollection(this->resolver()->getCollectionIdCluster(name),
                            name.c_str(), type);
