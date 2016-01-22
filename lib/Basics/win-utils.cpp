@@ -539,6 +539,10 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   char linebuf[32];
   LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
 
+
+  if (!TRI_InitWindowsEventLog()) {
+    return;
+  }
   snprintf(linebuf, sizeof(linebuf), "%d", line);
 
   DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
@@ -550,6 +554,8 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                    NULL)) {
     // well, fail then...
   }
+
+  TRI_CloseWindowsEventlog();
 }
 
 
