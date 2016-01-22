@@ -1428,7 +1428,7 @@ testFuncs.config = function (options) {
     if (!results.relative[test].status) {
       results.relative.status = false;
     }
-    results.relative.total++
+    results.relative.total++;
     print("Args for (relative) [" + test + "]:");
     print(yaml.safeDump(args));
     print("Result: " + results.relative[test].status);
