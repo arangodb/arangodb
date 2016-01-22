@@ -1513,8 +1513,13 @@ function rubyTests (options, ssl) {
         }
         print("\n"+ Date() + " rspec Trying ",te,"...");
 
-        result[te] = executeAndWait(command, args);
-        if (result[te].status === false) {
+        var res = executeAndWait(command, args);
+        result[te] = {
+          total: 1,
+          status: res.status
+        };
+        result[te]["dummy_" + te] = res;
+        if (res.status === false) {
           options.cleanup = false;
           if (!options.force) {
             break;
@@ -2393,7 +2398,9 @@ function UnitTest (which, options) {
   }
   else {
     results[which] = thisReply = testFuncs[which](options);
-    // print("Testresult:", yaml.safeDump(r));
+    if (options.extremeVerbosity) {
+      print("Testresult:", yaml.safeDump(results));
+    }
     ok = true;
     for (i in thisReply) {
       if (thisReply.hasOwnProperty(i) &&
