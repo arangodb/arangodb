@@ -1452,6 +1452,12 @@ testFuncs.boost = function (options) {
   return results;
 };
 
+function camelize(str) {
+  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function(letter, index) {
+    return index === 0 ? letter.toLowerCase() : letter.toUpperCase();
+  }).replace(/\s+/g, '');
+}
+
 function rubyTests (options, ssl) {
   var instanceInfo;
   if (ssl) {
@@ -1496,36 +1502,68 @@ function rubyTests (options, ssl) {
     command = "rspec";
   }
 
+  var parseRspecJson = function(testCase, res, totalDuration) {
+    var tName = camelize(testCase.description);
+    var status = (testCase.status === "passed");
+    res[tName] = {
+      status: status,
+      message: testCase.full_description,
+      duration: totalDuration // RSpec doesn't offer per testcase time...
+    };
+    
+    res.total ++;
+
+    if (!status) {
+      var msg = yaml.safeDump(testCase);
+      print("RSpec test case falied: \n" + msg);
+      res[tName].message += "\n" +  msg;
+    }
+  };
   for (i = 0; i < files.length; i++) {
     var te = files[i];
     if (te.substr(0,4) === "api-" && te.substr(-3) === ".rb") {
       if (filterTestcaseByOptions(te, options, filtered)) {
-
-        args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
-                "--format", "d", "--require", tmpname,
-                fs.join("UnitTests","HttpInterface", te)];
-
         if (! continueTesting) {
           print("Skipping " + te + " server is gone.");
           result[te] = {status: false, message: instanceInfo.exitStatus};
           instanceInfo.exitStatus = "server is gone.";
           break;
         }
+        var resultfn = fs.join("out", "UnitTests",  te + ".json");
+        args = ["--color",
+                "-I", fs.join("UnitTests","HttpInterface"),
+                "--format", "j",
+                "--out", resultfn,
+                "--require", tmpname,
+                fs.join("UnitTests","HttpInterface", te)];
+
+
         print("\n"+ Date() + " rspec Trying ",te,"...");
 
         var res = executeAndWait(command, args);
         result[te] = {
-          total: 1,
+          total: 0,
           status: res.status
         };
-        result[te]["dummy_" + te] = res;
-        if (res.status === false) {
-          options.cleanup = false;
-          if (!options.force) {
-            break;
+        try {
+          var jsonResult = JSON.parse(fs.read(resultfn));
+          if (options.extremeVerbosity) {
+            print(yaml.safeDump(jsonResult));
+          }
+          for (var j = 0; j < jsonResult.examples.length; j ++){
+            parseRspecJson(jsonResult.examples[j], result[te], jsonResult.summary.duration);
           }
         }
-
+        catch (x) {
+          print("Failed to parse rspec result: " + x);
+          result[te]["complete_" + te] = res;
+          if (res.status === false) {
+            options.cleanup = false;
+            if (!options.force) {
+              break;
+            }
+          }
+        }
         continueTesting = checkInstanceAlive(instanceInfo, options);
 
       }
