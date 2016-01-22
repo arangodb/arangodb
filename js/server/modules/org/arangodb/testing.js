@@ -1,4 +1,5 @@
 /*jshint strict: false, sub: true */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General unittest framework
@@ -55,20 +56,23 @@ var optionsDocumentation = [
   '   - `force`: if set to true the tests are continued even if one fails',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipGeo`: if set to true the geo index tests are skipped',
-  '   - `skipGraph`: if set to true the Graph tests are skipped',
+  '   - `skipGraph`: if set to true the graph tests are skipped',
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoB`: if set to true benchmark tests are skipped',
   '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
-  '   - `skipMemoryIntense`: tests using lots of resources will be skippet.',
+  '   - `skipMemoryIntense`: tests using lots of resources will be skipped.',
   '   - `skipAuth : testing authentication will be skipped.',
-  '   - `skipSsl`: ommit the ssl_server rspec tests.',
+  '   - `skipSsl`: omit the ssl_server rspec tests.',
   '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
-  '   - `skipConfig`: ommit the noisy configuration tests',
-  '   - `skipFoxxQueues`: ommit the test for the foxx queues',
-  '   - `skipNightly`: ommit the nightly tests',
+  '   - `skipConfig`: omit the noisy configuration tests',
+  '   - `skipFoxxQueues`: omit the test for the foxx queues',
+  '   - `skipNightly`: omit the nightly tests',
   '   - `onlyNightly`: execute only the nightly tests',
+  '   - `loopEternal`: to loop one test over and over.',
+  '   - `loopSleepWhen`: sleep every nth iteration',
+  '   - `loopSleepSec`: sleep seconds between iterations',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -90,6 +94,8 @@ var optionsDocumentation = [
   '   - `valgrindargs`: list of commandline parameters to add to valgrind',
   '',
   '   - `extraargs`: list of extra commandline arguments to add to arangod',
+  '   - `extremeVerbosity`: if set to true, then there will be more test run',
+  '     output, especially for cluster tests.',
   '   - `portOffset`: move our base port by n ports up',
   ''
 ];
@@ -99,6 +105,7 @@ var cleanupDirectories = [];
 var testFuncs = {'all': function(){}};
 var print = require("internal").print;
 var time = require("internal").time;
+var sleep = require("internal").sleep;
 var fs = require("fs");
 var download = require("internal").download;
 var wait = require("internal").wait;
@@ -118,51 +125,54 @@ var toArgv = require("internal").toArgv;
 
 var serverCrashed = false;
 
-var optionsDefaults = { "cluster": false,
-                        "valgrind": false,
-                        "force": true,
-                        "skipBoost": false,
-                        "skipGeo": false,
-                        "skipTimeCritical": false,
-                        "skipNightly": true,
-                        "onlyNightly": false,
-                        "skipMemoryIntense": false,
-                        "skipAql": false,
-                        "skipArangoB": false,
-                        "skipArangoBNonConnKeepAlive": false,
-                        "skipRanges": false,
-                        "skipLogAnalysis": false,
-                        "username": "root",
-                        "password": "",
-                        "test": undefined,
-                        "cleanup": true,
-                        "jsonReply": false,
-                        "portOffset": 0,
-                        "valgrindargs": [],
-                        "valgrindXmlFileBase" : "",
-                        "extraargs": [],
-                        "coreDirectory": "/var/tmp",
-                        "writeXmlReport": true
-
+var optionsDefaults = { 
+  "cluster": false,
+  "valgrind": false,
+  "force": true,
+  "skipBoost": false,
+  "skipGeo": false,
+  "skipTimeCritical": false,
+  "skipNightly": true,
+  "onlyNightly": false,
+  "skipMemoryIntense": false,
+  "skipAql": false,
+  "skipArangoB": false,
+  "skipArangoBNonConnKeepAlive": false,
+  "skipRanges": false,
+  "skipLogAnalysis": false,
+  "username": "root",
+  "password": "",
+  "test": undefined,
+  "cleanup": true,
+  "jsonReply": false,
+  "portOffset": 0,
+  "valgrindargs": [],
+  "valgrindXmlFileBase" : "",
+  "extraargs": [],
+  "coreDirectory": "/var/tmp",
+  "writeXmlReport": true,
+  "extremeVerbosity": false,
+  "loopEternal": false,
+  "loopSleepWhen": 1,
+  "loopSleepSec": 1
 };
-var allTests =
-  [
-    "config",
-    "boost",
-    "shell_server",
-    "shell_server_aql",
-    "http_server",
-    "ssl_server",
-    "shell_client",
-    "dump",
-    "arangob",
-    "arangosh",
-    "importing",
-    "upgrade",
-    "authentication",
-    "authentication_parameters"
-  ];
 
+var allTests = [
+  "config",
+  "boost",
+  "shell_server",
+  "shell_server_aql",
+  "http_server",
+  "ssl_server",
+  "shell_client",
+  "dump",
+  "arangob",
+  "arangosh",
+  "importing",
+  "upgrade",
+  "authentication",
+  "authentication_parameters"
+];
 
 function printUsage () {
   print();
@@ -186,7 +196,7 @@ function printUsage () {
       else {
         checkAll = '   ';
       }
-      print('    ' + checkAll + ' '+i+' ' + oneFunctionDocumentation);
+      print('    ' + checkAll + ' '+ i + ' ' + oneFunctionDocumentation);
     }
   }
   for (i in optionsDocumentation) {
@@ -355,7 +365,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                   "arangodExtraArgs": toArgv(extraargs),
                   "username": "root",
                   "password": ""};
-    print("Temporary cluster data and logs are in",tmpDataDir);
+    print("Temporary cluster data and logs are in", tmpDataDir);
 
     var runInValgrind = "";
     var valgrindXmlFileBase = "";
@@ -364,19 +374,21 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       valgrindXmlFileBase = options.valgrindXmlFileBase;
     }
 
-    var p = new Planner({"numberOfDBservers"      : clusterNodes,
-                         "numberOfCoordinators"   : 1,
-                         "dispatchers"            : {"me": dispatcher},
-                         "dataPath"               : tmpDataDir,
-                         "logPath"                : tmpDataDir,
-                         "useSSLonCoordinators"   : protocol === "ssl",
-                         "valgrind"               : runInValgrind,
-                         "valgrindopts"           : toArgv(valgrindopts, true),
-                         "valgrindXmlFileBase"    : valgrindXmlFileBase + '_cluster',
-                         "valgrindTestname"       : testname,
-                         "valgrindHosts"          : valgrindHosts
-                        });
-    instanceInfo.kickstarter = new Kickstarter(p.getPlan());
+    var plan = new Planner({"numberOfDBservers"      : clusterNodes,
+                            "numberOfCoordinators"   : 1,
+                            "dispatchers"            : {"me": dispatcher},
+                            "dataPath"               : tmpDataDir,
+                            "logPath"                : tmpDataDir,
+                            "useSSLonCoordinators"   : protocol === "ssl",
+                            "valgrind"               : runInValgrind,
+                            "valgrindopts"           : toArgv(valgrindopts, true),
+                            "valgrindXmlFileBase"    : valgrindXmlFileBase + '_cluster',
+                            "valgrindTestname"       : testname,
+                            "valgrindHosts"          : valgrindHosts,
+                            "extremeVerbosity"       : options.extremeVerbosity
+                           });
+
+    instanceInfo.kickstarter = new Kickstarter(plan.getPlan());
     var rc = instanceInfo.kickstarter.launch();
     if (rc.error) {
       print("Cluster startup failed: " + rc.errorMessage);
@@ -450,8 +462,8 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   while (true) {
     wait(0.5, false);
-    var r = download(url+"/_api/version", "", makeAuthorizationHeaders(options));
-    if (! r.error && r.code === 200) {
+    var reply = download(url+"/_api/version", "", makeAuthorizationHeaders(options));
+    if (! reply.error && reply.code === 200) {
       break;
     }
     count ++;
@@ -485,12 +497,12 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 function readImportantLogLines(logPath) {
   var i, j;
   var importantLines = {};
-  var list=fs.list(logPath);
+  var list = fs.list(logPath);
   var jasmineTest = fs.join("jasmine", "core");
   for (i = 0; i < list.length; i++) {
     var fnLines = [];
-    if (list[i].slice(0,3) === 'log') {
-      var buf = fs.readBuffer(fs.join(logPath,list[i]));
+    if (list[i].slice(0, 3) === 'log') {
+      var buf = fs.readBuffer(fs.join(logPath, list[i]));
       var lineStart = 0;
       var maxBuffer = buf.length;
       for (j = 0; j < maxBuffer; j++) {
@@ -514,6 +526,20 @@ function readImportantLogLines(logPath) {
 }
 
 function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
+/* 
+ * We assume the system has core files in /var/tmp/, and we have a gdb.
+ * you can do this at runtime doing:
+ *
+ * echo 1 > /proc/sys/kernel/core_uses_pid
+ * echo /var/tmp/core-%e-%p-%t > /proc/sys/kernel/core_pattern
+ *
+ * or at system startup by altering /etc/sysctl.d/corepattern.conf : 
+ * # We want core files to be located in a central location
+ * # and know the PID plus the process name for later use.
+ * kernel.core_uses_pid = 1
+ * kernel.core_pattern =  /var/tmp/core-%e-%p-%t
+ */
+
   var command;
   command  = '(';
   command += "printf 'bt full\\n thread apply all bt\\n';";
@@ -535,7 +561,8 @@ function analyzeCoreDumpWindows(instanceInfo) {
     return;
   }
   var dbgCmds = [
-    "kp", // print backtrace with arguments
+    "kp", // print curren threads backtrace with arguments
+    "~*kb", // print all threads stack traces
     "dv", // analyze local variables (if)
     "!analyze -v", // print verbose analysis
     "q" //quit the debugger
@@ -641,29 +668,30 @@ function checkInstanceAlive(instanceInfo, options) {
 function waitOnServerForGC(instanceInfo, options, waitTime) {
   try {
     print("waiting " + waitTime + " for server GC");
-    var r;
-    var t;
-    t = 'require("internal").wait(' + waitTime + ', true);';
-    var o = makeAuthorizationHeaders(options);
-    o.method = "POST";
-    o.timeout = waitTime * 10;
-    o.returnBodyOnError = true;
-    r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
+    var reply;
+    var remoteCommand;
+    remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
+    var requestOptions = makeAuthorizationHeaders(options);
+    requestOptions.method = "POST";
+    requestOptions.timeout = waitTime * 10;
+    requestOptions.returnBodyOnError = true;
+    reply = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",
+                     remoteCommand,
+                     requestOptions);
     print("waiting " + waitTime + " for server GC - done.");
-    if (! r.error && r.code === 200) {
-      r = JSON.parse(r.body);
+    if (! reply.error && reply.code === 200) {
+      return JSON.parse(reply.body);
     } else {
       return {
         status: false,
-        message: r.body
+        message: yaml.safedump(reply.body)
       };
     }
-    return r;
-  } catch (e) {
+  } catch (ex) {
     return {
       status: false,
-      message: e.message || String(e),
-      stack: e.stack
+      message: ex.message || String(ex),
+      stack: ex.stack
     };
   }
 
@@ -870,15 +898,15 @@ function findTests () {
 
 function runThere (options, instanceInfo, file) {
   try {
-    var r;
-    var t;
+    var reply;
+    var testCode;
     if (file.indexOf("-spec") === -1) {
-      t = 'var runTest = require("jsunity").runTest; '+
-          'return runTest(' + JSON.stringify(file) + ', true);';
+      testCode = 'var runTest = require("jsunity").runTest; '+
+        'return runTest(' + JSON.stringify(file) + ', true);';
     }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
-      t = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
+      testCode = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
           'try {' +
           'return { status: executeTestSuite([' + JSON.stringify(file) + '], {"format": '+
           JSON.stringify(jasmineReportFormat) + '}), message: "Success"};'+
@@ -890,25 +918,38 @@ function runThere (options, instanceInfo, file) {
           '};' +
           '}';
     }
-    var o = makeAuthorizationHeaders(options);
-    o.method = "POST";
-    o.timeout = 3600;
-    o.returnBodyOnError = true;
-    r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
-    if (! r.error && r.code === 200) {
-      r = JSON.parse(r.body);
-    } else {
-      return {
-        status: false,
-        message: r.body
-      };
+    var httpOptions = makeAuthorizationHeaders(options);
+    httpOptions.method = "POST";
+    httpOptions.timeout = 3600;
+    if (typeof(options.valgrind) === 'string') {
+      httpOptions.timeout *= 2;
     }
-    return r;
-  } catch (e) {
+    httpOptions.returnBodyOnError = true;
+    reply = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",
+                     testCode,
+                     httpOptions);
+    if (! reply.error && reply.code === 200) {
+      return JSON.parse(reply.body);
+    } else {
+      if (reply.hasOwnProperty('body')) {
+        return {
+          status: false,
+          message: reply.body
+        };
+      }
+      else {
+        return {
+          status: false,
+          message: yaml.safeDump(reply)
+        };
+
+      }
+    }
+  } catch (ex) {
     return {
       status: false,
-      message: e.message || String(e),
-      stack: e.stack
+      message: ex.message || String(ex),
+      stack: ex.stack
     };
   }
 }
@@ -917,8 +958,8 @@ function runThere (options, instanceInfo, file) {
 function runHere (options, instanceInfo, file) {
   var result;
   try {
-    if (file.indexOf("-spec") === -1) {
-      var runTest = require("jsunity").runTest; 
+    if (file.indexOf('-spec') === -1) {
+      let runTest = require('jsunity').runTest;
       result = runTest(file, true);
     }
     else {
@@ -935,12 +976,10 @@ function runHere (options, instanceInfo, file) {
         return result;
       }
     }
-    if (file.indexOf("-spec") !== -1) {
-      result = {
-        status: result, 
-        message: ''
-      };
-    }
+    result = {
+      status: result,
+      message: ''
+    };
  }
   catch (err) {
     result = err;
@@ -995,7 +1034,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   if (addArgs !== undefined) {
     args = _.extend(args, addArgs);
   }
-  var arangosh = fs.join("bin","arangosh");
+  var arangosh = fs.join("bin", "arangosh");
   var result;
   var rc = executeAndWait(arangosh, toArgv(args));
   try {
@@ -1004,7 +1043,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   catch(x) {
     return rc;
   }
-  if ((typeof(result[0]) === 'object') && 
+  if ((typeof result[0] === 'object') &&
       result[0].hasOwnProperty('status')) {
     return result[0];
   }
@@ -1047,43 +1086,59 @@ function performTests(options, testList, testname, remote) {
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     if (filterTestcaseByOptions(te, options, filtered)) {
-      if (! continueTesting) {
-        print('oops!');
-        print("Skipping, " + te + " server is gone.");
-        results[te] = {status: false, message: instanceInfo.exitStatus};
-        instanceInfo.exitStatus = "server is gone.";
-        continue;
-      }
+      var first = true;
+      var loopCount = 0;
 
-      print("\n" + Date() + " arangod: Trying",te,"...");
-      var r;
-      if (remote) {
-        r = runThere(options, instanceInfo, te);
-      }
-      else {
-        r = runHere(options, instanceInfo, te);
-      }
-      if (r.hasOwnProperty('status')) {
-        results[te] = r;
-        if (results[te].status === false) {
-          options.cleanup = false;
-        }
-        if (! r.status && ! options.force) {
+      while (first || options.loopEternal) {
+        if (! continueTesting) {
+          print('oops!');
+          print("Skipping, " + te + " server is gone.");
+          results[te] = {status: false, message: instanceInfo.exitStatus};
+          instanceInfo.exitStatus = "server is gone.";
           break;
         }
-      }
-      else {
-        results[te] = {status: false, message: r};
-        if (! options.force) {
-          break;
+        print("\n" + Date() + " arangod: Trying",te,"...");
+        var reply;
+        if (remote) {
+          reply = runThere(options, instanceInfo, te);
         }
-      }
-      if (remote) {
-        continueTesting = checkInstanceAlive(instanceInfo, options);
+        else {
+          reply = runHere(options, instanceInfo, te);
+        }
+        if (reply.hasOwnProperty('status')) {
+          results[te] = reply;
+          if (results[te].status === false) {
+            options.cleanup = false;
+          }
+          if (! reply.status && ! options.force) {
+            break;
+          }
+        }
+        else {
+          results[te] = {status: false, message: reply};
+          if (! options.force) {
+            break;
+          }
+        }
+        if (remote) {
+          continueTesting = checkInstanceAlive(instanceInfo, options);
+        }
+
+        first = false;
+        if (options.loopEternal) {
+          if (loopCount % options.loopSleepWhen === 0) {
+            print("sleeping...");
+            sleep(options.loopSleepSec);
+            print("continuing.");
+          }
+          loopCount++;
+        }
       }
     }
     else {
-      print("Skipped " + te + " because of " + filtered.filter);
+      if (options.extremeVerbosity) {
+        print("Skipped " + te + " because of " + filtered.filter);
+      }
     }
   }
   if (remote) {
@@ -1126,10 +1181,10 @@ testFuncs.single_server = function (options) {
     var te = options.test;
     print("\n" + Date() + " arangod: Trying",te,"...");
     result = {};
-    var r = runThere(options, instanceInfo, makePathGeneric(te));
+    var reply = runThere(options, instanceInfo, makePathGeneric(te));
 
-    if (r.hasOwnProperty('status')) {
-      result[te] = r;
+    if (reply.hasOwnProperty('status')) {
+      result[te] = reply;
       if (result[te].status === false) {
         options.cleanup = false;
       }
@@ -1138,7 +1193,7 @@ testFuncs.single_server = function (options) {
     if (result[te].status === false) {
       options.cleanup = false;
     }
-    shutdownInstance(instanceInfo,options);
+    shutdownInstance(instanceInfo, options);
     print("done.");
     if ((!options.skipLogAnalysis) &&
         instanceInfo.hasOwnProperty('importantLogLines') &&
@@ -1290,14 +1345,14 @@ testFuncs.shell_client = function(options) {
         print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
-        continue;
+        break;
       }
 
       print("\narangosh: Trying",te,"...");
 
-      var r = runInArangosh(options, instanceInfo, te);
-      results[te] = r;
-      if (r.status !== true) {
+      var reply = runInArangosh(options, instanceInfo, te);
+      results[te] = reply;
+      if (reply.status !== true) {
         options.cleanup = false;
         if (! options.force) {
           break;
@@ -1307,7 +1362,9 @@ testFuncs.shell_client = function(options) {
       continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
-      print("Skipped " + te + " because of " + filtered.filter);
+      if (options.extremeVerbosity) {
+        print("Skipped " + te + " because of " + filtered.filter);
+      }
     }
   }
   print("Shutting down...");
@@ -1334,39 +1391,39 @@ testFuncs.config = function (options) {
             "arangorestore",
             "arangosh"];
   var args;
-  var t;
+  var test;
   var i;
   print("--------------------------------------------------------------------------------");
   print("Absolut config tests");
   print("--------------------------------------------------------------------------------");
   for (i = 0; i < ts.length; i++) {
-    t = ts[i];
+    test = ts[i];
     args = {
-      "configuration" : fs.join(topDir,"etc","arangodb",t+".conf"),
+      "configuration" : fs.join(topDir,"etc","arangodb", test + ".conf"),
       "flatCommands"  : ["--help"]
     };
-    results[t] = executeAndWait(fs.join(topDir,"bin",t),
-                                toArgv(args));
-    print("Args for [" + t + "]:");
+    results[test] = executeAndWait(fs.join(topDir, "bin", test),
+                                   toArgv(args));
+    print("Args for [" + test + "]:");
     print(yaml.safeDump(args));
-    print("Result: " + results[t].status);
+    print("Result: " + results[test].status);
   }
   print("--------------------------------------------------------------------------------");
   print("relative config tests");
   print("--------------------------------------------------------------------------------");
   for (i = 0; i < ts.length; i++) {
-    t = ts[i];
+    test = ts[i];
 
     args = {
-      "configuration" : fs.join(topDir,"etc","relative",t+".conf"),
+      "configuration" : fs.join(topDir,"etc","relative", test + ".conf"),
       "flatCommands"  : ["--help"]
     };
 
-    results[t+"_rel"] = executeAndWait(fs.join(topDir,"bin",t),
+    results[test + "_rel"] = executeAndWait(fs.join(topDir,"bin", test),
                                        toArgv(args));
-    print("Args for (relative) [" + t + "]:");
+    print("Args for (relative) [" + test + "]:");
     print(yaml.safeDump(args));
-    print("Result: " + results[t + "_rel"].status);
+    print("Result: " + results[test + "_rel"].status);
   }
 
   return results;
@@ -1444,7 +1501,7 @@ function rubyTests (options, ssl) {
           print("Skipping " + te + " server is gone.");
           result[te] = {status: false, message: instanceInfo.exitStatus};
           instanceInfo.exitStatus = "server is gone.";
-          continue;
+          break;
         }
         print("\n"+ Date() + " rspec Trying ",te,"...");
 
@@ -1460,7 +1517,9 @@ function rubyTests (options, ssl) {
 
       }
       else {
-        print("Skipped " + te + " because of " + filtered.filter);
+        if (options.extremeVerbosity) {
+          print("Skipped " + te + " because of " + filtered.filter);
+        }
       }
     }
   }
@@ -1624,7 +1683,9 @@ var impTodo = [
 
 testFuncs.importing = function (options) {
   if (options.cluster) {
-    print("Skipped because of cluster.");
+    if (options.extremeVerbosity) {
+      print("Skipped because of cluster.");
+    }
     return {"importing": 
             {
               "status" : true,
@@ -1679,7 +1740,13 @@ testFuncs.importing = function (options) {
 
 testFuncs.upgrade = function (options) {
   if (options.cluster) {
-    return true;
+    return {"upgrade":
+            {
+              "status" : true,
+              "message": "skipped because of cluster",
+              "skipped": true
+            }
+           };
   }
 
   var result = {};
@@ -1955,7 +2022,8 @@ testFuncs.arangob = function (options) {
     return {status: false, message: "failed to start server!"};
   }
   var results = {};
-  var i,r;
+  var i;
+  var oneResult;
   var continueTesting = true;
 
   for (i = 0; i < benchTodo.length; i++) {
@@ -1973,18 +2041,18 @@ testFuncs.arangob = function (options) {
         print("Skipping " + benchTodo[i] + ", server is gone.");
         results[i] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
-        continue;
+        break;
       }
       var args = benchTodo[i];
       if (options.hasOwnProperty('benchargs')) {
         args = _.extend(args, options.benchargs);
       }
-      r = runArangoBenchmark(options, instanceInfo, args);
-      results[i] = r;
+      oneResult = runArangoBenchmark(options, instanceInfo, args);
+      results[i] = oneResult;
 
       continueTesting = checkInstanceAlive(instanceInfo, options);
 
-      if (r.status !== true && !options.force) {
+      if (oneResult.status !== true && !options.force) {
         break;
       }
     }
@@ -2074,20 +2142,27 @@ testFuncs.authentication_parameters = function (options) {
 
   var test;
   for (test = 0; test < 3; test++) {
-    var all_ok = true;
     var instanceInfo = startInstance("tcp", options,
                                      authTestServerParams[test],
                                      "authentication_parameters_" + authTestNames[test]);
     if (instanceInfo === false) {
-      return {status: false, message: authTestNames[test] + ": failed to start server!"};
+      return {
+        authentication: {
+          status: false,
+          total: 1,
+          failed: 1,
+          message: authTestNames[test] + ": failed to start server!"
+        }
+      };
     }
-    var r;
+    var reply;
     var i;
     var testName = 'auth_' + authTestNames[test];
 
     print(Date() + " Starting " + authTestNames[test] + " test");
-    results[testName] = {};
+    results[testName] = {failed: 0, total: 0};
     for (i = 0; i < urlsTodo.length; i++) {
+      results[testName].total++;
       print("  URL: " + instanceInfo.url + urlsTodo[i]);
       if (!continueTesting) {
         print("Skipping " + urlsTodo[i] + ", server is gone.");
@@ -2095,31 +2170,31 @@ testFuncs.authentication_parameters = function (options) {
           status: false,
           message: instanceInfo.exitStatus
         };
+        results[testName].failed++;
         instanceInfo.exitStatus = "server is gone.";
-        all_ok = false;
-        continue;
+        break;
       }
 
-      r = download(instanceInfo.url + urlsTodo[i],"", downloadOptions);
-      if (r.code === authTestExpectRC[test][i]) {
-        results[testName][urlsTodo[i]] = { status: true, message: ""};
+      reply = download(instanceInfo.url + urlsTodo[i],"", downloadOptions);
+      if (reply.code === authTestExpectRC[test][i]) {
+        results[testName][urlsTodo[i]] = { status: true };
       }
       else {
-        checkBodyForJsonToParse(r);
+        checkBodyForJsonToParse(reply);
+        results[testName].failed++;
         results[testName][urlsTodo[i]] = { 
           status: false,
           message: "we expected " + 
             authTestExpectRC[test][i] +
             " and we got "
-            + r.code +
+            + reply.code +
             " Full Status: "
-            + yaml.safeDump(r)
+            + yaml.safeDump(reply)
         };
-        all_ok = false;
       }
       continueTesting = checkInstanceAlive(instanceInfo, options);
     }
-    results[testName].status = all_ok;
+    results[testName].status = results[testName].failed === 0;
 
     print("Shutting down " + authTestNames[test] + " test...");
     shutdownInstance(instanceInfo, options);
@@ -2263,20 +2338,21 @@ function UnitTest (which, options) {
   delete options.jsonReply;
   var i;
   var ok;
+  var thisReply;
   if (which === "all") {
     var n;
     for (n = 0; n < allTests.length; n++) {
       print("Doing test", allTests[n], "with options", options);
-      results[allTests[n]] = r = testFuncs[allTests[n]](options);
+      results[allTests[n]] = thisReply = testFuncs[allTests[n]](options);
       ok = true;
-      for (i in r) {
-        if (r.hasOwnProperty(i)) {
-          if (r[i].status !== true) {
+      for (i in thisReply) {
+        if (thisReply.hasOwnProperty(i)) {
+          if (thisReply[i].status !== true) {
             ok = false;
           }
         }
       }
-      r.ok = ok;
+      thisReply.ok = ok;
       if (!ok) {
         allok = false;
       }
@@ -2304,20 +2380,19 @@ function UnitTest (which, options) {
     throw 'Unknown test "' + which + '"';
   }
   else {
-    var r;
-    results[which] = r = testFuncs[which](options);
+    results[which] = thisReply = testFuncs[which](options);
     // print("Testresult:", yaml.safeDump(r));
     ok = true;
-    for (i in r) {
-      if (r.hasOwnProperty(i) &&
+    for (i in thisReply) {
+      if (thisReply.hasOwnProperty(i) &&
           (which !== "single" || i !== "test")) {
-        if (r[i].status !== true) {
+        if (thisReply[i].status !== true) {
           ok = false;
           allok = false;
         }
       }
     }
-    r.ok = ok;
+    thisReply.ok = ok;
     results.all_ok = ok;
     results.crashed = serverCrashed;
     if (allok) {
