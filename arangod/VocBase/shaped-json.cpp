@@ -917,6 +917,8 @@ static bool FillShapeValueArray(VocShaper* shaper, TRI_shape_value_t* dst,
 static bool FillShapeValueJson(VocShaper* shaper, TRI_shape_value_t* dst,
                                TRI_json_t const* json, size_t level,
                                bool create) {
+  TRI_ASSERT(json != nullptr);
+
   switch (json->_type) {
     case TRI_JSON_UNUSED:
       return false;
@@ -2043,6 +2045,8 @@ TRI_shaped_json_t* TRI_ShapedJsonVelocyPack(VocShaper* shaper,
 
 TRI_shaped_json_t* TRI_ShapedJsonJson(VocShaper* shaper, TRI_json_t const* json,
                                       bool create) {
+  TRI_ASSERT(json != nullptr);
+
   TRI_shape_value_t dst;
 
   dst._value = nullptr;

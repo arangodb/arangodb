@@ -839,10 +839,14 @@ Json AqlValue::extractObjectMember(
 
         if (found != nullptr) {
           if (copy) {
+            auto c = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found);
+
+            if (c == nullptr) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+            }
+
             // return a copy of the value
-            return Json(TRI_UNKNOWN_MEM_ZONE,
-                        TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found),
-                        arangodb::basics::Json::AUTOFREE);
+            return Json(TRI_UNKNOWN_MEM_ZONE, c, arangodb::basics::Json::AUTOFREE);
           }
 
           // return a pointer to the original value, without asking for its
@@ -968,10 +972,13 @@ Json AqlValue::extractArrayMember(arangodb::AqlTransaction* trx,
 
           if (found != nullptr) {
             if (copy) {
+              auto c = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found);
+
+              if (c == nullptr) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+              }
               // return a copy of the value
-              return Json(TRI_UNKNOWN_MEM_ZONE,
-                          TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found),
-                          arangodb::basics::Json::AUTOFREE);
+              return Json(TRI_UNKNOWN_MEM_ZONE, c, arangodb::basics::Json::AUTOFREE);
             }
 
             // return a pointer to the original value, without asking for its

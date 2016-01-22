@@ -69,19 +69,23 @@ class SingleCollectionTransaction : public Transaction {
                               TRI_vocbase_t* vocbase, std::string const& name,
                               TRI_transaction_type_e accessType)
       : Transaction(transactionContext, vocbase, 0),
-        _cid(this->resolver()->getCollectionId(name)),
+        _cid(0),
         _trxCollection(nullptr),
         _documentCollection(nullptr),
         _accessType(accessType) {
     // add the (sole) collection
-    this->addCollection(_cid, _accessType);
+    if (setupState() == TRI_ERROR_NO_ERROR) {
+      _cid = this->resolver()->getCollectionId(name);
+
+      this->addCollection(_cid, _accessType);
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief end the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~SingleCollectionTransaction() {}
+  ~SingleCollectionTransaction() {}
 
   
  public:

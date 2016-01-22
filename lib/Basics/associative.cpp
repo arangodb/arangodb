@@ -100,7 +100,6 @@ static bool ResizeAssociativePointer(TRI_associative_pointer_t* array,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes an array
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,19 +274,15 @@ void* TRI_LookupByElementAssociativePointer(TRI_associative_pointer_t* array,
 
 void* TRI_InsertElementAssociativePointer(TRI_associative_pointer_t* array,
                                           void* element, bool overwrite) {
-  uint64_t hash;
-  uint64_t i;
-  void* old;
-
   // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed) {
+  if (array->_nrAlloc == array->_nrUsed || array->_nrAlloc == 0) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
 
   // compute the hash
-  hash = array->hashElement(array, element);
-  i = hash % array->_nrAlloc;
+  uint64_t hash = array->hashElement(array, element);
+  uint64_t i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -303,7 +298,7 @@ void* TRI_InsertElementAssociativePointer(TRI_associative_pointer_t* array,
 #endif
   }
 
-  old = array->_table[i];
+  void* old = array->_table[i];
 
   // if we found an element, return
   if (old != nullptr) {
@@ -333,19 +328,15 @@ void* TRI_InsertElementAssociativePointer(TRI_associative_pointer_t* array,
 void* TRI_InsertKeyAssociativePointer(TRI_associative_pointer_t* array,
                                       void const* key, void* element,
                                       bool overwrite) {
-  uint64_t hash;
-  uint64_t i;
-  void* old;
-
   // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed) {
+  if (array->_nrAlloc == array->_nrUsed || array->_nrAlloc == 0) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
 
   // compute the hash
-  hash = array->hashKey(array, key);
-  i = hash % array->_nrAlloc;
+  uint64_t hash = array->hashKey(array, key);
+  uint64_t i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -361,7 +352,7 @@ void* TRI_InsertKeyAssociativePointer(TRI_associative_pointer_t* array,
 #endif
   }
 
-  old = array->_table[i];
+  void* old = array->_table[i];
 
   // if we found an element, return
   if (old != nullptr) {
@@ -392,22 +383,18 @@ void* TRI_InsertKeyAssociativePointer(TRI_associative_pointer_t* array,
 int TRI_InsertKeyAssociativePointer2(TRI_associative_pointer_t* array,
                                      void const* key, void* element,
                                      void const** found) {
-  uint64_t hash;
-  uint64_t i;
-  void* old;
-
   if (found != nullptr) {
     *found = nullptr;
   }
 
   // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed) {
+  if (array->_nrAlloc == array->_nrUsed || array->_nrAlloc == 0) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // compute the hash
-  hash = array->hashKey(array, key);
-  i = hash % array->_nrAlloc;
+  uint64_t hash = array->hashKey(array, key);
+  uint64_t i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -423,7 +410,7 @@ int TRI_InsertKeyAssociativePointer2(TRI_associative_pointer_t* array,
 #endif
   }
 
-  old = array->_table[i];
+  void* old = array->_table[i];
 
   // if we found an element, return
   if (old != nullptr) {
@@ -465,13 +452,13 @@ int TRI_InsertKeyAssociativePointer2(TRI_associative_pointer_t* array,
 
 void* TRI_RemoveKeyAssociativePointer(TRI_associative_pointer_t* array,
                                       void const* key) {
-  uint64_t hash;
-  uint64_t i;
-  uint64_t k;
-  void* old;
 
-  hash = array->hashKey(array, key);
-  i = hash % array->_nrAlloc;
+  if (array->_nrUsed == 0) {
+    return nullptr;
+  }
+
+  uint64_t hash = array->hashKey(array, key);
+  uint64_t i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -493,12 +480,12 @@ void* TRI_RemoveKeyAssociativePointer(TRI_associative_pointer_t* array,
   }
 
   // remove item
-  old = array->_table[i];
+  void* old = array->_table[i];
   array->_table[i] = nullptr;
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = TRI_IncModU64(i, array->_nrAlloc);
+  uint64_t k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (array->_table[k] != nullptr) {
     uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
