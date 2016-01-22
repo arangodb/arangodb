@@ -1994,12 +1994,9 @@ void TRI_SetApplicationName(char const* name) {
 
 #ifndef _WIN32
 
-static Mutex SystemTempPathMutex;
 static std::unique_ptr<char> SystemTempPath;
 
 static void SystemTempPathCleaner(void) {
-  MUTEX_LOCKER(SystemTempPathMutex);
-
   char* path = SystemTempPath.get();
 
   if (path != nullptr) {
@@ -2008,8 +2005,6 @@ static void SystemTempPathCleaner(void) {
 }
 
 std::string TRI_GetTempPath() {
-  MUTEX_LOCKER(SystemTempPathMutex);
-
   char* path = SystemTempPath.get();
 
   if (path == nullptr) {
