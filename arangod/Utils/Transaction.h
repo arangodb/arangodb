@@ -558,12 +558,6 @@ namespace triagens {
           }
         }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the setup state
 ////////////////////////////////////////////////////////////////////////////////
@@ -571,6 +565,12 @@ namespace triagens {
          int setupState () { 
            return _setupState; 
          }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection
@@ -627,6 +627,10 @@ namespace triagens {
           if (cid == 0) {
             // invalid cid
             return registerError(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          }
+
+          if (_setupState != TRI_ERROR_NO_ERROR) {
+            return _setupState;
           }
 
           const TRI_transaction_status_e status = getStatus();

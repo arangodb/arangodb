@@ -320,6 +320,7 @@ TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex (TRI_fulltext_handles_t* con
 
   if (! AllocateSlotList(handles, slotNumber + 1)) {
     // out of memory
+    handles->_numSlots--;
     return 0;
   }
 

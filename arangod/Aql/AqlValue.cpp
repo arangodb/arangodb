@@ -834,7 +834,13 @@ Json AqlValue::extractObjectMember (triagens::arango::AqlTransaction* trx,
         if (found != nullptr) {
           if (copy) {
             // return a copy of the value
-            return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found), triagens::basics::Json::AUTOFREE);
+            auto c = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found);
+
+            if (c == nullptr) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+            }
+
+            return Json(TRI_UNKNOWN_MEM_ZONE, c, triagens::basics::Json::AUTOFREE);
           }
 
           // return a pointer to the original value, without asking for its ownership
@@ -957,7 +963,13 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
           if (found != nullptr) {
             if (copy) {
               // return a copy of the value
-              return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found), triagens::basics::Json::AUTOFREE);
+              auto c = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found);
+
+              if (c == nullptr) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+              }
+
+              return Json(TRI_UNKNOWN_MEM_ZONE, c, triagens::basics::Json::AUTOFREE);
             }
 
             // return a pointer to the original value, without asking for its ownership

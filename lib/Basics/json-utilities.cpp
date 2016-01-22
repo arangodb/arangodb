@@ -73,7 +73,18 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
           TRI_json_t empty;
           TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &empty);
           TRI_json_t* merged = MergeRecursive(zone, &empty, value, nullMeansRemove, mergeObjects);
-          TRI_Insert3ObjectJson(zone, r, key->_value._string.data, merged);
+
+          if (merged == nullptr) {
+            return nullptr;
+          }
+
+          TRI_json_t* copy = TRI_CopyJson(zone, value);
+
+          if (copy == nullptr) {
+            return nullptr;
+          }
+
+          TRI_Insert3ObjectJson(zone, r, key->_value._string.data, copy);
         }
         else {
           TRI_Insert3ObjectJson(zone, r, key->_value._string.data, TRI_CopyJson(zone, value));
@@ -83,6 +94,11 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
         // existing array already has the attribute => replace attribute
         if (lhsValue->_type == TRI_JSON_OBJECT && value->_type == TRI_JSON_OBJECT && mergeObjects) {
           TRI_json_t* merged = MergeRecursive(zone, lhsValue, value, nullMeansRemove, mergeObjects);
+
+          if (merged == nullptr) {
+            return nullptr;
+          }
+
           TRI_ReplaceObjectJson(zone, r, key->_value._string.data, merged);
           TRI_FreeJson(zone, merged);
         }

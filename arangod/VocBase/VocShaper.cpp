@@ -468,6 +468,11 @@ TRI_shape_pid_t VocShaper::lookupAttributePathByName (char const* name) {
 
 char const* VocShaper::attributeNameShapePid (TRI_shape_pid_t pid) {
   TRI_shape_path_t const* path = lookupAttributePathByPid(pid);
+
+  if (path == nullptr) {
+    return nullptr;
+  }
+
   char const* e = (char const*) path;
 
   return e + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);

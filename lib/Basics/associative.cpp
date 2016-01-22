@@ -287,7 +287,7 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array,
   void* old;
 
   // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed) {
+  if (array->_nrAlloc == array->_nrUsed || array->_nrAlloc == 0) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
@@ -345,7 +345,7 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
   void* old;
 
   // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed) {
+  if (array->_nrAlloc == array->_nrUsed || array->_nrAlloc == 0) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
@@ -408,7 +408,7 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
   }
 
   // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed) {
+  if (array->_nrAlloc == array->_nrUsed || array->_nrAlloc == 0) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -474,6 +474,10 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array,
   uint64_t i;
   uint64_t k;
   void* old;
+
+  if (array->_nrUsed == 0) {
+    return nullptr;
+  }
 
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
