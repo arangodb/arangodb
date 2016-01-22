@@ -68,7 +68,7 @@ Note: data-modification AQL queries normally do not return a result (unless the 
 contains an extra *RETURN* statement). When not using a *RETURN* statement in the query, the 
 *toArray* method will return an empty array. 
 
-!SUBSUBSECTION Statistics
+!SUBSUBSECTION Statistics and extra Information
  
 It is always possible to retrieve statistics for a query with the *getExtra* method:
 
@@ -82,6 +82,7 @@ It is always possible to retrieve statistics for a query with the *getExtra* met
     @endDocuBlock 03_workWithAQL_getExtra
 
 The meaning of the statistics values is described in [Execution statistics](QueryStatistics.md).
+You also will find warnings in here; If you're designing queries on the shell be shure to also look at it.
 
 !SUBSECTION with _createStatement (ArangoStatement) 
 
