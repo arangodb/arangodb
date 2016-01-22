@@ -148,7 +148,7 @@ ArangoClient::ArangoClient(char const* appName)
   std::string p = TRI_GetTempPath();
 
   if (p.empty()) {
-    _tempPath = std::string(p);
+    _tempPath = p;
   }
 }
 
