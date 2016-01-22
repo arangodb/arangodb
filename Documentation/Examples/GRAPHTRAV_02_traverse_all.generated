@@ -1,0 +1,28 @@
+arangosh&gt; db._query(<span class="hljs-string">"FOR v IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' RETURN v._key"</span>);
+[ 
+  <span class="hljs-string">"B"</span>, 
+  <span class="hljs-string">"C"</span>, 
+  <span class="hljs-string">"D"</span>, 
+  <span class="hljs-string">"E"</span>, 
+  <span class="hljs-string">"F"</span>, 
+  <span class="hljs-string">"G"</span>, 
+  <span class="hljs-string">"H"</span>, 
+  <span class="hljs-string">"I"</span>, 
+  <span class="hljs-string">"J"</span>, 
+  <span class="hljs-string">"K"</span> 
+]
+[object ArangoQueryCursor, count: <span class="hljs-number">10</span>, hasMore: <span class="hljs-literal">false</span>]
+arangosh&gt; db._query(<span class="hljs-string">"FOR v IN 1..3 OUTBOUND 'circles/A' edges RETURN v._key"</span>);
+[ 
+  <span class="hljs-string">"B"</span>, 
+  <span class="hljs-string">"C"</span>, 
+  <span class="hljs-string">"D"</span>, 
+  <span class="hljs-string">"E"</span>, 
+  <span class="hljs-string">"F"</span>, 
+  <span class="hljs-string">"G"</span>, 
+  <span class="hljs-string">"H"</span>, 
+  <span class="hljs-string">"I"</span>, 
+  <span class="hljs-string">"J"</span>, 
+  <span class="hljs-string">"K"</span> 
+]
+[object ArangoQueryCursor, count: <span class="hljs-number">10</span>, hasMore: <span class="hljs-literal">false</span>]

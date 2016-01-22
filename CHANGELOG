@@ -1,4 +1,4 @@
-v2.7.5 (XXXX-XX-XX)
+v2.7.5 (2016-01-22)
 -------------------
 
 * Foxx export cache should no longer break if a broken app is loaded in the
