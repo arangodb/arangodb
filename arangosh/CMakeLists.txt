@@ -48,12 +48,15 @@ target_link_libraries(
     ${BIN_ARANGOB}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
+
+    ${AR_V8_LIBS}
+    ${AR_ICU_LIBS}
+    ${CMAKE_THREAD_LIBS_INIT} 
 )
 
 ################################################################################

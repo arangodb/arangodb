@@ -160,8 +160,8 @@ add_library(
     Zip/unzip.cpp
     Zip/zip.cpp
 )
+target_link_libraries(${LIB_ARANGO} ${AR_ICU_LIBS} ${AR_V8_LIBS})
 
-add_dependencies(${LIB_ARANGO} v8)
 
 ################################################################################
 ### @brief LIB_ARANGO_CLIENT

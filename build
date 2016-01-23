@@ -15,8 +15,11 @@ for arg in $@; do
         -d|--debug)
             cm_flags+=( '-DCMAKE_BUILD_TYPE=Debug' )
         ;;
+        -t|--testing)
+            cm_flags+=( '-DCMAKE_TESTING=ON' )
+        ;;
         -e|--examples)
-            cm_flags+=( '-DLIBOBI_EXAMPLES=On' )
+            cm_flags+=( '-DLIBOBI_EXAMPLES=ON' )
         ;;
         -c|--clean)
             rm -fr $build_dir
@@ -24,12 +27,18 @@ for arg in $@; do
         --gcc)
             cm_flags+=( '-DCMAKE_CXX_COMPILER=g++' )
         ;;
-        --gcc-6)
+        -6|--gcc-6)
             cm_flags+=( '-DCMAKE_CXX_COMPILER=g++-6' )
             cm_flags+=( '-DCMAKE_C_COMPILER=gcc-6' )
         ;;
         --clang)
             cm_flags+=( '-DCMAKE_CXX_COMPILER=clang++' )
+        ;;
+        --travis)
+            travis=true
+        ;;
+        -cd|--change-directory)
+            change_dir=true
         ;;
         *)
             args+=( "$arg" )
@@ -39,5 +48,15 @@ done
 
 test -d $build_dir || mkdir $build_dir || { exit 1; }
 cd $build_dir || { exit 1; }
-cmake "${cm_flags[@]}" "${args[@]}" "$project_root" && \
-make -j $(nproc)
+
+if ! [[ $travis ]]; then
+    cmake "${cm_flags[@]}" "${args[@]}" "$project_root" && \
+    make -j $(nproc)
+else
+    cmake "${cm_flags[@]}" "${args[@]}" "$project_root" \
+        -DOBI_UNCAUGHT_EXCEPTIONS=ON
+fi
+
+cp "$project_root/3rdParty/V8-4.3.61/Makefile-v8" "$project_root/3rdParty/V8-4.3.61/Makefile"
+
+[[ $change_dir ]] && bash #chage to build dir
