@@ -44,6 +44,7 @@ $VG bin/arangosh \
   -c etc${PS}relative${PS}arangosh.conf \
   --server.endpoint tcp://127.0.0.1:${PORT} \
   --javascript.execute scripts${PS}unittest.js \
+  -- \
   "${ARGS[@]}" \
   $VXML
 
