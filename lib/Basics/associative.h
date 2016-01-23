@@ -101,7 +101,7 @@ bool TRI_EqualStringKeyAssociativePointer(TRI_associative_pointer_t*,
 /// @brief reserves space in the array for extra elements
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReserveAssociativePointer(TRI_associative_pointer_t*, int32_t);
+bool TRI_ReserveAssociativePointer(TRI_associative_pointer_t*, uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key

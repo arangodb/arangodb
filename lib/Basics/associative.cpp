@@ -179,16 +179,22 @@ bool TRI_EqualStringKeyAssociativePointer(TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ReserveAssociativePointer(TRI_associative_pointer_t* array,
-                                   int32_t nrElements) {
+                                   uint32_t nrElements) {
   uint32_t targetSize = array->_nrUsed + nrElements;
 
-  if (array->_nrAlloc < 2 * targetSize) {
-    // we must resize
-    return ResizeAssociativePointer(array, (uint32_t)(2 * targetSize) + 1);
+  if (array->_nrAlloc >= 2 * targetSize) {
+    // no need to resize
+    return true;
   }
 
-  // no seed to resize
-  return true;
+  // we must resize
+
+  // make sure we grow the array by a huge amount so we have only few resizes
+  if (targetSize < (2 * array->_nrAlloc) + 1) {
+    targetSize = (2 * array->_nrAlloc) + 1;
+  }
+
+  return ResizeAssociativePointer(array, targetSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
