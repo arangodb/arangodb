@@ -1291,6 +1291,12 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
 /// @brief runs ruby tests using RSPEC
 ////////////////////////////////////////////////////////////////////////////////
 
+function camelize(str) {
+  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function(letter, index) {
+    return index === 0 ? letter.toLowerCase() : letter.toUpperCase();
+  }).replace(/\s+/g, '');
+}
+
 function rubyTests(options, ssl) {
   let instanceInfo;
 
@@ -1342,16 +1348,30 @@ function rubyTests(options, ssl) {
     command = "rspec";
   }
 
+  const parseRspecJson = function(testCase, res, totalDuration) {
+    let tName = camelize(testCase.description);
+    let status = (testCase.status === "passed");
+
+    res[tName] = {
+      status: status,
+      message: testCase.full_description,
+      duration: totalDuration // RSpec doesn't offer per testcase time...
+    };
+
+    res.total++;
+
+    if (!status) {
+      var msg = yaml.safeDump(testCase);
+      print("RSpec test case falied: \n" + msg);
+      res[tName].message += "\n" + msg;
+    }
+  };
+
   for (let i = 0; i < files.length; i++) {
     const te = files[i];
 
     if (te.substr(0, 4) === "api-" && te.substr(-3) === ".rb") {
       if (filterTestcaseByOptions(te, options, filtered)) {
-        args = ["--color", "-I", fs.join("UnitTests", "HttpInterface"),
-          "--format", "d", "--require", tmpname,
-          fs.join("UnitTests", "HttpInterface", te)
-        ];
-
         if (!continueTesting) {
           print("Skipping " + te + " server is gone.");
 
@@ -1364,22 +1384,48 @@ function rubyTests(options, ssl) {
           break;
         }
 
+        args = ["--color",
+          "-I", fs.join("UnitTests", "HttpInterface"),
+          "--format", "j",
+          "--out", fs.join("out", "UnitTests", te + ".json"),
+          "--require", tmpname,
+          fs.join("UnitTests", "HttpInterface", te)
+        ];
+
         print("\n" + Date() + " rspec trying", te, "...");
 
         const res = executeAndWait(command, args);
 
         result[te] = {
-          total: 1,
+          total: 0,
           status: res.status
         };
 
-        result[te]["dummy_" + te] = res;
+        var resultfn = fs.join("out", "UnitTests", te + ".json");
 
-        if (res.status === false) {
-          options.cleanup = false;
+        try {
+          const jsonResult = JSON.parse(fs.read(resultfn));
 
-          if (!options.force) {
-            break;
+          if (options.extremeVerbosity) {
+            print(yaml.safeDump(jsonResult));
+          }
+
+          for (let j = 0; j < jsonResult.examples.length; ++j) {
+            parseRspecJson(jsonResult.examples[j], result[te],
+              jsonResult.summary.duration);
+          }
+
+          result[te].duration = jsonResult.summary.duration;
+        } catch (x) {
+          print("Failed to parse rspec result: " + x);
+          result[te]["complete_" + te] = res;
+
+          if (res.status === false) {
+            options.cleanup = false;
+
+            if (!options.force) {
+              break;
+            }
           }
         }
 
@@ -1611,42 +1657,55 @@ testFuncs.arangosh = function(options) {
   let failed = 0;
   let args = makeTestingArgsClient(options);
 
+  let ret = {
+    "suiteName": "ArangoshExitCodeTest",
+    "testArangoshExitCodeFail": {},
+    "testArangoshExitCodeSuccess": {},
+    "total": 2
+  };
+
+  // termination by throw
   print("Starting arangosh with exception throwing script:");
   args["javascript.execute-string"] = "throw('foo')";
 
+  const startTime = time();
   let rc = executeExternalAndWait(arangosh, toArgv(args));
+  const deltaTime = time() - startTime;
   const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
   if (!failSuccess) {
+    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
+      yaml.safeDump(rc);
     ++failed;
   }
 
+  ret.testArangoshExitCodeFail['status'] = failSuccess;
+  ret.testArangoshExitCodeFail['duration'] = deltaTime;
+  print("Status: " + ((failSuccess) ? "SUCCESS" : "FAIL") + "\n");
+
+  // regular termination
   print("Starting arangosh with regular terminating script:");
   args["javascript.execute-string"] = ";";
 
+  const startTime2 = time();
   rc = executeExternalAndWait(arangosh, toArgv(args));
+  const deltaTime2 = time() - startTime2;
 
   const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
   if (!successSuccess) {
+    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
+      yaml.safeDump(rc);
+
     ++failed;
   }
 
-  return [{
-    "suiteName": "ArangoshExitCodeTest",
-    "testArangoshExitCodeFail": {
-      "status": failSuccess,
-      "duration": 0
-    },
-    "testArangoshExitCodeSuccess": {
-      "status": successSuccess,
-      "duration": 0
-    },
-    "duration": 0,
-    "status": failSuccess && successSuccess,
-    "failed": failed,
-    "total": 2
-  }];
+  print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
+
+  // return result
+  ret["status"] = failSuccess && successSuccess;
+  ret["duration"] = deltaTime2 + deltaTime;
+  return ret;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
