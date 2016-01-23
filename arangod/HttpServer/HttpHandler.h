@@ -29,7 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/WorkMonitor.h"
 #include "Dispatcher/Job.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Scheduler/events.h"
 #include "Statistics/StatisticsAgent.h"
 

@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/RequestContext.h"
 
 struct TRI_server_t;

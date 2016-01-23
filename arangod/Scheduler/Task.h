@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 
 #include "Scheduler/events.h"
-#include "lib/Rest/HttpResponse.h"
+#include "lib/Rest/GeneralResponse.h"
 #include "Statistics/StatisticsAgent.h"
 
 struct TRI_json_t;

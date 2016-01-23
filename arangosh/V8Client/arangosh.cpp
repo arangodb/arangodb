@@ -42,7 +42,7 @@
 #include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitializeRest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"

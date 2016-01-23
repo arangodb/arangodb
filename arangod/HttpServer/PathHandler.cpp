@@ -29,7 +29,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 using namespace arangodb::basics;
 

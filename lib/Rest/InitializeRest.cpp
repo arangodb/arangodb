@@ -38,7 +38,7 @@
 #include "Basics/logging.h"
 #include "Basics/InitializeBasics.h"
 #include "Basics/threads.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 
 // -----------------------------------------------------------------------------

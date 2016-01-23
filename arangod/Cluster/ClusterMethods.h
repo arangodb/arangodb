@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"

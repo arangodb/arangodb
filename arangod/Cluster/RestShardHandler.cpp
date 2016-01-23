@@ -29,7 +29,7 @@
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;

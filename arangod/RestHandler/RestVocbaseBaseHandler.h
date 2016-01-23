@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/logging.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
 #include "Utils/transactions.h"

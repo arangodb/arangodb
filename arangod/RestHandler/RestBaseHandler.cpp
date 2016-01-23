@@ -28,7 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>

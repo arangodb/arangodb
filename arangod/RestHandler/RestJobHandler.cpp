@@ -28,7 +28,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 using namespace arangodb::admin;
 using namespace arangodb::basics;

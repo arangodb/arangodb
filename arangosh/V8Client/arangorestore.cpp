@@ -37,7 +37,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitializeRest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"

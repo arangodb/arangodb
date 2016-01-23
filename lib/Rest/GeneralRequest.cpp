@@ -22,7 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpRequest.h"
+#include "GeneralRequest.h"
 #include "Basics/conversions.h"
 #include "Basics/logging.h"
 #include "Basics/StringBuffer.h"

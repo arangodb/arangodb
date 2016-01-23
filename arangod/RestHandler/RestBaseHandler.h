@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/json.h"
 #include "HttpServer/HttpHandler.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>

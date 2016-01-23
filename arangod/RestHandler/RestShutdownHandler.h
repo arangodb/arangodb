@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "ApplicationServer/ApplicationServer.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {

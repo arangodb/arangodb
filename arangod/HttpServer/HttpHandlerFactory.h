@@ -28,7 +28,7 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 
 namespace arangodb {

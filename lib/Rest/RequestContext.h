@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Rest/RequestUser.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 namespace arangodb {
 namespace rest {

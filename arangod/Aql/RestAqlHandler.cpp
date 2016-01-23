@@ -31,7 +31,7 @@
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "VocBase/server.h"
 
 using namespace arangodb;
