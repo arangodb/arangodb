@@ -35,7 +35,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Replication/InitialSyncer.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"

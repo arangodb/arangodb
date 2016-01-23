@@ -29,7 +29,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/WriteLocker.h"
 #include "Replication/InitialSyncer.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"

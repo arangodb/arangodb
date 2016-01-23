@@ -29,7 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 

@@ -26,7 +26,7 @@
 #define ARANGOSH_V8_CLIENT_V8_CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 
 #include <v8.h>
 

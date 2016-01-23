@@ -25,7 +25,7 @@
 #define ARANGOD_STATISTICS_STATISTICS_H 1
 
 #include "Basics/Common.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Statistics/figures.h"
 
 

@@ -27,7 +27,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 
 #include <velocypack/Dumper.h>

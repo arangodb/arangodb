@@ -28,7 +28,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 
 using namespace arangodb;

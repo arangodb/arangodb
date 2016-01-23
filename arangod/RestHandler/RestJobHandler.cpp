@@ -27,7 +27,7 @@
 #include "Basics/tri-strings.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 
 using namespace arangodb::admin;

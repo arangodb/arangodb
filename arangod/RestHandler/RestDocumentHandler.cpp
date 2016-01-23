@@ -31,7 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 

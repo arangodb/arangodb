@@ -23,7 +23,7 @@
 #include "WorkMonitorHandler.h"
 
 #include "HttpServer/HttpHandler.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/json.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "velocypack/Slice.h"
 
 #include <list>

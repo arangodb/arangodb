@@ -31,7 +31,7 @@
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 

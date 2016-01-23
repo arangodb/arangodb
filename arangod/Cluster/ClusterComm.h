@@ -28,7 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"

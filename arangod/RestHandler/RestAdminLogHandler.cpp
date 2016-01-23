@@ -25,7 +25,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/logging.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 
 using namespace std;
 using namespace arangodb;

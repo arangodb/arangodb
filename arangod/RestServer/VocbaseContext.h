@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
 

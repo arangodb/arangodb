@@ -30,7 +30,7 @@
 #include "Dispatcher/DispatcherThread.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/server.h"
 

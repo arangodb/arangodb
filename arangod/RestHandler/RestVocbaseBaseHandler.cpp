@@ -26,7 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Utils/DocumentHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"

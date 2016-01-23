@@ -28,7 +28,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"

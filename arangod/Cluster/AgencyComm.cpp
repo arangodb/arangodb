@@ -32,7 +32,7 @@
 #include "Basics/random.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"

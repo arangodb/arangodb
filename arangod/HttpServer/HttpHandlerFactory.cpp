@@ -27,7 +27,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "HttpServer/HttpHandler.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/SslInterface.h"
 
 using namespace arangodb::basics;

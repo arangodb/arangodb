@@ -47,7 +47,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
 #include "Basics/Utf8Helper.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"

@@ -24,7 +24,7 @@
 #include "RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Basics/StringUtils.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

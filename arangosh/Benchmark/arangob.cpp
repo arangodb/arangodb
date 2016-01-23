@@ -35,7 +35,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/terminal-utils.h"
 #include "Rest/Endpoint.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/InitializeRest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
