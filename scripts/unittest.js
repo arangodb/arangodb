@@ -149,6 +149,8 @@ function main(argv) {
 
   options.jsonReply = true;
   
+  fs.makeDirectoryRecursive("out");
+
   start_pretty_print();
 
   let r = {};
