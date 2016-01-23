@@ -33,7 +33,7 @@ namespace aql {
 class Graph {
   
  public:
-  Graph(arangodb::basics::Json const&);
+  explicit Graph(arangodb::basics::Json const&);
 
   ~Graph() {}
 

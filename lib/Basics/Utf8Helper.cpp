@@ -825,12 +825,12 @@ char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
   // calculate utf8 string length
   UErrorCode status = U_ZERO_ERROR;
   u_strToUTF8(nullptr, 0, &utf8Length, uchar, (int32_t)inLength, &status);
-  if (status != U_BUFFER_OVERFLOW_ERROR) {
+
+  if (status != U_ZERO_ERROR && status != U_BUFFER_OVERFLOW_ERROR) {
     return nullptr;
   }
 
-  char* utf8 = static_cast<char*>(
-      TRI_Allocate(zone, (utf8Length + 1) * sizeof(char), false));
+  char* utf8 = static_cast<char*>(TRI_Allocate(zone, utf8Length + 1, false));
 
   if (utf8 == nullptr) {
     return nullptr;
@@ -840,16 +840,16 @@ char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
   status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
   u_strToUTF8(utf8, utf8Length + 1, nullptr, uchar, (int32_t)inLength, &status);
+
   if (status != U_ZERO_ERROR) {
     TRI_Free(zone, utf8);
     return nullptr;
   }
 
-  *outLength = ((size_t)utf8Length);
+  *outLength = (size_t)utf8Length;
 
   return utf8;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)

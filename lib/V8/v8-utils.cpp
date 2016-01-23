@@ -86,10 +86,9 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone,
                                    v8::Handle<v8::Value> const obj)
     : _str(nullptr), _length(0), _memoryZone(memoryZone) {
   v8::String::Value str(obj);
-  int str_len = str.length();
 
   _str =
-      TRI_normalize_utf16_to_NFC(_memoryZone, *str, (size_t)str_len, &_length);
+      TRI_normalize_utf16_to_NFC(_memoryZone, *str, (size_t)str.length(), &_length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
