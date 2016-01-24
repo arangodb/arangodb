@@ -2354,10 +2354,69 @@ static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Save
+/// @brief append to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Save(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("write(<filename>, <content>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
+  }
+
+  if (args[1]->IsObject() && V8Buffer::hasInstance(isolate, args[1])) {
+    // content is a buffer
+    char const* data = V8Buffer::data(args[1].As<v8::Object>());
+    size_t size = V8Buffer::length(args[1].As<v8::Object>());
+
+    if (data == nullptr) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid <content> buffer value");
+    }
+
+    ofstream file;
+
+    file.open(*name, ios::out | ios::binary | ios::app);
+
+    if (file.is_open()) {
+      file.write(data, size);
+      file.close();
+      TRI_V8_RETURN_TRUE();
+    }
+  } else {
+    TRI_Utf8ValueNFC content(TRI_UNKNOWN_MEM_ZONE, args[1]);
+
+    if (*content == nullptr) {
+      TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
+    }
+
+    ofstream file;
+
+    file.open(*name, ios::out | ios::binary | ios::app);
+
+    if (file.is_open()) {
+      file << *content;
+      file.close();
+      TRI_V8_RETURN_TRUE();
+    }
+  }
+
+  TRI_V8_THROW_EXCEPTION_SYS("cannot write file");
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to a file
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -4111,6 +4170,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING("FS_ZIP_FILE"), JS_ZipFile);
 
   TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_APPEND"), JS_Append);
+  TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_BASE64DECODE"),
                                JS_Base64Decode);
   TRI_AddGlobalFunctionVocbase(isolate, context,
@@ -4180,8 +4241,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("SYS_READ_BUFFER"), JS_ReadBuffer);
   TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_SAVE"), JS_Save);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_SHA1"), JS_Sha1);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_SHA224"), JS_Sha224);
@@ -4205,8 +4264,11 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_WAIT"), JS_Wait);
   TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_WRITE"), JS_Write);
+  TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CAN_USE_FAILAT"),
                                JS_DebugCanUseFailAt);
+
   // .............................................................................
   // create the global variables
   // .............................................................................
