@@ -562,7 +562,7 @@ unittests-shell-server-aql:
 
 	@(if test "x$(SKIP_RANGES)" == "x1"; then \
             ./scripts/unittest $(VALGRIND) shell_server_aql '{"skipRanges":true}' \
-	  else
+	  else \
             ./scripts/unittest $(VALGRIND) shell_server_aql \
 	  fi) || test "x$(FORCE)" == "x1"
 
