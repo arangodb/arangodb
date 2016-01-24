@@ -1240,6 +1240,9 @@ TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
 
 std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
   std::unique_ptr<TRI_json_t> tmp(toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+  if (tmp == nullptr) {
+    return nullptr;
+  }
   return arangodb::basics::JsonHelper::toVelocyPack(tmp.get());
 }
 

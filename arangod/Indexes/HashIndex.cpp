@@ -869,15 +869,15 @@ IndexIterator* HashIndex::iteratorForCondition(
       bool valid = true;
       for (size_t i = 0; i < n; ++i) {
         auto& state = permutationStates[i];
-        std::unique_ptr<TRI_json_t> json(
-            state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+        std::shared_ptr<VPackBuilder> valBuilder =
+            state.getValue()->toVelocyPackValue();
 
-        if (json == nullptr) {
+        if (valBuilder == nullptr) {
           valid = false;
           break;
         }
 
-        auto shaped = TRI_ShapedJsonJson(shaper, json.get(), false);
+        auto shaped = TRI_ShapedJsonVelocyPack(shaper, valBuilder->slice(), false);
 
         if (shaped == nullptr) {
           // no such shape exists. this means we won't find this value and can
