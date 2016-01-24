@@ -201,6 +201,11 @@ static VocbaseAuthInfo* ConvertAuthInfo(TRI_vocbase_t* vocbase,
 
   std::shared_ptr<VPackBuilder> parsed =
       arangodb::basics::JsonHelper::toVelocyPack(json.get());
+
+  if (parsed == nullptr) {
+    return nullptr;
+  }
+
   std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(parsed->slice()));
   return auth.release();  // maybe a nullptr
 }
@@ -367,7 +372,7 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
   auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
     std::unique_ptr<VocbaseAuthInfo> auth(
         ConvertAuthInfo(vocbase, document, ptr));
-    if (auth.get() != nullptr) {
+    if (auth != nullptr) {
       VocbaseAuthInfo* old =
           static_cast<VocbaseAuthInfo*>(TRI_InsertKeyAssociativePointer(
               &vocbase->_authInfo, auth->username(), auth.get(), true));
@@ -400,7 +405,7 @@ bool TRI_PopulateAuthInfo(TRI_vocbase_t* vocbase, VPackSlice const& slice) {
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(authSlice));
 
-    if (auth.get() != nullptr) {
+    if (auth == nullptr) {
       TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->username(),
                                       auth.get(), false);
       auth.release();

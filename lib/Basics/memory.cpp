@@ -38,7 +38,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-#define MALLOC_WARNING_THRESHOLD (4 * 1024 * 1024)
+#define MALLOC_WARNING_THRESHOLD (1024 * 1024 * 1024)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +109,6 @@ static size_t FailMinSize = 0;
 static double FailProbability = 0.0;
 static double FailStartStamp = 0.0;
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the size of the memory that is requested
