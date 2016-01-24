@@ -20,7 +20,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
@@ -1468,52 +1468,45 @@ function findTests() {
     return;
   }
 
-  testsCases.common = _.filter(fs.list(makePathUnix("js/common/tests")),
+  testsCases.common = _.filter(fs.list(makePathUnix("js/common/tests/shell")),
     function(p) {
-      return p.substr(0, 6) === "shell-" &&
-        p.substr(-3) === ".js";
+      return p.substr(-3) === ".js";
     }).map(
     function(x) {
-      return fs.join(makePathUnix("js/common/tests"), x);
+      return fs.join(makePathUnix("js/common/tests/shell"), x);
     }).sort();
 
-  testsCases.server_only = _.filter(fs.list(makePathUnix("js/server/tests")),
+  testsCases.server_only = _.filter(fs.list(makePathUnix("js/server/tests/shell")),
     function(p) {
-      return p.substr(0, 6) === "shell-" &&
-        p.substr(-3) === ".js";
+      return p.substr(-3) === ".js";
     }).map(
     function(x) {
-      return fs.join(makePathUnix("js/server/tests"), x);
+      return fs.join(makePathUnix("js/server/tests/shell"), x);
     }).sort();
 
-  testsCases.client_only = _.filter(fs.list(makePathUnix("js/client/tests")),
+  testsCases.client_only = _.filter(fs.list(makePathUnix("js/client/tests/shell")),
     function(p) {
-      return p.substr(0, 6) === "shell-" &&
-        p.substr(-3) === ".js";
+      return p.substr(-3) === ".js";
     }).map(
     function(x) {
-      return fs.join(makePathUnix("js/client/tests"), x);
+      return fs.join(makePathUnix("js/client/tests/shell"), x);
     }).sort();
 
-  testsCases.server_aql = _.filter(fs.list(makePathUnix("js/server/tests")),
+  testsCases.server_aql = _.filter(fs.list(makePathUnix("js/server/tests/aql")),
     function(p) {
-      return p.substr(0, 4) === "aql-" &&
-        p.substr(-3) === ".js" &&
-        p.indexOf("ranges-combined") === -1;
+      return p.substr(-3) === ".js" && p.indexOf("ranges-combined") === -1;
     }).map(
     function(x) {
-      return fs.join(makePathUnix("js/server/tests"), x);
+      return fs.join(makePathUnix("js/server/tests/aql"), x);
     }).sort();
 
   testsCases.server_aql_extended =
-    _.filter(fs.list(makePathUnix("js/server/tests")),
+    _.filter(fs.list(makePathUnix("js/server/tests/aql")),
       function(p) {
-        return p.substr(0, 4) === "aql-" &&
-          p.substr(-3) === ".js" &&
-          p.indexOf("ranges-combined") !== -1;
+        return p.substr(-3) === ".js" && p.indexOf("ranges-combined") !== -1;
       }).map(
       function(x) {
-        return fs.join(makePathUnix("js/server/tests"), x);
+        return fs.join(makePathUnix("js/server/tests/aql"), x);
       }).sort();
 
   testsCases.server_aql_performance =
