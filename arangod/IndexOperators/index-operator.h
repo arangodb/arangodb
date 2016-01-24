@@ -29,11 +29,8 @@
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 
-namespace arangodb {
-  namespace velocypack {
-    class Builder;
-  }
-}
+#include <velocypack/Builder.h>
+
 class VocShaper;
 
 

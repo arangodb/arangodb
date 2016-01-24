@@ -35,19 +35,20 @@
 #include "VocBase/vocbase.h"
 
 #include <mutex>
-#include <velocypack/Slice.h>
 
 struct TRI_json_t;
 struct TRI_memory_zone_s;
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 class ClusterInfo;
 
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
 typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
-
 
 class CollectionInfo {
   friend class ClusterInfo;
@@ -67,7 +68,6 @@ class CollectionInfo {
 
   ~CollectionInfo();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether there is no info contained
@@ -320,8 +320,6 @@ class CollectionInfo {
 
   TRI_json_t const* getJson() const { return _json; }
 
-  
-  
  private:
   TRI_json_t* _json;
 
@@ -332,11 +330,9 @@ class CollectionInfo {
   mutable std::shared_ptr<ShardMap> _shardMapCache;
 };
 
-
 class CollectionInfoCurrent {
   friend class ClusterInfo;
 
-  
  public:
   CollectionInfoCurrent();
 
@@ -357,7 +353,6 @@ class CollectionInfoCurrent {
 
   void copyAllJsons();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a new shardID and JSON pair, returns true if OK and false
   /// if the shardID already exists. In the latter case nothing happens.
@@ -460,7 +455,6 @@ class CollectionInfoCurrent {
     return std::string();
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief local helper to return boolean flags
   //////////////////////////////////////////////////////////////////////////////
@@ -490,12 +484,9 @@ class CollectionInfoCurrent {
     return m;
   }
 
-  
  private:
   std::unordered_map<ShardID, TRI_json_t*> _jsons;
 };
-
-
 
 class ClusterInfo {
  private:
@@ -509,7 +500,6 @@ class ClusterInfo {
       AllCollectionsCurrent;
   typedef std::shared_ptr<std::vector<ServerID> const> FollowerInfo;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
@@ -533,7 +523,6 @@ class ClusterInfo {
 
   ~ClusterInfo();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the unique instance
@@ -541,7 +530,6 @@ class ClusterInfo {
 
   static ClusterInfo* instance();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a number of cluster-wide unique IDs, returns the first
@@ -640,7 +628,8 @@ class ClusterInfo {
   /// @brief create database in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int createDatabaseCoordinator(std::string const&, VPackSlice const&,
+  int createDatabaseCoordinator(std::string const&,
+                                arangodb::velocypack::Slice const&,
                                 std::string&, double);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -657,8 +646,8 @@ class ClusterInfo {
   int createCollectionCoordinator(std::string const& databaseName,
                                   std::string const& collectionID,
                                   uint64_t numberOfShards,
-                                  VPackSlice const json, std::string& errorMsg,
-                                  double timeout);
+                                  arangodb::velocypack::Slice const json,
+                                  std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop collection in coordinator
@@ -690,8 +679,8 @@ class ClusterInfo {
 
   int ensureIndexCoordinator(
       std::string const& databaseName, std::string const& collectionID,
-      VPackSlice const& slice, bool create,
-      bool (*compare)(VPackSlice const&, VPackSlice const&),
+      arangodb::velocypack::Slice const& slice, bool create,
+      bool (*compare)(arangodb::velocypack::Slice const&, arangodb::velocypack::Slice const&),
       TRI_json_t*& resultJson, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -805,8 +794,9 @@ class ClusterInfo {
   /// @brief actually clears a list of current databases
   //////////////////////////////////////////////////////////////////////////////
 
-  void clearCurrentDatabases(std::unordered_map<
-      DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>& databases);
+  void clearCurrentDatabases(
+      std::unordered_map<DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>&
+          databases);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
@@ -874,7 +864,6 @@ class ClusterInfo {
 
   FollowerInfo newFollowerInfo(ShardID& c, int64_t& index);
 
-  
  private:
   AgencyComm _agency;
 
@@ -975,7 +964,6 @@ class ClusterInfo {
 
   arangodb::basics::Mutex _idLock;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the sole instance
   //////////////////////////////////////////////////////////////////////////////
@@ -1004,5 +992,4 @@ class ClusterInfo {
 }  // end namespace arangodb
 
 #endif
-
 

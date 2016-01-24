@@ -34,6 +34,9 @@
 
 #include <openssl/ssl.h>
 #include <sstream>
+#include <velocypack/Builder.h>
+#include <velocypack/Version.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::rest;
 

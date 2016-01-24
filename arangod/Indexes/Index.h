@@ -33,8 +33,6 @@
 #include "VocBase/voc-types.h"
 
 #include <iosfwd>
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 
 struct TRI_doc_mptr_t;
@@ -43,6 +41,15 @@ struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
 namespace arangodb {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Forward Declarations
+////////////////////////////////////////////////////////////////////////////////
+
+namespace velocypack {
+class Builder;
+class Slice;
+}
 
 namespace aql {
 class Ast;
@@ -138,7 +145,7 @@ class Index {
         std::vector<std::vector<arangodb::basics::AttributeName>> const&,
         bool unique, bool sparse);
 
-  explicit Index(VPackSlice const&);
+  explicit Index(arangodb::velocypack::Slice const&);
 
   virtual ~Index();
 
@@ -335,11 +342,11 @@ class Index {
   arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
   arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const;
 
-  virtual void toVelocyPack(VPackBuilder&, bool) const;
-  std::shared_ptr<VPackBuilder> toVelocyPack(bool) const;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
 
-  virtual void toVelocyPackFigures(VPackBuilder&) const;
-  std::shared_ptr<VPackBuilder> toVelocyPackFigures() const;
+  virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
   virtual bool dumpFields() const = 0;
 

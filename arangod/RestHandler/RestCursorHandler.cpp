@@ -325,7 +325,7 @@ arangodb::basics::Json RestCursorHandler::buildExtra(
     arangodb::aql::QueryResult& queryResult) const {
   // build "extra" attribute
   arangodb::basics::Json extra(arangodb::basics::Json::Object);
-  VPackSlice stats = queryResult.stats.slice();
+  VPackSlice stats = queryResult.stats->slice();
 
   if (!stats.isNone()) {
     extra.set("stats",

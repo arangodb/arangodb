@@ -30,6 +30,9 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::admin;
 using namespace arangodb::basics;
 using namespace arangodb::rest;

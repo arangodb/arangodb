@@ -2149,7 +2149,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   size_t ignored = 0;
   size_t removed = 0;
 
-  VPackSlice stats = queryResult.stats.slice();
+  VPackSlice stats = queryResult.stats->slice();
 
   if (!stats.isNone()) {
     TRI_ASSERT(stats.isObject());
