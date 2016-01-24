@@ -2209,7 +2209,7 @@ testFuncs.dump = function(options) {
 
   let results = {};
   results.setup = runInArangosh(options, instanceInfo,
-    makePathUnix("js/server/tests/dump-setup" + cluster + ".js"));
+    makePathUnix("js/server/tests/dump/dump-setup" + cluster + ".js"));
 
   if (checkInstanceAlive(instanceInfo, options) &&
     (results.setup.status === true)) {
@@ -2236,7 +2236,7 @@ testFuncs.dump = function(options) {
           print(Date() + ": Dump and Restore - teardown");
 
           results.tearDown = runInArangosh(options, instanceInfo,
-            makePathUnix("js/server/tests/dump-teardown" + cluster + ".js"));
+            makePathUnix("js/server/tests/dump/dump-teardown" + cluster + ".js"));
         }
       }
     }
@@ -2312,55 +2312,55 @@ testFuncs.http_server = function(options) {
 
 const impTodos = [{
   id: "json1",
-  data: makePathUnix("UnitTests/import-1.json"),
+  data: makePathUnix("js/common/test-data/import/import-1.json"),
   coll: "UnitTestsImportJson1",
   type: "json",
   create: undefined
 }, {
   id: "json2",
-  data: makePathUnix("UnitTests/import-2.json"),
+  data: makePathUnix("js/common/test-data/import/import-2.json"),
   coll: "UnitTestsImportJson2",
   type: "json",
   create: undefined
 }, {
   id: "json3",
-  data: makePathUnix("UnitTests/import-3.json"),
+  data: makePathUnix("js/common/test-data/import/import-3.json"),
   coll: "UnitTestsImportJson3",
   type: "json",
   create: undefined
 }, {
   id: "json4",
-  data: makePathUnix("UnitTests/import-4.json"),
+  data: makePathUnix("js/common/test-data/import/import-4.json"),
   coll: "UnitTestsImportJson4",
   type: "json",
   create: undefined
 }, {
   id: "json5",
-  data: makePathUnix("UnitTests/import-5.json"),
+  data: makePathUnix("js/common/test-data/import/import-5.json"),
   coll: "UnitTestsImportJson5",
   type: "json",
   create: undefined
 }, {
   id: "csv1",
-  data: makePathUnix("UnitTests/import-1.csv"),
+  data: makePathUnix("js/common/test-data/import/import-1.csv"),
   coll: "UnitTestsImportCsv1",
   type: "csv",
   create: "true"
 }, {
   id: "csv2",
-  data: makePathUnix("UnitTests/import-2.csv"),
+  data: makePathUnix("js/common/test-data/import/import-2.csv"),
   coll: "UnitTestsImportCsv2",
   type: "csv",
   create: "true"
 }, {
   id: "csv3",
-  data: makePathUnix("UnitTests/import-3.csv"),
+  data: makePathUnix("js/common/test-data/import/import-3.csv"),
   coll: "UnitTestsImportCsv3",
   type: "csv",
   create: "true"
 }, {
   id: "csv4",
-  data: makePathUnix("UnitTests/import-4.csv"),
+  data: makePathUnix("js/common/test-data/import/import-4.csv"),
   coll: "UnitTestsImportCsv4",
   type: "csv",
   create: "true",
@@ -2368,7 +2368,7 @@ const impTodos = [{
   backslash: true
 }, {
   id: "csv5",
-  data: makePathUnix("UnitTests/import-5.csv"),
+  data: makePathUnix("js/common/test-data/import/import-5.csv"),
   coll: "UnitTestsImportCsv5",
   type: "csv",
   create: "true",
@@ -2376,19 +2376,19 @@ const impTodos = [{
   backslash: true
 }, {
   id: "tsv1",
-  data: makePathUnix("UnitTests/import-1.tsv"),
+  data: makePathUnix("js/common/test-data/import/import-1.tsv"),
   coll: "UnitTestsImportTsv1",
   type: "tsv",
   create: "true"
 }, {
   id: "tsv2",
-  data: makePathUnix("UnitTests/import-2.tsv"),
+  data: makePathUnix("js/common/test-data/import/import-2.tsv"),
   coll: "UnitTestsImportTsv2",
   type: "tsv",
   create: "true"
 }, {
   id: "edge",
-  data: makePathUnix("UnitTests/import-edges.json"),
+  data: makePathUnix("js/common/test-data/import/import-edges.json"),
   coll: "UnitTestsImportEdge",
   type: "json",
   create: "false"
@@ -2422,7 +2422,7 @@ testFuncs.importing = function(options) {
 
   try {
     result.setup = runInArangosh(options, instanceInfo,
-      makePathUnix("js/server/tests/import-setup.js"));
+      makePathUnix("js/server/tests/import/import-setup.js"));
 
     if (result.setup.status !== true) {
       throw new Error("cannot start import setup");
@@ -2439,10 +2439,10 @@ testFuncs.importing = function(options) {
     }
 
     result.check = runInArangosh(options, instanceInfo,
-      makePathUnix("js/server/tests/import.js"));
+      makePathUnix("js/server/tests/import/import.js"));
 
     result.teardown = runInArangosh(options, instanceInfo,
-      makePathUnix("js/server/tests/import-teardown.js"));
+      makePathUnix("js/server/tests/import/import-teardown.js"));
 
   } catch (banana) {
     print("An exceptions of the following form was caught:",
