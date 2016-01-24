@@ -31,7 +31,6 @@ unittests-brief: \
 	unittests-config \
 	unittests-recovery \
 	unittests-boost \
-	unittests-shell-client-readonly\
 	unittests-shell-server \
 	unittests-shell-server-aql \
 	unittests-http-server \
@@ -561,9 +560,9 @@ unittests-shell-server-aql:
 	@echo
 
 	@(if test "x$(SKIP_RANGES)" == "x1"; then \
-            ./scripts/unittest $(VALGRIND) shell_server_aql '{"skipRanges":true}' \
+            ./scripts/unittest $(VALGRIND) shell_server_aql '{"skipRanges":true}'; \
 	  else \
-            ./scripts/unittest $(VALGRIND) shell_server_aql \
+            ./scripts/unittest $(VALGRIND) shell_server_aql; \
 	  fi) || test "x$(FORCE)" == "x1"
 
 
