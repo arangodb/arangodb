@@ -26,7 +26,6 @@
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
-#include "Basics/json-utilities.h"
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -36,7 +35,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using Json = arangodb::basics::Json;
 
 static size_t sortWeight(arangodb::aql::AstNode const* node) {
   switch (node->type) {
