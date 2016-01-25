@@ -28,8 +28,6 @@
 #include "Basics/Common.h"
 #include "Scheduler/Scheduler.h"
 #include "Basics/Mutex.h"
-#include "Basics/SpinLock.h"
-
 
 namespace arangodb {
 namespace rest {

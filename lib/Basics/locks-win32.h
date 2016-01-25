@@ -28,52 +28,21 @@
 
 #ifdef TRI_HAVE_WIN32_THREADS
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex type
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_mutex_s {
-// as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
-#if TRI_WINDOWS_VISTA_LOCKS
-  HANDLE _mutex;
-#else
+  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
   SRWLOCK _mutex;
-#endif
 } TRI_mutex_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief spin-lock type
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_FAKE_SPIN_LOCKS
-
-#define TRI_spin_t TRI_mutex_t
-#define TRI_InitSpin TRI_InitMutex
-#define TRI_DestroySpin TRI_DestroyMutex
-#define TRI_LockSpin TRI_LockMutex
-#define TRI_UnlockSpin TRI_UnlockMutex
-#else
-
-#define TRI_spin_t CRITICAL_SECTION
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read-write-lock type
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_read_write_lock_s {
-#if TRI_WINDOWS_VISTA_LOCKS
-  HANDLE _writerEvent;
-  HANDLE _readersEvent;
-
-  int _readers;
-  CRITICAL_SECTION _lockWriter;
-  CRITICAL_SECTION _lockReaders;
-#else
   SRWLOCK _lock;
-#endif
 } TRI_read_write_lock_t;
 
 ////////////////////////////////////////////////////////////////////////////////
