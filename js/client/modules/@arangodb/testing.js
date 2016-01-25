@@ -73,6 +73,7 @@ const optionsDocumentation = [
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipSsl`: omit the ssl_server rspec tests.',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
+  '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '',
   '   - `onlyNightly`: execute only the nightly tests',
   '   - `loopEternal`: to loop one test over and over.',
@@ -118,6 +119,7 @@ const optionsDefaults = {
   "skipArangoBNonConnKeepAlive": false,
   "skipRanges": false,
   "skipLogAnalysis": false,
+  "skipNondeterministic": false,
   "username": "root",
   "password": "",
   "test": undefined,
@@ -315,6 +317,7 @@ function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief analyzes a core dump using cdb (Windows)
+///  cdb is part of the WinDBG package.
 ////////////////////////////////////////////////////////////////////////////////
 
 function analyzeCoreDumpWindows(instanceInfo) {
@@ -1074,6 +1077,13 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   const topDir = findTopDir();
 
+  if (options.hasOwnProperty('server')) {
+
+
+
+  }
+
+  
   let instanceInfo = {};
   instanceInfo.topDir = topDir;
   instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
@@ -1239,6 +1249,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
     }
   }
 
+  print(instanceInfo)
   // wait until the server/coordinator is up:
   let count = 0;
   const url = endpointToURL(endpoint);
@@ -1557,6 +1568,11 @@ function filterTestcaseByOptions(testname, options, whichFilter) {
 
   if (testname.indexOf("-geo") !== -1 && options.skipGeo) {
     whichFilter.filter = 'geo';
+    return false;
+  }
+
+  if (testname.indexOf("-nondeterministic") !== -1 && options.skipNondeterministic) {
+    whichFilter.filter = 'nondeterministic';
     return false;
   }
 
