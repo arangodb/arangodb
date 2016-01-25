@@ -95,6 +95,7 @@ dnl ----------------------------------------------------------------------------
 
 tr_DARWIN="no"
 tr_FREEBSD="no"
+tr_SOLARIS="no"
 tr_ARM="no"
 
 case $target in
@@ -104,6 +105,10 @@ case $target in
 
   *-*-freebsd*)
     tr_FREEBSD="yes"
+    ;;
+
+  *-*-solaris*)
+    tr_SOLARIS="yes"
     ;;
 
   armv7l-*-linux-gnueabihf)
@@ -125,6 +130,7 @@ esac
 
 AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
 AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
+AM_CONDITIONAL(ENABLE_SOLARIS, test "x$tr_SOLARIS" = xyes)
 AM_CONDITIONAL(ENABLE_ARM, test "x$tr_ARM" = xyes)
 AM_CONDITIONAL(ENABLE_ARMV6, test "x$tr_ARM6" = xyes)
 AM_CONDITIONAL(ENABLE_ARMV7, test "x$tr_ARM7" = xyes)
