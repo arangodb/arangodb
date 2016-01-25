@@ -160,7 +160,7 @@ describe ArangoDB do
       body = '{ "_key" : "a_key", "number" : "99.5" }';
       doc =  insert_structured_doc(p, api, @cn, body, "en", "true", "true")
 
-      doc.code.should eq(500)
+      doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       doc.parsed_response['error'].should eq(false)
       doc.parsed_response['_key'].should eq("a_key")
