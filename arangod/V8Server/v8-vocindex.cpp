@@ -123,6 +123,25 @@ static v8::Handle<v8::Value> IndexRep(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the index representation
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> IndexRep(v8::Isolate* isolate,
+                                      std::string const& collectionName,
+                                      VPackSlice const& idx) {
+  v8::EscapableHandleScope scope(isolate);
+  TRI_ASSERT(!idx.isNone());
+
+  v8::Handle<v8::Object> rep = TRI_VPackToV8(isolate, idx)->ToObject();
+
+  std::string iid = TRI_ObjectToString(rep->Get(TRI_V8_ASCII_STRING("id")));
+  std::string const id = collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
+  rep->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(id));
+
+  return scope.Escape<v8::Value>(rep);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief process the fields list and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -807,14 +826,19 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   // found some index to return
-  auto indexJson = idx->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+  std::shared_ptr<VPackBuilder> indexVPack;
+  try {
+    indexVPack = idx->toVelocyPack(false);
+  } catch (...) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
 
-  if (indexJson.json() == nullptr) {
+  if (indexVPack == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   v8::Handle<v8::Value> ret =
-      IndexRep(isolate, collectionName, indexJson.json());
+      IndexRep(isolate, collectionName, indexVPack->slice());
 
   if (ret->IsObject()) {
     ret->ToObject()->Set(TRI_V8_ASCII_STRING("isNewlyCreated"),
@@ -1111,16 +1135,18 @@ static void CreateCollectionCoordinator(
       std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
           new arangodb::PrimaryIndex(doc));
 
-      auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-      arangodb::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
+      velocy.openObject();
+      primaryIndex->toVelocyPack(velocy, false);
+      velocy.close();
 
       if (collectionType == TRI_COL_TYPE_EDGE) {
         // create a dummy edge index
         auto edgeIndex =
             std::make_unique<arangodb::EdgeIndex>(id, nullptr);
 
-        idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-        arangodb::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
+        velocy.openObject();
+        edgeIndex->toVelocyPack(velocy, false);
+        velocy.close();
       }
     }
   }
@@ -1387,7 +1413,7 @@ static void JS_GetIndexesVocbaseCol(
     auto const& idx = indexes[i];
 
     result->Set(static_cast<uint32_t>(i),
-                IndexRep(isolate, collectionName, idx.json()));
+                IndexRep(isolate, collectionName, idx->slice()));
   }
 
   TRI_V8_RETURN(result);

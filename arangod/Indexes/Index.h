@@ -339,9 +339,6 @@ class Index {
   virtual double selectivityEstimate() const;
   virtual size_t memory() const = 0;
 
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
-  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const;
-
   virtual void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
 

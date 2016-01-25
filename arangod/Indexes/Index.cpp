@@ -437,34 +437,6 @@ void Index::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON representation of the index
-/// base functionality (called from derived classes)
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json Index::toJson(TRI_memory_zone_t* zone,
-                                     bool withFigures) const {
-  // Only compatibility
-  auto builder = toVelocyPack(withFigures);
-  arangodb::basics::Json json(
-      zone,
-      arangodb::basics::VelocyPackHelper::velocyPackToJson(builder->slice()));
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON representation of the index figures
-/// base functionality (called from derived classes)
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json Index::toJsonFigures(TRI_memory_zone_t* zone) const {
-  auto builder = toVelocyPackFigures();
-  arangodb::basics::Json json(
-      zone,
-      arangodb::basics::VelocyPackHelper::velocyPackToJson(builder->slice()));
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for selectivityEstimate
 ////////////////////////////////////////////////////////////////////////////////
 

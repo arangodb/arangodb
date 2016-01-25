@@ -56,6 +56,7 @@ class PrimaryIndex;
 class SkiplistIndex;
 class Transaction;
 namespace velocypack {
+class Builder;
 class Slice;
 }
 }
@@ -793,7 +794,7 @@ int TRI_SaveIndex(TRI_document_collection_t*, arangodb::Index*,
 /// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<arangodb::basics::Json> TRI_IndexesDocumentCollection(
+std::vector<std::shared_ptr<arangodb::velocypack::Builder>> TRI_IndexesDocumentCollection(
     TRI_document_collection_t*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
