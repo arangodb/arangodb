@@ -44,8 +44,8 @@ class V8Job : public rest::Job {
   /// @brief constructs a new V8 job
   //////////////////////////////////////////////////////////////////////////////
 
-  V8Job(TRI_vocbase_t*, ApplicationV8*, std::string const&, TRI_json_t const*,
-        bool);
+  V8Job(TRI_vocbase_t*, ApplicationV8*, std::string const&,
+        std::shared_ptr<arangodb::velocypack::Builder> const, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a V8 job
@@ -94,7 +94,7 @@ class V8Job : public rest::Job {
   /// @brief paramaters
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* _parameters;
+  std::shared_ptr<arangodb::velocypack::Builder> _parameters;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel flag

@@ -32,11 +32,12 @@
 
 #include "Basics/Mutex.h"
 
-struct TRI_json_t;
-
 namespace arangodb {
 namespace basics {
 class ConditionVariable;
+}
+namespace velocypack {
+class Builder;
 }
 
 namespace rest {
@@ -128,13 +129,13 @@ class Scheduler : private TaskManager {
   /// @brief get all user tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* getUserTasks();
+  std::shared_ptr<arangodb::velocypack::Builder> getUserTasks();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a single user task
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* getUserTask(std::string const&);
+  std::shared_ptr<arangodb::velocypack::Builder> getUserTask(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister and delete a user task by id

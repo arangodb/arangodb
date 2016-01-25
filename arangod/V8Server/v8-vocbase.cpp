@@ -1163,11 +1163,15 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       result->Set(TRI_V8_ASCII_STRING("warnings"),
                   TRI_ObjectJson(isolate, queryResult.warnings));
     }
-    VPackSlice stats = queryResult.stats->slice();
-    if (stats.isNone()) {
-      result->Set(TRI_V8_STRING("stats"), v8::Object::New(isolate));
+    if (queryResult.stats != nullptr) {
+      VPackSlice stats = queryResult.stats->slice();
+      if (stats.isNone()) {
+        result->Set(TRI_V8_STRING("stats"), v8::Object::New(isolate));
+      } else {
+        result->Set(TRI_V8_STRING("stats"), TRI_VPackToV8(isolate, stats));
+      }
     } else {
-      result->Set(TRI_V8_STRING("stats"), TRI_VPackToV8(isolate, stats));
+      result->Set(TRI_V8_STRING("stats"), v8::Object::New(isolate));
     }
   }
 
@@ -1229,10 +1233,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result->ForceSet(TRI_V8_ASCII_STRING("json"),
                      TRI_ObjectJson(isolate, queryResult.json));
   }
-  VPackSlice stats = queryResult.stats->slice();
-  if (!stats.isNone()) {
-    result->ForceSet(TRI_V8_ASCII_STRING("stats"),
-                     TRI_VPackToV8(isolate, stats));
+  if (queryResult.stats != nullptr) {
+    VPackSlice stats = queryResult.stats->slice();
+    if (!stats.isNone()) {
+      result->ForceSet(TRI_V8_ASCII_STRING("stats"),
+                       TRI_VPackToV8(isolate, stats));
+    }
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"),

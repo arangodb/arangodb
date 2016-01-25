@@ -28,9 +28,11 @@
 #include "Basics/Common.h"
 #include "Scheduler/Task.h"
 
-struct TRI_json_t;
-
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,10 +49,10 @@ class TimerTask : virtual public Task {
   TimerTask(std::string const&, double);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a task specific description in JSON format
+  /// @brief get a task specific description in VelocyPack format
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void getDescription(struct TRI_json_t*) const override;
+  virtual void getDescription(arangodb::velocypack::Builder&) const override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

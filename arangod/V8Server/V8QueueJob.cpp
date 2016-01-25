@@ -25,10 +25,13 @@
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Dispatcher/DispatcherQueue.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -39,17 +42,13 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8QueueJob::V8QueueJob(size_t queue, TRI_vocbase_t* vocbase,
-                       ApplicationV8* v8Dealer, TRI_json_t const* parameters)
+                       ApplicationV8* v8Dealer, std::shared_ptr<VPackBuilder> parameters)
     : Job("V8 Queue Job"),
       _queue(queue),
       _vocbase(vocbase),
       _v8Dealer(v8Dealer),
-      _parameters(nullptr),
+      _parameters(parameters),
       _canceled(false) {
-  if (parameters != nullptr) {
-    // create our own copy of the parameters
-    _parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,10 +56,6 @@ V8QueueJob::V8QueueJob(size_t queue, TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 V8QueueJob::~V8QueueJob() {
-  if (_parameters != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
-    _parameters = nullptr;
-  }
 }
 
 
@@ -95,7 +90,7 @@ void V8QueueJob::work() {
       v8::Handle<v8::Value> fArgs;
 
       if (_parameters != nullptr) {
-        fArgs = TRI_ObjectJson(isolate, _parameters);
+        fArgs = TRI_VPackToV8(isolate, _parameters->slice());
       } else {
         fArgs = v8::Undefined(isolate);
       }

@@ -234,18 +234,20 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
       size_t ignored = 0;
       size_t removed = 0;
-      VPackSlice stats = queryResult.stats->slice();
+      if (queryResult.stats != nullptr) {
+        VPackSlice stats = queryResult.stats->slice();
 
-      if (!stats.isNone()) {
-        TRI_ASSERT(stats.isObject());
-        VPackSlice found = stats.get("writesIgnored");
-        if (found.isNumber()) {
-          ignored = found.getNumericValue<size_t>();
-        }
+        if (!stats.isNone()) {
+          TRI_ASSERT(stats.isObject());
+          VPackSlice found = stats.get("writesIgnored");
+          if (found.isNumber()) {
+            ignored = found.getNumericValue<size_t>();
+          }
 
-        found = stats.get("writesExecuted");
-        if (found.isNumber()) {
-          removed = found.getNumericValue<size_t>();
+          found = stats.get("writesExecuted");
+          if (found.isNumber()) {
+            removed = found.getNumericValue<size_t>();
+          }
         }
       }
 

@@ -325,14 +325,15 @@ arangodb::basics::Json RestCursorHandler::buildExtra(
     arangodb::aql::QueryResult& queryResult) const {
   // build "extra" attribute
   arangodb::basics::Json extra(arangodb::basics::Json::Object);
-  VPackSlice stats = queryResult.stats->slice();
-
-  if (!stats.isNone()) {
-    extra.set("stats",
-              arangodb::basics::Json(
-                  TRI_UNKNOWN_MEM_ZONE,
-                  arangodb::basics::VelocyPackHelper::velocyPackToJson(stats),
-                  arangodb::basics::Json::AUTOFREE));
+  if (queryResult.stats != nullptr) {
+    VPackSlice stats = queryResult.stats->slice();
+    if (!stats.isNone()) {
+      extra.set("stats",
+                arangodb::basics::Json(
+                    TRI_UNKNOWN_MEM_ZONE,
+                    arangodb::basics::VelocyPackHelper::velocyPackToJson(stats),
+                    arangodb::basics::Json::AUTOFREE));
+    }
   }
   if (queryResult.profile != nullptr) {
     extra.set("profile",
