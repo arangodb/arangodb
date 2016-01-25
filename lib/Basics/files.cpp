@@ -2366,8 +2366,8 @@ void TRI_SetUserTempPath (std::string const& path) {
 
 #if _WIN32
 
-string TRI_LocateInstallDirectory () {
-  return TRI_LocateBinaryPath(nullptr) + string(1, TRI_DIR_SEPARATOR_CHAR) + ".." + string(1, TRI_DIR_SEPARATOR_CHAR);
+std::string TRI_LocateInstallDirectory () {
+  return TRI_LocateBinaryPath(nullptr) + std::string(1, TRI_DIR_SEPARATOR_CHAR) + ".." + std::string(1, TRI_DIR_SEPARATOR_CHAR);
 }
 
 #endif
@@ -2387,7 +2387,7 @@ char* TRI_LocateConfigDirectory () {
     return v;
   }
 
-  string r = TRI_LocateInstallDirectory();
+  std::string r = TRI_LocateInstallDirectory();
 
 #ifdef _SYSCONFDIR_
   r += _SYSCONFDIR_;
@@ -2395,7 +2395,7 @@ char* TRI_LocateConfigDirectory () {
   r += "etc\\arangodb";
 #endif
 
-  r += string(1, TRI_DIR_SEPARATOR_CHAR);
+  r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
 
   return TRI_DuplicateString(r.c_str());
 }

@@ -13628,7 +13628,7 @@ if(typeof internal.arango !== 'undefined'){try{exports.arango = internal.arango;
 }catch(err) {internal.print("cannot connect to server: " + String(err));}} ////////////////////////////////////////////////////////////////////////////////
 /// @brief the server version
 ////////////////////////////////////////////////////////////////////////////////
-exports.plainServerVersion = function(){if(internal.arango){var version=internal.arango.getVersion();var devel=version.match(/(.*)-(rc[0-9]*|devel)$/);if(devel !== null){version = devel[1];}return version;}else {return undefined;}}; // -----------------------------------------------------------------------------
+exports.plainServerVersion = function(){if(internal.arango){var version=internal.arango.getVersion();var devel=version.match(/(.*)-((alpha|beta|devel|rc)[0-9]*)$/);if(devel !== null){version = devel[1];}return version;}else {return undefined;}}; // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 });module.define("org/arangodb/aql/queries",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
