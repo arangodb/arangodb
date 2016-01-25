@@ -416,6 +416,21 @@ v2.8.0-alpha1 (2015-12-03)
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
 
 
+v2.7.5 (2016-01-22)
+-------------------
+
+* improved internal datafile statistics for compaction and compaction triggering
+  conditions, preventing excessive growth of collection datafiles under some
+  workloads. This should also fix issue #1596.
+
+* Foxx export cache should no longer break if a broken app is loaded in the
+  web admin interface.
+
+* Foxx: removed some incorrect deprecation warnings.
+
+* Foxx: mocha test paths with wildcard characters (asterisks) now work on Windows
+
+
 v2.7.4 (2015-12-21)
 -------------------
 
