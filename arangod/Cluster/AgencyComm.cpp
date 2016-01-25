@@ -922,17 +922,6 @@ AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::setValue(std::string const& key,
-                                      TRI_json_t const* json, double ttl) {
-  // Only temporary
-  auto builder = arangodb::basics::JsonHelper::toVelocyPack(json);
-  return setValue(key, builder->slice(), ttl);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a value in the backend
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       arangodb::velocypack::Slice const json,
                                       double ttl) {
   AgencyCommResult result;

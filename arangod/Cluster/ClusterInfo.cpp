@@ -1435,38 +1435,39 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
+    if (it->second._vpack == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
     VPackSlice const slice = it->second._vpack->slice();
     if (slice.isNone()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-
-    std::unique_ptr<TRI_json_t> copy(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-    if (copy == nullptr) {
+    VPackBuilder copy;
+    try {
+      VPackObjectBuilder b(&copy);
+      for (auto const& entry : VPackObjectIterator(slice)) {
+        std::string key = entry.key.copyString();
+        // Copy all values except the following
+        // They are overwritten later
+        if (key != "doCompact" &&
+            key != "journalSize" &&
+            key != "waitForSync" &&
+            key != "indexBuckets") {
+          copy.add(key, entry.value);
+        }
+      }
+      copy.add("doCompact", VPackValue(info->doCompact()));
+      copy.add("journalSize", VPackValue(info->maximalSize()));
+      copy.add("waitForSync", VPackValue(info->waitForSync()));
+      copy.add("indexBuckets", VPackValue(info->indexBuckets()));
+    } catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "doCompact");
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "journalSize");
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "waitForSync");
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "indexBuckets");
-
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, copy.get(), "doCompact",
-        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->doCompact()));
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, copy.get(), "journalSize",
-        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->maximalSize()));
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, copy.get(), "waitForSync",
-        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->waitForSync()));
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, copy.get(), "indexBuckets",
-        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->indexBuckets()));
-
     res.clear();
     res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID,
-                      copy.get(), 0.0);
+                      copy.slice(), 0.0);
   }
 
   if (res.successful()) {
@@ -1527,18 +1528,22 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_NO_ERROR;
     }
 
-    std::unique_ptr<TRI_json_t> copy(arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-    if (copy == nullptr) {
+    VPackBuilder builder;
+    try {
+      VPackObjectBuilder b(&builder);
+      for (auto const& entry : VPackObjectIterator(slice)) {
+        std::string key = entry.key.copyString();
+        if (key != "status") {
+          builder.add(key, entry.value);
+        }
+      }
+      builder.add("status", VPackValue("status"));
+    } catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "status");
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "status",
-                          TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, status));
-
     res.clear();
     res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID,
-                      copy.get(), 0.0);
+                      builder.slice(), 0.0);
 
   }
 

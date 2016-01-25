@@ -527,9 +527,10 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const key = TRI_ObjectToString(args[0]);
 
-  TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
+  VPackBuilder builder;
+  bool ok = TRI_V8ToVPack(isolate, builder, args[1], false);
 
-  if (json == nullptr) {
+  if (!ok) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <value> to JSON");
   }
 
@@ -539,9 +540,7 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.setValue(key, json, ttl);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  AgencyCommResult result = comm.setValue(key, builder.slice(), ttl);
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);

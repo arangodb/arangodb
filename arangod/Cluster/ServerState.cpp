@@ -262,19 +262,24 @@ ServerState::RoleEnum ServerState::getRole() {
     LOG_DEBUG("Announcing our birth in Current/NewServers to the agency...");
     AgencyComm comm;
     AgencyCommResult result;
-    Json json(Json::Object, 1);
-    json("endpoint", Json(TRI_UNKNOWN_MEM_ZONE, getAddress()));
-    std::string description = getDescription();
-    if (!description.empty()) {
-      json("Description", Json(TRI_UNKNOWN_MEM_ZONE, description));
+    VPackBuilder builder;
+    try {
+      VPackObjectBuilder b(&builder);
+      builder.add("enpoint", VPackValue(getAddress()));
+      if (!_description.empty()) {
+        builder.add("Description", VPackValue(_description));
+      }
+    } catch (...) {
+      LOG_ERROR("Could not create entpoint information!");
+      return ROLE_UNDEFINED;
     }
     result =
-        comm.setValue("Current/NewServers/" + _localInfo, json.json(), 0.0);
+        comm.setValue("Current/NewServers/" + _localInfo, builder.slice(), 0.0);
     if (!result.successful()) {
       LOG_ERROR("Could not talk to agency!");
       return ROLE_UNDEFINED;
     }
-    std::string jsonst = json.toString();
+    std::string jsonst = builder.slice().toJson();
     LOG_DEBUG("Have stored %s under Current/NewServers/%s in agency.",
               jsonst.c_str(), _localInfo.c_str());
   }

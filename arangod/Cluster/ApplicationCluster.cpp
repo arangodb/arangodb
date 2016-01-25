@@ -382,24 +382,16 @@ bool ApplicationCluster::open() {
     AgencyCommLocker locker("Current", "WRITE");
 
     if (locker.successful()) {
-      TRI_json_t* ep = TRI_CreateStringCopyJson(
-          TRI_UNKNOWN_MEM_ZONE, _myAddress.c_str(), _myAddress.size());
-
-      if (ep == nullptr) {
+      VPackBuilder builder;
+      try {
+        VPackObjectBuilder b(&builder);
+        builder.add("endpoint", VPackValue(_myAddress));
+      } catch (...) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
-      TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
 
-      if (json == nullptr) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, ep);
-        locker.unlock();
-        LOG_FATAL_AND_EXIT("out of memory");
-      }
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "endpoint", ep);
-
-      result = comm.setValue("Current/ServersRegistered/" + _myId, json, 0.0);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      result = comm.setValue("Current/ServersRegistered/" + _myId, builder.slice(), 0.0);
     }
 
     if (!result.successful()) {
@@ -410,10 +402,10 @@ bool ApplicationCluster::open() {
     }
 
     if (role == ServerState::ROLE_COORDINATOR) {
-      TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "none",
-                                                  strlen("none"));
-
-      if (json == nullptr) {
+      VPackBuilder builder;
+      try {
+        builder.add(VPackValue("none"));
+      } catch (...) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
@@ -422,18 +414,17 @@ bool ApplicationCluster::open() {
 
       // register coordinator
       AgencyCommResult result =
-          comm.setValue("Current/Coordinators/" + _myId, json, 0.0);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          comm.setValue("Current/Coordinators/" + _myId, builder.slice(), 0.0);
 
       if (!result.successful()) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("unable to register coordinator in agency");
       }
     } else if (role == ServerState::ROLE_PRIMARY) {
-      TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "none",
-                                                  strlen("none"));
-
-      if (json == nullptr) {
+      VPackBuilder builder;
+      try {
+        builder.add(VPackValue("none"));
+      } catch (...) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
@@ -442,8 +433,7 @@ bool ApplicationCluster::open() {
 
       // register server
       AgencyCommResult result =
-          comm.setValue("Current/DBServers/" + _myId, json, 0.0);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          comm.setValue("Current/DBServers/" + _myId, builder.slice(), 0.0);
 
       if (!result.successful()) {
         locker.unlock();
@@ -451,10 +441,10 @@ bool ApplicationCluster::open() {
       }
     } else if (role == ServerState::ROLE_SECONDARY) {
       std::string keyName = std::string("\"") + _myId + std::string("\"");
-      TRI_json_t* json = TRI_CreateStringCopyJson(
-          TRI_UNKNOWN_MEM_ZONE, keyName.c_str(), keyName.size());
-
-      if (json == nullptr) {
+      VPackBuilder builder;
+      try {
+        builder.add(VPackValue(keyName));
+      } catch (...) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
@@ -463,9 +453,8 @@ bool ApplicationCluster::open() {
 
       // register server
       AgencyCommResult result = comm.setValue(
-          "Current/DBServers/" + ServerState::instance()->getPrimaryId(), json,
-          0.0);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          "Current/DBServers/" + ServerState::instance()->getPrimaryId(),
+          builder.slice(), 0.0);
 
       if (!result.successful()) {
         locker.unlock();
