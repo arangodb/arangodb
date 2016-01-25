@@ -109,6 +109,8 @@ case $target in
 
   *-*-solaris*)
     tr_SOLARIS="yes"
+    CC="gcc -std=gnu99"
+    CXXFLAGS="-static-libstdc++ -D_GLIBCXX_USE_C99"
     ;;
 
   armv7l-*-linux-gnueabihf)
