@@ -24,7 +24,7 @@
 #ifndef LIB_BASICS_VELOCY_PACK_HELPER_H
 #define LIB_BASICS_VELOCY_PACK_HELPER_H 1
 
-#include <basics/JsonHelper.h>
+#include "Basics/JsonHelper.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
