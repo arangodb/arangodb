@@ -89,7 +89,7 @@ function UniqueHashIndexFailuresSuite () {
         collection.save({a: 1});
         fail();
       } catch (e) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, e.errorNum);
+        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, e.errorNum);
       }
       assertEqual(collection.count(), 0);
       assertEqual(collection.firstExample({a: 1}), null);
@@ -105,7 +105,7 @@ function UniqueHashIndexFailuresSuite () {
         collection.save({a: 1});
         fail();
       } catch (e) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, e.errorNum);
+        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, e.errorNum);
       }
       assertEqual(collection.count(), 0);
       assertEqual(collection.firstExample({a: 1}), null);
@@ -171,7 +171,7 @@ function HashIndexMultiFailuresSuite () {
         collection.save({a: 1});
         fail();
       } catch (e) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, e.errorNum);
+        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, e.errorNum);
       }
       assertEqual(collection.count(), 0);
       assertEqual(collection.firstExample({a: 1}), null);
@@ -188,7 +188,7 @@ function HashIndexMultiFailuresSuite () {
         collection.save({a: 1});
         fail();
       } catch (e) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, e.errorNum);
+        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, e.errorNum);
       }
       assertEqual(collection.count(), 0);
       assertEqual(collection.firstExample({a: 1}), null);
