@@ -1,6 +1,12 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* removed mostly unused internal spin-lock implementation
+
+* removed support for pre-Windows 7-style locks. This removes compatibility with
+  Windows versions older than Windows 7 (e.g. Windows Vista, Windows XP) or 
+  Windows 2008R2 (e.g. Windows 2008).
+
 * changed names of sub-threads started by arangod
 
 * added option `--default-number-of-shards` to arangorestore, allowing creating
