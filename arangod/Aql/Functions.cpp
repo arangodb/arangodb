@@ -4452,7 +4452,17 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
   double step = 0.0;
   if (n == 3) {
     auto const stepJson = ExtractFunctionParameter(trx, parameters, 2, false);
-    step = ValueToNumber(stepJson.json(), unused);
+    if (!TRI_IsNullJson(stepJson.json())) {
+      step = ValueToNumber(stepJson.json(), unused);
+    }
+    else {
+      // no step specified
+      if (from <= to) {
+        step = 1.0;
+      } else {
+        step = -1.0;
+      }
+    }
   } else {
     // no step specified
     if (from <= to) {
