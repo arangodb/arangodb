@@ -497,6 +497,7 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
   }
 
   // create a new proxy
+  // TODO: move to new instead of TRI_Allocate
   TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false));
 
