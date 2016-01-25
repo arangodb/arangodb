@@ -31,6 +31,9 @@
 #include "Basics/WriteLocker.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 
 

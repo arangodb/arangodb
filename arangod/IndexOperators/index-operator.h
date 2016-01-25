@@ -29,6 +29,8 @@
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+
 class VocShaper;
 
 
@@ -127,19 +129,23 @@ class TRI_logical_index_operator_t : public TRI_index_operator_t {
 
 class TRI_relation_index_operator_t : public TRI_index_operator_t {
  public:
-  TRI_json_t*
+  std::shared_ptr<arangodb::velocypack::Builder>
       _parameters;  // parameters with which this relation was called with
   TRI_shaped_json_t* _fields;  // actual data from the parameters converted from
                                // a json array to a shaped json array
   size_t _numFields;           // number of fields in the array above
 
   TRI_relation_index_operator_t(TRI_index_operator_type_e const type,
-                                VocShaper const* shaper, TRI_json_t* parameters,
+                                VocShaper const* shaper, std::shared_ptr<arangodb::velocypack::Builder> parameters,
                                 TRI_shaped_json_t* fields, size_t numFields)
       : TRI_index_operator_t(type, shaper),
         _parameters(parameters),
         _fields(fields),
-        _numFields(numFields) {}
+        _numFields(numFields) {
+          // We can only take a complete closed Array
+          TRI_ASSERT(parameters->isClosed());
+          TRI_ASSERT(parameters->slice().isArray());
+        }
 
   ~TRI_relation_index_operator_t();
 };
@@ -148,13 +154,10 @@ class TRI_relation_index_operator_t : public TRI_index_operator_t {
 /// @brief create a new index operator of the specified type
 ///
 /// note that the index which uses these operators  will take ownership of the
-/// json parameters passed to it
+/// VelocyPack parameters passed to it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e,
-                                              TRI_index_operator_t*,
-                                              TRI_index_operator_t*,
-                                              TRI_json_t*, VocShaper*, size_t);
+TRI_index_operator_t* TRI_CreateIndexOperator(
+    TRI_index_operator_type_e, TRI_index_operator_t*, TRI_index_operator_t*,
+    std::shared_ptr<arangodb::velocypack::Builder>, VocShaper*, size_t);
 #endif
-
-

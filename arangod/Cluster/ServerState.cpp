@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerState.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
 #include "Cluster/AgencyComm.h"
@@ -850,15 +850,14 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
           result._values.find(localInfo);
 
       if (it != result._values.end()) {
-        TRI_json_t const* json = it->second._json;
-        Json j(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE);
-        id = arangodb::basics::JsonHelper::getStringValue(json, "ID", "");
+        VPackSlice slice = it->second._vpack->slice();
+        id = arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID", "");
         if (id.empty()) {
           LOG_ERROR("ID not set!");
           return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
         }
-        std::string description = arangodb::basics::JsonHelper::getStringValue(
-            json, "Description", "");
+        std::string description = arangodb::basics::VelocyPackHelper::getStringValue(
+            slice, "Description", "");
         if (!description.empty()) {
           setDescription(description);
         }
@@ -918,8 +917,9 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
     it = result._values.begin();
 
     while (it != result._values.end()) {
-      std::string const name =
-          arangodb::basics::JsonHelper::getStringValue((*it).second._json, "");
+      VPackSlice slice = (*it).second._vpack->slice();
+      std::string name =
+          arangodb::basics::VelocyPackHelper::getStringValue(slice, "");
 
       if (name == id) {
         role = ServerState::ROLE_SECONDARY;
@@ -933,5 +933,3 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
 
   return role;
 }
-
-

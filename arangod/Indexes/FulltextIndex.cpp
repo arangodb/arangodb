@@ -136,33 +136,17 @@ size_t FulltextIndex::memory() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
+/// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json FulltextIndex::toJson(TRI_memory_zone_t* zone,
-                                             bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
+void FulltextIndex::toVelocyPack(VPackBuilder& builder,
+                                 bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
 
   // hard-coded
-  json("unique", arangodb::basics::Json(false))("sparse",
-                                                arangodb::basics::Json(true));
-
-  json("minLength",
-       arangodb::basics::Json(zone, static_cast<double>(_minWordLength)));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json FulltextIndex::toJsonFigures(
-    TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-
-  return json;
+  builder.add("unique", VPackValue(false));
+  builder.add("sparse", VPackValue(true));
+  builder.add("minLength", VPackValue(_minWordLength));
 }
 
 int FulltextIndex::insert(arangodb::Transaction*,

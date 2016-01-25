@@ -33,8 +33,11 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
 namespace aql {
 class Query;
 class QueryRegistry;
@@ -48,31 +51,24 @@ class Cursor;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
-  
  public:
+  RestCursorHandler(
+      rest::HttpRequest*,
+      std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
 
-  RestCursorHandler(rest::HttpRequest*,
-                    std::pair<arangodb::ApplicationV8*,
-                              arangodb::aql::QueryRegistry*>*);
-
-  
  public:
-
   virtual status_t execute() override;
-
 
   bool cancel() override;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief processes the query and returns the results/cursor
   /// this method is also used by derived classes
   //////////////////////////////////////////////////////////////////////////////
 
-  void processQuery(VPackSlice const&);
+  void processQuery(arangodb::velocypack::Slice const&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register the currently running query
@@ -102,7 +98,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief build options for the query as JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  VPackBuilder buildOptions(VPackSlice const&) const;
+  arangodb::velocypack::Builder buildOptions(
+      arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds the "extra" attribute values from the result.
@@ -136,7 +133,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   void deleteCursor();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _applicationV8
@@ -171,5 +167,4 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
 

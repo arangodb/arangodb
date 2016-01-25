@@ -37,14 +37,15 @@
 #include "VocBase/voc-types.h"
 #include "V8Server/ApplicationV8.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class TransactionContext;
+
+namespace velocypack {
+class Builder;
+}
 
 namespace aql {
 
@@ -97,7 +98,7 @@ struct Profile {
   /// @brief convert the profile to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  VPackBuilder toVelocyPack();
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
 
   TRI_json_t* toJson(TRI_memory_zone_t*);
 

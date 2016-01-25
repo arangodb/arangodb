@@ -45,13 +45,13 @@ class Optimizer {
     int64_t rulesSkipped = 0;
     int64_t plansCreated = 1;  // 1 for the initial plan
 
-    VPackBuilder toVelocyPack() const {
-      VPackBuilder result;
+    std::shared_ptr<VPackBuilder> toVelocyPack() const {
+      auto result = std::make_shared<VPackBuilder>();
       {
-        VPackObjectBuilder b(&result);
-        result.add("rulesExecuted", VPackValue(rulesExecuted));
-        result.add("rulesSkipped", VPackValue(rulesSkipped));
-        result.add("plansCreated", VPackValue(plansCreated));
+        VPackObjectBuilder b(result.get());
+        result->add("rulesExecuted", VPackValue(rulesExecuted));
+        result->add("rulesSkipped", VPackValue(rulesSkipped));
+        result->add("plansCreated", VPackValue(plansCreated));
       }
       return result;
     }

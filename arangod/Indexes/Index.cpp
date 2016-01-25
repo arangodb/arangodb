@@ -26,14 +26,14 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/json.h"
-#include "Basics/json-utilities.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
 
 #include <ostream>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -56,51 +56,44 @@ Index::Index(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-Index::Index(TRI_json_t const* json)
+Index::Index(VPackSlice const& slice)
     : _iid(arangodb::basics::StringUtils::uint64(
-          arangodb::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
+          arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice,
+                                                                     "id"))),
       _collection(nullptr),
       _fields(),
-      _unique(
-          arangodb::basics::JsonHelper::getBooleanValue(json, "unique", false)),
-      _sparse(
-          arangodb::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
+      _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "unique", false)),
+      _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "sparse", false)),
       _selectivityEstimate(0.0) {
-  TRI_json_t const* fields = TRI_LookupObjectJson(json, "fields");
+  VPackSlice const fields = slice.get("fields");
 
-  if (!TRI_IsArrayJson(fields)) {
+  if (!fields.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid index description");
   }
 
-  size_t const n = TRI_LengthArrayJson(fields);
+  size_t const n = static_cast<size_t>(fields.length());
   _fields.reserve(n);
 
-  for (size_t i = 0; i < n; ++i) {
-    auto name = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&fields->_value._objects, i));
-
-    if (!TRI_IsStringJson(name)) {
+  for (auto const& name : VPackArrayIterator(fields)) {
+    if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "invalid index description");
     }
 
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(
-        std::string(name->_value._string.data, name->_value._string.length - 1),
-        parsedAttributes);
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes);
     _fields.emplace_back(parsedAttributes);
   }
 
-  TRI_json_t const* se = TRI_LookupObjectJson(json, "selectivityEstimate");
-
-  if (TRI_IsNumberJson(se)) {
-    _selectivityEstimate = json->_value._number;
-  }
+  _selectivityEstimate =
+      arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+          slice, "selectivityEstimate", 0.0);
 }
 
 Index::~Index() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the index type based on a type name
@@ -243,92 +236,95 @@ TRI_idx_iid_t Index::generateId() { return TRI_NewTickServer(); }
 /// contents are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::Compare(TRI_json_t const* lhs, TRI_json_t const* rhs) {
-  TRI_json_t* typeJson = TRI_LookupObjectJson(lhs, "type");
-  TRI_ASSERT(TRI_IsStringJson(typeJson));
+bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
+  VPackSlice lhsType = lhs.get("type");
+  TRI_ASSERT(lhsType.isString());
 
   // type must be identical
-  if (!TRI_CheckSameValueJson(typeJson, TRI_LookupObjectJson(rhs, "type"))) {
+  if (arangodb::basics::VelocyPackHelper::compare(lhsType, rhs.get("type"),
+                                                  false) != 0) {
     return false;
   }
 
-  auto type = Index::type(typeJson->_value._string.data);
+  std::string tmp = lhsType.copyString();
+  auto type = Index::type(tmp.c_str());
 
   // unique must be identical if present
-  TRI_json_t* value = TRI_LookupObjectJson(lhs, "unique");
-  if (TRI_IsBooleanJson(value)) {
-    if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "unique"))) {
+  VPackSlice value = lhs.get("unique");
+  if (value.isBoolean()) {
+    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("unique"),
+                                                    false) != 0) {
       return false;
     }
   }
 
   // sparse must be identical if present
-  value = TRI_LookupObjectJson(lhs, "sparse");
-  if (TRI_IsBooleanJson(value)) {
-    if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "sparse"))) {
+  value = lhs.get("sparse");
+  if (value.isBoolean()) {
+    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("sparse"),
+                                                    false) != 0) {
       return false;
     }
   }
 
   if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX) {
     // geoJson must be identical if present
-    value = TRI_LookupObjectJson(lhs, "geoJson");
-    if (TRI_IsBooleanJson(value)) {
-      if (!TRI_CheckSameValueJson(value,
-                                  TRI_LookupObjectJson(rhs, "geoJson"))) {
+    value = lhs.get("geoJson");
+    if (value.isBoolean()) {
+      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("geoJson"),
+                                                      false) != 0) {
         return false;
       }
     }
   } else if (type == IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     // minLength
-    value = TRI_LookupObjectJson(lhs, "minLength");
-    if (TRI_IsNumberJson(value)) {
-      if (!TRI_CheckSameValueJson(value,
-                                  TRI_LookupObjectJson(rhs, "minLength"))) {
+    value = lhs.get("minLength");
+    if (value.isNumber()) {
+      if (arangodb::basics::VelocyPackHelper::compare(
+              value, rhs.get("minLength"), false) != 0) {
         return false;
       }
     }
   } else if (type == IndexType::TRI_IDX_TYPE_CAP_CONSTRAINT) {
     // size, byteSize
-    value = TRI_LookupObjectJson(lhs, "size");
-    if (TRI_IsNumberJson(value)) {
-      if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "size"))) {
+    value = lhs.get("size");
+    if (value.isNumber()) {
+      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("size"),
+                                                      false) != 0) {
         return false;
       }
     }
 
-    value = TRI_LookupObjectJson(lhs, "byteSize");
-    if (TRI_IsNumberJson(value)) {
-      if (!TRI_CheckSameValueJson(value,
-                                  TRI_LookupObjectJson(rhs, "byteSize"))) {
+    value = lhs.get("byteSize");
+    if (value.isNumber()) {
+      if (arangodb::basics::VelocyPackHelper::compare(
+              value, rhs.get("byteSize"), false) != 0) {
         return false;
       }
     }
   }
 
   // other index types: fields must be identical if present
-  value = TRI_LookupObjectJson(lhs, "fields");
+  value = lhs.get("fields");
 
-  if (TRI_IsArrayJson(value)) {
+  if (value.isArray()) {
     if (type == IndexType::TRI_IDX_TYPE_HASH_INDEX) {
-      size_t const nv = TRI_LengthArrayJson(value);
+      VPackValueLength const nv = value.length();
 
       // compare fields in arbitrary order
-      TRI_json_t const* r = TRI_LookupObjectJson(rhs, "fields");
+      VPackSlice const r = rhs.get("fields");
 
-      if (!TRI_IsArrayJson(r) || nv != TRI_LengthArrayJson(r)) {
+      if (!r.isArray() || nv != r.length()) {
         return false;
       }
 
-      size_t const nr = TRI_LengthArrayJson(r);
-
       for (size_t i = 0; i < nv; ++i) {
-        TRI_json_t const* v = TRI_LookupArrayJson(value, i);
+        VPackSlice const v = value.at(i);
 
         bool found = false;
 
-        for (size_t j = 0; j < nr; ++j) {
-          if (TRI_CheckSameValueJson(v, TRI_LookupArrayJson(r, j))) {
+        for (auto const& vr : VPackArrayIterator(r)) {
+          if (arangodb::basics::VelocyPackHelper::compare(v, vr, false) == 0) {
             found = true;
             break;
           }
@@ -339,7 +335,8 @@ bool Index::Compare(TRI_json_t const* lhs, TRI_json_t const* rhs) {
         }
       }
     } else {
-      if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "fields"))) {
+      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("fields"),
+                                                      false) != 0) {
         return false;
       }
     }
@@ -376,36 +373,56 @@ std::string Index::context() const {
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures,
-                                                  bool closeToplevel) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
-  builder->add("id", VPackValue(std::to_string(_iid)));
-  builder->add("type", VPackValue(typeName()));
+  toVelocyPack(*builder, withFigures);
+  builder->close();
+  return builder;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VelocyPack representation of the index
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+void Index::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("id", VPackValue(std::to_string(_iid)));
+  builder.add("type", VPackValue(typeName()));
 
   if (dumpFields()) {
-    builder->add(VPackValue("fields"));
-    VPackArrayBuilder b1(builder.get());
+    builder.add(VPackValue("fields"));
+    VPackArrayBuilder b1(&builder);
 
     for (auto const& field : fields()) {
       std::string fieldString;
       TRI_AttributeNamesToString(field, fieldString);
-      builder->add(VPackValue(fieldString));
+      builder.add(VPackValue(fieldString));
     }
   }
 
   if (hasSelectivityEstimate()) {
-    builder->add("selectivityEstimate", VPackValue(selectivityEstimate()));
+    builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
   if (withFigures) {
-    std::shared_ptr<VPackBuilder> figuresBuilder = toVelocyPackFigures(true);
-    VPackSlice const figures = figuresBuilder->slice();
-    builder->add("figures", figures);
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
   }
-  if (closeToplevel) {
-    builder->close();
-  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VelocyPack representation of the index figures
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures() const {
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openObject();
+  toVelocyPackFigures(*builder);
+  builder->close();
   return builder;
 }
 
@@ -414,62 +431,9 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures,
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures(
-    bool closeToplevel) const {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  builder->add("memory", VPackValue(memory()));
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON representation of the index
-/// base functionality (called from derived classes)
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json Index::toJson(TRI_memory_zone_t* zone,
-                                     bool withFigures) const {
-  arangodb::basics::Json json(zone, arangodb::basics::Json::Object, 4);
-
-  json("id", arangodb::basics::Json(zone, std::to_string(_iid)))(
-      "type", arangodb::basics::Json(zone, typeName()));
-
-  if (dumpFields()) {
-    arangodb::basics::Json f(zone, arangodb::basics::Json::Array,
-                             fields().size());
-
-    for (auto const& field : fields()) {
-      std::string fieldString;
-      TRI_AttributeNamesToString(field, fieldString);
-      f.add(arangodb::basics::Json(zone, fieldString));
-    }
-
-    json("fields", f);
-  }
-
-  if (hasSelectivityEstimate()) {
-    json("selectivityEstimate", arangodb::basics::Json(selectivityEstimate()));
-  }
-
-  if (withFigures) {
-    json("figures", toJsonFigures(zone));
-  }
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON representation of the index figures
-/// base functionality (called from derived classes)
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json Index::toJsonFigures(TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(zone, arangodb::basics::Json::Object);
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-  return json;
+void Index::toVelocyPackFigures(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("memory", VPackValue(memory()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -692,5 +656,4 @@ std::ostream& operator<<(std::ostream& stream,
   stream << index.context();
   return stream;
 }
-
 

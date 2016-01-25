@@ -1163,7 +1163,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       result->Set(TRI_V8_ASCII_STRING("warnings"),
                   TRI_ObjectJson(isolate, queryResult.warnings));
     }
-    VPackSlice stats = queryResult.stats.slice();
+    VPackSlice stats = queryResult.stats->slice();
     if (stats.isNone()) {
       result->Set(TRI_V8_STRING("stats"), v8::Object::New(isolate));
     } else {
@@ -1229,7 +1229,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result->ForceSet(TRI_V8_ASCII_STRING("json"),
                      TRI_ObjectJson(isolate, queryResult.json));
   }
-  VPackSlice stats = queryResult.stats.slice();
+  VPackSlice stats = queryResult.stats->slice();
   if (!stats.isNone()) {
     result->ForceSet(TRI_V8_ASCII_STRING("stats"),
                      TRI_VPackToV8(isolate, stats));
@@ -1329,7 +1329,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   result->ForceSet(TRI_V8_ASCII_STRING("json"), queryResult.result);
 
-  VPackSlice stats = queryResult.stats.slice();
+  VPackSlice stats = queryResult.stats->slice();
   if (!stats.isNone()) {
     result->ForceSet(TRI_V8_ASCII_STRING("stats"),
                      TRI_VPackToV8(isolate, stats));
@@ -3154,48 +3154,43 @@ static void CreateDatabaseCoordinator(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  // First work with the arguments to create a JSON entry:
+  // First work with the arguments to create a VelocyPack entry:
   std::string const name = TRI_ObjectToString(args[0]);
 
   if (!TRI_IsAllowedNameVocBase(false, name.c_str())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
-  std::unique_ptr<TRI_json_t> json(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
+  uint64_t const id = ClusterInfo::instance()->uniqid();
+  VPackBuilder builder;
+  try {
+    VPackObjectBuilder b(&builder);
+    std::string const idString(StringUtils::itoa(id));
 
-  if (json == nullptr) {
+    builder.add("id", VPackValue(idString));
+
+    std::string const valueString(TRI_ObjectToString(args[0]));
+    builder.add("name", VPackValue(valueString));
+
+    if (args.Length() > 1) {
+      VPackBuilder tmpBuilder;
+      int res = TRI_V8ToVPack(isolate, tmpBuilder, args[1], false);
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_V8_THROW_EXCEPTION_MEMORY();
+      }
+      builder.add("options", tmpBuilder.slice());
+    }
+
+    std::string const serverId(ServerState::instance()->getId());
+    builder.add("coordinator", VPackValue(serverId));
+  } catch (VPackException const& e) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-
-  uint64_t const id = ClusterInfo::instance()->uniqid();
-  std::string const idString(StringUtils::itoa(id));
-
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "id",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(),
-                               idString.size()));
-
-  std::string const valueString(TRI_ObjectToString(args[0]));
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "name",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, valueString.c_str(),
-                               valueString.size()));
-
-  if (args.Length() > 1) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "options",
-                          TRI_ObjectToJson(isolate, args[1]));
-  }
-
-  std::string const serverId(ServerState::instance()->getId());
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "coordinator",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverId.c_str(),
-                               serverId.size()));
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
 
-  int res = ci->createDatabaseCoordinator(name, json.get(), errorMsg, 120.0);
+  int res = ci->createDatabaseCoordinator(name, builder.slice(), errorMsg, 120.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);

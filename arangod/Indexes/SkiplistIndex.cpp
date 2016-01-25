@@ -26,15 +26,15 @@
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
-#include "Basics/json-utilities.h"
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace arangodb;
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
-using Json = arangodb::basics::Json;
+using namespace arangodb;
 
 static size_t sortWeight(arangodb::aql::AstNode const* node) {
   switch (node->type) {
@@ -59,14 +59,13 @@ static size_t sortWeight(arangodb::aql::AstNode const* node) {
 /// @brief Create an index operator for the given bound.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_operator_t* buildBoundOperator(TRI_json_t const* bound,
+static TRI_index_operator_t* buildBoundOperator(VPackSlice const& bound,
                                                 bool includeEqual, bool upper,
-                                                TRI_json_t const* parameters,
+                                                VPackSlice const& parameters,
                                                 VocShaper* shaper) {
-  if (bound == nullptr) {
+  if (bound.isNone()) {
     return nullptr;
   }
-  std::unique_ptr<TRI_index_operator_t> boundOperator;
   TRI_index_operator_type_e type;
   if (includeEqual) {
     if (upper) {
@@ -82,22 +81,24 @@ static TRI_index_operator_t* buildBoundOperator(TRI_json_t const* bound,
     }
   }
 
-  std::unique_ptr<TRI_json_t> paramCopy;
-  if (parameters == nullptr) {
-    paramCopy.reset(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1));
-  } else {
-    paramCopy.reset(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters));
-  }
-  if (paramCopy == nullptr) {
+  auto builder = std::make_shared<VPackBuilder>();
+  try {
+    VPackArrayBuilder b(builder.get());
+    if (parameters.isArray()) {
+      // Everything else is to be ignored.
+      // Copy content of array
+      for (auto const& e : VPackArrayIterator(parameters)) {
+        builder->add(e);
+      }
+    }
+    builder->add(bound);
+  } catch (...) {
+    // Out of memory. Cannot build operator.
     return nullptr;
   }
 
-  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, paramCopy.get(),
-                         TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, bound));
-  boundOperator.reset(TRI_CreateIndexOperator(type, nullptr, nullptr,
-                                              paramCopy.get(), shaper, 1));
-  paramCopy.release();
-  return boundOperator.release();
+  return TRI_CreateIndexOperator(type, nullptr, nullptr, builder,
+                                 shaper, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,23 +108,16 @@ static TRI_index_operator_t* buildBoundOperator(TRI_json_t const* bound,
 ///        Or an AND operator if both bounds are given.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_operator_t* buildRangeOperator(TRI_json_t const* lowerBound,
+static TRI_index_operator_t* buildRangeOperator(VPackSlice const& lowerBound,
                                                 bool lowerBoundInclusive,
-                                                TRI_json_t const* upperBound,
+                                                VPackSlice const& upperBound,
                                                 bool upperBoundInclusive,
-                                                TRI_json_t const* parameters,
+                                                VPackSlice const& parameters,
                                                 VocShaper* shaper) {
   std::unique_ptr<TRI_index_operator_t> lowerOperator(buildBoundOperator(
       lowerBound, lowerBoundInclusive, false, parameters, shaper));
   std::unique_ptr<TRI_index_operator_t> upperOperator(buildBoundOperator(
       upperBound, upperBoundInclusive, true, parameters, shaper));
-
-  /*
-  std::cout << "LOWER BOUND: " << lowerBound << ", LOWER INCLUSIVE: " <<
-  lowerBoundInclusive << "\n";
-  std::cout << "UPPER BOUND: " << upperBound << ", UPPER INCLUSIVE: " <<
-  upperBoundInclusive << "\n";
-  */
 
   if (lowerOperator == nullptr) {
     return upperOperator.release();
@@ -131,10 +125,11 @@ static TRI_index_operator_t* buildRangeOperator(TRI_json_t const* lowerBound,
   if (upperOperator == nullptr) {
     return lowerOperator.release();
   }
+
   // And combine both
   std::unique_ptr<TRI_index_operator_t> rangeOperator(
       TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, lowerOperator.get(),
-                              upperOperator.get(), nullptr, nullptr, 2));
+                              upperOperator.get(), std::make_shared<VPackBuilder>(), nullptr, 2));
   lowerOperator.release();
   upperOperator.release();
   return rangeOperator.release();
@@ -234,20 +229,18 @@ static int FillLookupOperator(TRI_index_operator_t* slOperator,
     case TRI_LT_INDEX_OPERATOR: {
       TRI_relation_index_operator_t* relationOperator =
           (TRI_relation_index_operator_t*)slOperator;
-      relationOperator->_numFields =
-          TRI_LengthVector(&relationOperator->_parameters->_value._objects);
+      VPackSlice const params = relationOperator->_parameters->slice();
+      relationOperator->_numFields = static_cast<size_t>(params.length());
       relationOperator->_fields = static_cast<TRI_shaped_json_t*>(TRI_Allocate(
           TRI_UNKNOWN_MEM_ZONE,
           sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false));
 
       if (relationOperator->_fields != nullptr) {
         for (size_t j = 0; j < relationOperator->_numFields; ++j) {
-          TRI_json_t const* jsonObject =
-              static_cast<TRI_json_t* const>(TRI_AtVector(
-                  &(relationOperator->_parameters->_value._objects), j));
+          VPackSlice const element = params.at(j);
 
           // find out if the search value is a list or an array
-          if ((TRI_IsArrayJson(jsonObject) || TRI_IsObjectJson(jsonObject)) &&
+          if ((element.isArray() || element.isObject()) &&
               slOperator->_type != TRI_EQ_INDEX_OPERATOR) {
             // non-equality operator used on list or array data type, this is
             // disallowed
@@ -269,9 +262,9 @@ static int FillLookupOperator(TRI_index_operator_t* slOperator,
           }
 
           // now shape the search object (but never create any new shapes)
-          TRI_shaped_json_t* shapedObject =
-              TRI_ShapedJsonJson(document->getShaper(), jsonObject,
-                                 false);  // ONLY IN INDEX, PROTECTED by RUNTIME
+          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonVelocyPack(
+              document->getShaper(), element,
+              false);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
           if (shapedObject != nullptr) {
             // found existing shape
@@ -754,8 +747,8 @@ SkiplistIndex::SkiplistIndex(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIndex::SkiplistIndex(TRI_json_t const* json)
-    : PathBasedIndex(json, true),
+SkiplistIndex::SkiplistIndex(VPackSlice const& slice)
+    : PathBasedIndex(slice, true),
       CmpElmElm(this),
       CmpKeyElm(this),
       _skiplistIndex(nullptr) {}
@@ -773,30 +766,23 @@ size_t SkiplistIndex::memory() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
+/// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json SkiplistIndex::toJson(TRI_memory_zone_t* zone,
-                                             bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  json("unique", arangodb::basics::Json(zone, _unique))(
-      "sparse", arangodb::basics::Json(zone, _sparse));
-
-  return json;
+void SkiplistIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
+  builder.add("unique", VPackValue(_unique));
+  builder.add("sparse", VPackValue(_sparse));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
+/// @brief return a VelocyPack representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json SkiplistIndex::toJsonFigures(
-    TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-  _skiplistIndex->appendToJson(zone, json);
-
-  return json;
+void SkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("memory", VPackValue(memory()));
+  _skiplistIndex->appendToVelocyPack(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1287,11 +1273,14 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
   // Create the skiplistOperator for the IndexLookup
   if (node == nullptr) {
     // We have no condition, we just use sort
-    Json nullArray(Json::Array);
-    nullArray.add(Json(Json::Null));
+    auto builder = std::make_shared<VPackBuilder>();
+    {
+      VPackArrayBuilder b(builder.get());
+      builder->add(VPackValue(VPackValueType::Null));
+    }
     std::unique_ptr<TRI_index_operator_t> unboundOperator(
         TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr, nullptr,
-                                nullArray.steal(), _shaper, 1));
+                                builder, _shaper, 1));
     std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
     unboundOperator.release();
 
@@ -1395,8 +1384,8 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
   // Now handle the next element, which might be a range
   bool includeLower = false;
   bool includeUpper = false;
-  std::unique_ptr<TRI_json_t> lower;
-  std::unique_ptr<TRI_json_t> upper;
+  auto lower = std::make_shared<VPackBuilder>();
+  auto upper = std::make_shared<VPackBuilder>();
   if (usedFields < _fields.size()) {
     auto it = found.find(usedFields);
     if (it != found.end()) {
@@ -1412,13 +1401,13 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
         auto setBorder = [&](bool isLower, bool includeBound) -> void {
           if (isLower == isReverseOrder) {
             // We set an upper bound
-            TRI_ASSERT(upper == nullptr);
-            upper.reset(value->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+            TRI_ASSERT(upper->isEmpty());
+            upper = value->toVelocyPackValue();
             includeUpper = includeBound;
           } else {
             // We set an lower bound
-            TRI_ASSERT(lower == nullptr);
-            lower.reset(value->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+            TRI_ASSERT(lower->isEmpty());
+            lower = value->toVelocyPackValue();
             includeLower = includeBound;
           }
         };
@@ -1448,13 +1437,14 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
 
   std::vector<TRI_index_operator_t*> searchValues;
   searchValues.reserve(maxPermutations);
+  VPackSlice emptySlice;
 
   try {
     if (usedFields == 0) {
       // We have a range query based on the first _field
       std::unique_ptr<TRI_index_operator_t> op(
-          buildRangeOperator(lower.get(), includeLower, upper.get(),
-                             includeUpper, nullptr, _shaper));
+          buildRangeOperator(lower->slice(), includeLower, upper->slice(),
+                             includeUpper, emptySlice, _shaper));
 
       if (op != nullptr) {
         searchValues.emplace_back(op.get());
@@ -1468,38 +1458,43 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
       bool done = false;
       // create all permutations
       while (!done) {
-        std::unique_ptr<TRI_json_t> parameter(
-            TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, usedFields));
-
+        auto parameter = std::make_shared<VPackBuilder>();
         bool valid = true;
-        for (size_t i = 0; i < usedFields; ++i) {
-          TRI_ASSERT(i < permutationStates.size());
-          auto& state = permutationStates[i];
-          std::unique_ptr<TRI_json_t> json(
-              state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
 
-          if (json == nullptr) {
-            valid = false;
-            break;
+        try {
+          VPackArrayBuilder b(parameter.get());
+          for (size_t i = 0; i < usedFields; ++i) {
+            TRI_ASSERT(i < permutationStates.size());
+            auto& state = permutationStates[i];
+
+            std::shared_ptr<VPackBuilder> valueBuilder =
+                state.getValue()->toVelocyPackValue();
+            VPackSlice const value = valueBuilder->slice();
+
+            if (value.isNone()) {
+              valid = false;
+              break;
+            }
+            parameter->add(value);
           }
-          TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter.get(),
-                                 json.release());
+        } catch (...) {
+          // Out of Memory
+          return nullptr;
         }
 
         if (valid) {
           std::unique_ptr<TRI_index_operator_t> tmpOp(
               TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
-                                      parameter.get(), _shaper, usedFields));
+                                      parameter, _shaper, usedFields));
           // Note we create a new RangeOperator always.
           std::unique_ptr<TRI_index_operator_t> rangeOperator(
-              buildRangeOperator(lower.get(), includeLower, upper.get(),
-                                 includeUpper, parameter.get(), _shaper));
-          parameter.release();
+              buildRangeOperator(lower->slice(), includeLower, upper->slice(),
+                                 includeUpper, parameter->slice(), _shaper));
 
           if (rangeOperator != nullptr) {
             std::unique_ptr<TRI_index_operator_t> combinedOp(
                 TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, tmpOp.get(),
-                                        rangeOperator.get(), nullptr, _shaper,
+                                        rangeOperator.get(), std::make_shared<VPackBuilder>(), _shaper,
                                         2));
             rangeOperator.release();
             tmpOp.release();

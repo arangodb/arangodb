@@ -33,11 +33,12 @@
 #include "Rest/ConnectionInfo.h"
 #include "Rest/RequestContext.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 
 namespace arangodb {
+namespace velocypack {
+  class Builder;
+  struct Options;
+}
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -455,7 +456,8 @@ class HttpRequest {
   /// @brief gets the request body as VelocyPackBuilder
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> toVelocyPack(VPackOptions const*);
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
+      arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief gets the request body as TRI_json_t*

@@ -33,6 +33,9 @@ struct TRI_document_collection_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+  class Slice;
+}
 
 class CollectionGuard;
 class DocumentDitch;
@@ -109,7 +112,7 @@ class CollectionKeys {
                 TRI_json_t const*) const;
 
   void dumpDocs(arangodb::basics::Json&, size_t, size_t,
-                VPackSlice const&) const;
+                arangodb::velocypack::Slice const&) const;
 
   
  private:

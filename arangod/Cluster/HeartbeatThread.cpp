@@ -26,6 +26,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerJob.h"
@@ -202,7 +203,8 @@ void HeartbeatThread::runDBServer() {
         if (it != result._values.end()) {
           // there is a plan version
           uint64_t planVersion =
-              arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+              arangodb::basics::VelocyPackHelper::stringUInt64(
+                  it->second._vpack->slice());
 
           if (planVersion > lastPlanVersionNoticed) {
             lastPlanVersionNoticed = planVersion;
@@ -310,8 +312,9 @@ void HeartbeatThread::runCoordinator() {
 
       if (it != result._values.end()) {
         // there is a plan version
-        uint64_t planVersion =
-            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+
+        uint64_t planVersion = arangodb::basics::VelocyPackHelper::stringUInt64(
+            it->second._vpack->slice());
 
         if (planVersion > lastPlanVersionNoticed) {
           if (handlePlanChangeCoordinator(planVersion)) {
@@ -330,8 +333,8 @@ void HeartbeatThread::runCoordinator() {
           result._values.begin();
       if (it != result._values.end()) {
         // there is a UserVersion
-        uint64_t userVersion =
-            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+        uint64_t userVersion = arangodb::basics::VelocyPackHelper::stringUInt64(
+            it->second._vpack->slice());
         if (userVersion != oldUserVersion) {
           // reload user cache for all databases
           std::vector<DatabaseID> dbs =
@@ -514,16 +517,16 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
     // loop over all database names we got and create a local database
     // instance if not yet present:
-    std::vector<std::string>::iterator it1;
-    for (it1 = names.begin(); it1 != names.end(); ++it1) {
-      it = result._values.find(*it1);
-      std::string const& name = *it1;
-      TRI_json_t const* options = (*it).second._json;
+    for (std::string const& name : names) {
+      it = result._values.find(name);
+      VPackSlice const options = it->second._vpack->slice();
 
       TRI_voc_tick_t id = 0;
-      TRI_json_t const* v = TRI_LookupObjectJson(options, "id");
-      if (TRI_IsStringJson(v)) {
-        id = arangodb::basics::StringUtils::uint64(v->_value._string.data);
+      if (options.hasKey("id")) {
+        VPackSlice const v = options.get("id"); 
+        if (v.isString()) {
+          id = arangodb::basics::StringUtils::uint64(v.copyString());
+        }
       }
 
       if (id > 0) {
@@ -653,8 +656,11 @@ bool HeartbeatThread::handleStateChange(AgencyCommResult& result,
   if (it != result._values.end()) {
     lastCommandIndex = (*it).second._index;
 
-    std::string const command =
-        arangodb::basics::JsonHelper::getStringValue((*it).second._json, "");
+    std::string command = "";
+    VPackSlice const slice = it->second._vpack->slice();
+    if (slice.isString()) {
+      command = slice.copyString();
+    }
     ServerState::StateEnum newState = ServerState::stringToState(command);
 
     if (newState != ServerState::STATE_UNDEFINED) {

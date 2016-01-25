@@ -27,6 +27,9 @@
 #include "Basics/logging.h"
 #include "Rest/HttpRequest.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;

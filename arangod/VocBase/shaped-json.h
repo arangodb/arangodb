@@ -28,8 +28,11 @@
 #include "Basics/fasthash.h"
 #include "Basics/json.h"
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShapedJson JSON Shapes
@@ -890,7 +893,8 @@ void TRI_SortShapeValues(TRI_shape_value_t* values, size_t n);
 /// @brief converts a VelocyPack object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonVelocyPack(VocShaper*, VPackSlice const&,
+TRI_shaped_json_t* TRI_ShapedJsonVelocyPack(VocShaper*,
+                                            arangodb::velocypack::Slice const&,
                                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////

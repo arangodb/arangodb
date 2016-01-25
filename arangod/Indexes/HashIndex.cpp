@@ -290,8 +290,8 @@ HashIndex::HashIndex(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-HashIndex::HashIndex(TRI_json_t const* json)
-    : PathBasedIndex(json, false), _uniqueArray(nullptr) {}
+HashIndex::HashIndex(VPackSlice const& slice) 
+    : PathBasedIndex(slice, false), _uniqueArray(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the index
@@ -342,33 +342,27 @@ size_t HashIndex::memory() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
+/// @brief return a velocypack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json HashIndex::toJson(TRI_memory_zone_t* zone,
-                                         bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  json("unique", arangodb::basics::Json(zone, _unique))(
-      "sparse", arangodb::basics::Json(zone, _sparse));
-
-  return json;
+void HashIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
+  builder.add("unique", VPackValue(_unique));
+  builder.add("sparse", VPackValue(_sparse));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
+/// @brief return a velocypack representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json HashIndex::toJsonFigures(TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(zone, arangodb::basics::Json::Object);
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-
+void HashIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("memory", VPackValue(memory()));
   if (_unique) {
-    _uniqueArray->_hashArray->appendToJson(zone, json);
+    _uniqueArray->_hashArray->appendToVelocyPack(builder);
   } else {
-    _multiArray->_hashArray->appendToJson(zone, json);
+    _multiArray->_hashArray->appendToVelocyPack(builder);
   }
-  return json;
 }
 
 int HashIndex::insert(arangodb::Transaction* trx,
@@ -875,15 +869,15 @@ IndexIterator* HashIndex::iteratorForCondition(
       bool valid = true;
       for (size_t i = 0; i < n; ++i) {
         auto& state = permutationStates[i];
-        std::unique_ptr<TRI_json_t> json(
-            state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+        std::shared_ptr<VPackBuilder> valBuilder =
+            state.getValue()->toVelocyPackValue();
 
-        if (json == nullptr) {
+        if (valBuilder == nullptr) {
           valid = false;
           break;
         }
 
-        auto shaped = TRI_ShapedJsonJson(shaper, json.get(), false);
+        auto shaped = TRI_ShapedJsonVelocyPack(shaper, valBuilder->slice(), false);
 
         if (shaped == nullptr) {
           // no such shape exists. this means we won't find this value and can
