@@ -1994,7 +1994,7 @@ void TRI_SetApplicationName(char const* name) {
 
 #ifndef _WIN32
 
-static std::unique_ptr<char> SystemTempPath;
+static std::unique_ptr<char[]> SystemTempPath;
 
 static void SystemTempPathCleaner(void) {
   char* path = SystemTempPath.get();
