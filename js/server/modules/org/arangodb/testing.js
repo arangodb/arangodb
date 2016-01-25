@@ -62,6 +62,7 @@ var optionsDocumentation = [
   '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
+  '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '   - `skipMemoryIntense`: tests using lots of resources will be skipped.',
   '   - `skipAuth : testing authentication will be skipped.',
   '   - `skipSsl`: omit the ssl_server rspec tests.',
@@ -131,6 +132,7 @@ var optionsDefaults = {
   "force": true,
   "skipBoost": false,
   "skipGeo": false,
+  "skipTimeCritical": false,
   "skipTimeCritical": false,
   "skipNightly": true,
   "onlyNightly": false,
@@ -233,6 +235,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if (testname.indexOf("-geo") !== -1 && options.skipGeo) {
     whichFilter.filter = 'geo';
+    return false;
+  }
+
+  if (testname.indexOf("-nondeterministic") !== -1 && options.skipNondeterministic) {
+    whichFilter.filter = 'nondeterministic';
     return false;
   }
 
