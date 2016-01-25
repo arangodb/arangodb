@@ -24,6 +24,15 @@
 #ifndef LIB_BASICS_COMMON_H
 #define LIB_BASICS_COMMON_H 1
 
+#ifdef _WIN32
+
+// debug malloc for Windows (only used when DEBUG is set)
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
+#endif
+
 
 #define TRI_WITHIN_COMMON 1
 #include "Basics/operating-system.h"
