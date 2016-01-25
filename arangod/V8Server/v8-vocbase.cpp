@@ -1329,10 +1329,12 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   result->ForceSet(TRI_V8_ASCII_STRING("json"), queryResult.result);
 
-  VPackSlice stats = queryResult.stats->slice();
-  if (!stats.isNone()) {
-    result->ForceSet(TRI_V8_ASCII_STRING("stats"),
-                     TRI_VPackToV8(isolate, stats));
+  if (queryResult.stats != nullptr) {
+    VPackSlice stats = queryResult.stats->slice();
+    if (!stats.isNone()) {
+      result->ForceSet(TRI_V8_ASCII_STRING("stats"),
+                       TRI_VPackToV8(isolate, stats));
+    }
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"),

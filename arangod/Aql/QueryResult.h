@@ -52,7 +52,7 @@ struct QueryResult {
 
     other.warnings = nullptr;
     other.json = nullptr;
-    other.stats = other.stats;
+    other.stats = nullptr;
     other.profile = nullptr;
     other.clusterplan = nullptr;
   }
