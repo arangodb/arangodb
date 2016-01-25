@@ -1386,6 +1386,7 @@ function rubyTests(options, ssl) {
 
         args = ["--color",
           "-I", fs.join("UnitTests", "HttpInterface"),
+          "--format", "d",
           "--format", "j",
           "--out", fs.join("out", "UnitTests", te + ".json"),
           "--require", tmpname,
@@ -1651,7 +1652,7 @@ testFuncs.arangosh = function(options) {
   let args = makeTestingArgsClient(options);
 
   let ret = {
-    "ArangoshExitCodeTest" : {
+    "ArangoshExitCodeTest": {
       "testArangoshExitCodeFail": {},
       "testArangoshExitCodeSuccess": {},
       "total": 2,
