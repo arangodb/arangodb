@@ -91,7 +91,7 @@ exports.db = internal.db;
 
 exports.plainServerVersion = function() {
   let version = internal.version;
-  let devel = version.match(/(.*)-(rc[0-9]*|devel)$/);
+  let devel = version.match(/(.*)-((alpha|beta|devel|rc)[0-9]*)$/);
 
   if (devel !== null) {
     version = devel[1];

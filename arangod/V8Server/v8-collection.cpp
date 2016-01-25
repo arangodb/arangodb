@@ -2359,6 +2359,11 @@ static void JS_PropertiesVocbaseCol(
 
       TRI_json_t* json = TRI_CreateJsonCollectionInfo(base->_info);
 
+      if (json == nullptr) {
+        ReleaseCollection(collection);
+        TRI_V8_THROW_EXCEPTION(res);
+      }
+
       // now log the property changes
       res = TRI_ERROR_NO_ERROR;
 
@@ -2849,6 +2854,12 @@ static void InsertEdgeCol(TRI_vocbase_col_t* col, uint32_t argOffset,
                                           col->_vocbase, col->_cid);
 
   // extract from
+  res = trx.setupState();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
   res = TRI_ParseVertex(args, trx.resolver(), edge._fromCid, fromKey,
                         args[argOffset]);
 

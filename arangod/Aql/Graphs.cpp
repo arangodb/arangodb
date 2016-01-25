@@ -21,7 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Graphs.h"
+#include "Graphs.h"
 #include "Basics/JsonHelper.h"
 
 using namespace arangodb::basics;
@@ -81,7 +81,7 @@ arangodb::basics::Json Graph::toJson(TRI_memory_zone_t* z, bool verbose) const {
   return json;
 }
 
-Graph::Graph(arangodb::basics::Json j) : _vertexColls(), _edgeColls() {
+Graph::Graph(arangodb::basics::Json const& j) : _vertexColls(), _edgeColls() {
   auto jsonDef = j.get(_attrEdgeDefs);
 
   for (size_t i = 0; i < jsonDef.size(); ++i) {

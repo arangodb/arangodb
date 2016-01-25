@@ -115,6 +115,7 @@ add_library(
     Basics/random.cpp
     Basics/RandomGenerator.cpp
     Basics/ReadWriteLock.cpp
+    Basics/ReadWriteLockCPP11.cpp
     Basics/socket-utils.cpp
     Basics/SpinLock.cpp
     Basics/SpinLocker.cpp

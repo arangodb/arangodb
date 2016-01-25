@@ -262,6 +262,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
           return TRI_ERROR_DEADLOCK;
         }
         wasBlocked = true;
+        LOG_TRACE("waiting for read-lock on collection '%s'", _info.name().c_str());
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -290,6 +291,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.setReaderUnblocked(this);
+      LOG_TRACE("timed out waiting for read-lock on collection '%s'", _info.name().c_str());
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -339,6 +341,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
           return TRI_ERROR_DEADLOCK;
         }
         wasBlocked = true;
+        LOG_TRACE("waiting for write-lock on collection '%s'", _info.name().c_str());
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -367,6 +370,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.setReaderUnblocked(this);
+      LOG_TRACE("timed out waiting for write-lock on collection '%s'", _info.name().c_str());
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -1223,9 +1227,19 @@ struct open_iterator_state_t {
   uint32_t _trxCollections;
   bool _trxPrepared;
 
-  open_iterator_state_t()
-    : _stats(),
-      _dfi(nullptr) {
+  open_iterator_state_t(TRI_document_collection_t* document, TRI_vocbase_t* vocbase)
+    : _document(document),
+      _tid(0),
+      _fid(0),
+      _stats(),
+      _dfi(nullptr),
+      _vocbase(vocbase),
+      _trx(nullptr),
+      _deletions(0),
+      _documents(0),
+      _initialCount(-1),
+      _trxCollections(0),
+      _trxPrepared(false) {
   }
 
   ~open_iterator_state_t() {
@@ -2151,17 +2165,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   auto document = reinterpret_cast<TRI_document_collection_t*>(collection);
 
   // initialize state for iteration
-  open_iterator_state_t openState;
-  openState._document = document;
-  openState._vocbase = collection->_vocbase;
-  openState._trx = trx;
-  openState._tid = 0;
-  openState._trxPrepared = false;
-  openState._trxCollections = 0;
-  openState._deletions = 0;
-  openState._documents = 0;
-  openState._fid = 0;
-  openState._initialCount = -1;
+  open_iterator_state_t openState(document, collection->_vocbase);
 
   if (collection->_info.initialCount() != -1) {
     auto primaryIndex = document->primaryIndex();

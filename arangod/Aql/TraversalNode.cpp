@@ -126,6 +126,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         _graphJson = arangodb::basics::Json(graphName);
         _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
+        if (_graphObj == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+        }
+
         auto eColls = _graphObj->edgeCollections();
         for (const auto& n : eColls) {
           _edgeColls.push_back(n);
@@ -286,8 +290,12 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     if (base.has("graphDefinition")) {
       _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
+      if (_graphObj == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+      }
+
       auto eColls = _graphObj->edgeCollections();
-      for (const auto& n : eColls) {
+      for (auto const& n : eColls) {
         _edgeColls.push_back(n);
       }
     } else {
@@ -522,8 +530,18 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(incoming);
   double expectedEdgesPerDepth = 0;
   auto collections = _plan->getAst()->query()->collections();
+
+  TRI_ASSERT(collections != nullptr);
+
   for (auto const& it : _edgeColls) {
     auto collection = collections->get(it);
+    
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected pointer for collection");
+    }
+
+    TRI_ASSERT(collection != nullptr);
+
     for (auto const& index : collection->getIndexes()) {
       if (index->type ==
           arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {

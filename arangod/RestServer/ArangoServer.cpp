@@ -682,8 +682,7 @@ void ArangoServer::buildApplicationServer() {
 
   // must be used after drop privileges and be called to set it to avoid raise
   // conditions
-  char* pp = TRI_GetTempPath();
-  TRI_FreeString(TRI_CORE_MEM_ZONE, pp);
+  TRI_GetTempPath();
 
   IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
 

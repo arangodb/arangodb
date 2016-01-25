@@ -28,7 +28,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionReadLocker.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
