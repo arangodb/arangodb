@@ -30,6 +30,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 class ApplicationV8;
 
 class V8QueueJob : public rest::Job {
@@ -42,7 +46,8 @@ class V8QueueJob : public rest::Job {
   /// @brief constructs a new V8 queue job
   //////////////////////////////////////////////////////////////////////////////
 
-  V8QueueJob(size_t queue, TRI_vocbase_t*, ApplicationV8*, const TRI_json_t*);
+  V8QueueJob(size_t queue, TRI_vocbase_t*, ApplicationV8*,
+             std::shared_ptr<arangodb::velocypack::Builder>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a V8 job
@@ -91,7 +96,7 @@ class V8QueueJob : public rest::Job {
   /// @brief paramaters
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* _parameters;
+  std::shared_ptr<arangodb::velocypack::Builder> _parameters;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel flag
