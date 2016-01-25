@@ -254,6 +254,8 @@ bool HttpServer::handleRequest(HttpCommTask* task,
   // use a dispatcher queue, handler belongs to the job
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
 
+  LOG_TRACE("HttpCommTask %p created HttpServerJob %p", (void*) task, (void*) job.get());
+
   // add the job to the dispatcher
   int res = _dispatcher->addJob(job);
 

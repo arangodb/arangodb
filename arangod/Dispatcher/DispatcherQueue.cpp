@@ -98,6 +98,7 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   size_t pos;
 
   if (!_jobPositions.pop(pos)) {
+    LOG_TRACE("cannot add job %p to queue %p. queue is full", (void*) job.get(), (void*) this);
     return TRI_ERROR_QUEUE_FULL;
   }
 

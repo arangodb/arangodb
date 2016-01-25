@@ -989,6 +989,8 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     return false;
   }
 
+  LOG_TRACE("inspecting datafiles of collection '%s' for compaction opportunities", document->_info.namec_str());
+
   size_t start = document->getNextCompactionStartIndex();
 
   // number of documents is protected by the same lock
@@ -1029,7 +1031,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     DatafileStatisticsContainer dfi = document->_datafileStatistics.get(df->_fid);
     
     if (dfi.numberUncollected > 0) {
-      LOG_TRACE("cannot compact file %llu because it still has uncollected entries", (unsigned long long) df->_fid);
+      LOG_TRACE("cannot compact datafile %llu of collection '%s' because it still has uncollected entries", (unsigned long long) df->_fid, document->_info.namec_str());
       start = i + 1;
       break;
     }

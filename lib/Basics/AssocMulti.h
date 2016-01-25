@@ -1086,6 +1086,9 @@ class AssocMulti {
   //////////////////////////////////////////////////////////////////////////////
 
   void resizeInternal(UserData* userData, Bucket& b, size_t size) {
+    LOG_TRACE("resizing index %s, target size: %llu", _contextCallback().c_str(),
+               (unsigned long long)size);
+
     LOG_ACTION("index-resize %s, target size: %llu", _contextCallback().c_str(),
                (unsigned long long)size);
     double start = TRI_microtime();
@@ -1159,6 +1162,8 @@ class AssocMulti {
     }
 
     delete[] oldTable;
+    
+    LOG_TRACE("resizing index %s done", _contextCallback().c_str());
 
     LOG_TIMER((TRI_microtime() - start), "index-resize, %s, target size: %llu",
               _contextCallback().c_str(), (unsigned long long)size);
