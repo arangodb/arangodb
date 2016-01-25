@@ -54,8 +54,8 @@ const optsDefault = {
 ////////////////////////////////////////////////////////////////////////////////
 
 function gnuplot() {
-  executeExternalAndWait("/bin/bash", "gnuplot out/documents.plot");
-  executeExternalAndWait("/bin/bash", "gnuplot out/datafiles.plot");
+  executeExternalAndWait("gnuplot", "out/documents.plot");
+  executeExternalAndWait("gnuplot", "out/datafiles.plot");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
