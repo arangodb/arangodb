@@ -73,8 +73,8 @@ PathBasedIndex::PathBasedIndex(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-PathBasedIndex::PathBasedIndex(TRI_json_t const* json, bool allowPartialIndex)
-    : Index(json),
+PathBasedIndex::PathBasedIndex(VPackSlice const& slice, bool allowPartialIndex)
+    : Index(slice),
       _shaper(nullptr),
       _paths(),
       _useExpansion(false),

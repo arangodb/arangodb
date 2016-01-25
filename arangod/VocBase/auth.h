@@ -26,11 +26,13 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 struct TRI_vocbase_t;
 
+namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authentication and authorization
@@ -123,7 +125,7 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t*);
 /// @brief populate the authentication info cache
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PopulateAuthInfo(TRI_vocbase_t*, VPackSlice const&);
+bool TRI_PopulateAuthInfo(TRI_vocbase_t*, arangodb::velocypack::Slice const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the authentication info

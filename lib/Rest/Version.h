@@ -26,14 +26,14 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Version.h>
-#include <velocypack/velocypack-aliases.h>
-
 struct TRI_json_t;
 struct TRI_memory_zone_s;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace rest {
 
 class Version {
@@ -149,7 +149,7 @@ class Version {
   /// @brief VelocyPack all data
   //////////////////////////////////////////////////////////////////////////////
 
-  static void getVPack(VPackBuilder&);
+  static void getVPack(arangodb::velocypack::Builder&);
   
  public:
   static std::map<std::string, std::string> Values;

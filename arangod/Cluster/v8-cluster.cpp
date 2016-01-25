@@ -30,6 +30,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "VocBase/server.h"
 
 using namespace arangodb;
@@ -85,17 +86,25 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const key = TRI_ObjectToString(args[0]);
 
-  TRI_json_t* oldJson = TRI_ObjectToJson(isolate, args[1]);
-
-  if (oldJson == nullptr) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to JSON");
+  int res = TRI_ERROR_NO_ERROR;
+  VPackBuilder oldBuilder;
+  try {
+    res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
+  } catch (...) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
+  }
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
   }
 
-  TRI_json_t* newJson = TRI_ObjectToJson(isolate, args[2]);
-
-  if (newJson == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to JSON");
+  VPackBuilder newBuilder;
+  try {
+    res = TRI_V8ToVPack(isolate, newBuilder, args[2], false);
+  } catch (...) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to VPack");
+  }
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to VPack");
   }
 
   double ttl = 0.0;
@@ -114,10 +123,7 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.casValue(key, oldJson, newJson, ttl, timeout);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+  AgencyCommResult result = comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
 
   if (!result.successful()) {
     if (!shouldThrow) {
@@ -244,13 +250,13 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     while (it != result._values.end()) {
       std::string const key = (*it).first;
-      TRI_json_t const* json = (*it).second._json;
+      VPackSlice const slice = it->second._vpack->slice();
       std::string const idx = StringUtils::itoa((*it).second._index);
 
-      if (json != nullptr) {
+      if (!slice.isNone()) {
         v8::Handle<v8::Object> sub = v8::Object::New(isolate);
 
-        sub->Set(TRI_V8_ASCII_STRING("value"), TRI_ObjectJson(isolate, json));
+        sub->Set(TRI_V8_ASCII_STRING("value"), TRI_VPackToV8(isolate, slice));
         sub->Set(TRI_V8_ASCII_STRING("index"), TRI_V8_STD_STRING(idx));
 
         l->Set(TRI_V8_STD_STRING(key), sub);
@@ -265,10 +271,10 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     while (it != result._values.end()) {
       std::string const key = (*it).first;
-      TRI_json_t const* json = (*it).second._json;
+      VPackSlice const slice = it->second._vpack->slice();
 
-      if (json != nullptr) {
-        l->ForceSet(TRI_V8_STD_STRING(key), TRI_ObjectJson(isolate, json));
+      if (!slice.isNone()) {
+        l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
       }
 
       ++it;
@@ -593,10 +599,10 @@ static void JS_WatchAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   while (it != result._values.end()) {
     std::string const key = (*it).first;
-    TRI_json_t* json = (*it).second._json;
+    VPackSlice const slice = it->second._vpack->slice();
 
-    if (json != nullptr) {
-      l->Set(TRI_V8_STD_STRING(key), TRI_ObjectJson(isolate, json));
+    if (!slice.isNone()) {
+      l->Set(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
     }
 
     ++it;

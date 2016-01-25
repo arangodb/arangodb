@@ -3528,7 +3528,17 @@ bool TRI_IsFullyCollectedDocumentCollection(
 int TRI_SaveIndex(TRI_document_collection_t* document,
                   arangodb::Index* idx, bool writeMarker) {
   // convert into JSON
-  auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    builder = idx->toVelocyPack(false);
+  } catch (...) {
+    LOG_ERROR("cannot save index definition.");
+    return TRI_set_errno(TRI_ERROR_INTERNAL);
+  }
+  if (builder == nullptr) {
+    LOG_ERROR("cannot save index definition.");
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   // construct filename
   char* number = TRI_StringUInt64(idx->id());
@@ -3540,9 +3550,10 @@ int TRI_SaveIndex(TRI_document_collection_t* document,
 
   TRI_vocbase_t* vocbase = document->_vocbase;
 
+  VPackSlice const idxSlice = builder->slice();
   // and save
-  bool ok = TRI_SaveJson(filename, json.json(),
-                         document->_vocbase->_settings.forceSyncProperties);
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      filename, idxSlice, document->_vocbase->_settings.forceSyncProperties);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
@@ -3561,7 +3572,7 @@ int TRI_SaveIndex(TRI_document_collection_t* document,
   try {
     arangodb::wal::CreateIndexMarker marker(
         vocbase->_id, document->_info.id(), idx->id(),
-        arangodb::basics::JsonHelper::toString(json.json()));
+        idxSlice.toJson());
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -3587,18 +3598,18 @@ int TRI_SaveIndex(TRI_document_collection_t* document,
 /// the caller must have read-locked the underlying collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<arangodb::basics::Json> TRI_IndexesDocumentCollection(
+std::vector<std::shared_ptr<VPackBuilder>> TRI_IndexesDocumentCollection(
     TRI_document_collection_t* document, bool withFigures) {
   auto const& indexes = document->allIndexes();
 
-  std::vector<arangodb::basics::Json> result;
+  std::vector<std::shared_ptr<VPackBuilder>> result;
   result.reserve(indexes.size());
 
   for (auto const& idx : indexes) {
-    auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE, withFigures);
+    auto builder = idx->toVelocyPack(withFigures);
 
     // shouldn't fail because of reserve
-    result.emplace_back(json);
+    result.emplace_back(builder);
   }
 
   return result;

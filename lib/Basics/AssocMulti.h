@@ -289,17 +289,17 @@ class AssocMulti {
   /// @brief Appends information about statistics in the given VPackBuilder
   //////////////////////////////////////////////////////////////////////////////
 
-  void appendToVelocyPack(std::shared_ptr<VPackBuilder> builder) {
-    builder->add("buckets", VPackValue(VPackValueType::Array));
+  void appendToVelocyPack(VPackBuilder& builder) {
+    builder.add("buckets", VPackValue(VPackValueType::Array));
     for (auto& b : _buckets) {
-      builder->add(VPackValue(VPackValueType::Object));
-      builder->add("nrAlloc", VPackValue(b._nrAlloc));
-      builder->add("nrUsed", VPackValue(b._nrUsed));
-      builder->close();
+      builder.openObject();
+      builder.add("nrAlloc", VPackValue(b._nrAlloc));
+      builder.add("nrUsed", VPackValue(b._nrUsed));
+      builder.close();
     }
-    builder->close();  // buckets
-    builder->add("nrBuckets", VPackValue(_buckets.size()));
-    builder->add("totalUsed", VPackValue(size()));
+    builder.close();  // buckets
+    builder.add("nrBuckets", VPackValue(_buckets.size()));
+    builder.add("totalUsed", VPackValue(size()));
   }
 
   //////////////////////////////////////////////////////////////////////////////

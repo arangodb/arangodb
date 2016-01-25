@@ -33,17 +33,23 @@
 #include "VocBase/voc-types.h"
 
 #include <iosfwd>
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
-struct TRI_json_t;
 struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
 namespace arangodb {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Forward Declarations
+////////////////////////////////////////////////////////////////////////////////
+
+namespace velocypack {
+class Builder;
+class Slice;
+}
 
 namespace aql {
 class Ast;
@@ -139,7 +145,7 @@ class Index {
         std::vector<std::vector<arangodb::basics::AttributeName>> const&,
         bool unique, bool sparse);
 
-  explicit Index(struct TRI_json_t const*);
+  explicit Index(arangodb::velocypack::Slice const&);
 
   virtual ~Index();
 
@@ -318,8 +324,8 @@ class Index {
   /// contents are the same
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool Compare(struct TRI_json_t const* lhs,
-                      struct TRI_json_t const* rhs);
+  static bool Compare(VPackSlice const& lhs,
+                      VPackSlice const& rhs);
 
   virtual IndexType type() const = 0;
 
@@ -332,11 +338,12 @@ class Index {
   virtual bool hasSelectivityEstimate() const = 0;
   virtual double selectivityEstimate() const;
   virtual size_t memory() const = 0;
-  virtual arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
-  virtual arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const;
 
-  virtual std::shared_ptr<VPackBuilder> toVelocyPack(bool, bool) const;
-  virtual std::shared_ptr<VPackBuilder> toVelocyPackFigures(bool) const;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
+
+  virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
   virtual bool dumpFields() const = 0;
 

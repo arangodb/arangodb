@@ -1651,10 +1651,12 @@ testFuncs.arangosh = function(options) {
   let args = makeTestingArgsClient(options);
 
   let ret = {
-    "suiteName": "ArangoshExitCodeTest",
-    "testArangoshExitCodeFail": {},
-    "testArangoshExitCodeSuccess": {},
-    "total": 2
+    "ArangoshExitCodeTest" : {
+      "testArangoshExitCodeFail": {},
+      "testArangoshExitCodeSuccess": {},
+      "total": 2,
+      "duration": 0.0
+    }
   };
 
   // termination by throw
@@ -1667,13 +1669,13 @@ testFuncs.arangosh = function(options) {
   const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
   if (!failSuccess) {
-    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
       yaml.safeDump(rc);
     ++failed;
   }
 
-  ret.testArangoshExitCodeFail['status'] = failSuccess;
-  ret.testArangoshExitCodeFail['duration'] = deltaTime;
+  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['status'] = failSuccess;
+  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['duration'] = deltaTime;
   print("Status: " + ((failSuccess) ? "SUCCESS" : "FAIL") + "\n");
 
   // regular termination
@@ -1687,17 +1689,19 @@ testFuncs.arangosh = function(options) {
   const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
   if (!successSuccess) {
-    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
       yaml.safeDump(rc);
 
     ++failed;
   }
 
+  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['status'] = failSuccess;
+  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['duration'] = deltaTime2;
   print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
 
   // return result
-  ret["status"] = failSuccess && successSuccess;
-  ret["duration"] = deltaTime2 + deltaTime;
+  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess;
+  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2;
   return ret;
 };
 
@@ -2228,7 +2232,7 @@ testFuncs.dump = function(options) {
         print(Date() + ": Dump and Restore - dump 2");
 
         results.test = runInArangosh(options, instanceInfo,
-          makePathUnix("js/server/tests/dump" + cluster + ".js"), {
+          makePathUnix("js/server/tests/dump/dump" + cluster + ".js"), {
             "server.database": "UnitTestsDumpDst"
           });
 

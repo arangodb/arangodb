@@ -29,7 +29,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/json.h"
 #include "Rest/HttpRequest.h"
-#include "velocypack/Slice.h"
 
 #include <list>
 
@@ -42,10 +41,14 @@ namespace rest {
 class Endpoint;
 }
 
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
 class AgencyComm;
 
 struct AgencyEndpoint {
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an agency endpoint
   //////////////////////////////////////////////////////////////////////////////
@@ -59,7 +62,6 @@ struct AgencyEndpoint {
 
   ~AgencyEndpoint();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the endpoint
   //////////////////////////////////////////////////////////////////////////////
@@ -79,7 +81,6 @@ struct AgencyEndpoint {
   bool _busy;
 };
 
-
 struct AgencyConnectionOptions {
   double _connectTimeout;
   double _requestTimeout;
@@ -87,16 +88,13 @@ struct AgencyConnectionOptions {
   size_t _connectRetries;
 };
 
-
 struct AgencyCommResultEntry {
   uint64_t _index;
-  TRI_json_t* _json;
+  std::shared_ptr<arangodb::velocypack::Builder> _vpack;
   bool _isDir;
 };
 
-
 struct AgencyCommResult {
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a communication result
   //////////////////////////////////////////////////////////////////////////////
@@ -109,7 +107,6 @@ struct AgencyCommResult {
 
   ~AgencyCommResult();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns whether the last request was successful
   //////////////////////////////////////////////////////////////////////////////
@@ -175,12 +172,13 @@ struct AgencyCommResult {
   void clear();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief recursively flatten the JSON response into a map
+  /// @brief recursively flatten the VelocyPack response into a map
   ///
   /// stripKeyPrefix is decoded, as is the _globalPrefix
   //////////////////////////////////////////////////////////////////////////////
 
-  bool parseJsonNode(TRI_json_t const*, std::string const&, bool);
+  bool parseVelocyPackNode(arangodb::velocypack::Slice const&,
+                           std::string const&, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// parse an agency result
@@ -189,7 +187,6 @@ struct AgencyCommResult {
 
   bool parse(std::string const&, bool);
 
-  
  public:
   std::string _location;
   std::string _message;
@@ -201,9 +198,7 @@ struct AgencyCommResult {
   bool _connected;
 };
 
-
 class AgencyCommLocker {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs an agency comm locker
@@ -219,7 +214,6 @@ class AgencyCommLocker {
 
   ~AgencyCommLocker();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the locking was successful
@@ -233,7 +227,6 @@ class AgencyCommLocker {
 
   void unlock();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fetch a lock version from the agency
@@ -247,21 +240,18 @@ class AgencyCommLocker {
 
   bool updateVersion(AgencyComm&);
 
-  
  private:
   std::string const _key;
   std::string const _type;
-  TRI_json_t* _json;
+  std::shared_ptr<arangodb::velocypack::Builder> _vpack;
   uint64_t _version;
   bool _isLocked;
 };
-
 
 class AgencyComm {
   friend struct AgencyCommResult;
   friend class AgencyCommLocker;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a communication channel
@@ -275,7 +265,6 @@ class AgencyComm {
 
   ~AgencyComm();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleans up all connections
   //////////////////////////////////////////////////////////////////////////////
@@ -336,14 +325,12 @@ class AgencyComm {
 
   static std::string generateStamp();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new agency endpoint
   //////////////////////////////////////////////////////////////////////////////
 
   static AgencyEndpoint* createAgencyEndpoint(std::string const&);
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sends the current server state to the agency
   //////////////////////////////////////////////////////////////////////////////
@@ -411,7 +398,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult casValue(std::string const&, TRI_json_t const*, bool, double,
-                            double);
+                            double) = delete;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compares and swaps a single value in the backend
@@ -430,7 +417,18 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult casValue(std::string const&, TRI_json_t const*,
-                            TRI_json_t const*, double, double);
+                            TRI_json_t const*, double, double) = delete;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief compares and swaps a single value in the back end
+  /// the CAS condition is whether or not the previous value for the key was
+  /// identical to `oldValue`
+  /// velocypack variant
+  //////////////////////////////////////////////////////////////////////////////
+
+  AgencyCommResult casValue(std::string const&,
+                            arangodb::velocypack::Slice const&,
+                            arangodb::velocypack::Slice const&, double, double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get unique id
@@ -496,7 +494,6 @@ class AgencyComm {
 
   static std::string decodeKey(std::string const&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a query parameter for a TTL value
@@ -508,13 +505,14 @@ class AgencyComm {
   /// @brief acquire a lock
   //////////////////////////////////////////////////////////////////////////////
 
-  bool lock(std::string const&, double, double, TRI_json_t const*);
+  bool lock(std::string const&, double, double,
+            arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief release a lock
   //////////////////////////////////////////////////////////////////////////////
 
-  bool unlock(std::string const&, TRI_json_t const*, double);
+  bool unlock(std::string const&, arangodb::velocypack::Slice const&, double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pop an endpoint from the queue
@@ -556,7 +554,6 @@ class AgencyComm {
             arangodb::rest::HttpRequest::HttpRequestType, double,
             AgencyCommResult&, std::string const&, std::string const&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief automatically add unknown endpoints if redirected to by agency?
@@ -564,7 +561,6 @@ class AgencyComm {
 
   bool _addNewEndpoints;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the static global URL prefix

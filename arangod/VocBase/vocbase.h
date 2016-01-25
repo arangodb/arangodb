@@ -35,9 +35,6 @@
 #include "VocBase/vocbase-defaults.h"
 
 #include <functional>
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 
 struct TRI_document_collection_t;
 class TRI_replication_applier_t;
@@ -46,6 +43,9 @@ class TRI_vocbase_col_t;
 struct TRI_vocbase_defaults_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace aql {
 class QueryList;
 }
@@ -367,28 +367,28 @@ class TRI_vocbase_col_t {
   ///        creates the Builder.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> toVelocyPack(bool, TRI_voc_tick_t);
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool, TRI_voc_tick_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
   //////////////////////////////////////////////////////////////////////////////
 
-  void toVelocyPack(VPackBuilder&, bool, TRI_voc_tick_t);
+  void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the information for the indexes of this collection to
   /// velocypack
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> toVelocyPackIndexes(TRI_voc_tick_t);
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackIndexes(TRI_voc_tick_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Array
   //////////////////////////////////////////////////////////////////////////////
 
-  void toVelocyPackIndexes(VPackBuilder&, TRI_voc_tick_t);
+  void toVelocyPackIndexes(arangodb::velocypack::Builder&, TRI_voc_tick_t);
 };
 
 
@@ -452,7 +452,7 @@ std::vector<std::string> TRI_CollectionNamesVocBase(TRI_vocbase_t*);
 /// The result is sorted by type and name (vertices before edges)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase(
+std::shared_ptr<arangodb::velocypack::Builder> TRI_InventoryCollectionsVocBase(
     TRI_vocbase_t*, TRI_voc_tick_t, bool (*)(TRI_vocbase_col_t*, void*), void*,
     bool, std::function<bool(TRI_vocbase_col_t*, TRI_vocbase_col_t*)>);
 

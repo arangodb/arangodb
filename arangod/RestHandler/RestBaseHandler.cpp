@@ -30,6 +30,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 

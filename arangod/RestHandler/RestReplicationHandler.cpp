@@ -1000,10 +1000,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
             {
               VPackArrayBuilder b2(&resultBuilder);
               for (auto const& it : result._values) {
-                // Only temporary until AgencyResult has _velocy
-                std::shared_ptr<VPackBuilder> parsedSubResult =
-                    JsonHelper::toVelocyPack(it.second._json);
-                VPackSlice const subResultSlice = parsedSubResult->slice();
+                VPackSlice const subResultSlice = it.second._vpack->slice();
                 if (subResultSlice.isObject()) {
                   if (includeSystem ||
                       !arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -1544,9 +1541,9 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
       TRI_document_collection_t* doc = nullptr;
       std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
           new arangodb::PrimaryIndex(doc));
-      std::shared_ptr<VPackBuilder> idxVPack =
-          primaryIndex->toVelocyPack(false, true);
-      toMerge.add(idxVPack->slice());
+      toMerge.openObject();
+      primaryIndex->toVelocyPack(toMerge, false);
+      toMerge.close();
     }
 
     VPackSlice const type = parameters.get("type");
@@ -1562,9 +1559,9 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
       // create a dummy edge index
       std::unique_ptr<arangodb::EdgeIndex> edgeIndex(
           new arangodb::EdgeIndex(newIdTick, nullptr));
-      std::shared_ptr<VPackBuilder> idxVPack =
-          edgeIndex->toVelocyPack(false, true);
-      toMerge.add(idxVPack->slice());
+      toMerge.openObject();
+      edgeIndex->toVelocyPack(toMerge, false);
+      toMerge.close();
     }
 
     toMerge.close();  // indexes
