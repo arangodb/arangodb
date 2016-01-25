@@ -28,9 +28,6 @@
 #include "Scheduler/PeriodicTask.h"
 #include "VocBase/vocbase.h"
 
-struct TRI_json_t;
-
-
 namespace arangodb {
 namespace rest {
 class Dispatcher;
@@ -42,21 +39,20 @@ class ApplicationV8;
 class V8PeriodicTask : public rest::PeriodicTask {
   
  public:
-
   V8PeriodicTask(std::string const&, std::string const&, TRI_vocbase_t*,
                  ApplicationV8*, rest::Scheduler*, rest::Dispatcher*, double,
-                 double, std::string const&, struct TRI_json_t*, bool);
-
+                 double, std::string const&,
+                 std::shared_ptr<arangodb::velocypack::Builder>, bool);
 
   ~V8PeriodicTask();
 
   
  protected:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a task specific description in JSON format
+  /// @brief get a task specific description in VelocyPack format
   //////////////////////////////////////////////////////////////////////////////
 
-  void getDescription(struct TRI_json_t*) const override;
+  void getDescription(arangodb::velocypack::Builder&) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the task is user-defined
@@ -102,7 +98,7 @@ class V8PeriodicTask : public rest::PeriodicTask {
   /// @brief paramaters
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* _parameters;
+  std::shared_ptr<arangodb::velocypack::Builder> _parameters;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creation timestamp

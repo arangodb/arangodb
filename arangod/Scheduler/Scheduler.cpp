@@ -37,6 +37,9 @@
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -211,44 +214,37 @@ void Scheduler::shutdown() {
 /// @brief list user tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Scheduler::getUserTasks() {
-  std::unique_ptr<TRI_json_t> json(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
-
-  if (json == nullptr) {
-    return nullptr;
-  }
-
-  {
+std::shared_ptr<VPackBuilder> Scheduler::getUserTasks() {
+  auto builder = std::make_shared<VPackBuilder>();
+  try {
+    VPackArrayBuilder b(builder.get());
     MUTEX_LOCKER(schedulerLock);
-
     for (auto& it : task2thread) {
       auto const* task = it.first;
 
       if (task->isUserDefined()) {
-        TRI_json_t* obj = task->toJson();
-
-        if (obj != nullptr) {
-          TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json.get(), obj);
-        }
+        VPackObjectBuilder b2(builder.get());
+        task->toVelocyPack(*builder);
       }
     }
+  } catch (...) {
+    return std::make_shared<VPackBuilder>();
   }
-
-  return json.release();
+  return builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a single user task
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Scheduler::getUserTask(std::string const& id) {
+std::shared_ptr<VPackBuilder> Scheduler::getUserTask(std::string const& id) {
   MUTEX_LOCKER(schedulerLock);
 
   for (auto& it : task2thread) {
     auto const* task = it.first;
 
     if (task->isUserDefined() && task->id() == id) {
-      return task->toJson();
+      return task->toVelocyPack();
     }
   }
 

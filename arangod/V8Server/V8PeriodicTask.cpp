@@ -25,9 +25,11 @@
 #include "Basics/json.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
-#include "V8/v8-conv.h"
 #include "V8Server/V8Job.h"
 #include "VocBase/server.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -36,7 +38,7 @@ V8PeriodicTask::V8PeriodicTask(std::string const& id, std::string const& name,
                                TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
                                Scheduler* scheduler, Dispatcher* dispatcher,
                                double offset, double period,
-                               std::string const& command, TRI_json_t* parameters,
+                               std::string const& command, std::shared_ptr<VPackBuilder> parameters,
                                bool allowUseDatabase)
     : Task(id, name),
       PeriodicTask(id, offset, period),
@@ -57,10 +59,6 @@ V8PeriodicTask::V8PeriodicTask(std::string const& id, std::string const& name,
 V8PeriodicTask::~V8PeriodicTask() {
   // decrease reference counter for the database used
   TRI_ReleaseVocBase(_vocbase);
-
-  if (_parameters != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
-  }
 }
 
 
@@ -68,19 +66,13 @@ V8PeriodicTask::~V8PeriodicTask() {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8PeriodicTask::getDescription(TRI_json_t* json) const {
-  PeriodicTask::getDescription(json);
+void V8PeriodicTask::getDescription(VPackBuilder& builder) const {
+  PeriodicTask::getDescription(builder);
+  TRI_ASSERT(builder.isOpenObject());
 
-  TRI_json_t* created = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _created);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "created", created);
-
-  TRI_json_t* cmd = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                             _command.c_str(), _command.size());
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "command", cmd);
-
-  TRI_json_t* db = TRI_CreateStringCopyJson(
-      TRI_UNKNOWN_MEM_ZONE, _vocbase->_name, strlen(_vocbase->_name));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "database", db);
+  builder.add("created", VPackValue(_created));
+  builder.add("command", VPackValue(_command));
+  builder.add("database", VPackValue(_vocbase->_name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

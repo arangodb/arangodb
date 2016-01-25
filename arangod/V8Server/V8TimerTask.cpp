@@ -29,6 +29,9 @@
 #include "V8Server/V8Job.h"
 #include "VocBase/server.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::rest;
 
@@ -36,7 +39,7 @@ V8TimerTask::V8TimerTask(std::string const& id, std::string const& name,
                          TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
                          Scheduler* scheduler, Dispatcher* dispatcher,
                          double offset, std::string const& command,
-                         TRI_json_t* parameters, bool allowUseDatabase)
+                         std::shared_ptr<VPackBuilder> parameters, bool allowUseDatabase)
     : Task(id, name),
       TimerTask(id, (offset <= 0.0 ? 0.00001 : offset)),  // offset must be (at
                                                           // least slightly)
@@ -60,10 +63,6 @@ V8TimerTask::V8TimerTask(std::string const& id, std::string const& name,
 V8TimerTask::~V8TimerTask() {
   // decrease reference counter for the database used
   TRI_ReleaseVocBase(_vocbase);
-
-  if (_parameters != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
-  }
 }
 
 
@@ -71,19 +70,11 @@ V8TimerTask::~V8TimerTask() {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8TimerTask::getDescription(TRI_json_t* json) const {
-  TimerTask::getDescription(json);
-
-  TRI_json_t* created = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _created);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "created", created);
-
-  TRI_json_t* cmd = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                             _command.c_str(), _command.size());
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "command", cmd);
-
-  TRI_json_t* db = TRI_CreateStringCopyJson(
-      TRI_UNKNOWN_MEM_ZONE, _vocbase->_name, strlen(_vocbase->_name));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "database", db);
+void V8TimerTask::getDescription(VPackBuilder& builder) const {
+  TimerTask::getDescription(builder);
+  builder.add("created", VPackValue(_created));
+  builder.add("command", VPackValue(_command));
+  builder.add("database", VPackValue(_vocbase->_name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
