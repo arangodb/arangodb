@@ -388,6 +388,7 @@ plot \
   let count = 0;
 
   while (!countDone()) {
+    ++count;
     statistics(opts);
 
     if (opts.gnuplot && count % 6 === 0) {
