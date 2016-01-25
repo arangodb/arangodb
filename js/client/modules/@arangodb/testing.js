@@ -2232,7 +2232,7 @@ testFuncs.dump = function(options) {
         print(Date() + ": Dump and Restore - dump 2");
 
         results.test = runInArangosh(options, instanceInfo,
-          makePathUnix("js/server/tests/dump" + cluster + ".js"), {
+          makePathUnix("js/server/tests/dump/dump" + cluster + ".js"), {
             "server.database": "UnitTestsDumpDst"
           });
 
