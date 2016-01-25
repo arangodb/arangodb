@@ -1063,6 +1063,25 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t const* trxC
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a collection is used in a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsContainedCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid) {
+  size_t const n = trx->_collections._length;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto trxCollection = static_cast<TRI_transaction_collection_t const*>(
+        TRI_AtVectorPointer(&trx->_collections, i));
+
+    if (trxCollection->_cid == cid) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a WAL operation for a transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
