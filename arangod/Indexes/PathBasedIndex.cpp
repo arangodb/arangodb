@@ -141,7 +141,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
       }
       TRI_IF_FAILURE("FillElementOOM") {
         // clean up manually
-        TRI_index_element_t::free(element);
+        TRI_index_element_t::freeElement(element);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
@@ -159,7 +159,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
         elements.emplace_back(element);
       } catch (...) {
-        TRI_index_element_t::free(element);
+        TRI_index_element_t::freeElement(element);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
@@ -184,7 +184,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
         }
         TRI_IF_FAILURE("FillElementOOM") {
           // clean up manually
-          TRI_index_element_t::free(element);
+          TRI_index_element_t::freeElement(element);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
@@ -202,7 +202,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
           elements.emplace_back(element);
         } catch (...) {
-          TRI_index_element_t::free(element);
+          TRI_index_element_t::freeElement(element);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
       }

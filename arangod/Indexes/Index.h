@@ -114,7 +114,7 @@ struct TRI_index_element_t {
   /// @brief Free the index element.
   //////////////////////////////////////////////////////////////////////////////
 
-  static void free(TRI_index_element_t* el) {
+  static void freeElement(TRI_index_element_t* el) {
     TRI_ASSERT_EXPENSIVE(el != nullptr);
     TRI_ASSERT_EXPENSIVE(el->document() != nullptr);
     TRI_ASSERT_EXPENSIVE(el->subObjects() != nullptr);

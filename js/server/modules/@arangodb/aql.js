@@ -2326,7 +2326,7 @@ function AQL_SPLIT (value, separator, limit) {
 function AQL_SUBSTITUTE (value, search, replace, limit) {
   'use strict';
 
-  var pattern, patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
+  var pattern = "", patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
   value = AQL_TO_STRING(value);
 
   if (sWeight === TYPEWEIGHT_OBJECT) {
@@ -2386,6 +2386,10 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     pattern = patterns.join('|');
   }
 
+  if (pattern === "") {
+    return value;
+  }
+  
   if (limit === null || limit === undefined) {
     limit = undefined;
   }

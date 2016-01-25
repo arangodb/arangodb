@@ -527,16 +527,16 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
       {
         // make room for one more element
         WRITE_LOCKER(_attributeIdsLock);
-        if (! TRI_ReserveAssociativePointer(&_attributeIds, _attributeIds._nrUsed + 1)) {
-          return 0;
+        if (! TRI_ReserveAssociativePointer(&_attributeIds, 1)) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
       }
 
       {
         // make room for one more element
         WRITE_LOCKER(_attributeNamesLock);
-        if (! TRI_ReserveAssociativePointer(&_attributeNames, _attributeNames._nrUsed + 1)) {
-          return 0;
+        if (! TRI_ReserveAssociativePointer(&_attributeNames, 1)) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
       }
 
@@ -642,9 +642,17 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
 
     {
       // make room for one more element
+      WRITE_LOCKER(_shapeIdsLock);
+      if (! TRI_ReserveAssociativePointer(&_shapeIds, 1)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+    }
+
+    {
+      // make room for one more element
       WRITE_LOCKER(_shapeDictionaryLock);
-      if (! TRI_ReserveAssociativePointer(&_shapeDictionary, _shapeDictionary._nrUsed + 1)) {
-        return 0;
+      if (! TRI_ReserveAssociativePointer(&_shapeDictionary, 1)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
     }
 
@@ -1216,7 +1224,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
   {
     // make room for one more element
     WRITE_LOCKER(_attributePathsByNameLock);
-    if (! TRI_ReserveAssociativePointer(&_attributePathsByName, _attributePathsByName._nrUsed + 1)) {
+    if (! TRI_ReserveAssociativePointer(&_attributePathsByName, 1)) {
       TRI_Free(_memoryZone, result);
       return nullptr;
     }
@@ -1225,7 +1233,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
   {
     // make room for one more element
     WRITE_LOCKER(_attributePathsByPidLock);
-    if (! TRI_ReserveAssociativePointer(&_attributePathsByPid, _attributePathsByPid._nrUsed + 1)) {
+    if (! TRI_ReserveAssociativePointer(&_attributePathsByPid, 1)) {
       TRI_Free(_memoryZone, result);
       return nullptr;
     }

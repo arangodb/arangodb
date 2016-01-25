@@ -10,6 +10,8 @@ v3.0.0 (XXXX-XX-XX)
 
 * removed undocumented SleepAndRequeue
 
+* added WorkMonitor to inspect server threads
+
 
 v2.8.0 (XXXX-XX-XX)
 -------------------

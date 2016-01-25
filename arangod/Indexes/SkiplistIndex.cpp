@@ -146,7 +146,7 @@ static TRI_index_operator_t* buildRangeOperator(TRI_json_t const* lowerBound,
 
 static void FreeElm(void* e) {
   auto element = static_cast<TRI_index_element_t*>(e);
-  TRI_index_element_t::free(element);
+  TRI_index_element_t::freeElement(element);
 }
 
 // .............................................................................
@@ -812,7 +812,7 @@ int SkiplistIndex::insert(arangodb::Transaction*,
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
       // free all elements to prevent leak
-      TRI_index_element_t::free(it);
+      TRI_index_element_t::freeElement(it);
     }
 
     return res;
@@ -832,10 +832,10 @@ int SkiplistIndex::insert(arangodb::Transaction*,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_index_element_t::free(elements[i]);
+      TRI_index_element_t::freeElement(elements[i]);
       // Note: this element is freed already
       for (size_t j = i + 1; j < count; ++j) {
-        TRI_index_element_t::free(elements[j]);
+        TRI_index_element_t::freeElement(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
         _skiplistIndex->remove(elements[j]);
@@ -861,7 +861,7 @@ int SkiplistIndex::remove(arangodb::Transaction*,
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
       // free all elements to prevent leak
-      TRI_index_element_t::free(it);
+      TRI_index_element_t::freeElement(it);
     }
 
     return res;
@@ -881,7 +881,7 @@ int SkiplistIndex::remove(arangodb::Transaction*,
       res = result;
     }
 
-    TRI_index_element_t::free(elements[i]);
+    TRI_index_element_t::freeElement(elements[i]);
   }
 
   return res;
