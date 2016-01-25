@@ -1077,13 +1077,6 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   const topDir = findTopDir();
 
-  if (options.hasOwnProperty('server')) {
-
-
-
-  }
-
-  
   let instanceInfo = {};
   instanceInfo.topDir = topDir;
   instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
@@ -1249,7 +1242,6 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
     }
   }
 
-  print(instanceInfo)
   // wait until the server/coordinator is up:
   let count = 0;
   const url = endpointToURL(endpoint);
