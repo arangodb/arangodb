@@ -8,7 +8,7 @@
 ### @brief required cmake version
 ################################################################################
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.2)
 
 ################################################################################
 ### @brief cmake build types
@@ -18,11 +18,34 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE string "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif ()
 
+
 ################################################################################
 ### @brief arangodb project
 ################################################################################
 
 project(arangodb)
+
+set(CMAKE_CXX_STANDARD 11)
+
+
+
+######################
+## OBI EXPERIMENTAL ##
+######################
+find_package(Threads REQUIRED)
+
+set(AR_ICU_LIBS icu_header icu_uc icu_data icu_i18n)
+set(AR_V8_LIBS v8_base v8_libbase v8_libplatform v8_nosnapshot)
+
+
+
+
+
+
+
+option(AR_USE_SYSTEM_LIBS "use libraries provided by the system" OFF)
+add_subdirectory(3rdParty)
+
 
 set(LIB_ARANGO        arango)
 set(LIB_ARANGO_CLIENT arango_client)
@@ -426,6 +449,7 @@ endif ()
 ################################################################################
 
 include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${PROJECT_BINARY_DIR}/lib) #for configured file
 
 if (CUSTOM_INCLUDES)
   include_directories(${CUSTOM_INCLUDES})
@@ -623,17 +647,17 @@ elseif (DARWIN)
   set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/x64.release CACHE path "ICU library path")
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 else ()
-  set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/io CACHE path "ICU include path")
-  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/x64.release/obj.target/third_party/icu/ CACHE path "ICU library path")
-  set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
+    #  set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/io CACHE path "ICU include path")
+    #  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/x64.release/obj.target/third_party/icu/ CACHE path "ICU library path")
+    #  set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 endif ()
 
 if (ICU_INCLUDE)
-  include_directories(${ICU_INCLUDE})
+    #  include_directories(${ICU_INCLUDE})
 endif ()
 
 if (ICU_LIB_PATH)
-  link_directories(${ICU_LIB_PATH})
+    # link_directories(${ICU_LIB_PATH})
 endif ()
 
 # OS type ------------------------------------------------------------
@@ -647,15 +671,15 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 # Boost --------------------------------------------------------------
-find_package(Boost COMPONENTS unit_test_framework)
-if (${Boost_FOUND})
-  include_directories(${Boost_INCLUDE_DIRS})
-  add_definitions(-DBoost_MAJOR_VERSION=${Boost_MAJOR_VERSION})
-  add_definitions(-DBoost_MINOR_VERSION=${Boost_MINOR_VERSION})
-  link_directories (${BOOST_LIBRARYDIR})
-else()
-  message ("Boost unit test framework not found. Unit tests are disabled.")
-endif()
+#find_package(Boost COMPONENTS unit_test_framework)
+#if (${Boost_FOUND})
+#  include_directories(${Boost_INCLUDE_DIRS})
+#  add_definitions(-DBoost_MAJOR_VERSION=${Boost_MAJOR_VERSION})
+#  add_definitions(-DBoost_MINOR_VERSION=${Boost_MINOR_VERSION})
+#  link_directories (${BOOST_LIBRARYDIR})
+#else()
+#  message ("Boost unit test framework not found. Unit tests are disabled.")
+#endif()
 
 # OpenSSL -----------------------------------------------------------
 find_package(OpenSSL REQUIRED)
@@ -731,7 +755,11 @@ set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
 ### @brief V8
 ################################################################################
 
-set(V8_VERSION "unknown" CACHE string "V8 version")
+
+# on the first run the cache variable would replace the regular variable and on
+# subsequent runs the regular variable would take precedence over the cache variable
+# the behavior is not consisten btween runs -- so the following line has to go
+##set(V8_VERSION "unknown" CACHE string "V8 version")
 
 if (MSVC OR RASPBIAN)
   set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
