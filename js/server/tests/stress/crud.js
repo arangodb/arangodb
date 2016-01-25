@@ -408,17 +408,17 @@ plot \
   statistics(opts);
 
   // wait for a while
-  let n = 60;
+  let cc = 60;
 
   if (opts.duration < 5) {
-    n = 6;
+    cc = 6;
   } else if (opts.duration < 10) {
-    n = 12;
+    cc = 12;
   } else if (opts.duration < 60) {
-    n = 24;
+    cc = 24;
   }
 
-  for (let i = 0; i < n; ++i) {
+  for (let i = 0; i < cc; ++i) {
     statistics(opts);
 
     if (opts.gnuplot) {
