@@ -858,7 +858,7 @@ char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
   // calculate utf8 string length
   UErrorCode status = U_ZERO_ERROR;
   u_strToUTF8(nullptr, 0, &utf8Length, uchar, (int32_t) inLength, &status);
-  if (status != U_BUFFER_OVERFLOW_ERROR) {
+  if (status != U_ZERO_ERROR && status != U_BUFFER_OVERFLOW_ERROR) {
     return nullptr;
   }
 

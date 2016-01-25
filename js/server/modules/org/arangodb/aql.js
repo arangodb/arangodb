@@ -2403,6 +2403,9 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     }
     pattern = patterns.join('|');
   }
+  else {
+    return value;
+  }
 
   if (limit === null || limit === undefined) {
     limit = undefined;
