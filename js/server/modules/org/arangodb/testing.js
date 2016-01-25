@@ -1662,51 +1662,68 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
   return executeAndWait(exe, toArgv(args));
 }
 
-testFuncs.arangosh = function (options) {
-  var failed = 0;
-  var args = makeTestingArgsClient(options);
-  var arangosh = fs.join("bin","arangosh");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: arangosh
+////////////////////////////////////////////////////////////////////////////////
 
-  var ret = {
-      "suiteName": "ArangoshExitCodeTest",
+testFuncs.arangosh = function(options) {
+  const arangosh = fs.join("bin", "arangosh");
+
+  let failed = 0;
+  let args = makeTestingArgsClient(options);
+
+  let ret = {
+    "ArangoshExitCodeTest": {
       "testArangoshExitCodeFail": {},
       "testArangoshExitCodeSuccess": {},
-      "total": 2
+      "total": 2,
+      "duration": 0.0
+    }
   };
 
-  //////////////////////////////////////////////////////////////////////
+  // termination by throw
   print("Starting arangosh with exception throwing script:");
   args["javascript.execute-string"] = "throw('foo')";
-  var startTime = time();
-  var rc = executeExternalAndWait(arangosh, toArgv(args));
-  var deltaTime = time() - startTime;
-  var failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
-  if (!failSuccess) {
-    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
-      yaml.safeDump(rc);
-    failed += 1;
-  }
-  ret.testArangoshExitCodeFail['status'] = failSuccess;
-  ret.testArangoshExitCodeFail['duration'] = deltaTime;
-  print("Status: " + ((failSuccess)? "SUCCESS" : "FAIL") + "\n");
-  
-  //////////////////////////////////////////////////////////////////////
-  print("Starting arangosh with regular terminating script:");
-  args["javascript.execute-string"] =  ";";
-  startTime = time();
-  rc = executeExternalAndWait(arangosh, toArgv(args));
-  var deltaTime2 = time() - startTime;
-  var successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
-  if (!successSuccess) {
-    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
-      yaml.safeDump(rc);
-    failed += 1;
-  }
-  print("Status: " + ((successSuccess)? "SUCCESS" : "FAIL") + "\n");
 
-  //////////////////////////////////////////////////////////////////////
-  ret["status"]   = failSuccess && successSuccess;
-  ret["duration"] =  deltaTime2 + deltaTime;
+  const startTime = time();
+  let rc = executeExternalAndWait(arangosh, toArgv(args));
+  const deltaTime = time() - startTime;
+  const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
+
+  if (!failSuccess) {
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
+      yaml.safeDump(rc);
+    ++failed;
+  }
+
+  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['status'] = failSuccess;
+  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['duration'] = deltaTime;
+  print("Status: " + ((failSuccess) ? "SUCCESS" : "FAIL") + "\n");
+
+  // regular termination
+  print("Starting arangosh with regular terminating script:");
+  args["javascript.execute-string"] = ";";
+
+  const startTime2 = time();
+  rc = executeExternalAndWait(arangosh, toArgv(args));
+  const deltaTime2 = time() - startTime2;
+
+  const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+
+  if (!successSuccess) {
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
+      yaml.safeDump(rc);
+
+    ++failed;
+  }
+
+  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['status'] = failSuccess;
+  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['duration'] = deltaTime2;
+  print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
+
+  // return result
+  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess;
+  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2;
   return ret;
 };
 
