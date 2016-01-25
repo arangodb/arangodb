@@ -250,8 +250,8 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
         AgencyCommResultEntry entry;
 
         // get "modifiedIndex"
-        entry._index =
-            arangodb::basics::VelocyPackHelper::stringUInt64(value);
+        entry._index = arangodb::basics::VelocyPackHelper::stringUInt64(
+            node.get("modifiedIndex"));
         std::string tmp = value.copyString();
         entry._vpack = VPackParser::fromJson(tmp);
         entry._isDir = false;
