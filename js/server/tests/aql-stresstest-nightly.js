@@ -1,4 +1,6 @@
-"use strict"
+/*global assertTrue */
+
+"use strict";
 
 var jsunity = require("jsunity");
 
@@ -151,8 +153,8 @@ var aqlFuncs = {
 
 let args = {
   "null": null,
-  "usmallint" : 42,
-  "smallint": -14,
+  "usmallint" : 1,
+  "smallint": -1,
   "double": Math.PI,
   "emptyobj": {},
   "flatobj": {"hans": null, "kanns": 8, "nicht": "..,-"},
@@ -162,8 +164,20 @@ let args = {
   "arr": ["hund", 1, 0.9, null, "\0jaja"],
   "hihi": "😂",
   "regex": /haha/,
-  "complexobject": {"hans": 17, "wurst": {"lala": 19001, "hund": null, "0byte": "\0hahah", "BATMAN": NaN, "inf": Infinity, "mett": [1,2, "POLIZEI", null, null, {}]}, "SYM": Symbol("unicodekatze"), "HIHI": "😂"},
-}
+  "complexobject": {
+    "hans": 17,
+    "wurst": {
+      "lala": 19001,
+      "hund": null,
+      "0byte": "\0hahah",
+      "BATMAN": NaN,
+      "inf": Infinity,
+      "mett": [1,2, "POLIZEI", null, null, {}]
+    },
+    "SYM": Symbol("unicodekatze"),
+    "HIHI": "😂",
+  },
+};
 
 
 var db = require("@arangodb").db;
@@ -173,12 +187,24 @@ function stressTestSuite() {
     testMatrix: function() {
       var numSuccessful = 0;
       var keys = Object.keys(args);
+
+      var generateAqlArgument = function(keyIndex, index) {
+        return "@a" + index;
+      };
+
+      var argumentReducer = function(current, keyIndex, index) {
+        current['a' + index] = args[keys[keyIndex]];
+        return current;
+      };
+
       Object.keys(aqlFuncs).forEach(function(aqlFunc) {
         var funcArguments = aqlFuncs[aqlFunc];
         var funcParts = funcArguments.split('|');
         
         var funcMinArguments = funcParts[0].length > 0 ? funcParts[0].split(',').length : 0;
-        var funcMaxArguments = funcParts.length > 1 ? funcMinArguments + funcParts[1].split(',').length : funcMinArguments;
+        var funcMaxArguments = funcParts.length > 1
+          ? funcMinArguments + funcParts[1].split(',').length
+          : funcMinArguments;
         
         // test one off for every function
         var testMinArguments = funcMinArguments - 1;
@@ -199,17 +225,12 @@ function stressTestSuite() {
           }
            
           // mop: generate query for this argument count run
-          var query = "RETURN " + aqlFunc + "(" + keyIndices.map(function(keyIndex, index) {
-            return "@a" + index;
-          }).join(",") + ")";
+          var query = "RETURN " + aqlFunc + "(" + keyIndices.map(generateAqlArgument).join(",") + ")";
           
           // mop: start at the end, increment during loop and overflow to the front 
           var lastIndex =  keyIndices.length - 1;
           while (true) {
-            var queryArgs = keyIndices.reduce(function(current, keyIndex, index) {
-              current['a' + index] = args[keys[keyIndex]];
-              return current;
-            }, {});
+            var queryArgs = keyIndices.reduce(argumentReducer, {});
             //console.log(query, queryArgs);
             try {
               db._query({"query": query, "bindVars": queryArgs});
@@ -230,10 +251,10 @@ function stressTestSuite() {
             }
           }
         }
-      })
+      });
       assertTrue(numSuccessful, "Not a single test has been successful. Something is broken :S");
     }
-  }
+  };
 }
 
 jsunity.run(stressTestSuite);
