@@ -160,7 +160,7 @@ int Dispatcher::addJob (Job* job) {
   RequestStatisticsAgentSetQueueStart(job);
 
   // do not start new jobs if we are already shutting down
-  if (_stopping.load(memory_order_relaxed)) {
+  if (_stopping.load(std::memory_order_relaxed)) {
     return TRI_ERROR_DISPATCHER_IS_STOPPING;
   }
 

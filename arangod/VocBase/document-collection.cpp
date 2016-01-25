@@ -301,6 +301,7 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
         // insert reader
         if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
           // deadlock
+          LOG_TRACE("deadlock detected while trying to acquire read-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
         }
         LOG_TRACE("waiting for read-lock on collection '%s'", _info._name);
@@ -313,6 +314,7 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
         if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
           // deadlock
           _vocbase->_deadlockDetector.setReaderUnblocked(this);
+          LOG_TRACE("deadlock detected while trying to acquire read-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
         }
       }
@@ -381,6 +383,7 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
         // insert writer (with method named "setReaderBlocked"..., but it works) 
         if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
           // deadlock
+          LOG_TRACE("deadlock detected while trying to acquire write-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
         }
         wasBlocked = true;
@@ -393,6 +396,7 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
         if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
           // deadlock
           _vocbase->_deadlockDetector.setReaderUnblocked(this);
+          LOG_TRACE("deadlock detected while trying to acquire write-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
         }
       }

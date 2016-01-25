@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "statistics.h"
-
+#include "Basics/logging.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/threads.h"
@@ -152,6 +152,8 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
   if (TRI_ENABLE_STATISTICS && RequestFreeList.pop(statistics)) {
     return statistics;
   }
+
+  LOG_TRACE("no free element on statistics queue");
 
   return nullptr;
 }

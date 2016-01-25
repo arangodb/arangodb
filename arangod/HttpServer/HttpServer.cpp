@@ -354,6 +354,8 @@ bool HttpServer::handleRequest (HttpCommTask* task,
       std::unique_ptr<HttpServerJob> job(new HttpServerJob(this, handler.get(), task));
       // handler now belongs to the job
       auto h = handler.release();
+      
+      LOG_TRACE("HttpCommtask %p created HttpServerJob %p", (void*) task, (void*) job.get());
   
       h->RequestStatisticsAgent::transfer(job.get());
 
