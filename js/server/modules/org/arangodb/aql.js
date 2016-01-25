@@ -2987,10 +2987,10 @@ function AQL_REVERSE (value) {
 function AQL_RANGE (from, to, step) {
   'use strict';
 
-  from = AQL_TO_NUMBER(from);
-  to = AQL_TO_NUMBER(to);
+  from = AQL_TO_NUMBER(from) || 0;
+  to = AQL_TO_NUMBER(to) || 0;
   
-  if (step === undefined) {
+  if (step === undefined || step === null) {
     if (from <= to) {
       step = 1;
     }
@@ -3002,7 +3002,7 @@ function AQL_RANGE (from, to, step) {
   step = AQL_TO_NUMBER(step);
 
   // check if we would run into an endless loop
-  if (step === 0) {
+  if (step === 0 || step === null) {
     WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
