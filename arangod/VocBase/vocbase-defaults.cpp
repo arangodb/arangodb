@@ -25,6 +25,8 @@
 #include "Basics/json.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply default settings

@@ -35,8 +35,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
-struct TRI_json_t;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index query parameter
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +101,7 @@ class HashIndex final : public PathBasedIndex {
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             bool, bool);
 
-  explicit HashIndex(struct TRI_json_t const*);
+  explicit HashIndex(VPackSlice const&);
 
   ~HashIndex();
 
@@ -121,8 +119,8 @@ class HashIndex final : public PathBasedIndex {
 
   size_t memory() const override final;
 
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override final;
+  void toVelocyPackFigures(VPackBuilder&) const override final;
 
   int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;

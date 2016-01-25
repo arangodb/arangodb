@@ -234,7 +234,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
       size_t ignored = 0;
       size_t removed = 0;
-      VPackSlice stats = queryResult.stats.slice();
+      VPackSlice stats = queryResult.stats->slice();
 
       if (!stats.isNone()) {
         TRI_ASSERT(stats.isObject());

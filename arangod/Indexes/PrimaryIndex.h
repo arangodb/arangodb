@@ -31,9 +31,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
-
-
 namespace arangodb {
 namespace aql {
 class SortCondition;
@@ -71,7 +68,7 @@ class PrimaryIndex final : public Index {
 
   explicit PrimaryIndex(struct TRI_document_collection_t*);
 
-  explicit PrimaryIndex(struct TRI_json_t const*);
+  explicit PrimaryIndex(VPackSlice const&);
 
   ~PrimaryIndex();
 
@@ -98,11 +95,8 @@ class PrimaryIndex final : public Index {
 
   size_t memory() const override final;
 
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
-
-  std::shared_ptr<VPackBuilder> toVelocyPack(bool, bool) const override final;
-  std::shared_ptr<VPackBuilder> toVelocyPackFigures(bool) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override final;
+  void toVelocyPackFigures(VPackBuilder&) const override final;
 
   int insert(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;

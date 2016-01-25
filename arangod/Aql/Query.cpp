@@ -133,12 +133,12 @@ void Profile::setDone(ExecutionState state) {
 /// @brief convert the profile to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder Profile::toVelocyPack() {
-  VPackBuilder result;
+std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
+  auto result = std::make_shared<VPackBuilder>();
   {
-    VPackObjectBuilder b(&result);
+    VPackObjectBuilder b(result.get());
     for (auto const& it : results) {
-      result.add(StateNames[static_cast<int>(it.first)], VPackValue(it.second));
+      result->add(StateNames[static_cast<int>(it.first)], VPackValue(it.second));
     }
   }
   return result;
@@ -721,7 +721,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
       throw;
     }
 
-    VPackBuilder stats = _engine->_stats.toVelocyPack();
+    std::shared_ptr<VPackBuilder> stats = _engine->_stats.toVelocyPack();
 
     _trx->commit();
 
@@ -870,7 +870,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       throw;
     }
 
-    VPackBuilder stats = _engine->_stats.toVelocyPack();
+    std::shared_ptr<VPackBuilder> stats = _engine->_stats.toVelocyPack();
 
     _trx->commit();
 

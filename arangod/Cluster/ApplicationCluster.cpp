@@ -27,6 +27,7 @@
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/logging.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
@@ -324,8 +325,9 @@ bool ApplicationCluster::start() {
           result._values.begin();
 
       if (it != result._values.end()) {
+        VPackSlice slice = (*it).second._vpack->slice();
         _heartbeatInterval =
-            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+            arangodb::basics::VelocyPackHelper::stringUInt64(slice);
 
         LOG_INFO("using heartbeat interval value '%llu ms' from agency",
                  (unsigned long long)_heartbeatInterval);

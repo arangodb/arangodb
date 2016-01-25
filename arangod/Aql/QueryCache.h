@@ -29,13 +29,13 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace aql {
 
 
@@ -237,7 +237,7 @@ class QueryCache {
   /// @brief return the query cache properties
   //////////////////////////////////////////////////////////////////////////////
 
-  VPackBuilder properties();
+  arangodb::velocypack::Builder properties();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the cache properties

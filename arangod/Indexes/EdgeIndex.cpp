@@ -454,8 +454,8 @@ EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-EdgeIndex::EdgeIndex(TRI_json_t const* json)
-    : Index(json), _edgesFrom(nullptr), _edgesTo(nullptr), _numBuckets(1) {}
+EdgeIndex::EdgeIndex(VPackSlice const& slice)
+    : Index(slice), _edgesFrom(nullptr), _edgesTo(nullptr), _numBuckets(1) {}
 
 EdgeIndex::~EdgeIndex() {
   delete _edgesTo;
@@ -494,62 +494,21 @@ size_t EdgeIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> EdgeIndex::toVelocyPack(
-    bool withFigures, bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder =
-      Index::toVelocyPack(withFigures, false);
+void EdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
 
   // hard-coded
-  builder->add("unique", VPackValue(false));
-  builder->add("sparse", VPackValue(false));
-
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
+  builder.add("unique", VPackValue(false));
+  builder.add("sparse", VPackValue(false));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
+/// @brief return a VelocyPack representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> EdgeIndex::toVelocyPackFigures(
-    bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPackFigures(false);
-  builder->add("buckets", VPackValue(_numBuckets));
-
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json EdgeIndex::toJson(TRI_memory_zone_t* zone,
-                                         bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  // hard-coded
-  json("unique", arangodb::basics::Json(false))("sparse",
-                                                arangodb::basics::Json(false));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json EdgeIndex::toJsonFigures(TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-  json("buckets", arangodb::basics::Json(static_cast<double>(_numBuckets)));
-
-  return json;
+void EdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  Index::toVelocyPackFigures(builder);
+  builder.add("buckets", VPackValue(_numBuckets));
 }
 
 int EdgeIndex::insert(arangodb::Transaction* trx,

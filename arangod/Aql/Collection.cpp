@@ -37,6 +37,8 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 using namespace arangodb::aql;
 
 
@@ -251,26 +253,27 @@ void Collection::fillIndexesCoordinator() const {
   }
 
   TRI_json_t const* json = (*collectionInfo).getIndexes();
+  auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
+  VPackSlice const slice = indexBuilder->slice();
 
-  if (TRI_IsArrayJson(json)) {
-    size_t const n = TRI_LengthArrayJson(json);
+  if (slice.isArray()) {
+    size_t const n = static_cast<size_t>(slice.length());
     indexes.reserve(n);
 
-    for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* v = TRI_LookupArrayJson(json, i);
+    for (auto const& v : VPackArrayIterator(slice)) {
 
-      if (!TRI_IsObjectJson(v)) {
+      if (!v.isObject()) {
         continue;
       }
+      VPackSlice const type = v.get("type");
 
-      TRI_json_t const* type = TRI_LookupObjectJson(v, "type");
-
-      if (!TRI_IsStringJson(type)) {
+      if (!type.isString()) {
         // no "type" attribute. this is invalid
         continue;
       }
+      std::string typeString = type.copyString();
 
-      if (strcmp(type->_value._string.data, "cap") == 0) {
+      if (typeString == "cap") {
         // ignore cap constraints
         continue;
       }
@@ -312,43 +315,43 @@ void Collection::fillIndexesDBServer() const {
                                   name.c_str(), vocbase->_name);
   }
 
-  TRI_json_t const* json = (*collectionInfo).getIndexes();
-  if (!TRI_IsArrayJson(json)) {
+  std::shared_ptr<VPackBuilder> indexBuilder =
+      arangodb::basics::JsonHelper::toVelocyPack(
+          (*collectionInfo).getIndexes());
+  VPackSlice const slice = indexBuilder->slice();
+  if (!slice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unexpected indexes definition format");
   }
 
-  size_t const n = TRI_LengthArrayJson(json);
+  size_t const n = static_cast<size_t>(slice.length());
   indexes.reserve(n);
 
   // register indexes
-  for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* v = TRI_LookupArrayJson(json, i);
-
-    if (TRI_IsObjectJson(v)) {
+  for (auto const& v : VPackArrayIterator(slice)) {
+    if (v.isObject()) {
       // lookup index id
-      TRI_json_t const* id = TRI_LookupObjectJson(v, "id");
+      VPackSlice const id = v.get("id");
 
-      if (!TRI_IsStringJson(id)) {
+      if (!id.isString()) {
         // no "id" attribute. this is invalid
         continue;
       }
 
-      TRI_json_t const* type = TRI_LookupObjectJson(v, "type");
+      VPackSlice const type = v.get("type");
 
-      if (!TRI_IsStringJson(type)) {
+      if (!type.isString()) {
         // no "type" attribute. this is invalid
         continue;
       }
 
-      if (strcmp(type->_value._string.data, "cap") == 0) {
+      if (type.copyString() == "cap") {
         // ignore cap constraints
         continue;
       }
 
       // use numeric index id
-      uint64_t iid = arangodb::basics::StringUtils::uint64(
-          id->_value._string.data, id->_value._string.length - 1);
+      uint64_t iid = arangodb::basics::StringUtils::uint64(id.copyString());
       arangodb::Index* data = nullptr;
 
       auto const& allIndexes = document->allIndexes();

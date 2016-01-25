@@ -34,8 +34,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
-
 typedef struct {
   TRI_shaped_json_t* _fields;  // list of shaped json objects which the
                                // collection should know about
@@ -206,7 +204,7 @@ class SkiplistIndex final : public PathBasedIndex {
       std::vector<std::vector<arangodb::basics::AttributeName>> const&, bool,
       bool);
 
-  explicit SkiplistIndex(struct TRI_json_t const*);
+  explicit SkiplistIndex(VPackSlice const&);
 
   ~SkiplistIndex();
 
@@ -222,8 +220,8 @@ class SkiplistIndex final : public PathBasedIndex {
 
   size_t memory() const override final;
 
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override final;
+  void toVelocyPackFigures(VPackBuilder&) const override final;
 
   int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
