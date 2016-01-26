@@ -1277,8 +1277,8 @@ static void GetIndexesCoordinator(
 
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
-  TRI_json_t const* json = (*c).getIndexes();
-  std::shared_ptr<VPackBuilder> tmp = arangodb::basics::JsonHelper::toVelocyPack(json);
+  std::shared_ptr<VPackBuilder> tmp =
+      arangodb::basics::JsonHelper::toVelocyPack(c->getIndexes());
   VPackSlice slice = tmp->slice();
 
   if (slice.isArray()) {
