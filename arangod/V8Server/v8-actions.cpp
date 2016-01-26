@@ -77,7 +77,7 @@ class v8_action_t : public TRI_action_t {
   //////////////////////////////////////////////////////////////////////////////
 
   void createCallback(v8::Isolate* isolate, v8::Handle<v8::Function> callback) {
-    WRITE_LOCKER(_callbacksLock);
+    WRITE_LOCKER(writeLocker, _callbacksLock);
 
     std::map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
         _callbacks.find(isolate);
@@ -122,7 +122,7 @@ class v8_action_t : public TRI_action_t {
     }
 
     // locate the callback
-    READ_LOCKER(_callbacksLock);
+    READ_LOCKER(readLocker, _callbacksLock);
 
     {
       std::map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
@@ -143,7 +143,7 @@ class v8_action_t : public TRI_action_t {
 
       // and execute it
       {
-        MUTEX_LOCKER(*dataLock);
+        MUTEX_LOCKER(mutexLocker, *dataLock);
 
         if (*data != 0) {
           result.canceled = true;
@@ -167,7 +167,7 @@ class v8_action_t : public TRI_action_t {
       }
 
       {
-        MUTEX_LOCKER(*dataLock);
+        MUTEX_LOCKER(mutexLocker, *dataLock);
         *data = 0;
       }
     }
@@ -179,7 +179,7 @@ class v8_action_t : public TRI_action_t {
 
   bool cancel(Mutex* dataLock, void** data) {
     {
-      MUTEX_LOCKER(*dataLock);
+      MUTEX_LOCKER(mutexLocker, *dataLock);
 
       // either we have not yet reached the execute above or we are already done
       if (*data == 0) {

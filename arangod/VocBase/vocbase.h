@@ -62,45 +62,42 @@ extern bool IGNORE_DATAFILE_ERRORS;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(a) \
-  TRI_TryReadLockReadWriteLock(&(a)->_lock)
+  a->_lock.tryReadLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_LOCK_STATUS_VOCBASE_COL(a) \
-  TRI_ReadLockReadWriteLock(&(a)->_lock)
+  a->_lock.readLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_UNLOCK_STATUS_VOCBASE_COL(a) \
-  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+  a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to write lock the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_TRY_WRITE_LOCK_STATUS_VOCBASE_COL(a) \
-  TRI_TryWriteLockReadWriteLock(&(a)->_lock)
+  a->_lock.tryWriteLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(a) \
-  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+  a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write locks the vocbase collection status using spinning
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(a) \
-  while (!TRI_TRY_WRITE_LOCK_STATUS_VOCBASE_COL(a)) { \
-    usleep(1000);                                     \
-  }
-
+  a->_lock.tryWriteLock(1000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _from attribute
@@ -343,7 +340,7 @@ class TRI_vocbase_col_t {
   TRI_voc_cid_t _planId;  // cluster-wide collecttion identifier
   TRI_col_type_t _type;   // collection type
 
-  TRI_read_write_lock_t _lock;  // lock protecting the status and name
+  arangodb::basics::ReadWriteLock _lock; // lock protecting the status and name
 
   uint32_t _internalVersion;  // is incremented when a collection is renamed
   // this is used to prevent caching of collection objects
@@ -390,13 +387,6 @@ class TRI_vocbase_col_t {
 
   void toVelocyPackIndexes(arangodb::velocypack::Builder&, TRI_voc_tick_t);
 };
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the memory associated with a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCollectionVocBase(TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object, without threads and some other attributes

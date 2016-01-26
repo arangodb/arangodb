@@ -64,7 +64,7 @@ struct LocalCollectionGuard {
 
   ~LocalCollectionGuard() {
     if (_collection != nullptr && !_collection->_isLocal) {
-      FreeCoordinatorCollection(_collection);
+      delete _collection;
     }
   }
 
@@ -238,7 +238,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
       col = CoordinatorCollection(vocbase, *c);
 
       if (col != nullptr && col->_cid == 0) {
-        FreeCoordinatorCollection(const_cast<TRI_vocbase_col_t*>(col));
+        delete col;
         col = nullptr;
       }
     } else {
@@ -529,8 +529,12 @@ static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster(
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
     TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collections[i]));
 
-    if (c != nullptr) {
+    try {
       result.emplace_back(c);
+    }
+    catch (...) {
+      delete c;
+      throw;
     }
   }
 
@@ -3191,9 +3195,11 @@ static void JS_StatusVocbaseCol(
   }
   // fallthru intentional
 
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-  TRI_vocbase_col_status_e status = collection->_status;
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+  TRI_vocbase_col_status_e status;
+  {
+    READ_LOCKER(readLocker, collection->_lock);
+    status = collection->_status;
+  }
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)status));
   TRI_V8_TRY_CATCH_END
@@ -3267,17 +3273,17 @@ static void JS_TruncateDatafileVocbaseCol(
   std::string path = TRI_ObjectToString(args[0]);
   size_t size = (size_t)TRI_ObjectToInt64(args[1]);
 
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+  int res;
+  {
+    READ_LOCKER(readLocker, collection->_lock);
 
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
+    if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
+        collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
+    }
+
+    res = TRI_TruncateDatafile(path.c_str(), (TRI_voc_size_t)size);
   }
-
-  int res = TRI_TruncateDatafile(path.c_str(), (TRI_voc_size_t)size);
-
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot truncate datafile");
@@ -3311,17 +3317,17 @@ static void JS_TryRepairDatafileVocbaseCol(
 
   std::string path = TRI_ObjectToString(args[0]);
 
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+  bool result;
+  {
+    READ_LOCKER(readLocker, collection->_lock);
 
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
+    if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
+        collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
+    }
+
+    result = TRI_TryRepairDatafile(path.c_str());
   }
-
-  bool result = TRI_TryRepairDatafile(path.c_str());
-
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (result) {
     TRI_V8_RETURN_TRUE();
@@ -3361,9 +3367,11 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   // fallthru intentional
 
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-  TRI_col_type_e type = (TRI_col_type_e)collection->_type;
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+  TRI_col_type_e type;
+  {
+    READ_LOCKER(readLocker, collection->_lock);
+    type = (TRI_col_type_e)collection->_type;
+  }
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)type));
   TRI_V8_TRY_CATCH_END
@@ -3424,19 +3432,17 @@ static void JS_VersionVocbaseCol(
   if (ServerState::instance()->isCoordinator()) {
     TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_COL_VERSION));
   }
+
   // fallthru intentional
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+  READ_LOCKER(readLocker, collection->_lock);
   try {
     VocbaseCollectionInfo info = VocbaseCollectionInfo::fromFile(
         collection->_path, collection->_vocbase, collection->_name, false);
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     TRI_V8_RETURN(v8::Number::New(isolate, (int)info.version()));
   } catch (arangodb::basics::Exception const& e) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     TRI_V8_THROW_EXCEPTION_MESSAGE(e.code(), "cannot fetch collection info");
   } catch (...) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "cannot fetch collection info");
   }
@@ -3841,19 +3847,17 @@ static void JS_DatafilesVocbaseCol(
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
 
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_col_file_structure_t structure;
+  {
+    READ_LOCKER(readLocker, collection->_lock);
 
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
+    if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
+        collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
+    }
+
+    structure = TRI_FileStructureCollectionDirectory(collection->_path);
   }
-
-  TRI_col_file_structure_t structure =
-      TRI_FileStructureCollectionDirectory(collection->_path);
-
-  // release lock
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   // build result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -3916,73 +3920,74 @@ static void JS_DatafileScanVocbaseCol(
 
   std::string path = TRI_ObjectToString(args[0]);
 
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+  v8::Handle<v8::Object> result;
+  {
+    READ_LOCKER(readLocker, collection->_lock);
 
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
+    if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
+        collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
+    }
+
+    TRI_df_scan_t scan = TRI_ScanDatafile(path.c_str());
+
+    // build result
+    result = v8::Object::New(isolate);
+
+    result->Set(TRI_V8_ASCII_STRING("currentSize"),
+                v8::Number::New(isolate, scan._currentSize));
+    result->Set(TRI_V8_ASCII_STRING("maximalSize"),
+                v8::Number::New(isolate, scan._maximalSize));
+    result->Set(TRI_V8_ASCII_STRING("endPosition"),
+                v8::Number::New(isolate, scan._endPosition));
+    result->Set(TRI_V8_ASCII_STRING("numberMarkers"),
+                v8::Number::New(isolate, scan._numberMarkers));
+    result->Set(TRI_V8_ASCII_STRING("status"),
+                v8::Number::New(isolate, scan._status));
+    result->Set(TRI_V8_ASCII_STRING("isSealed"),
+                v8::Boolean::New(isolate, scan._isSealed));
+
+    v8::Handle<v8::Array> entries = v8::Array::New(isolate);
+    result->Set(TRI_V8_ASCII_STRING("entries"), entries);
+
+    size_t const n = TRI_LengthVector(&scan._entries);
+    for (size_t i = 0; i < n; ++i) {
+      auto entry = static_cast<TRI_df_scan_entry_t const*>(
+          TRI_AddressVector(&scan._entries, i));
+
+      v8::Handle<v8::Object> o = v8::Object::New(isolate);
+
+      o->Set(TRI_V8_ASCII_STRING("position"),
+            v8::Number::New(isolate, entry->_position));
+      o->Set(TRI_V8_ASCII_STRING("size"), v8::Number::New(isolate, entry->_size));
+      o->Set(TRI_V8_ASCII_STRING("realSize"),
+            v8::Number::New(isolate, entry->_realSize));
+      o->Set(TRI_V8_ASCII_STRING("tick"), V8TickId(isolate, entry->_tick));
+      o->Set(TRI_V8_ASCII_STRING("type"),
+            v8::Number::New(isolate, (int)entry->_type));
+      o->Set(TRI_V8_ASCII_STRING("status"),
+            v8::Number::New(isolate, (int)entry->_status));
+
+      if (entry->_key != nullptr) {
+        o->Set(TRI_V8_ASCII_STRING("key"), TRI_V8_ASCII_STRING(entry->_key));
+      }
+
+      if (entry->_typeName != nullptr) {
+        o->Set(TRI_V8_ASCII_STRING("typeName"),
+              TRI_V8_ASCII_STRING(entry->_typeName));
+      }
+
+      if (entry->_diagnosis != nullptr) {
+        o->Set(TRI_V8_ASCII_STRING("diagnosis"),
+              TRI_V8_ASCII_STRING(entry->_diagnosis));
+      }
+
+      entries->Set((uint32_t)i, o);
+    }
+
+    TRI_DestroyDatafileScan(&scan);
   }
-
-  TRI_df_scan_t scan = TRI_ScanDatafile(path.c_str());
-
-  // build result
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-  result->Set(TRI_V8_ASCII_STRING("currentSize"),
-              v8::Number::New(isolate, scan._currentSize));
-  result->Set(TRI_V8_ASCII_STRING("maximalSize"),
-              v8::Number::New(isolate, scan._maximalSize));
-  result->Set(TRI_V8_ASCII_STRING("endPosition"),
-              v8::Number::New(isolate, scan._endPosition));
-  result->Set(TRI_V8_ASCII_STRING("numberMarkers"),
-              v8::Number::New(isolate, scan._numberMarkers));
-  result->Set(TRI_V8_ASCII_STRING("status"),
-              v8::Number::New(isolate, scan._status));
-  result->Set(TRI_V8_ASCII_STRING("isSealed"),
-              v8::Boolean::New(isolate, scan._isSealed));
-
-  v8::Handle<v8::Array> entries = v8::Array::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("entries"), entries);
-
-  size_t const n = TRI_LengthVector(&scan._entries);
-  for (size_t i = 0; i < n; ++i) {
-    auto entry = static_cast<TRI_df_scan_entry_t const*>(
-        TRI_AddressVector(&scan._entries, i));
-
-    v8::Handle<v8::Object> o = v8::Object::New(isolate);
-
-    o->Set(TRI_V8_ASCII_STRING("position"),
-           v8::Number::New(isolate, entry->_position));
-    o->Set(TRI_V8_ASCII_STRING("size"), v8::Number::New(isolate, entry->_size));
-    o->Set(TRI_V8_ASCII_STRING("realSize"),
-           v8::Number::New(isolate, entry->_realSize));
-    o->Set(TRI_V8_ASCII_STRING("tick"), V8TickId(isolate, entry->_tick));
-    o->Set(TRI_V8_ASCII_STRING("type"),
-           v8::Number::New(isolate, (int)entry->_type));
-    o->Set(TRI_V8_ASCII_STRING("status"),
-           v8::Number::New(isolate, (int)entry->_status));
-
-    if (entry->_key != nullptr) {
-      o->Set(TRI_V8_ASCII_STRING("key"), TRI_V8_ASCII_STRING(entry->_key));
-    }
-
-    if (entry->_typeName != nullptr) {
-      o->Set(TRI_V8_ASCII_STRING("typeName"),
-             TRI_V8_ASCII_STRING(entry->_typeName));
-    }
-
-    if (entry->_diagnosis != nullptr) {
-      o->Set(TRI_V8_ASCII_STRING("diagnosis"),
-             TRI_V8_ASCII_STRING(entry->_diagnosis));
-    }
-
-    entries->Set((uint32_t)i, o);
-  }
-
-  TRI_DestroyDatafileScan(&scan);
-
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+  
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }

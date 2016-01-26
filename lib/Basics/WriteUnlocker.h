@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct unlocker with file and line information
 ///
@@ -36,13 +35,17 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define WRITE_UNLOCKER_VAR_A(a) _write_unlock_variable##a
-#define WRITE_UNLOCKER_VAR_B(a) WRITE_UNLOCKER_VAR_A(a)
+#ifdef TRI_SHOW_LOCK_TIME
 
-#define WRITE_UNLOCKER(b)                                                   \
-  arangodb::basics::WriteUnlocker<std::remove_reference<decltype(b)>::type> \
-      WRITE_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+#define WRITE_UNLOCKER(obj, lock)                                           \
+  arangodb::basics::WriteUnlocker obj(&lock, __FILE__, __LINE__)
 
+#else
+
+#define WRITE_UNLOCKER(obj, lock)                                           \
+  arangodb::basics::WriteUnlocker obj(&lock)
+
+#endif
 
 namespace arangodb {
 namespace basics {
@@ -54,21 +57,12 @@ namespace basics {
 /// the write lock when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
 class WriteUnlocker {
-  WriteUnlocker(WriteUnlocker const&);
-  WriteUnlocker& operator=(WriteUnlocker const&);
 
+  WriteUnlocker(WriteUnlocker const&) = delete;
+  WriteUnlocker& operator=(WriteUnlocker const&) = delete;
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief unlocks the lock
-  ///
-  /// The constructor unlocks the lock, the destructors aquires a write-lock.
-  //////////////////////////////////////////////////////////////////////////////
-
-  explicit WriteUnlocker(T* readWriteLock)
-      : WriteUnlocker(readWriteLock, nullptr, 0) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlocks the lock
@@ -76,10 +70,25 @@ class WriteUnlocker {
   /// The constructor unlocks the lock, the destructors aquires a write-lock.
   //////////////////////////////////////////////////////////////////////////////
 
-  WriteUnlocker(T* readWriteLock, char const* file, int line);
+#ifdef TRI_SHOW_LOCK_TIME
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unlocks the lock
+  ///
+  /// The constructor unlocks the lock, the destructors aquires a write-lock.
+  //////////////////////////////////////////////////////////////////////////////
+
+  WriteUnlocker(ReadWriteLocker* readWriteLock, char const* file, int line)
           : _readWriteLock(readWriteLock), _file(file), _line(line) {
             _readWriteLock->unlock();
-          }
+  }
+
+#else
+
+  explicit WriteUnlocker(ReadWriteLock* readWriteLock)
+      : _readWriteLock(readWriteLock) { }
+
+#endif
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief aquires the write-lock
@@ -87,13 +96,15 @@ class WriteUnlocker {
 
           ~WriteUnlocker() { _readWriteLock->writeLock(); }
 
-          
          private:
+
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief the read-write lock
           ////////////////////////////////////////////////////////////////////////////////
 
-          T* _readWriteLock;
+          ReadWriteLocker* _readWriteLock;
+
+#ifdef TRI_SHOW_LOCK_TIME
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief file
@@ -106,10 +117,12 @@ class WriteUnlocker {
           ////////////////////////////////////////////////////////////////////////////////
 
           int _line;
+
+#endif
+          
 };
 }
 }
 
 #endif
-
 

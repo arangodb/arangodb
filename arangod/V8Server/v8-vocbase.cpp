@@ -673,7 +673,7 @@ static void JS_Debug(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                  args[0]);
   }
 
-  MUTEX_LOCKER(ConsoleThread::serverConsoleMutex);
+  MUTEX_LOCKER(mutexLocker, ConsoleThread::serverConsoleMutex);
   V8LineEditor* console = ConsoleThread::serverConsole;
 
   if (console != nullptr) {
@@ -2788,11 +2788,10 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       uint32_t internalVersion;
 
       if (lock) {
-        TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+        READ_LOCKER(readLocker, collection->_lock);
         status = collection->_status;
         cid = collection->_cid;
         internalVersion = collection->_internalVersion;
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       }
       else {
         status = collection->_status;
@@ -2844,7 +2843,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       collection = CoordinatorCollection(vocbase, *ci);
 
       if (collection != nullptr && collection->_cid == 0) {
-        FreeCoordinatorCollection(collection);
+        delete collection;
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
     }
@@ -2864,7 +2863,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
   if (result.IsEmpty()) {
     if (ServerState::instance()->isCoordinator()) {
-      FreeCoordinatorCollection(collection);
+      delete collection;
     }
     TRI_V8_RETURN_UNDEFINED();
   }

@@ -107,24 +107,29 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
       // check if the collection is still in the "unloading" state. if not,
       // then someone has already triggered a reload or a deletion of the
       // collection
-      if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-        bool isUnloading =
-            (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      bool isUnloading = false;
+      bool gotStatus = false;
+      {
+        TRY_READ_LOCKER(readLocker, collection->_lock);
 
-        if (!isUnloading) {
-          popped = false;
-          auto unloader = ditches->process(
-              popped, [](arangodb::Ditch const* ditch) -> bool {
-                return (ditch->type() ==
-                        arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
-              });
-          if (popped) {
-            // we've changed the list. try with current state in next turn
-            TRI_ASSERT(unloader != nullptr);
-            delete unloader;
-            return;
-          }
+        if (readLocker.isLocked()) {
+          isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
+          gotStatus = true;
+        }
+      }
+
+      if (gotStatus && !isUnloading) {
+        popped = false;
+        auto unloader = ditches->process(
+            popped, [](arangodb::Ditch const* ditch) -> bool {
+            return (ditch->type() ==
+                arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
+            });
+        if (popped) {
+          // we've changed the list. try with current state in next turn
+          TRI_ASSERT(unloader != nullptr);
+          delete unloader;
+          return;
         }
       }
 
@@ -133,9 +138,12 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
         // if there is still some garbage collection to perform,
         // check if the collection was deleted already
-        if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-          isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
-          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        { 
+          TRY_READ_LOCKER(readLocker, collection->_lock);
+
+          if (readLocker.isLocked()) {
+            isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
+          }
         }
 
         if (!isDeleted && TRI_IsDeletedVocBase(collection->_vocbase)) {
@@ -253,7 +261,7 @@ void TRI_CleanupVocBase(void* data) {
     // check if we can get the compactor lock exclusively
     if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
       try {
-        READ_LOCKER(vocbase->_collectionsLock);
+        READ_LOCKER(readLocker, vocbase->_collectionsLock);
         // copy all collections
         collections = vocbase->_collections;
       } catch (...) {
@@ -262,18 +270,17 @@ void TRI_CleanupVocBase(void* data) {
 
       for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);
+        TRI_document_collection_t* document;
 
-        TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-
-        TRI_document_collection_t* document = collection->_collection;
+        {
+          READ_LOCKER(readLocker, collection->_lock);
+          document = collection->_collection;
+        }
 
         if (document == nullptr) {
           // collection currently not loaded
-          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
           continue;
         }
-
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
         TRI_ASSERT(document != nullptr);
 

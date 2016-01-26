@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
 ///
@@ -36,22 +35,19 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define MUTEX_LOCKER_VAR_A(a) _mutex_lock_variable_##a
 #define MUTEX_LOCKER_VAR_B(a) MUTEX_LOCKER_VAR_A(a)
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-#define MUTEX_LOCKER(b)                                                    \
-  arangodb::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b, __FILE__, \
-                                                             __LINE__)
+#define MUTEX_LOCKER(obj, lock)                                        \
+  arangodb::basics::MutexLocker obj(&lock, __FILE__, __LINE__)
 
 #else
 
-#define MUTEX_LOCKER(b) \
-  arangodb::basics::MutexLocker MUTEX_LOCKER_VAR_B(__LINE__)(&b)
+#define MUTEX_LOCKER(obj, lock) \
+  arangodb::basics::MutexLocker obj(&lock)
 
 #endif
-
 
 namespace arangodb {
 namespace basics {
@@ -64,9 +60,9 @@ namespace basics {
 ////////////////////////////////////////////////////////////////////////////////
 
 class MutexLocker {
-  MutexLocker(MutexLocker const&);
-  MutexLocker& operator=(MutexLocker const&);
 
+  MutexLocker(MutexLocker const&) = delete;
+  MutexLocker& operator=(MutexLocker const&) = delete;
   
  public:
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,8 +87,8 @@ class MutexLocker {
 
   ~MutexLocker();
 
-  
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the mutex
   //////////////////////////////////////////////////////////////////////////////

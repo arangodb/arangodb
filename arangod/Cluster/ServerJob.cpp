@@ -34,16 +34,9 @@
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
-
-static arangodb::basics::Mutex ExecutorLock;
-
-
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief general server job
-////////////////////////////////////////////////////////////////////////////////
-
+static arangodb::basics::Mutex ExecutorLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new db server job
@@ -64,8 +57,6 @@ ServerJob::ServerJob(HeartbeatThread* heartbeat, TRI_server_t* server,
 
 ServerJob::~ServerJob() {}
 
-
-
 void ServerJob::work() {
   LOG_TRACE("starting plan update handler");
 
@@ -79,7 +70,7 @@ void ServerJob::work() {
 
   {
     // only one plan change at a time
-    MUTEX_LOCKER(ExecutorLock);
+    MUTEX_LOCKER(mutexLocker, ExecutorLock);
 
     result = execute();
   }

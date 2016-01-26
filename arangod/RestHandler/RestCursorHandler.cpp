@@ -212,7 +212,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   TRI_ASSERT(_query == nullptr);
   _query = query;
@@ -223,7 +223,7 @@ void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::unregisterQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   _query = nullptr;
 }
@@ -233,7 +233,7 @@ void RestCursorHandler::unregisterQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestCursorHandler::cancelQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
     _query->killed(true);
@@ -249,7 +249,7 @@ bool RestCursorHandler::cancelQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestCursorHandler::wasCanceled() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
   return _queryKilled;
 }
 

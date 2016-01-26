@@ -28,8 +28,6 @@
 
 using namespace arangodb::aql;
 
-
-
 arangodb::basics::Mutex Optimizer::SetupLock;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,7 +366,7 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds(
 ////////////////////////////////////////////////////////////////////////////////
 
 void Optimizer::setupRules() {
-  MUTEX_LOCKER(SetupLock);
+  MUTEX_LOCKER(mutexLocker, SetupLock);
 
   if (!_rules.empty()) {
     // race condition... prevent duplicate registration of rules

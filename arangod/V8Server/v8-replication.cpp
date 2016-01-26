@@ -22,18 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-replication.h"
-#include "v8-vocbaseprivate.h"
 #include "Replication/InitialSyncer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "Wal/LogfileManager.h"
+#include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/replication-dump.h"
+#include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication logger
@@ -386,7 +385,7 @@ static void JS_ConfigureApplierReplication(
     TRI_InitConfigurationReplicationApplier(&config);
 
     {
-      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
+      READ_LOCKER(readLocker, vocbase->_replicationApplier->_statusLock);
       TRI_CopyConfigurationReplicationApplier(
           &vocbase->_replicationApplier->_configuration, &config);
     }
@@ -416,7 +415,7 @@ static void JS_ConfigureApplierReplication(
 
     // fill with previous configuration
     {
-      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
+      READ_LOCKER(readLocker, vocbase->_replicationApplier->_statusLock);
       TRI_CopyConfigurationReplicationApplier(
           &vocbase->_replicationApplier->_configuration, &config);
     }

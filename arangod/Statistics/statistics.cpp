@@ -62,7 +62,7 @@ static boost::lockfree::queue<TRI_request_statistics_t*,
 
 static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   {
-    MUTEX_LOCKER(RequestDataLock);
+    MUTEX_LOCKER(mutexLocker, RequestDataLock);
 
     TRI_TotalRequestsStatistics.incCounter();
 
@@ -184,7 +184,7 @@ void TRI_FillRequestStatistics(StatisticsDistribution& totalTime,
                                StatisticsDistribution& ioTime,
                                StatisticsDistribution& bytesSent,
                                StatisticsDistribution& bytesReceived) {
-  MUTEX_LOCKER(RequestDataLock);
+  MUTEX_LOCKER(mutexLocker, RequestDataLock);
 
   totalTime = *TRI_TotalTimeDistributionStatistics;
   requestTime = *TRI_RequestTimeDistributionStatistics;
@@ -234,7 +234,7 @@ void TRI_ReleaseConnectionStatistics(TRI_connection_statistics_t* statistics) {
   }
 
   {
-    MUTEX_LOCKER(ConnectionDataLock);
+    MUTEX_LOCKER(mutexLocker, ConnectionDataLock);
 
     if (statistics->_http) {
       if (statistics->_connStart != 0.0) {
@@ -271,7 +271,7 @@ void TRI_FillConnectionStatistics(StatisticsCounter& httpConnections,
                                   std::vector<StatisticsCounter>& methodRequests,
                                   StatisticsCounter& asyncRequests,
                                   StatisticsDistribution& connectionTime) {
-  MUTEX_LOCKER(ConnectionDataLock);
+  MUTEX_LOCKER(mutexLocker, ConnectionDataLock);
 
   httpConnections = TRI_HttpConnectionsStatistics;
   totalRequests = TRI_TotalRequestsStatistics;

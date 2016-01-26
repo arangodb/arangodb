@@ -39,7 +39,6 @@
 #endif
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global string containing the currently registered failure points
 /// the string is a comma-separated list of point names
@@ -117,7 +116,7 @@ bool TRI_ShouldFailDebugging(char const* value) {
     return false;
   }
 
-  READ_LOCKER(FailurePointsLock);
+  READ_LOCKER(readLocker, FailurePointsLock);
 
   if (FailurePoints != nullptr) {
     char* checkValue = MakeValue(value);
@@ -142,7 +141,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
     return;
   }
 
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   char* found;
   if (FailurePoints == nullptr) {
@@ -197,7 +196,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   if (FailurePoints == nullptr) {
     return;
@@ -255,7 +254,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearFailurePointsDebugging() {
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   if (FailurePoints != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, FailurePoints);

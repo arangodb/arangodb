@@ -49,7 +49,7 @@ std::string const& ScriptLoader::getDirectory() const { return _directory; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ScriptLoader::setDirectory(std::string const& directory) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   _directory = directory;
 }
@@ -81,7 +81,7 @@ std::string ScriptLoader::buildScript(char const** script) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ScriptLoader::defineScript(std::string const& name, std::string const& script) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   _scripts[name] = script;
 }
@@ -93,7 +93,7 @@ void ScriptLoader::defineScript(std::string const& name, std::string const& scri
 void ScriptLoader::defineScript(std::string const& name, char const** script) {
   std::string scriptString = buildScript(script);
 
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   _scripts[name] = scriptString;
 }
@@ -105,7 +105,7 @@ void ScriptLoader::defineScript(std::string const& name, char const** script) {
 std::string const& ScriptLoader::findScript(std::string const& name) {
   static std::string empty = "";
 
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   std::map<std::string, std::string>::iterator i = _scripts.find(name);
 

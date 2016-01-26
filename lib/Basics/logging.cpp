@@ -390,7 +390,7 @@ static void StoreOutput(TRI_log_level_e level, time_t timestamp,
   char* old = nullptr;
 
   {
-    MUTEX_LOCKER(BufferLock); 
+    MUTEX_LOCKER(mutexLocker, BufferLock); 
 
     size_t oldPos = BufferCurrent[pos];
     BufferCurrent[pos] = (oldPos + 1) % OUTPUT_BUFFER_SIZE;
@@ -603,7 +603,7 @@ static void OutputMessage(TRI_log_level_e level, TRI_log_severity_e severity,
   }
 
   {
-    MUTEX_LOCKER(AppendersLock);
+    MUTEX_LOCKER(mutexLocker, AppendersLock);
 
     if (Appenders.empty()) {
       WriteStderr(level, message);
@@ -620,7 +620,7 @@ static void OutputMessage(TRI_log_level_e level, TRI_log_severity_e severity,
                                                claimOwnership);
 
     try {
-      MUTEX_LOCKER(LogMessageQueueLock);
+      MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
       LogMessageQueue.emplace_back(msg.get());
       msg.release();
     } catch (...) {
@@ -630,7 +630,7 @@ static void OutputMessage(TRI_log_level_e level, TRI_log_severity_e severity,
       // we can do nothing else here if we ran out of memory
     }
   } else {
-    MUTEX_LOCKER(AppendersLock);
+    MUTEX_LOCKER(mutexLocker, AppendersLock);
 
     for (auto& it : Appenders) {
       // apply severity filter
@@ -673,7 +673,7 @@ static void MessageQueueWorker(void* data) {
     std::vector<log_message_t*> buffer;
     // copy the MessageQueue into the local buffer
     {
-      MUTEX_LOCKER(LogMessageQueueLock);
+      MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
       buffer.swap(LogMessageQueue);
     }
 
@@ -689,7 +689,7 @@ static void MessageQueueWorker(void* data) {
       // output messages using the appenders
       for (auto& msg : buffer) {
         {
-          MUTEX_LOCKER(AppendersLock);
+          MUTEX_LOCKER(mutexLocker, AppendersLock);
 
           for (auto& it : Appenders) {
             // apply severity filter
@@ -728,7 +728,7 @@ static void MessageQueueWorker(void* data) {
       TRI_TimedWaitCondition(&LogCondition, (uint64_t)sl);
       TRI_UnlockCondition(&LogCondition);
     } else {
-      MUTEX_LOCKER(LogMessageQueueLock);
+      MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
       if (LogMessageQueue.empty()) {
         // queue is empty. we can leave this loop
         break;
@@ -738,7 +738,7 @@ static void MessageQueueWorker(void* data) {
 
   // cleanup
   {
-    MUTEX_LOCKER(LogMessageQueueLock);
+    MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
     for (auto& it : LogMessageQueue) {
       delete it;
     }
@@ -885,7 +885,7 @@ static void LogThread(char const* func, char const* file, int line,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CloseLogging() {
-  MUTEX_LOCKER(AppendersLock);
+  MUTEX_LOCKER(mutexLocker, AppendersLock);
 
   for (auto& it : Appenders) {
     delete it;
@@ -1179,7 +1179,7 @@ TRI_vector_t* TRI_BufferLogging(TRI_log_level_e level, uint64_t start,
   }
 
   {
-    MUTEX_LOCKER(BufferLock);
+    MUTEX_LOCKER(mutexLocker, BufferLock);
 
     for (size_t i = begin; i <= pos; ++i) {
       for (size_t j = 0; j < OUTPUT_BUFFER_SIZE; ++j) {
@@ -1456,7 +1456,7 @@ int TRI_CreateLogAppenderFile(char const* filename, char const* contentFilter,
 
   // and store it
   {
-    MUTEX_LOCKER(AppendersLock);
+    MUTEX_LOCKER(mutexLocker, AppendersLock);
     try {
       Appenders.emplace_back(appender.get());
       appender.release();
@@ -1536,7 +1536,7 @@ log_appender_syslog_t::log_appender_syslog_t(char const* contentFilter,
 
   // and open logging, openlog does not have a return value...
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     ::openlog(name, LOG_CONS | LOG_PID, value);
     _opened = true;
   }
@@ -1610,7 +1610,7 @@ void log_appender_syslog_t::logMessage(TRI_log_level_e level,
   }
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     if (_opened) {
       ::syslog(priority, "%s", ptr);
     }
@@ -1628,7 +1628,7 @@ void log_appender_syslog_t::reopenLog() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void log_appender_syslog_t::closeLog() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
   if (_opened) {
     ::closelog();
     _opened = false;
@@ -1670,7 +1670,7 @@ int TRI_CreateLogAppenderSyslog(char const* name, char const* facility,
 
   // and store it
   {
-    MUTEX_LOCKER(AppendersLock);
+    MUTEX_LOCKER(mutexLocker, AppendersLock);
     try {
       Appenders.emplace_back(appender.get());
       appender.release();
@@ -1783,7 +1783,7 @@ bool TRI_ShutdownLogging(bool clearBuffers) {
 
   if (clearBuffers) {
     // cleanup output buffers
-    MUTEX_LOCKER(BufferLock);
+    MUTEX_LOCKER(mutexLocker, BufferLock);
 
     for (size_t i = 0; i < OUTPUT_LOG_LEVELS; i++) {
       for (size_t j = 0; j < OUTPUT_BUFFER_SIZE; j++) {
@@ -1805,7 +1805,7 @@ bool TRI_ShutdownLogging(bool clearBuffers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReopenLogging() {
-  MUTEX_LOCKER(AppendersLock);
+  MUTEX_LOCKER(mutexLocker, AppendersLock);
 
   for (auto& it : Appenders) {
     try {
@@ -1834,7 +1834,7 @@ void TRI_FlushLogging() {
     int tries = 0;
     while (++tries < 500) {
       {
-        MUTEX_LOCKER(LogMessageQueueLock);
+        MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
         if (LogMessageQueue.empty()) {
           break;
         }

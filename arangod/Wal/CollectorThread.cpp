@@ -440,7 +440,7 @@ void CollectorThread::run() {
         }
       } catch (...) {
         // re-activate the queue
-        MUTEX_LOCKER(_operationsQueueLock);
+        MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
         _operationsQueueInUse = false;
         throw;
       }
@@ -490,7 +490,7 @@ void CollectorThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectorThread::hasQueuedOperations() {
-  MUTEX_LOCKER(_operationsQueueLock);
+  MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
   return !_operationsQueue.empty();
 }
@@ -500,7 +500,7 @@ bool CollectorThread::hasQueuedOperations() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectorThread::hasQueuedOperations(TRI_voc_cid_t cid) {
-  MUTEX_LOCKER(_operationsQueueLock);
+  MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
   return (_operationsQueue.find(cid) != _operationsQueue.end());
 }
@@ -583,7 +583,7 @@ int CollectorThread::processQueuedOperations(bool& worked) {
   }
 
   {
-    MUTEX_LOCKER(_operationsQueueLock);
+    MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
     TRI_ASSERT(!_operationsQueueInUse);
 
     if (_operationsQueue.empty()) {
@@ -667,7 +667,7 @@ int CollectorThread::processQueuedOperations(bool& worked) {
 
   // finally remove all entries from the map with empty vectors
   {
-    MUTEX_LOCKER(_operationsQueueLock);
+    MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
     for (auto it = _operationsQueue.begin(); it != _operationsQueue.end();
          /* no hoisting */) {
@@ -692,7 +692,7 @@ int CollectorThread::processQueuedOperations(bool& worked) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t CollectorThread::numQueuedOperations() {
-  MUTEX_LOCKER(_operationsQueueLock);
+  MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
   return _operationsQueue.size();
 }
@@ -1339,7 +1339,7 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
 
   while (true) {
     {
-      MUTEX_LOCKER(_operationsQueueLock);
+      MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
       if (!_operationsQueueInUse) {
         // it is only safe to access the queue if this flag is not set

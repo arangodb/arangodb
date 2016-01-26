@@ -164,7 +164,7 @@ bool ApplicationV8::V8Context::addGlobalContextMethod(
     return false;
   }
 
-  MUTEX_LOCKER(_globalMethodsLock);
+  MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
 
   for (auto& it : _globalMethods) {
     if (it == type) {
@@ -191,7 +191,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods() {
     // this avoids potential deadlocks when one of the executed functions itself
     // registers a context method
 
-    MUTEX_LOCKER(_globalMethodsLock);
+    MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
     copy.swap(_globalMethods);
   } catch (...) {
     // if we failed, we shouldn't have modified _globalMethods yet, so we can
@@ -466,7 +466,7 @@ void ApplicationV8::exitContext(V8Context* context) {
   bool runGlobal = false;
 
   {
-    MUTEX_LOCKER(context->_globalMethodsLock);
+    MUTEX_LOCKER(mutexLocker, context->_globalMethodsLock);
     runGlobal = !context->_globalMethods.empty();
   }
 

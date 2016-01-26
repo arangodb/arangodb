@@ -89,7 +89,7 @@ Scheduler::~Scheduler() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::start(ConditionVariable* cv) {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   // start the schedulers threads
   for (size_t i = 0; i < nrThreads; ++i) {
@@ -125,7 +125,7 @@ bool Scheduler::start(ConditionVariable* cv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::isStarted() {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   for (size_t i = 0; i < nrThreads; ++i) {
     if (!threads[i]->isStarted()) {
@@ -141,7 +141,7 @@ bool Scheduler::isStarted() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::open() {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   for (size_t i = 0; i < nrThreads; ++i) {
     if (!threads[i]->open()) {
@@ -157,7 +157,7 @@ bool Scheduler::open() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::isRunning() {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   for (size_t i = 0; i < nrThreads; ++i) {
     if (threads[i]->isRunning()) {
@@ -177,7 +177,7 @@ void Scheduler::beginShutdown() {
     return;
   }
 
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   LOG_DEBUG("beginning shutdown sequence of scheduler");
 
@@ -218,7 +218,7 @@ std::shared_ptr<VPackBuilder> Scheduler::getUserTasks() {
   auto builder = std::make_shared<VPackBuilder>();
   try {
     VPackArrayBuilder b(builder.get());
-    MUTEX_LOCKER(schedulerLock);
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
     for (auto& it : task2thread) {
       auto const* task = it.first;
 
@@ -238,7 +238,7 @@ std::shared_ptr<VPackBuilder> Scheduler::getUserTasks() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> Scheduler::getUserTask(std::string const& id) {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   for (auto& it : task2thread) {
     auto const* task = it.first;
@@ -263,7 +263,7 @@ int Scheduler::unregisterUserTask(std::string const& id) {
   Task* task = nullptr;
 
   {
-    MUTEX_LOCKER(schedulerLock);
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
 
     for (auto& it : task2thread) {
       auto const* t = it.first;
@@ -297,7 +297,7 @@ int Scheduler::unregisterUserTasks() {
     Task* task = nullptr;
 
     {
-      MUTEX_LOCKER(schedulerLock);
+      MUTEX_LOCKER(mutexLocker, schedulerLock);
 
       for (auto& it : task2thread) {
         auto const* t = it.first;
@@ -342,7 +342,7 @@ int Scheduler::unregisterTask(Task* task) {
   SchedulerThread* thread = nullptr;
 
   {
-    MUTEX_LOCKER(schedulerLock);
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
 
     auto it = task2thread.find(
         task);  // TODO(fc) XXX remove this! This should be in the Task
@@ -376,7 +376,7 @@ int Scheduler::destroyTask(Task* task) {
   SchedulerThread* thread = nullptr;
 
   {
-    MUTEX_LOCKER(schedulerLock);
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
 
     auto it = task2thread.find(task);
 
@@ -412,7 +412,7 @@ void Scheduler::reportStatus() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::setProcessorAffinity(size_t i, size_t c) {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   threads[i]->setProcessorAffinity(c);
 }
@@ -422,7 +422,7 @@ void Scheduler::setProcessorAffinity(size_t i, size_t c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Task* Scheduler::lookupTaskById(uint64_t taskId) {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   auto&& task = taskRegistered.find(taskId);
 
@@ -438,7 +438,7 @@ Task* Scheduler::lookupTaskById(uint64_t taskId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 EventLoop Scheduler::lookupLoopById(uint64_t taskId) {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   auto&& task = taskRegistered.find(taskId);
 
@@ -480,7 +480,7 @@ int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
   }
 
   try {
-    MUTEX_LOCKER(schedulerLock);
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
 
     int res = checkInsertTask(task);
 

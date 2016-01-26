@@ -106,7 +106,7 @@ bool RestSimpleHandler::cancel() { return cancelQuery(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestSimpleHandler::registerQuery(arangodb::aql::Query* query) {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   TRI_ASSERT(_query == nullptr);
   _query = query;
@@ -117,7 +117,7 @@ void RestSimpleHandler::registerQuery(arangodb::aql::Query* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestSimpleHandler::unregisterQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   _query = nullptr;
 }
@@ -127,7 +127,7 @@ void RestSimpleHandler::unregisterQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestSimpleHandler::cancelQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
     _query->killed(true);
@@ -143,7 +143,7 @@ bool RestSimpleHandler::cancelQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestSimpleHandler::wasCanceled() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
   return _queryKilled;
 }
 

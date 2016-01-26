@@ -624,7 +624,7 @@ class AssocUnique {
           }
 
           // transfer ownership to the central map
-          MUTEX_LOCKER(bucketMapLocker);
+          MUTEX_LOCKER(mutexLocker, bucketMapLocker);
 
           for (auto& it : partitions) {
             auto it2 = allBuckets.find(it.first);

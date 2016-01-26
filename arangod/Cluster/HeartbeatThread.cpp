@@ -162,7 +162,7 @@ void HeartbeatThread::runDBServer() {
       // First see whether a previously scheduled job has done some good:
       double timeout = remain;
       {
-        MUTEX_LOCKER(_statusLock);
+        MUTEX_LOCKER(mutexLocker, _statusLock);
         if (_numDispatchedJobs == -1) {
           if (_lastDispatchedJobResult) {
             lastPlanVersionJobSuccess = _versionThatTriggeredLastJob;
@@ -233,7 +233,7 @@ void HeartbeatThread::runDBServer() {
   int count = 0;
   while (count++ < 10000) {
     {
-      MUTEX_LOCKER(_statusLock);
+      MUTEX_LOCKER(mutexLocker, _statusLock);
       if (_numDispatchedJobs <= 0) {
         break;
       }
@@ -248,7 +248,7 @@ void HeartbeatThread::runDBServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::hasPendingJob() {
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
   return _numDispatchedJobs != 0;
 }
 
@@ -410,7 +410,7 @@ bool HeartbeatThread::init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::isReady() {
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
 
   return _ready;
 }
@@ -420,7 +420,7 @@ bool HeartbeatThread::isReady() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::setReady() {
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
   _ready = true;
 }
 
@@ -429,7 +429,7 @@ void HeartbeatThread::setReady() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::removeDispatchedJob(bool success) {
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
   TRI_ASSERT(_numDispatchedJobs > 0);
   _numDispatchedJobs = -1;
   _lastDispatchedJobResult = success;
@@ -614,7 +614,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
   LOG_TRACE("found a plan update");
 
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
   if (_numDispatchedJobs > 0) {
     // do not flood the dispatcher queue with multiple server jobs
     // as this may lead to all dispatcher threads being blocked

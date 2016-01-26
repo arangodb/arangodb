@@ -177,7 +177,7 @@ start_pretty_print();
     console.open(true);
 
     {
-      MUTEX_LOCKER(serverConsoleMutex);
+      MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
       serverConsole = &console;
     }
 
@@ -191,7 +191,7 @@ start_pretty_print();
       bool eof;
 
       {
-        MUTEX_LOCKER(serverConsoleMutex);
+        MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
         input = console.prompt("arangod> ", "arangod", eof);
       }
 
@@ -232,7 +232,7 @@ start_pretty_print();
     }
 
     {
-      MUTEX_LOCKER(serverConsoleMutex);
+      MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
       serverConsole = nullptr;
     }
   }

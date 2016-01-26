@@ -194,7 +194,7 @@ TRI_document_collection_t* Ditches::collection() const { return _collection; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ditches::executeProtected(std::function<void()> callback) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
   callback();
 }
 
@@ -209,7 +209,7 @@ Ditch* Ditches::process(bool& popped,
                         std::function<bool(Ditch const*)> callback) {
   popped = false;
 
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   auto ditch = _begin;
 
@@ -271,7 +271,7 @@ Ditch* Ditches::process(bool& popped,
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* Ditches::head() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   auto ditch = _begin;
 
@@ -286,7 +286,7 @@ char const* Ditches::head() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t Ditches::numDocumentDitches() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   return _numDocumentDitches;
 }
@@ -296,7 +296,7 @@ uint64_t Ditches::numDocumentDitches() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Ditches::contains(Ditch::DitchType type) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   if (type == Ditch::TRI_DITCH_DOCUMENT) {
     // shortcut
@@ -324,7 +324,7 @@ void Ditches::freeDitch(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     unlink(ditch);
 
@@ -348,7 +348,7 @@ void Ditches::freeDocumentDitch(DocumentDitch* ditch, bool fromTransaction) {
 
   bool shouldFree = false;
   {
-    MUTEX_LOCKER(_lock);  // FIX_MUTEX
+    MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
 
     // First see who might still be using the ditch:
     if (fromTransaction) {
@@ -514,7 +514,7 @@ DropCollectionDitch* Ditches::createDropCollectionDitch(
 void Ditches::link(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
-  MUTEX_LOCKER(_lock);  // FIX_MUTEX
+  MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
 
   // empty list
   if (_end == nullptr) {

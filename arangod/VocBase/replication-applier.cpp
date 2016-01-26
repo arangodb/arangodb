@@ -673,7 +673,7 @@ int TRI_ConfigureReplicationApplier(
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
 
-  WRITE_LOCKER(applier->_statusLock);
+  WRITE_LOCKER(writeLocker, applier->_statusLock);
 
   if (applier->_state._active) {
     // cannot change the configuration while the replication is still running
@@ -698,7 +698,7 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
                                 TRI_replication_applier_state_t* state) {
   TRI_InitStateReplicationApplier(state);
 
-  READ_LOCKER(applier->_statusLock);
+  READ_LOCKER(readLocker, applier->_statusLock);
 
   state->_active = applier->_state._active;
   state->_lastAppliedContinuousTick =
@@ -1098,7 +1098,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
   while (!wait(10 * 1000))
     ;
 
-  WRITE_LOCKER(_statusLock);
+  WRITE_LOCKER(writeLocker, _statusLock);
 
   if (_state._preventStart) {
     return TRI_ERROR_LOCKED;
@@ -1163,7 +1163,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_replication_applier_t::isRunning() const {
-  READ_LOCKER(_statusLock);
+  READ_LOCKER(readLocker, _statusLock);
 
   return _state._active;
 }
@@ -1173,7 +1173,7 @@ bool TRI_replication_applier_t::isRunning() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::preventStart() {
-  WRITE_LOCKER(_statusLock);
+  WRITE_LOCKER(writeLocker, _statusLock);
 
   if (_state._active) {
     // already running
@@ -1196,7 +1196,7 @@ int TRI_replication_applier_t::preventStart() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::allowStart() {
-  WRITE_LOCKER(_statusLock);
+  WRITE_LOCKER(writeLocker, _statusLock);
 
   if (!_state._preventStart) {
     return TRI_ERROR_INTERNAL;
@@ -1213,7 +1213,7 @@ int TRI_replication_applier_t::allowStart() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_replication_applier_t::stopInitialSynchronization() {
-  READ_LOCKER(_statusLock);
+  READ_LOCKER(readLocker, _statusLock);
 
   return _state._stopInitialSynchronization;
 }
@@ -1223,7 +1223,7 @@ bool TRI_replication_applier_t::stopInitialSynchronization() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_replication_applier_t::stopInitialSynchronization(bool value) {
-  WRITE_LOCKER(_statusLock);
+  WRITE_LOCKER(writeLocker, _statusLock);
   _state._stopInitialSynchronization = value;
 }
 
@@ -1239,7 +1239,7 @@ int TRI_replication_applier_t::stop(bool resetError) {
   }
 
   {
-    WRITE_LOCKER(_statusLock);
+    WRITE_LOCKER(writeLocker, _statusLock);
 
     // always stop initial synchronization
     _state._stopInitialSynchronization = true;
@@ -1310,7 +1310,7 @@ int TRI_replication_applier_t::shutdown() {
   }
 
   {
-    WRITE_LOCKER(_statusLock);
+    WRITE_LOCKER(writeLocker, _statusLock);
 
     if (!_state._active) {
       return TRI_ERROR_NO_ERROR;
@@ -1401,7 +1401,7 @@ void TRI_replication_applier_t::setProgress(char const* msg, bool lock) {
   }
 
   if (lock) {
-    WRITE_LOCKER(_statusLock);
+    WRITE_LOCKER(writeLocker, _statusLock);
 
     if (_state._progressMsg != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, _state._progressMsg);
@@ -1430,7 +1430,7 @@ void TRI_replication_applier_t::setProgress(char const* msg, bool lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::setError(int errorCode, char const* msg) {
-  WRITE_LOCKER(_statusLock);
+  WRITE_LOCKER(writeLocker, _statusLock);
   return doSetError(errorCode, msg);
 }
 
@@ -1453,7 +1453,7 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
   try {
     TRI_InitConfigurationReplicationApplier(&config);
     {
-      READ_LOCKER(_statusLock);
+      READ_LOCKER(readLocker, _statusLock);
       TRI_CopyConfigurationReplicationApplier(&_configuration, &config);
     }
   } catch (...) {

@@ -406,7 +406,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     std::sort(files.begin(), files.end(), DatabaseIdStringComparator);
   }
 
-  MUTEX_LOCKER(server->_databasesMutex);
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
   auto oldLists = server->_databasesLists.load();
   auto newLists = new DatabasesLists(*oldLists);
   // No try catch here, if we crash here because out of memory...
@@ -656,7 +656,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloseDatabases(TRI_server_t* server) {
-  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);  // Only one should do this at a time
   // No need for the thread protector here, because we have the mutex
   // Note however, that somebody could still read the lists concurrently,
   // therefore we first install a new value, call scan() on the protector
@@ -707,7 +707,7 @@ static int CloseDatabases(TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloseDroppedDatabases(TRI_server_t* server) {
-  MUTEX_LOCKER(server->_databasesMutex);
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
 
   // No need for the thread protector here, because we have the mutex
   // Note however, that somebody could still read the lists concurrently,
@@ -1417,7 +1417,7 @@ static void DatabaseManager(void* data) {
       // found a database to delete, now remove it from the struct
 
       {
-        MUTEX_LOCKER(server->_databasesMutex);
+        MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
 
         // Build the new value:
         auto oldLists = server->_databasesLists.load();
@@ -1878,7 +1878,7 @@ int TRI_StopServer(TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_StopReplicationAppliersServer(TRI_server_t* server) {
-  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);  // Only one should do this at a time
   // No need for the thread protector here, because we have the mutex
 
   for (auto& p : server->_databasesLists.load()->_databases) {
@@ -1903,7 +1903,7 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
-  MUTEX_LOCKER(DatabaseCreateLock);
+  MUTEX_LOCKER(mutexLocker, DatabaseCreateLock);
 
   {
     auto unuser(server->_databasesProtector.use());
@@ -1951,7 +1951,7 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
   vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
   {
-    MUTEX_LOCKER(server->_databasesMutex);
+    MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
     auto oldLists = server->_databasesLists.load();
     decltype(oldLists) newLists = nullptr;
     try {
@@ -1992,7 +1992,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
   // the create lock makes sure no one else is creating a database while we're
   // inside
   // this function
-  MUTEX_LOCKER(DatabaseCreateLock);
+  MUTEX_LOCKER(mutexLocker, DatabaseCreateLock);
   {
     {
       auto unuser(server->_databasesProtector.use());
@@ -2098,7 +2098,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     }
 
     {
-      MUTEX_LOCKER(server->_databasesMutex);
+      MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
       auto oldLists = server->_databasesLists.load();
       decltype(oldLists) newLists = nullptr;
       try {
@@ -2161,7 +2161,7 @@ int TRI_DropByIdCoordinatorDatabaseServer(TRI_server_t* server,
                                           TRI_voc_tick_t id, bool force) {
   int res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
 
-  MUTEX_LOCKER(server->_databasesMutex);
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
   auto oldLists = server->_databasesLists.load();
   decltype(oldLists) newLists = nullptr;
   TRI_vocbase_t* vocbase = nullptr;
@@ -2211,7 +2211,7 @@ int TRI_DropDatabaseServer(TRI_server_t* server, char const* name,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  MUTEX_LOCKER(server->_databasesMutex);
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
 
   auto oldLists = server->_databasesLists.load();
   decltype(oldLists) newLists = nullptr;

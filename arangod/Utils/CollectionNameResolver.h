@@ -177,7 +177,7 @@ class CollectionNameResolver {
 
     std::string name;
     if (ServerState::instance()->isDBServer()) {
-      READ_LOCKER(_vocbase->_collectionsLock);
+      READ_LOCKER(readLocker, _vocbase->_collectionsLock);
 
       TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(
           TRI_LookupByKeyAssociativePointer(&_vocbase->_collectionsById, &cid));

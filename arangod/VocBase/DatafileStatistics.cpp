@@ -94,7 +94,7 @@ DatafileStatistics::DatafileStatistics()
 ////////////////////////////////////////////////////////////////////////////////
 
 DatafileStatistics::~DatafileStatistics() {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   
   for (auto& it : _stats) {
     delete it.second;
@@ -108,7 +108,7 @@ DatafileStatistics::~DatafileStatistics() {
 void DatafileStatistics::create(TRI_voc_fid_t fid) {
   auto stats = std::make_unique<DatafileStatisticsContainer>();
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
@@ -130,7 +130,7 @@ void DatafileStatistics::create(TRI_voc_fid_t fid, DatafileStatisticsContainer c
   auto stats = std::make_unique<DatafileStatisticsContainer>();
   *stats = src;
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
@@ -152,7 +152,7 @@ void DatafileStatistics::create(TRI_voc_fid_t fid, DatafileStatisticsContainer c
 void DatafileStatistics::remove(TRI_voc_fid_t fid) {
   LOG_TRACE("removing statistics for datafile %llu", (unsigned long long) fid);
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   _stats.erase(fid);
 }
@@ -162,7 +162,7 @@ void DatafileStatistics::remove(TRI_voc_fid_t fid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DatafileStatistics::update(TRI_voc_fid_t fid, DatafileStatisticsContainer const& src) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
@@ -182,7 +182,7 @@ void DatafileStatistics::update(TRI_voc_fid_t fid, DatafileStatisticsContainer c
 ////////////////////////////////////////////////////////////////////////////////
 
 void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
@@ -209,7 +209,7 @@ void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DatafileStatistics::replace(TRI_voc_fid_t fid, DatafileStatisticsContainer const& src) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
@@ -229,7 +229,7 @@ void DatafileStatistics::replace(TRI_voc_fid_t fid, DatafileStatisticsContainer 
 /////////////////////////////////////////////////////////////////////////////////
 
 void DatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, int64_t size) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
@@ -250,7 +250,7 @@ void DatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, int64_t
 /////////////////////////////////////////////////////////////////////////////////
 
 void DatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t number) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
@@ -272,7 +272,7 @@ void DatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t number) 
 DatafileStatisticsContainer DatafileStatistics::get(TRI_voc_fid_t fid) {
   DatafileStatisticsContainer result;
   {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
 
     auto it = _stats.find(fid);
 
@@ -294,7 +294,7 @@ DatafileStatisticsContainer DatafileStatistics::get(TRI_voc_fid_t fid) {
 DatafileStatisticsContainer DatafileStatistics::all() {
   DatafileStatisticsContainer result;
   {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
 
     for (auto& it : _stats) {
       result.update(*(it.second));

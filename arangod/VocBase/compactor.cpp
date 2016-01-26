@@ -1421,78 +1421,81 @@ void TRI_CompactorVocBase(void* data) {
       numCompacted = 0;
 
       try {
-        READ_LOCKER(vocbase->_collectionsLock);
+        READ_LOCKER(readLocker, vocbase->_collectionsLock);
         // copy all collections
         collections = vocbase->_collections;
       } catch (...) {
         collections.clear();
       }
 
+      bool worked;
+
       for (auto& collection : collections) {
-        if (!TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-          // if we can't acquire the read lock instantly, we continue directly
-          // we don't want to stall here for too long
-          continue;
-        }
+        {
+          TRY_READ_LOCKER(readLocker, collection->_lock);
 
-        TRI_document_collection_t* document = collection->_collection;
-
-        if (document == nullptr) {
-          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-          continue;
-        }
-
-        bool worked = false;
-        bool doCompact = document->_info.doCompact();
-
-        // for document collection, compactify datafiles
-        if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
-          // check whether someone else holds a read-lock on the compaction lock
-          if (!TRI_TryWriteLockReadWriteLock(&document->_compactionLock)) {
-            // someone else is holding the compactor lock, we'll not compact
-            TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+          if (! readLocker.isLocked()) {
+            // if we can't acquire the read lock instantly, we continue directly
+            // we don't want to stall here for too long
             continue;
           }
 
-          // read-unlock the compaction lock later
-          TRI_DEFER(TRI_WriteUnlockReadWriteLock(&document->_compactionLock));
+          TRI_document_collection_t* document = collection->_collection;
 
-          try {
-            if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <=
-                now) {
-              auto ce = document->ditches()->createCompactionDitch(__FILE__,
-                                                                   __LINE__);
-
-              if (ce == nullptr) {
-                // out of memory
-                LOG_WARNING(
-                    "out of memory when trying to create compaction ditch");
-              } else {
-                try {
-                  worked = CompactifyDocumentCollection(document);
-
-                  if (!worked) {
-                    // set compaction stamp
-                    document->_lastCompaction = now;
-                  }
-                  // if we worked, then we don't set the compaction stamp to
-                  // force
-                  // another round of compaction
-                } catch (...) {
-                  LOG_ERROR("an unknown exception occurred during compaction");
-                  // in case an error occurs, we must still free this ditch
-                }
-
-                document->ditches()->freeDitch(ce);
-              }
-            }
-          } catch (...) {
-            // in case an error occurs, we must still relase the lock
-            LOG_ERROR("an unknown exception occurred during compaction");
+          if (document == nullptr) {
+            continue;
           }
-        }
 
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+          worked = false;
+          bool doCompact = document->_info.doCompact();
+
+          // for document collection, compactify datafiles
+          if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
+            // check whether someone else holds a read-lock on the compaction lock
+            if (!TRI_TryWriteLockReadWriteLock(&document->_compactionLock)) {
+              // someone else is holding the compactor lock, we'll not compact
+              continue;
+            }
+
+            // read-unlock the compaction lock later
+            TRI_DEFER(TRI_WriteUnlockReadWriteLock(&document->_compactionLock));
+
+            try {
+              if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <=
+                  now) {
+                auto ce = document->ditches()->createCompactionDitch(__FILE__,
+                    __LINE__);
+
+                if (ce == nullptr) {
+                  // out of memory
+                  LOG_WARNING(
+                      "out of memory when trying to create compaction ditch");
+                } else {
+                  try {
+                    worked = CompactifyDocumentCollection(document);
+
+                    if (!worked) {
+                      // set compaction stamp
+                      document->_lastCompaction = now;
+                    }
+                    // if we worked, then we don't set the compaction stamp to
+                    // force
+                    // another round of compaction
+                  } catch (...) {
+                    LOG_ERROR("an unknown exception occurred during compaction");
+                    // in case an error occurs, we must still free this ditch
+                  }
+
+                  document->ditches()->freeDitch(ce);
+                }
+              }
+            } catch (...) {
+              // in case an error occurs, we must still relase the lock
+              LOG_ERROR("an unknown exception occurred during compaction");
+            }
+          }
+
+        } // end of lock
 
         if (worked) {
           ++numCompacted;

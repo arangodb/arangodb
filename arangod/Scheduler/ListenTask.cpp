@@ -75,7 +75,7 @@ ListenTask::~ListenTask() {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::isBound() const {
-  MUTEX_LOCKER(_changeLock);  // FIX_MUTEX ?
+  MUTEX_LOCKER(mutexLocker, _changeLock);  // FIX_MUTEX ?
 
   return _endpoint != nullptr && _endpoint->isConnected();
 }

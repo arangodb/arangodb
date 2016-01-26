@@ -477,7 +477,7 @@ void AgencyComm::cleanup() {
   while (true) {
     {
       bool busyFound = false;
-      WRITE_LOCKER(AgencyComm::_globalLock);
+      WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -507,7 +507,7 @@ void AgencyComm::cleanup() {
 
 bool AgencyComm::tryConnect() {
   {
-    WRITE_LOCKER(AgencyComm::_globalLock);
+    WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
     if (_globalEndpoints.size() == 0) {
       return false;
     }
@@ -546,7 +546,7 @@ bool AgencyComm::tryConnect() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AgencyComm::disconnect() {
-  WRITE_LOCKER(AgencyComm::_globalLock);
+  WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
   std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -574,7 +574,7 @@ bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
             endpointSpecification.c_str());
 
   {
-    WRITE_LOCKER(AgencyComm::_globalLock);
+    WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
     // check if we already have got this endpoint
     std::list<AgencyEndpoint*>::const_iterator it = _globalEndpoints.begin();
@@ -620,7 +620,7 @@ bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
 
 bool AgencyComm::hasEndpoint(std::string const& endpointSpecification) {
   {
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     // check if we have got this endpoint
     std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
@@ -650,7 +650,7 @@ std::vector<std::string> AgencyComm::getEndpoints() {
 
   {
     // iterate over the list of endpoints
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     std::list<AgencyEndpoint*>::const_iterator it =
         AgencyComm::_globalEndpoints.begin();
@@ -677,7 +677,7 @@ std::string AgencyComm::getEndpointsString() {
 
   {
     // iterate over the list of endpoints
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     std::list<AgencyEndpoint*>::const_iterator it =
         AgencyComm::_globalEndpoints.begin();
@@ -1335,7 +1335,7 @@ AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
 
   while (1) {
     {
-      WRITE_LOCKER(AgencyComm::_globalLock);
+      WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
       size_t const numEndpoints TRI_UNUSED = _globalEndpoints.size();
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
@@ -1391,7 +1391,7 @@ AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
 
 void AgencyComm::requeueEndpoint(AgencyEndpoint* agencyEndpoint,
                                  bool wasWorking) {
-  WRITE_LOCKER(AgencyComm::_globalLock);
+  WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
   size_t const numEndpoints TRI_UNUSED = _globalEndpoints.size();
 
   TRI_ASSERT(agencyEndpoint != nullptr);
@@ -1443,7 +1443,7 @@ bool AgencyComm::sendWithFailover(
   size_t numEndpoints;
 
   {
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
     numEndpoints = AgencyComm::_globalEndpoints.size();
 
     if (numEndpoints == 0) {

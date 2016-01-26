@@ -143,7 +143,7 @@ void HttpServer::stop() {
     HttpCommTask* task = nullptr;
 
     {
-      MUTEX_LOCKER(_commTasksLock);
+      MUTEX_LOCKER(mutexLocker, _commTasksLock);
 
       if (_commTasks.empty()) {
         break;
@@ -165,7 +165,7 @@ void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
   HttpCommTask* task = createCommTask(s, info);
 
   try {
-    MUTEX_LOCKER(_commTasksLock);
+    MUTEX_LOCKER(mutexLocker, _commTasksLock);
     _commTasks.emplace(task);
   } catch (...) {
     // destroy the task to prevent a leak
@@ -183,7 +183,7 @@ void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
-  MUTEX_LOCKER(_commTasksLock);
+  MUTEX_LOCKER(mutexLocker, _commTasksLock);
   _commTasks.erase(task);
 }
 
@@ -192,7 +192,7 @@ void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
-  MUTEX_LOCKER(_commTasksLock);
+  MUTEX_LOCKER(mutexLocker, _commTasksLock);
   _commTasks.erase(task);
 }
 

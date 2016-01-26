@@ -348,7 +348,7 @@ std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
   uint64_t keyValue;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     // user has not specified a key, generate one based on algorithm
     if (_lastValue < _offset) {
@@ -391,7 +391,7 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
   uint64_t intValue = arangodb::basics::StringUtils::uint64(key);
 
   if (intValue > _lastValue) {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     // update our last value
     _lastValue = intValue;
   }

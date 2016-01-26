@@ -95,12 +95,12 @@ TRI_document_collection_t::~TRI_document_collection_t() {
 }
  
 void TRI_document_collection_t::setNextCompactionStartIndex(size_t index) {
-  MUTEX_LOCKER(_compactionStatusLock);
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   _nextCompactionStartIndex = index;
 }
 
 size_t TRI_document_collection_t::getNextCompactionStartIndex() {
-  MUTEX_LOCKER(_compactionStatusLock);
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   return _nextCompactionStartIndex;
 }
 
@@ -110,7 +110,7 @@ void TRI_document_collection_t::setCompactionStatus(char const* reason) {
   time_t tt = time(nullptr);
   TRI_gmtime(tt, &tb);
 
-  MUTEX_LOCKER(_compactionStatusLock);
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   _lastCompactionStatus = reason;
 
   strftime(&_lastCompactionStamp[0], sizeof(_lastCompactionStamp),
@@ -123,7 +123,7 @@ void TRI_document_collection_t::getCompactionStatus(char const*& reason,
   if (maxSize > sizeof(_lastCompactionStamp)) {
     maxSize = sizeof(_lastCompactionStamp);
   }
-  MUTEX_LOCKER(_compactionStatusLock);
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   reason = _lastCompactionStatus;
   memcpy(dst, &_lastCompactionStamp[0], maxSize);
 }
@@ -903,7 +903,7 @@ static int CleanupIndexes(TRI_document_collection_t* document) {
   // cleaning indexes is expensive, so only do it if the flag is set for the
   // collection
   if (document->_cleanupIndexes > 0) {
-    WRITE_LOCKER(document->_lock);
+    WRITE_LOCKER(writeLocker, document->_lock);
 
     for (auto& idx : document->allIndexes()) {
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
@@ -3518,7 +3518,7 @@ void TRI_UpdateRevisionDocumentCollection(TRI_document_collection_t* document,
 
 bool TRI_IsFullyCollectedDocumentCollection(
     TRI_document_collection_t* document) {
-  READ_LOCKER(document->_lock);
+  READ_LOCKER(readLocker, document->_lock);
 
   int64_t uncollected = document->_uncollectedLogfileEntries.load();
 
@@ -3633,9 +3633,9 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
   TRI_vocbase_t* vocbase = document->_vocbase;
   arangodb::Index* found = nullptr;
   {
-    READ_LOCKER(document->_vocbase->_inventoryLock);
+    READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-    WRITE_LOCKER(document->_lock);
+    WRITE_LOCKER(writeLocker, document->_lock);
 
     arangodb::aql::QueryCache::instance()->invalidate(
         vocbase, document->_info.namec_str());
@@ -3921,9 +3921,9 @@ arangodb::Index* TRI_LookupCapConstraintDocumentCollection(
 arangodb::Index* TRI_EnsureCapConstraintDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, size_t count, int64_t size, bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateCapConstraintDocumentCollection(trx, document, count, size,
                                                    iid, created);
@@ -4223,9 +4223,9 @@ arangodb::Index* TRI_EnsureGeoIndex1DocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::string const& location, bool geoJson,
     bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx =
       CreateGeoIndexDocumentCollection(trx, document, location, std::string(),
@@ -4254,9 +4254,9 @@ arangodb::Index* TRI_EnsureGeoIndex2DocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::string const& latitude,
     std::string const& longitude, bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateGeoIndexDocumentCollection(
       trx, document, std::string(), latitude, longitude, false, iid, created);
@@ -4397,9 +4397,9 @@ arangodb::Index* TRI_EnsureHashIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
     bool unique, bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateHashIndexDocumentCollection(trx, document, attributes, iid,
                                                sparse, unique, created);
@@ -4538,9 +4538,9 @@ arangodb::Index* TRI_EnsureSkiplistIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
     bool unique, bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateSkiplistIndexDocumentCollection(
       trx, document, attributes, iid, sparse, unique, created);
@@ -4721,9 +4721,9 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::string const& attribute, int minWordLength,
     bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateFulltextIndexDocumentCollection(trx, document, attribute,
                                                    minWordLength, iid, created);

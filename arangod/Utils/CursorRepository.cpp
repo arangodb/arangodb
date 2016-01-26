@@ -72,7 +72,7 @@ CursorRepository::~CursorRepository() {
   }
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it : _cursors) {
       delete it.second;
@@ -112,7 +112,7 @@ JsonCursor* CursorRepository::createFromJson(TRI_json_t* json, size_t batchSize,
   cursor->use();
 
   try {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     _cursors.emplace(std::make_pair(id, cursor));
     return cursor;
   } catch (...) {
@@ -137,7 +137,7 @@ ExportCursor* CursorRepository::createFromExport(
   cursor->use();
 
   try {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     _cursors.emplace(std::make_pair(id, cursor));
     return cursor;
   } catch (...) {
@@ -154,7 +154,7 @@ bool CursorRepository::remove(CursorId id) {
   arangodb::Cursor* cursor = nullptr;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _cursors.find(id);
     if (it == _cursors.end()) {
@@ -196,7 +196,7 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
   busy = false;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _cursors.find(id);
     if (it == _cursors.end()) {
@@ -228,7 +228,7 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
 
 void CursorRepository::release(Cursor* cursor) {
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     TRI_ASSERT(cursor->isUsed());
     cursor->release();
@@ -250,7 +250,7 @@ void CursorRepository::release(Cursor* cursor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CursorRepository::containsUsedCursor() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   for (auto it : _cursors) {
     if (it.second->isUsed()) {
@@ -272,7 +272,7 @@ bool CursorRepository::garbageCollect(bool force) {
   auto const now = TRI_microtime();
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it = _cursors.begin(); it != _cursors.end(); /* no hoisting */) {
       auto cursor = (*it).second;

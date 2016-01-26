@@ -1639,7 +1639,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  READ_LOCKER(_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
   // look up the collection
   try {
@@ -3220,7 +3220,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
   TRI_InitConfigurationReplicationApplier(&config);
 
   {
-    READ_LOCKER(_vocbase->_replicationApplier->_statusLock);
+    READ_LOCKER(readLocker, _vocbase->_replicationApplier->_statusLock);
     TRI_CopyConfigurationReplicationApplier(
         &_vocbase->_replicationApplier->_configuration, &config);
   }
@@ -3254,7 +3254,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   VPackSlice const body = parsedBody->slice();
 
   {
-    READ_LOCKER(_vocbase->_replicationApplier->_statusLock);
+    READ_LOCKER(readLocker, _vocbase->_replicationApplier->_statusLock);
     TRI_CopyConfigurationReplicationApplier(
         &_vocbase->_replicationApplier->_configuration, &config);
   }

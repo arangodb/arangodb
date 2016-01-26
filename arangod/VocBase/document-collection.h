@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/ReadWriteLockCPP11.h"
+#include "Basics/ReadWriteLock.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
@@ -243,7 +243,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
   // ...........................................................................
 
   // TRI_read_write_lock_t        _lock;
-  arangodb::basics::ReadWriteLockCPP11 _lock;
+  arangodb::basics::ReadWriteLock _lock;
 
  private:
   VocShaper* _shaper;

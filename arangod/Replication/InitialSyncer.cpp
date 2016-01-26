@@ -40,7 +40,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-#include "velocypack/Builder.h"
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -1759,7 +1759,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
                                   " index(es) for " + collectionMsg;
           setProgress(progress);
 
-          READ_LOCKER(_vocbase->_inventoryLock);
+          READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
           try {
             arangodb::CollectionGuard guard(_vocbase, col->_cid, false);

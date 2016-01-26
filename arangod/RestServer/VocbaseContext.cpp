@@ -73,7 +73,7 @@ double VocbaseContext::ServerSessionTtl =
 void VocbaseContext::createSid(std::string const& database,
                                std::string const& sid,
                                std::string const& username) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   // find entries for database first
   auto it = SidCache.find(database);
@@ -92,7 +92,7 @@ void VocbaseContext::createSid(std::string const& database,
 ////////////////////////////////////////////////////////////////////////////////
 
 void VocbaseContext::clearSid(std::string const& database) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   SidCache.erase(database);
 }
@@ -103,7 +103,7 @@ void VocbaseContext::clearSid(std::string const& database) {
 
 void VocbaseContext::clearSid(std::string const& database,
                               std::string const& sid) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   auto it = SidCache.find(database);
 
@@ -121,7 +121,7 @@ void VocbaseContext::clearSid(std::string const& database,
 
 double VocbaseContext::accessSid(std::string const& database,
                                  std::string const& sid) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   auto it = SidCache.find(database);
 
@@ -249,7 +249,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   char const* sid = _request->cookieValue(cn, found);
 
   if (found) {
-    MUTEX_LOCKER(SidLock);
+    MUTEX_LOCKER(mutexLocker, SidLock);
 
     auto it = SidCache.find(_vocbase->_name);
 

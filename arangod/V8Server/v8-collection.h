@@ -25,15 +25,9 @@
 #define ARANGOD_V8_SERVER_V8_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Utils/CollectionNameResolver.h"
 #include "v8-vocbase.h"
 #include "VocBase/server.h"
-#include "Utils/CollectionNameResolver.h"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a coordinator collection
-////////////////////////////////////////////////////////////////////////////////
-
-void FreeCoordinatorCollection(TRI_vocbase_col_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection

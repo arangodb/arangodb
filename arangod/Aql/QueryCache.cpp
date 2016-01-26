@@ -385,7 +385,7 @@ QueryCache::~QueryCache() { invalidate(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 VPackBuilder QueryCache::properties() {
-  MUTEX_LOCKER(_propertiesLock);
+  MUTEX_LOCKER(mutexLocker, _propertiesLock);
 
   VPackBuilder json;
   json.add(VPackValue(VPackValueType::Object));
@@ -400,7 +400,7 @@ VPackBuilder QueryCache::properties() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QueryCache::properties(std::pair<std::string, size_t>& result) {
-  MUTEX_LOCKER(_propertiesLock);
+  MUTEX_LOCKER(mutexLocker, _propertiesLock);
 
   result.first = modeString(mode());
   result.second = MaxResults;
@@ -412,7 +412,7 @@ void QueryCache::properties(std::pair<std::string, size_t>& result) {
 
 void QueryCache::setProperties(
     std::pair<std::string, size_t> const& properties) {
-  MUTEX_LOCKER(_propertiesLock);
+  MUTEX_LOCKER(mutexLocker, _propertiesLock);
 
   setMode(properties.first);
   setMaxResults(properties.second);
@@ -460,7 +460,7 @@ QueryCacheResultEntry* QueryCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
                                           char const* queryString,
                                           size_t queryStringLength) {
   auto const part = getPart(vocbase);
-  READ_LOCKER(_entriesLock[part]);
+  READ_LOCKER(readLocker, _entriesLock[part]);
 
   auto it = _entries[part].find(vocbase);
 
@@ -493,7 +493,7 @@ QueryCacheResultEntry* QueryCache::store(
   auto entry = std::make_unique<QueryCacheResultEntry>(
       hash, queryString, queryStringLength, result, collections);
 
-  WRITE_LOCKER(_entriesLock[part]);
+  WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
   auto it = _entries[part].find(vocbase);
 
@@ -516,7 +516,7 @@ QueryCacheResultEntry* QueryCache::store(
 void QueryCache::invalidate(TRI_vocbase_t* vocbase,
                             std::vector<char const*> const& collections) {
   auto const part = getPart(vocbase);
-  WRITE_LOCKER(_entriesLock[part]);
+  WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
   auto it = _entries[part].find(vocbase);
 
@@ -534,7 +534,7 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase,
 
 void QueryCache::invalidate(TRI_vocbase_t* vocbase, char const* collection) {
   auto const part = getPart(vocbase);
-  WRITE_LOCKER(_entriesLock[part]);
+  WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
   auto it = _entries[part].find(vocbase);
 
@@ -555,7 +555,7 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase) {
 
   {
     auto const part = getPart(vocbase);
-    WRITE_LOCKER(_entriesLock[part]);
+    WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
     auto it = _entries[part].find(vocbase);
 
@@ -578,7 +578,7 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase) {
 
 void QueryCache::invalidate() {
   for (unsigned int i = 0; i < NumberOfParts; ++i) {
-    WRITE_LOCKER(_entriesLock[i]);
+    WRITE_LOCKER(writeLocker, _entriesLock[i]);
 
     // must invalidate all entries now because disabling the cache will turn off
     // cache invalidation when modifying data. turning on the cache later would
@@ -614,7 +614,7 @@ QueryCache* QueryCache::instance() { return &Instance; }
 
 void QueryCache::enforceMaxResults(size_t value) {
   for (unsigned int i = 0; i < NumberOfParts; ++i) {
-    WRITE_LOCKER(_entriesLock[i]);
+    WRITE_LOCKER(writeLocker, _entriesLock[i]);
 
     for (auto& it : _entries[i]) {
       it.second->enforceMaxResults(value);

@@ -41,6 +41,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
+
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
 // only...
@@ -51,14 +52,12 @@ using namespace arangodb;
 
 using arangodb::basics::JsonHelper;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single instance of ClusterInfo - will live as long as the server is
 /// running
 ////////////////////////////////////////////////////////////////////////////////
 
 static ClusterInfo Instance;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a local helper to report errors and messages
@@ -303,7 +302,7 @@ ClusterInfo::~ClusterInfo() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
-  MUTEX_LOCKER(_idLock);
+  MUTEX_LOCKER(mutexLocker, _idLock);
 
   if (_uniqid._currentValue + count - 1 >= _uniqid._upperValue) {
     uint64_t fetch = count;
@@ -366,19 +365,19 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
     {
       size_t expectedSize;
       {
-        READ_LOCKER(_DBServersProt.lock);
+        READ_LOCKER(readLocker, _DBServersProt.lock);
         expectedSize = _DBServers.size();
       }
 
       // look up database by name:
 
-      READ_LOCKER(_plannedDatabasesProt.lock);
+      READ_LOCKER(readLocker, _plannedDatabasesProt.lock);
       // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
       auto it = _plannedDatabases.find(databaseID);
 
       if (it != _plannedDatabases.end()) {
         // found the database in Plan
-        READ_LOCKER(_currentDatabasesProt.lock);
+        READ_LOCKER(readLocker, _currentDatabasesProt.lock);
         // _currentDatabases is
         //     a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
         auto it2 = _currentDatabases.find(databaseID);
@@ -422,13 +421,13 @@ std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
 
   size_t expectedSize;
   {
-    READ_LOCKER(_DBServersProt.lock);
+    READ_LOCKER(readLocker, _DBServersProt.lock);
     expectedSize = _DBServers.size();
   }
 
   {
-    READ_LOCKER(_plannedDatabasesProt.lock);
-    READ_LOCKER(_currentDatabasesProt.lock);
+    READ_LOCKER(readLockerPlanned, _plannedDatabasesProt.lock);
+    READ_LOCKER(readLockerCurrent, _currentDatabasesProt.lock);
     // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
     auto it = _plannedDatabases.begin();
 
@@ -477,7 +476,7 @@ static std::string const prefixPlannedDatabases = "Plan/Databases";
 
 void ClusterInfo::loadPlannedDatabases() {
   uint64_t storedVersion = _plannedDatabasesProt.version;
-  MUTEX_LOCKER(_plannedDatabasesProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _plannedDatabasesProt.mutex);
   if (_plannedDatabasesProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -516,7 +515,7 @@ void ClusterInfo::loadPlannedDatabases() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_plannedDatabasesProt.lock);
+      WRITE_LOCKER(writeLocker, _plannedDatabasesProt.lock);
       _plannedDatabases.swap(newDatabases);
       _plannedDatabasesProt.version++;  // such that others notice our change
       _plannedDatabasesProt.isValid = true;  // will never be reset to false
@@ -566,7 +565,7 @@ static std::string const prefixCurrentDatabases = "Current/Databases";
 
 void ClusterInfo::loadCurrentDatabases() {
   uint64_t storedVersion = _currentDatabasesProt.version;
-  MUTEX_LOCKER(_currentDatabasesProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _currentDatabasesProt.mutex);
   if (_currentDatabasesProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -631,7 +630,7 @@ void ClusterInfo::loadCurrentDatabases() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_currentDatabasesProt.lock);
+      WRITE_LOCKER(writeLocker, _currentDatabasesProt.lock);
       _currentDatabases.swap(newDatabases);
       _currentDatabasesProt.version++;  // such that others notice our change
       _currentDatabasesProt.isValid = true;  // will never be reset to false
@@ -656,7 +655,7 @@ static std::string const prefixPlannedCollections = "Plan/Collections";
 
 void ClusterInfo::loadPlannedCollections() {
   uint64_t storedVersion = _plannedCollectionsProt.version;
-  MUTEX_LOCKER(_plannedCollectionsProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _plannedCollectionsProt.mutex);
   if (_plannedCollectionsProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -747,7 +746,7 @@ void ClusterInfo::loadPlannedCollections() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_plannedCollectionsProt.lock);
+      WRITE_LOCKER(writeLocker, _plannedCollectionsProt.lock);
       _plannedCollections.swap(newCollections);
       _shards.swap(newShards);
       _shardKeys.swap(newShardKeys);
@@ -780,7 +779,7 @@ std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
 
   while (true) {  // left by break
     {
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
       // look up database by id
       AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
@@ -836,7 +835,7 @@ std::vector<std::shared_ptr<CollectionInfo>> const ClusterInfo::getCollections(
   // always reload
   loadPlannedCollections();
 
-  READ_LOCKER(_plannedCollectionsProt.lock);
+  READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
   // look up database by id
   AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
@@ -870,7 +869,7 @@ std::vector<std::shared_ptr<CollectionInfo>> const ClusterInfo::getCollections(
 static std::string const prefixCurrentCollections = "Current/Collections";
 void ClusterInfo::loadCurrentCollections() {
   uint64_t storedVersion = _currentCollectionsProt.version;
-  MUTEX_LOCKER(_currentCollectionsProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _currentCollectionsProt.mutex);
   if (_currentCollectionsProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -956,7 +955,7 @@ void ClusterInfo::loadCurrentCollections() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_currentCollectionsProt.lock);
+      WRITE_LOCKER(writeLocker, _currentCollectionsProt.lock);
       _currentCollections.swap(newCollections);
       _shardIds.swap(newShardIds);
       _currentCollectionsProt.version++;  // such that others notice our change
@@ -989,7 +988,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
 
   while (true) {
     {
-      READ_LOCKER(_currentCollectionsProt.lock);
+      READ_LOCKER(readLocker, _currentCollectionsProt.lock);
       // look up database by id
       AllCollectionsCurrent::const_iterator it =
           _currentCollections.find(databaseID);
@@ -1226,7 +1225,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     // check if a collection with the same name is already planned
     loadPlannedCollections();
 
-    READ_LOCKER(_plannedCollectionsProt.lock);
+    READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
     AllCollections::const_iterator it = _plannedCollections.find(databaseName);
     if (it != _plannedCollections.end()) {
       std::string const name =
@@ -1616,7 +1615,7 @@ int ClusterInfo::ensureIndexCoordinator(
       // that getCollection fetches the read lock and releases it before
       // we get it again.
       //
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
 
       if (c->empty()) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
@@ -1866,7 +1865,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       std::shared_ptr<CollectionInfo> c =
           getCollection(databaseName, collectionID);
 
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
 
       if (c->empty()) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
@@ -2022,7 +2021,7 @@ static std::string const prefixServers = "Current/ServersRegistered";
 
 void ClusterInfo::loadServers() {
   uint64_t storedVersion = _serversProt.version;
-  MUTEX_LOCKER(_serversProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
   if (_serversProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -2058,7 +2057,7 @@ void ClusterInfo::loadServers() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_serversProt.lock);
+      WRITE_LOCKER(writeLocker, _serversProt.lock);
       _servers.swap(newServers);
       _serversProt.version++;       // such that others notice our change
       _serversProt.isValid = true;  // will never be reset to false
@@ -2089,7 +2088,7 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
 
   while (true) {
     {
-      READ_LOCKER(_serversProt.lock);
+      READ_LOCKER(readLocker, _serversProt.lock);
       // _servers is a map-type <ServerId, std::string>
       auto it = _servers.find(serverID);
 
@@ -2125,7 +2124,7 @@ std::string ClusterInfo::getServerName(std::string const& endpoint) {
 
   while (true) {
     {
-      READ_LOCKER(_serversProt.lock);
+      READ_LOCKER(readLocker, _serversProt.lock);
       for (auto const& it : _servers) {
         if (it.second == endpoint) {
           return it.first;
@@ -2153,7 +2152,7 @@ static std::string const prefixCurrentCoordinators = "Current/Coordinators";
 
 void ClusterInfo::loadCurrentCoordinators() {
   uint64_t storedVersion = _coordinatorsProt.version;
-  MUTEX_LOCKER(_coordinatorsProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _coordinatorsProt.mutex);
   if (_coordinatorsProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -2186,7 +2185,7 @@ void ClusterInfo::loadCurrentCoordinators() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_coordinatorsProt.lock);
+      WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
       _coordinators.swap(newCoordinators);
       _coordinatorsProt.version++;       // such that others notice our change
       _coordinatorsProt.isValid = true;  // will never be reset to false
@@ -2210,7 +2209,7 @@ static std::string const prefixCurrentDBServers = "Current/DBServers";
 
 void ClusterInfo::loadCurrentDBServers() {
   uint64_t storedVersion = _DBServersProt.version;
-  MUTEX_LOCKER(_DBServersProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _DBServersProt.mutex);
   if (_DBServersProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -2243,7 +2242,7 @@ void ClusterInfo::loadCurrentDBServers() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_DBServersProt.lock);
+      WRITE_LOCKER(writeLocker, _DBServersProt.lock);
       _DBServers.swap(newDBServers);
       _DBServersProt.version++;       // such that others notice our change
       _DBServersProt.isValid = true;  // will never be reset to false
@@ -2274,7 +2273,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
   while (true) {
     {
       // return a consistent state of servers
-      READ_LOCKER(_DBServersProt.lock);
+      READ_LOCKER(readLocker, _DBServersProt.lock);
 
       result.reserve(_DBServers.size());
 
@@ -2351,7 +2350,7 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
 
   while (true) {
     {
-      READ_LOCKER(_currentCollectionsProt.lock);
+      READ_LOCKER(readLocker, _currentCollectionsProt.lock);
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
@@ -2386,7 +2385,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   while (true) {
     {
       // Get the sharding keys and the number of shards:
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
       // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
       auto it = _shards.find(collectionID);
 
@@ -2439,7 +2438,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
   while (true) {
     {
       // Get the sharding keys and the number of shards:
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
       // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
       auto it = _shards.find(collectionID);
 
@@ -2500,7 +2499,7 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
   while (true) {
     {
       // return a consistent state of servers
-      READ_LOCKER(_coordinatorsProt.lock);
+      READ_LOCKER(readLocker, _coordinatorsProt.lock);
 
       result.reserve(_coordinators.size());
 
