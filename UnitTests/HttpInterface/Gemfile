@@ -1,5 +1,5 @@
 source :rubygems
 
 gem "httparty", "~> 0.8.1"
-gem "rspec", "~> 2.8.0"
-gem "rspec-core", "~> 2.8.0"
+gem "rspec", "~> 2.14.0"
+gem "rspec-core", "~> 2.14.0"
