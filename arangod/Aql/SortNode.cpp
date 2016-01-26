@@ -193,6 +193,6 @@ double SortNode::estimateCost(size_t& nrItems) const {
   if (nrItems <= 3.0) {
     return depCost + nrItems;
   }
-  return depCost + nrItems * log(nrItems);
+  return depCost + nrItems * log(static_cast<double>(nrItems));
 }
 
