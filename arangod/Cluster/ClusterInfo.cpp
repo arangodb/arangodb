@@ -1563,14 +1563,14 @@ int ClusterInfo::ensureIndexCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     VPackSlice const& slice, bool create,
     bool (*compare)(VPackSlice const&, VPackSlice const&),
-    TRI_json_t*& resultJson, std::string& errorMsg, double timeout) {
+    VPackBuilder& resultBuilder, std::string& errorMsg, double timeout) {
   AgencyComm ac;
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  resultJson = nullptr;
+  TRI_ASSERT(resultBuilder.isEmpty());
   int numberOfShards = 0;
 
   // check index id
@@ -1646,6 +1646,7 @@ int ClusterInfo::ensureIndexCoordinator(
             // compare index types first. they must match
             continue;
           }
+          TRI_ASSERT(other.isObject());
 
           hasSameIndexType = true;
 
@@ -1653,11 +1654,14 @@ int ClusterInfo::ensureIndexCoordinator(
 
           if (isSame) {
             // found an existing index...
-            resultJson = arangodb::basics::VelocyPackHelper::velocyPackToJson(
-                other);
-            TRI_Insert3ObjectJson(
-                TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
-                TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+            {
+              // Copy over all elements in slice.
+              VPackObjectBuilder b(&resultBuilder);
+              for (auto const& entry : VPackObjectIterator(slice)) {
+                resultBuilder.add(entry.key.copyString(), entry.value);
+              }
+              resultBuilder.add("isNewlyCreated", VPackValue(false));
+            }
             return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
           }
         }
@@ -1680,7 +1684,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
       // no existing index found.
       if (!create) {
-        TRI_ASSERT(resultJson == nullptr);
+        TRI_ASSERT(resultBuilder.isEmpty());
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
 
@@ -1810,11 +1814,14 @@ int ClusterInfo::ensureIndexCoordinator(
           VPackValueLength l = indexFinder.length();
           indexFinder = indexFinder.at(l - 1); // Get the last index
           TRI_ASSERT(indexFinder.isObject());
-          resultJson = arangodb::basics::VelocyPackHelper::velocyPackToJson(indexFinder);
-          TRI_Insert3ObjectJson(
-              TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
-              TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-
+          {
+            // Copy over all elements in slice.
+            VPackObjectBuilder b(&resultBuilder);
+            for (auto const& entry : VPackObjectIterator(slice)) {
+              resultBuilder.add(entry.key.copyString(), entry.value);
+            }
+            resultBuilder.add("isNewlyCreated", VPackValue(true));
+          }
           loadCurrentCollections();
 
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
@@ -1825,7 +1832,6 @@ int ClusterInfo::ensureIndexCoordinator(
     res = ac.watchValue("Current/Version", index, interval, false);
     index = res._index;
   }
-
 
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }

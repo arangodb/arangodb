@@ -88,21 +88,15 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   int res = TRI_ERROR_NO_ERROR;
   VPackBuilder oldBuilder;
-  try {
-    res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
-  }
+  res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
   }
 
   VPackBuilder newBuilder;
-  try {
-    res = TRI_V8ToVPack(isolate, newBuilder, args[2], false);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to VPack");
-  }
+  res = TRI_V8ToVPack(isolate, newBuilder, args[2], false);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to VPack");
   }
@@ -528,9 +522,9 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const key = TRI_ObjectToString(args[0]);
 
   VPackBuilder builder;
-  bool ok = TRI_V8ToVPack(isolate, builder, args[1], false);
+  int res = TRI_V8ToVPack(isolate, builder, args[1], false);
 
-  if (!ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <value> to JSON");
   }
 

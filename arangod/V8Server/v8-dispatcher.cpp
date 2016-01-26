@@ -192,8 +192,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto parameters = std::make_shared<VPackBuilder>();
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("params"))) {
-    TRI_V8ToVPack(isolate, *parameters, obj->Get(TRI_V8_ASCII_STRING("params")),
-                  false);
+    int res = TRI_V8ToVPack(isolate, *parameters,
+                            obj->Get(TRI_V8_ASCII_STRING("params")), false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
   TRI_GET_GLOBALS();

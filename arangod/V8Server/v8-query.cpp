@@ -382,7 +382,10 @@ static TRI_index_operator_t* SetupExampleSkiplist(
 
       v8::Handle<v8::Value> value = example->Get(key);
 
-      TRI_V8ToVPack(isolate, *builder, value, false);
+      int res = TRI_V8ToVPack(isolate, *builder, value, false);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return nullptr;
+      }
     }
 
   } catch (...) {

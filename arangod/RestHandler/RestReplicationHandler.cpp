@@ -1751,13 +1751,10 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
-    TRI_json_t* res_json = nullptr;
+    VPackBuilder tmp;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
-                                     arangodb::Index::Compare, res_json,
+                                     arangodb::Index::Compare, tmp,
                                      errorMsg, 3600.0);
-    if (res_json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, res_json);
-    }
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not create index: " + std::string(TRI_errno_string(res));
       break;

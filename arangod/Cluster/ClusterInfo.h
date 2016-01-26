@@ -680,8 +680,9 @@ class ClusterInfo {
   int ensureIndexCoordinator(
       std::string const& databaseName, std::string const& collectionID,
       arangodb::velocypack::Slice const& slice, bool create,
-      bool (*compare)(arangodb::velocypack::Slice const&, arangodb::velocypack::Slice const&),
-      TRI_json_t*& resultJson, std::string& errorMsg, double timeout);
+      bool (*compare)(arangodb::velocypack::Slice const&,
+                      arangodb::velocypack::Slice const&),
+      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
@@ -691,7 +692,7 @@ class ClusterInfo {
       std::string const& databaseName, std::string const& collectionID,
       TRI_json_t const* json, bool create,
       bool (*compare)(TRI_json_t const*, TRI_json_t const*),
-      TRI_json_t*& resultJson, std::string& errorMsg, double timeout);
+      TRI_json_t*& resultJson, std::string& errorMsg, double timeout) = delete;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
