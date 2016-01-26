@@ -33,8 +33,8 @@
 #include "Dispatcher/Job.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ int Dispatcher::addJob(std::unique_ptr<Job>& job) {
   job->requestStatisticsAgentSetQueueStart();
 
   // do not start new jobs if we are already shutting down
-  if (_stopping.load(memory_order_relaxed)) {
+  if (_stopping.load(std::memory_order_relaxed)) {
     return TRI_ERROR_DISPATCHER_IS_STOPPING;
   }
 

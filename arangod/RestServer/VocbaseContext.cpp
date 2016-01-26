@@ -22,9 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
-
-#include "Basics/MutexLocker.h"
 #include "Basics/logging.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Rest/ConnectionInfo.h"
@@ -32,17 +31,16 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex SidLock;
+static arangodb::basics::Mutex SidLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid cache
@@ -75,7 +73,7 @@ double VocbaseContext::ServerSessionTtl =
 void VocbaseContext::createSid(std::string const& database,
                                std::string const& sid,
                                std::string const& username) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   // find entries for database first
   auto it = SidCache.find(database);
@@ -94,7 +92,7 @@ void VocbaseContext::createSid(std::string const& database,
 ////////////////////////////////////////////////////////////////////////////////
 
 void VocbaseContext::clearSid(std::string const& database) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   SidCache.erase(database);
 }
@@ -105,7 +103,7 @@ void VocbaseContext::clearSid(std::string const& database) {
 
 void VocbaseContext::clearSid(std::string const& database,
                               std::string const& sid) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   auto it = SidCache.find(database);
 
@@ -123,7 +121,7 @@ void VocbaseContext::clearSid(std::string const& database,
 
 double VocbaseContext::accessSid(std::string const& database,
                                  std::string const& sid) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   auto it = SidCache.find(database);
 
@@ -251,7 +249,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   char const* sid = _request->cookieValue(cn, found);
 
   if (found) {
-    MUTEX_LOCKER(SidLock);
+    MUTEX_LOCKER(mutexLocker, SidLock);
 
     auto it = SidCache.find(_vocbase->_name);
 
@@ -282,7 +280,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
 
   char const* auth = _request->header("authorization", found);
 
-  if (!found || !TRI_CaseEqualString2(auth, "basic ", 6)) {
+  if (!found || !TRI_CaseEqualString(auth, "basic ", 6)) {
     return HttpResponse::UNAUTHORIZED;
   }
 
@@ -358,7 +356,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   if (mustChange) {
     if ((_request->requestType() == HttpRequest::HTTP_REQUEST_PUT ||
          _request->requestType() == HttpRequest::HTTP_REQUEST_PATCH) &&
-        TRI_EqualString2(_request->requestPath(), "/_api/user/", 11)) {
+        TRI_EqualString(_request->requestPath(), "/_api/user/", 11)) {
       return HttpResponse::OK;
     }
 

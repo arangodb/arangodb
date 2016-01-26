@@ -159,34 +159,34 @@ class VocShaper : public Shaper {
   TRI_document_collection_t* _collection;
 
   // attribute paths
-  triagens::basics::Mutex _attributePathsCreateLock;
+  arangodb::basics::Mutex _attributePathsCreateLock;
 
-  triagens::basics::ReadWriteLock _attributePathsByNameLock;
+  arangodb::basics::ReadWriteLock _attributePathsByNameLock;
   TRI_associative_pointer_t _attributePathsByName;
 
-  triagens::basics::ReadWriteLock _attributePathsByPidLock;
+  arangodb::basics::ReadWriteLock _attributePathsByPidLock;
   TRI_associative_pointer_t _attributePathsByPid;
 
   // attributes
-  triagens::basics::Mutex _attributeCreateLock;
+  arangodb::basics::Mutex _attributeCreateLock;
 
-  triagens::basics::ReadWriteLock _attributeNamesLock;
+  arangodb::basics::ReadWriteLock _attributeNamesLock;
   TRI_associative_pointer_t _attributeNames;
 
-  triagens::basics::ReadWriteLock _attributeIdsLock;
+  arangodb::basics::ReadWriteLock _attributeIdsLock;
   TRI_associative_pointer_t _attributeIds;
 
   // shapes
-  triagens::basics::Mutex _shapeCreateLock;
+  arangodb::basics::Mutex _shapeCreateLock;
 
-  triagens::basics::ReadWriteLock _shapeDictionaryLock;
+  arangodb::basics::ReadWriteLock _shapeDictionaryLock;
   TRI_associative_pointer_t _shapeDictionary;
 
-  triagens::basics::ReadWriteLock _shapeIdsLock;
+  arangodb::basics::ReadWriteLock _shapeIdsLock;
   TRI_associative_pointer_t _shapeIds;
 
   // accessors
-  triagens::basics::ReadWriteLock _accessorLock[NUM_SHAPE_ACCESSORS];
+  arangodb::basics::ReadWriteLock _accessorLock[NUM_SHAPE_ACCESSORS];
   TRI_associative_pointer_t _accessors[NUM_SHAPE_ACCESSORS];
 
   TRI_shape_pid_t _nextPid;
@@ -222,9 +222,9 @@ static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(TRI_shape_sid_t& dst,
   } else if (type == TRI_DOC_MARKER_KEY_EDGE) {
     dst = static_cast<TRI_doc_edge_key_marker_t const*>(src)->base._shape;
   } else if (type == TRI_WAL_MARKER_DOCUMENT) {
-    dst = static_cast<triagens::wal::document_marker_t const*>(src)->_shape;
+    dst = static_cast<arangodb::wal::document_marker_t const*>(src)->_shape;
   } else if (type == TRI_WAL_MARKER_EDGE) {
-    dst = static_cast<triagens::wal::edge_marker_t const*>(src)->_shape;
+    dst = static_cast<arangodb::wal::edge_marker_t const*>(src)->_shape;
   } else {
     dst = 0;
   }
@@ -248,21 +248,21 @@ static inline void TRI_EXTRACT_SHAPED_JSON_MARKER(TRI_shaped_json_t& dst,
         static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
   } else if (type == TRI_WAL_MARKER_DOCUMENT) {
     dst._sid =
-        static_cast<triagens::wal::document_marker_t const*>(src)->_shape;
+        static_cast<arangodb::wal::document_marker_t const*>(src)->_shape;
     dst._data.length =
         static_cast<TRI_df_marker_t const*>(src)->_size -
-        static_cast<triagens::wal::document_marker_t const*>(src)->_offsetJson;
+        static_cast<arangodb::wal::document_marker_t const*>(src)->_offsetJson;
     dst._data.data =
         const_cast<char*>(static_cast<char const*>(src)) +
-        static_cast<triagens::wal::document_marker_t const*>(src)->_offsetJson;
+        static_cast<arangodb::wal::document_marker_t const*>(src)->_offsetJson;
   } else if (type == TRI_WAL_MARKER_EDGE) {
-    dst._sid = static_cast<triagens::wal::edge_marker_t const*>(src)->_shape;
+    dst._sid = static_cast<arangodb::wal::edge_marker_t const*>(src)->_shape;
     dst._data.length =
         static_cast<TRI_df_marker_t const*>(src)->_size -
-        static_cast<triagens::wal::edge_marker_t const*>(src)->_offsetJson;
+        static_cast<arangodb::wal::edge_marker_t const*>(src)->_offsetJson;
     dst._data.data =
         const_cast<char*>(static_cast<char const*>(src)) +
-        static_cast<triagens::wal::edge_marker_t const*>(src)->_offsetJson;
+        static_cast<arangodb::wal::edge_marker_t const*>(src)->_offsetJson;
   } else {
     dst._sid = 0;
     dst._data.length = 0;

@@ -19,44 +19,74 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/CollectBlock.h"
+#include "CollectBlock.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::arango;
-using namespace triagens::aql;
 
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
-using StringBuffer = triagens::basics::StringBuffer;
+using namespace arangodb::aql;
 
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
+using StringBuffer = arangodb::basics::StringBuffer;
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief an empty AQL value that we may return references to in reduce()
+////////////////////////////////////////////////////////////////////////////////
 
-CollectGroup::CollectGroup(bool count)
+static AqlValue const EmptyValue; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the collection for an input register
+/// for a reduce function that does not require input, this will return a
+/// nullptr intentionally
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_document_collection_t const* GetCollectionForRegister(AqlItemBlock const* src, RegisterId reg) {
+  if (reg == ExecutionNode::MaxRegisterId) {
+    return nullptr;
+  }
+  return src->getDocumentCollection(reg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the value from an input register
+/// for a reduce function that does not require input, this will return a
+/// reference to a static empty AqlValue
+////////////////////////////////////////////////////////////////////////////////
+
+static inline AqlValue const& GetValueForRegister(AqlItemBlock const* src, size_t row, RegisterId reg) { 
+  if (reg == ExecutionNode::MaxRegisterId) {
+    return EmptyValue;
+  }
+  return src->getValueReference(row, reg);
+}
+
+SortedCollectBlock::CollectGroup::CollectGroup(bool count)
     : firstRow(0),
       lastRow(0),
       groupLength(0),
       rowsAreValid(false),
       count(count) {}
 
-CollectGroup::~CollectGroup() {
-  // reset();
-  for (auto& it : groupBlocks) {
-    delete it;
-  }
+SortedCollectBlock::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {
     it.destroy();
   }
+  for (auto& it : groupBlocks) {
+    delete it;
+  }
+  for (auto& it : aggregators) {
+    delete it;
+  }
 }
 
-
-void CollectGroup::initialize(size_t capacity) {
-  // TRI_ASSERT(capacity > 0);
-
+void SortedCollectBlock::CollectGroup::initialize(size_t capacity) {
   groupValues.clear();
   collections.clear();
 
@@ -71,13 +101,18 @@ void CollectGroup::initialize(size_t capacity) {
   }
 
   groupLength = 0;
+
+  // reset aggregators
+  for (auto& it : aggregators) {
+    TRI_ASSERT(it != nullptr);
+    it->reset();
+  }
 }
 
-void CollectGroup::reset() {
+void SortedCollectBlock::CollectGroup::reset() {
   for (auto& it : groupBlocks) {
     delete it;
   }
-
   groupBlocks.clear();
 
   if (!groupValues.empty()) {
@@ -89,22 +124,29 @@ void CollectGroup::reset() {
   }
 
   groupLength = 0;
+
+  // reset all aggregators  
+  for (auto& it : aggregators) {
+    TRI_ASSERT(it != nullptr);
+    it->reset();
+  }
 }
 
-void CollectGroup::addValues(AqlItemBlock const* src,
-                                RegisterId groupRegister) {
+void SortedCollectBlock::CollectGroup::addValues(AqlItemBlock const* src,
+                                                 RegisterId groupRegister) {
   if (groupRegister == ExecutionNode::MaxRegisterId) {
     // nothing to do
     return;
   }
 
   if (rowsAreValid) {
-    // emit group details
+    // copy group values
     TRI_ASSERT(firstRow <= lastRow);
 
     if (count) {
       groupLength += lastRow + 1 - firstRow;
     } else {
+      TRI_ASSERT(src != nullptr);
       auto block = src->slice(firstRow, lastRow + 1);
       try {
         TRI_IF_FAILURE("CollectGroup::addValues") {
@@ -123,14 +165,14 @@ void CollectGroup::addValues(AqlItemBlock const* src,
   rowsAreValid = false;
 }
 
-
 SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
-                                           CollectNode const* en)
+                                       CollectNode const* en)
     : ExecutionBlock(engine, en),
+      _groupRegisters(),
       _aggregateRegisters(),
       _currentGroup(en->_count),
       _expressionRegister(ExecutionNode::MaxRegisterId),
-      _groupRegister(ExecutionNode::MaxRegisterId),
+      _collectRegister(ExecutionNode::MaxRegisterId),
       _variableNames() {
   for (auto const& p : en->_groupVariables) {
     // We know that planRegisters() has been run, so
@@ -142,17 +184,42 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
     TRI_ASSERT(itIn != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
     TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
-    _aggregateRegisters.emplace_back(
-        make_pair((*itOut).second.registerId, (*itIn).second.registerId));
+    _groupRegisters.emplace_back(
+        std::make_pair((*itOut).second.registerId, (*itIn).second.registerId));
   }
+  
+  for (auto const& p : en->_aggregateVariables) {
+    // We know that planRegisters() has been run, so
+    // getPlanNode()->_registerPlan is set up
+    auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
+    TRI_ASSERT(itOut != en->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+
+    RegisterId reg;
+    if (Aggregator::requiresInput(p.second.second)) {
+      auto itIn = en->getRegisterPlan()->varInfo.find(p.second.first->id);
+      TRI_ASSERT(itIn != en->getRegisterPlan()->varInfo.end());
+      TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+      reg = (*itIn).second.registerId;
+    }
+    else {
+      // no input variable required
+      reg = ExecutionNode::MaxRegisterId;
+    }
+    _aggregateRegisters.emplace_back(
+        std::make_pair((*itOut).second.registerId, reg));
+    _currentGroup.aggregators.emplace_back(Aggregator::fromTypeString(_trx, p.second.second));
+  }
+  TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
+  TRI_ASSERT(_aggregateRegisters.size() == _currentGroup.aggregators.size());
 
   if (en->_outVariable != nullptr) {
     auto const& registerPlan = en->getRegisterPlan()->varInfo;
     auto it = registerPlan.find(en->_outVariable->id);
     TRI_ASSERT(it != registerPlan.end());
-    _groupRegister = (*it).second.registerId;
-    TRI_ASSERT(_groupRegister > 0 &&
-               _groupRegister < ExecutionNode::MaxRegisterId);
+    _collectRegister = (*it).second.registerId;
+    TRI_ASSERT(_collectRegister > 0 &&
+               _collectRegister < ExecutionNode::MaxRegisterId);
 
     if (en->_expressionVariable != nullptr) {
       auto it = registerPlan.find(en->_expressionVariable->id);
@@ -215,7 +282,7 @@ int SortedCollectBlock::initialize() {
   }
 
   // reserve space for the current row
-  _currentGroup.initialize(_aggregateRegisters.size());
+  _currentGroup.initialize(_groupRegisters.size());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -224,11 +291,12 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
                                         bool skipping, AqlItemBlock*& result,
                                         size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
+
   if (_done) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool const isTotalAggregation = _aggregateRegisters.empty();
+  bool const isTotalAggregation = _groupRegisters.empty();
   std::unique_ptr<AqlItemBlock> res;
 
   if (_buffer.empty()) {
@@ -264,6 +332,11 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   while (skipped < atMost) {
     // read the next input row
+    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    throwIfKilled(); // check if we were aborted
 
     bool newGroup = false;
     if (!isTotalAggregation) {
@@ -274,12 +347,11 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         // we already had a group, check if the group has changed
         size_t i = 0;
 
-        for (auto it = _aggregateRegisters.begin();
-             it != _aggregateRegisters.end(); ++it) {
+        for (auto& it : _groupRegisters) {
           int cmp = AqlValue::Compare(
               _trx, _currentGroup.groupValues[i], _currentGroup.collections[i],
-              cur->getValue(_pos, (*it).second),
-              cur->getDocumentCollection((*it).second), false);
+              cur->getValue(_pos, it.second),
+              cur->getDocumentCollection(it.second), false);
 
           if (cmp != 0) {
             // group change
@@ -313,11 +385,10 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
       // construct the new group
       size_t i = 0;
-      for (auto it = _aggregateRegisters.begin();
-           it != _aggregateRegisters.end(); ++it) {
+      for (auto& it : _groupRegisters) {
         _currentGroup.groupValues[i] =
-            cur->getValue(_pos, (*it).second).clone();
-        _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
+            cur->getValue(_pos, it.second).clone();
+        _currentGroup.collections[i] = cur->getDocumentCollection(it.second);
         ++i;
       }
       if (!skipping) {
@@ -357,6 +428,8 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
 
+            throwIfKilled();
+
             emitGroup(cur, res.get(), skipped);
             ++skipped;
             res->shrink(skipped);
@@ -375,9 +448,21 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
       // hasMore
 
+      if (_currentGroup.rowsAreValid) {
+        size_t j = 0;
+        for (auto& it : _currentGroup.aggregators) {
+          RegisterId const reg = _aggregateRegisters[j].second;
+          TRI_document_collection_t const* collection = GetCollectionForRegister(cur, reg);
+          for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1; ++r) {
+            it->reduce(GetValueForRegister(cur, r, reg), collection);
+          }
+          ++j;
+        }
+      }
+
       // move over the last group details into the group before we delete the
       // block
-      _currentGroup.addValues(cur, _groupRegister);
+      _currentGroup.addValues(cur, _collectRegister);
 
       delete cur;
       cur = _buffer.front();
@@ -398,9 +483,10 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 ////////////////////////////////////////////////////////////////////////////////
 
 void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
-                                     size_t row) {
+                                   size_t row) {
   if (row > 0) {
-    // re-use already copied aqlvalues
+    // re-use already copied AqlValues
+    TRI_ASSERT(cur != nullptr);
     for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
       res->setValue(row, i, res->getValue(0, i));
       // Note: if this throws, then all values will be deleted
@@ -409,44 +495,61 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
   }
 
   size_t i = 0;
-  for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end();
-       ++it) {
+  for (auto& it : _groupRegisters) {
     if (_currentGroup.groupValues[i].type() == AqlValue::SHAPED) {
       // if a value in the group is a document, it must be converted into its
       // JSON equivalent. the reason is
       // that a group might theoretically consist of multiple documents, from
       // different collections. but there
       // is only one collection pointer per output register
-      auto document = cur->getDocumentCollection((*it).second);
-      res->setValue(row, (*it).first,
+      res->setValue(row, it.first,
                     AqlValue(new Json(_currentGroup.groupValues[i].toJson(
-                        _trx, document, true))));
+                    _trx, _currentGroup.collections[i], true))));
     } else {
-      res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
+      res->setValue(row, it.first, _currentGroup.groupValues[i]);
     }
     // ownership of value is transferred into res
     _currentGroup.groupValues[i].erase();
     ++i;
   }
 
-  if (_groupRegister != ExecutionNode::MaxRegisterId) {
-    // set the group values
-    _currentGroup.addValues(cur, _groupRegister);
+  
+  // handle aggregators
+  size_t j = 0;
+  for (auto& it : _currentGroup.aggregators) {
+    if (_currentGroup.rowsAreValid) {
+      TRI_ASSERT(cur != nullptr);
+      RegisterId const reg = _aggregateRegisters[j].second;
+      TRI_document_collection_t const* collection = GetCollectionForRegister(cur, reg);
+      for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1; ++r) {
+        it->reduce(GetValueForRegister(cur, r, reg), collection);
+      }
+      res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
+    }
+    else {
+      res->setValue(row, _aggregateRegisters[j].first, AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null)));
+    }
+    ++j;
+  }
+    
+  // set the group values
+  if (_collectRegister != ExecutionNode::MaxRegisterId) {
+    _currentGroup.addValues(cur, _collectRegister);
 
     if (static_cast<CollectNode const*>(_exeNode)->_count) {
       // only set group count in result register
       res->setValue(
-          row, _groupRegister,
+          row, _collectRegister,
           AqlValue(new Json(static_cast<double>(_currentGroup.groupLength))));
     } else if (static_cast<CollectNode const*>(_exeNode)
                    ->_expressionVariable != nullptr) {
       // copy expression result into result register
-      res->setValue(row, _groupRegister,
+      res->setValue(row, _collectRegister,
                     AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks,
                                                _expressionRegister));
     } else {
       // copy variables / keep variables into result register
-      res->setValue(row, _groupRegister,
+      res->setValue(row, _collectRegister,
                     AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks,
                                                _variableNames));
     }
@@ -458,10 +561,12 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
 
 
 HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
-                                           CollectNode const* en)
+                                       CollectNode const* en)
     : ExecutionBlock(engine, en),
+      _groupRegisters(),
       _aggregateRegisters(),
-      _groupRegister(ExecutionNode::MaxRegisterId) {
+      _collectRegister(ExecutionNode::MaxRegisterId) {
+
   for (auto const& p : en->_groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
@@ -472,9 +577,32 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
     TRI_ASSERT(itIn != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
     TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
-    _aggregateRegisters.emplace_back(
-        make_pair((*itOut).second.registerId, (*itIn).second.registerId));
+    _groupRegisters.emplace_back(
+        std::make_pair((*itOut).second.registerId, (*itIn).second.registerId));
   }
+ 
+  for (auto const& p : en->_aggregateVariables) {
+    // We know that planRegisters() has been run, so
+    // getPlanNode()->_registerPlan is set up
+    auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
+    TRI_ASSERT(itOut != en->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+ 
+    RegisterId reg;
+    if (Aggregator::requiresInput(p.second.second)) {
+      auto itIn = en->getRegisterPlan()->varInfo.find(p.second.first->id);
+      TRI_ASSERT(itIn != en->getRegisterPlan()->varInfo.end());
+      TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+      reg = (*itIn).second.registerId;
+    }
+    else {
+      // no input variable required
+      reg = ExecutionNode::MaxRegisterId;
+    }
+    _aggregateRegisters.emplace_back(
+        std::make_pair((*itOut).second.registerId, reg));
+  }
+  TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
 
   if (en->_outVariable != nullptr) {
     TRI_ASSERT(static_cast<CollectNode const*>(_exeNode)->_count);
@@ -482,14 +610,14 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
     auto const& registerPlan = en->getRegisterPlan()->varInfo;
     auto it = registerPlan.find(en->_outVariable->id);
     TRI_ASSERT(it != registerPlan.end());
-    _groupRegister = (*it).second.registerId;
-    TRI_ASSERT(_groupRegister > 0 &&
-               _groupRegister < ExecutionNode::MaxRegisterId);
+    _collectRegister = (*it).second.registerId;
+    TRI_ASSERT(_collectRegister > 0 &&
+               _collectRegister < ExecutionNode::MaxRegisterId);
   } else {
     TRI_ASSERT(!static_cast<CollectNode const*>(_exeNode)->_count);
   }
 
-  TRI_ASSERT(!_aggregateRegisters.empty());
+  TRI_ASSERT(!_groupRegisters.empty());
 }
 
 HashedCollectBlock::~HashedCollectBlock() {}
@@ -526,21 +654,50 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
     }
     _pos = 0;  // this is in the first block
   }
+        
+  auto* en = static_cast<CollectNode const*>(_exeNode);
 
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();
-
-  std::vector<TRI_document_collection_t const*> colls;
+  TRI_ASSERT(cur != nullptr);
+        
+  // set up collections
+  std::vector<TRI_document_collection_t const*> groupColls;
+  for (auto const& it : _groupRegisters) {
+    groupColls.emplace_back(cur->getDocumentCollection(it.second));
+  }
+  std::vector<TRI_document_collection_t const*> aggregateColls;
   for (auto const& it : _aggregateRegisters) {
-    colls.emplace_back(cur->getDocumentCollection(it.second));
+    aggregateColls.emplace_back(GetCollectionForRegister(cur, it.second));
   }
 
-  std::unordered_map<std::vector<AqlValue>, size_t, GroupKeyHash, GroupKeyEqual>
-      allGroups(1024, GroupKeyHash(_trx, colls), GroupKeyEqual(_trx, colls));
+  TRI_ASSERT(aggregateColls.size() == en->_aggregateVariables.size());
+  TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
+  
+  std::unordered_map<std::vector<AqlValue>, AggregateValuesType*, GroupKeyHash, GroupKeyEqual>
+      allGroups(1024, GroupKeyHash(_trx, groupColls), GroupKeyEqual(_trx, groupColls));
+
+  // cleanup function for group values
+  auto cleanup = [&allGroups] () -> void {
+    for (auto& it : allGroups) {
+      if (it.second != nullptr) {
+        for (auto& it2 : *(it.second)) {
+          delete it2;
+        }
+      }
+      delete it.second;
+    }
+    allGroups.clear();
+  };
+
+  // prevent memory leaks by always cleaning up the groups 
+  TRI_DEFER(cleanup()); 
 
   auto buildResult = [&](AqlItemBlock const* src) {
-    auto planNode = static_cast<CollectNode const*>(getPlanNode());
-    auto nrRegs = planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
+    TRI_ASSERT(groupColls.size() == _groupRegisters.size());
+    TRI_ASSERT(aggregateColls.size() == _aggregateRegisters.size());
+
+    auto nrRegs = en->getRegisterPlan()->nrRegs[en->getDepth()];
 
     auto result = std::make_unique<AqlItemBlock>(allGroups.size(), nrRegs);
 
@@ -548,16 +705,18 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       inheritRegisters(src, result.get(), 0);
     }
 
-    size_t const n = _aggregateRegisters.size();
-    TRI_ASSERT(colls.size() == n);
-
-    for (size_t i = 0; i < n; ++i) {
-      result->setDocumentCollection(_aggregateRegisters[i].first, colls[i]);
+    // collections
+    for (size_t i = 0; i < _groupRegisters.size(); ++i) {
+      result->setDocumentCollection(_groupRegisters[i].first, groupColls[i]);
+    }
+    for (size_t i = 0; i < _aggregateRegisters.size(); ++i) {
+      result->setDocumentCollection(_aggregateRegisters[i].first, aggregateColls[i]);
     }
 
-    TRI_ASSERT(!planNode->_count ||
-               _groupRegister != ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(!en->_count ||
+               _collectRegister != ExecutionNode::MaxRegisterId);
 
+    size_t const n = _groupRegisters.size();
     size_t row = 0;
     for (auto const& it : allGroups) {
       auto& keys = it.first;
@@ -565,15 +724,22 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       TRI_ASSERT_EXPENSIVE(keys.size() == n);
       size_t i = 0;
       for (auto& key : keys) {
-        result->setValue(row, _aggregateRegisters[i++].first, key);
+        result->setValue(row, _groupRegisters[i++].first, key);
         const_cast<AqlValue*>(&key)
             ->erase();  // to prevent double-freeing later
       }
 
-      if (planNode->_count) {
+      if (it.second != nullptr && ! en->_count) {
+        TRI_ASSERT(it.second->size() == _aggregateRegisters.size());
+        size_t j = 0;
+        for (auto const& r : *(it.second)) {
+          result->setValue(row, _aggregateRegisters[j++].first, r->stealValue());
+        }
+      }
+      else if (en->_count) {
         // set group count in result register
-        result->setValue(row, _groupRegister,
-                         AqlValue(new Json(static_cast<double>(it.second))));
+        TRI_ASSERT(it.second != nullptr);
+        result->setValue(row, _collectRegister, it.second->back()->stealValue());
       }
 
       ++row;
@@ -582,8 +748,9 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
     return result.release();
   };
 
+
   std::vector<AqlValue> groupValues;
-  size_t const n = _aggregateRegisters.size();
+  size_t const n = _groupRegisters.size();
   groupValues.reserve(n);
 
   std::vector<AqlValue> group;
@@ -591,15 +758,21 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   try {
     while (skipped < atMost) {
+      TRI_IF_FAILURE("HashedCollectBlock::getOrSkipSomeOuter") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      throwIfKilled(); // check if we were aborted
+
       groupValues.clear();
 
       // for hashing simply re-use the aggregate registers, without cloning
       // their contents
       for (size_t i = 0; i < n; ++i) {
         groupValues.emplace_back(
-            cur->getValueReference(_pos, _aggregateRegisters[i].second));
+            cur->getValueReference(_pos, _groupRegisters[i].second));
       }
-
+        
       // now check if we already know this group
       auto it = allGroups.find(groupValues);
 
@@ -610,14 +783,52 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         // copy the group values before they get invalidated
         for (size_t i = 0; i < n; ++i) {
           group.emplace_back(
-              cur->getValueReference(_pos, _aggregateRegisters[i].second)
+              cur->getValueReference(_pos, _groupRegisters[i].second)
                   .clone());
         }
 
-        allGroups.emplace(group, 1);
+        auto aggregateValues = std::make_unique<AggregateValuesType>();
+
+        if (en->_aggregateVariables.empty()) {
+          // no aggregate registers. this means we'll only count the number of items
+          if (en->_count) {
+            aggregateValues->emplace_back(new AggregatorLength(_trx, 1));
+          }
+        }
+        else {
+          // we do have aggregate registers. create them as empty AqlValues
+          aggregateValues->reserve(_aggregateRegisters.size());
+
+          // initialize aggregators
+          size_t j = 0;
+          for (auto const& r : en->_aggregateVariables) {
+            aggregateValues->emplace_back(Aggregator::fromTypeString(_trx, r.second.second));
+            aggregateValues->back()->reduce(GetValueForRegister(cur, _pos, _aggregateRegisters[j].second), aggregateColls[j]);
+            ++j;
+          }
+        }
+
+        // note: aggregateValues may be a nullptr!
+        allGroups.emplace(group, aggregateValues.get());
+        aggregateValues.release();
       } else {
-        // existing group. simply increase the counter
-        (*it).second++;
+        // existing group
+        auto aggregateValues = (*it).second;
+        
+        if (en->_aggregateVariables.empty()) {
+          // no aggregate registers. simply increase the counter
+          if (en->_count) {
+            aggregateValues->back()->reduce(AqlValue(), nullptr);
+          }
+        }
+        else {
+          // apply the aggregators for the group
+          size_t j = 0;
+          for (auto const& r : _aggregateRegisters) {
+            (*aggregateValues)[j]->reduce(GetValueForRegister(cur, _pos, r.second), aggregateColls[j]);
+            ++j;
+          }
+        }
       }
 
       if (++_pos >= cur->size()) {
@@ -638,6 +849,8 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
               TRI_IF_FAILURE("HashedCollectBlock::getOrSkipSome") {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
               }
+
+              throwIfKilled();
             }
 
             ++skipped;
@@ -646,7 +859,6 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             returnBlock(cur);
             _done = true;
 
-            allGroups.clear();
             groupValues.clear();
 
             return TRI_ERROR_NO_ERROR;
@@ -669,11 +881,9 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         const_cast<AqlValue*>(&it2)->destroy();
       }
     }
-    allGroups.clear();
     throw;
   }
 
-  allGroups.clear();
   groupValues.clear();
 
   if (!skipping) {
@@ -692,6 +902,9 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 size_t HashedCollectBlock::GroupKeyHash::operator()(
     std::vector<AqlValue> const& value) const {
   uint64_t hash = 0x12345678;
+
+  TRI_ASSERT(value.size() == _num);
+  TRI_ASSERT(value.size() == _colls.size());
 
   for (size_t i = 0; i < _num; ++i) {
     hash ^= value[i].hash(_trx, _colls[i]);

@@ -32,7 +32,7 @@
 
 struct TRI_document_collection_t;
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -56,7 +56,6 @@ namespace aql {
 
 class AqlItemBlock {
   friend class AqlItemBlockManager;
-
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -65,7 +64,7 @@ class AqlItemBlock {
 
   AqlItemBlock(size_t nrItems, RegisterId nrRegs);
 
-  AqlItemBlock(triagens::basics::Json const& json);
+  AqlItemBlock(arangodb::basics::Json const& json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the block
@@ -333,7 +332,7 @@ class AqlItemBlock {
   /// be used to recreate the AqlItemBlock via the Json constructor
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson(triagens::arango::AqlTransaction* trx) const;
+  arangodb::basics::Json toJson(arangodb::AqlTransaction* trx) const;
 
   
  private:
@@ -375,8 +374,8 @@ class AqlItemBlock {
   RegisterId _nrRegs;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

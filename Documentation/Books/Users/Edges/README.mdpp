@@ -35,16 +35,149 @@ Other fields can be updated as in default collection.
 
 !SUBSECTION Insert
 <!-- arangod/V8Server/v8-collection.cpp -->
-@startDocuBlock InsertEdgeCol
+
+
+saves a new edge document
+`edge-collection.insert(from, to, document)`
+
+Saves a new edge and returns the document-handle. *from* and *to*
+must be documents or document references.
+
+`edge-collection.insert(from, to, document, waitForSync)`
+
+The optional *waitForSync* parameter can be used to force
+synchronization of the document creation operation to disk even in case
+that the *waitForSync* flag had been disabled for the entire collection.
+Thus, the *waitForSync* parameter can be used to force synchronization
+of just specific operations. To use this, set the *waitForSync* parameter
+to *true*. If the *waitForSync* parameter is not specified or set to
+*false*, then the collection's default *waitForSync* behavior is
+applied. The *waitForSync* parameter cannot be used to disable
+synchronization for collections that have a default *waitForSync* value
+of *true*.
+
+
+**Examples**
+
+
+    @startDocuBlockInline EDGCOL_01_SaveEdgeCol
+    @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_01_SaveEdgeCol}
+      db._create("vertex");
+      db._createEdgeCollection("relation");
+      v1 = db.vertex.insert({ name : "vertex 1" });
+      v2 = db.vertex.insert({ name : "vertex 2" });
+      e1 = db.relation.insert(v1, v2, { label : "knows" });
+      db._document(e1);
+    ~ db._drop("relation");
+    ~ db._drop("vertex");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock EDGCOL_01_SaveEdgeCol
+
+
 
 !SUBSECTION Edges
 <!-- arangod/V8Server/v8-query.cpp -->
-@startDocuBlock edgeCollectionEdges
+
+
+selects all edges for a set of vertices
+`edge-collection.edges(vertex)`
+
+The *edges* operator finds all edges starting from (outbound) or ending
+in (inbound) *vertex*.
+
+`edge-collection.edges(vertices)`
+
+The *edges* operator finds all edges starting from (outbound) or ending
+in (inbound) a document from *vertices*, which must a list of documents
+or document handles.
+
+    @startDocuBlockInline EDGCOL_02_Relation
+    @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_Relation}
+      db._create("vertex");
+      db._createEdgeCollection("relation");
+    ~ var myGraph = {};
+      myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+      myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+    | myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
+                                      { label : "knows"});
+      db._document(myGraph.e1);
+      db.relation.edges(myGraph.e1._id);
+    ~ db._drop("relation");
+    ~ db._drop("vertex");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock EDGCOL_02_Relation
+
+
 
 !SUBSECTION InEdges
 <!-- arangod/V8Server/v8-query.cpp -->
-@startDocuBlock edgeCollectionInEdges
+
+
+selects all inbound edges
+`edge-collection.inEdges(vertex)`
+
+The *edges* operator finds all edges ending in (inbound) *vertex*.
+
+`edge-collection.inEdges(vertices)`
+
+The *edges* operator finds all edges ending in (inbound) a document from
+*vertices*, which must a list of documents or document handles.
+
+    
+**Examples**
+
+    @startDocuBlockInline EDGCOL_02_inEdges
+    @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_inEdges}
+      db._create("vertex");
+      db._createEdgeCollection("relation");
+    ~ var myGraph = {};
+      myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+      myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+    | myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
+                                      { label : "knows"});
+      db._document(myGraph.e1);
+      db.relation.inEdges(myGraph.v1._id);
+      db.relation.inEdges(myGraph.v2._id);
+    ~ db._drop("relation");
+    ~ db._drop("vertex");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock EDGCOL_02_inEdges
+
+
 
 !SUBSECTION OutEdges
 <!-- arangod/V8Server/v8-query.cpp -->
-@startDocuBlock edgeCollectionOutEdges
+
+
+selects all outbound edges
+`edge-collection.outEdges(vertex)`
+
+The *edges* operator finds all edges starting from (outbound)
+*vertices*.
+
+`edge-collection.outEdges(vertices)`
+
+The *edges* operator finds all edges starting from (outbound) a document
+from *vertices*, which must a list of documents or document handles.
+
+    
+**Examples**
+
+    @startDocuBlockInline EDGCOL_02_outEdges
+    @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_outEdges}
+      db._create("vertex");
+      db._createEdgeCollection("relation");
+    ~ var myGraph = {};
+      myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+      myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+    | myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
+                                      { label : "knows"});
+      db._document(myGraph.e1);
+      db.relation.outEdges(myGraph.v1._id);
+      db.relation.outEdges(myGraph.v2._id);
+    ~ db._drop("relation");
+    ~ db._drop("vertex");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock EDGCOL_02_outEdges
+
+

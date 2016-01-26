@@ -24,43 +24,47 @@
 #include "Aql/ExecutionStats.h"
 #include "Basics/Exceptions.h"
 
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
-using JsonHelper = triagens::basics::JsonHelper;
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
+using JsonHelper = arangodb::basics::JsonHelper;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the statistics to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder ExecutionStats::toVelocyPack() const {
-  VPackBuilder result;
+std::shared_ptr<VPackBuilder> ExecutionStats::toVelocyPack() const {
+  auto result = std::make_shared<VPackBuilder>();
   {
-    VPackObjectBuilder b(&result);
-    result.add("writesExecuted", VPackValue(writesExecuted));
-    result.add("writesIgnored", VPackValue(writesIgnored));
-    result.add("scannedFull", VPackValue(scannedFull));
-    result.add("scannedIndex", VPackValue(scannedIndex));
-    result.add("filtered", VPackValue(filtered));
+    VPackObjectBuilder b(result.get());
+    result->add("writesExecuted", VPackValue(writesExecuted));
+    result->add("writesIgnored", VPackValue(writesIgnored));
+    result->add("scannedFull", VPackValue(scannedFull));
+    result->add("scannedIndex", VPackValue(scannedIndex));
+    result->add("filtered", VPackValue(filtered));
 
     if (fullCount > -1) {
       // fullCount is exceptional. it has a default value of -1 and is
       // not reported with this value
-      result.add("fullCount", VPackValue(fullCount));
+      result->add("fullCount", VPackValue(fullCount));
     }
   }
   return result;
 }
 
-VPackBuilder ExecutionStats::toVelocyPackStatic() {
-  VPackBuilder result;
-  VPackObjectBuilder b(&result);
-  result.add("writesExecuted", VPackValue(0));
-  result.add("writesIgnored", VPackValue(0));
-  result.add("scannedFull", VPackValue(0));
-  result.add("scannedIndex", VPackValue(0));
-  result.add("filtered", VPackValue(0));
-  result.add("fullCount", VPackValue(-1));
+std::shared_ptr<VPackBuilder> ExecutionStats::toVelocyPackStatic() {
+  auto result = std::make_shared<VPackBuilder>();
+  VPackObjectBuilder b(result.get());
+  result->add("writesExecuted", VPackValue(0));
+  result->add("writesIgnored", VPackValue(0));
+  result->add("scannedFull", VPackValue(0));
+  result->add("scannedIndex", VPackValue(0));
+  result->add("filtered", VPackValue(0));
+  result->add("fullCount", VPackValue(-1));
   return result;
 }
 
@@ -106,7 +110,7 @@ ExecutionStats::ExecutionStats()
       filtered(0),
       fullCount(-1) {}
 
-ExecutionStats::ExecutionStats(triagens::basics::Json const& jsonStats) {
+ExecutionStats::ExecutionStats(arangodb::basics::Json const& jsonStats) {
   if (!jsonStats.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "stats is not an object");

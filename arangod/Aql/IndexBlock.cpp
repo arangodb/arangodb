@@ -35,11 +35,10 @@
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::arango;
-using namespace triagens::aql;
 
-using Json = triagens::basics::Json;
+using namespace arangodb::aql;
+
+using Json = arangodb::basics::Json;
 
 // uncomment the following to get some debugging information
 #if 0
@@ -89,10 +88,10 @@ IndexBlock::~IndexBlock() {
 /// @brief adds a UNIQUE() to a dynamic IN condition
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* IndexBlock::makeUnique(
-    triagens::aql::AstNode* node) const {
-  if (node->type != triagens::aql::NODE_TYPE_ARRAY ||
-      (node->type == triagens::aql::NODE_TYPE_ARRAY &&
+arangodb::aql::AstNode* IndexBlock::makeUnique(
+    arangodb::aql::AstNode* node) const {
+  if (node->type != arangodb::aql::NODE_TYPE_ARRAY ||
+      (node->type == arangodb::aql::NODE_TYPE_ARRAY &&
        node->numMembers() >= 2)) {
     // an non-array or an array with more than 1 member
     auto en = static_cast<IndexNode const*>(getPlanNode());
@@ -257,11 +256,11 @@ bool IndexBlock::initIndexes() {
 
     if (_hasV8Expression) {
       bool const isRunningInCluster =
-          triagens::arango::ServerState::instance()->isRunningInCluster();
+          arangodb::ServerState::instance()->isRunningInCluster();
 
       // must have a V8 context here to protect Expression::execute()
       auto engine = _engine;
-      triagens::basics::ScopeGuard guard{
+      arangodb::basics::ScopeGuard guard{
           [&engine]() -> void { engine->getQuery()->enterContext(); },
           [&]() -> void {
             if (isRunningInCluster) {
@@ -333,7 +332,7 @@ bool IndexBlock::initIndexes() {
 /// @brief create an iterator object
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::IndexIterator* IndexBlock::createIterator() {
+arangodb::IndexIterator* IndexBlock::createIterator() {
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   auto outVariable = node->outVariable();
   auto ast = node->_plan->getAst();
@@ -522,7 +521,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
       // set our collection for our output register
       res->setDocumentCollection(
-          static_cast<triagens::aql::RegisterId>(curRegs),
+          static_cast<arangodb::aql::RegisterId>(curRegs),
           _trx->documentCollection(_collection->cid()));
 
       for (size_t j = 0; j < toSend; j++) {
@@ -539,7 +538,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // we do not need to do a lookup in
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
-        res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
+        res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs),
                       AqlValue(reinterpret_cast<TRI_df_marker_t const*>(
                           _documents[_posInDocs++].getDataPtr())));
         // No harm done, if the setValue throws!

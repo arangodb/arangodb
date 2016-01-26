@@ -27,7 +27,14 @@
 
 #include "Basics/logging.h"
 
+#define BUSY_LOCK_DELAY (10 * 1000)
 
+
+#ifdef TRI_TRACE_LOCKS
+
+#include <iostream>
+
+static thread_local std::unordered_map<TRI_read_write_lock_t*, int> _threadLocks;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief busy wait delay (in microseconds)
@@ -37,9 +44,16 @@
 /// loop until we can acquire the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-#define BUSY_LOCK_DELAY (10 * 1000)
+static void LockError (TRI_read_write_lock_t* lock, int mode) {
+  auto it = _threadLocks.find(lock);
+  auto m = (*it).second;
+  std::cerr << "ERROR. TRYING TO ACQUIRE " << (mode == 1 ? "READ" : "WRITE") 
+            << " LOCK WHILE ALREADY HOLDING IT IN " << (m == 1 ? "READ" : "WRITE") << " MODE" 
+            << std::endl;
+  TRI_ASSERT(false);
+}
 
-
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a new mutex
@@ -85,64 +99,6 @@ void TRI_UnlockMutex(TRI_mutex_t* mutex) {
   }
 }
 
-
-#ifndef TRI_FAKE_SPIN_LOCKS
-
-#ifdef TRI_HAVE_POSIX_SPIN
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a new spin-lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitSpin(TRI_spin_t* spinLock) { pthread_spin_init(spinLock, 0); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a spin-lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroySpin(TRI_spin_t* spinLock) { pthread_spin_destroy(spinLock); }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks spin-lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_LockSpin(TRI_spin_t* spinLock) {
-  int rc = pthread_spin_lock(spinLock);
-
-  if (rc != 0) {
-    if (rc == EDEADLK) {
-      LOG_ERROR("spinlock deadlock detected");
-    }
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(false);
-#endif
-    LOG_FATAL_AND_EXIT("could not lock the spin-lock: %s", strerror(rc));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks spin-lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UnlockSpin(TRI_spin_t* spinLock) {
-  int rc = pthread_spin_unlock(spinLock);
-
-  if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(false);
-#endif
-    LOG_FATAL_AND_EXIT("could not release the spin-lock: %s", strerror(rc));
-  }
-}
-
-#endif
-
-#endif
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a new read-write lock
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +121,18 @@ void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TryReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
+#ifdef TRI_TRACE_LOCKS
+  if (_threadLocks.find(lock) != _threadLocks.end()) {
+    LockError(lock, 1); 
+  }
+#endif  
   int rc = pthread_rwlock_tryrdlock(lock);
+
+#ifdef TRI_TRACE_LOCKS  
+  if (rc == 0) {
+    _threadLocks.emplace(lock, 1);
+  }
+#endif
 
   return (rc == 0);
 }
@@ -176,6 +143,12 @@ bool TRI_TryReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
 
 void TRI_ReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
   bool complained = false;
+
+#ifdef TRI_TRACE_LOCKS
+  if (_threadLocks.find(lock) != _threadLocks.end()) {
+    LockError(lock, 1); 
+  }
+#endif  
 
 again:
   int rc = pthread_rwlock_rdlock(lock);
@@ -209,6 +182,10 @@ again:
     LOG_FATAL_AND_EXIT("could not read-lock the read-write lock: %s",
                        strerror(rc));
   }
+
+#ifdef TRI_TRACE_LOCKS
+  _threadLocks.emplace(lock, 1);
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +202,10 @@ void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
     LOG_FATAL_AND_EXIT("could not read-unlock the read-write lock: %s",
                        strerror(rc));
   }
+
+#ifdef TRI_TRACE_LOCKS  
+  _threadLocks.erase(lock);
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,7 +213,19 @@ void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TryWriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
+#ifdef TRI_TRACE_LOCKS  
+  if (_threadLocks.find(lock) != _threadLocks.end()) {
+    LockError(lock, 2); 
+  }
+#endif
+
   int rc = pthread_rwlock_trywrlock(lock);
+
+#ifdef TRI_TRACE_LOCKS  
+  if (rc == 0) {
+    _threadLocks.emplace(lock, 2);
+  }
+#endif  
 
   return (rc == 0);
 }
@@ -242,6 +235,12 @@ bool TRI_TryWriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
+#ifdef TRI_TRACE_LOCKS  
+  if (_threadLocks.find(lock) != _threadLocks.end()) {
+    LockError(lock, 2); 
+  }
+#endif
+
   int rc = pthread_rwlock_wrlock(lock);
 
   if (rc != 0) {
@@ -254,6 +253,10 @@ void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
     LOG_FATAL_AND_EXIT("could not write-lock the read-write lock: %s",
                        strerror(rc));
   }
+
+#ifdef TRI_TRACE_LOCKS  
+  _threadLocks.emplace(lock, 2);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,9 +273,11 @@ void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
     LOG_FATAL_AND_EXIT("could not write-unlock the read-write lock: %s",
                        strerror(rc));
   }
+
+#ifdef TRI_TRACE_LOCKS  
+  _threadLocks.erase(lock);
+#endif  
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a new condition variable

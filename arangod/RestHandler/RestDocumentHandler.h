@@ -25,12 +25,9 @@
 #define ARANGOD_REST_HANDLER_REST_DOCUMENT_HANDLER_H 1
 
 #include "Basics/Common.h"
-
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document request handler
@@ -44,9 +41,6 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   status_t execute() override final;
 
@@ -156,7 +150,6 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
                                  bool waitForSync, bool isPatch,
                                  VPackSlice const& document);
 };
-}
 }
 
 #endif

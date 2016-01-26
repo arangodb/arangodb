@@ -28,6 +28,7 @@
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
+#include "Aql/Function.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
@@ -36,13 +37,13 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/JsonHelper.h"
 
-using namespace triagens::aql;
-using namespace triagens::basics;
-using JsonHelper = triagens::basics::JsonHelper;
+using namespace arangodb::aql;
+using namespace arangodb::basics;
 
+using JsonHelper = arangodb::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the plan
@@ -66,7 +67,6 @@ ExecutionPlan::~ExecutionPlan() {
     delete x.second;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from an AST
@@ -99,10 +99,10 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::getCollectionsFromJson(Ast* ast,
-                                           triagens::basics::Json const& json) {
+                                           arangodb::basics::Json const& json) {
   TRI_ASSERT(ast != nullptr);
 
-  triagens::basics::Json jsonCollections = json.get("collections");
+  arangodb::basics::Json jsonCollections = json.get("collections");
 
   if (!jsonCollections.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -113,16 +113,16 @@ void ExecutionPlan::getCollectionsFromJson(Ast* ast,
   auto const size = jsonCollections.size();
 
   for (size_t i = 0; i < size; i++) {
-    triagens::basics::Json oneJsonCollection =
+    arangodb::basics::Json oneJsonCollection =
         jsonCollections.at(static_cast<int>(i));
-    auto typeStr = triagens::basics::JsonHelper::checkAndGetStringValue(
+    auto typeStr = arangodb::basics::JsonHelper::checkAndGetStringValue(
         oneJsonCollection.json(), "type");
 
     ast->query()->collections()->add(
-        triagens::basics::JsonHelper::checkAndGetStringValue(
+        arangodb::basics::JsonHelper::checkAndGetStringValue(
             oneJsonCollection.json(), "name"),
         TRI_GetTransactionTypeFromStr(
-            triagens::basics::JsonHelper::checkAndGetStringValue(
+            arangodb::basics::JsonHelper::checkAndGetStringValue(
                 oneJsonCollection.json(), "type").c_str()));
   }
 }
@@ -132,7 +132,7 @@ void ExecutionPlan::getCollectionsFromJson(Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionPlan* ExecutionPlan::instantiateFromJson(
-    Ast* ast, triagens::basics::Json const& json) {
+    Ast* ast, arangodb::basics::Json const& json) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
@@ -212,38 +212,38 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
+arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
                                              bool verbose) const {
-  triagens::basics::Json result = _root->toJson(zone, verbose);
+  arangodb::basics::Json result = _root->toJson(zone, verbose);
 
   // set up rules
   auto appliedRules(std::move(Optimizer::translateRules(_appliedRules)));
-  triagens::basics::Json rules(triagens::basics::Json::Array,
+  arangodb::basics::Json rules(arangodb::basics::Json::Array,
                                appliedRules.size());
 
   for (auto const& r : appliedRules) {
-    rules.add(triagens::basics::Json(r));
+    rules.add(arangodb::basics::Json(r));
   }
   result.set("rules", rules);
 
   auto usedCollections = *ast->query()->collections()->collections();
-  triagens::basics::Json jsonCollectionList(triagens::basics::Json::Array,
+  arangodb::basics::Json jsonCollectionList(arangodb::basics::Json::Array,
                                             usedCollections.size());
 
   for (auto const& c : usedCollections) {
-    triagens::basics::Json json(triagens::basics::Json::Object);
+    arangodb::basics::Json json(arangodb::basics::Json::Object);
 
-    jsonCollectionList(json("name", triagens::basics::Json(c.first))(
-        "type", triagens::basics::Json(
+    jsonCollectionList(json("name", arangodb::basics::Json(c.first))(
+        "type", arangodb::basics::Json(
                     TRI_TransactionTypeGetStr(c.second->accessType))));
   }
 
   result.set("collections", jsonCollectionList);
   result.set("variables", ast->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
   size_t nrItems = 0;
-  result.set("estimatedCost", triagens::basics::Json(_root->getCost(nrItems)));
+  result.set("estimatedCost", arangodb::basics::Json(_root->getCost(nrItems)));
   result.set("estimatedNrItems",
-             triagens::basics::Json(static_cast<double>(nrItems)));
+             arangodb::basics::Json(static_cast<double>(nrItems)));
 
   return result;
 }
@@ -370,7 +370,7 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
     // this part of the code should only be called for anonymous COLLECT nodes,
     // which only have one result variable
     auto en = static_cast<CollectNode const*>(node);
-    auto const& vars = en->collectVariables();
+    auto const& vars = en->groupVariables();
 
     TRI_ASSERT(vars.size() == 1);
     auto v = vars[0].first;
@@ -394,7 +394,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
 
   std::vector<std::pair<Variable const*, Variable const*>> const
       groupVariables{std::make_pair(out, previous->outVariable())};
-  std::vector<std::pair<Variable const*, Variable const*>> const
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
       aggregateVariables{};
 
   auto en = new CollectNode(this, nextId(), CollectOptions(),
@@ -874,18 +874,18 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
   size_t const n = node->numMembers();
 
-  TRI_ASSERT(n >= 2);
+  TRI_ASSERT(n == 6);
 
   auto options = createCollectOptions(node->getMember(0));
 
-  auto list = node->getMember(1);
-  size_t const numVars = list->numMembers();
+  auto groups = node->getMember(1);
+  size_t const numVars = groups->numMembers();
 
   std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
   groupVariables.reserve(numVars);
 
   for (size_t i = 0; i < numVars; ++i) {
-    auto assigner = list->getMember(i);
+    auto assigner = groups->getMember(i);
 
     if (assigner == nullptr) {
       continue;
@@ -911,111 +911,109 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     }
   }
 
-  // handle out variable
-  Variable* outVariable = nullptr;
-  std::vector<Variable const*> keepVariables;
+  // aggregate variables 
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+  {
+    auto list = node->getMember(2);
+    TRI_ASSERT(list->type == NODE_TYPE_AGGREGATIONS);
+    list = list->getMember(0);
+    TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
+    size_t const numVars = list->numMembers();
 
-  if (n >= 3) {
-    // collect with an output variable!
-    auto v = node->getMember(2);
-    outVariable = static_cast<Variable*>(v->getData());
+    aggregateVariables.reserve(numVars);
+    for (size_t i = 0; i < numVars; ++i) {
+      auto assigner = list->getMember(i);
 
-    if (n >= 4) {
-      auto vars = node->getMember(3);
-      TRI_ASSERT(vars->type == NODE_TYPE_ARRAY);
-      size_t const keepVarsSize = vars->numMembers();
-      keepVariables.reserve(keepVarsSize);
+      if (assigner == nullptr) {
+        continue;
+      }
 
-      for (size_t i = 0; i < keepVarsSize; ++i) {
-        auto ref = vars->getMember(i);
-        TRI_ASSERT(ref->type == NODE_TYPE_REFERENCE);
-        keepVariables.emplace_back(
-            static_cast<Variable const*>(ref->getData()));
+      TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
+      auto out = assigner->getMember(0);
+      TRI_ASSERT(out != nullptr);
+      auto v = static_cast<Variable*>(out->getData());
+      TRI_ASSERT(v != nullptr);
+
+      auto expression = assigner->getMember(1);
+
+      // operand is always a function call
+      TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
+
+      // build aggregator 
+      auto func = static_cast<Function*>(expression->getData());
+      TRI_ASSERT(func != nullptr);
+
+      // function should have one argument (an array with the parameters)
+      TRI_ASSERT(expression->numMembers() == 1);
+
+      auto args = expression->getMember(0);
+      // the number of arguments should also be one (note: this has been
+      // validated before)
+      TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
+      TRI_ASSERT(args->numMembers() == 1);
+
+      auto arg = args->getMember(0);
+
+      if (arg->type == NODE_TYPE_REFERENCE) {
+        // operand is a variable
+        auto e = static_cast<Variable*>(arg->getData());
+        aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(e, func->externalName)));
+      }
+      else {
+        auto calc = createTemporaryCalculation(arg, previous);
+        previous = calc;
+
+        aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(getOutVariable(calc), func->externalName)));
       }
     }
   }
-  
-  std::vector<std::pair<Variable const*, Variable const*>> const
-      aggregateVariables{};
+ 
+  // handle out variable
+  Variable const* outVariable = nullptr;
+  auto const into = node->getMember(3);
 
-  auto collectNode = new CollectNode(
-      this, nextId(), options, groupVariables, aggregateVariables, nullptr, outVariable,
-      keepVariables, _ast->variables()->variables(false), false, false);
-
-  auto en = registerNode(collectNode);
-
-  return addDependency(previous, en);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an execution plan element from an AST COLLECT node
-////////////////////////////////////////////////////////////////////////////////
-
-ExecutionNode* ExecutionPlan::fromNodeCollectExpression(ExecutionNode* previous,
-                                                        AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT_EXPRESSION);
-  TRI_ASSERT(node->numMembers() == 4);
-
-  auto options = createCollectOptions(node->getMember(0));
-
-  auto list = node->getMember(1);
-  size_t const numVars = list->numMembers();
-
-  std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
-  groupVariables.reserve(numVars);
-  for (size_t i = 0; i < numVars; ++i) {
-    auto assigner = list->getMember(i);
-
-    if (assigner == nullptr) {
-      continue;
-    }
-
-    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-    auto out = assigner->getMember(0);
-    TRI_ASSERT(out != nullptr);
-    auto v = static_cast<Variable*>(out->getData());
-    TRI_ASSERT(v != nullptr);
-
-    auto expression = assigner->getMember(1);
-
-    if (expression->type == NODE_TYPE_REFERENCE) {
-      // operand is a variable
-      auto e = static_cast<Variable*>(expression->getData());
-      groupVariables.emplace_back(std::make_pair(v, e));
-    } else {
-      // operand is some misc expression
-      auto calc = createTemporaryCalculation(expression, previous);
-      previous = calc;
-      groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
-    }
+  if (into->type != NODE_TYPE_NOP) {
+    outVariable = static_cast<Variable const*>(into->getData());
   }
 
   Variable const* expressionVariable = nullptr;
-  auto expression = node->getMember(3);
+  auto const expression = node->getMember(4);
 
-  if (expression->type == NODE_TYPE_REFERENCE) {
-    // expression is already a variable
-    auto variable = static_cast<Variable*>(expression->getData());
-    TRI_ASSERT(variable != nullptr);
-    expressionVariable = variable;
-  } else {
-    // expression is some misc expression
-    auto calc = createTemporaryCalculation(expression, previous);
-    previous = calc;
-    expressionVariable = getOutVariable(calc);
+  if (expression->type != NODE_TYPE_NOP) {
+    if (expression->type == NODE_TYPE_REFERENCE) {
+      // expression is already a variable
+      auto variable = static_cast<Variable const*>(expression->getData());
+      TRI_ASSERT(variable != nullptr);
+      expressionVariable = variable;
+    } 
+    else {
+      // expression is some misc expression
+      auto calc = createTemporaryCalculation(expression, previous);
+      previous = calc;
+      expressionVariable = getOutVariable(calc);
+    }
   }
 
-  // output variable
-  auto v = node->getMember(2);
-  Variable* outVariable = static_cast<Variable*>(v->getData());
-  
-  std::vector<std::pair<Variable const*, Variable const*>> const
-      aggregateVariables{};
+  std::vector<Variable const*> keepVariables;
+  auto const keep = node->getMember(5);
 
+  if (keep->type != NODE_TYPE_NOP) {
+    // variables to keep
+    TRI_ASSERT(keep->type == NODE_TYPE_ARRAY);
+    size_t const keepVarsSize = keep->numMembers();
+    keepVariables.reserve(keepVarsSize);
+
+    for (size_t i = 0; i < keepVarsSize; ++i) {
+      auto ref = keep->getMember(i);
+      TRI_ASSERT(ref->type == NODE_TYPE_REFERENCE);
+      keepVariables.emplace_back(
+          static_cast<Variable const*>(ref->getData()));
+    }
+  } 
+  
   auto collectNode = new CollectNode(
-      this, nextId(), options, groupVariables, aggregateVariables, expressionVariable,
-      outVariable, std::vector<Variable const*>(),
-      std::unordered_map<VariableId, std::string const>(), false, false);
+      this, nextId(), options, groupVariables, aggregateVariables, expressionVariable, outVariable,
+      keepVariables, _ast->variables()->variables(false), false, false);
 
   auto en = registerNode(collectNode);
 
@@ -1074,97 +1072,12 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
 
   TRI_ASSERT(outVariable != nullptr);
   
-  std::vector<std::pair<Variable const*, Variable const*>> const
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
       aggregateVariables{};
 
-  auto en = registerNode(
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables, nullptr,
+  auto collectNode = new CollectNode(this, nextId(), options, groupVariables, aggregateVariables, nullptr,
                         outVariable, std::vector<Variable const*>(),
-                        _ast->variables()->variables(false), true, false));
-
-  return addDependency(previous, en);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an execution plan element from an AST COLLECT node, AGGREGATE
-////////////////////////////////////////////////////////////////////////////////
-
-ExecutionNode* ExecutionPlan::fromNodeCollectAggregate(ExecutionNode* previous,
-                                                       AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT_AGGREGATE);
-  TRI_ASSERT(node->numMembers() == 3);
-
-  auto options = createCollectOptions(node->getMember(0));
-
-  // group variables
-  std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
-  {
-    auto list = node->getMember(1);
-    size_t const numVars = list->numMembers();
-
-    groupVariables.reserve(numVars);
-    for (size_t i = 0; i < numVars; ++i) {
-      auto assigner = list->getMember(i);
-
-      if (assigner == nullptr) {
-        continue;
-      }
-
-      TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-      auto out = assigner->getMember(0);
-      TRI_ASSERT(out != nullptr);
-      auto v = static_cast<Variable*>(out->getData());
-      TRI_ASSERT(v != nullptr);
-
-      auto expression = assigner->getMember(1);
-
-      if (expression->type == NODE_TYPE_REFERENCE) {
-        // operand is a variable
-        auto e = static_cast<Variable*>(expression->getData());
-        groupVariables.emplace_back(std::make_pair(v, e));
-      } else {
-        // operand is some misc expression
-        auto calc = createTemporaryCalculation(expression, previous);
-        previous = calc;
-        groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
-      }
-    }
-  }
- 
-  // aggregate variables 
-  std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
-  {
-    auto list = node->getMember(2);
-    size_t const numVars = list->numMembers();
-
-    aggregateVariables.reserve(numVars);
-    for (size_t i = 0; i < numVars; ++i) {
-      auto assigner = list->getMember(i);
-
-      if (assigner == nullptr) {
-        continue;
-      }
-
-      TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-      auto out = assigner->getMember(0);
-      TRI_ASSERT(out != nullptr);
-      auto v = static_cast<Variable*>(out->getData());
-      TRI_ASSERT(v != nullptr);
-
-      auto expression = assigner->getMember(1);
-
-      // operand is some misc expression
-      auto calc = createTemporaryCalculation(expression, previous);
-      previous = calc;
-      groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
-    }
-  }
-  
-  auto collectNode = new CollectNode(
-      this, nextId(), options, groupVariables, aggregateVariables, nullptr,
-      nullptr, std::vector<Variable const*>(),
-      std::unordered_map<VariableId, std::string const>(), false, false);
-
+                        _ast->variables()->variables(false), true, false);
   auto en = registerNode(collectNode);
 
   return addDependency(previous, en);
@@ -1559,21 +1472,11 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
 
-      case NODE_TYPE_COLLECT_EXPRESSION: {
-        en = fromNodeCollectExpression(en, member);
-        break;
-      }
-
       case NODE_TYPE_COLLECT_COUNT: {
         en = fromNodeCollectCount(en, member);
         break;
       }
       
-      case NODE_TYPE_COLLECT_AGGREGATE: {
-        en = fromNodeCollectAggregate(en, member);
-        break;
-      }
-
       case NODE_TYPE_LIMIT: {
         en = fromNodeLimit(en, member);
         break;
@@ -1904,9 +1807,9 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
 /// @brief create a plan from the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
+ExecutionNode* ExecutionPlan::fromJson(arangodb::basics::Json const& json) {
   ExecutionNode* ret = nullptr;
-  triagens::basics::Json nodes = json.get("nodes");
+  arangodb::basics::Json nodes = json.get("nodes");
 
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not an array");
@@ -1917,7 +1820,7 @@ ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
   auto const size = nodes.size();
 
   for (size_t i = 0; i < size; i++) {
-    triagens::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
+    arangodb::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (!oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1929,9 +1832,9 @@ ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
 
     TRI_ASSERT(ret != nullptr);
 
-    if (ret->getType() == triagens::aql::ExecutionNode::SUBQUERY) {
+    if (ret->getType() == arangodb::aql::ExecutionNode::SUBQUERY) {
       // found a subquery node. now do magick here
-      triagens::basics::Json subquery = oneJsonNode.get("subquery");
+      arangodb::basics::Json subquery = oneJsonNode.get("subquery");
       // create the subquery nodes from the "subquery" sub-node
       auto subqueryNode = fromJson(subquery);
 
@@ -1943,7 +1846,7 @@ ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
   // all nodes have been created. now add the dependencies
 
   for (size_t i = 0; i < size; i++) {
-    triagens::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
+    arangodb::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (!oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1951,19 +1854,19 @@ ExecutionNode* ExecutionPlan::fromJson(triagens::basics::Json const& json) {
     }
 
     // read the node's own id
-    auto thisId = triagens::basics::JsonHelper::checkAndGetNumericValue<size_t>(
+    auto thisId = arangodb::basics::JsonHelper::checkAndGetNumericValue<size_t>(
         oneJsonNode.json(), "id");
     auto thisNode = getNodeById(thisId);
 
     // now re-link the dependencies
-    triagens::basics::Json dependencies = oneJsonNode.get("dependencies");
-    if (triagens::basics::JsonHelper::isArray(dependencies.json())) {
+    arangodb::basics::Json dependencies = oneJsonNode.get("dependencies");
+    if (arangodb::basics::JsonHelper::isArray(dependencies.json())) {
       size_t const nDependencies = dependencies.size();
 
       for (size_t j = 0; j < nDependencies; j++) {
-        if (triagens::basics::JsonHelper::isNumber(
+        if (arangodb::basics::JsonHelper::isNumber(
                 dependencies.at(static_cast<int>(j)).json())) {
-          auto depId = triagens::basics::JsonHelper::getNumericValue<size_t>(
+          auto depId = arangodb::basics::JsonHelper::getNumericValue<size_t>(
               dependencies.at(static_cast<int>(j)).json(), 0);
           thisNode->addDependency(getNodeById(depId));
         }

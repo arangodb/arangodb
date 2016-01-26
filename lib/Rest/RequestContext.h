@@ -29,7 +29,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 class HttpRequest;

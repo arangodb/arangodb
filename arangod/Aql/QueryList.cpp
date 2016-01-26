@@ -29,10 +29,10 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
-QueryEntry::QueryEntry(triagens::aql::Query const* query, double started)
+QueryEntry::QueryEntry(arangodb::aql::Query const* query, double started)
     : query(query), started(started) {}
 
 QueryEntryCopy::QueryEntryCopy (TRI_voc_tick_t id,
@@ -75,7 +75,7 @@ QueryList::QueryList(TRI_vocbase_t*)
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryList::~QueryList() {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   for (auto& it : _current) {
     delete it.second;
@@ -98,7 +98,7 @@ bool QueryList::insert(Query const* query, double stamp) {
   try {
     auto entry = std::make_unique<QueryEntry>(query, stamp);
 
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     TRI_IF_FAILURE("QueryList::insert") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -136,7 +136,7 @@ void QueryList::remove(Query const* query, double now) {
   QueryEntry* entry = nullptr;
 
   {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
     auto it = _current.find(query->id());
 
     if (it != _current.end()) {
@@ -212,7 +212,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   std::string queryString;
 
   {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     auto it = _current.find(id);
 
@@ -223,7 +223,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
     auto entry = (*it).second;
     queryString.assign(entry->query->queryString(),
                        entry->query->queryLength());
-    const_cast<triagens::aql::Query*>(entry->query)->killed(true);
+    const_cast<arangodb::aql::Query*>(entry->query)->killed(true);
   }
 
   // log outside the lock
@@ -244,7 +244,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   std::vector<QueryEntryCopy> result;
 
   {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
     result.reserve(_current.size());
 
     for (auto const& it : _current) {
@@ -300,7 +300,7 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
   std::vector<QueryEntryCopy> result;
 
   {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
     result.reserve(_slow.size());
     result.assign(_slow.begin(), _slow.end());
   }
@@ -313,7 +313,7 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QueryList::clearSlow() {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _slow.clear();
   _slowCount = 0;
 }

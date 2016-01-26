@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JS_ReadBuffer
-/// @brief reads in a file
-/// `fs.readBuffer(filename)`
-///
-/// Reads in a file and returns its content in a Buffer object.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+@brief reads in a file
+`fs.readBuffer(filename)`
+
+Reads in a file and returns its content in a Buffer object.
+

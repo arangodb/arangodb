@@ -22,14 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVersionHandler.h"
+
 #include "Rest/AnyServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::admin;
-using namespace std;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
+using namespace arangodb;
+
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::admin;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -38,20 +43,12 @@ using namespace std;
 extern AnyServer* ArangoInstance;
 
 
-
 RestVersionHandler::RestVersionHandler(HttpRequest* request)
     : RestBaseHandler(request) {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestVersionHandler::isDirect() const { return true; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_return
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestVersionHandler::execute() {
   try {
@@ -81,5 +78,3 @@ HttpHandler::status_t RestVersionHandler::execute() {
   }
   return status_t(HANDLER_DONE);
 }
-
-

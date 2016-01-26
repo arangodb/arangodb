@@ -39,7 +39,6 @@
 #endif
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global string containing the currently registered failure points
 /// the string is a comma-separated list of point names
@@ -51,7 +50,7 @@ static char* FailurePoints = nullptr;
 /// @brief a read-write lock for thread-safe access to the failure-points list
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::ReadWriteLock FailurePointsLock;
+arangodb::basics::ReadWriteLock FailurePointsLock;
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 
@@ -63,18 +62,22 @@ triagens::basics::ReadWriteLock FailurePointsLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 static char* MakeValue(char const* value) {
-  if (value == nullptr || strlen(value) == 0) {
+  if (value == nullptr) {
+    return nullptr;
+  }
+  size_t const len = strlen(value);
+  if (len == 0) {
     return nullptr;
   }
 
   char* delimited = static_cast<char*>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, strlen(value) + 3, false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, len + 3, false));
 
   if (delimited != nullptr) {
-    memcpy(delimited + 1, value, strlen(value));
+    memcpy(delimited + 1, value, len);
     delimited[0] = ',';
-    delimited[strlen(value) + 1] = ',';
-    delimited[strlen(value) + 2] = '\0';
+    delimited[len + 1] = ',';
+    delimited[len + 2] = '\0';
   }
 
   return delimited;
@@ -113,14 +116,14 @@ bool TRI_ShouldFailDebugging(char const* value) {
     return false;
   }
 
-  READ_LOCKER(FailurePointsLock);
+  READ_LOCKER(readLocker, FailurePointsLock);
 
   if (FailurePoints != nullptr) {
     char* checkValue = MakeValue(value);
 
     if (checkValue != nullptr) {
       found = strstr(FailurePoints, checkValue);
-      TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
     }
   }
 
@@ -132,15 +135,15 @@ bool TRI_ShouldFailDebugging(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddFailurePointDebugging(char const* value) {
-  char* found;
   char* checkValue = MakeValue(value);
 
   if (checkValue == nullptr) {
     return;
   }
 
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
+  char* found;
   if (FailurePoints == nullptr) {
     found = nullptr;
   } else {
@@ -157,10 +160,10 @@ void TRI_AddFailurePointDebugging(char const* value) {
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {
-      copy = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, n + 1, false));
+      copy = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + 1, false));
 
       if (copy == nullptr) {
-        TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
         return;
       }
 
@@ -168,10 +171,10 @@ void TRI_AddFailurePointDebugging(char const* value) {
       copy[n] = '\0';
     } else {
       copy = static_cast<char*>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n + strlen(FailurePoints), false));
+          TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + strlen(FailurePoints), false));
 
       if (copy == nullptr) {
-        TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
         return;
       }
 
@@ -179,21 +182,21 @@ void TRI_AddFailurePointDebugging(char const* value) {
       memcpy(copy + strlen(FailurePoints) - 1, checkValue, n);
       copy[strlen(FailurePoints) + n - 1] = '\0';
 
-      TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, FailurePoints);
     }
 
     FailurePoints = copy;
   }
 
-  TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a failure points
+/// @brief remove a failure point
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   if (FailurePoints == nullptr) {
     return;
@@ -209,24 +212,24 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
     found = strstr(FailurePoints, checkValue);
 
     if (found == nullptr) {
-      TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
       return;
     }
 
     if (strlen(FailurePoints) - strlen(checkValue) <= 2) {
-      TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, FailurePoints);
       FailurePoints = nullptr;
 
-      TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
       return;
     }
 
     copy = static_cast<char*>(
-        TRI_Allocate(TRI_CORE_MEM_ZONE,
+        TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
                      strlen(FailurePoints) - strlen(checkValue) + 2, false));
 
     if (copy == nullptr) {
-      TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
       return;
     }
 
@@ -239,10 +242,10 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
            strlen(FailurePoints) - strlen(checkValue) - n + 1);
 
     copy[strlen(FailurePoints) - strlen(checkValue) + 1] = '\0';
-    TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, FailurePoints);
     FailurePoints = copy;
 
-    TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
   }
 }
 
@@ -251,10 +254,10 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearFailurePointsDebugging() {
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   if (FailurePoints != nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, FailurePoints);
   }
 
   FailurePoints = nullptr;
@@ -274,7 +277,7 @@ void TRI_InitializeDebugging() {}
 
 void TRI_ShutdownDebugging() {
   if (FailurePoints != nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, FailurePoints);
   }
 
   FailurePoints = nullptr;

@@ -22,30 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-collection.h"
-#include "v8-vocbaseprivate.h"
-
 #include "Basics/conversions.h"
 #include "V8/v8-conv.h"
+#include "V8Server/v8-vocbaseprivate.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::rest;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "collection"
 ////////////////////////////////////////////////////////////////////////////////
 
 static int const SLOT_COLLECTION = 2;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a coordinator collection
-////////////////////////////////////////////////////////////////////////////////
-
-void FreeCoordinatorCollection(TRI_vocbase_col_t* collection) {
-  TRI_DestroyReadWriteLock(&collection->_lock);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection
@@ -62,12 +51,7 @@ void ReleaseCollection(TRI_vocbase_col_t const* collection) {
 
 TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
                                          CollectionInfo const& ci) {
-  TRI_vocbase_col_t* c = static_cast<TRI_vocbase_col_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false));
-
-  if (c == nullptr) {
-    return nullptr;
-  }
+  auto c = std::make_unique<TRI_vocbase_col_t>();
 
   c->_internalVersion = 0;
   c->_isLocal = false;
@@ -101,9 +85,7 @@ TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
     }
   }
 
-  TRI_InitReadWriteLock(&c->_lock);
-
-  return c;
+  return c.release();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -171,7 +153,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   TRI_ASSERT(it != v8g->JSCollections.end())
 #endif
   if (!collection->_isLocal) {
-    FreeCoordinatorCollection(collection);
+    delete collection;
   }
   // dispose and clear the persistent handle
   v8g->JSCollections[collection].Reset();

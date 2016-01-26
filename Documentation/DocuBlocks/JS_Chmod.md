@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JS_Chmod
-/// @brief sets file permissions of specified files (non windows only)
-/// `fs.exists(path)`
-///
-/// Returns true on success.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+@brief sets file permissions of specified files (non windows only)
+`fs.exists(path)`
+
+Returns true on success.
+

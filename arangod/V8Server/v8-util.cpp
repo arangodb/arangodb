@@ -27,9 +27,9 @@
 #include "V8/v8-conv.h"
 #include "Utils/DocumentHelper.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
+using namespace arangodb;
+using namespace arangodb::basics;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the vocbase pointer from the current V8 context

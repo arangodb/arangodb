@@ -28,18 +28,20 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Utils/transactions.h"
 #include "VocBase/datafile.h"
+#include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
 
-struct TRI_datafile_s;
+struct TRI_datafile_t;
 struct TRI_df_marker_s;
 struct TRI_document_collection_t;
 struct TRI_server_t;
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 class LogfileManager;
@@ -97,7 +99,7 @@ struct CollectorCache {
   /// @brief add a ditch
   //////////////////////////////////////////////////////////////////////////////
 
-  void addDitch(triagens::arango::DocumentDitch* ditch) {
+  void addDitch(arangodb::DocumentDitch* ditch) {
     TRI_ASSERT(ditch != nullptr);
     ditches.emplace_back(ditch);
   }
@@ -148,13 +150,13 @@ struct CollectorCache {
   /// @brief ditches held by the operations
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<triagens::arango::DocumentDitch*> ditches;
+  std::vector<arangodb::DocumentDitch*> ditches;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief datafile info cache, updated when the collector transfers markers
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<TRI_voc_fid_t, TRI_doc_datafile_info_t> dfi;
+  std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer> dfi;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief id of last datafile handled
@@ -251,6 +253,16 @@ class CollectorThread : public basics::Thread {
 
   
  private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief process a single marker in collector step 2
+  //////////////////////////////////////////////////////////////////////////////
+
+  void processCollectionMarker(arangodb::SingleCollectionWriteTransaction<UINT64_MAX>&,
+                               TRI_document_collection_t*,
+                               CollectorCache*,
+                               CollectorOperation const&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the number of queued operations
   //////////////////////////////////////////////////////////////////////////////
@@ -285,7 +297,7 @@ class CollectorThread : public basics::Thread {
   /// @brief transfer markers into a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int transferMarkers(triagens::wal::Logfile*, TRI_voc_cid_t, TRI_voc_tick_t,
+  int transferMarkers(arangodb::wal::Logfile*, TRI_voc_cid_t, TRI_voc_tick_t,
                       int64_t, OperationsType const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -299,7 +311,7 @@ class CollectorThread : public basics::Thread {
   /// @brief insert the collect operations into a per-collection queue
   //////////////////////////////////////////////////////////////////////////////
 
-  int queueOperations(triagens::wal::Logfile*, CollectorCache*&);
+  int queueOperations(arangodb::wal::Logfile*, CollectorCache*&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update a collection's datafile information
@@ -359,7 +371,7 @@ class CollectorThread : public basics::Thread {
   /// @brief operations lock
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _operationsQueueLock;
+  arangodb::basics::Mutex _operationsQueueLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief operations to collect later

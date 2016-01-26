@@ -22,16 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "statistics.h"
-
+#include "Basics/logging.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/threads.h"
 
 #include <boost/lockfree/queue.hpp>
 
-using namespace triagens::basics;
-using namespace std;
-
+using namespace arangodb::basics;
 
 static size_t const QUEUE_SIZE = 1000;
 
@@ -39,7 +37,7 @@ static size_t const QUEUE_SIZE = 1000;
 /// @brief lock for request statistics data
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex RequestDataLock;
+static arangodb::basics::Mutex RequestDataLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the request statistics queue
@@ -64,7 +62,7 @@ static boost::lockfree::queue<TRI_request_statistics_t*,
 
 static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   {
-    MUTEX_LOCKER(RequestDataLock);
+    MUTEX_LOCKER(mutexLocker, RequestDataLock);
 
     TRI_TotalRequestsStatistics.incCounter();
 
@@ -143,6 +141,8 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics() {
     return statistics;
   }
 
+  LOG_TRACE("no free element on statistics queue");
+
   return nullptr;
 }
 
@@ -184,7 +184,7 @@ void TRI_FillRequestStatistics(StatisticsDistribution& totalTime,
                                StatisticsDistribution& ioTime,
                                StatisticsDistribution& bytesSent,
                                StatisticsDistribution& bytesReceived) {
-  MUTEX_LOCKER(RequestDataLock);
+  MUTEX_LOCKER(mutexLocker, RequestDataLock);
 
   totalTime = *TRI_TotalTimeDistributionStatistics;
   requestTime = *TRI_RequestTimeDistributionStatistics;
@@ -199,7 +199,7 @@ void TRI_FillRequestStatistics(StatisticsDistribution& totalTime,
 /// @brief lock for connection data
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex ConnectionDataLock;
+static arangodb::basics::Mutex ConnectionDataLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free list
@@ -234,7 +234,7 @@ void TRI_ReleaseConnectionStatistics(TRI_connection_statistics_t* statistics) {
   }
 
   {
-    MUTEX_LOCKER(ConnectionDataLock);
+    MUTEX_LOCKER(mutexLocker, ConnectionDataLock);
 
     if (statistics->_http) {
       if (statistics->_connStart != 0.0) {
@@ -271,7 +271,7 @@ void TRI_FillConnectionStatistics(StatisticsCounter& httpConnections,
                                   std::vector<StatisticsCounter>& methodRequests,
                                   StatisticsCounter& asyncRequests,
                                   StatisticsDistribution& connectionTime) {
-  MUTEX_LOCKER(ConnectionDataLock);
+  MUTEX_LOCKER(mutexLocker, ConnectionDataLock);
 
   httpConnections = TRI_HttpConnectionsStatistics;
   totalRequests = TRI_TotalRequestsStatistics;
@@ -525,7 +525,7 @@ void TRI_InitializeStatistics() {
   TRI_MethodRequestsStatistics.clear();
 
   for (int i = 0;
-       i < ((int)triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
+       i < ((int)arangodb::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
     StatisticsCounter c;
     TRI_MethodRequestsStatistics.emplace_back(c);
   }
@@ -563,7 +563,7 @@ void TRI_InitializeStatistics() {
   // .............................................................................
 
   Shutdown = false;
-  TRI_StartThread(&StatisticsThread, nullptr, "[statistics]",
+  TRI_StartThread(&StatisticsThread, nullptr, "Statistics",
                   StatisticsQueueWorker, 0);
 }
 

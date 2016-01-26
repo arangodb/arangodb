@@ -35,11 +35,9 @@ struct TRI_doc_mptr_copy_t;
 struct TRI_edge_index_iterator_t;
 struct TRI_hash_index_element_multi_s;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class IndexIterator;
 struct IndexIteratorContext;
-}
 
 namespace aql {
 
@@ -83,13 +81,13 @@ class IndexBlock : public ExecutionBlock {
   /// @brief adds a SORT to a dynamic IN condition
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::AstNode* makeUnique(triagens::aql::AstNode*) const;
+  arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create an iterator object
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::IndexIterator* createIterator();
+  arangodb::IndexIterator* createIterator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Forwards _iterator to the next available index
@@ -184,7 +182,7 @@ class IndexBlock : public ExecutionBlock {
   /// @brief context for index iteration
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::IndexIteratorContext* _context;
+  arangodb::IndexIteratorContext* _context;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _iterator: holds the index iterator found using
@@ -192,7 +190,7 @@ class IndexBlock : public ExecutionBlock {
   /// necessarily all at once.
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::IndexIterator* _iterator;
+  arangodb::IndexIterator* _iterator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _condition: holds the complete condition this Block can serve for
@@ -213,8 +211,8 @@ class IndexBlock : public ExecutionBlock {
   bool _hasV8Expression;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

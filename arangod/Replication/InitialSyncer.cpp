@@ -40,12 +40,15 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a binary search for the given key in the markers vector
@@ -246,7 +249,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
     }
 
     return res;
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     sendFinishBatch();
     errorMsg = ex.what();
     return ex.code();
@@ -460,7 +463,7 @@ bool InitialSyncer::checkAborted() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::applyCollectionDump(
-    triagens::arango::Transaction* trx,
+    arangodb::Transaction* trx,
     TRI_transaction_collection_t* trxCollection, SimpleHttpResult* response,
     uint64_t& markersProcessed, std::string& errorMsg) {
   std::string const invalidMsg = "received invalid JSON data for collection " +
@@ -569,7 +572,7 @@ int InitialSyncer::applyCollectionDump(
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::handleCollectionDump(
-    triagens::arango::Transaction* trx, std::string const& cid,
+    arangodb::Transaction* trx, std::string const& cid,
     TRI_transaction_collection_t* trxCollection, std::string const& collectionName,
     TRI_voc_tick_t maxTick, std::string& errorMsg) {
   std::string appendix;
@@ -946,7 +949,7 @@ int InitialSyncer::handleCollectionSync(
 
   try {
     res = handleSyncKeys(id, cid, trx, collectionName, maxTick, errorMsg);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -981,7 +984,7 @@ int InitialSyncer::handleSyncKeys(
   markers.reserve(idx->size());
 
   {
-    triagens::basics::BucketPosition position;
+    arangodb::basics::BucketPosition position;
 
     uint64_t total = 0;
     while (true) {
@@ -1346,11 +1349,11 @@ int InitialSyncer::handleSyncKeys(
       */
 
       if (!toFetch.empty()) {
-        triagens::basics::Json keysJson(triagens::basics::Json::Array,
+        arangodb::basics::Json keysJson(arangodb::basics::Json::Array,
                                         toFetch.size());
 
         for (auto& it : toFetch) {
-          keysJson.add(triagens::basics::Json(static_cast<double>(it)));
+          keysJson.add(arangodb::basics::Json(static_cast<double>(it)));
         }
 
         std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" +
@@ -1362,7 +1365,7 @@ int InitialSyncer::handleSyncKeys(
         setProgress(progress);
 
         auto const keyJsonString =
-            triagens::basics::JsonHelper::toString(keysJson.json());
+            arangodb::basics::JsonHelper::toString(keysJson.json());
 
         std::unique_ptr<SimpleHttpResult> response(
             _client->retryRequest(HttpRequest::HTTP_REQUEST_PUT, url,
@@ -1523,12 +1526,12 @@ int InitialSyncer::changeCollection(TRI_vocbase_col_t* col,
                                     TRI_json_t const* json) {
   try {
     std::shared_ptr<VPackBuilder> tmp =
-        triagens::basics::JsonHelper::toVelocyPack(json);
-    triagens::arango::CollectionGuard guard(_vocbase, col->_cid);
+        arangodb::basics::JsonHelper::toVelocyPack(json);
+    arangodb::CollectionGuard guard(_vocbase, col->_cid);
     bool doSync = _vocbase->_settings.forceSyncProperties;
     return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
                                     tmp->slice(), doSync);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
     return TRI_ERROR_INTERNAL;
@@ -1540,8 +1543,12 @@ int InitialSyncer::changeCollection(TRI_vocbase_col_t* col,
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::handleCollection(TRI_json_t const* parameters,
-                                    TRI_json_t const* indexes, bool incremental,
-                                    std::string& errorMsg, sync_phase_e phase) {
+                                    TRI_json_t const* indexesJson,
+                                    bool incremental, std::string& errorMsg,
+                                    sync_phase_e phase) {
+  // Only Temporary indexesJson will be VPack soon
+  std::shared_ptr<VPackBuilder> builder = arangodb::basics::JsonHelper::toVelocyPack(indexesJson);
+  VPackSlice indexes = builder->slice();
   if (checkAborted()) {
     return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
   }
@@ -1720,7 +1727,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg =
-            "unable to start transaction: " + string(TRI_errno_string(res));
+            "unable to start transaction: " + std::string(TRI_errno_string(res));
 
         return res;
       }
@@ -1730,7 +1737,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
       if (trxCollection == nullptr) {
         res = TRI_ERROR_INTERNAL;
         errorMsg =
-            "unable to start transaction: " + string(TRI_errno_string(res));
+            "unable to start transaction: " + std::string(TRI_errno_string(res));
       } else {
         if (incremental && trx.documentCollection()->size() > 0) {
           res = handleCollectionSync(StringUtils::itoa(cid), trx, masterName,
@@ -1744,17 +1751,18 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
 
       if (res == TRI_ERROR_NO_ERROR) {
         // now create indexes
-        size_t const n = TRI_LengthVector(&indexes->_value._objects);
+        TRI_ASSERT(indexes.isArray());
+        VPackValueLength const n = indexes.length();
 
         if (n > 0) {
           std::string const progress = "creating " + std::to_string(n) +
                                   " index(es) for " + collectionMsg;
           setProgress(progress);
 
-          READ_LOCKER(_vocbase->_inventoryLock);
+          READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
           try {
-            triagens::arango::CollectionGuard guard(_vocbase, col->_cid, false);
+            arangodb::CollectionGuard guard(_vocbase, col->_cid, false);
             TRI_vocbase_col_t* col = guard.collection();
 
             if (col == nullptr) {
@@ -1763,27 +1771,22 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
               TRI_document_collection_t* document = col->_collection;
               TRI_ASSERT(document != nullptr);
 
-              for (size_t i = 0; i < n; ++i) {
-                TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(
-                    TRI_AtVector(&indexes->_value._objects, i));
-                triagens::arango::Index* idx = nullptr;
+              for (auto const& idxDef : VPackArrayIterator(indexes)) {
+                arangodb::Index* idx = nullptr;
 
-                if (TRI_IsObjectJson(idxDef)) {
-                  TRI_json_t const* type = TRI_LookupObjectJson(idxDef, "type");
-                  if (TRI_IsStringJson(type)) {
+                if (idxDef.isObject()) {
+                  VPackSlice const type = idxDef.get("type");
+                  if (type.isString()) {
                     std::string const progress =
                         "creating index of type " +
-                        std::string(type->_value._string.data,
-                                    type->_value._string.length - 1) +
+                        type.copyString() +
                         " for " + collectionMsg;
                     setProgress(progress);
                   }
                 }
 
-                // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-
-                res = TRI_FromJsonIndexDocumentCollection(&trx, document,
-                                                          idxDef, &idx);
+                res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document,
+                                                                idxDef, &idx);
 
                 if (res != TRI_ERROR_NO_ERROR) {
                   errorMsg = "could not create index: " +
@@ -1804,7 +1807,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
 
               TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
             }
-          } catch (triagens::basics::Exception const& ex) {
+          } catch (arangodb::basics::Exception const& ex) {
             res = ex.code();
           } catch (...) {
             res = TRI_ERROR_INTERNAL;

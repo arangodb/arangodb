@@ -31,9 +31,9 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 // -----------------------------------------------------------------------------

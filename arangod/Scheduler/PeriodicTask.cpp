@@ -28,8 +28,11 @@
 #include "Basics/logging.h"
 #include "Scheduler/Scheduler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
-using namespace triagens::rest;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors
@@ -56,16 +59,13 @@ void PeriodicTask::resetTimer(double offset, double interval) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a task specific description in JSON format
+/// @brief get a task specific description in VelocyPack format
 ////////////////////////////////////////////////////////////////////////////////
 
-void PeriodicTask::getDescription(TRI_json_t* json) const {
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json, "type",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "periodic",
-                               strlen("periodic")));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "period",
-                        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _interval));
+void PeriodicTask::getDescription(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("type", VPackValue("periodic"));
+  builder.add("period", VPackValue(_interval));
 }
 
 bool PeriodicTask::setup(Scheduler* scheduler, EventLoop loop) {

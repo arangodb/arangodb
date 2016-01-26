@@ -30,7 +30,7 @@
 void TRI_InitV8Replication(v8::Isolate* isolate,
                            v8::Handle<v8::Context> context,
                            TRI_server_t* server, TRI_vocbase_t* vocbase,
-                           triagens::arango::JSLoader* loader,
+                           arangodb::JSLoader* loader,
                            size_t threadNumber, TRI_v8_global_t* v8g);
 
 #endif

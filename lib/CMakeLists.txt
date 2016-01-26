@@ -14,10 +14,6 @@ include_directories(.)
 ### @brief LIB_ARANGO
 ################################################################################
 
-if (APPLE)
-  SET(LIB_ARANGO_APPLE Basics/locks-macos.cpp)
-endif ()
-
 if (MSVC)
   SET(LIB_ARANGO_MSVC
       Basics/locks-win32.cpp
@@ -114,9 +110,8 @@ add_library(
     Basics/random.cpp
     Basics/RandomGenerator.cpp
     Basics/ReadWriteLock.cpp
+    Basics/ReadWriteLockCPP11.cpp
     Basics/socket-utils.cpp
-    Basics/SpinLock.cpp
-    Basics/SpinLocker.cpp
     Basics/ssl-helper.cpp
     Basics/StringBuffer.cpp
     Basics/StringUtils.cpp

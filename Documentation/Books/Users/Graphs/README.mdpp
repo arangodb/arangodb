@@ -4,18 +4,20 @@
 
 A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge collections*.
 A vertex can be a document of a *document collection* or of an *edge collection* (so *edges* can be used as *vertices*).
-Which collections are used within a graph is defined via *edge definitions*.
-A graph can contain more than one *edge definition*, at least one is needed.
+Which collections are used within a named graph is defined via *edge definitions*.
+A named graph can contain more than one *edge definition*, at least one is needed.
 Graphs allow you to structure your models in line with your domain and group them logically in collections and giving you the power to query them in the same graph queries.
 
-!SUBSECTION Comming from a relational background - whats a graph?
+!SUBSECTION Coming from a relational background - what's a graph?
 
-In SQL you commonly have the construct of a contingency table if you have *n:n* relation between two tables.
-An *edge collection* is somewhat similar to these *contingency tables*; *vertex collections* resemble the tables with the objects to connect.
-While simple graph queries with fixed number of hops via the contingency table may be doable in SQL, graph databases can handle arbitrary number of these hops over edge collections - this is called *traversal*.
+In SQL you commonly have the construct of a relation table to store *n:m* relations between two data tables.
+An *edge collection* is somewhat similar to these *relation tables*; *vertex collections* resemble the data tables with the objects to connect.
+While simple graph queries with fixed number of hops via the relation table may be doable in SQL with several nested joins,
+graph databases can handle an arbitrary number of these hops over edge collections - this is called *traversal*.
 Also edges in one edge collection may point to several vertex collections.
-Its common to have attributes attached to edges, i.e. a *label* naming this interconnect.
-Edges have a direction, with their relations `_from` and `_to` pointing to documents (vertices) in vertex collections.
+Its common to have attributes attached to edges, i.e. a *label* naming this interconnection.
+Edges have a direction, with their relations `_from` and `_to` pointing *from* one document *to* another document stored in vertex collections.
+In queries you can define in which directions the edge relations may be followed (`OUTBOUND`: `_from` -> `_to`, `INBOUND`: `_to` -> `_from`, `ANY`: `_from` <-> `_to`).
 
 !SUBSECTION Named Graphs
 Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/README.md#graphs-tab).
@@ -38,21 +40,31 @@ However the graph module adds an additional layer on top of these collections gi
 
 * All modifications are executed transactional
 * If you delete a vertex all edges will be deleted, you will never have loose ends
-* If you insert an edge it is checked if the edge matches the definition, your edge collections will only contain valid edges
+* If you insert an edge it is checked if the edge matches the *edge definitions*, your edge collections will only contain valid edges
 
-These guarantees are lost if you access the collections in any other way than the graph module or AQL, so if you delete documents from your vertex collections directly, the edges will be untouched.
+These guarantees are lost if you access the collections in any other way than the graph module or AQL,
+so if you delete documents from your vertex collections directly, the edges pointing to them will be remain in place.
 
-!SUBSECTION Using partial infrastructures with anonymous graphs
-Sometimes you may not need all the powers of the general graph facilities, but some of its bits may be valuable to you.
+!SUBSECTION Anonymous graphs
+Sometimes you may not need all the powers of named graphs, but some of its bits may be valuable to you.
 You [may use AQL Graph Functions](../Aql/GraphFunctions.md) that are a little deeper explained in the [traversals](../Traversals/README.md) and the [Working with Edges](../Edges/README.md) Chapter.
+Anonymous graphs don't have *edge definitions* describing which *vertex collection* is connected by which *edge collection*. The graph model has to be maintained in the client side code.
+This gives you more freedom than the strict *named graphs*.
+
+!SUBSUBSECTION When to choose anonymous or named graphs?
+As noted above, named graphs ensure graph integrity, both when inserting or removing edges or vertices.
+So you won't encounter dangling edges, even if you use the same vertex collection in several named graphs.
+This involves more operations inside the database which don't come for free.
+Therefore anonymous graphs may be faster in many operations.
+So this question boils down to 'Can I afford the additional effort or do I need the warranty for integrity?'. 
 
 !SUBSECTION Blueprint Graphs
-*Blueprint 2 graphs* are a superset of *named graphs* (they require vertices to be named).
+*Blueprint 2 graphs* are a subset of *named graphs*. It only supports one edge and one vertex collection per graph. Both vertices and edges have to contain a label attribute; the Blueprints API defines a special `LABEL` attribute for this.
 We offer [blueprints support via an api compatible java driver](https://github.com/arangodb/blueprints-arangodb-graph).
 
 !SUBSECTION Example Graphs
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
-You can use the `add samles` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
+You can use the `add samples` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
 Once you've created them, you can [inspect them in the webinterface](../WebInterface/README.md#graphs-tab) - which was used to create the pictures below.
 
 !SUBSUBSECTION The Knows\_Graph
@@ -139,7 +151,7 @@ Circles have uniq numeric labels. Edges have two boolean attributes (*theFalse* 
     @endDocuBlock graph_create_traversal_sample
 
 !SUBSUBSECTION The World Graph
-The world contry graph structures its nodes like that: world -> continet -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
+The world contry graph structures its nodes like that: world -> continent -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
 It is used to demonstrate raw traversal operations.
 
     @startDocuBlockInline graph_create_world_sample

@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 
-namespace triagens {
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the namespace containing the basic classes and functions
@@ -54,7 +54,7 @@ extern void ShutdownBasics();
 
 #define TRIAGENS_BASICS_INITIALIZE(a, b)          \
   do {                                            \
-    triagens::basics::InitializeBasics((a), (b)); \
+    arangodb::basics::InitializeBasics((a), (b)); \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +63,7 @@ extern void ShutdownBasics();
 
 #define TRIAGENS_BASICS_SHUTDOWN        \
   do {                                  \
-    triagens::basics::ShutdownBasics(); \
+    arangodb::basics::ShutdownBasics(); \
   } while (0)
 
 #endif

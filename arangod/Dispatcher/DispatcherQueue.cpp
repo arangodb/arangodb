@@ -31,7 +31,7 @@
 #include "Dispatcher/Job.h"
 
 using namespace std;
-using namespace triagens::rest;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors
@@ -98,6 +98,7 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   size_t pos;
 
   if (!_jobPositions.pop(pos)) {
+    LOG_TRACE("cannot add job %p to queue %p. queue is full", (void*) job.get(), (void*) this);
     return TRI_ERROR_QUEUE_FULL;
   }
 
@@ -171,7 +172,7 @@ bool DispatcherQueue::cancelJob(uint64_t jobId) {
   }
 
   // and wait until we get set the hazard pointer
-  MUTEX_LOCKER(_hazardLock);
+  MUTEX_LOCKER(mutexLocker, _hazardLock);
 
   // first find the job
   Job* job = nullptr;
@@ -257,7 +258,7 @@ void DispatcherQueue::beginShutdown() {
   }
 
   // now try to get rid of the remaining (running) jobs
-  MUTEX_LOCKER(_hazardLock);
+  MUTEX_LOCKER(mutexLocker, _hazardLock);
 
   for (size_t i = 0; i < _maxSize; ++i) {
     Job* job = nullptr;
@@ -325,7 +326,7 @@ void DispatcherQueue::shutdown() {
 
   // try to stop threads forcefully
   {
-    MUTEX_LOCKER(_threadsLock);
+    MUTEX_LOCKER(mutexLocker, _threadsLock);
 
     for (auto& it : _startedThreads) {
       it->stop();
@@ -340,7 +341,7 @@ void DispatcherQueue::shutdown() {
 
   // and butcher the remaining threads
   {
-    MUTEX_LOCKER(_threadsLock);
+    MUTEX_LOCKER(mutexLocker, _threadsLock);
 
     for (auto& it : _startedThreads) {
       delete it;
@@ -379,7 +380,7 @@ void DispatcherQueue::startQueueThread() {
   }
 
   {
-    MUTEX_LOCKER(_threadsLock);
+    MUTEX_LOCKER(mutexLocker, _threadsLock);
 
     if (!notEnoughThreads()) {
       delete thread;
@@ -408,7 +409,7 @@ void DispatcherQueue::startQueueThread() {
 
 void DispatcherQueue::removeStartedThread(DispatcherThread* thread) {
   {
-    MUTEX_LOCKER(_threadsLock);
+    MUTEX_LOCKER(mutexLocker, _threadsLock);
     _startedThreads.erase(thread);
   }
 
@@ -455,7 +456,7 @@ bool DispatcherQueue::notEnoughThreads() {
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::setProcessorAffinity(const std::vector<size_t>& cores) {
+void DispatcherQueue::setProcessorAffinity(std::vector<size_t> const& cores) {
   _affinityCores = cores;
 }
 

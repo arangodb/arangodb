@@ -41,13 +41,10 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-using namespace triagens::httpclient;
-
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::httpclient;
+using namespace arangodb::rest;
 
 ContinuousSyncer::ContinuousSyncer(
     TRI_server_t* server, TRI_vocbase_t* vocbase,
@@ -105,7 +102,7 @@ retry:
 
   // reset failed connects
   {
-    WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
     _applier->_state._failedConnects = 0;
   }
 
@@ -118,7 +115,7 @@ retry:
       connectRetries++;
 
       {
-        WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
         _applier->_state._totalFailedConnects++;
@@ -154,7 +151,7 @@ retry:
           "ArangoDB 2.7");
     }
 
-    WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
     res = getLocalState(errorMsg);
 
     _applier->_state._failedConnects = 0;
@@ -193,7 +190,7 @@ retry:
       TRI_RemoveStateReplicationApplier(_vocbase);
 
       {
-        WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
         LOG_TRACE(
             "stopped replication applier for database '%s' with "
@@ -750,7 +747,7 @@ int ContinuousSyncer::commitTransaction(TRI_json_t const* json) {
 int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
   TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
   std::string const name = JsonHelper::getStringValue(collectionJson, "name", "");
-  char const* cname = getCName(json);
+  std::string cname = getCName(json);
 
   if (name.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -759,8 +756,8 @@ int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
   TRI_voc_cid_t cid = getCid(json);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
-  if (col == nullptr && cname != nullptr) {
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname);
+  if (col == nullptr && !cname.empty()) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
   }
 
   if (col == nullptr) {
@@ -776,11 +773,11 @@ int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
 
 int ContinuousSyncer::changeCollection(TRI_json_t const* json) {
   TRI_voc_cid_t cid = getCid(json);
-  char const* cname = getCName(json);
+  std::string cname = getCName(json);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
-  if (col == nullptr && cname != nullptr) {
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname);
+  if (col == nullptr && !cname.empty()) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
     if (col != nullptr) {
       cid = col->_cid;
     }
@@ -793,13 +790,13 @@ int ContinuousSyncer::changeCollection(TRI_json_t const* json) {
   try {
     TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
     std::shared_ptr<arangodb::velocypack::Builder> tmp =
-        triagens::basics::JsonHelper::toVelocyPack(collectionJson);
-    triagens::arango::CollectionGuard guard(_vocbase, cid);
+        arangodb::basics::JsonHelper::toVelocyPack(collectionJson);
+    arangodb::CollectionGuard guard(_vocbase, cid);
     bool doSync = _vocbase->_settings.forceSyncProperties;
 
     return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
                                     tmp->slice(), doSync);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
     return TRI_ERROR_INTERNAL;
@@ -823,7 +820,7 @@ int ContinuousSyncer::applyLogMarker(TRI_json_t const* json,
     TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
         StringUtils::uint64(tick.c_str(), tick.size()));
 
-    WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
     if (newTick >= firstRegularTick &&
         newTick > _applier->_state._lastProcessedContinuousTick) {
@@ -970,7 +967,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
     }
 
     // update tick value
-    WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
     if (_applier->_state._lastProcessedContinuousTick >
         _applier->_state._lastAppliedContinuousTick) {
@@ -1006,7 +1003,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
   TRI_voc_tick_t safeResumeTick = 0;
 
   {
-    WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
     if (_useTick) {
       // use user-defined tick
@@ -1092,7 +1089,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       connectRetries++;
 
       {
-        WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
@@ -1107,7 +1104,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       connectRetries = 0;
 
       {
-        WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
@@ -1415,7 +1412,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       if (found) {
         tick = StringUtils::uint64(header);
 
-        WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
         _applier->_state._lastAvailableContinuousTick = tick;
       }
     }
@@ -1444,7 +1441,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     TRI_voc_tick_t lastAppliedTick;
 
     {
-      WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
       lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
     }
 
@@ -1455,7 +1452,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     if (processedMarkers > 0) {
       worked = true;
 
-      WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
       _applier->_state._totalEvents += processedMarkers;
 
       if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
@@ -1468,7 +1465,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       // write state at least once so the start tick gets saved
       _hasWrittenState = true;
 
-      WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
       _applier->_state._lastAppliedContinuousTick = firstRegularTick;
       _applier->_state._lastProcessedContinuousTick = firstRegularTick;

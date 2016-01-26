@@ -24,17 +24,16 @@
 #include "KeyGenerator.h"
 
 #include "Basics/conversions.h"
-#include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include "VocBase/vocbase.h"
 
 #include <array>
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup table for key checks
@@ -60,8 +59,6 @@ void KeyGenerator::Initialize() {
   }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the key enerator
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,30 +72,29 @@ KeyGenerator::KeyGenerator(bool allowUserKeys)
 
 KeyGenerator::~KeyGenerator() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the generator type from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
 KeyGenerator::GeneratorType KeyGenerator::generatorType(
-    TRI_json_t const* parameters) {
-  if (!TRI_IsObjectJson(parameters)) {
+    VPackSlice const& parameters) {
+  if (!parameters.isObject()) {
+    return KeyGenerator::TYPE_TRADITIONAL;
+  }
+  VPackSlice const type = parameters.get("type");
+
+  if (!type.isString()) {
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
-  TRI_json_t const* type = TRI_LookupObjectJson(parameters, "type");
+  std::string typeName = type.copyString();
 
-  if (!TRI_IsStringJson(type)) {
+  if (TRI_CaseEqualString(typeName.c_str(),
+                          TraditionalKeyGenerator::name().c_str())) {
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
-  char const* typeName = type->_value._string.data;
-
-  if (TRI_CaseEqualString(typeName, TraditionalKeyGenerator::name().c_str())) {
-    return KeyGenerator::TYPE_TRADITIONAL;
-  }
-
-  if (TRI_CaseEqualString(typeName,
+  if (TRI_CaseEqualString(typeName.c_str(),
                           AutoIncrementKeyGenerator::name().c_str())) {
     return KeyGenerator::TYPE_AUTOINCREMENT;
   }
@@ -111,10 +107,10 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType(
 /// @brief create a key generator based on the options specified
 ////////////////////////////////////////////////////////////////////////////////
 
-KeyGenerator* KeyGenerator::factory(TRI_json_t const* options) {
+KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
   KeyGenerator::GeneratorType type;
 
-  bool const readOptions = TRI_IsObjectJson(options);
+  bool const readOptions = options.isObject();
 
   if (readOptions) {
     type = generatorType(options);
@@ -129,11 +125,9 @@ KeyGenerator* KeyGenerator::factory(TRI_json_t const* options) {
   bool allowUserKeys = true;
 
   if (readOptions) {
-    TRI_json_t* option = TRI_LookupObjectJson(options, "allowUserKeys");
-
-    if (TRI_IsBooleanJson(option)) {
-      allowUserKeys = option->_value._boolean;
-    }
+    // Change allowUserKeys only if it is a boolean value, otherwise use default
+    allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
+        options, "allowUserKeys", allowUserKeys);
   }
 
   if (type == TYPE_TRADITIONAL) {
@@ -145,31 +139,33 @@ KeyGenerator* KeyGenerator::factory(TRI_json_t const* options) {
     uint64_t increment = 1;
 
     if (readOptions) {
-      TRI_json_t* option;
+      VPackSlice const incrementSlice = options.get("increment");
 
-      option = TRI_LookupObjectJson(options, "increment");
-
-      if (TRI_IsNumberJson(option)) {
-        if (option->_value._number <= 0.0) {
-          // negative or 0 offset is not allowed
-          return nullptr;
+      if (incrementSlice.isNumber()) {
+        if (incrementSlice.isDouble()) {
+          if (incrementSlice.getDouble() <= 0.0) {
+            // negative or 0 increment is not allowed
+            return nullptr;
+          }
         }
 
-        increment = static_cast<uint64_t>(option->_value._number);
+        increment = incrementSlice.getNumericValue<uint64_t>();
 
         if (increment == 0 || increment >= (1ULL << 16)) {
           return nullptr;
         }
       }
 
-      option = TRI_LookupObjectJson(options, "offset");
+      VPackSlice const offsetSlice = options.get("offset");
 
-      if (TRI_IsNumberJson(option)) {
-        if (option->_value._number < 0.0) {
-          return nullptr;
+      if (offsetSlice.isNumber()) {
+        if (offsetSlice.isDouble()) {
+          if (offsetSlice.getDouble() < 0.0) {
+            // negative or 0 offset is not allowed
+            return nullptr;
+          }
         }
-
-        offset = static_cast<uint64_t>(option->_value._number);
+        offset = offsetSlice.getNumericValue<uint64_t>();
 
         if (offset >= UINT64_MAX) {
           return nullptr;
@@ -182,7 +178,6 @@ KeyGenerator* KeyGenerator::factory(TRI_json_t const* options) {
 
   return nullptr;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check global key attributes
@@ -208,7 +203,17 @@ int KeyGenerator::globalCheck(std::string const& key, bool isRestore) {
   return TRI_ERROR_NO_ERROR;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the generator
+///        Not virtual because this is identical for all of them
+//////////////////////////////////////////////////////////////////////////////
 
+std::shared_ptr<VPackBuilder> KeyGenerator::toVelocyPack() const {
+  auto builder = std::make_shared<VPackBuilder>();
+  toVelocyPack(*builder);
+  builder->close();
+  return builder;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the key enerator
@@ -222,7 +227,6 @@ TraditionalKeyGenerator::TraditionalKeyGenerator(bool allowUserKeys)
 ////////////////////////////////////////////////////////////////////////////////
 
 TraditionalKeyGenerator::~TraditionalKeyGenerator() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
@@ -253,7 +257,7 @@ bool TraditionalKeyGenerator::validateKey(char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TraditionalKeyGenerator::generate(TRI_voc_tick_t tick) {
-  return std::move(triagens::basics::StringUtils::itoa(tick));
+  return std::move(arangodb::basics::StringUtils::itoa(tick));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,24 +286,18 @@ int TraditionalKeyGenerator::validate(std::string const& key, bool isRestore) {
 void TraditionalKeyGenerator::track(TRI_voc_key_t) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON representation of the generator
+/// @brief create a VPack representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TraditionalKeyGenerator::toJson(TRI_memory_zone_t* zone) const {
-  TRI_json_t* json = TRI_CreateObjectJson(zone, 2);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VPack representation of the generator
+////////////////////////////////////////////////////////////////////////////////
 
-  if (json != nullptr) {
-    TRI_Insert3ObjectJson(
-        zone, json, "type",
-        TRI_CreateStringCopyJson(zone, name().c_str(), name().size()));
-    TRI_Insert3ObjectJson(zone, json, "allowUserKeys",
-                          TRI_CreateBooleanJson(zone, _allowUserKeys));
-  }
-
-  return json;
+void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(!builder.isClosed());
+  builder.add("type", VPackValue(name()));
+  builder.add("allowUserKeys", VPackValue(_allowUserKeys));
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the generator
@@ -318,7 +316,6 @@ AutoIncrementKeyGenerator::AutoIncrementKeyGenerator(bool allowUserKeys,
 ////////////////////////////////////////////////////////////////////////////////
 
 AutoIncrementKeyGenerator::~AutoIncrementKeyGenerator() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a numeric key
@@ -351,7 +348,7 @@ std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
   uint64_t keyValue;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     // user has not specified a key, generate one based on algorithm
     if (_lastValue < _offset) {
@@ -371,7 +368,7 @@ std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
     _lastValue = keyValue;
   }
 
-  return std::move(triagens::basics::StringUtils::itoa(keyValue));
+  return std::move(arangodb::basics::StringUtils::itoa(keyValue));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,10 +388,10 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
-  uint64_t intValue = triagens::basics::StringUtils::uint64(key);
+  uint64_t intValue = arangodb::basics::StringUtils::uint64(key);
 
   if (intValue > _lastValue) {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     // update our last value
     _lastValue = intValue;
   }
@@ -417,25 +414,15 @@ void AutoIncrementKeyGenerator::track(TRI_voc_key_t key) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON representation of the generator
+/// @brief create a VelocyPack representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* AutoIncrementKeyGenerator::toJson(TRI_memory_zone_t* zone) const {
-  TRI_json_t* json = TRI_CreateObjectJson(zone, 4);
-
-  if (json != nullptr) {
-    TRI_Insert3ObjectJson(
-        zone, json, "type",
-        TRI_CreateStringCopyJson(zone, name().c_str(), name().size()));
-    TRI_Insert3ObjectJson(zone, json, "allowUserKeys",
-                          TRI_CreateBooleanJson(zone, _allowUserKeys));
-    TRI_Insert3ObjectJson(zone, json, "offset",
-                          TRI_CreateNumberJson(zone, (double)_offset));
-    TRI_Insert3ObjectJson(zone, json, "increment",
-                          TRI_CreateNumberJson(zone, (double)_increment));
-  }
-
-  return json;
+void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(!builder.isClosed());
+  builder.add("type", VPackValue(name()));
+  builder.add("allowUserKeys", VPackValue(_allowUserKeys));
+  builder.add("offset", VPackValue(_offset));
+  builder.add("increment", VPackValue(_increment));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,5 +468,3 @@ bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t* split) {
   // validate document key
   return TraditionalKeyGenerator::validateKey(p);
 }
-
-

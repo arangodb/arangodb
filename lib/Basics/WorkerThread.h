@@ -27,11 +27,11 @@
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
-class WorkerThread : public triagens::basics::Thread {
+class WorkerThread : public arangodb::basics::Thread {
   
  public:
   WorkerThread(WorkerThread const&) = delete;

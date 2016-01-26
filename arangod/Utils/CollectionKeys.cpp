@@ -21,14 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Utils/CollectionKeys.h"
+#include "CollectionKeys.h"
 #include "Basics/hashes.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionReadLocker.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
@@ -36,9 +35,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 
-using namespace triagens::arango;
-
-
+using namespace arangodb;
 
 CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
                                TRI_voc_tick_t blockerId, double ttl)
@@ -61,7 +58,7 @@ CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
 
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard = new triagens::arango::CollectionGuard(vocbase, _name.c_str(), false);
+  _guard = new arangodb::CollectionGuard(vocbase, _name.c_str(), false);
 
   _document = _guard->collection()->_collection;
   TRI_ASSERT(_document != nullptr);
@@ -86,7 +83,7 @@ CollectionKeys::~CollectionKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeys::create(TRI_voc_tick_t maxTick) {
-  triagens::wal::LogfileManager::instance()->waitForCollectorQueue(
+  arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
       _document->_info.id(), 30.0);
 
   // try to acquire the exclusive lock on the compaction
@@ -123,7 +120,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
     auto idx = _document->primaryIndex();
     _markers->reserve(idx->size());
 
-    triagens::basics::BucketPosition position;
+    arangodb::basics::BucketPosition position;
 
     uint64_t total = 0;
 
@@ -194,7 +191,7 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
 /// @brief dumps keys into the JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectionKeys::dumpKeys(triagens::basics::Json& json, size_t chunk,
+void CollectionKeys::dumpKeys(arangodb::basics::Json& json, size_t chunk,
                               size_t chunkSize) const {
   size_t from = chunk * chunkSize;
   size_t to = (chunk + 1) * chunkSize;
@@ -210,11 +207,11 @@ void CollectionKeys::dumpKeys(triagens::basics::Json& json, size_t chunk,
   for (size_t i = from; i < to; ++i) {
     auto marker = _markers->at(i);
 
-    triagens::basics::Json array(triagens::basics::Json::Array, 2);
+    arangodb::basics::Json array(arangodb::basics::Json::Array, 2);
     array.add(
-        triagens::basics::Json(std::string(TRI_EXTRACT_MARKER_KEY(marker))));
+        arangodb::basics::Json(std::string(TRI_EXTRACT_MARKER_KEY(marker))));
     array.add(
-        triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+        arangodb::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
 
     json.add(array);
   }
@@ -224,7 +221,7 @@ void CollectionKeys::dumpKeys(triagens::basics::Json& json, size_t chunk,
 /// @brief dumps documents into the JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectionKeys::dumpDocs(triagens::basics::Json& json, size_t chunk,
+void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
                               size_t chunkSize, TRI_json_t const* ids) const {
   if (!TRI_IsArrayJson(ids)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -272,7 +269,7 @@ void CollectionKeys::dumpDocs(triagens::basics::Json& json, size_t chunk,
 
     // convert rid from uint64_t to string
     std::string rid(std::move(
-        triagens::basics::StringUtils::itoa(TRI_EXTRACT_MARKER_RID(df))));
+        arangodb::basics::StringUtils::itoa(TRI_EXTRACT_MARKER_RID(df))));
     TRI_json_t* revJson =
         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
@@ -301,8 +298,8 @@ void CollectionKeys::dumpDocs(triagens::basics::Json& json, size_t chunk,
                             TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                                      to.c_str(), to.size()));
     } else if (type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* marker =
-          reinterpret_cast<triagens::wal::edge_marker_t const*>(
+      arangodb::wal::edge_marker_t const* marker =
+          reinterpret_cast<arangodb::wal::edge_marker_t const*>(
               df);  // PROTECTED by trx passed from above
       std::string from(std::move(DocumentHelper::assembleDocumentId(
           resolver.getCollectionNameCluster(marker->_fromCid),
@@ -328,10 +325,10 @@ void CollectionKeys::dumpDocs(triagens::basics::Json& json, size_t chunk,
 /// @brief dumps documents into the JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectionKeys::dumpDocs(triagens::basics::Json& json, size_t chunk,
+void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
                               size_t chunkSize, VPackSlice const& ids) const {
   std::unique_ptr<TRI_json_t> jsonIds(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(ids));
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(ids));
   dumpDocs(json, chunk, chunkSize, jsonIds.get());
 }
 

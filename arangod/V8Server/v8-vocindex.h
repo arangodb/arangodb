@@ -30,19 +30,17 @@
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class Index;
-}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupIndexByHandle(
+arangodb::Index* TRI_LookupIndexByHandle(
     v8::Isolate* isolate,
-    triagens::arango::CollectionNameResolver const* resolver,
+    arangodb::CollectionNameResolver const* resolver,
     TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val,
     bool ignoreNotFound);
 

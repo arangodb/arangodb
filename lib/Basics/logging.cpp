@@ -40,11 +40,11 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/shell-colors.h"
-#include "Basics/threads.h"
+#include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 
-
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log appenders type
@@ -74,7 +74,7 @@ struct log_message_t {
 
     if (!claimOwnership) {
       // need to copy the message before it is invalidated
-      _message = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, message, length);
+      _message = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, message, length);
     }
 
     if (_message == nullptr) {
@@ -135,7 +135,7 @@ TRI_log_appender_t::TRI_log_appender_t(char const* contentFilter,
       _severityFilter(severityFilter),
       _consume(consume) {
   if (contentFilter != nullptr) {
-    _contentFilter = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, contentFilter);
+    _contentFilter = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, contentFilter);
   }
 }
 
@@ -144,7 +144,6 @@ TRI_log_appender_t::TRI_log_appender_t(char const* contentFilter,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_log_appender_t::~TRI_log_appender_t() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief already initialized
@@ -174,7 +173,7 @@ static std::vector<TRI_log_appender_t*> Appenders;
 /// @brief log appenders
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex AppendersLock;
+static arangodb::basics::Mutex AppendersLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal output length
@@ -216,7 +215,7 @@ static TRI_log_buffer_t BufferOutput[OUTPUT_LOG_LEVELS][OUTPUT_BUFFER_SIZE];
 /// @brief buffer lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex BufferLock;
+static arangodb::basics::Mutex BufferLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable for the logger
@@ -228,7 +227,7 @@ static TRI_condition_t LogCondition;
 /// @brief message queue lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex LogMessageQueueLock;
+static arangodb::basics::Mutex LogMessageQueueLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief message queue
@@ -350,59 +349,67 @@ static bool UseFileBasedLogging = false;
 
 static bool FilesToLog[FilesToLogSize];
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores output in a buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StoreOutput(TRI_log_level_e level, time_t timestamp,
                         char const* text, size_t length) {
-  TRI_log_buffer_t* buf;
-  size_t pos;
-  size_t cur;
-  size_t oldPos;
-
-  pos = (size_t)level;
+  size_t pos = (size_t)level;
 
   if (pos >= OUTPUT_LOG_LEVELS) {
     return;
   }
-
-  MUTEX_LOCKER(BufferLock);  // FIX_MUTEX
-
-  oldPos = BufferCurrent[pos];
-  BufferCurrent[pos] = (oldPos + 1) % OUTPUT_BUFFER_SIZE;
-  cur = BufferCurrent[pos];
-  buf = &BufferOutput[pos][cur];
-
-  if (buf->_text != nullptr) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, buf->_text);
-    buf->_text = nullptr;
-  }
-
-  buf->_lid = BufferLID++;
-  buf->_level = level;
-  buf->_timestamp = timestamp;
+  
+  char* msg;
 
   if (length > OUTPUT_MAX_LENGTH) {
     // use the UNKNOWN_MEM_ZONE here...
     // if we use CORE_MEM_ZONE and malloc fails, this fact would be logged.
     // but we are in the logging already...
-    buf->_text = static_cast<char*>(
+    msg = static_cast<char*>(
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, OUTPUT_MAX_LENGTH + 1, false));
-
-    if (buf->_text == nullptr) {
-      // revert...
-      BufferLID--;
-      BufferCurrent[pos] = oldPos;
-    } else {
-      memcpy(buf->_text, text, OUTPUT_MAX_LENGTH - 4);
-      memcpy(buf->_text + OUTPUT_MAX_LENGTH - 4, " ...", 4);
+    
+    if (msg != nullptr) {
+      memcpy(msg, text, OUTPUT_MAX_LENGTH - 4);
+      memcpy(msg + OUTPUT_MAX_LENGTH - 4, " ...", 4);
       // append the \0 byte, otherwise we have potentially unbounded strings
-      buf->_text[OUTPUT_MAX_LENGTH] = '\0';
+      msg[OUTPUT_MAX_LENGTH] = '\0';
     }
-  } else {
-    buf->_text = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, text, length);
+  }
+  else {
+    msg = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, text, length);
+  }
+      
+  if (msg == nullptr) {
+    // unable to allocate memory for the log message
+    // do not try to log this (as we're in the logger ourselves)
+    return;
+  }
+
+  char* old = nullptr;
+
+  {
+    MUTEX_LOCKER(mutexLocker, BufferLock); 
+
+    size_t oldPos = BufferCurrent[pos];
+    BufferCurrent[pos] = (oldPos + 1) % OUTPUT_BUFFER_SIZE;
+    size_t cur = BufferCurrent[pos];
+    
+    TRI_log_buffer_t* buf = &BufferOutput[pos][cur];
+
+    // save the old value, so we can free it outside the mutex
+    old = buf->_text;
+
+    buf->_lid = BufferLID++;
+    buf->_level = level;
+    buf->_timestamp = timestamp;
+    buf->_text = msg;
+  }
+ 
+  // now free the old value outside the mutex 
+  if (old != nullptr) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, old);
   }
 }
 
@@ -424,8 +431,7 @@ static int LidCompare(void const* l, void const* r) {
 static int GenerateMessage(char* buffer, size_t size, int* offset,
                            char const* func, char const* file, int line,
                            TRI_log_level_e level, TRI_pid_t currentProcessId,
-                           TRI_tid_t currentThreadId, char const* fmt,
-                           va_list ap) {
+                           uint64_t threadNumber, char const* fmt, va_list ap) {
   int m;
   int n;
 
@@ -461,7 +467,7 @@ static int GenerateMessage(char* buffer, size_t size, int* offset,
   if (ShowThreadIdentifier) {
     n = snprintf(buffer + m, size - m, "[%llu-%llu] ",
                  (unsigned long long)currentProcessId,
-                 (unsigned long long)currentThreadId);
+                 (unsigned long long)threadNumber);
   } else {
     n = snprintf(buffer + m, size - m, "[%llu] ",
                  (unsigned long long)currentProcessId);
@@ -597,7 +603,7 @@ static void OutputMessage(TRI_log_level_e level, TRI_log_severity_e severity,
   }
 
   {
-    MUTEX_LOCKER(AppendersLock);
+    MUTEX_LOCKER(mutexLocker, AppendersLock);
 
     if (Appenders.empty()) {
       WriteStderr(level, message);
@@ -614,7 +620,7 @@ static void OutputMessage(TRI_log_level_e level, TRI_log_severity_e severity,
                                                claimOwnership);
 
     try {
-      MUTEX_LOCKER(LogMessageQueueLock);
+      MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
       LogMessageQueue.emplace_back(msg.get());
       msg.release();
     } catch (...) {
@@ -624,7 +630,7 @@ static void OutputMessage(TRI_log_level_e level, TRI_log_severity_e severity,
       // we can do nothing else here if we ran out of memory
     }
   } else {
-    MUTEX_LOCKER(AppendersLock);
+    MUTEX_LOCKER(mutexLocker, AppendersLock);
 
     for (auto& it : Appenders) {
       // apply severity filter
@@ -667,7 +673,7 @@ static void MessageQueueWorker(void* data) {
     std::vector<log_message_t*> buffer;
     // copy the MessageQueue into the local buffer
     {
-      MUTEX_LOCKER(LogMessageQueueLock);
+      MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
       buffer.swap(LogMessageQueue);
     }
 
@@ -683,7 +689,7 @@ static void MessageQueueWorker(void* data) {
       // output messages using the appenders
       for (auto& msg : buffer) {
         {
-          MUTEX_LOCKER(AppendersLock);
+          MUTEX_LOCKER(mutexLocker, AppendersLock);
 
           for (auto& it : Appenders) {
             // apply severity filter
@@ -722,7 +728,7 @@ static void MessageQueueWorker(void* data) {
       TRI_TimedWaitCondition(&LogCondition, (uint64_t)sl);
       TRI_UnlockCondition(&LogCondition);
     } else {
-      MUTEX_LOCKER(LogMessageQueueLock);
+      MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
       if (LogMessageQueue.empty()) {
         // queue is empty. we can leave this loop
         break;
@@ -732,7 +738,7 @@ static void MessageQueueWorker(void* data) {
 
   // cleanup
   {
-    MUTEX_LOCKER(LogMessageQueueLock);
+    MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
     for (auto& it : LogMessageQueue) {
       delete it;
     }
@@ -756,8 +762,8 @@ static void DisarmFormatString(std::string& dangerousString) {
 
 static void LogThread(char const* func, char const* file, int line,
                       TRI_log_level_e level, TRI_log_severity_e severity,
-                      TRI_pid_t processId, TRI_tid_t threadId, char const* fmt,
-                      va_list ap) {
+                      TRI_pid_t processId, uint64_t threadNumber,
+                      char const* fmt, va_list ap) {
   static int const maxSize = 100 * 1024;
   va_list ap2;
   char buffer[2048];  // try a static buffer first
@@ -786,7 +792,7 @@ static void LogThread(char const* func, char const* file, int line,
   errno = TRI_ERROR_NO_ERROR;
   va_copy(ap2, ap);
   n = GenerateMessage(buffer + len, sizeof(buffer) - len, &offset, func, file,
-                      line, level, processId, threadId, fmt, ap2);
+                      line, level, processId, threadNumber, fmt, ap2);
   va_end(ap2);
 
   if (n == -1) {
@@ -835,7 +841,7 @@ static void LogThread(char const* func, char const* file, int line,
     errno = TRI_ERROR_NO_ERROR;
     va_copy(ap2, ap);
     m = GenerateMessage(p + len, n + 1, &offset, func, file, line, level,
-                        processId, threadId, fmt, ap2);
+                        processId, threadNumber, fmt, ap2);
     va_end(ap2);
 
     if (m == -1) {
@@ -879,7 +885,7 @@ static void LogThread(char const* func, char const* file, int line,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CloseLogging() {
-  MUTEX_LOCKER(AppendersLock);
+  MUTEX_LOCKER(mutexLocker, AppendersLock);
 
   for (auto& it : Appenders) {
     delete it;
@@ -896,7 +902,6 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR() {
   TRI_ShutdownLogging(true);
   TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the log level
@@ -997,7 +1002,7 @@ void TRI_SetLogSeverityLogging(char const* severities) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetPrefixLogging(char const* prefix) {
-  char* outputPrefix = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, prefix);
+  char* outputPrefix = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, prefix);
 
   if (outputPrefix == nullptr) {
     return;
@@ -1140,9 +1145,10 @@ void TRI_Log(char const* func, char const* file, int line,
   }
 
   TRI_pid_t processId = TRI_CurrentProcessId();
-  TRI_tid_t threadId = TRI_CurrentThreadId();
+  uint64_t threadNumber = Thread::currentThreadNumber();
 
-  LogThread(func, file, line, level, severity, processId, threadId, fmt, ap);
+  LogThread(func, file, line, level, severity, processId, threadNumber, fmt,
+            ap);
   va_end(ap);
 }
 
@@ -1173,7 +1179,7 @@ TRI_vector_t* TRI_BufferLogging(TRI_log_level_e level, uint64_t start,
   }
 
   {
-    MUTEX_LOCKER(BufferLock);
+    MUTEX_LOCKER(mutexLocker, BufferLock);
 
     for (size_t i = begin; i <= pos; ++i) {
       for (size_t j = 0; j < OUTPUT_BUFFER_SIZE; ++j) {
@@ -1181,7 +1187,7 @@ TRI_vector_t* TRI_BufferLogging(TRI_log_level_e level, uint64_t start,
         TRI_log_buffer_t buf = BufferOutput[i][cur];
 
         if (buf._lid >= start && buf._text != nullptr && *buf._text != '\0') {
-          buf._text = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buf._text);
+          buf._text = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, buf._text);
 
           if (buf._text != nullptr) {
             TRI_PushBackVector(result, &buf);
@@ -1211,7 +1217,6 @@ void TRI_FreeBufferLogging(TRI_vector_t* buffer) {
 
   TRI_FreeVector(TRI_UNKNOWN_MEM_ZONE, buffer);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief structure for file log appenders
@@ -1394,7 +1399,7 @@ char* log_appender_file_t::details() {
              "More error details may be provided in the logfile '%s'",
              _filename.c_str());
 
-    return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buffer);
+    return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, buffer);
   }
 
   return nullptr;
@@ -1428,7 +1433,6 @@ void log_appender_file_t::writeLogFile(int fd, char const* buffer,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log appender for file output
 ////////////////////////////////////////////////////////////////////////////////
@@ -1452,7 +1456,7 @@ int TRI_CreateLogAppenderFile(char const* filename, char const* contentFilter,
 
   // and store it
   {
-    MUTEX_LOCKER(AppendersLock);
+    MUTEX_LOCKER(mutexLocker, AppendersLock);
     try {
       Appenders.emplace_back(appender.get());
       appender.release();
@@ -1463,14 +1467,12 @@ int TRI_CreateLogAppenderFile(char const* filename, char const* contentFilter,
 
   // register the name of the first logfile
   if (LogfileName == nullptr) {
-    LogfileName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, filename);
+    LogfileName = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, filename);
   }
 
   // and return base structure
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief structure for syslog appenders
@@ -1495,7 +1497,7 @@ struct log_appender_syslog_t : public TRI_log_appender_t {
   char const* typeName() override final { return "syslog"; }
 
  private:
-  triagens::basics::Mutex _lock;
+  arangodb::basics::Mutex _lock;
   bool _opened;
 };
 
@@ -1534,7 +1536,7 @@ log_appender_syslog_t::log_appender_syslog_t(char const* contentFilter,
 
   // and open logging, openlog does not have a return value...
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     ::openlog(name, LOG_CONS | LOG_PID, value);
     _opened = true;
   }
@@ -1608,7 +1610,7 @@ void log_appender_syslog_t::logMessage(TRI_log_level_e level,
   }
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     if (_opened) {
       ::syslog(priority, "%s", ptr);
     }
@@ -1626,7 +1628,7 @@ void log_appender_syslog_t::reopenLog() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void log_appender_syslog_t::closeLog() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
   if (_opened) {
     ::closelog();
     _opened = false;
@@ -1638,12 +1640,11 @@ void log_appender_syslog_t::closeLog() {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* log_appender_syslog_t::details() {
-  return TRI_DuplicateStringZ(
+  return TRI_DuplicateString(
       TRI_UNKNOWN_MEM_ZONE, "More error details may be provided in the syslog");
 }
 
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a syslog appender
@@ -1669,7 +1670,7 @@ int TRI_CreateLogAppenderSyslog(char const* name, char const* facility,
 
   // and store it
   {
-    MUTEX_LOCKER(AppendersLock);
+    MUTEX_LOCKER(mutexLocker, AppendersLock);
     try {
       Appenders.emplace_back(appender.get());
       appender.release();
@@ -1683,8 +1684,6 @@ int TRI_CreateLogAppenderSyslog(char const* name, char const* facility,
 }
 
 #endif
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return global log file name
@@ -1715,7 +1714,7 @@ void TRI_InitializeLogging(bool threaded) {
   if (threaded) {
     TRI_InitCondition(&LogCondition);
     TRI_InitThread(&LoggingThread);
-    TRI_StartThread(&LoggingThread, nullptr, "[logging]", MessageQueueWorker,
+    TRI_StartThread(&LoggingThread, nullptr, "Logging", MessageQueueWorker,
                     0);
 
     while (true) {
@@ -1784,7 +1783,7 @@ bool TRI_ShutdownLogging(bool clearBuffers) {
 
   if (clearBuffers) {
     // cleanup output buffers
-    MUTEX_LOCKER(BufferLock);
+    MUTEX_LOCKER(mutexLocker, BufferLock);
 
     for (size_t i = 0; i < OUTPUT_LOG_LEVELS; i++) {
       for (size_t j = 0; j < OUTPUT_BUFFER_SIZE; j++) {
@@ -1806,7 +1805,7 @@ bool TRI_ShutdownLogging(bool clearBuffers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReopenLogging() {
-  MUTEX_LOCKER(AppendersLock);
+  MUTEX_LOCKER(mutexLocker, AppendersLock);
 
   for (auto& it : Appenders) {
     try {
@@ -1835,7 +1834,7 @@ void TRI_FlushLogging() {
     int tries = 0;
     while (++tries < 500) {
       {
-        MUTEX_LOCKER(LogMessageQueueLock);
+        MUTEX_LOCKER(mutexLocker, LogMessageQueueLock);
         if (LogMessageQueue.empty()) {
           break;
         }
@@ -1845,5 +1844,3 @@ void TRI_FlushLogging() {
     }
   }
 }
-
-

@@ -29,8 +29,8 @@
 #include "HttpServer/HttpServerJob.h"
 #include "Rest/HttpRequest.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 namespace {
@@ -108,7 +108,6 @@ void HttpHandler::addResponse(HttpHandler*) {
   // nothing by default
 }
 
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief returns the id of the underlying task
 //////////////////////////////////////////////////////////////////////////////
@@ -163,7 +162,7 @@ HttpHandler::status_t HttpHandler::executeFull() {
 
     finalizeExecute();
 
-    if (_response == nullptr) {
+    if (status._status != HANDLER_ASYNC && _response == nullptr) {
       Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
                     __FILE__, __LINE__);
 
@@ -183,7 +182,7 @@ HttpHandler::status_t HttpHandler::executeFull() {
     LOG_ERROR("caught exception");
   }
 
-  if (_response == nullptr) {
+  if (status._status != HANDLER_ASYNC && _response == nullptr) {
     _response = new HttpResponse(HttpResponse::SERVER_ERROR,
                                  HttpRequest::MinCompatibility);
   }

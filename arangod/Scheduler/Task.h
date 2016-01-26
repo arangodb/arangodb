@@ -31,13 +31,14 @@
 #include "lib/Rest/HttpResponse.h"
 #include "Statistics/StatisticsAgent.h"
 
-struct TRI_json_t;
+namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 
-namespace triagens {
 namespace rest {
 class Scheduler;
 class HttpResponse;
-
 
 class TaskData : public RequestStatisticsAgent {
  public:
@@ -52,7 +53,6 @@ class TaskData : public RequestStatisticsAgent {
   std::unique_ptr<HttpResponse> _response;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base class for tasks
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +63,6 @@ class Task {
 
   friend class TaskManager;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new task
@@ -95,7 +94,6 @@ class Task {
 
   virtual ~Task();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the task name for debugging
@@ -122,10 +120,16 @@ class Task {
   uint64_t taskId() const { return _taskId; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a JSON representation of the task
+  /// @brief get a VelocyPack representation of the task
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* toJson() const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get a VelocyPack representation of the task
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the task is a user task
@@ -154,13 +158,12 @@ class Task {
 
   virtual void signalTask(TaskData*) {}
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a task specific description in JSON format
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void getDescription(struct TRI_json_t*) const;
+  virtual void getDescription(arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called to set up the callback information
@@ -180,7 +183,6 @@ class Task {
 
   virtual void cleanup() = 0;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief scheduler
@@ -200,7 +202,6 @@ class Task {
 
   EventLoop _loop;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief task id
@@ -218,4 +219,3 @@ class Task {
 }
 
 #endif
-

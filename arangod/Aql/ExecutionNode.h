@@ -34,7 +34,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class Ast;
 struct Collection;
@@ -113,7 +113,7 @@ class ExecutionNode {
   /// @brief constructor using a JSON struct
   //////////////////////////////////////////////////////////////////////////////
 
-  ExecutionNode(ExecutionPlan* plan, triagens::basics::Json const& json);
+  ExecutionNode(ExecutionPlan* plan, arangodb::basics::Json const& json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructor, free dependencies;
@@ -128,7 +128,7 @@ class ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   static ExecutionNode* fromJsonFactory(ExecutionPlan* plan,
-                                        triagens::basics::Json const& json);
+                                        arangodb::basics::Json const& json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the node's id
@@ -422,13 +422,13 @@ class ExecutionNode {
   /// @brief export to JSON, returns an AUTOFREE Json object
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const;
+  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief toJson
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  virtual void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                             bool) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -658,7 +658,7 @@ class ExecutionNode {
   /// @brief factory for (optional) variables from json.
   //////////////////////////////////////////////////////////////////////////////
 
-  static Variable* varFromJson(Ast* ast, triagens::basics::Json const& base,
+  static Variable* varFromJson(Ast* ast, arangodb::basics::Json const& base,
                                char const* variableName, bool optional = false);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -666,14 +666,14 @@ class ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
-                              triagens::basics::Json const& oneNode,
+                              arangodb::basics::Json const& oneNode,
                               char const* which);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief toJsonHelper, for a generic node
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJsonHelperGeneric(triagens::basics::Json&,
+  arangodb::basics::Json toJsonHelperGeneric(arangodb::basics::Json&,
                                              TRI_memory_zone_t*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -794,7 +794,7 @@ class SingletonNode : public ExecutionNode {
  public:
   SingletonNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
 
-  SingletonNode(ExecutionPlan*, triagens::basics::Json const& base);
+  SingletonNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -806,7 +806,7 @@ class SingletonNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -858,7 +858,7 @@ class EnumerateCollectionNode : public ExecutionNode {
   }
 
   EnumerateCollectionNode(ExecutionPlan* plan,
-                          triagens::basics::Json const& base);
+                          arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -870,7 +870,7 @@ class EnumerateCollectionNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -969,7 +969,7 @@ class EnumerateListNode : public ExecutionNode {
     TRI_ASSERT(_outVariable != nullptr);
   }
 
-  EnumerateListNode(ExecutionPlan*, triagens::basics::Json const& base);
+  EnumerateListNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -981,7 +981,7 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1066,7 +1066,7 @@ class LimitNode : public ExecutionNode {
   LimitNode(ExecutionPlan* plan, size_t id, size_t limit)
       : ExecutionNode(plan, id), _offset(0), _limit(limit), _fullCount(false) {}
 
-  LimitNode(ExecutionPlan*, triagens::basics::Json const& base);
+  LimitNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -1078,7 +1078,7 @@ class LimitNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1172,7 +1172,7 @@ class CalculationNode : public ExecutionNode {
                   Variable const* outVariable)
       : CalculationNode(plan, id, expr, nullptr, outVariable) {}
 
-  CalculationNode(ExecutionPlan*, triagens::basics::Json const& base);
+  CalculationNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
 
   ~CalculationNode() { delete _expression; }
@@ -1187,7 +1187,7 @@ class CalculationNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1322,7 +1322,7 @@ class SubqueryNode : public ExecutionNode {
 
 
  public:
-  SubqueryNode(ExecutionPlan*, triagens::basics::Json const& base);
+  SubqueryNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   SubqueryNode(ExecutionPlan* plan, size_t id, ExecutionNode* subquery,
                Variable const* outVariable)
@@ -1349,7 +1349,7 @@ class SubqueryNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1458,7 +1458,7 @@ class FilterNode : public ExecutionNode {
     TRI_ASSERT(_inVariable != nullptr);
   }
 
-  FilterNode(ExecutionPlan*, triagens::basics::Json const& base);
+  FilterNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -1470,7 +1470,7 @@ class FilterNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1589,7 +1589,7 @@ class ReturnNode : public ExecutionNode {
     TRI_ASSERT(_inVariable != nullptr);
   }
 
-  ReturnNode(ExecutionPlan*, triagens::basics::Json const& base);
+  ReturnNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
@@ -1601,7 +1601,7 @@ class ReturnNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1659,7 +1659,7 @@ class NoResultsNode : public ExecutionNode {
  public:
   NoResultsNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
 
-  NoResultsNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+  NoResultsNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       : ExecutionNode(plan, base) {}
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1672,7 +1672,7 @@ class NoResultsNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1695,8 +1695,8 @@ class NoResultsNode : public ExecutionNode {
   double estimateCost(size_t&) const override final;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ struct ModificationOptions {
   /// @brief constructor, using default values
   //////////////////////////////////////////////////////////////////////////////
 
-  ModificationOptions(triagens::basics::Json const&);
+  ModificationOptions(arangodb::basics::Json const&);
 
   ModificationOptions()
       : ignoreErrors(false),
@@ -50,7 +50,7 @@ struct ModificationOptions {
         ignoreDocumentNotFound(false),
         readCompleteInput(true) {}
 
-  void toJson(triagens::basics::Json&, TRI_memory_zone_t*) const;
+  void toJson(arangodb::basics::Json&, TRI_memory_zone_t*) const;
 
   
   bool ignoreErrors;
@@ -61,8 +61,8 @@ struct ModificationOptions {
   bool readCompleteInput;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

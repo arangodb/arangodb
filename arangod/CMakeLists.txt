@@ -60,6 +60,7 @@ add_executable(
     Actions/RestActionHandler.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
+    Aql/Aggregator.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlItemBlockManager.cpp
     Aql/AqlValue.cpp
@@ -174,7 +175,7 @@ add_executable(
     RestHandler/RestAdminLogHandler.cpp
     RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp
-    RestHandler/RestDebugHelperHandler.cpp
+    RestHandler/RestDebugHandler.cpp
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
@@ -192,6 +193,7 @@ add_executable(
     RestHandler/RestUploadHandler.cpp
     RestHandler/RestVersionHandler.cpp
     RestHandler/RestVocbaseBaseHandler.cpp
+    RestHandler/WorkMonitorHandler.cpp
     RestServer/ArangoServer.cpp
     RestServer/ConsoleThread.cpp
     RestServer/VocbaseContext.cpp
@@ -247,6 +249,7 @@ add_executable(
     VocBase/collection.cpp
     VocBase/compactor.cpp
     VocBase/datafile.cpp
+    VocBase/DatafileStatistics.cpp
     VocBase/Ditch.cpp
     VocBase/document-collection.cpp
     VocBase/DocumentAccessor.cpp

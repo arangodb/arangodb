@@ -43,7 +43,7 @@ install_bits:
 	mkdir -p ../WindowsLibraries/$(BITS)/include/unicode
 	for i in `find $(V8)/build -name $(PDBNAME) | grep $(BITS)`; do \
 		LIBNAME=`echo $$i|sed 's;.*/\(.*\)/$(PDBNAME);\1;'`; \
-		BUILD=`echo $$i|sed 's;$(V8)/build/\(.*\)/obj/$${LIBNAME}/$(PDBNAME);\1;'`; \
+		BUILD=`echo $$i|sed "s;$(V8)/build/\(.*\)/obj/$${LIBNAME}/$(PDBNAME);\1;"`; \
 		cp $$i $(V8)/build/$${BUILD}/lib/$${LIBNAME}.pdb; \
 	done
 

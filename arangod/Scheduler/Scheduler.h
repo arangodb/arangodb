@@ -32,18 +32,17 @@
 
 #include "Basics/Mutex.h"
 
-
-struct TRI_json_t;
-
-namespace triagens {
+namespace arangodb {
 namespace basics {
 class ConditionVariable;
+}
+namespace velocypack {
+class Builder;
 }
 
 namespace rest {
 class SchedulerThread;
 class TaskData;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief input-output scheduler
@@ -53,7 +52,6 @@ class Scheduler : private TaskManager {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief scheduler singleton
@@ -61,7 +59,6 @@ class Scheduler : private TaskManager {
 
   static std::unique_ptr<Scheduler> SCHEDULER;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -79,10 +76,8 @@ class Scheduler : private TaskManager {
 
   explicit Scheduler(size_t nrThreads);
 
-
   virtual ~Scheduler();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief starts scheduler, keeps running
@@ -134,13 +129,13 @@ class Scheduler : private TaskManager {
   /// @brief get all user tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* getUserTasks();
+  std::shared_ptr<arangodb::velocypack::Builder> getUserTasks();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a single user task
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* getUserTask(std::string const&);
+  std::shared_ptr<arangodb::velocypack::Builder> getUserTask(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister and delete a user task by id
@@ -165,12 +160,6 @@ class Scheduler : private TaskManager {
   //////////////////////////////////////////////////////////////////////////////
 
   int registerTask(Task*, ssize_t* n);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief registers a new task with a pre-selected thread number
-  //////////////////////////////////////////////////////////////////////////////
-
-  int registerTaskInThread(Task* task, ssize_t tn);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregisters a task
@@ -218,13 +207,17 @@ class Scheduler : private TaskManager {
   /// @brief returns the task for a task id
   ///
   /// Warning: ONLY call this from within the scheduler task! Otherwise, the
-  /// task
-  ///          MIGHT already be deleted.
+  /// task MIGHT already be deleted.
   //////////////////////////////////////////////////////////////////////////////
 
   Task* lookupTaskById(uint64_t);
 
-  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the loop for a task id
+  //////////////////////////////////////////////////////////////////////////////
+
+  EventLoop lookupLoopById(uint64_t);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief main event loop
@@ -306,7 +299,6 @@ class Scheduler : private TaskManager {
 
   virtual void signalTask(std::unique_ptr<TaskData>&) = 0;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief registers a new task
@@ -322,7 +314,6 @@ class Scheduler : private TaskManager {
 
   int checkInsertTask(Task const*);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of scheduler threads
@@ -336,7 +327,6 @@ class Scheduler : private TaskManager {
 
   SchedulerThread** threads;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the signal handlers for the scheduler
@@ -344,7 +334,6 @@ class Scheduler : private TaskManager {
 
   static void initializeSignalHandlers();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief true if scheduler is shutting down
@@ -392,5 +381,3 @@ class Scheduler : private TaskManager {
 }
 
 #endif
-
-

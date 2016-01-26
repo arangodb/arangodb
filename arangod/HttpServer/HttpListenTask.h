@@ -28,7 +28,7 @@
 #include "Scheduler/ListenTask.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class HttpServer;
 class Endpoint;
@@ -51,9 +51,6 @@ class HttpListenTask : public ListenTask {
 
   
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   bool handleConnected(TRI_socket_t s, ConnectionInfo const& info);
 

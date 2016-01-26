@@ -28,18 +28,14 @@
 
 #include <v8.h>
 
-
 struct TRI_vocbase_t;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class ApplicationV8;
 class JSLoader;
 }
-}
 
 static const uint32_t V8DataSlot = 0;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for fetching the isolate from the thread context
@@ -60,7 +56,7 @@ static const uint32_t V8DataSlot = 0;
 
 #define TRI_V8_TRY_CATCH_END                                       \
   }                                                                \
-  catch (triagens::basics::Exception const& ex) {                  \
+  catch (arangodb::basics::Exception const& ex) {                  \
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());          \
   }                                                                \
   catch (std::exception const& ex) {                               \
@@ -679,6 +675,12 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::String> DomainKey;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief "endpoint" key name
+  //////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> EndpointKey;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief "error" key name
   //////////////////////////////////////////////////////////////////////////////
 
@@ -859,6 +861,12 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::String> SilentKey;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief "singleRequest" key name
+  //////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> SingleRequestKey;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief "sleep" key
   //////////////////////////////////////////////////////////////////////////////
 
@@ -1016,13 +1024,13 @@ typedef struct TRI_v8_global_s {
   /// @brief pointer to the context dealer (ApplicationV8*)
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::ApplicationV8* _applicationV8;
+  arangodb::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to the startup loader (JSLoader*)
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::JSLoader* _loader;
+  arangodb::JSLoader* _loader;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel has been caught
@@ -1155,5 +1163,4 @@ void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate,
                                   v8::Handle<v8::Value> value);
 
 #endif
-
 

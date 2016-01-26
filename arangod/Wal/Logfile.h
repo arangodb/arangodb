@@ -42,7 +42,7 @@
 
 #define LOGFILE_LEGEND_CACHE_BUCKETS 8
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 
@@ -361,7 +361,7 @@ class Logfile {
 
     size_t const i = cs.hash() % LOGFILE_LEGEND_CACHE_BUCKETS;
 
-    READ_LOCKER(_legendCacheLock[i]);
+    READ_LOCKER(readLocker, _legendCacheLock[i]);
 
     auto it = _legendCache[i].find(cs);
 
@@ -380,7 +380,7 @@ class Logfile {
 
     size_t const i = cs.hash() % LOGFILE_LEGEND_CACHE_BUCKETS;
 
-    WRITE_LOCKER(_legendCacheLock[i]);
+    WRITE_LOCKER(writeLocker, _legendCacheLock[i]);
 
     auto it = _legendCache[i].find(cs);
 
@@ -389,7 +389,6 @@ class Logfile {
     }
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile id
   //////////////////////////////////////////////////////////////////////////////

@@ -25,24 +25,20 @@
 #define ARANGOD_REST_SERVER_CONSOLE_THREAD_H 1
 
 #include "Basics/Thread.h"
-
 #include "V8Server/ApplicationV8.h"
 
 struct TRI_vocbase_t;
-
 
 namespace arangodb {
 class V8LineEditor;
 }
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class ApplicationServer;
 }
 
-namespace arango {
 class ApplicationV8;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ConsoleThread
@@ -64,12 +60,12 @@ class ConsoleThread : public basics::Thread {
   /// @brief mutex for console access
   //////////////////////////////////////////////////////////////////////////////
 
-  static triagens::basics::Mutex serverConsoleMutex;
+  static arangodb::basics::Mutex serverConsoleMutex;
 
   
  public:
 
-  ConsoleThread(triagens::rest::ApplicationServer*, ApplicationV8*,
+  ConsoleThread(arangodb::rest::ApplicationServer*, ApplicationV8*,
                 TRI_vocbase_t*);
 
 
@@ -149,8 +145,6 @@ class ConsoleThread : public basics::Thread {
   bool _userAborted;
 };
 }
-}
 
 #endif
-
 

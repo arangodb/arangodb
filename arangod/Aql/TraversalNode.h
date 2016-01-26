@@ -29,31 +29,31 @@
 #include "Aql/Graphs.h"
 #include "VocBase/Traverser.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
 class SimpleTraverserExpression
-    : public triagens::arango::traverser::TraverserExpression {
+    : public arangodb::traverser::TraverserExpression {
  public:
-  triagens::aql::AstNode* compareToNode;
+  arangodb::aql::AstNode* compareToNode;
 
-  triagens::aql::Expression* expression;
+  arangodb::aql::Expression* expression;
 
   SimpleTraverserExpression(bool isEdgeAccess,
-                            triagens::aql::AstNodeType comparisonType,
-                            triagens::aql::AstNode const* varAccess,
-                            triagens::aql::AstNode* compareToNode)
-      : triagens::arango::traverser::TraverserExpression(
+                            arangodb::aql::AstNodeType comparisonType,
+                            arangodb::aql::AstNode const* varAccess,
+                            arangodb::aql::AstNode* compareToNode)
+      : arangodb::traverser::TraverserExpression(
             isEdgeAccess, comparisonType, varAccess),
         compareToNode(compareToNode),
         expression(nullptr) {}
 
-  SimpleTraverserExpression(triagens::aql::Ast* ast, triagens::basics::Json j);
+  SimpleTraverserExpression(arangodb::aql::Ast* ast, arangodb::basics::Json j);
 
   ~SimpleTraverserExpression();
 
-  void toJson(triagens::basics::Json& json, TRI_memory_zone_t* zone) const;
+  void toJson(arangodb::basics::Json& json, TRI_memory_zone_t* zone) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +73,7 @@ class TraversalNode : public ExecutionNode {
                 AstNode const* direction, AstNode const* start,
                 AstNode const* graph);
 
-  TraversalNode(ExecutionPlan* plan, triagens::basics::Json const& base);
+  TraversalNode(ExecutionPlan* plan, arangodb::basics::Json const& base);
 
   ~TraversalNode() {
     delete _condition;
@@ -107,7 +107,7 @@ class TraversalNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -243,7 +243,7 @@ class TraversalNode : public ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   void fillTraversalOptions(
-      triagens::arango::traverser::TraverserOptions& opts) const;
+      arangodb::traverser::TraverserOptions& opts) const;
 
   std::vector<std::string> const edgeColls() const { return _edgeColls; }
 
@@ -296,7 +296,7 @@ class TraversalNode : public ExecutionNode {
 
   std::unordered_map<
       size_t,
-      std::vector<triagens::arango::traverser::TraverserExpression*>> const*
+      std::vector<arangodb::traverser::TraverserExpression*>> const*
   expressions() const {
     return &_expressions;
   }
@@ -343,7 +343,7 @@ class TraversalNode : public ExecutionNode {
   /// @brief input graphJson only used for serialisation & info
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json _graphJson;
+  arangodb::basics::Json _graphJson;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The minimal depth included in the result
@@ -393,12 +393,12 @@ class TraversalNode : public ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_map<
-      size_t, std::vector<triagens::arango::traverser::TraverserExpression*>>
+      size_t, std::vector<arangodb::traverser::TraverserExpression*>>
       _expressions;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

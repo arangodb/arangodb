@@ -24,7 +24,7 @@
 #include "ThreadPool.h"
 #include "Basics/WorkerThread.h"
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 
 
@@ -42,11 +42,19 @@ ThreadPool::ThreadPool(size_t size, std::string const& name)
     try {
       _threads.emplace_back(workerThread);
     } catch (...) {
+      // clean up
       delete workerThread;
+      for (auto& it : _threads) {
+        delete it;
+      }
+      _threads.clear();
       throw;
     }
-
-    workerThread->start();
+  }
+  
+  // now start them all
+  for (auto& it : _threads) {
+    it->start();
   }
 }
 
@@ -58,8 +66,11 @@ ThreadPool::~ThreadPool() {
   _stopping = true;
   _condition.broadcast();
 
-  for (auto it : _threads) {
+  for (auto* it : _threads) {
     it->waitForDone();
+  }
+  
+  for (auto* it : _threads) {
     delete it;
   }
 }
@@ -74,7 +85,7 @@ bool ThreadPool::dequeue(std::function<void()>& result) {
     CONDITION_LOCKER(guard, _condition);
 
     if (_tasks.empty()) {
-      guard.wait();
+      guard.wait(1000000);
     }
 
     if (_stopping) {

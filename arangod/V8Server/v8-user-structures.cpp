@@ -34,13 +34,14 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 
+using namespace arangodb;
 
 struct KeySpaceElement {
   KeySpaceElement() = delete;
 
   KeySpaceElement(char const* k, size_t length, TRI_json_t* json)
       : key(nullptr), json(json) {
-    key = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, k, length);
+    key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, k, length);
     if (key == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -103,13 +104,13 @@ class KeySpace {
   }
 
   uint32_t keyspaceCount() {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
     return _hash._nrUsed;
   }
 
   uint32_t keyspaceCount(std::string const& prefix) {
     uint32_t count = 0;
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
 
     uint32_t const n = _hash._nrAlloc;
     for (uint32_t i = 0; i < n; ++i) {
@@ -128,7 +129,7 @@ class KeySpace {
   v8::Handle<v8::Value> keyspaceRemove(v8::Isolate* isolate) {
     v8::EscapableHandleScope scope(isolate);
 
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     uint32_t const n = _hash._nrAlloc;
     uint32_t deleted = 0;
@@ -151,7 +152,7 @@ class KeySpace {
   v8::Handle<v8::Value> keyspaceRemove(v8::Isolate* isolate,
                                        std::string const& prefix) {
     v8::EscapableHandleScope scope(isolate);
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     uint32_t const n = _hash._nrAlloc;
     uint32_t i = 0;
@@ -181,7 +182,7 @@ class KeySpace {
     v8::EscapableHandleScope scope(isolate);
     v8::Handle<v8::Array> result;
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(readLocker, _lock);
 
       uint32_t const n = _hash._nrAlloc;
       uint32_t count = 0;
@@ -204,7 +205,7 @@ class KeySpace {
     v8::EscapableHandleScope scope(isolate);
     v8::Handle<v8::Array> result;
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(readLocker, _lock);
 
       uint32_t const n = _hash._nrAlloc;
       uint32_t count = 0;
@@ -228,7 +229,7 @@ class KeySpace {
     v8::EscapableHandleScope scope(isolate);
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(readLocker, _lock);
 
       uint32_t const n = _hash._nrAlloc;
 
@@ -250,7 +251,7 @@ class KeySpace {
     v8::EscapableHandleScope scope(isolate);
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(readLocker, _lock);
 
       uint32_t const n = _hash._nrAlloc;
 
@@ -270,7 +271,7 @@ class KeySpace {
   }
 
   bool keyCount(std::string const& key, uint32_t& result) {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
 
     auto found = static_cast<KeySpaceElement*>(
         TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -297,7 +298,7 @@ class KeySpace {
   v8::Handle<v8::Value> keyGet(v8::Isolate* isolate, std::string const& key) {
     v8::Handle<v8::Value> result;
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(readLocker, _lock);
 
       auto found = static_cast<KeySpaceElement*>(
           TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -319,7 +320,7 @@ class KeySpace {
     KeySpaceElement* found = nullptr;
 
     {
-      WRITE_LOCKER(_lock);
+      WRITE_LOCKER(writeLocker, _lock);
 
       found = static_cast<KeySpaceElement*>(TRI_InsertKeyAssociativePointer(
           &_hash, element->key, element, replace));
@@ -344,7 +345,7 @@ class KeySpace {
     auto element = new KeySpaceElement(key.c_str(), key.size(),
                                        TRI_ObjectToJson(isolate, value));
 
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     auto found = static_cast<KeySpaceElement*>(
         TRI_InsertKeyAssociativePointer(&_hash, element->key, element, false));
@@ -392,7 +393,7 @@ class KeySpace {
     KeySpaceElement* found = nullptr;
 
     {
-      WRITE_LOCKER(_lock);
+      WRITE_LOCKER(writeLocker, _lock);
 
       found = static_cast<KeySpaceElement*>(
           TRI_RemoveKeyAssociativePointer(&_hash, key.c_str()));
@@ -407,13 +408,13 @@ class KeySpace {
   }
 
   bool keyExists(std::string const& key) {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
 
     return (TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()) != nullptr);
   }
 
   int keyIncr(std::string const& key, double value, double& result) {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     auto found = static_cast<KeySpaceElement*>(
         TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -445,7 +446,7 @@ class KeySpace {
 
   int keyPush(v8::Isolate* isolate, std::string const& key,
               v8::Handle<v8::Value> const& value) {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     auto found = static_cast<KeySpaceElement*>(
         TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -489,11 +490,11 @@ class KeySpace {
     return TRI_ERROR_NO_ERROR;
   }
 
-  void keyPop(const v8::FunctionCallbackInfo<v8::Value>& args,
+  void keyPop(v8::FunctionCallbackInfo<v8::Value> const& args,
               std::string const& key) {
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     auto found = static_cast<KeySpaceElement*>(
         TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -526,12 +527,12 @@ class KeySpace {
     TRI_V8_RETURN(result);
   }
 
-  void keyTransfer(const v8::FunctionCallbackInfo<v8::Value>& args,
+  void keyTransfer(v8::FunctionCallbackInfo<v8::Value> const& args,
                    std::string const& keyFrom, std::string const& keyTo) {
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
 
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     auto source = static_cast<KeySpaceElement*>(
         TRI_LookupByKeyAssociativePointer(&_hash, keyFrom.c_str()));
@@ -596,7 +597,7 @@ class KeySpace {
   v8::Handle<v8::Value> keyKeys(v8::Isolate* isolate, std::string const& key) {
     v8::Handle<v8::Value> result;
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(readLocker, _lock);
 
       auto found = static_cast<KeySpaceElement*>(
           TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -616,7 +617,7 @@ class KeySpace {
     v8::EscapableHandleScope scope(isolate);
     v8::Handle<v8::Value> result;
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(readLocker, _lock);
 
       auto found = static_cast<KeySpaceElement*>(
           TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -631,14 +632,14 @@ class KeySpace {
     return scope.Escape<v8::Value>(result);
   }
 
-  void keyGetAt(const v8::FunctionCallbackInfo<v8::Value>& args,
+  void keyGetAt(v8::FunctionCallbackInfo<v8::Value> const& args,
                 std::string const& key, int64_t index) {
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
 
     v8::Handle<v8::Value> result;
     {
-      READ_LOCKER(_lock);
+      READ_LOCKER(readLocker, _lock);
 
       auto found = static_cast<KeySpaceElement*>(
           TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -671,7 +672,7 @@ class KeySpace {
 
   bool keySetAt(v8::Isolate* isolate, std::string const& key, int64_t index,
                 v8::Handle<v8::Value> const& value) {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     auto found = static_cast<KeySpaceElement*>(
         TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -718,7 +719,7 @@ class KeySpace {
   }
 
   char const* keyType(std::string const& key) {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
 
     void* found = TRI_LookupByKeyAssociativePointer(&_hash, key.c_str());
 
@@ -747,7 +748,7 @@ class KeySpace {
     return "undefined";
   }
 
-  void keyMerge(const v8::FunctionCallbackInfo<v8::Value>& args,
+  void keyMerge(v8::FunctionCallbackInfo<v8::Value> const& args,
                 std::string const& key, v8::Handle<v8::Value> const& value,
                 bool nullMeansRemove) {
     v8::Isolate* isolate = args.GetIsolate();
@@ -757,7 +758,7 @@ class KeySpace {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     auto found = static_cast<KeySpaceElement*>(
         TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
@@ -794,14 +795,14 @@ class KeySpace {
   }
 
  private:
-  triagens::basics::ReadWriteLock _lock;
+  arangodb::basics::ReadWriteLock _lock;
   TRI_associative_pointer_t _hash;
 };
 
 
 struct UserStructures {
   struct {
-    triagens::basics::ReadWriteLock lock;
+    arangodb::basics::ReadWriteLock lock;
     std::unordered_map<std::string, KeySpace*> data;
   } hashes;
 };
@@ -837,7 +838,7 @@ static KeySpace* GetKeySpace(TRI_vocbase_t* vocbase, std::string const& name) {
 /// @brief creates a keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceCreate(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -871,7 +872,7 @@ static void JS_KeyspaceCreate(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   {
-    WRITE_LOCKER(h->lock);
+    WRITE_LOCKER(writeLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
@@ -899,7 +900,7 @@ static void JS_KeyspaceCreate(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief drops a keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceDrop(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceDrop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -917,7 +918,7 @@ static void JS_KeyspaceDrop(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   {
-    WRITE_LOCKER(h->lock);
+    WRITE_LOCKER(writeLocker, h->lock);
 
     auto it = h->data.find(name);
 
@@ -937,7 +938,7 @@ static void JS_KeyspaceDrop(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns the number of items in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceCount(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -956,7 +957,7 @@ static void JS_KeyspaceCount(const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   uint32_t count;
   {
-    READ_LOCKER(h->lock);
+    READ_LOCKER(readLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
@@ -980,7 +981,7 @@ static void JS_KeyspaceCount(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns whether a keyspace exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -998,7 +999,7 @@ static void JS_KeyspaceExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
 
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash != nullptr) {
@@ -1012,7 +1013,7 @@ static void JS_KeyspaceExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns all keys of the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1029,7 +1030,7 @@ static void JS_KeyspaceKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1050,7 +1051,7 @@ static void JS_KeyspaceKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns all data of the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1067,7 +1068,7 @@ static void JS_KeyspaceGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1088,7 +1089,7 @@ static void JS_KeyspaceGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief removes all keys from the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyspaceRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyspaceRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1105,7 +1106,7 @@ static void JS_KeyspaceRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1126,7 +1127,7 @@ static void JS_KeyspaceRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1146,7 +1147,7 @@ static void JS_KeyGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   v8::Handle<v8::Value> result;
   {
-    READ_LOCKER(h->lock);
+    READ_LOCKER(readLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
@@ -1165,7 +1166,7 @@ static void JS_KeyGet(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief set the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeySet(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1190,7 +1191,7 @@ static void JS_KeySet(const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   bool result;
   {
-    READ_LOCKER(h->lock);
+    READ_LOCKER(readLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
@@ -1212,7 +1213,7 @@ static void JS_KeySet(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief conditionally set the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeySetCas(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeySetCas(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1238,7 +1239,7 @@ static void JS_KeySetCas(const v8::FunctionCallbackInfo<v8::Value>& args) {
   int res;
   bool match = false;
   {
-    READ_LOCKER(h->lock);
+    READ_LOCKER(readLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
@@ -1264,7 +1265,7 @@ static void JS_KeySetCas(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief remove the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1284,7 +1285,7 @@ static void JS_KeyRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   bool result;
   {
-    READ_LOCKER(h->lock);
+    READ_LOCKER(readLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
@@ -1306,7 +1307,7 @@ static void JS_KeyRemove(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief checks if a key exists in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1326,7 +1327,7 @@ static void JS_KeyExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   bool result;
   {
-    READ_LOCKER(h->lock);
+    READ_LOCKER(readLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
@@ -1348,7 +1349,7 @@ static void JS_KeyExists(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief increase or decrease the value for a key in a keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyIncr(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyIncr(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1378,7 +1379,7 @@ static void JS_KeyIncr(const v8::FunctionCallbackInfo<v8::Value>& args) {
   double result;
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   {
-    READ_LOCKER(h->lock);
+    READ_LOCKER(readLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
@@ -1401,7 +1402,7 @@ static void JS_KeyIncr(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief merges an object into the object with the specified key
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyUpdate(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyUpdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1425,7 +1426,7 @@ static void JS_KeyUpdate(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1441,7 +1442,7 @@ static void JS_KeyUpdate(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns all keys of the key
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1459,7 +1460,7 @@ static void JS_KeyKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1475,7 +1476,7 @@ static void JS_KeyKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns all value of the hash array
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyValues(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyValues(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1493,7 +1494,7 @@ static void JS_KeyValues(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1509,7 +1510,7 @@ static void JS_KeyValues(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief right-pushes an element into a list value
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyPush(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyPush(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1527,7 +1528,7 @@ static void JS_KeyPush(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1549,7 +1550,7 @@ static void JS_KeyPush(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief pops an element from a list value
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyPop(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyPop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1567,7 +1568,7 @@ static void JS_KeyPop(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1583,7 +1584,7 @@ static void JS_KeyPop(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief transfer an element from a list value into another
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyTransfer(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyTransfer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1602,7 +1603,7 @@ static void JS_KeyTransfer(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& keyTo = TRI_ObjectToString(args[2]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1618,7 +1619,7 @@ static void JS_KeyTransfer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief get an element at a specific list position
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyGetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyGetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1637,7 +1638,7 @@ static void JS_KeyGetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
   int64_t offset = TRI_ObjectToInt64(args[2]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1653,7 +1654,7 @@ static void JS_KeyGetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief set an element at a specific list position
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeySetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeySetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1672,7 +1673,7 @@ static void JS_KeySetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
   int64_t offset = TRI_ObjectToInt64(args[2]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(h->lock);
+  READ_LOCKER(readLocker, h->lock);
 
   auto hash = GetKeySpace(vocbase, name);
 
@@ -1693,7 +1694,7 @@ static void JS_KeySetAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns the type of the value for a key
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyType(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyType(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1713,7 +1714,7 @@ static void JS_KeyType(const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   char const* result;
   {
-    READ_LOCKER(h->lock);
+    READ_LOCKER(readLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
@@ -1732,7 +1733,7 @@ static void JS_KeyType(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief returns the number of items in a compound value
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_KeyCount(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_KeyCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1753,7 +1754,7 @@ static void JS_KeyCount(const v8::FunctionCallbackInfo<v8::Value>& args) {
   uint32_t result;
   bool valid;
   {
-    READ_LOCKER(h->lock);
+    READ_LOCKER(readLocker, h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 

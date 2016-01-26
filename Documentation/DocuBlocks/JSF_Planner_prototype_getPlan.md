@@ -1,9 +1,8 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_Planner_prototype_getPlan
-///
-/// `Planner.getPlan()`
-///
-/// returns the cluster plan as a JavaScript object. The result of this
-/// method can be given to the constructor of a Kickstarter.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`Planner.getPlan()`
+
+returns the cluster plan as a JavaScript object. The result of this
+method can be given to the constructor of a Kickstarter.
+

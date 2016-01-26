@@ -32,7 +32,7 @@
 #include "Basics/StringUtils.h"
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // statistic nonce buffer
@@ -79,7 +79,7 @@ uint32_t StatisticsNonces[32][5] = {{0, 0, 0, 0, 0},
                                     {0, 0, 0, 0, 0}};
 }
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 namespace Nonce {
 
@@ -151,7 +151,7 @@ bool checkAndMark(std::string const& nonce) {
 }
 
 bool checkAndMark(uint32_t timestamp, uint64_t random) {
-  MUTEX_LOCKER(MutexNonce);
+  MUTEX_LOCKER(mutexLocker, MutexNonce);
 
   if (TimestampNonces == 0) {
     LOG_TRACE("setting nonce hash size to %d", (int)SizeNonces);
@@ -220,7 +220,7 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
 }
 
 vector<Statistics> statistics() {
-  MUTEX_LOCKER(MutexNonce);
+  MUTEX_LOCKER(mutexLocker, MutexNonce);
 
   int const N = 4;
   std::vector<Statistics> result;

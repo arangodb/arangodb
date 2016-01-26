@@ -323,6 +323,22 @@ via the environment variable or in the menu. Given we want to store the symbols 
 
 You then will be able to see stack traces in the debugger.
 
+Coredump analysis
+-----------------
+While Visual studio may cary a nice shiny gui, the concept of GUI fails miserably i.e. in testautomation. Getting an overview over all running threads is a tedious task with it. Here the commandline version of [WinDBG](http://www.windbg.org/) cdb comes to the aid. `testing.js` utilizes it to obtain automatical stack traces for crashes.
+We run it like that:
+
+    cdb -z <dump file> -c 'kp; ~*kb; dv; !analyze -v; q'
+
+These commands for `-c` mean:
+    kp           print curren threads backtrace with arguments
+    ~*kb         print all threads stack traces
+    dv           analyze local variables (if)
+    !analyze -v  print verbose analysis
+    q            quit the debugger
+
+If you don't specify them via -c you can also use them in an interactive manner.
+
 __________________________________________________________________________________________________________
 
 Documentation

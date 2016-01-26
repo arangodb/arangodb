@@ -39,7 +39,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -193,6 +193,10 @@ class AssocUnique {
     // entries
     static uint64_t const NotificationSizeThreshold = 131072;
 
+    LOG_TRACE("resizing index %s, target size: %llu",
+              _contextCallback().c_str(),
+              (unsigned long long) targetSize);
+
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
       LOG_ACTION("index-resize %s, target size: %llu",
@@ -249,6 +253,8 @@ class AssocUnique {
     }
 
     delete[] oldTable;
+    
+    LOG_TRACE("resizing index %s done", _contextCallback().c_str());
 
     LOG_TIMER((TRI_microtime() - start), "index-resize %s, target size: %llu",
               _contextCallback().c_str(), (unsigned long long)targetSize);
@@ -392,37 +398,37 @@ class AssocUnique {
   /// @brief Appends information about statistics in the given json.
   //////////////////////////////////////////////////////////////////////////////
 
-  void appendToJson(TRI_memory_zone_t* zone, triagens::basics::Json& json) {
-    triagens::basics::Json bkts(zone, triagens::basics::Json::Array);
+  void appendToJson(TRI_memory_zone_t* zone, arangodb::basics::Json& json) {
+    arangodb::basics::Json bkts(zone, arangodb::basics::Json::Array);
     for (auto& b : _buckets) {
-      triagens::basics::Json bucketInfo(zone, triagens::basics::Json::Object);
+      arangodb::basics::Json bucketInfo(zone, arangodb::basics::Json::Object);
       bucketInfo("nrAlloc",
-                 triagens::basics::Json(static_cast<double>(b._nrAlloc)));
+                 arangodb::basics::Json(static_cast<double>(b._nrAlloc)));
       bucketInfo("nrUsed",
-                 triagens::basics::Json(static_cast<double>(b._nrUsed)));
+                 arangodb::basics::Json(static_cast<double>(b._nrUsed)));
       bkts.add(bucketInfo);
     }
     json("buckets", bkts);
     json("nrBuckets",
-         triagens::basics::Json(static_cast<double>(_buckets.size())));
-    json("totalUsed", triagens::basics::Json(static_cast<double>(size())));
+         arangodb::basics::Json(static_cast<double>(_buckets.size())));
+    json("totalUsed", arangodb::basics::Json(static_cast<double>(size())));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Appends information about statistics in the given VPackBuilder
   //////////////////////////////////////////////////////////////////////////////
 
-  void appendToVelocyPack(std::shared_ptr<VPackBuilder> builder) {
-    builder->add("buckets", VPackValue(VPackValueType::Array));
+  void appendToVelocyPack(VPackBuilder& builder) {
+    builder.add("buckets", VPackValue(VPackValueType::Array));
     for (auto& b : _buckets) {
-      builder->add(VPackValue(VPackValueType::Object));
-      builder->add("nrAlloc", VPackValue(b._nrAlloc));
-      builder->add("nrUsed", VPackValue(b._nrUsed));
-      builder->close();
+      builder.openObject();
+      builder.add("nrAlloc", VPackValue(b._nrAlloc));
+      builder.add("nrUsed", VPackValue(b._nrUsed));
+      builder.close();
     }
-    builder->close();  // buckets
-    builder->add("nrBuckets", VPackValue(_buckets.size()));
-    builder->add("totalUsed", VPackValue(size()));
+    builder.close();  // buckets
+    builder.add("nrBuckets", VPackValue(_buckets.size()));
+    builder.add("totalUsed", VPackValue(size()));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -594,7 +600,7 @@ class AssocUnique {
     size_t const chunkSize = elements.size() / numThreads;
 
     typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
-    triagens::basics::Mutex bucketMapLocker;
+    arangodb::basics::Mutex bucketMapLocker;
 
     std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
 
@@ -618,7 +624,7 @@ class AssocUnique {
           }
 
           // transfer ownership to the central map
-          MUTEX_LOCKER(bucketMapLocker);
+          MUTEX_LOCKER(mutexLocker, bucketMapLocker);
 
           for (auto& it : partitions) {
             auto it2 = allBuckets.find(it.first);
@@ -1001,7 +1007,7 @@ class AssocUnique {
       while (true) {
         step = TRI_UInt32Random() % total;
         if (step > 10 &&
-            triagens::basics::binaryGcd<uint64_t>(total, step) == 1) {
+            arangodb::basics::binaryGcd<uint64_t>(total, step) == 1) {
           uint64_t initialPositionNr = 0;
           while (initialPositionNr == 0) {
             initialPositionNr = TRI_UInt32Random() % total;
@@ -1026,7 +1032,7 @@ class AssocUnique {
   }
 };
 }  // namespace basics
-}  // namespace triagens
+}  // namespace arangodb
 
 #endif
 

@@ -16,6 +16,7 @@ The following AQL keywords were added in ArangoDB 2.8:
 * `ANY`
 * `ALL`
 * `NONE`
+* `AGGREGATE`
 
 Usage of these keywords for collection names, variable names or attribute names
 in AQL queries will not be possible without quoting. For example, the following
@@ -110,6 +111,10 @@ from `use-index-range` to `use-indexes`. Again this affects explain output
 that can be retrieved via `require("org/arangodb/aql/explainer").explain(query)`,
 `db._explain(query)`, and the HTTP query explain API.
 
+The query optimizer rule `remove-collect-into` was renamed to `remove-collect-variables`.
+This affects explain output that can be retrieved via `require("org/arangodb/aql/explainer").explain(query)`,
+`db._explain(query)`, and the HTTP query explain API.
+
 
 !SECTION HTTP API
 
@@ -190,7 +195,6 @@ resources to be released.
 In this context the default value for the JavaScript garbage collection frequency
 (`--javascript.gc-frequency`) was also increased from 10 seconds to 15 seconds, 
 as less internal operations in ArangoDB are carried out in JavaScript.
-
 
 !SECTION Client tools
 

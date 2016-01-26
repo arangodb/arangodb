@@ -28,7 +28,7 @@
 
 #include "Rest/EndpointIp.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 
@@ -62,7 +62,7 @@ class EndpointIpV6 final : public EndpointIp {
 
   std::string getHostString() const {
     return '[' + getHost() + "]:" +
-           triagens::basics::StringUtils::itoa(getPort());
+           arangodb::basics::StringUtils::itoa(getPort());
   }
 };
 }

@@ -39,12 +39,9 @@
 
 struct TRI_doc_mptr_t;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class CollectionNameResolver;
 }
-}
-
 
 class DocumentAccessor {
  public:
@@ -52,7 +49,7 @@ class DocumentAccessor {
   DocumentAccessor(DocumentAccessor const&);
   DocumentAccessor& operator=(DocumentAccessor const&);
 
-  DocumentAccessor(triagens::arango::CollectionNameResolver const* resolver,
+  DocumentAccessor(arangodb::CollectionNameResolver const* resolver,
                    TRI_document_collection_t* document,
                    TRI_doc_mptr_t const* mptr);
 
@@ -77,7 +74,7 @@ class DocumentAccessor {
 
   DocumentAccessor& at(int64_t index);
 
-  triagens::basics::Json toJson();
+  arangodb::basics::Json toJson();
 
   
  private:
@@ -89,7 +86,7 @@ class DocumentAccessor {
 
   
  private:
-  triagens::arango::CollectionNameResolver const* _resolver;
+  arangodb::CollectionNameResolver const* _resolver;
 
   TRI_document_collection_t* _document;
 
@@ -105,10 +102,10 @@ class DocumentAccessor {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline std::string TRI_EXTRACT_MARKER_KEY(
-    triagens::arango::Transaction* trx, TRI_df_marker_t const* marker) {
+    arangodb::Transaction* trx, TRI_df_marker_t const* marker) {
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
-             sizeof(triagens::wal::vpack_document_marker_t);
+             sizeof(arangodb::wal::vpack_document_marker_t);
     VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
     return slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
   }
@@ -126,7 +123,7 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline std::string TRI_EXTRACT_MARKER_KEY(
-    triagens::arango::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+    arangodb::Transaction* trx, TRI_doc_mptr_t const* mptr) {
   return TRI_EXTRACT_MARKER_KEY(
       trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
@@ -136,10 +133,10 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
-    triagens::arango::Transaction* trx, TRI_df_marker_t const* marker) {
+    arangodb::Transaction* trx, TRI_df_marker_t const* marker) {
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
-             sizeof(triagens::wal::vpack_document_marker_t);
+             sizeof(arangodb::wal::vpack_document_marker_t);
     VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
     VPackSlice value = slice.get(TRI_VOC_ATTRIBUTE_REV);
     return arangodb::velocypack::readUInt64(value.start() + 1);
@@ -158,7 +155,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
-    triagens::arango::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+    arangodb::Transaction* trx, TRI_doc_mptr_t const* mptr) {
   return TRI_EXTRACT_MARKER_RID(
       trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
@@ -167,14 +164,14 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
 /// @brief compares the key from a master pointer to the given key
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_MATCHES_MARKER_KEY(triagens::arango::Transaction* trx,
+static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
                                           TRI_doc_mptr_t const* mptr,
                                           char const* key) {
   auto marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
 
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
-             sizeof(triagens::wal::vpack_document_marker_t);
+             sizeof(arangodb::wal::vpack_document_marker_t);
     VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
     VPackValueLength len;
     char const* p = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(len);
@@ -195,7 +192,7 @@ static inline bool TRI_MATCHES_MARKER_KEY(triagens::arango::Transaction* trx,
 /// @brief compares the key from a master pointer to the given key
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_MATCHES_MARKER_KEY(triagens::arango::Transaction* trx,
+static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
                                           TRI_doc_mptr_t const* left,
                                           TRI_doc_mptr_t const* right) {
   auto lm = static_cast<TRI_df_marker_t const*>(left->getDataPtr());
@@ -204,13 +201,13 @@ static inline bool TRI_MATCHES_MARKER_KEY(triagens::arango::Transaction* trx,
   if (lm->_type == TRI_WAL_MARKER_VPACK_DOCUMENT &&
       rm->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto lb = reinterpret_cast<char const*>(lm) +
-              sizeof(triagens::wal::vpack_document_marker_t);
+              sizeof(arangodb::wal::vpack_document_marker_t);
     VPackSlice ls(reinterpret_cast<uint8_t const*>(lb), trx->vpackOptions());
     VPackValueLength llen;
     char const* p = ls.get(TRI_VOC_ATTRIBUTE_KEY).getString(llen);
 
     auto rb = reinterpret_cast<char const*>(rm) +
-              sizeof(triagens::wal::vpack_document_marker_t);
+              sizeof(arangodb::wal::vpack_document_marker_t);
     VPackSlice rs(reinterpret_cast<uint8_t const*>(rb), trx->vpackOptions());
     VPackValueLength rlen;
     char const* q = rs.get(TRI_VOC_ATTRIBUTE_KEY).getString(rlen);

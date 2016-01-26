@@ -25,12 +25,10 @@
 #define ARANGOD_UTILS_COLLECTION_READ_LOCKER_H 1
 
 #include "Basics/Common.h"
-
 #include "VocBase/document-collection.h"
+#include "VocBase/transaction.h"
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 class CollectionReadLocker {
   
@@ -45,7 +43,7 @@ class CollectionReadLocker {
   CollectionReadLocker(TRI_document_collection_t* document, bool doLock)
       : _document(document), _doLock(false) {
     if (doLock) {
-      _document->beginRead();
+      _document->beginReadTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
       _doLock = true;
     }
   }
@@ -83,8 +81,6 @@ class CollectionReadLocker {
   bool _doLock;
 };
 }
-}
 
 #endif
-
 

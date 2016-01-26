@@ -18,7 +18,9 @@ AQL supports the following functions to operate on document values:
   The *examples* must be an array of 1..n example documents, with any number of attributes
   each. Note: specifying an empty array of examples is not allowed.
    
-  @EXAMPLES
+  
+**Examples**
+
 
       MATCHES(
         { "test" : 1 }, [ 

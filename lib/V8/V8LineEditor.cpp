@@ -31,7 +31,7 @@
 #include "V8/v8-utils.h"
 
 using namespace std;
-using namespace triagens;
+using namespace arangodb;
 using namespace arangodb;
 
 
@@ -114,9 +114,6 @@ class V8Completer : public Completer {
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   bool isComplete(std::string const& source, size_t lineno) override final {
     int openParen = 0;
@@ -273,9 +270,6 @@ class V8Completer : public Completer {
             openStrings <= 0 && openComments <= 0);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::string> alternatives(char const* text) override final {
     std::vector<std::string> result;

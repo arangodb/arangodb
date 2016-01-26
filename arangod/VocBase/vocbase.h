@@ -35,9 +35,6 @@
 #include "VocBase/vocbase-defaults.h"
 
 #include <functional>
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 
 struct TRI_document_collection_t;
 class TRI_replication_applier_t;
@@ -45,15 +42,16 @@ struct TRI_server_t;
 class TRI_vocbase_col_t;
 struct TRI_vocbase_defaults_t;
 
-namespace triagens {
+namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace aql {
 class QueryList;
 }
-namespace arango {
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
-}
 }
 
 extern bool IGNORE_DATAFILE_ERRORS;
@@ -64,52 +62,42 @@ extern bool IGNORE_DATAFILE_ERRORS;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(a) \
-  TRI_TryReadLockReadWriteLock(&(a)->_lock)
+  a->_lock.tryReadLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_LOCK_STATUS_VOCBASE_COL(a) \
-  TRI_ReadLockReadWriteLock(&(a)->_lock)
+  a->_lock.readLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_UNLOCK_STATUS_VOCBASE_COL(a) \
-  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+  a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to write lock the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_TRY_WRITE_LOCK_STATUS_VOCBASE_COL(a) \
-  TRI_TryWriteLockReadWriteLock(&(a)->_lock)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write locks the vocbase collection status
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_LOCK_STATUS_VOCBASE_COL(a) \
-  TRI_WriteLockReadWriteLock(&(a)->_lock)
+  a->_lock.tryWriteLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(a) \
-  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+  a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write locks the vocbase collection status using spinning
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(a) \
-  while (!TRI_TRY_WRITE_LOCK_STATUS_VOCBASE_COL(a)) { \
-    usleep(1000);                                     \
-  }
-
+  a->_lock.tryWriteLock(1000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _from attribute
@@ -255,10 +243,10 @@ struct TRI_vocbase_t {
   TRI_server_t* _server;
   TRI_vocbase_defaults_t _settings;
 
-  triagens::basics::DeadlockDetector<TRI_document_collection_t>
+  arangodb::basics::DeadlockDetector<TRI_document_collection_t>
       _deadlockDetector;
 
-  triagens::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
+  arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
   std::vector<TRI_vocbase_col_t*> _collections;  // pointers to ALL collections
   std::vector<TRI_vocbase_col_t*> _deadCollections;  // pointers to collections
                                                      // dropped that can be
@@ -267,19 +255,19 @@ struct TRI_vocbase_t {
   TRI_associative_pointer_t _collectionsByName;  // collections by name
   TRI_associative_pointer_t _collectionsById;    // collections by id
 
-  triagens::basics::ReadWriteLock _inventoryLock;  // object lock needed when
+  arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
 
   // structures for user-defined volatile data
   void* _userStructures;
-  triagens::aql::QueryList* _queries;
-  triagens::arango::CursorRepository* _cursorRepository;
-  triagens::arango::CollectionKeysRepository* _collectionKeys;
+  arangodb::aql::QueryList* _queries;
+  arangodb::CursorRepository* _cursorRepository;
+  arangodb::CollectionKeysRepository* _collectionKeys;
 
   TRI_associative_pointer_t _authInfo;
   TRI_associative_pointer_t _authCache;
-  TRI_read_write_lock_t _authInfoLock;
+  arangodb::basics::ReadWriteLock _authInfoLock;
   bool _authInfoLoaded;  // flag indicating whether the authentication info was
                          // loaded successfully
   bool _hasCompactor;
@@ -289,7 +277,7 @@ struct TRI_vocbase_t {
 
   class TRI_replication_applier_t* _replicationApplier;
 
-  triagens::basics::ReadWriteLock _replicationClientsLock;
+  arangodb::basics::ReadWriteLock _replicationClientsLock;
   std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
       _replicationClients;
 
@@ -352,7 +340,7 @@ class TRI_vocbase_col_t {
   TRI_voc_cid_t _planId;  // cluster-wide collecttion identifier
   TRI_col_type_t _type;   // collection type
 
-  TRI_read_write_lock_t _lock;  // lock protecting the status and name
+  arangodb::basics::ReadWriteLock _lock; // lock protecting the status and name
 
   uint32_t _internalVersion;  // is incremented when a collection is renamed
   // this is used to prevent caching of collection objects
@@ -376,36 +364,29 @@ class TRI_vocbase_col_t {
   ///        creates the Builder.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> toVelocyPack(bool, TRI_voc_tick_t);
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool, TRI_voc_tick_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
   //////////////////////////////////////////////////////////////////////////////
 
-  void toVelocyPack(VPackBuilder&, bool, TRI_voc_tick_t);
+  void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the information for the indexes of this collection to
   /// velocypack
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> toVelocyPackIndexes(TRI_voc_tick_t);
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackIndexes(TRI_voc_tick_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Array
   //////////////////////////////////////////////////////////////////////////////
 
-  void toVelocyPackIndexes(VPackBuilder&, TRI_voc_tick_t);
+  void toVelocyPackIndexes(arangodb::velocypack::Builder&, TRI_voc_tick_t);
 };
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the memory associated with a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCollectionVocBase(TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object, without threads and some other attributes
@@ -461,7 +442,7 @@ std::vector<std::string> TRI_CollectionNamesVocBase(TRI_vocbase_t*);
 /// The result is sorted by type and name (vertices before edges)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase(
+std::shared_ptr<arangodb::velocypack::Builder> TRI_InventoryCollectionsVocBase(
     TRI_vocbase_t*, TRI_voc_tick_t, bool (*)(TRI_vocbase_col_t*, void*), void*,
     bool, std::function<bool(TRI_vocbase_col_t*, TRI_vocbase_col_t*)>);
 
@@ -507,7 +488,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
-    TRI_vocbase_t*, triagens::arango::VocbaseCollectionInfo&, TRI_voc_cid_t cid,
+    TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&, TRI_voc_cid_t cid,
     bool);
 
 ////////////////////////////////////////////////////////////////////////////////

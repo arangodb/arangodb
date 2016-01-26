@@ -61,7 +61,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
   // garbage collected
   bool unloadChecked = false;
   // but if we are in server shutdown, we can force unloading of collections
-  bool isInShutdown = triagens::wal::LogfileManager::instance()->isInShutdown();
+  bool isInShutdown = arangodb::wal::LogfileManager::instance()->isInShutdown();
 
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(document != nullptr);
@@ -71,9 +71,9 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
     auto ditches = document->ditches();
 
     // check and remove all callback elements at the beginning of the list
-    auto callback = [&](triagens::arango::Ditch const* ditch) -> bool {
+    auto callback = [&](arangodb::Ditch const* ditch) -> bool {
       if (ditch->type() ==
-          triagens::arango::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
+          arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
         // check if we can really unload, this is only the case if the
         // collection's WAL markers
         // were fully collected
@@ -107,24 +107,29 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
       // check if the collection is still in the "unloading" state. if not,
       // then someone has already triggered a reload or a deletion of the
       // collection
-      if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-        bool isUnloading =
-            (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      bool isUnloading = false;
+      bool gotStatus = false;
+      {
+        TRY_READ_LOCKER(readLocker, collection->_lock);
 
-        if (!isUnloading) {
-          popped = false;
-          auto unloader = ditches->process(
-              popped, [](triagens::arango::Ditch const* ditch) -> bool {
-                return (ditch->type() ==
-                        triagens::arango::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
-              });
-          if (popped) {
-            // we've changed the list. try with current state in next turn
-            TRI_ASSERT(unloader != nullptr);
-            delete unloader;
-            return;
-          }
+        if (readLocker.isLocked()) {
+          isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
+          gotStatus = true;
+        }
+      }
+
+      if (gotStatus && !isUnloading) {
+        popped = false;
+        auto unloader = ditches->process(
+            popped, [](arangodb::Ditch const* ditch) -> bool {
+            return (ditch->type() ==
+                arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
+            });
+        if (popped) {
+          // we've changed the list. try with current state in next turn
+          TRI_ASSERT(unloader != nullptr);
+          delete unloader;
+          return;
         }
       }
 
@@ -133,9 +138,12 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
         // if there is still some garbage collection to perform,
         // check if the collection was deleted already
-        if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-          isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
-          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        { 
+          TRY_READ_LOCKER(readLocker, collection->_lock);
+
+          if (readLocker.isLocked()) {
+            isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
+          }
         }
 
         if (!isDeleted && TRI_IsDeletedVocBase(collection->_vocbase)) {
@@ -165,19 +173,19 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
     // collection
     auto const type = ditch->type();
 
-    if (type == triagens::arango::Ditch::TRI_DITCH_DATAFILE_DROP) {
-      dynamic_cast<triagens::arango::DropDatafileDitch*>(ditch)
+    if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_DROP) {
+      dynamic_cast<arangodb::DropDatafileDitch*>(ditch)
           ->executeCallback();
       delete ditch;
       // next iteration
-    } else if (type == triagens::arango::Ditch::TRI_DITCH_DATAFILE_RENAME) {
-      dynamic_cast<triagens::arango::RenameDatafileDitch*>(ditch)
+    } else if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_RENAME) {
+      dynamic_cast<arangodb::RenameDatafileDitch*>(ditch)
           ->executeCallback();
       delete ditch;
       // next iteration
-    } else if (type == triagens::arango::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
+    } else if (type == arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
       // collection will be unloaded
-      bool hasUnloaded = dynamic_cast<triagens::arango::UnloadCollectionDitch*>(
+      bool hasUnloaded = dynamic_cast<arangodb::UnloadCollectionDitch*>(
                              ditch)->executeCallback();
       delete ditch;
 
@@ -185,9 +193,9 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
         // this has unloaded and freed the collection
         return;
       }
-    } else if (type == triagens::arango::Ditch::TRI_DITCH_COLLECTION_DROP) {
+    } else if (type == arangodb::Ditch::TRI_DITCH_COLLECTION_DROP) {
       // collection will be dropped
-      bool hasDropped = dynamic_cast<triagens::arango::DropCollectionDitch*>(
+      bool hasDropped = dynamic_cast<arangodb::DropCollectionDitch*>(
                             ditch)->executeCallback();
       delete ditch;
 
@@ -210,7 +218,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
 static void CleanupCursors(TRI_vocbase_t* vocbase, bool force) {
   // clean unused cursors
-  auto cursors = static_cast<triagens::arango::CursorRepository*>(
+  auto cursors = static_cast<arangodb::CursorRepository*>(
       vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
@@ -253,7 +261,7 @@ void TRI_CleanupVocBase(void* data) {
     // check if we can get the compactor lock exclusively
     if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
       try {
-        READ_LOCKER(vocbase->_collectionsLock);
+        READ_LOCKER(readLocker, vocbase->_collectionsLock);
         // copy all collections
         collections = vocbase->_collections;
       } catch (...) {
@@ -262,18 +270,17 @@ void TRI_CleanupVocBase(void* data) {
 
       for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);
+        TRI_document_collection_t* document;
 
-        TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-
-        TRI_document_collection_t* document = collection->_collection;
+        {
+          READ_LOCKER(readLocker, collection->_lock);
+          document = collection->_collection;
+        }
 
         if (document == nullptr) {
           // collection currently not loaded
-          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
           continue;
         }
-
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
         TRI_ASSERT(document != nullptr);
 

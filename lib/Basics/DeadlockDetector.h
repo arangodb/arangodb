@@ -29,9 +29,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/threads.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
-
 
 template <typename T>
 class DeadlockDetector {
@@ -42,7 +41,6 @@ class DeadlockDetector {
 
   DeadlockDetector(DeadlockDetector const&) = delete;
   DeadlockDetector& operator=(DeadlockDetector const&) = delete;
-
   
  public:
   bool isDeadlocked(T const* value) {
@@ -59,7 +57,7 @@ class DeadlockDetector {
 
     stack.push_back(writerTid);
 
-    MUTEX_LOCKER(_readersLock);
+    MUTEX_LOCKER(mutexLocker, _readersLock);
 
     while (!stack.empty()) {
       TRI_tid_t current = stack.back();
@@ -103,7 +101,7 @@ class DeadlockDetector {
 
     stack.push_back(writerTid);
 
-    MUTEX_LOCKER(_readersLock);
+    MUTEX_LOCKER(mutexLocker, _readersLock);
     _readersBlocked.emplace(tid, writerTid);
 
     try {
@@ -144,19 +142,18 @@ class DeadlockDetector {
     auto tid = TRI_CurrentThreadId();
 
     try {
-      MUTEX_LOCKER(_readersLock);
+      MUTEX_LOCKER(mutexLocker, _readersLock);
       _readersBlocked.erase(tid);
     } catch (...) {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for managing the readers
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _readersLock;
+  arangodb::basics::Mutex _readersLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief readers that are blocked on writers
@@ -165,8 +162,8 @@ class DeadlockDetector {
   std::unordered_map<TRI_tid_t, TRI_tid_t> _readersBlocked;
 };
 
-}  // namespace triagens::basics
-}  // namespace triagens
+}  // namespace arangodb::basics
+}  // namespace arangodb
 
 #endif
 

@@ -42,8 +42,6 @@
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/random.h"
-#include "Basics/SpinLock.h"
-#include "Basics/SpinLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CursorRepository.h"
@@ -53,13 +51,11 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief page size
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t PageSize;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mask value for significant bits of server id
@@ -73,12 +69,11 @@ size_t PageSize;
 
 #define DATABASE_MANAGER_INTERVAL (500 * 1000)
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for serializing the creation of database
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::basics::Mutex DatabaseCreateLock;
+static arangodb::basics::Mutex DatabaseCreateLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief variable protecting the server shutdown
@@ -110,8 +105,6 @@ static std::atomic<uint64_t> CurrentTick(0);
 
 static TRI_server_id_t ServerId;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a new server id
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +131,6 @@ static int GenerateServerId(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ReadServerId(char const* filename) {
-  TRI_json_t* idString;
   TRI_server_id_t foundId;
 
   TRI_ASSERT(filename != nullptr);
@@ -146,28 +138,26 @@ static int ReadServerId(char const* filename) {
   if (!TRI_ExistsFile(filename)) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
-
-  TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr);
-
-  if (!TRI_IsObjectJson(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  try {
+    std::string filenameString(filename);
+    std::shared_ptr<VPackBuilder> builder =
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(filenameString);
+    VPackSlice content = builder->slice();
+    if (!content.isObject()) {
+      return TRI_ERROR_INTERNAL;
     }
+    VPackSlice idSlice = content.get("serverId");
+    if (!idSlice.isString()) {
+      return TRI_ERROR_INTERNAL;
+    }
+    std::string idString = idSlice.copyString();
+    foundId = TRI_UInt64String(idString.c_str());
+  } catch (...) {
+    // Nothing to free
     return TRI_ERROR_INTERNAL;
   }
-
-  idString = TRI_LookupObjectJson(json, "serverId");
-
-  if (!TRI_IsStringJson(idString)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    return TRI_ERROR_INTERNAL;
-  }
-
-  foundId = TRI_UInt64String2(idString->_value._string.data,
-                              idString->_value._string.length - 1);
 
   LOG_TRACE("using existing server id: %llu", (unsigned long long)foundId);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (foundId == 0) {
     return TRI_ERROR_INTERNAL;
@@ -183,42 +173,33 @@ static int ReadServerId(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteServerId(char const* filename) {
-  char* idString;
-  char buffer[32];
-  size_t len;
-  time_t tt;
-  struct tm tb;
-
   TRI_ASSERT(filename != nullptr);
+  // create a VelocyPackObject
+  VPackBuilder builder;
+  try {
+    builder.openObject();
 
-  // create a json object
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
+    TRI_ASSERT(ServerId != 0);
+    builder.add("serverId", VPackValue(std::to_string(ServerId)));
 
-  if (json == nullptr) {
+    time_t tt = time(0);
+    struct tm tb;
+    TRI_gmtime(tt, &tb);
+    char buffer[32];
+    size_t len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+    builder.add("createdTime", VPackValue(std::string(buffer, len)));
+
+    builder.close();
+  } catch (...) {
     // out of memory
     LOG_ERROR("cannot save server id in file '%s': out of memory", filename);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_ASSERT(ServerId != 0);
-
-  idString = TRI_StringUInt64((uint64_t)ServerId);
-  TRI_Insert3ObjectJson(
-      TRI_CORE_MEM_ZONE, json, "serverId",
-      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, idString, strlen(idString)));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-
-  tt = time(0);
-  TRI_gmtime(tt, &tb);
-  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  TRI_Insert3ObjectJson(
-      TRI_CORE_MEM_ZONE, json, "createdTime",
-      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, buffer, len));
-
   // save json info to file
   LOG_DEBUG("Writing server id to file '%s'", filename);
-  bool ok = TRI_SaveJson(filename, json, true);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      filename, builder.slice(), true);
 
   if (!ok) {
     LOG_ERROR("could not save server id in file '%s': %s", filename,
@@ -253,7 +234,6 @@ static int DetermineServerId(TRI_server_t* server, bool checkVersion) {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a user can see a database
@@ -380,7 +360,7 @@ static int CreateApplicationDirectory(char const* name, char const* basePath) {
       res = TRI_CreateDirectory(path, systemError, errorMessage);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+        if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
           LOG_TRACE("created application directory '%s' for database '%s'",
                     path, name);
         } else {
@@ -426,17 +406,13 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     std::sort(files.begin(), files.end(), DatabaseIdStringComparator);
   }
 
-  MUTEX_LOCKER(server->_databasesMutex);
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
   auto oldLists = server->_databasesLists.load();
   auto newLists = new DatabasesLists(*oldLists);
   // No try catch here, if we crash here because out of memory...
 
   for (auto const& name : files) {
     TRI_vocbase_t* vocbase;
-    TRI_json_t* json;
-    TRI_json_t const* deletedJson;
-    TRI_json_t const* nameJson;
-    TRI_json_t const* idJson;
     TRI_voc_tick_t id;
     TRI_vocbase_defaults_t defaults;
     char* parametersFile;
@@ -527,10 +503,12 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     }
 
     LOG_DEBUG("reading database parameters from file '%s'", parametersFile);
-
-    json = TRI_JsonFile(TRI_CORE_MEM_ZONE, parametersFile, nullptr);
-
-    if (json == nullptr) {
+    std::string fileName(parametersFile);
+    std::shared_ptr<VPackBuilder> builder;
+    try {
+      builder =
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(fileName);
+    } catch (...) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
           databaseDirectory);
@@ -541,61 +519,55 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
+    VPackSlice parameters = builder->slice();
+    std::string parametersString = parameters.toJson();
 
-    LOG_DEBUG("database parameters: %s",
-              triagens::basics::JsonHelper::toString(json).c_str());
+    LOG_DEBUG("database parameters: %s", parametersString.c_str());
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
 
-    deletedJson = TRI_LookupObjectJson(json, "deleted");
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters,
+                                                            "deleted", false)) {
+      // database is deleted, skip it!
+      LOG_INFO("found dropped database in directory '%s'", databaseDirectory);
 
-    if (TRI_IsBooleanJson(deletedJson)) {
-      if (deletedJson->_value._boolean) {
-        // database is deleted, skip it!
-        LOG_INFO("found dropped database in directory '%s'", databaseDirectory);
+      LOG_INFO("removing superfluous database directory '%s'",
+               databaseDirectory);
 
-        LOG_INFO("removing superfluous database directory '%s'",
-                 databaseDirectory);
+      TRI_RemoveDirectory(databaseDirectory);
 
-        TRI_RemoveDirectory(databaseDirectory);
-
-        TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-        continue;
-      }
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      continue;
     }
+    VPackSlice idSlice = parameters.get("id");
 
-    idJson = TRI_LookupObjectJson(json, "id");
-
-    if (!TRI_IsStringJson(idJson)) {
+    if (!idSlice.isString()) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
           databaseDirectory);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
+    std::string idString = idSlice.copyString();
 
-    id = (TRI_voc_tick_t)TRI_UInt64String(idJson->_value._string.data);
+    id = (TRI_voc_tick_t)TRI_UInt64String(idString.c_str());
 
-    nameJson = TRI_LookupObjectJson(json, "name");
+    VPackSlice nameSlice = parameters.get("name");
 
-    if (!TRI_IsStringJson(nameJson)) {
+    if (!nameSlice.isString()) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
           databaseDirectory);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
+    std::string dbname = nameSlice.copyString();
 
-    databaseName =
-        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, nameJson->_value._string.data,
-                              nameJson->_value._string.length - 1);
+    databaseName = TRI_DuplicateString(TRI_CORE_MEM_ZONE, dbname.c_str());
 
     // .........................................................................
     // setup defaults
@@ -603,7 +575,6 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 
     // use defaults
     TRI_GetDatabaseDefaultsServer(server, &defaults);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (databaseName == nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
@@ -685,7 +656,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloseDatabases(TRI_server_t* server) {
-  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);  // Only one should do this at a time
   // No need for the thread protector here, because we have the mutex
   // Note however, that somebody could still read the lists concurrently,
   // therefore we first install a new value, call scan() on the protector
@@ -736,7 +707,7 @@ static int CloseDatabases(TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloseDroppedDatabases(TRI_server_t* server) {
-  MUTEX_LOCKER(server->_databasesMutex);
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
 
   // No need for the thread protector here, because we have the mutex
   // Note however, that somebody could still read the lists concurrently,
@@ -822,7 +793,7 @@ static int GetDatabases(TRI_server_t* server, TRI_vector_string_t* databases) {
 
     if (TRI_IsDirectory(dname)) {
       TRI_PushBackVectorString(
-          databases, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name.c_str()));
+          databases, TRI_DuplicateString(TRI_CORE_MEM_ZONE, name.c_str()));
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
@@ -999,8 +970,6 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
                                   bool deleted,
                                   TRI_vocbase_defaults_t const* defaults,
                                   char const* directory) {
-  // TRI_json_t* properties;
-
   TRI_ASSERT(id > 0);
   TRI_ASSERT(name != nullptr);
   TRI_ASSERT(directory != nullptr);
@@ -1018,37 +987,31 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-
-  if (json == nullptr) {
+  // Build the VelocyPack to store
+  VPackBuilder builder;
+  try {
+    builder.openObject();
+    builder.add("id", VPackValue(tickString));
+    builder.add("name", VPackValue(name));
+    builder.add("deleted", VPackValue(deleted));
+    builder.close();
+  } catch (...) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "id",
-                        TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString,
-                                                 strlen(tickString)));
-  TRI_Insert3ObjectJson(
-      TRI_CORE_MEM_ZONE, json, "name",
-      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name, strlen(name)));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted",
-                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, deleted));
-
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
-  if (!TRI_SaveJson(file, json, true)) {
+  if (!arangodb::basics::VelocyPackHelper::velocyPackToFile(
+          file, builder.slice(), true)) {
     LOG_ERROR("cannot save database information in file '%s'", file);
 
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
   TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
   return TRI_ERROR_NO_ERROR;
@@ -1365,16 +1328,16 @@ static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::CreateDatabaseMarker marker(id, slice.toJson());
-    triagens::wal::SlotInfoCopy slotInfo =
-        triagens::wal::LogfileManager::instance()->allocateAndWrite(marker,
+    arangodb::wal::CreateDatabaseMarker marker(id, slice.toJson());
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // throw an exception which is caught at the end of this function
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -1396,16 +1359,16 @@ static int WriteDropMarker(TRI_voc_tick_t id) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::DropDatabaseMarker marker(id);
-    triagens::wal::SlotInfoCopy slotInfo =
-        triagens::wal::LogfileManager::instance()->allocateAndWrite(marker,
+    arangodb::wal::DropDatabaseMarker marker(id);
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // throw an exception which is caught at the end of this function
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -1454,7 +1417,7 @@ static void DatabaseManager(void* data) {
       // found a database to delete, now remove it from the struct
 
       {
-        MUTEX_LOCKER(server->_databasesMutex);
+        MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
 
         // Build the new value:
         auto oldLists = server->_databasesLists.load();
@@ -1511,7 +1474,7 @@ static void DatabaseManager(void* data) {
           }
         }
 
-        path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, database->_path);
+        path = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database->_path);
 
         TRI_DestroyVocBase(database);
 
@@ -1534,7 +1497,7 @@ static void DatabaseManager(void* data) {
       usleep(DATABASE_MANAGER_INTERVAL);
       // The following is only necessary after a wait:
       auto queryRegistry =
-          static_cast<triagens::aql::QueryRegistry*>(server->_queryRegistry);
+          static_cast<arangodb::aql::QueryRegistry*>(server->_queryRegistry);
 
       if (queryRegistry != nullptr) {
         queryRegistry->expireQueries();
@@ -1543,7 +1506,7 @@ static void DatabaseManager(void* data) {
       // on a coordinator, we have no cleanup threads for the databases
       // so we have to do cursor cleanup here
       if (++cleanupCycles >= 10 &&
-          triagens::arango::ServerState::instance()->isCoordinator()) {
+          arangodb::ServerState::instance()->isCoordinator()) {
         // note: if no coordinator then cleanupCycles will increase endlessly,
         // but it's only used for the following part
         cleanupCycles = 0;
@@ -1555,7 +1518,7 @@ static void DatabaseManager(void* data) {
           TRI_vocbase_t* vocbase = p.second;
           TRI_ASSERT(vocbase != nullptr);
           auto cursorRepository =
-              static_cast<triagens::arango::CursorRepository*>(
+              static_cast<arangodb::CursorRepository*>(
                   vocbase->_cursorRepository);
 
           try {
@@ -1572,15 +1535,14 @@ static void DatabaseManager(void* data) {
   CloseDroppedDatabases(server);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer(
     TRI_server_t* server,
-    triagens::rest::ApplicationEndpointServer* applicationEndpointServer,
-    triagens::basics::ThreadPool* indexPool, char const* basePath,
+    arangodb::rest::ApplicationEndpointServer* applicationEndpointServer,
+    arangodb::basics::ThreadPool* indexPool, char const* basePath,
     char const* appPath, TRI_vocbase_defaults_t const* defaults,
     bool disableAppliers, bool iterateMarkersOnOpen) {
   TRI_ASSERT(server != nullptr);
@@ -1598,7 +1560,7 @@ int TRI_InitServer(
   // set up paths and filenames
   // ...........................................................................
 
-  server->_basePath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, basePath);
+  server->_basePath = TRI_DuplicateString(TRI_CORE_MEM_ZONE, basePath);
 
   if (server->_basePath == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1631,7 +1593,7 @@ int TRI_InitServer(
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  server->_appPath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, appPath);
+  server->_appPath = TRI_DuplicateString(TRI_CORE_MEM_ZONE, appPath);
 
   if (server->_appPath == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
@@ -1669,7 +1631,6 @@ void TRI_InitServerGlobals() {
 
   memset(&ServerId, 0, sizeof(TRI_server_id_t));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the global server id
@@ -1846,7 +1807,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
 
   // start dbm thread
   TRI_InitThread(&server->_databaseManager);
-  TRI_StartThread(&server->_databaseManager, nullptr, "[databases]",
+  TRI_StartThread(&server->_databaseManager, nullptr, "Databases",
                   DatabaseManager, server);
 
   return TRI_ERROR_NO_ERROR;
@@ -1917,7 +1878,7 @@ int TRI_StopServer(TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_StopReplicationAppliersServer(TRI_server_t* server) {
-  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);  // Only one should do this at a time
   // No need for the thread protector here, because we have the mutex
 
   for (auto& p : server->_databasesLists.load()->_databases) {
@@ -1942,7 +1903,7 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
-  MUTEX_LOCKER(DatabaseCreateLock);
+  MUTEX_LOCKER(mutexLocker, DatabaseCreateLock);
 
   {
     auto unuser(server->_databasesProtector.use());
@@ -1990,7 +1951,7 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
   vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
   {
-    MUTEX_LOCKER(server->_databasesMutex);
+    MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
     auto oldLists = server->_databasesLists.load();
     decltype(oldLists) newLists = nullptr;
     try {
@@ -2031,7 +1992,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
   // the create lock makes sure no one else is creating a database while we're
   // inside
   // this function
-  MUTEX_LOCKER(DatabaseCreateLock);
+  MUTEX_LOCKER(mutexLocker, DatabaseCreateLock);
   {
     {
       auto unuser(server->_databasesProtector.use());
@@ -2070,7 +2031,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     char* path = TRI_Concatenate2File(server->_databasePath, file);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
-    if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+    if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
       LOG_TRACE("creating database '%s', directory '%s'", name, path);
     } else {
       LOG_INFO("creating database '%s', directory '%s'", name, path);
@@ -2111,7 +2072,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     // create application directories
     CreateApplicationDirectory(vocbase->_name, server->_appPath);
 
-    if (!triagens::wal::LogfileManager::instance()->isInRecovery()) {
+    if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
       TRI_ReloadAuthInfo(vocbase);
       TRI_StartCompactorVocBase(vocbase);
 
@@ -2137,7 +2098,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     }
 
     {
-      MUTEX_LOCKER(server->_databasesMutex);
+      MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
       auto oldLists = server->_databasesLists.load();
       decltype(oldLists) newLists = nullptr;
       try {
@@ -2200,7 +2161,7 @@ int TRI_DropByIdCoordinatorDatabaseServer(TRI_server_t* server,
                                           TRI_voc_tick_t id, bool force) {
   int res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
 
-  MUTEX_LOCKER(server->_databasesMutex);
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
   auto oldLists = server->_databasesLists.load();
   decltype(oldLists) newLists = nullptr;
   TRI_vocbase_t* vocbase = nullptr;
@@ -2250,7 +2211,7 @@ int TRI_DropDatabaseServer(TRI_server_t* server, char const* name,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  MUTEX_LOCKER(server->_databasesMutex);
+  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
 
   auto oldLists = server->_databasesLists.load();
   decltype(oldLists) newLists = nullptr;
@@ -2283,12 +2244,12 @@ int TRI_DropDatabaseServer(TRI_server_t* server, char const* name,
   vocbase->_isOwnAppsDirectory = removeAppsDirectory;
 
   // invalidate all entries for the database
-  triagens::aql::QueryCache::instance()->invalidate(vocbase);
+  arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
   int res = TRI_ERROR_NO_ERROR;
 
   if (TRI_DropVocBase(vocbase)) {
-    if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+    if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
       LOG_TRACE("dropping database '%s', directory '%s'", vocbase->_name,
                 vocbase->_path);
     } else {
@@ -2526,7 +2487,6 @@ void TRI_GetDatabaseDefaultsServer(TRI_server_t* server,
   memcpy(target, &server->_defaults, sizeof(TRI_vocbase_defaults_t));
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick
 ////////////////////////////////////////////////////////////////////////////////
@@ -2564,7 +2524,6 @@ void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
 TRI_voc_tick_t TRI_CurrentTickServer() {
   return (ServerIdentifier | (CurrentTick << 16));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)
@@ -2634,5 +2593,3 @@ TRI_server_t::~TRI_server_t() {
     TRI_Free(TRI_CORE_MEM_ZONE, _basePath);
   }
 }
-
-

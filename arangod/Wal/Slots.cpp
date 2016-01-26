@@ -30,7 +30,7 @@
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,7 @@ Slots::~Slots() { delete[] _slots; }
 
 void Slots::statistics(Slot::TickType& lastTick, Slot::TickType& lastDataTick,
                        uint64_t& numEvents) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
   lastTick = _lastCommittedTick;
   lastDataTick = _lastCommittedDataTick;
   numEvents = _numEvents;
@@ -111,7 +111,7 @@ int Slots::flush(bool waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Slot::TickType Slots::lastCommittedTick() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
   return _lastCommittedTick;
 }
 
@@ -129,7 +129,7 @@ SlotInfo Slots::nextUnused(uint32_t size) {
 
   while (++iterations < 1000) {
     {
-      MUTEX_LOCKER(_lock);
+      MUTEX_LOCKER(mutexLocker, _lock);
 
       Slot* slot = &_slots[_handoutIndex];
       TRI_ASSERT(slot != nullptr);
@@ -218,7 +218,7 @@ SlotInfo Slots::nextUnused(uint32_t size) {
 
     bool mustWait;
     {
-      MUTEX_LOCKER(_lock);
+      MUTEX_LOCKER(mutexLocker, _lock);
       mustWait = (_freeSlots == 0);
     }
 
@@ -250,7 +250,7 @@ SlotInfo Slots::nextUnused(uint32_t size, TRI_voc_cid_t cid,
 
   while (++iterations < 1000) {
     {
-      MUTEX_LOCKER(_lock);
+      MUTEX_LOCKER(mutexLocker, _lock);
 
       Slot* slot = &_slots[_handoutIndex];
       TRI_ASSERT(slot != nullptr);
@@ -354,7 +354,7 @@ SlotInfo Slots::nextUnused(uint32_t size, TRI_voc_cid_t cid,
 
     bool mustWait;
     {
-      MUTEX_LOCKER(_lock);
+      MUTEX_LOCKER(mutexLocker, _lock);
       mustWait = (_freeSlots == 0);
     }
 
@@ -377,7 +377,7 @@ void Slots::returnUsed(SlotInfo& slotInfo, bool waitForSync) {
   TRI_ASSERT(tick > 0);
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     slotInfo.slot->setReturned(waitForSync);
     ++_numEvents;
   }
@@ -397,7 +397,7 @@ SyncRegion Slots::getSyncRegion() {
   bool sealRequested = false;
   SyncRegion region;
 
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   size_t slotIndex = _recycleIndex;
 
@@ -479,7 +479,7 @@ void Slots::returnSyncRegion(SyncRegion const& region) {
   size_t slotIndex = region.firstSlotIndex;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     while (true) {
       Slot* slot = &_slots[slotIndex];
@@ -535,7 +535,7 @@ void Slots::returnSyncRegion(SyncRegion const& region) {
 
 void Slots::getActiveLogfileRegion(Logfile* logfile, char const*& begin,
                                    char const*& end) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   TRI_datafile_t* datafile = logfile->df();
 
@@ -550,7 +550,7 @@ void Slots::getActiveLogfileRegion(Logfile* logfile, char const*& begin,
 
 void Slots::getActiveTickRange(Logfile* logfile, TRI_voc_tick_t& tickMin,
                                TRI_voc_tick_t& tickMax) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   TRI_datafile_t* datafile = logfile->df();
 
@@ -570,7 +570,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
 
   while (++iterations < 1000) {
     {
-      MUTEX_LOCKER(_lock);
+      MUTEX_LOCKER(mutexLocker, _lock);
 
       lastCommittedTick = _lastCommittedTick;
 
@@ -664,7 +664,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
 
     bool mustWait;
     {
-      MUTEX_LOCKER(_lock);
+      MUTEX_LOCKER(mutexLocker, _lock);
       mustWait = (_freeSlots == 0);
     }
 

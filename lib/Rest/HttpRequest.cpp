@@ -36,8 +36,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 static char const* EMPTY_STR = "";
@@ -82,7 +82,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
 
-  char* request = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, header, length);
+  char* request = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, header, length);
 
   if (request != nullptr) {
     _freeables.emplace_back(request);
@@ -117,15 +117,9 @@ HttpRequest::~HttpRequest() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 char const* HttpRequest::requestPath() const { return _requestPath; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::write(TRI_string_buffer_t* buffer) const {
   std::string&& method = translateMethod(_type);
@@ -221,15 +215,9 @@ void HttpRequest::write(TRI_string_buffer_t* buffer) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 int64_t HttpRequest::contentLength() const { return _contentLength; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 char const* HttpRequest::header(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
@@ -241,9 +229,6 @@ char const* HttpRequest::header(char const* key) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 char const* HttpRequest::header(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
@@ -257,9 +242,6 @@ char const* HttpRequest::header(char const* key, bool& found) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 std::map<std::string, std::string> HttpRequest::headers() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
@@ -282,9 +264,6 @@ std::map<std::string, std::string> HttpRequest::headers() const {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 char const* HttpRequest::value(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
@@ -296,9 +275,6 @@ char const* HttpRequest::value(char const* key) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 char const* HttpRequest::value(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
@@ -312,9 +288,6 @@ char const* HttpRequest::value(char const* key, bool& found) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 std::map<std::string, std::string> HttpRequest::values() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
@@ -335,9 +308,6 @@ std::map<std::string, std::string> HttpRequest::values() const {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues() const {
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
@@ -358,9 +328,6 @@ std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues() cons
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 char const* HttpRequest::cookieValue(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
@@ -372,9 +339,6 @@ char const* HttpRequest::cookieValue(char const* key) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 char const* HttpRequest::cookieValue(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
@@ -388,9 +352,6 @@ char const* HttpRequest::cookieValue(char const* key, bool& found) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 std::map<std::string, std::string> HttpRequest::cookieValues() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
@@ -411,26 +372,17 @@ std::map<std::string, std::string> HttpRequest::cookieValues() const {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 char const* HttpRequest::body() const {
   return _body == nullptr ? EMPTY_STR : _body;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 size_t HttpRequest::bodySize() const { return _bodySize; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 int HttpRequest::setBody(char const* newBody, size_t length) {
-  _body = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, newBody, length);
+  _body = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, newBody, length);
 
   if (_body == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;

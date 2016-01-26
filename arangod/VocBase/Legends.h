@@ -30,7 +30,7 @@
 #include "VocBase/shaped-json.h"
 #include "VocBase/Shaper.h"
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////

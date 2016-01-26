@@ -29,7 +29,7 @@
 
 #include "Scheduler/events.h"
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class Task;
 class Scheduler;

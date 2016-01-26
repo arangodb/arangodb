@@ -25,12 +25,9 @@
 #define LIB_UTILITIES_SCRIPT_LOADER_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/Mutex.h"
 
-
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript source code loader
@@ -108,8 +105,6 @@ class ScriptLoader {
   basics::Mutex _lock;
 };
 }
-}
 
 #endif
-
 

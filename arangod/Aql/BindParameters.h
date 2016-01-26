@@ -27,18 +27,17 @@
 #include "Basics/Common.h"
 #include "Basics/json.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
-namespace triagens {
+namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
 namespace aql {
 
 typedef std::unordered_map<std::string, std::pair<TRI_json_t const*, bool>>
     BindParametersType;
 
-
 class BindParameters {
-  
  public:
   BindParameters(BindParameters const&) = delete;
   BindParameters& operator=(BindParameters const&) = delete;
@@ -56,7 +55,6 @@ class BindParameters {
 
   ~BindParameters();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return all parameters
@@ -78,7 +76,8 @@ class BindParameters {
   /// the values must be a VelocyPack array
   //////////////////////////////////////////////////////////////////////////////
 
-  static VPackBuilder StripCollectionNames(VPackSlice const&, char const*);
+  static arangodb::velocypack::Builder StripCollectionNames(
+      arangodb::velocypack::Slice const&, char const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief strip collection name prefixes from the parameters
@@ -87,7 +86,6 @@ class BindParameters {
 
   static void StripCollectionNames(TRI_json_t*, char const*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief process the parameters
@@ -95,7 +93,6 @@ class BindParameters {
 
   void process();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the parameter json
@@ -119,5 +116,4 @@ class BindParameters {
 }
 
 #endif
-
 

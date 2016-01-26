@@ -38,7 +38,7 @@
 #include "Basics/tri-strings.h"
 
 using namespace std;
-using namespace triagens::basics;
+using namespace arangodb::basics;
 
 // .............................................................................
 // Some global variables which may be required later
@@ -506,6 +506,23 @@ int TRI_MapSystemError(DWORD error) {
   }
 }
 
+static HANDLE hEventLog = INVALID_HANDLE_VALUE;
+
+bool TRI_InitWindowsEventLog(void) {
+  hEventLog = RegisterEventSource(NULL, "ArangoDB");
+  if (NULL == hEventLog) {
+    // well, fail then.
+    return false;
+  }
+  return true;
+}
+
+void TRI_CloseWindowsEventlog(void) {
+  DeregisterEventSource(hEventLog);
+  hEventLog = INVALID_HANDLE_VALUE;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
 /// we rather are keen on logging something at all then on being able to work
@@ -521,14 +538,8 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   char buf[1024];
   char linebuf[32];
   LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
-
-  HANDLE hEventLog = NULL;
-
-  hEventLog = RegisterEventSource(NULL, "ArangoDB");
-  if (NULL == hEventLog) {
-    // well, fail then.
-    return;
-  }
+  
+  TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
 
   snprintf(linebuf, sizeof(linebuf), "%d", line);
 
@@ -541,7 +552,18 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                    NULL)) {
     // well, fail then...
   }
-  DeregisterEventSource(hEventLog);
+
 }
 
 
+void TRI_WindowsEmergencyLog(char const* func,
+                             char const* file, int line,
+                             char const* fmt, ...) {
+  va_list ap;
+
+  va_start(ap, fmt);
+  va_list wva;
+  va_copy(wva, ap);
+  TRI_LogWindowsEventlog(func, file, line, fmt, ap);
+  va_end(wva);
+}

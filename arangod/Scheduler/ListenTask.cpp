@@ -48,8 +48,8 @@
 #include "Basics/StringUtils.h"
 #include "Scheduler/Scheduler.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors
@@ -75,7 +75,7 @@ ListenTask::~ListenTask() {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::isBound() const {
-  MUTEX_LOCKER(_changeLock);  // FIX_MUTEX ?
+  MUTEX_LOCKER(mutexLocker, _changeLock);  // FIX_MUTEX ?
 
   return _endpoint != nullptr && _endpoint->isConnected();
 }

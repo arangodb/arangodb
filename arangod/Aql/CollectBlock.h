@@ -18,6 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Max Neunhoeffer
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -29,55 +30,58 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
-namespace triagens {
+namespace arangodb {
 namespace utils {
 class AqlTransaction;
 }
 
 namespace aql {
+struct Aggregator;
 class AqlItemBlock;
 class ExecutionEngine;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief details about the current group
-///////////////////////////////////////////////////////////////////////////////
-
-struct CollectGroup {
-  std::vector<AqlValue> groupValues;
-  std::vector<TRI_document_collection_t const*> collections;
-
-  std::vector<AqlItemBlock*> groupBlocks;
-  size_t firstRow;
-  size_t lastRow;
-  size_t groupLength;
-  bool rowsAreValid;
-  bool const count;
-
-  CollectGroup() = delete;
-
-  explicit CollectGroup(bool);
-
-  ~CollectGroup();
-
-  void initialize(size_t capacity);
-  void reset();
-
-  void setFirstRow(size_t value) {
-    firstRow = value;
-    rowsAreValid = true;
-  }
-
-  void setLastRow(size_t value) {
-    lastRow = value;
-    rowsAreValid = true;
-  }
-
-  void addValues(AqlItemBlock const* src, RegisterId groupRegister);
-};
-
+  
+typedef std::vector<Aggregator*> AggregateValuesType;
 
 class SortedCollectBlock : public ExecutionBlock {
+
+ private:
+  typedef std::vector<Aggregator*> AggregateValuesType;
+
+  struct CollectGroup {
+    std::vector<AqlValue> groupValues;
+    std::vector<TRI_document_collection_t const*> collections;
+
+    std::vector<AqlItemBlock*> groupBlocks;
+    AggregateValuesType aggregators;
+    size_t firstRow;
+    size_t lastRow;
+    size_t groupLength;
+    bool rowsAreValid;
+    bool const count;
+
+    CollectGroup() = delete;
+
+    explicit CollectGroup(bool);
+
+    ~CollectGroup();
+
+    void initialize(size_t capacity);
+    void reset();
+
+    void setFirstRow(size_t value) {
+      firstRow = value;
+      rowsAreValid = true;
+    }
+
+    void setLastRow(size_t value) {
+      lastRow = value;
+      rowsAreValid = true;
+    }
+
+    void addValues(AqlItemBlock const* src, RegisterId groupRegister);
+  };
+
+
  public:
   SortedCollectBlock(ExecutionEngine*, CollectNode const*);
 
@@ -100,6 +104,12 @@ class SortedCollectBlock : public ExecutionBlock {
   /// @brief pairs, consisting of out register and in register
   //////////////////////////////////////////////////////////////////////////////
 
+  std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief pairs, consisting of out register and in register
+  //////////////////////////////////////////////////////////////////////////////
+  
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -122,7 +132,7 @@ class SortedCollectBlock : public ExecutionBlock {
   /// used
   //////////////////////////////////////////////////////////////////////////////
 
-  RegisterId _groupRegister;
+  RegisterId _collectRegister;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of variables names for the registers
@@ -149,6 +159,12 @@ class HashedCollectBlock : public ExecutionBlock {
   /// @brief pairs, consisting of out register and in register
   //////////////////////////////////////////////////////////////////////////////
 
+  std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief pairs, consisting of out register and in register
+  //////////////////////////////////////////////////////////////////////////////
+  
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -158,20 +174,20 @@ class HashedCollectBlock : public ExecutionBlock {
   /// used
   //////////////////////////////////////////////////////////////////////////////
 
-  RegisterId _groupRegister;
+  RegisterId _collectRegister;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief hasher for a vector of AQL values
   //////////////////////////////////////////////////////////////////////////////
 
   struct GroupKeyHash {
-    GroupKeyHash(triagens::arango::AqlTransaction* trx,
+    GroupKeyHash(arangodb::AqlTransaction* trx,
                  std::vector<TRI_document_collection_t const*>& colls)
         : _trx(trx), _colls(colls), _num(colls.size()) {}
 
     size_t operator()(std::vector<AqlValue> const& value) const;
 
-    triagens::arango::AqlTransaction* _trx;
+    arangodb::AqlTransaction* _trx;
     std::vector<TRI_document_collection_t const*>& _colls;
     size_t const _num;
   };
@@ -181,20 +197,20 @@ class HashedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   struct GroupKeyEqual {
-    GroupKeyEqual(triagens::arango::AqlTransaction* trx,
+    GroupKeyEqual(arangodb::AqlTransaction* trx,
                   std::vector<TRI_document_collection_t const*>& colls)
         : _trx(trx), _colls(colls) {}
 
     bool operator()(std::vector<AqlValue> const&,
                     std::vector<AqlValue> const&) const;
 
-    triagens::arango::AqlTransaction* _trx;
+    arangodb::AqlTransaction* _trx;
     std::vector<TRI_document_collection_t const*>& _colls;
   };
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

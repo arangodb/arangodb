@@ -111,7 +111,7 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
 /// character.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ProcessCsvFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -227,7 +227,7 @@ static void JS_ProcessCsvFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ProcessJsonFile(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

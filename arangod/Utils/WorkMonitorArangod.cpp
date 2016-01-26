@@ -23,35 +23,17 @@
 
 #include "Basics/WorkMonitor.h"
 
-#include <iostream>
-
+#include "Basics/StringBuffer.h"
 #include "HttpServer/HttpHandler.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Value.h"
-#include "velocypack/velocypack-aliases.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/Task.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace triagens::rest;
-
-
-
-
-HandlerWorkStack::HandlerWorkStack(HttpHandler* handler) : _handler(handler) {
-  WorkMonitor::pushHandler(_handler);
-}
-
-
-HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<HttpHandler>& handler) {
-  _handler = handler.release();
-  WorkMonitor::pushHandler(_handler);
-}
-
-
-HandlerWorkStack::~HandlerWorkStack() {
-  WorkMonitor::popHandler(_handler, true);
-}
-
-
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pushes a handler
@@ -101,7 +83,7 @@ void WorkMonitor::DELETE_HANDLER(WorkDescription* desc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief thread description string
+/// @brief thread description
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
@@ -140,4 +122,37 @@ void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
   b->close();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sends the overview
+////////////////////////////////////////////////////////////////////////////////
 
+void WorkMonitor::SEND_WORK_OVERVIEW(uint64_t taskId, std::string const& data) {
+  auto response = std::make_unique<HttpResponse>(HttpResponse::OK,
+                                                 HttpRequest::MinCompatibility);
+
+  response->setContentType("application/json; charset=utf-8");
+  TRI_AppendString2StringBuffer(response->body().stringBuffer(), data.c_str(),
+                                data.length());
+
+  auto answer = std::make_unique<TaskData>();
+
+  answer->_taskId = taskId;
+  answer->_loop = Scheduler::SCHEDULER->lookupLoopById(taskId);
+  answer->_type = TaskData::TASK_DATA_RESPONSE;
+  answer->_response.reset(response.release());
+
+  Scheduler::SCHEDULER->signalTask(answer);
+}
+
+HandlerWorkStack::HandlerWorkStack(HttpHandler* handler) : _handler(handler) {
+  WorkMonitor::pushHandler(_handler);
+}
+
+HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<HttpHandler>& handler) {
+  _handler = handler.release();
+  WorkMonitor::pushHandler(_handler);
+}
+
+HandlerWorkStack::~HandlerWorkStack() {
+  WorkMonitor::popHandler(_handler, true);
+}

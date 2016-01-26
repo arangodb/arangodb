@@ -37,7 +37,9 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::aql;
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,11 +75,11 @@ Collection::~Collection() {
 
 size_t Collection::count() const {
   if (numDocuments == UNINITIALIZED) {
-    if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    if (arangodb::ServerState::instance()->isCoordinator()) {
       // cluster case
       uint64_t result;
       int res =
-          triagens::arango::countOnCoordinator(vocbase->_name, name, result);
+          arangodb::countOnCoordinator(vocbase->_name, name, result);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             res, "could not determine number of documents in collection");
@@ -99,7 +101,7 @@ size_t Collection::count() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t Collection::getPlanId() const {
-  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo =
       clusterInfo->getCollection(std::string(vocbase->_name), name);
 
@@ -117,9 +119,9 @@ TRI_voc_cid_t Collection::getPlanId() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
-  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   return clusterInfo->getShardList(
-      triagens::basics::StringUtils::itoa(getPlanId()));
+      arangodb::basics::StringUtils::itoa(getPlanId()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,10 +129,10 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<std::string> Collection::shardKeys() const {
-  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
 
   std::string id;
-  if (triagens::arango::ServerState::instance()->isDBServer() &&
+  if (arangodb::ServerState::instance()->isDBServer() &&
       documentCollection()->_info.planId() > 0) {
     id = std::to_string(documentCollection()->_info.planId());
   } else {
@@ -182,7 +184,7 @@ Index const* Collection::getIndex(TRI_idx_iid_t id) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 Index const* Collection::getIndex(std::string const& id) const {
-  return getIndex(triagens::basics::StringUtils::uint64(id));
+  return getIndex(arangodb::basics::StringUtils::uint64(id));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,9 +211,9 @@ void Collection::fillIndexes() const {
     return;
   }
 
-  auto const role = triagens::arango::ServerState::instance()->getRole();
+  auto const role = arangodb::ServerState::instance()->getRole();
 
-  if (triagens::arango::ServerState::instance()->isCoordinator(role)) {
+  if (arangodb::ServerState::instance()->isCoordinator(role)) {
     fillIndexesCoordinator();
     return;
   }
@@ -224,7 +226,7 @@ void Collection::fillIndexes() const {
 // FIXME: Remove fillIndexesDBServer later, when it is clear that we
 // will never have to do this.
 #if 0
-  if (triagens::arango::ServerState::instance()->isDBServer(role) && 
+  if (arangodb::ServerState::instance()->isDBServer(role) && 
       documentCollection()->_info._planId > 0) {
     fillIndexesDBServer();
     return;
@@ -240,7 +242,7 @@ void Collection::fillIndexes() const {
 
 void Collection::fillIndexesCoordinator() const {
   // coordinator case, remote collection
-  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo =
       clusterInfo->getCollection(std::string(vocbase->_name), name);
 
@@ -251,44 +253,45 @@ void Collection::fillIndexesCoordinator() const {
   }
 
   TRI_json_t const* json = (*collectionInfo).getIndexes();
+  auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
+  VPackSlice const slice = indexBuilder->slice();
 
-  if (TRI_IsArrayJson(json)) {
-    size_t const n = TRI_LengthArrayJson(json);
+  if (slice.isArray()) {
+    size_t const n = static_cast<size_t>(slice.length());
     indexes.reserve(n);
 
-    for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* v = TRI_LookupArrayJson(json, i);
+    for (auto const& v : VPackArrayIterator(slice)) {
 
-      if (!TRI_IsObjectJson(v)) {
+      if (!v.isObject()) {
         continue;
       }
+      VPackSlice const type = v.get("type");
 
-      TRI_json_t const* type = TRI_LookupObjectJson(v, "type");
-
-      if (!TRI_IsStringJson(type)) {
+      if (!type.isString()) {
         // no "type" attribute. this is invalid
         continue;
       }
+      std::string typeString = type.copyString();
 
-      if (strcmp(type->_value._string.data, "cap") == 0) {
+      if (typeString == "cap") {
         // ignore cap constraints
         continue;
       }
 
-      auto idx = std::make_unique<triagens::aql::Index>(v);
+      auto idx = std::make_unique<arangodb::aql::Index>(v);
 
       indexes.emplace_back(idx.get());
       auto p = idx.release();
 
-      if (p->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-        p->setInternals(new triagens::arango::PrimaryIndex(v), true);
-      } else if (p->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        p->setInternals(new triagens::arango::EdgeIndex(v), true);
-      } else if (p->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
-        p->setInternals(new triagens::arango::HashIndex(v), true);
+      if (p->type == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        p->setInternals(new arangodb::PrimaryIndex(v), true);
+      } else if (p->type == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        p->setInternals(new arangodb::EdgeIndex(v), true);
+      } else if (p->type == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
+        p->setInternals(new arangodb::HashIndex(v), true);
       } else if (p->type ==
-                 triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-        p->setInternals(new triagens::arango::SkiplistIndex(v), true);
+                 arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+        p->setInternals(new arangodb::SkiplistIndex(v), true);
       }
     }
   }
@@ -302,54 +305,54 @@ void Collection::fillIndexesDBServer() const {
   auto document = documentCollection();
 
   // lookup collection in agency by plan id
-  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo = clusterInfo->getCollection(
       std::string(vocbase->_name),
-      triagens::basics::StringUtils::itoa(document->_info.planId()));
+      arangodb::basics::StringUtils::itoa(document->_info.planId()));
   if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
                                   "collection not found '%s' in database '%s'",
                                   name.c_str(), vocbase->_name);
   }
 
-  TRI_json_t const* json = (*collectionInfo).getIndexes();
-  if (!TRI_IsArrayJson(json)) {
+  std::shared_ptr<VPackBuilder> indexBuilder =
+      arangodb::basics::JsonHelper::toVelocyPack(
+          (*collectionInfo).getIndexes());
+  VPackSlice const slice = indexBuilder->slice();
+  if (!slice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unexpected indexes definition format");
   }
 
-  size_t const n = TRI_LengthArrayJson(json);
+  size_t const n = static_cast<size_t>(slice.length());
   indexes.reserve(n);
 
   // register indexes
-  for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* v = TRI_LookupArrayJson(json, i);
-
-    if (TRI_IsObjectJson(v)) {
+  for (auto const& v : VPackArrayIterator(slice)) {
+    if (v.isObject()) {
       // lookup index id
-      TRI_json_t const* id = TRI_LookupObjectJson(v, "id");
+      VPackSlice const id = v.get("id");
 
-      if (!TRI_IsStringJson(id)) {
+      if (!id.isString()) {
         // no "id" attribute. this is invalid
         continue;
       }
 
-      TRI_json_t const* type = TRI_LookupObjectJson(v, "type");
+      VPackSlice const type = v.get("type");
 
-      if (!TRI_IsStringJson(type)) {
+      if (!type.isString()) {
         // no "type" attribute. this is invalid
         continue;
       }
 
-      if (strcmp(type->_value._string.data, "cap") == 0) {
+      if (type.copyString() == "cap") {
         // ignore cap constraints
         continue;
       }
 
       // use numeric index id
-      uint64_t iid = triagens::basics::StringUtils::uint64(
-          id->_value._string.data, id->_value._string.length - 1);
-      triagens::arango::Index* data = nullptr;
+      uint64_t iid = arangodb::basics::StringUtils::uint64(id.copyString());
+      arangodb::Index* data = nullptr;
 
       auto const& allIndexes = document->allIndexes();
       size_t const n = allIndexes.size();
@@ -365,7 +368,7 @@ void Collection::fillIndexesDBServer() const {
         }
       }
 
-      auto idx = std::make_unique<triagens::aql::Index>(v);
+      auto idx = std::make_unique<arangodb::aql::Index>(v);
       // assign the found local index
       idx->setInternals(data, false);
 
@@ -388,12 +391,12 @@ void Collection::fillIndexesLocal() const {
 
   for (size_t i = 0; i < n; ++i) {
     if (allIndexes[i]->type() ==
-        triagens::arango::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
+        arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
       // ignore this type of index
       continue;
     }
 
-    auto idx = std::make_unique<triagens::aql::Index>(allIndexes[i]);
+    auto idx = std::make_unique<arangodb::aql::Index>(allIndexes[i]);
     indexes.emplace_back(idx.get());
     idx.release();
   }

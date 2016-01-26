@@ -34,15 +34,11 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/voc-types.h"
 #include "Cluster/AgencyComm.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
+#include "Utils/Transaction.h"
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 class ClusterCommThread;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a client transaction ID
@@ -87,8 +83,9 @@ struct ClusterCommResult {
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   OperationID operationID;
-  ShardID shardID;
-  ServerID serverID;  // the actual server ID of the sender
+  ShardID shardID;       // the shard to which we want to send, can be empty
+  ServerID serverID;     // the actual server ID of the recipient, can be empty
+  std::string endpoint;  // the actual endpoint of the recipient, always set
   std::string errorMessage;
   ClusterCommOpStatus status;
   bool dropped;  // this is set to true, if the operation
@@ -96,18 +93,32 @@ struct ClusterCommResult {
                  // it is then actually dropped when it has
                  // been sent
   bool invalid;  // can only explicitly be set
+  bool single;   // operation only needs a single round trip (and no request/
+                 // response in the opposite direction
 
-  // The field result is != 0 ifs status is >= CL_COMM_SENT.
+  // Usually, the field result is != nullptr if status is >=
+  // CL_COMM_SENT. As an exception to this rule, if status is
+  // CL_COMM_SENT and the error occurred already before the connection
+  // could be opened, then result is still nullptr.
   // Note that if status is CL_COMM_TIMEOUT, then the result
-  // field is a response object that only says "timeout"
+  // field is a response object that only says "timeout".
   std::shared_ptr<httpclient::SimpleHttpResult> result;
-  // the field answer is != 0 if status is == CL_COMM_RECEIVED
+  // the field answer is != nullptr if status is == CL_COMM_RECEIVED
   // answer_code is valid iff answer is != 0
   std::shared_ptr<rest::HttpRequest> answer;
   rest::HttpResponse::HttpResponseCode answer_code;
 
   ClusterCommResult()
-      : dropped(false), invalid(false), answer_code(rest::HttpResponse::OK) {}
+      : dropped(false), invalid(false), single(false),
+        answer_code(rest::HttpResponse::OK) {}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief routine to set the destination
+////////////////////////////////////////////////////////////////////////////////
+
+  void setDestination (std::string const& dest, bool logConnectionErrors);
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +256,8 @@ class ClusterComm {
       std::shared_ptr<std::string const> body,
       std::unique_ptr<std::map<std::string, std::string>>& headerFields,
       std::shared_ptr<ClusterCommCallback> callback,
-      ClusterCommTimeout timeout);
+      ClusterCommTimeout timeout,
+      bool singleRequest = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit a single HTTP request to a shard synchronously.
@@ -319,7 +331,7 @@ class ClusterComm {
   std::list<ClusterCommOperation*> toSend;
   std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
       toSendByOpID;
-  triagens::basics::ConditionVariable somethingToSend;
+  arangodb::basics::ConditionVariable somethingToSend;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief received queue with lock and index
@@ -329,7 +341,7 @@ class ClusterComm {
   std::list<ClusterCommOperation*> received;
   std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
       receivedByOpID;
-  triagens::basics::ConditionVariable somethingReceived;
+  arangodb::basics::ConditionVariable somethingReceived;
 
   // Note: If you really have to lock both `somethingToSend`
   // and `somethingReceived` at the same time (usually you should
@@ -455,7 +467,7 @@ class ClusterCommThread : public basics::Thread {
   /// @brief condition variable for ClusterCommThread
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::ConditionVariable _condition;
+  arangodb::basics::ConditionVariable _condition;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stop flag
@@ -463,8 +475,7 @@ class ClusterCommThread : public basics::Thread {
 
   volatile sig_atomic_t _stop;
 };
-}  // namespace arango
-}  // namespace triagens
+}  // namespace arangodb
 
 #endif
 

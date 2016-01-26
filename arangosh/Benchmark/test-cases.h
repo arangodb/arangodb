@@ -1036,12 +1036,12 @@ struct CollectionCreationTest : public BenchmarkOperation {
     return (char const*)data;
   }
 
-  static atomic<uint64_t> _counter;
+  static std::atomic<uint64_t> _counter;
 
   std::string _url;
 };
 
-atomic<uint64_t> CollectionCreationTest::_counter(0);
+std::atomic<uint64_t> CollectionCreationTest::_counter(0);
 
 
 struct TransactionAqlTest : public BenchmarkOperation {

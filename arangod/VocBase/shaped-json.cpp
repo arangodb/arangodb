@@ -917,6 +917,8 @@ static bool FillShapeValueArray(VocShaper* shaper, TRI_shape_value_t* dst,
 static bool FillShapeValueJson(VocShaper* shaper, TRI_shape_value_t* dst,
                                TRI_json_t const* json, size_t level,
                                bool create) {
+  TRI_ASSERT(json != nullptr);
+
   switch (json->_type) {
     case TRI_JSON_UNUSED:
       return false;
@@ -2033,7 +2035,7 @@ TRI_shaped_json_t* TRI_ShapedJsonVelocyPack(VocShaper* shaper,
                                             VPackSlice const& slice,
                                             bool create) {
   std::unique_ptr<TRI_json_t> json(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   return TRI_ShapedJsonJson(shaper, json.get(), create);
 }
 
@@ -2043,6 +2045,8 @@ TRI_shaped_json_t* TRI_ShapedJsonVelocyPack(VocShaper* shaper,
 
 TRI_shaped_json_t* TRI_ShapedJsonJson(VocShaper* shaper, TRI_json_t const* json,
                                       bool create) {
+  TRI_ASSERT(json != nullptr);
+
   TRI_shape_value_t dst;
 
   dst._value = nullptr;
@@ -2566,8 +2570,8 @@ void TRI_PrintShapeValues(TRI_shape_value_t* values, size_t n) {
 
 template bool TRI_StringifyArrayShapedJson<VocShaper>(
     VocShaper*, struct TRI_string_buffer_s*, TRI_shaped_json_t const*, bool);
-template bool TRI_StringifyArrayShapedJson<triagens::basics::LegendReader>(
-    triagens::basics::LegendReader*, struct TRI_string_buffer_s*,
+template bool TRI_StringifyArrayShapedJson<arangodb::basics::LegendReader>(
+    arangodb::basics::LegendReader*, struct TRI_string_buffer_s*,
     TRI_shaped_json_t const*, bool);
 
 

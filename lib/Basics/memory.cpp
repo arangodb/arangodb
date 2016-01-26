@@ -38,7 +38,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-#define MALLOC_WARNING_THRESHOLD (4 * 1024 * 1024)
+#define MALLOC_WARNING_THRESHOLD (1024 * 1024 * 1024)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,14 +110,13 @@ static double FailProbability = 0.0;
 static double FailStartStamp = 0.0;
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the size of the memory that is requested
 /// prints a warning if size is above a threshold
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-static void CheckSize(uint64_t n, char const* file, int line) {
+static inline void CheckSize(uint64_t n, char const* file, int line) {
   // warn in the case of big malloc operations
   if (n >= MALLOC_WARNING_THRESHOLD) {
     fprintf(stderr, "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
@@ -131,9 +130,8 @@ static void CheckSize(uint64_t n, char const* file, int line) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static double CurrentTimeStamp(void) {
+static inline double CurrentTimeStamp(void) {
   struct timeval tv;
-
   gettimeofday(&tv, 0);
 
   return (tv.tv_sec) + (tv.tv_usec / 1000000.0);
@@ -206,10 +204,8 @@ static char* FailRealloc(TRI_memory_zone_t* zone, void* old, size_t n) {
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 static void InitFailMalloc(void) {
-  char* value;
-
   // get failure probability
-  value = getenv("ARANGO_FAILMALLOC_PROBABILITY");
+  char* value = getenv("ARANGODB_FAILMALLOC_PROBABILITY");
 
   if (value != nullptr) {
     double v = strtod(value, nullptr);
@@ -219,7 +215,7 @@ static void InitFailMalloc(void) {
   }
 
   // get startup delay
-  value = getenv("ARANGO_FAILMALLOC_DELAY");
+  value = getenv("ARANGODB_FAILMALLOC_DELAY");
 
   if (value != nullptr) {
     double v = strtod(value, nullptr);
@@ -229,7 +225,7 @@ static void InitFailMalloc(void) {
   }
 
   // get minimum size for failures
-  value = getenv("ARANGO_FAILMALLOC_MINSIZE");
+  value = getenv("ARANGODB_FAILMALLOC_MINSIZE");
 
   if (value != nullptr) {
     unsigned long long v = strtoull(value, nullptr, 10);
@@ -240,7 +236,6 @@ static void InitFailMalloc(void) {
 }
 
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief core memory zone, allocation will never fail
@@ -255,7 +250,6 @@ TRI_memory_zone_t* TRI_CORE_MEM_ZONE = &TriCoreMemZone;
 #ifndef TRI_ENABLE_MAINTAINER_MODE
 TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the unknown memory zone
@@ -276,13 +270,11 @@ void* TRI_SystemAllocateZ(uint64_t n, bool set, char const* file, int line) {
 #else
 void* TRI_SystemAllocate(uint64_t n, bool set) {
 #endif
-  char* m;
-
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   CheckSize(n, file, line);
 #endif
 
-  m = static_cast<char*>(BuiltInMalloc((size_t)n));
+  char* m = static_cast<char*>(BuiltInMalloc((size_t)n));
 
   if (m != nullptr) {
     if (set) {
@@ -514,5 +506,4 @@ void TRI_ShutdownMemory() {
     CoreInitialized = 0;
   }
 }
-
 

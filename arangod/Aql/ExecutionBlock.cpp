@@ -26,11 +26,8 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/json-utilities.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::arango;
-using namespace triagens::aql;
 
+using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch size value
@@ -203,7 +200,7 @@ int ExecutionBlock::resolve(char const* handle, TRI_voc_cid_t& cid,
   }
 
   if (*handle >= '0' && *handle <= '9') {
-    cid = triagens::basics::StringUtils::uint64(handle, p - handle);
+    cid = arangodb::basics::StringUtils::uint64(handle, p - handle);
   } else {
     std::string const name(handle, p - handle);
     cid = _trx->resolver()->getCollectionIdCluster(name);

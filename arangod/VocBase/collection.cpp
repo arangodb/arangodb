@@ -42,53 +42,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
-using namespace triagens::arango;
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auxilliary struct for shape file iteration
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct {
-  int _fdout;
-  ssize_t* _written;
-} shape_iterator_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief callback for shape iteration on upgrade
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UpgradeShapeIterator(TRI_df_marker_t const* marker, void* data,
-                                 TRI_datafile_t* datafile) {
-  shape_iterator_t* si = static_cast<shape_iterator_t*>(data);
-  ssize_t* written = si->_written;
-
-  // new or updated document
-  if (marker->_type == TRI_DF_MARKER_SHAPE) {
-    TRI_shape_t const* shape =
-        (TRI_shape_t const*)((char const*)marker +
-                             sizeof(TRI_df_shape_marker_t));
-
-    // if the shape is of basic type, don't copy it
-    if (Shaper::lookupSidBasicShape(shape->_sid) != nullptr) {
-      return true;
-    }
-
-    // copy the shape
-    *written = *written +
-               TRI_WRITE(si->_fdout, marker, TRI_DF_ALIGN_BLOCK(marker->_size));
-  } else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
-    // copy any attribute found
-    *written = *written +
-               TRI_WRITE(si->_fdout, marker, TRI_DF_ALIGN_BLOCK(marker->_size));
-  }
-
-  return true;
-}
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
@@ -188,43 +142,6 @@ static void SortDatafiles(TRI_vector_pointer_t* files) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a suitable datafile id for a new datafile, based on the
-/// ids of existing datafiles/journals/compactors
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_voc_tick_t GetDatafileId(char const* path) {
-  regex_t re;
-  uint64_t lastId;
-
-  if (regcomp(&re, "^(journal|datafile|compactor)-[0-9][0-9]*\\.db$",
-              REG_EXTENDED) != 0) {
-    LOG_ERROR("unable to compile regular expression");
-
-    return (TRI_voc_tick_t)1;
-  }
-
-  std::vector<std::string> files = TRI_FilesDirectory(path);
-  lastId = 0;
-
-  for (auto const& file : files) {
-    regmatch_t matches[2];
-
-    if (regexec(&re, file.c_str(), sizeof(matches) / sizeof(matches[1]),
-                matches, 0) == 0) {
-      uint64_t id = GetNumericFilenamePart(file.c_str());
-
-      if (lastId == 0 || (id > 0 && id < lastId)) {
-        lastId = (id - 1);
-      }
-    }
-  }
-
-  regfree(&re);
-
-  return (TRI_voc_tick_t)lastId;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -307,8 +224,8 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
       // file is an index
       // .............................................................................
 
-      else if (TRI_EqualString2("index", first, firstLen) &&
-               TRI_EqualString2("json", third, thirdLen)) {
+      else if (TRI_EqualString("index", first, firstLen) &&
+               TRI_EqualString("json", third, thirdLen)) {
         char* filename;
 
         filename = TRI_Concatenate2File(path, file.c_str());
@@ -319,23 +236,23 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
       // file is a journal or datafile
       // .............................................................................
 
-      else if (TRI_EqualString2("db", third, thirdLen)) {
+      else if (TRI_EqualString("db", third, thirdLen)) {
         std::string filename = TRI_Concatenate2File(path, file.c_str());
 
         // file is a journal
-        if (TRI_EqualString2("journal", first, firstLen)) {
+        if (TRI_EqualString("journal", first, firstLen)) {
           TRI_PushBackVectorString(&structure._journals,
                                    TRI_DuplicateString(filename.c_str()));
         }
 
         // file is a datafile
-        else if (TRI_EqualString2("datafile", first, firstLen)) {
+        else if (TRI_EqualString("datafile", first, firstLen)) {
           TRI_PushBackVectorString(&structure._datafiles,
                                    TRI_DuplicateString(filename.c_str()));
         }
 
         // file is a left-over compaction file. rename it back
-        else if (TRI_EqualString2("compaction", first, firstLen)) {
+        else if (TRI_EqualString("compaction", first, firstLen)) {
           char* relName;
           char* newName;
 
@@ -377,7 +294,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
         }
 
         // temporary file, we can delete it!
-        else if (TRI_EqualString2("temp", first, firstLen)) {
+        else if (TRI_EqualString("temp", first, firstLen)) {
           LOG_WARNING(
               "found temporary file '%s', which is probably a left-over. "
               "deleting it",
@@ -456,7 +373,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
 
       // check for temporary & dead files
 
-      if (fourthLen > 0 || TRI_EqualString2("temp", first, firstLen)) {
+      if (fourthLen > 0 || TRI_EqualString("temp", first, firstLen)) {
         // found a temporary file. we can delete it!
         char* filename;
 
@@ -475,8 +392,8 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       // file is an index, just store the filename
       // .............................................................................
 
-      if (TRI_EqualString2("index", first, firstLen) &&
-          TRI_EqualString2("json", third, thirdLen)) {
+      if (TRI_EqualString("index", first, firstLen) &&
+          TRI_EqualString("json", third, thirdLen)) {
         char* filename;
 
         filename = TRI_Concatenate2File(collection->_directory, file.c_str());
@@ -487,12 +404,12 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       // file is a journal or datafile, open the datafile
       // .............................................................................
 
-      else if (TRI_EqualString2("db", third, thirdLen)) {
+      else if (TRI_EqualString("db", third, thirdLen)) {
         char* filename;
         char* ptr;
         TRI_col_header_marker_t* cm;
 
-        if (TRI_EqualString2("compaction", first, firstLen)) {
+        if (TRI_EqualString("compaction", first, firstLen)) {
           // found a compaction file. now rename it back
           char* relName;
           char* newName;
@@ -578,7 +495,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
         }
 
         // file is a journal
-        if (TRI_EqualString2("journal", first, firstLen)) {
+        if (TRI_EqualString("journal", first, firstLen)) {
           if (datafile->_isSealed) {
             if (datafile->_state != TRI_DF_STATE_READ) {
               LOG_WARNING(
@@ -594,13 +511,13 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
         }
 
         // file is a compactor
-        else if (TRI_EqualString2("compactor", first, firstLen)) {
+        else if (TRI_EqualString("compactor", first, firstLen)) {
           // ignore
         }
 
         // file is a datafile (or was a compaction file)
-        else if (TRI_EqualString2("datafile", first, firstLen) ||
-                 TRI_EqualString2("compaction", first, firstLen)) {
+        else if (TRI_EqualString("datafile", first, firstLen) ||
+                 TRI_EqualString("compaction", first, firstLen)) {
           if (!datafile->_isSealed) {
             LOG_ERROR("datafile '%s' is not sealed, this should never happen",
                       filename);
@@ -853,7 +770,7 @@ char* TRI_GetDirectoryCollection(char const* path, char const* name,
 
 TRI_collection_t* TRI_CreateCollection(
     TRI_vocbase_t* vocbase, TRI_collection_t* collection, char const* path,
-    triagens::arango::VocbaseCollectionInfo const& parameters) {
+    arangodb::VocbaseCollectionInfo const& parameters) {
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
       parameters.maximalSize()) {
@@ -1056,7 +973,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
   std::unique_ptr<TRI_json_t> otherOpts(other.keyOptions());
   if (otherOpts != nullptr) {
     std::shared_ptr<arangodb::velocypack::Builder> builder =
-        triagens::basics::JsonHelper::toVelocyPack(otherOpts.get());
+        arangodb::basics::JsonHelper::toVelocyPack(otherOpts.get());
     _keyOptions = builder->steal();
   }
 }
@@ -1128,11 +1045,11 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
     TRI_voc_size_t maximalSize;
     if (options.hasKey("journalSize")) {
       maximalSize =
-          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               options, "journalSize", vocbase->_settings.defaultMaximalSize);
     } else {
       maximalSize =
-          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               options, "maximalSize", vocbase->_settings.defaultMaximalSize);
     }
 
@@ -1142,27 +1059,27 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
     }
 
-    _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "doCompact", true);
-    _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "waitForSync", vocbase->_settings.defaultWaitForSync);
-    _isVolatile = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _isVolatile = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "isVolatile", false);
     _indexBuckets =
-        triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
             options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     _type = static_cast<TRI_col_type_e>(
-        triagens::basics::VelocyPackHelper::getNumericValue<size_t>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
             options, "type", _type));
 
     std::string cname =
-        triagens::basics::VelocyPackHelper::getStringValue(options, "name", "");
+        arangodb::basics::VelocyPackHelper::getStringValue(options, "name", "");
     if (!cname.empty()) {
       TRI_CopyString(_name, cname.c_str(), sizeof(_name) - 1);
     }
 
     std::string cidString =
-        triagens::basics::VelocyPackHelper::getStringValue(options, "cid", "");
+        arangodb::basics::VelocyPackHelper::getStringValue(options, "cid", "");
     if (!cidString.empty()) {
       // note: this may throw
       _cid = std::stoull(cidString);
@@ -1217,6 +1134,13 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       // Copy the ownership of the options over
       _keyOptions = builder.steal();
     }
+
+    if (options.hasKey("deleted")) {
+      VPackSlice const slice = options.get("deleted");
+      if (slice.isBoolean()) {
+        _deleted = slice.getBoolean();
+      }
+    }
   }
 
 #ifndef TRI_HAVE_ANONYMOUS_MMAP
@@ -1267,7 +1191,7 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
 
   std::string filePath(filename, strlen(filename));
   std::shared_ptr<VPackBuilder> content =
-      triagens::basics::VelocyPackHelper::velocyPackFromFile(filePath);
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filePath);
   VPackSlice slice = content->slice();
   if (!slice.isObject()) {
     LOG_ERROR("cannot open '%s', collection parameters are not readable",
@@ -1393,9 +1317,14 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
 
   TRI_json_t* json = TRI_CreateJsonCollectionInfo(*this);
 
+  if (json == nullptr) {
+    LOG_ERROR("cannot save collection properties file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
   // save json info to file
   bool ok = TRI_SaveJson(filename, json, forceSync);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   int res;
   if (!ok) {
@@ -1405,7 +1334,8 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   } else {
     res = TRI_ERROR_NO_ERROR;
   }
-
+  
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   return res;
 }
@@ -1424,37 +1354,57 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
 
   if (preferDefaults) {
     if (vocbase != nullptr) {
-      _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(
+      _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "doCompact", true);
-      _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
+      _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync", vocbase->_settings.defaultWaitForSync);
-      _maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<int>(
-          slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
+      if (slice.hasKey("journalSize")) {
+        _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+            slice, "journalSize", vocbase->_settings.defaultMaximalSize);
+      }
+      else {
+        _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+            slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
+      }
       _indexBuckets =
-          triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
               slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     } else {
-      _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(
+      _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "doCompact", true);
-      _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
+      _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync", false);
-      _maximalSize =
-          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-              slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+      if (slice.hasKey("journalSize")) {
+        _maximalSize =
+            arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+                slice, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+      }
+      else {
+        _maximalSize =
+            arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+                slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+      }
       _indexBuckets =
-          triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+          arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
               slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     }
   } else {
-    _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
         slice, "doCompact", _doCompact);
-    _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(
+    _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
         slice, "waitForSync", _waitForSync);
-    _maximalSize =
-        triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-            slice, "maximalSize", _maximalSize);
+    if (slice.hasKey("journalSize")) {
+      _maximalSize =
+          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+              slice, "journalSize", _maximalSize);
+    }
+    else {
+      _maximalSize =
+          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+              slice, "maximalSize", _maximalSize);
+    }
     _indexBuckets =
-        triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
             slice, "indexBuckets", _indexBuckets);
   }
 }
@@ -1556,13 +1506,13 @@ int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
 
 // Only temporary
 TRI_json_t* TRI_CreateJsonCollectionInfo(
-    triagens::arango::VocbaseCollectionInfo const& info) {
+    arangodb::VocbaseCollectionInfo const& info) {
   try {
     VPackBuilder builder;
     builder.openObject();
     TRI_CreateVelocyPackCollectionInfo(info, builder);
     builder.close();
-    return triagens::basics::VelocyPackHelper::velocyPackToJson(
+    return arangodb::basics::VelocyPackHelper::velocyPackToJson(
         builder.slice());
   } catch (...) {
     return nullptr;
@@ -1570,7 +1520,7 @@ TRI_json_t* TRI_CreateJsonCollectionInfo(
 }
 
 std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
-    triagens::arango::VocbaseCollectionInfo const& info) {
+    arangodb::VocbaseCollectionInfo const& info) {
   // This function might throw
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
@@ -1580,7 +1530,7 @@ std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
 }
 
 void TRI_CreateVelocyPackCollectionInfo(
-    triagens::arango::VocbaseCollectionInfo const& info,
+    arangodb::VocbaseCollectionInfo const& info,
     VPackBuilder& builder) {
   // This function might throw
   //
@@ -1852,206 +1802,6 @@ void TRI_DestroyFileStructureCollection(TRI_col_file_structure_t* info) {
   TRI_DestroyVectorString(&info->_compactors);
   TRI_DestroyVectorString(&info->_datafiles);
   TRI_DestroyVectorString(&info->_indexes);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief upgrade a collection to ArangoDB 2.0+ format
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_UpgradeCollection20(TRI_vocbase_t* vocbase, char const* path,
-                            VocbaseCollectionInfo& info) {
-  regex_t re;
-  TRI_voc_tick_t datafileId;
-  char* shapes;
-  char* outfile;
-  char* fname;
-  char* number;
-  ssize_t written;
-  int fdout;
-  int res;
-
-  TRI_ASSERT(info.version() < TRI_COL_VERSION_20);
-
-  if (regcomp(&re, "^journal|datafile-[0-9][0-9]*\\.db$", REG_EXTENDED) != 0) {
-    LOG_ERROR("unable to compile regular expression");
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  shapes = TRI_Concatenate2File(path, "SHAPES");
-
-  if (shapes == nullptr) {
-    regfree(&re);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // determine an artificial datafile id
-  datafileId = GetDatafileId(path);
-  if (datafileId == 0) {
-    datafileId = TRI_NewTickServer();
-  }
-
-  number = TRI_StringUInt64(datafileId);
-  fname = TRI_Concatenate3String("datafile-", number, ".db");
-  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-
-  outfile = TRI_Concatenate2File(path, fname);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, fname);
-
-  if (outfile == nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, shapes);
-    regfree(&re);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  res = TRI_ERROR_NO_ERROR;
-  written = 0;
-
-  // find all files in the collection directory
-  std::vector<std::string> files = TRI_FilesDirectory(shapes);
-  fdout = 0;
-
-  for (auto const& file : files) {
-    regmatch_t matches[1];
-
-    if (regexec(&re, file.c_str(), sizeof(matches) / sizeof(matches[0]),
-                matches, 0) == 0) {
-      TRI_datafile_t* df;
-      char* fqn = TRI_Concatenate2File(shapes, file.c_str());
-
-      if (fqn == nullptr) {
-        res = TRI_ERROR_OUT_OF_MEMORY;
-        break;
-      }
-
-      // create the shape datafile
-      if (fdout == 0) {
-        TRI_df_header_marker_t header;
-        TRI_col_header_marker_t cm;
-        TRI_voc_tick_t tick;
-
-        if (TRI_ExistsFile(outfile)) {
-          TRI_UnlinkFile(outfile);
-        }
-
-        fdout = TRI_CREATE(outfile, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                           S_IRUSR | S_IWUSR);
-
-        if (fdout < 0) {
-          TRI_Free(TRI_CORE_MEM_ZONE, fqn);
-          LOG_ERROR("cannot create new datafile '%s'", outfile);
-          res = TRI_ERROR_CANNOT_WRITE_FILE;
-          break;
-        }
-
-        tick = TRI_NewTickServer();
-
-        // datafile header
-        TRI_InitMarkerDatafile((char*)&header, TRI_DF_MARKER_HEADER,
-                               sizeof(TRI_df_header_marker_t));
-        header._version = TRI_DF_VERSION;
-        header._maximalSize = 0;
-        header._fid = tick;
-        header.base._tick = tick;
-        header.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(
-            TRI_InitialCrc32(), (char const*)&header.base, header.base._size));
-
-        written += TRI_WRITE(fdout, &header.base, header.base._size);
-
-        // col header
-        TRI_InitMarkerDatafile((char*)&cm, TRI_COL_MARKER_HEADER,
-                               sizeof(TRI_col_header_marker_t));
-        cm._type = (TRI_col_type_t)info.type();
-        cm._cid = info.id();
-        cm.base._tick = tick;
-        cm.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(
-            TRI_InitialCrc32(), (char const*)&cm.base, cm.base._size));
-
-        written += TRI_WRITE(fdout, &cm.base, cm.base._size);
-      }
-
-      // open the datafile, and push it into a vector of datafiles
-      df = TRI_OpenDatafile(fqn, true);
-
-      if (df == nullptr) {
-        res = TRI_errno();
-        TRI_Free(TRI_CORE_MEM_ZONE, fqn);
-        break;
-      } else {
-        shape_iterator_t si;
-        si._fdout = fdout;
-        si._written = &written;
-
-        TRI_IterateDatafile(df, UpgradeShapeIterator, &si);
-
-        TRI_CloseDatafile(df);
-        TRI_FreeDatafile(df);
-      }
-
-      TRI_Free(TRI_CORE_MEM_ZONE, fqn);
-    }
-  }
-
-  if (fdout > 0) {
-    if (res == TRI_ERROR_NO_ERROR) {
-      // datafile footer
-      TRI_df_footer_marker_t footer;
-      TRI_voc_tick_t tick;
-      ssize_t minSize;
-
-      tick = TRI_NewTickServer();
-      TRI_InitMarkerDatafile((char*)&footer, TRI_DF_MARKER_FOOTER,
-                             sizeof(TRI_df_footer_marker_t));
-      footer.base._tick = tick;
-      footer.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(
-          TRI_InitialCrc32(), (char const*)&footer.base, footer.base._size));
-
-      written += TRI_WRITE(fdout, &footer.base, footer.base._size);
-
-      TRI_CLOSE(fdout);
-
-      // checkout size of written file
-      minSize = sizeof(TRI_df_header_marker_t) +
-                sizeof(TRI_col_header_marker_t) +
-                sizeof(TRI_df_footer_marker_t);
-
-      if (written <= minSize) {
-        // new datafile is empty, we can remove it
-        LOG_TRACE("removing empty shape datafile");
-        TRI_UnlinkFile(outfile);
-      }
-    } else {
-      // some error occurred
-      TRI_CLOSE(fdout);
-      TRI_UnlinkFile(outfile);
-    }
-  }
-
-  TRI_Free(TRI_CORE_MEM_ZONE, outfile);
-
-  // try to remove SHAPES directory after upgrade
-  if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_RemoveDirectory(shapes);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to remove SHAPES directory '%s': %s", shapes,
-                TRI_errno_string(res));
-    }
-  }
-
-  TRI_Free(TRI_CORE_MEM_ZONE, shapes);
-  regfree(&re);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    // when no error occurred, we'll bump the version number in the collection
-    // parameters file.
-    info.setVersion(TRI_COL_VERSION_20);
-    res = info.saveToFile(path, true);
-  }
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

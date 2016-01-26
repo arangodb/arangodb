@@ -30,9 +30,12 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
-using namespace triagens::admin;
-using namespace triagens::basics;
-using namespace triagens::rest;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
+using namespace arangodb::admin;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 using namespace std;
 
 
@@ -45,15 +48,9 @@ RestJobHandler::RestJobHandler(HttpRequest* request,
       _jobManager(data->second) {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestJobHandler::isDirect() const { return true; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestJobHandler::execute() {
   // extract the sub-request type
@@ -62,7 +59,7 @@ HttpHandler::status_t RestJobHandler::execute() {
   if (type == HttpRequest::HTTP_REQUEST_GET) {
     getJob();
   } else if (type == HttpRequest::HTTP_REQUEST_PUT) {
-    const std::vector<std::string>& suffix = _request->suffix();
+    std::vector<std::string> const& suffix = _request->suffix();
 
     if (suffix.size() == 1) {
       putJob();

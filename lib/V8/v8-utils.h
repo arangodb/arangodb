@@ -174,7 +174,7 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 /// @brief normalize a v8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_normalize_V8_Obj(const v8::FunctionCallbackInfo<v8::Value>& args,
+void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
                           v8::Handle<v8::Value> obj);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ void TRI_normalize_V8_Obj(const v8::FunctionCallbackInfo<v8::Value>& args,
 /// time
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RunGarbageCollectionV8(v8::Isolate*, double);
+bool TRI_RunGarbageCollectionV8(v8::Isolate*, double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear the instance-local cache of wrapped objects

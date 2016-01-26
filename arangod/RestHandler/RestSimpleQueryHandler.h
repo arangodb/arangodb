@@ -28,12 +28,11 @@
 #include "RestHandler/RestCursorHandler.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class QueryRegistry;
 }
 
-namespace arango {
 class ApplicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,14 +44,11 @@ class RestSimpleQueryHandler : public RestCursorHandler {
  public:
 
   RestSimpleQueryHandler(rest::HttpRequest*,
-                         std::pair<triagens::arango::ApplicationV8*,
-                                   triagens::aql::QueryRegistry*>*);
+                         std::pair<arangodb::ApplicationV8*,
+                                   arangodb::aql::QueryRegistry*>*);
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   status_t execute() override final;
 
@@ -64,7 +60,6 @@ class RestSimpleQueryHandler : public RestCursorHandler {
 
   void allDocuments();
 };
-}
 }
 
 #endif

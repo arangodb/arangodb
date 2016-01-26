@@ -29,12 +29,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
-
 class VelocyPackHelper {
-  
  private:
   VelocyPackHelper() = delete;
   ~VelocyPackHelper() = delete;
@@ -59,6 +57,10 @@ class VelocyPackHelper {
   template <typename T>
   static T getNumericValue(VPackSlice const& slice, char const* name,
                            T defaultValue) {
+    TRI_ASSERT(slice.isObject());
+    if (!slice.hasKey(name)) {
+      return defaultValue;
+    }
     VPackSlice sub = slice.get(name);
     if (sub.isNumber()) {
       return sub.getNumber<T>();
@@ -80,6 +82,12 @@ class VelocyPackHelper {
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a string value, or the default value if it is not a string
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::string getStringValue(VPackSlice const&, std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string sub-element, or the default value if it does not
   /// exist
   /// or it is not a string
@@ -87,6 +95,13 @@ class VelocyPackHelper {
 
   static std::string getStringValue(VPackSlice const&, char const*,
                                     std::string const&);
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief convert a Object sub value into a uint64
+  //////////////////////////////////////////////////////////////////////////////
+
+  static uint64_t stringUInt64(VPackSlice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Build TRI_json_t from VelocyPack. Just a temporary solution
@@ -98,12 +113,22 @@ class VelocyPackHelper {
   /// @brief parses a json file to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::shared_ptr<VPackBuilder> velocyPackFromFile(
-      std::string const& path);
+  static std::shared_ptr<VPackBuilder> velocyPackFromFile(std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief writes a VelocyPack to a file
+  //////////////////////////////////////////////////////////////////////////////
+
+  static bool velocyPackToFile(char const*, VPackSlice const&, bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Compares two VelocyPack slices
+  //////////////////////////////////////////////////////////////////////////////
+
+  static int compare(VPackSlice const&, VPackSlice const&, bool);
 };
 }
 }
 
 #endif
-
 

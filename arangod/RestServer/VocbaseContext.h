@@ -30,19 +30,16 @@
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
 
-
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
-
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB VocbaseContext
 ////////////////////////////////////////////////////////////////////////////////
 
-class VocbaseContext : public triagens::rest::RequestContext {
+class VocbaseContext : public arangodb::rest::RequestContext {
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -127,8 +124,6 @@ class VocbaseContext : public triagens::rest::RequestContext {
   TRI_vocbase_t* _vocbase;
 };
 }
-}
 
 #endif
-
 

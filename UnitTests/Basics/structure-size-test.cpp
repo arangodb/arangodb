@@ -142,14 +142,14 @@ BOOST_AUTO_TEST_CASE (tst_col_header_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_attribute_marker) {
-  size_t s = sizeof(triagens::wal::attribute_marker_t);
+  size_t s = sizeof(arangodb::wal::attribute_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 24, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::attribute_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::attribute_marker_t::_collectionId));
-  BOOST_CHECK_EQUAL(40, (int) offsetOf(&triagens::wal::attribute_marker_t::_attributeId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::attribute_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::attribute_marker_t::_collectionId));
+  BOOST_CHECK_EQUAL(40, (int) offsetOf(&arangodb::wal::attribute_marker_t::_attributeId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,13 +157,13 @@ BOOST_AUTO_TEST_CASE (tst_wal_attribute_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_shape_marker) {
-  size_t s = sizeof(triagens::wal::shape_marker_t);
+  size_t s = sizeof(arangodb::wal::shape_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::shape_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::shape_marker_t::_collectionId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::shape_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::shape_marker_t::_collectionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,12 +171,12 @@ BOOST_AUTO_TEST_CASE (tst_wal_shape_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_database_create_marker) {
-  size_t s = sizeof(triagens::wal::database_create_marker_t);
+  size_t s = sizeof(arangodb::wal::database_create_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 8, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::database_create_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::database_create_marker_t::_databaseId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,12 +184,12 @@ BOOST_AUTO_TEST_CASE (tst_wal_database_create_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_database_drop_marker) {
-  size_t s = sizeof(triagens::wal::database_drop_marker_t);
+  size_t s = sizeof(arangodb::wal::database_drop_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 8, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::database_drop_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::database_drop_marker_t::_databaseId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,13 +197,13 @@ BOOST_AUTO_TEST_CASE (tst_wal_database_drop_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_collection_create_marker) {
-  size_t s = sizeof(triagens::wal::collection_create_marker_t);
+  size_t s = sizeof(arangodb::wal::collection_create_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::collection_create_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::collection_create_marker_t::_collectionId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::collection_create_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::collection_create_marker_t::_collectionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,13 +211,13 @@ BOOST_AUTO_TEST_CASE (tst_wal_collection_create_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_collection_drop_marker) {
-  size_t s = sizeof(triagens::wal::collection_drop_marker_t);
+  size_t s = sizeof(arangodb::wal::collection_drop_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::collection_drop_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::collection_drop_marker_t::_collectionId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::collection_drop_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::collection_drop_marker_t::_collectionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,13 +225,13 @@ BOOST_AUTO_TEST_CASE (tst_wal_collection_drop_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_collection_rename_marker) {
-  size_t s = sizeof(triagens::wal::collection_rename_marker_t);
+  size_t s = sizeof(arangodb::wal::collection_rename_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::collection_rename_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::collection_rename_marker_t::_collectionId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::collection_rename_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::collection_rename_marker_t::_collectionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,13 +239,13 @@ BOOST_AUTO_TEST_CASE (tst_wal_collection_rename_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_collection_change_marker) {
-  size_t s = sizeof(triagens::wal::collection_change_marker_t);
+  size_t s = sizeof(arangodb::wal::collection_change_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::collection_change_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::collection_change_marker_t::_collectionId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::collection_change_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::collection_change_marker_t::_collectionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,13 +253,13 @@ BOOST_AUTO_TEST_CASE (tst_wal_collection_change_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_transaction_begin_marker) {
-  size_t s = sizeof(triagens::wal::transaction_begin_marker_t);
+  size_t s = sizeof(arangodb::wal::transaction_begin_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::transaction_begin_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::transaction_begin_marker_t::_transactionId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::transaction_begin_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::transaction_begin_marker_t::_transactionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,13 +267,13 @@ BOOST_AUTO_TEST_CASE (tst_wal_transaction_begin_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_transaction_abort_marker) {
-  size_t s = sizeof(triagens::wal::transaction_abort_marker_t);
+  size_t s = sizeof(arangodb::wal::transaction_abort_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::transaction_abort_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::transaction_abort_marker_t::_transactionId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::transaction_abort_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::transaction_abort_marker_t::_transactionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,13 +281,13 @@ BOOST_AUTO_TEST_CASE (tst_wal_transaction_abort_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_transaction_commit_marker) {
-  size_t s = sizeof(triagens::wal::transaction_commit_marker_t);
+  size_t s = sizeof(arangodb::wal::transaction_commit_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::transaction_commit_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::transaction_commit_marker_t::_transactionId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::transaction_commit_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::transaction_commit_marker_t::_transactionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,19 +295,19 @@ BOOST_AUTO_TEST_CASE (tst_wal_transaction_commit_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_document_marker) {
-  size_t s = sizeof(triagens::wal::document_marker_t);
+  size_t s = sizeof(arangodb::wal::document_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 48, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::document_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::document_marker_t::_collectionId));
-  BOOST_CHECK_EQUAL(40, (int) offsetOf(&triagens::wal::document_marker_t::_revisionId));
-  BOOST_CHECK_EQUAL(48, (int) offsetOf(&triagens::wal::document_marker_t::_transactionId));
-  BOOST_CHECK_EQUAL(56, (int) offsetOf(&triagens::wal::document_marker_t::_shape));
-  BOOST_CHECK_EQUAL(64, (int) offsetOf(&triagens::wal::document_marker_t::_offsetKey));
-  BOOST_CHECK_EQUAL(66, (int) offsetOf(&triagens::wal::document_marker_t::_offsetLegend));
-  BOOST_CHECK_EQUAL(68, (int) offsetOf(&triagens::wal::document_marker_t::_offsetJson));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::document_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::document_marker_t::_collectionId));
+  BOOST_CHECK_EQUAL(40, (int) offsetOf(&arangodb::wal::document_marker_t::_revisionId));
+  BOOST_CHECK_EQUAL(48, (int) offsetOf(&arangodb::wal::document_marker_t::_transactionId));
+  BOOST_CHECK_EQUAL(56, (int) offsetOf(&arangodb::wal::document_marker_t::_shape));
+  BOOST_CHECK_EQUAL(64, (int) offsetOf(&arangodb::wal::document_marker_t::_offsetKey));
+  BOOST_CHECK_EQUAL(66, (int) offsetOf(&arangodb::wal::document_marker_t::_offsetLegend));
+  BOOST_CHECK_EQUAL(68, (int) offsetOf(&arangodb::wal::document_marker_t::_offsetJson));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,24 +315,24 @@ BOOST_AUTO_TEST_CASE (tst_wal_document_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_edge_marker) {
-  size_t s = sizeof(triagens::wal::edge_marker_t);
+  size_t s = sizeof(arangodb::wal::edge_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 48 + 24, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
   
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::edge_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::edge_marker_t::_collectionId));
-  BOOST_CHECK_EQUAL(40, (int) offsetOf(&triagens::wal::edge_marker_t::_revisionId));
-  BOOST_CHECK_EQUAL(48, (int) offsetOf(&triagens::wal::edge_marker_t::_transactionId));
-  BOOST_CHECK_EQUAL(56, (int) offsetOf(&triagens::wal::edge_marker_t::_shape));
-  BOOST_CHECK_EQUAL(64, (int) offsetOf(&triagens::wal::edge_marker_t::_offsetKey));
-  BOOST_CHECK_EQUAL(66, (int) offsetOf(&triagens::wal::edge_marker_t::_offsetLegend));
-  BOOST_CHECK_EQUAL(68, (int) offsetOf(&triagens::wal::edge_marker_t::_offsetJson));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::edge_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::edge_marker_t::_collectionId));
+  BOOST_CHECK_EQUAL(40, (int) offsetOf(&arangodb::wal::edge_marker_t::_revisionId));
+  BOOST_CHECK_EQUAL(48, (int) offsetOf(&arangodb::wal::edge_marker_t::_transactionId));
+  BOOST_CHECK_EQUAL(56, (int) offsetOf(&arangodb::wal::edge_marker_t::_shape));
+  BOOST_CHECK_EQUAL(64, (int) offsetOf(&arangodb::wal::edge_marker_t::_offsetKey));
+  BOOST_CHECK_EQUAL(66, (int) offsetOf(&arangodb::wal::edge_marker_t::_offsetLegend));
+  BOOST_CHECK_EQUAL(68, (int) offsetOf(&arangodb::wal::edge_marker_t::_offsetJson));
 
-  BOOST_CHECK_EQUAL(72, (int) offsetOf(&triagens::wal::edge_marker_t::_toCid));
-  BOOST_CHECK_EQUAL(80, (int) offsetOf(&triagens::wal::edge_marker_t::_fromCid));
-  BOOST_CHECK_EQUAL(88, (int) offsetOf(&triagens::wal::edge_marker_t::_offsetToKey));
-  BOOST_CHECK_EQUAL(90, (int) offsetOf(&triagens::wal::edge_marker_t::_offsetFromKey));
+  BOOST_CHECK_EQUAL(72, (int) offsetOf(&arangodb::wal::edge_marker_t::_toCid));
+  BOOST_CHECK_EQUAL(80, (int) offsetOf(&arangodb::wal::edge_marker_t::_fromCid));
+  BOOST_CHECK_EQUAL(88, (int) offsetOf(&arangodb::wal::edge_marker_t::_offsetToKey));
+  BOOST_CHECK_EQUAL(90, (int) offsetOf(&arangodb::wal::edge_marker_t::_offsetFromKey));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,15 +340,15 @@ BOOST_AUTO_TEST_CASE (tst_wal_edge_marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_remove_marker) {
-  size_t s = sizeof(triagens::wal::remove_marker_t);
+  size_t s = sizeof(arangodb::wal::remove_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 32, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&triagens::wal::remove_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&triagens::wal::remove_marker_t::_collectionId));
-  BOOST_CHECK_EQUAL(40, (int) offsetOf(&triagens::wal::remove_marker_t::_revisionId));
-  BOOST_CHECK_EQUAL(48, (int) offsetOf(&triagens::wal::remove_marker_t::_transactionId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::remove_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::remove_marker_t::_collectionId));
+  BOOST_CHECK_EQUAL(40, (int) offsetOf(&arangodb::wal::remove_marker_t::_revisionId));
+  BOOST_CHECK_EQUAL(48, (int) offsetOf(&arangodb::wal::remove_marker_t::_transactionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

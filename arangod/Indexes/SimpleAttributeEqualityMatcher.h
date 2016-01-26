@@ -27,22 +27,20 @@
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 class Ast;
 struct AstNode;
 struct Variable;
 }
 
-namespace arango {
 class Index;
-
 
 class SimpleAttributeEqualityMatcher {
   
  public:
   explicit SimpleAttributeEqualityMatcher(
-      std::vector<std::vector<triagens::basics::AttributeName>> const&);
+      std::vector<std::vector<arangodb::basics::AttributeName>> const&);
 
   
  public:
@@ -51,16 +49,16 @@ class SimpleAttributeEqualityMatcher {
   /// this is used for the primary index and the edge index
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matchOne(triagens::arango::Index const*, triagens::aql::AstNode const*,
-                triagens::aql::Variable const*, size_t, size_t&, double&);
+  bool matchOne(arangodb::Index const*, arangodb::aql::AstNode const*,
+                arangodb::aql::Variable const*, size_t, size_t&, double&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief match all of the attributes, in any order
   /// this is used for the hash index
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matchAll(triagens::arango::Index const*, triagens::aql::AstNode const*,
-                triagens::aql::Variable const*, size_t, size_t&, double&);
+  bool matchAll(arangodb::Index const*, arangodb::aql::AstNode const*,
+                arangodb::aql::Variable const*, size_t, size_t&, double&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the condition parts that the index is responsible for
@@ -69,10 +67,10 @@ class SimpleAttributeEqualityMatcher {
   /// the caller must not free the returned AstNode*, as it belongs to the ast
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::AstNode* getOne(triagens::aql::Ast*,
-                                 triagens::arango::Index const*,
-                                 triagens::aql::AstNode const*,
-                                 triagens::aql::Variable const*);
+  arangodb::aql::AstNode* getOne(arangodb::aql::Ast*,
+                                 arangodb::Index const*,
+                                 arangodb::aql::AstNode const*,
+                                 arangodb::aql::Variable const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief specialize the condition for the index
@@ -80,9 +78,9 @@ class SimpleAttributeEqualityMatcher {
   /// requires that a previous matchOne() returned true
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::AstNode* specializeOne(triagens::arango::Index const*,
-                                        triagens::aql::AstNode*,
-                                        triagens::aql::Variable const*);
+  arangodb::aql::AstNode* specializeOne(arangodb::Index const*,
+                                        arangodb::aql::AstNode*,
+                                        arangodb::aql::Variable const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief specialize the condition for the index
@@ -90,9 +88,9 @@ class SimpleAttributeEqualityMatcher {
   /// requires that a previous matchAll() returned true
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::AstNode* specializeAll(triagens::arango::Index const*,
-                                        triagens::aql::AstNode*,
-                                        triagens::aql::Variable const*);
+  arangodb::aql::AstNode* specializeAll(arangodb::Index const*,
+                                        arangodb::aql::AstNode*,
+                                        arangodb::aql::Variable const*);
 
   
  private:
@@ -103,18 +101,18 @@ class SimpleAttributeEqualityMatcher {
   /// comparable, and lower values mean lower costs
   //////////////////////////////////////////////////////////////////////////////
 
-  void calculateIndexCosts(triagens::arango::Index const*, size_t, size_t&,
+  void calculateIndexCosts(arangodb::Index const*, size_t, size_t&,
                            double&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the access fits
   //////////////////////////////////////////////////////////////////////////////
 
-  bool accessFitsIndex(triagens::arango::Index const*,
-                       triagens::aql::AstNode const*,
-                       triagens::aql::AstNode const*,
-                       triagens::aql::AstNode const*,
-                       triagens::aql::Variable const*, bool);
+  bool accessFitsIndex(arangodb::Index const*,
+                       arangodb::aql::AstNode const*,
+                       arangodb::aql::AstNode const*,
+                       arangodb::aql::AstNode const*,
+                       arangodb::aql::Variable const*, bool);
 
   
  private:
@@ -122,16 +120,15 @@ class SimpleAttributeEqualityMatcher {
   /// @brief array of attributes used for comparisons
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::vector<triagens::basics::AttributeName>> const _attributes;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _attributes;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief an internal map to mark which condition parts were useful and
   /// covered by the index. Also contains the matching Node
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<size_t, triagens::aql::AstNode const*> _found;
+  std::unordered_map<size_t, arangodb::aql::AstNode const*> _found;
 };
-}
 }
 
 #endif

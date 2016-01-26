@@ -26,9 +26,7 @@
 #include "Basics/MutexLocker.h"
 #include "VocBase/document-collection.h"
 
-using namespace triagens::arango;
-
-
+using namespace arangodb;
 
 Ditch::Ditch(Ditches* ditches, char const* filename, int line)
     : _ditches(ditches),
@@ -196,7 +194,7 @@ TRI_document_collection_t* Ditches::collection() const { return _collection; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ditches::executeProtected(std::function<void()> callback) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
   callback();
 }
 
@@ -211,7 +209,7 @@ Ditch* Ditches::process(bool& popped,
                         std::function<bool(Ditch const*)> callback) {
   popped = false;
 
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   auto ditch = _begin;
 
@@ -273,7 +271,7 @@ Ditch* Ditches::process(bool& popped,
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* Ditches::head() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   auto ditch = _begin;
 
@@ -288,7 +286,7 @@ char const* Ditches::head() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t Ditches::numDocumentDitches() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   return _numDocumentDitches;
 }
@@ -298,7 +296,7 @@ uint64_t Ditches::numDocumentDitches() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Ditches::contains(Ditch::DitchType type) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   if (type == Ditch::TRI_DITCH_DOCUMENT) {
     // shortcut
@@ -326,7 +324,7 @@ void Ditches::freeDitch(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     unlink(ditch);
 
@@ -350,7 +348,7 @@ void Ditches::freeDocumentDitch(DocumentDitch* ditch, bool fromTransaction) {
 
   bool shouldFree = false;
   {
-    MUTEX_LOCKER(_lock);  // FIX_MUTEX
+    MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
 
     // First see who might still be using the ditch:
     if (fromTransaction) {
@@ -438,7 +436,7 @@ CompactionDitch* Ditches::createCompactionDitch(char const* filename,
 
 DropDatafileDitch* Ditches::createDropDatafileDitch(
     TRI_datafile_t* datafile, void* data,
-    std::function<void(struct TRI_datafile_s*, void*)> callback,
+    std::function<void(struct TRI_datafile_t*, void*)> callback,
     char const* filename, int line) {
   try {
     auto ditch =
@@ -457,7 +455,7 @@ DropDatafileDitch* Ditches::createDropDatafileDitch(
 
 RenameDatafileDitch* Ditches::createRenameDatafileDitch(
     TRI_datafile_t* datafile, void* data,
-    std::function<void(struct TRI_datafile_s*, void*)> callback,
+    std::function<void(struct TRI_datafile_t*, void*)> callback,
     char const* filename, int line) {
   try {
     auto ditch =
@@ -516,7 +514,7 @@ DropCollectionDitch* Ditches::createDropCollectionDitch(
 void Ditches::link(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
-  MUTEX_LOCKER(_lock);  // FIX_MUTEX
+  MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
 
   // empty list
   if (_end == nullptr) {

@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-dispatcher.h"
-
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
@@ -33,17 +32,19 @@
 #include "Scheduler/Scheduler.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8Server/V8PeriodicTask.h"
 #include "V8Server/V8QueueJob.h"
 #include "V8Server/V8TimerTask.h"
 #include "VocBase/server.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer
@@ -108,7 +109,7 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
 /// @brief registers a task
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_RegisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -188,11 +189,11 @@ static void JS_RegisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   // extract the parameters
-  std::unique_ptr<TRI_json_t> parameters;
+  auto parameters = std::make_shared<VPackBuilder>();
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("params"))) {
-    parameters.reset(
-        TRI_ObjectToJson(isolate, obj->Get(TRI_V8_ASCII_STRING("params"))));
+    TRI_V8ToVPack(isolate, *parameters, obj->Get(TRI_V8_ASCII_STRING("params")),
+                  false);
   }
 
   TRI_GET_GLOBALS();
@@ -204,33 +205,20 @@ static void JS_RegisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
     task =
         new V8PeriodicTask(id, name, static_cast<TRI_vocbase_t*>(v8g->_vocbase),
                            GlobalV8Dealer, GlobalScheduler, GlobalDispatcher,
-                           offset, period, command, parameters.get(), isSystem);
+                           offset, period, command, parameters, isSystem);
   } else {
     // create a run-once timer task
     task = new V8TimerTask(id, name, static_cast<TRI_vocbase_t*>(v8g->_vocbase),
                            GlobalV8Dealer, GlobalScheduler, GlobalDispatcher,
-                           offset, command, parameters.get(), isSystem);
+                           offset, command, parameters, isSystem);
   }
 
-  // task not owns the parameters
-  parameters.release();
+  // get the VelocyPack representation of the task
+  std::shared_ptr<VPackBuilder> builder = task->toVelocyPack();
 
-  // get the JSON representation of the task
-  std::unique_ptr<TRI_json_t> json(task->toJson());
-
-  if (json == nullptr) {
-    if (period > 0.0) {
-      V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
-      delete t;
-    } else {
-      V8TimerTask* t = dynamic_cast<V8TimerTask*>(task);
-      delete t;
-    }
-
+  if (builder == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-
-  TRI_ASSERT(json.get() != nullptr);
 
   int res = GlobalScheduler->registerTask(task);
 
@@ -246,7 +234,7 @@ static void JS_RegisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -258,7 +246,7 @@ static void JS_RegisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @FUN{internal.unregisterTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_UnregisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -288,7 +276,7 @@ static void JS_UnregisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @FUN{internal.getTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_GetTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -300,22 +288,22 @@ static void JS_GetTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
-  std::unique_ptr<TRI_json_t> json;
+  std::shared_ptr<VPackBuilder> builder;
 
   if (args.Length() == 1) {
     // get a single task
     std::string const id = GetTaskId(isolate, args[0]);
-    json.reset(GlobalScheduler->getUserTask(id));
+    builder = GlobalScheduler->getUserTask(id);
   } else {
     // get all tasks
-    json.reset(GlobalScheduler->getUserTasks());
+    builder = GlobalScheduler->getUserTasks();
   }
 
-  if (json == nullptr) {
+  if (builder == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_TASK_NOT_FOUND);
   }
 
-  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

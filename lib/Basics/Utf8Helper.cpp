@@ -36,7 +36,7 @@
 #include "Basics/win-utils.h"
 #endif
 
-using namespace triagens::basics;
+using namespace arangodb::basics;
 using namespace std;
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper;
@@ -58,6 +58,9 @@ Utf8Helper::~Utf8Helper() {
 }
 
 int Utf8Helper::compareUtf8(char const* left, char const* right) const {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
+
   if (!_coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf8()!");
     return (strcmp(left, right));
@@ -76,6 +79,9 @@ int Utf8Helper::compareUtf8(char const* left, char const* right) const {
 
 int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
                             char const* right, size_t rightLength) const {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
+
   if (!_coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf8()!");
     return (strcmp(left, right));
@@ -95,6 +101,9 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
 
 int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                              uint16_t const* right, size_t rightLength) const {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
+
   if (!_coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf16()!");
 
@@ -706,6 +715,8 @@ int TRI_compare_utf16(uint16_t const* left, size_t leftLength,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_compare_utf8(char const* left, char const* right) {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
   return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);
 }
 
@@ -715,6 +726,8 @@ int TRI_compare_utf8(char const* left, char const* right) {
 
 int TRI_compare_utf8(char const* left, size_t leftLength, char const* right,
                      size_t rightLength) {
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
   return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, right,
                                                    rightLength);
 }
@@ -812,12 +825,12 @@ char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
   // calculate utf8 string length
   UErrorCode status = U_ZERO_ERROR;
   u_strToUTF8(nullptr, 0, &utf8Length, uchar, (int32_t)inLength, &status);
-  if (status != U_BUFFER_OVERFLOW_ERROR) {
+
+  if (status != U_ZERO_ERROR && status != U_BUFFER_OVERFLOW_ERROR) {
     return nullptr;
   }
 
-  char* utf8 = static_cast<char*>(
-      TRI_Allocate(zone, (utf8Length + 1) * sizeof(char), false));
+  char* utf8 = static_cast<char*>(TRI_Allocate(zone, utf8Length + 1, false));
 
   if (utf8 == nullptr) {
     return nullptr;
@@ -827,16 +840,16 @@ char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
   status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
   u_strToUTF8(utf8, utf8Length + 1, nullptr, uchar, (int32_t)inLength, &status);
+
   if (status != U_ZERO_ERROR) {
     TRI_Free(zone, utf8);
     return nullptr;
   }
 
-  *outLength = ((size_t)utf8Length);
+  *outLength = (size_t)utf8Length;
 
   return utf8;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)

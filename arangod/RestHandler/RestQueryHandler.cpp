@@ -39,30 +39,21 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-using namespace triagens::aql;
-
-
+using namespace arangodb;
+using namespace arangodb::aql;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 RestQueryHandler::RestQueryHandler(HttpRequest* request,
                                    ApplicationV8* applicationV8)
     : RestVocbaseBaseHandler(request), _applicationV8(applicationV8) {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryHandler::isDirect() const {
   return _request->requestType() != HttpRequest::HTTP_REQUEST_POST;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestQueryHandler::execute() {
   // extract the sub-request type
@@ -95,11 +86,11 @@ HttpHandler::status_t RestQueryHandler::execute() {
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
                                     __LINE__);
     handleError(err);
   } catch (...) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 
@@ -134,11 +125,11 @@ bool RestQueryHandler::readQueryProperties() {
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
                                     __LINE__);
     handleError(err);
   } catch (...) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 
@@ -181,11 +172,11 @@ bool RestQueryHandler::readQuery(bool slow) {
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
                                     __LINE__);
     handleError(err);
   } catch (...) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 
@@ -226,7 +217,7 @@ bool RestQueryHandler::readQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryHandler::deleteQuerySlow() {
-  auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
+  auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
   queryList->clearSlow();
 
   VPackBuilder result;
@@ -246,7 +237,7 @@ bool RestQueryHandler::deleteQuerySlow() {
 
 bool RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
-  auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
+  auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
 
   auto res = queryList->kill(id);
@@ -315,7 +306,7 @@ bool RestQueryHandler::replaceProperties() {
                   "expecting a JSON object as body");
   };
 
-  auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
+  auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
 
   try {
     bool enabled = queryList->enabled();
@@ -360,11 +351,11 @@ bool RestQueryHandler::replaceProperties() {
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
                                     __LINE__);
     handleError(err);
   } catch (...) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 
@@ -434,12 +425,12 @@ bool RestQueryHandler::parseQuery() {
       result.close();  // bindVars
 
       auto tmp = VPackParser::fromJson(
-          triagens::basics::JsonHelper::toString(parseResult.json));
+          arangodb::basics::JsonHelper::toString(parseResult.json));
       result.add("ast", tmp->slice());
 
       if (parseResult.warnings != nullptr) {
         auto tmp = VPackParser::fromJson(
-            triagens::basics::JsonHelper::toString(parseResult.warnings));
+            arangodb::basics::JsonHelper::toString(parseResult.warnings));
         result.add("warnings", tmp->slice());
       }
     }
@@ -449,11 +440,11 @@ bool RestQueryHandler::parseQuery() {
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
                                     __LINE__);
     handleError(err);
   } catch (...) {
-    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 

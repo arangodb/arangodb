@@ -26,7 +26,7 @@
 
 #include "Dispatcher/Dispatcher.h"
 
-using namespace triagens::rest;
+using namespace arangodb::rest;
 using namespace std;
 
 

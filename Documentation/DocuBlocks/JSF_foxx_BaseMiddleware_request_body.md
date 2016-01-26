@@ -1,9 +1,8 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_request_body
-///
-/// `request.body()`
-///
-/// Get the JSON parsed body of the request. If you need the raw version, please
-/// refer to the *rawBody* function.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`request.body()`
+
+Get the JSON parsed body of the request. If you need the raw version, please
+refer to the *rawBody* function.
+

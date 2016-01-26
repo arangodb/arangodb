@@ -33,9 +33,7 @@
 
 class VocShaper;
 
-
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class GeoIndex2 final : public Index {
   
@@ -43,11 +41,11 @@ class GeoIndex2 final : public Index {
   GeoIndex2() = delete;
 
   GeoIndex2(TRI_idx_iid_t, struct TRI_document_collection_t*,
-            std::vector<std::vector<triagens::basics::AttributeName>> const&,
+            std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<TRI_shape_pid_t> const&, bool);
 
   GeoIndex2(TRI_idx_iid_t, struct TRI_document_collection_t*,
-            std::vector<std::vector<triagens::basics::AttributeName>> const&,
+            std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<TRI_shape_pid_t> const&);
 
   ~GeoIndex2();
@@ -84,27 +82,27 @@ class GeoIndex2 final : public Index {
 
   size_t memory() const override final;
 
-  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override final;
+  // Uses default toVelocyPackFigures
 
-  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up all points within a given radius
   //////////////////////////////////////////////////////////////////////////////
 
-  GeoCoordinates* withinQuery(triagens::arango::Transaction*, double, double,
+  GeoCoordinates* withinQuery(arangodb::Transaction*, double, double,
                               double) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up the nearest points
   //////////////////////////////////////////////////////////////////////////////
 
-  GeoCoordinates* nearQuery(triagens::arango::Transaction*, double, double,
+  GeoCoordinates* nearQuery(arangodb::Transaction*, double, double,
                             size_t) const;
 
   bool isSame(TRI_shape_pid_t location, bool geoJson) const {
@@ -167,7 +165,6 @@ class GeoIndex2 final : public Index {
 
   GeoIndex* _geoIndex;
 };
-}
 }
 
 #endif

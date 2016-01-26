@@ -28,12 +28,10 @@
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::arango;
-
-
+using namespace arangodb;
 
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
-    std::vector<std::vector<triagens::basics::AttributeName>> const& attributes)
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes)
     : _attributes(attributes), _found() {}
 
 
@@ -43,15 +41,15 @@ SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SimpleAttributeEqualityMatcher::matchOne(
-    triagens::arango::Index const* index, triagens::aql::AstNode const* node,
-    triagens::aql::Variable const* reference, size_t itemsInIndex,
+    arangodb::Index const* index, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
   _found.clear();
 
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
 
-    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       // EQ is symmetric
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
@@ -62,7 +60,7 @@ bool SimpleAttributeEqualityMatcher::matchOne(
         calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
         return true;
       }
-    } else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, false)) {
@@ -88,8 +86,8 @@ bool SimpleAttributeEqualityMatcher::matchOne(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SimpleAttributeEqualityMatcher::matchAll(
-    triagens::arango::Index const* index, triagens::aql::AstNode const* node,
-    triagens::aql::Variable const* reference, size_t itemsInIndex,
+    arangodb::Index const* index, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
   _found.clear();
   size_t values = 0;
@@ -97,7 +95,7 @@ bool SimpleAttributeEqualityMatcher::matchAll(
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
 
-    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
 
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
@@ -105,7 +103,7 @@ bool SimpleAttributeEqualityMatcher::matchAll(
           accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
                           reference, false)) {
       }
-    } else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
 
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
@@ -151,9 +149,9 @@ bool SimpleAttributeEqualityMatcher::matchAll(
 /// requires that a previous matchOne() returned true
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
-    triagens::arango::Index const* index, triagens::aql::AstNode* node,
-    triagens::aql::Variable const* reference) {
+arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
+    arangodb::Index const* index, arangodb::aql::AstNode* node,
+    arangodb::aql::Variable const* reference) {
   _found.clear();
 
   size_t const n = node->numMembers();
@@ -161,7 +159,7 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
   for (size_t i = 0; i < n; ++i) {
     auto op = node->getMember(i);
 
-    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       // EQ is symmetric
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
@@ -177,7 +175,7 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
 
         return node;
       }
-    } else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
 
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
@@ -204,9 +202,9 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
 /// requires that a previous matchAll() returned true
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
-    triagens::arango::Index const* index, triagens::aql::AstNode* node,
-    triagens::aql::Variable const* reference) {
+arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
+    arangodb::Index const* index, arangodb::aql::AstNode* node,
+    arangodb::aql::Variable const* reference) {
   _found.clear();
 
   size_t const n = node->numMembers();
@@ -214,7 +212,7 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
   for (size_t i = 0; i < n; ++i) {
     auto op = node->getMember(i);
 
-    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, false) ||
@@ -228,7 +226,7 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
           break;
         }
       }
-    } else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, false)) {
@@ -275,7 +273,7 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 ////////////////////////////////////////////////////////////////////////////////
 
 void SimpleAttributeEqualityMatcher::calculateIndexCosts(
-    triagens::arango::Index const* index, size_t itemsInIndex,
+    arangodb::Index const* index, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   double equalityReductionFactor = 20.0;
 
@@ -321,24 +319,24 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SimpleAttributeEqualityMatcher::accessFitsIndex(
-    triagens::arango::Index const* index, triagens::aql::AstNode const* access,
-    triagens::aql::AstNode const* other, triagens::aql::AstNode const* op,
-    triagens::aql::Variable const* reference, bool isExecution) {
+    arangodb::Index const* index, arangodb::aql::AstNode const* access,
+    arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
+    arangodb::aql::Variable const* reference, bool isExecution) {
   if (!index->canUseConditionPart(access, other, op, reference, isExecution)) {
     return false;
   }
 
-  triagens::aql::AstNode const* what = access;
-  std::pair<triagens::aql::Variable const*,
-            std::vector<triagens::basics::AttributeName>> attributeData;
+  arangodb::aql::AstNode const* what = access;
+  std::pair<arangodb::aql::Variable const*,
+            std::vector<arangodb::basics::AttributeName>> attributeData;
 
-  if (op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+  if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     if (!what->isAttributeAccessForVariable(attributeData) ||
         attributeData.first != reference) {
       // this access is not referencing this collection
       return false;
     }
-    if (triagens::basics::TRI_AttributeNamesHaveExpansion(
+    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
             attributeData.second)) {
       // doc.value[*] == 'value'
       return false;
@@ -350,12 +348,12 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
   } else {
     // ok, we do have an IN here... check if it's something like 'value' IN
     // doc.value[*]
-    TRI_ASSERT(op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN);
+    TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
     bool canUse = false;
 
     if (what->isAttributeAccessForVariable(attributeData) &&
         attributeData.first == reference &&
-        !triagens::basics::TRI_AttributeNamesHaveExpansion(
+        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
             attributeData.second)) {
       // doc.value IN 'value'
       // can use this index
@@ -376,7 +374,7 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     }
   }
 
-  std::vector<triagens::basics::AttributeName> const& fieldNames =
+  std::vector<arangodb::basics::AttributeName> const& fieldNames =
       attributeData.second;
 
   for (size_t i = 0; i < _attributes.size(); ++i) {
@@ -385,7 +383,7 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
       continue;
     }
     if (index->isAttributeExpanded(i) &&
-        op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // If this attribute is correct or not, it could only serve for IN
       continue;
     }

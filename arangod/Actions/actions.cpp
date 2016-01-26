@@ -31,8 +31,7 @@
 #include "Rest/HttpRequest.h"
 
 using namespace std;
-using namespace triagens::basics;
-
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions
@@ -52,14 +51,13 @@ static std::map<std::string, TRI_action_t*> PrefixActions;
 
 static ReadWriteLock ActionsLock;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
                                       TRI_action_t* action) {
-  WRITE_LOCKER(ActionsLock);
+  WRITE_LOCKER(writeLocker, ActionsLock);
 
   std::string url = name;
 
@@ -123,14 +121,14 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
 /// @brief looks up an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t* TRI_LookupActionVocBase(triagens::rest::HttpRequest* request) {
+TRI_action_t* TRI_LookupActionVocBase(arangodb::rest::HttpRequest* request) {
   // check if we know a callback
   std::vector<std::string> suffix = request->suffix();
 
   // find a direct match
   std::string name = StringUtils::join(suffix, '/');
 
-  READ_LOCKER(ActionsLock);
+  READ_LOCKER(readLocker, ActionsLock);
   std::map<std::string, TRI_action_t*>::iterator i = Actions.find(name);
 
   if (i != Actions.end()) {

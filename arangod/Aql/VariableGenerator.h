@@ -29,7 +29,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -72,7 +72,7 @@ class VariableGenerator {
   /// @brief generate a variable from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  Variable* createVariable(triagens::basics::Json const&);
+  Variable* createVariable(arangodb::basics::Json const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clones a variable from an existing one
@@ -102,13 +102,13 @@ class VariableGenerator {
   /// @brief export to JSON, returns an AUTOFREE Json object
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson(TRI_memory_zone_t*) const;
+  arangodb::basics::Json toJson(TRI_memory_zone_t*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief import from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void fromJson(triagens::basics::Json const& jsonAllVariablesList);
+  void fromJson(arangodb::basics::Json const& jsonAllVariablesList);
 
   
  private:

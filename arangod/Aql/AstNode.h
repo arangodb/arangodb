@@ -33,7 +33,10 @@
 #include <functional>
 #include <iosfwd>
 
-namespace triagens {
+namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace basics {
 class StringBuffer;
 }
@@ -178,7 +181,6 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_RANGE = 49,
   NODE_TYPE_NOP = 50,
   NODE_TYPE_COLLECT_COUNT = 51,
-  NODE_TYPE_COLLECT_EXPRESSION = 52,
   NODE_TYPE_CALCULATED_OBJECT_ELEMENT = 53,
   NODE_TYPE_UPSERT = 54,
   NODE_TYPE_EXAMPLE = 55,
@@ -190,7 +192,7 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_DIRECTION = 61,
   NODE_TYPE_OPERATOR_NARY_AND = 62,
   NODE_TYPE_OPERATOR_NARY_OR = 63,
-  NODE_TYPE_COLLECT_AGGREGATE = 64
+  NODE_TYPE_AGGREGATIONS = 64
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -243,7 +245,7 @@ struct AstNode {
   /// @brief create the node from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  AstNode(Ast*, triagens::basics::Json const& json);
+  AstNode(Ast*, arangodb::basics::Json const& json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the node from JSON
@@ -251,7 +253,7 @@ struct AstNode {
 
   AstNode(std::function<void(AstNode*)> registerNode,
           std::function<char const*(std::string const&)> registerString,
-          triagens::basics::Json const& json);
+          arangodb::basics::Json const& json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the node
@@ -331,7 +333,7 @@ struct AstNode {
   /// @brief fetch a node's type from json
   //////////////////////////////////////////////////////////////////////////////
 
-  static AstNodeType getNodeTypeFromJson(triagens::basics::Json const& json);
+  static AstNodeType getNodeTypeFromJson(arangodb::basics::Json const& json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a JSON representation of the node value
@@ -346,6 +348,18 @@ struct AstNode {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_json_t* toJson(TRI_memory_zone_t*, bool) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a VelocyPack representation of the node value
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackValue() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a VelocyPack representation of the node
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a JSON representation of the node to the JSON array specified
@@ -564,7 +578,7 @@ struct AstNode {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isAttributeAccessForVariable(
-      std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>&)
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&)
       const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -859,7 +873,7 @@ struct AstNode {
   /// @brief append a JavaScript representation of the node into a string buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  void stringify(triagens::basics::StringBuffer*, bool, bool) const;
+  void stringify(arangodb::basics::StringBuffer*, bool, bool) const;
 
   std::string toString() const;
 
@@ -870,7 +884,7 @@ struct AstNode {
   /// this creates an equivalent to what JSON.stringify() would do
   //////////////////////////////////////////////////////////////////////////////
 
-  void appendValue(triagens::basics::StringBuffer*) const;
+  void appendValue(arangodb::basics::StringBuffer*) const;
 
   
  public:
@@ -938,8 +952,8 @@ struct AstNodeValueEqual {
 /// @brief append the AstNode to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator<<(std::ostream&, triagens::aql::AstNode const*);
-std::ostream& operator<<(std::ostream&, triagens::aql::AstNode const&);
+std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const*);
+std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
 
 #endif
 

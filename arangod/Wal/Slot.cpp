@@ -24,7 +24,7 @@
 #include "Wal/Slot.h"
 #include "Basics/hashes.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 
 ////////////////////////////////////////////////////////////////////////////////

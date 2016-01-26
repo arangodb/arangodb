@@ -25,21 +25,20 @@
 #define ARANGOD_V8_SERVER_V8_TIMER_TASK_H 1
 
 #include "Basics/Common.h"
-
 #include "Scheduler/TimerTask.h"
-
 #include "VocBase/vocbase.h"
 
-struct TRI_json_t;
 
+namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 
-namespace triagens {
 namespace rest {
 class Dispatcher;
 class Scheduler;
 }
 
-namespace arango {
 class ApplicationV8;
 
 class V8TimerTask : public rest::TimerTask {
@@ -48,7 +47,7 @@ class V8TimerTask : public rest::TimerTask {
 
   V8TimerTask(std::string const&, std::string const&, TRI_vocbase_t*,
               ApplicationV8*, rest::Scheduler*, rest::Dispatcher*, double,
-              std::string const&, struct TRI_json_t*, bool);
+              std::string const&, std::shared_ptr<arangodb::velocypack::Builder>, bool);
 
 
   ~V8TimerTask();
@@ -59,7 +58,7 @@ class V8TimerTask : public rest::TimerTask {
   /// @brief get a task specific description in JSON format
   //////////////////////////////////////////////////////////////////////////////
 
-  void getDescription(struct TRI_json_t*) const override;
+  void getDescription(arangodb::velocypack::Builder&) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the task is user-defined
@@ -87,7 +86,7 @@ class V8TimerTask : public rest::TimerTask {
   /// @brief V8 dealer
   //////////////////////////////////////////////////////////////////////////////
 
-  arango::ApplicationV8* _v8Dealer;
+  ApplicationV8* _v8Dealer;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispatcher
@@ -105,7 +104,7 @@ class V8TimerTask : public rest::TimerTask {
   /// @brief paramaters
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* _parameters;
+  std::shared_ptr<arangodb::velocypack::Builder> _parameters;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creation timestamp
@@ -120,8 +119,6 @@ class V8TimerTask : public rest::TimerTask {
   bool _allowUseDatabase;
 };
 }
-}
 
 #endif
-
 

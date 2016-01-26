@@ -1,15 +1,72 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
-* added option `--default-number-of-shards` to arangorestore
+* removed mostly unused internal spin-lock implementation
+
+* removed support for pre-Windows 7-style locks. This removes compatibility with
+  Windows versions older than Windows 7 (e.g. Windows Vista, Windows XP) or 
+  Windows 2008R2 (e.g. Windows 2008).
+
+* changed names of sub-threads started by arangod
+
+* added option `--default-number-of-shards` to arangorestore, allowing creating
+  collections with a specifiable number of shards from a non-cluster dump
 
 * removed support for CoffeeScript source files
 
 * removed undocumented SleepAndRequeue
 
+* added WorkMonitor to inspect server threads
 
-v2.8.0 (XXXX-XX-XX)
--------------------
+
+v2.8.0-beta8 (2016-01-19)
+-------------------------
+
+* improved internal datafile statistics for compaction and compaction triggering
+  conditions, preventing excessive growth of collection datafiles under some
+  workloads. This should also fix issue #1596.
+
+* renamed AQL optimizer rule `remove-collect-into` to `remove-collect-variables`
+
+* fixed primary and edge index lookups prematurely aborting searches when the
+  specified id search value contained a different collection than the collection
+  the index was created for
+
+
+v2.8.0-beta7 (2016-01-06)
+-------------------------
+
+* added vm.runInThisContext
+
+* added AQL keyword `AGGREGATE` for use in AQL `COLLECT` statement
+
+  Using `AGGREGATE` allows more efficient aggregation (incrementally while building
+  the groups) than previous versions of AQL, which built group aggregates afterwards
+  from the total of all group values.
+
+  `AGGREGATE` can be used inside a `COLLECT` statement only. If used, it must follow
+  the declaration of grouping keys:
+
+      FOR doc IN collection
+        COLLECT gender = doc.gender AGGREGATE minAge = MIN(doc.age), maxAge = MAX(doc.age)
+        RETURN { gender, minAge, maxAge }
+
+  or, if no grouping keys are used, it can follow the `COLLECT` keyword:
+      
+      FOR doc IN collection
+        COLLECT AGGREGATE minAge = MIN(doc.age), maxAge = MAX(doc.age)
+        RETURN { minAge, maxAge }
+
+  Only specific expressions are allowed on the right-hand side of each `AGGREGATE` 
+  assignment:
+
+  - on the top level the expression must be a call to one of the supported aggregation 
+    functions `LENGTH`, `MIN`, `MAX`, `SUM`, `AVERAGE`, `STDDEV_POPULATION`, `STDDEV_SAMPLE`, 
+    `VARIANCE_POPULATION`, or `VARIANCE_SAMPLE`
+
+  - the expression must not refer to variables introduced in the `COLLECT` itself
+
+* Foxx: mocha test paths with wildcard characters (asterisks) now work on Windows
 
 * reserved AQL keyword `NONE` for future use
 
@@ -376,7 +433,29 @@ v2.8.0-alpha1 (2015-12-03)
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
 
 
-v2.7.4 (XXXX-XX-XX)
+v2.7.5 (2016-01-22)
+-------------------
+
+* backported added automatic deadlock detection for transactions
+
+  In case a deadlock is detected, a multi-collection operation may be rolled back
+  automatically and fail with error 29 (`deadlock detected`). Client code for
+  operations containing more than one collection should be aware of this potential
+  error and handle it accordingly, either by giving up or retrying the transaction.
+
+* improved internal datafile statistics for compaction and compaction triggering
+  conditions, preventing excessive growth of collection datafiles under some
+  workloads. This should also fix issue #1596.
+
+* Foxx export cache should no longer break if a broken app is loaded in the
+  web admin interface.
+
+* Foxx: removed some incorrect deprecation warnings.
+
+* Foxx: mocha test paths with wildcard characters (asterisks) now work on Windows
+
+
+v2.7.4 (2015-12-21)
 -------------------
 
 * slightly adjusted V8 garbage collection strategy so that collection eventually

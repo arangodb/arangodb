@@ -30,8 +30,8 @@
 #include "VocBase/shaped-json.h"
 #include "VocBase/VocShaper.h"
 
-using namespace triagens::aql;
-using Json = triagens::basics::Json;
+using namespace arangodb::aql;
+using Json = arangodb::basics::Json;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +87,7 @@ AttributeAccessor::~AttributeAccessor() {}
 /// @brief execute the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AttributeAccessor::get(triagens::arango::AqlTransaction* trx,
+AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
                                 AqlItemBlock const* argv, size_t startPos,
                                 std::vector<Variable const*> const& vars,
                                 std::vector<RegisterId> const& regs) {
@@ -190,7 +190,7 @@ AqlValue AttributeAccessor::extractRev(AqlValue const& src) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AttributeAccessor::extractId(
-    AqlValue const& src, triagens::arango::AqlTransaction* trx,
+    AqlValue const& src, arangodb::AqlTransaction* trx,
     TRI_document_collection_t const* document) {
   if (_nameCache.value.empty()) {
     _nameCache.value = trx->resolver()->getCollectionName(document->_info.id());
@@ -211,7 +211,7 @@ AqlValue AttributeAccessor::extractId(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AttributeAccessor::extractFrom(AqlValue const& src,
-                                        triagens::arango::AqlTransaction* trx) {
+                                        arangodb::AqlTransaction* trx) {
   if (src._marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
       src._marker->_type != TRI_WAL_MARKER_EDGE) {
     return AqlValue(new Json(Json::Null));
@@ -239,7 +239,7 @@ AqlValue AttributeAccessor::extractFrom(AqlValue const& src,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AttributeAccessor::extractTo(AqlValue const& src,
-                                      triagens::arango::AqlTransaction* trx) {
+                                      arangodb::AqlTransaction* trx) {
   if (src._marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
       src._marker->_type != TRI_WAL_MARKER_EDGE) {
     return AqlValue(new Json(Json::Null));
@@ -267,7 +267,7 @@ AqlValue AttributeAccessor::extractTo(AqlValue const& src,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AttributeAccessor::extractRegular(
-    AqlValue const& src, triagens::arango::AqlTransaction* trx,
+    AqlValue const& src, arangodb::AqlTransaction* trx,
     TRI_document_collection_t const* document) {
   if (_shaper == nullptr) {
     _shaper = document->getShaper();

@@ -2326,7 +2326,7 @@ function AQL_SPLIT (value, separator, limit) {
 function AQL_SUBSTITUTE (value, search, replace, limit) {
   'use strict';
 
-  var pattern, patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
+  var pattern = "", patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
   value = AQL_TO_STRING(value);
 
   if (sWeight === TYPEWEIGHT_OBJECT) {
@@ -2386,6 +2386,10 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     pattern = patterns.join('|');
   }
 
+  if (pattern === "") {
+    return value;
+  }
+  
   if (limit === null || limit === undefined) {
     limit = undefined;
   }
@@ -2949,10 +2953,10 @@ function AQL_REVERSE (value) {
 function AQL_RANGE (from, to, step) {
   'use strict';
 
-  from = AQL_TO_NUMBER(from);
-  to = AQL_TO_NUMBER(to);
+  from = AQL_TO_NUMBER(from) || 0;
+  to = AQL_TO_NUMBER(to) || 0;
   
-  if (step === undefined) {
+  if (step === undefined || step === null) {
     if (from <= to) {
       step = 1;
     }
@@ -2964,7 +2968,7 @@ function AQL_RANGE (from, to, step) {
   step = AQL_TO_NUMBER(step);
 
   // check if we would run into an endless loop
-  if (step === 0) {
+  if (step === 0 || step === null) {
     WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -7114,46 +7118,6 @@ function AQL_EDGES (edgeCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to filter edges based on examples
-////////////////////////////////////////////////////////////////////////////////
-
-function FILTERED_EDGES (edges, vertex, direction, examples) {
-  'use strict';
-
-  var result = [ ];
-
-  FILTER(edges, examples).forEach (function (e) {
-    var key;
-
-    if (direction === "inbound") {
-      key = e._from;
-    }
-    else if (direction === "outbound") {
-      key = e._to;
-    }
-    else if (direction === "any") {
-      key = e._from;
-      if (key === vertex) {
-        key = e._to;
-      }
-    }
-
-    if (key === vertex) {
-      // do not return the start vertex itself
-      return;
-    }
-
-    try {
-      result.push({ edge: CLONE(e), vertex: DOCUMENT_HANDLE(key) });
-    }
-    catch (err) {
-    }
-  });
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7191,18 +7155,56 @@ function AQL_NEIGHBORS (vertexCollection,
       });
     }
   }
-  let edges = AQL_EDGES(edgeCollection, vertex, direction);
-  let tmp = FILTERED_EDGES(edges, vertex, direction, examples);
+  let edges = AQL_EDGES(edgeCollection, vertex, direction, examples, { includeVertices: options.includeData });
   let vertices = [];
   let distinct = new Set();
-  for (let i = 0; i < tmp.length; ++i) {
-    let v = tmp[i].vertex;
-    if (!distinct.has(v._id)) {
-      distinct.add(v._id);
-      if (options.includeData) {
-        vertices.push(v);
-      } else {
-        vertices.push(v._id);
+  if (options.includeData) {
+    for (let i = 0; i < edges.length; ++i) {
+      let id;
+      if (direction === "outbound") {
+        id = edges[i].edge._to;
+      }
+      else if (direction === "inbound") {
+        id = edges[i].edge._from;
+      }
+      else {
+        // any
+        if (edges[i].edge._from === vertex) {
+          id = edges[i].edge._to;
+        }
+        else {
+          id = edges[i].edge._from;
+        }
+      }
+      
+      if (!distinct.has(id)) {
+        distinct.add(id);
+        vertices.push(edges[i].vertex);
+      }
+    }
+  }
+  else {
+    for (let i = 0; i < edges.length; ++i) {
+      let id;
+      if (direction === "outbound") {
+        id = edges[i]._to;
+      }
+      else if (direction === "inbound") {
+        id = edges[i]._from;
+      }
+      else {
+        // any
+        if (edges[i]._from === vertex) {
+          id = edges[i]._to;
+        }
+        else {
+          id = edges[i]._from;
+        }
+      }
+
+      if (!distinct.has(id)) {
+        distinct.add(id);
+        vertices.push(id);
       }
     }
   }

@@ -30,8 +30,7 @@
 #include "Basics/Dictionary.h"
 #include "Basics/StringBuffer.h"
 
-
-namespace triagens {
+namespace arangodb {
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +45,6 @@ class HttpResponse {
   HttpResponse(HttpResponse const&) = delete;
   HttpResponse& operator=(HttpResponse const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief http response codes
@@ -95,6 +93,7 @@ class HttpResponse {
     PRECONDITION_REQUIRED = 428,
     TOO_MANY_REQUESTS = 429,
     REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
+    UNAVAILABLE_FOR_LEGAL_REASONS = 451,
 
     SERVER_ERROR = 500,
     NOT_IMPLEMENTED = 501,
@@ -105,7 +104,6 @@ class HttpResponse {
     NOT_EXTENDED = 510
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the response is a HTTP HEAD response
@@ -136,7 +134,6 @@ class HttpResponse {
 
   static HttpResponseCode responseCode(int);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new http response
@@ -153,7 +150,6 @@ class HttpResponse {
 
   ~HttpResponse();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the response code
@@ -330,14 +326,12 @@ class HttpResponse {
 
   int deflate(size_t = 16384);
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks for special headers
   //////////////////////////////////////////////////////////////////////////////
 
   void checkHeader(char const* key, char const* value);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief response code
@@ -393,7 +387,6 @@ class HttpResponse {
 
   std::vector<char const*> _freeables;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief batch error count header
@@ -401,9 +394,9 @@ class HttpResponse {
 
   static std::string const BatchErrorHeader;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock serverHideProductHeader
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief was docuBlock serverHideProductHeader
+  ////////////////////////////////////////////////////////////////////////////////
 
   static bool HideProductHeader;
 };
@@ -411,5 +404,3 @@ class HttpResponse {
 }
 
 #endif
-
-

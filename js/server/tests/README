@@ -1,21 +1,20 @@
 Conventions for testing framework:
 ==================================
 
-All files in this directory whose name starts with "shell-"
-and ends with ".js" automatically take part in server
-shell tests (targets "shell_server" and "shell-server-only").
+All files in the directory "shell" and ends with ".js" automatically
+take part in server shell tests (targets "shell_server" and
+"shell-server-only").
 
-All files in this directory whose name starts with "ahuacatl-"
-and ends with ".js" automatically take part in server ahuacatl
-tests (target "shell_server_ahuacatl"). Those, whose filename
-contains the string "ranges-combined" are only taken if the
-flag "skipRanges" in the test options is set to false.
+All files in the directory "aql" and ends with ".js" automatically
+take part in server aql tests (target "shell_server_aql"). Those,
+whose filename contains the string "ranges-combined" are only taken if
+the flag "skipRanges" in the test options is set to false.
 
-If the filename contains the string "-cluster", then it is
-only executed when testing in cluster mode. If the filename
-contains the string "-noncluster", then it is only executed
-when testing in single instance mode.
+If the filename contains the string "-cluster", then it is only
+executed when testing in cluster mode. If the filename contains the
+string "-noncluster", then it is only executed when testing in single
+instance mode.
 
-If the filename contains the string "-disabled", then it is
-not executed at all. This is for tests that cannot be run from the
+If the filename contains the string "-disabled", then it is not
+executed at all. This is for tests that cannot be run from the
 JavaScript test framework and have to be run from the Makefile.

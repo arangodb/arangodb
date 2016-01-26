@@ -33,9 +33,14 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "VocBase/server.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <iostream>
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -43,10 +48,9 @@
 #pragma warning(disable : 4503)
 #endif
 
-using namespace std;
-using namespace triagens::arango;
-using triagens::basics::JsonHelper;
+using namespace arangodb;
 
+using arangodb::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single instance of ClusterInfo - will live as long as the server is
@@ -54,7 +58,6 @@ using triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 static ClusterInfo Instance;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a local helper to report errors and messages
@@ -69,10 +72,8 @@ static inline int setErrormsg(int ourerrno, std::string& errorMsg) {
 /// @brief check whether the JSON returns an error
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool hasError(TRI_json_t const* json) {
-  TRI_json_t const* error = TRI_LookupObjectJson(json, "error");
-
-  return (TRI_IsBooleanJson(error) && error->_value._boolean);
+static inline bool hasError(VPackSlice const& slice) {
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,22 +81,20 @@ static inline bool hasError(TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string extractErrorMessage(std::string const& shardId,
-                                  TRI_json_t const* json) {
+                                  VPackSlice const& slice) {
   std::string msg = " shardID:" + shardId + ": ";
 
   // add error message text
-  TRI_json_t const* errorMessage = TRI_LookupObjectJson(json, "errorMessage");
-  if (TRI_IsStringJson(errorMessage)) {
-    msg += std::string(errorMessage->_value._string.data,
-                  errorMessage->_value._string.length - 1);
-  }
+  msg += arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
 
   // add error number
-  TRI_json_t const* errorNum = TRI_LookupObjectJson(json, "errorNum");
-  if (TRI_IsNumberJson(errorNum)) {
-    msg += " (errNum=" + triagens::basics::StringUtils::itoa(
-                             static_cast<uint32_t>(errorNum->_value._number)) +
-           ")";
+  if (slice.hasKey("errorNum")) {
+    VPackSlice const errorNum = slice.get("errorNum");
+    if (errorNum.isNumber()) {
+      msg += " (errNum=" + arangodb::basics::StringUtils::itoa(
+                               errorNum.getNumericValue<uint32_t>()) +
+             ")";
+    }
   }
 
   return msg;
@@ -303,7 +302,7 @@ ClusterInfo::~ClusterInfo() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
-  MUTEX_LOCKER(_idLock);
+  MUTEX_LOCKER(mutexLocker, _idLock);
 
   if (_uniqid._currentValue + count - 1 >= _uniqid._upperValue) {
     uint64_t fetch = count;
@@ -366,19 +365,19 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
     {
       size_t expectedSize;
       {
-        READ_LOCKER(_DBServersProt.lock);
+        READ_LOCKER(readLocker, _DBServersProt.lock);
         expectedSize = _DBServers.size();
       }
 
       // look up database by name:
 
-      READ_LOCKER(_plannedDatabasesProt.lock);
+      READ_LOCKER(readLocker, _plannedDatabasesProt.lock);
       // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
       auto it = _plannedDatabases.find(databaseID);
 
       if (it != _plannedDatabases.end()) {
         // found the database in Plan
-        READ_LOCKER(_currentDatabasesProt.lock);
+        READ_LOCKER(readLocker, _currentDatabasesProt.lock);
         // _currentDatabases is
         //     a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
         auto it2 = _currentDatabases.find(databaseID);
@@ -422,13 +421,13 @@ std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
 
   size_t expectedSize;
   {
-    READ_LOCKER(_DBServersProt.lock);
+    READ_LOCKER(readLocker, _DBServersProt.lock);
     expectedSize = _DBServers.size();
   }
 
   {
-    READ_LOCKER(_plannedDatabasesProt.lock);
-    READ_LOCKER(_currentDatabasesProt.lock);
+    READ_LOCKER(readLockerPlanned, _plannedDatabasesProt.lock);
+    READ_LOCKER(readLockerCurrent, _currentDatabasesProt.lock);
     // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
     auto it = _plannedDatabases.begin();
 
@@ -477,7 +476,7 @@ static std::string const prefixPlannedDatabases = "Plan/Databases";
 
 void ClusterInfo::loadPlannedDatabases() {
   uint64_t storedVersion = _plannedDatabasesProt.version;
-  MUTEX_LOCKER(_plannedDatabasesProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _plannedDatabasesProt.mutex);
   if (_plannedDatabasesProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -503,10 +502,12 @@ void ClusterInfo::loadPlannedDatabases() {
 
     while (it != result._values.end()) {
       std::string const& name = (*it).first;
-      TRI_json_t* options = (*it).second._json;
+      // TODO: _plannedDatabases need to be moved to velocypack
+      // Than this can be merged to swap
+      TRI_json_t* options = arangodb::basics::VelocyPackHelper::velocyPackToJson((*it).second._vpack->slice());
 
-      // steal the json
-      (*it).second._json = nullptr;
+      // steal the VelocyPack
+      (*it).second._vpack.reset();
       newDatabases.insert(std::make_pair(name, options));
 
       ++it;
@@ -514,7 +515,7 @@ void ClusterInfo::loadPlannedDatabases() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_plannedDatabasesProt.lock);
+      WRITE_LOCKER(writeLocker, _plannedDatabasesProt.lock);
       _plannedDatabases.swap(newDatabases);
       _plannedDatabasesProt.version++;  // such that others notice our change
       _plannedDatabasesProt.isValid = true;  // will never be reset to false
@@ -564,7 +565,7 @@ static std::string const prefixCurrentDatabases = "Current/Databases";
 
 void ClusterInfo::loadCurrentDatabases() {
   uint64_t storedVersion = _currentDatabasesProt.version;
-  MUTEX_LOCKER(_currentDatabasesProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _currentDatabasesProt.mutex);
   if (_currentDatabasesProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -594,7 +595,7 @@ void ClusterInfo::loadCurrentDatabases() {
       // each entry consists of a database id and a collection id, separated by
       // '/'
       std::vector<std::string> parts =
-          triagens::basics::StringUtils::split(key, '/');
+          arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.empty()) {
         ++it;
@@ -614,9 +615,13 @@ void ClusterInfo::loadCurrentDatabases() {
 
       if (parts.size() == 2) {
         // got a server name
-        TRI_json_t* json = (*it).second._json;
-        // steal the JSON
-        (*it).second._json = nullptr;
+        //
+        // TODO: _plannedDatabases need to be moved to velocypack
+        // Than this can be merged to swap
+        TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson((*it).second._vpack->slice());
+
+        // steal the VelocyPack
+        (*it).second._vpack.reset();
         (*it2).second.insert(std::make_pair(parts[1], json));
       }
 
@@ -625,7 +630,7 @@ void ClusterInfo::loadCurrentDatabases() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_currentDatabasesProt.lock);
+      WRITE_LOCKER(writeLocker, _currentDatabasesProt.lock);
       _currentDatabases.swap(newDatabases);
       _currentDatabasesProt.version++;  // such that others notice our change
       _currentDatabasesProt.isValid = true;  // will never be reset to false
@@ -650,7 +655,7 @@ static std::string const prefixPlannedCollections = "Plan/Collections";
 
 void ClusterInfo::loadPlannedCollections() {
   uint64_t storedVersion = _plannedCollectionsProt.version;
-  MUTEX_LOCKER(_plannedCollectionsProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _plannedCollectionsProt.mutex);
   if (_plannedCollectionsProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -685,7 +690,7 @@ void ClusterInfo::loadPlannedCollections() {
       // each entry consists of a database id and a collection id, separated by
       // '/'
       std::vector<std::string> parts =
-          triagens::basics::StringUtils::split(key, '/');
+          arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.size() != 2) {
         // invalid entry
@@ -707,11 +712,13 @@ void ClusterInfo::loadPlannedCollections() {
         it2 = newCollections.find(database);
       }
 
-      TRI_json_t* json = (*it).second._json;
-      // steal the json
-      (*it).second._json = nullptr;
+      // TODO: The Collection info has to store VPack instead of JSON
+      TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
+          (*it).second._vpack->slice());
+      // steal the velocypack
+      (*it).second._vpack.reset();
 
-      auto collectionData = make_shared<CollectionInfo>(json);
+      auto collectionData = std::make_shared<CollectionInfo>(json);
       auto shardKeys = std::make_shared<std::vector<std::string>>(
           collectionData->shardKeys());
       newShardKeys.insert(make_pair(collection, shardKeys));
@@ -739,7 +746,7 @@ void ClusterInfo::loadPlannedCollections() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_plannedCollectionsProt.lock);
+      WRITE_LOCKER(writeLocker, _plannedCollectionsProt.lock);
       _plannedCollections.swap(newCollections);
       _shards.swap(newShards);
       _shardKeys.swap(newShardKeys);
@@ -772,7 +779,7 @@ std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
 
   while (true) {  // left by break
     {
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
       // look up database by id
       AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
@@ -801,9 +808,9 @@ std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
 /// @brief get properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
+arangodb::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
     CollectionInfo const& collection) {
-  triagens::arango::VocbaseCollectionInfo info(collection);
+  arangodb::VocbaseCollectionInfo info(collection);
   return info;
 }
 
@@ -828,7 +835,7 @@ std::vector<std::shared_ptr<CollectionInfo>> const ClusterInfo::getCollections(
   // always reload
   loadPlannedCollections();
 
-  READ_LOCKER(_plannedCollectionsProt.lock);
+  READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
   // look up database by id
   AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
@@ -862,7 +869,7 @@ std::vector<std::shared_ptr<CollectionInfo>> const ClusterInfo::getCollections(
 static std::string const prefixCurrentCollections = "Current/Collections";
 void ClusterInfo::loadCurrentCollections() {
   uint64_t storedVersion = _currentCollectionsProt.version;
-  MUTEX_LOCKER(_currentCollectionsProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _currentCollectionsProt.mutex);
   if (_currentCollectionsProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -893,7 +900,7 @@ void ClusterInfo::loadCurrentCollections() {
       // each entry consists of a database id, a collection id, and a shardID,
       // separated by '/'
       std::vector<std::string> parts =
-          triagens::basics::StringUtils::split(key, '/');
+          arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.size() != 3) {
         // invalid entry
@@ -916,9 +923,11 @@ void ClusterInfo::loadCurrentCollections() {
         it2 = newCollections.find(database);
       }
 
-      TRI_json_t* json = (*it).second._json;
-      // steal the json
-      (*it).second._json = nullptr;
+      // TODO: The Collection info has to store VPack instead of JSON
+      TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
+          (*it).second._vpack->slice());
+      // steal the velocypack
+      (*it).second._vpack.reset();
 
       // check whether we already have a CollectionInfoCurrent:
       DatabaseCollectionsCurrent::iterator it3 = it2->second.find(collection);
@@ -946,7 +955,7 @@ void ClusterInfo::loadCurrentCollections() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_currentCollectionsProt.lock);
+      WRITE_LOCKER(writeLocker, _currentCollectionsProt.lock);
       _currentCollections.swap(newCollections);
       _shardIds.swap(newShardIds);
       _currentCollectionsProt.version++;  // such that others notice our change
@@ -979,7 +988,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
 
   while (true) {
     {
-      READ_LOCKER(_currentCollectionsProt.lock);
+      READ_LOCKER(readLocker, _currentCollectionsProt.lock);
       // look up database by id
       AllCollectionsCurrent::const_iterator it =
           _currentCollections.find(databaseID);
@@ -1013,7 +1022,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
 ////////////////////////////////////////////////////////////////////////////////
 
 int ClusterInfo::createDatabaseCoordinator(std::string const& name,
-                                           TRI_json_t const* json,
+                                           VPackSlice const& slice,
                                            std::string& errorMsg, double timeout) {
   AgencyComm ac;
   AgencyCommResult res;
@@ -1029,10 +1038,10 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
     }
 
-    res = ac.casValue("Plan/Databases/" + name, json, false, 0.0, realTimeout);
+    res = ac.casValue("Plan/Databases/" + name, slice, false, 0.0, realTimeout);
     if (!res.successful()) {
       if (res._statusCode ==
-          triagens::rest::HttpResponse::PRECONDITION_FAILED) {
+          arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
         return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
       }
 
@@ -1066,23 +1075,20 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         std::string tmpMsg = "";
         bool tmpHaveError = false;
         for (it = res._values.begin(); it != res._values.end(); ++it) {
-          TRI_json_t const* json = (*it).second._json;
-          TRI_json_t const* error = TRI_LookupObjectJson(json, "error");
-          if (TRI_IsBooleanJson(error) && error->_value._boolean) {
+          VPackSlice slice = (*it).second._vpack->slice();
+          if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+                  slice, "error", false)) {
             tmpHaveError = true;
             tmpMsg += " DBServer:" + it->first + ":";
-            TRI_json_t const* errorMessage =
-                TRI_LookupObjectJson(json, "errorMessage");
-            if (TRI_IsStringJson(errorMessage)) {
-              tmpMsg += std::string(errorMessage->_value._string.data,
-                               errorMessage->_value._string.length - 1);
-            }
-            TRI_json_t const* errorNum = TRI_LookupObjectJson(json, "errorNum");
-            if (TRI_IsNumberJson(errorNum)) {
-              tmpMsg += " (errorNum=";
-              tmpMsg += basics::StringUtils::itoa(
-                  static_cast<uint32_t>(errorNum->_value._number));
-              tmpMsg += ")";
+            tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+            if (slice.hasKey("errorNum")) {
+              VPackSlice errorNum = slice.get("errorNum");
+              if (errorNum.isNumber()) {
+                tmpMsg += " (errorNum=";
+                tmpMsg += basics::StringUtils::itoa(
+                    errorNum.getNumericValue<uint32_t>());
+                tmpMsg += ")";
+              }
             }
           }
         }
@@ -1219,11 +1225,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     // check if a collection with the same name is already planned
     loadPlannedCollections();
 
-    READ_LOCKER(_plannedCollectionsProt.lock);
+    READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
     AllCollections::const_iterator it = _plannedCollections.find(databaseName);
     if (it != _plannedCollections.end()) {
-      Slice nameSl = json.get("name");
-      std::string const name = nameSl.isString() ? nameSl.copyString() : "";
+      std::string const name =
+          arangodb::basics::VelocyPackHelper::getStringValue(json, "name",
+                                                             "");
 
       DatabaseCollections::const_iterator it2 = (*it).second.find(name);
 
@@ -1273,23 +1280,19 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         std::string tmpMsg = "";
         bool tmpHaveError = false;
         for (auto const& p : res._values) {
-          TRI_json_t const* json = p.second._json;
-          TRI_json_t const* error = TRI_LookupObjectJson(json, "error");
-          if (TRI_IsBooleanJson(error) && error->_value._boolean) {
+          VPackSlice const slice = p.second._vpack->slice();
+          if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false)) {
             tmpHaveError = true;
             tmpMsg += " shardID:" + p.first + ":";
-            TRI_json_t const* errorMessage =
-                TRI_LookupObjectJson(json, "errorMessage");
-            if (TRI_IsStringJson(errorMessage)) {
-              tmpMsg += std::string(errorMessage->_value._string.data,
-                               errorMessage->_value._string.length - 1);
-            }
-            TRI_json_t const* errorNum = TRI_LookupObjectJson(json, "errorNum");
-            if (TRI_IsNumberJson(errorNum)) {
-              tmpMsg += " (errNum=";
-              tmpMsg += basics::StringUtils::itoa(
-                  static_cast<uint32_t>(errorNum->_value._number));
-              tmpMsg += ")";
+            tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+            if (slice.hasKey("errorNum")) {
+              VPackSlice const errorNum = slice.get("errorNum");
+              if (errorNum.isNumber()) {
+                tmpMsg += " (errNum=";
+                tmpMsg += basics::StringUtils::itoa(
+                    errorNum.getNumericValue<uint32_t>());
+                tmpMsg += ")";
+              }
             }
           }
         }
@@ -1431,12 +1434,13 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    TRI_json_t* json = (*it).second._json;
-    if (json == nullptr) {
+    VPackSlice const slice = it->second._vpack->slice();
+    if (slice.isNone()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json));
+    std::unique_ptr<TRI_json_t> copy(
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
     if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -1508,34 +1512,33 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    TRI_json_t* json = (*it).second._json;
-    if (json == nullptr) {
+    VPackSlice const slice = it->second._vpack->slice();
+    if (slice.isNone()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    TRI_vocbase_col_status_e old = (TRI_vocbase_col_status_e)
-        triagens::basics::JsonHelper::getNumericValue<int>(
-            json, "status", (int)TRI_VOC_COL_STATUS_CORRUPTED);
+    TRI_vocbase_col_status_e old = static_cast<TRI_vocbase_col_status_e>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+            slice, "status", static_cast<int>(TRI_VOC_COL_STATUS_CORRUPTED)));
 
     if (old == status) {
       // no status change
       return TRI_ERROR_NO_ERROR;
     }
 
-    TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+    std::unique_ptr<TRI_json_t> copy(arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
     if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "status");
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "status",
+    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "status");
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "status",
                           TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, status));
 
     res.clear();
     res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID,
-                      copy, 0.0);
+                      copy.get(), 0.0);
 
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, copy);
   }
 
   if (res.successful()) {
@@ -1553,22 +1556,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
 int ClusterInfo::ensureIndexCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     VPackSlice const& slice, bool create,
-    bool (*compare)(TRI_json_t const*, TRI_json_t const*),
-    TRI_json_t*& resultJson, std::string& errorMsg, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
-  return ensureIndexCoordinator(databaseName, collectionID, json.get(), create,
-                                compare, resultJson, errorMsg, timeout);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure an index in coordinator.
-////////////////////////////////////////////////////////////////////////////////
-
-int ClusterInfo::ensureIndexCoordinator(
-    std::string const& databaseName, std::string const& collectionID,
-    TRI_json_t const* json, bool create,
-    bool (*compare)(TRI_json_t const*, TRI_json_t const*),
+    bool (*compare)(VPackSlice const&, VPackSlice const&),
     TRI_json_t*& resultJson, std::string& errorMsg, double timeout) {
   AgencyComm ac;
 
@@ -1577,16 +1565,15 @@ int ClusterInfo::ensureIndexCoordinator(
   double const interval = getPollInterval();
 
   resultJson = nullptr;
-  TRI_json_t* newIndex = nullptr;
   int numberOfShards = 0;
 
   // check index id
   uint64_t iid = 0;
 
-  TRI_json_t const* idxJson = TRI_LookupObjectJson(json, "id");
-  if (TRI_IsStringJson(idxJson)) {
+  VPackSlice const idxSlice = slice.get("id");
+  if (idxSlice.isString()) {
     // use predefined index id
-    iid = triagens::basics::StringUtils::uint64(idxJson->_value._string.data);
+    iid = arangodb::basics::StringUtils::uint64(idxSlice.copyString());
   }
 
   if (iid == 0) {
@@ -1594,32 +1581,31 @@ int ClusterInfo::ensureIndexCoordinator(
     iid = uniqid();
   }
 
-  std::string const idString = triagens::basics::StringUtils::itoa(iid);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   std::string const key = "Plan/Collections/" + databaseName + "/" + collectionID;
   AgencyCommResult previous = ac.getValues(key, false);
   previous.parse("", false);
   auto it = previous._values.begin();
-  TRI_json_t const* previousVal;
+  bool usePrevious = true;
   if (it == previous._values.end()) {
     LOG_INFO("Entry for collection in Plan does not exist!");
-    previousVal = nullptr;
-  } else {
-    previousVal = it->second._json;
+    usePrevious = false;
   }
 
   loadPlannedCollections();
+  VPackBuilder newBuilder;
   // It is possible that between the fetching of the planned collections
   // and the write lock we acquire below something has changed. Therefore
   // we first get the previous value and then do a compare and swap operation.
   {
-    TRI_json_t* collectionJson = nullptr;
     AgencyCommLocker locker("Plan", "WRITE");
 
     if (!locker.successful()) {
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
     }
 
+    std::shared_ptr<VPackBuilder> collectionBuilder;
     {
       std::shared_ptr<CollectionInfo> c =
           getCollection(databaseName, collectionID);
@@ -1629,40 +1615,40 @@ int ClusterInfo::ensureIndexCoordinator(
       // that getCollection fetches the read lock and releases it before
       // we get it again.
       //
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
 
       if (c->empty()) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
       }
 
-      TRI_json_t const* indexes = c->getIndexes();
+      std::shared_ptr<VPackBuilder> tmp =
+          arangodb::basics::JsonHelper::toVelocyPack(c->getIndexes());
       numberOfShards = c->numberOfShards();
+      VPackSlice const indexes = tmp->slice();
 
-      if (TRI_IsArrayJson(indexes)) {
+      if (indexes.isArray()) {
         bool hasSameIndexType = false;
-        TRI_json_t const* type = TRI_LookupObjectJson(json, "type");
+        VPackSlice const type = slice.get("type");
 
-        if (!TRI_IsStringJson(type)) {
+        if (!type.isString()) {
           return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
         }
 
-        size_t const n = TRI_LengthArrayJson(indexes);
-        for (size_t i = 0; i < n; ++i) {
-          TRI_json_t const* other = TRI_LookupArrayJson(indexes, i);
-
-          if (!TRI_CheckSameValueJson(TRI_LookupObjectJson(json, "type"),
-                                      TRI_LookupObjectJson(other, "type"))) {
+        for (auto const& other : VPackArrayIterator(indexes)) {
+          if (arangodb::basics::VelocyPackHelper::compare(
+                    type, other.get("type"), false) != 0) {
             // compare index types first. they must match
             continue;
           }
 
           hasSameIndexType = true;
 
-          bool isSame = compare(json, other);
+          bool isSame = compare(slice, other);
 
           if (isSame) {
             // found an existing index...
-            resultJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other);
+            resultJson = arangodb::basics::VelocyPackHelper::velocyPackToJson(
+                other);
             TRI_Insert3ObjectJson(
                 TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
                 TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
@@ -1670,7 +1656,7 @@ int ClusterInfo::ensureIndexCoordinator(
           }
         }
 
-        if (TRI_EqualString(type->_value._string.data, "cap")) {
+        if (type.copyString() == "cap") {
           // special handling for cap constraints
           if (hasSameIndexType) {
             // there can only be one cap constraint
@@ -1693,48 +1679,59 @@ int ClusterInfo::ensureIndexCoordinator(
       }
 
       // now create a new index
-      collectionJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, c->getJson());
+      collectionBuilder =
+          arangodb::basics::JsonHelper::toVelocyPack(c->getJson());
     }
+    VPackSlice const collectionSlice = collectionBuilder->slice();
 
-    if (collectionJson == nullptr) {
+    if (!collectionSlice.isObject()) {
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
-
-    TRI_json_t* idx = TRI_LookupObjectJson(collectionJson, "indexes");
-
-    if (idx == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+    try {
+      newBuilder.openObject();
+      // Create a new collection VPack with the new Index
+      for (auto const& entry : VPackObjectIterator(collectionSlice)) {
+        TRI_ASSERT(entry.key.isString());
+        std::string key = entry.key.copyString();
+        if (key == "indexes") {
+          TRI_ASSERT(entry.value.isArray());
+          newBuilder.add(key, VPackValue(VPackValueType::Array));
+          // Copy over all indexes known so far
+          for (auto const& idx : VPackArrayIterator(entry.value)) {
+            newBuilder.add(idx);
+          }
+          newBuilder.openObject();
+          // Add the new index ignoring "id"
+          for (auto const& e : VPackObjectIterator(slice)) {
+            TRI_ASSERT(e.key.isString());
+            std::string tmpkey = e.key.copyString();
+            if (tmpkey != "id") {
+              newBuilder.add(tmpkey, e.value);
+            }
+          }
+          newBuilder.add("id", VPackValue(idString));
+          newBuilder.close(); // the idx object
+          newBuilder.close(); // the array
+        }
+        else {
+          // Plain copy everything else
+          newBuilder.add(key, entry.value);
+        }
+      }
+      newBuilder.close();
+    } catch (...) {
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
-
-    newIndex = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-    if (newIndex == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
-      return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
-    }
-
-    // add index id
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, newIndex, "id",
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(),
-                                 idString.size()));
-
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, idx,
-                           TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, newIndex));
 
     AgencyCommResult result;
-    if (previousVal != nullptr) {
-      result = ac.casValue(key, previousVal, collectionJson, 0.0, 0.0);
+    if (usePrevious) {
+      result =
+          ac.casValue(key, it->second._vpack->slice(), newBuilder.slice(), 0.0, 0.0);
     } else {  // only when there is no previous value
-      result = ac.setValue(key, collectionJson, 0.0);
+      result = ac.setValue(key, newBuilder.slice(), 0.0);
     }
 
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
-
     if (!result.successful()) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
-      // TODO MAX
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
                          errorMsg);
     }
@@ -1748,7 +1745,6 @@ int ClusterInfo::ensureIndexCoordinator(
   // now wait for the index to appear
   AgencyCommResult res = ac.getValues("Current/Version", false);
   if (!res.successful()) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
@@ -1764,50 +1760,51 @@ int ClusterInfo::ensureIndexCoordinator(
 
         size_t found = 0;
         for (it = res._values.begin(); it != res._values.end(); ++it) {
-          TRI_json_t const* json = (*it).second._json;
-          TRI_json_t const* indexes = TRI_LookupObjectJson(json, "indexes");
-          if (!TRI_IsArrayJson(indexes)) {
-            // no list, so our index is not present. we can abort searching
-            break;
-          }
+          VPackSlice const slice = it->second._vpack->slice();
+          if (slice.hasKey("indexes")) {
+            VPackSlice const indexes = slice.get("indexes");
+            if (!indexes.isArray()) {
+              // no list, so our index is not present. we can abort searching
+              break;
+            }
 
-          size_t const n = TRI_LengthArrayJson(indexes);
-          for (size_t i = 0; i < n; ++i) {
-            TRI_json_t const* v = TRI_LookupArrayJson(indexes, i);
+            for (auto const& v : VPackArrayIterator(indexes)) {
+              // check for errors
+              if (hasError(v)) {
+                std::string errorMsg = extractErrorMessage((*it).first, v);
 
-            // check for errors
-            if (hasError(v)) {
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
-              std::string errorMsg = extractErrorMessage((*it).first, v);
+                errorMsg = "Error during index creation: " + errorMsg;
 
-              errorMsg = "Error during index creation: " + errorMsg;
-
-              v = TRI_LookupObjectJson(v, "errorNum");
-              if (TRI_IsNumberJson(v)) {
-                // found a specific error number
-                return (int)v->_value._number;
+                // Returns the specific error number if set, or the general
+                // error
+                // otherwise
+                return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+                    v, "errorNum", TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
               }
 
-              // return generic error number
-              return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
+              VPackSlice const k = v.get("id");
+
+              if (!k.isString() || idString != k.copyString()) {
+                // this is not our index
+                continue;
+              }
+
+              // found our index
+              found++;
+              break;
             }
-
-            TRI_json_t const* k = TRI_LookupObjectJson(v, "id");
-
-            if (!TRI_IsStringJson(k) ||
-                idString != std::string(k->_value._string.data)) {
-              // this is not our index
-              continue;
-            }
-
-            // found our index
-            found++;
-            break;
           }
         }
 
         if (found == (size_t)numberOfShards) {
-          resultJson = newIndex;
+          VPackSlice indexFinder = newBuilder.slice();
+          TRI_ASSERT(indexFinder.isObject());
+          indexFinder = indexFinder.get("indexes");
+          TRI_ASSERT(indexFinder.isArray());
+          VPackValueLength l = indexFinder.length();
+          indexFinder = indexFinder.at(l - 1); // Get the last index
+          TRI_ASSERT(indexFinder.isObject());
+          resultJson = arangodb::basics::VelocyPackHelper::velocyPackToJson(indexFinder);
           TRI_Insert3ObjectJson(
               TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
               TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
@@ -1823,7 +1820,6 @@ int ClusterInfo::ensureIndexCoordinator(
     index = res._index;
   }
 
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
 
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
@@ -1843,14 +1839,13 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   double const interval = getPollInterval();
 
   int numberOfShards = 0;
-  std::string const idString = triagens::basics::StringUtils::itoa(iid);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   std::string const key = "Plan/Collections/" + databaseName + "/" + collectionID;
   AgencyCommResult previous = ac.getValues(key, false);
   previous.parse("", false);
   auto it = previous._values.begin();
   TRI_ASSERT(it != previous._values.end());
-  TRI_json_t const* previousVal = it->second._json;
 
   loadPlannedCollections();
   // It is possible that between the fetching of the planned collections
@@ -1870,7 +1865,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       std::shared_ptr<CollectionInfo> c =
           getCollection(databaseName, collectionID);
 
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
 
       if (c->empty()) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
@@ -1944,13 +1939,13 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
     }
 
+    auto tmp = arangodb::basics::JsonHelper::toVelocyPack(collectionJson);
     AgencyCommResult result =
-        ac.casValue(key, previousVal, collectionJson, 0.0, 0.0);
+        ac.casValue(key, it->second._vpack->slice(), tmp->slice(), 0.0, 0.0);
 
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
 
     if (!result.successful()) {
-      // TODO MAX
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
                          errorMsg);
     }
@@ -1979,18 +1974,16 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
         bool found = false;
         for (it = res._values.begin(); it != res._values.end(); ++it) {
-          TRI_json_t const* json = (*it).second._json;
-          TRI_json_t const* indexes = TRI_LookupObjectJson(json, "indexes");
+          VPackSlice const slice = it->second._vpack->slice();
+          VPackSlice const indexes = slice.get("indexes");
 
-          if (TRI_IsArrayJson(indexes)) {
-            size_t const n = TRI_LengthArrayJson(indexes);
-            for (size_t i = 0; i < n; ++i) {
-              TRI_json_t const* v = TRI_LookupArrayJson(indexes, i);
+          if (indexes.isArray()) {
+            for (auto const& v : VPackArrayIterator(indexes)) {
 
-              if (TRI_IsObjectJson(v)) {
-                TRI_json_t const* k = TRI_LookupObjectJson(v, "id");
-                if (TRI_IsStringJson(k) &&
-                    idString == std::string(k->_value._string.data)) {
+              if (v.isObject()) {
+                VPackSlice const k = v.get("id");
+                if (k.isString() &&
+                    idString == k.copyString()) {
                   // still found the index in some shard
                   found = true;
                   break;
@@ -2028,7 +2021,7 @@ static std::string const prefixServers = "Current/ServersRegistered";
 
 void ClusterInfo::loadServers() {
   uint64_t storedVersion = _serversProt.version;
-  MUTEX_LOCKER(_serversProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
   if (_serversProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -2053,12 +2046,10 @@ void ClusterInfo::loadServers() {
         result._values.begin();
 
     while (it != result._values.end()) {
-      TRI_json_t const* sub = triagens::basics::JsonHelper::getObjectElement(
-          (*it).second._json, "endpoint");
-      if (nullptr != sub) {
-        std::string server =
-            triagens::basics::JsonHelper::getStringValue(sub, "");
-
+      VPackSlice const slice = it->second._vpack->slice();
+      if (slice.isObject() && slice.hasKey("endpoint")) {
+        std::string server = arangodb::basics::VelocyPackHelper::getStringValue(
+            slice, "endpoint", "");
         newServers.emplace(std::make_pair((*it).first, server));
       }
       ++it;
@@ -2066,7 +2057,7 @@ void ClusterInfo::loadServers() {
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_serversProt.lock);
+      WRITE_LOCKER(writeLocker, _serversProt.lock);
       _servers.swap(newServers);
       _serversProt.version++;       // such that others notice our change
       _serversProt.isValid = true;  // will never be reset to false
@@ -2097,7 +2088,7 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
 
   while (true) {
     {
-      READ_LOCKER(_serversProt.lock);
+      READ_LOCKER(readLocker, _serversProt.lock);
       // _servers is a map-type <ServerId, std::string>
       auto it = _servers.find(serverID);
 
@@ -2133,7 +2124,7 @@ std::string ClusterInfo::getServerName(std::string const& endpoint) {
 
   while (true) {
     {
-      READ_LOCKER(_serversProt.lock);
+      READ_LOCKER(readLocker, _serversProt.lock);
       for (auto const& it : _servers) {
         if (it.second == endpoint) {
           return it.first;
@@ -2161,7 +2152,7 @@ static std::string const prefixCurrentCoordinators = "Current/Coordinators";
 
 void ClusterInfo::loadCurrentCoordinators() {
   uint64_t storedVersion = _coordinatorsProt.version;
-  MUTEX_LOCKER(_coordinatorsProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _coordinatorsProt.mutex);
   if (_coordinatorsProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -2186,14 +2177,15 @@ void ClusterInfo::loadCurrentCoordinators() {
         result._values.begin();
 
     for (; it != result._values.end(); ++it) {
+      VPackSlice const slice = it->second._vpack->slice();
       newCoordinators.emplace(std::make_pair(
-          (*it).first, triagens::basics::JsonHelper::getStringValue(
-                           (*it).second._json, "")));
+          (*it).first,
+          arangodb::basics::VelocyPackHelper::getStringValue(slice, "")));
     }
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_coordinatorsProt.lock);
+      WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
       _coordinators.swap(newCoordinators);
       _coordinatorsProt.version++;       // such that others notice our change
       _coordinatorsProt.isValid = true;  // will never be reset to false
@@ -2217,7 +2209,7 @@ static std::string const prefixCurrentDBServers = "Current/DBServers";
 
 void ClusterInfo::loadCurrentDBServers() {
   uint64_t storedVersion = _DBServersProt.version;
-  MUTEX_LOCKER(_DBServersProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _DBServersProt.mutex);
   if (_DBServersProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -2242,14 +2234,15 @@ void ClusterInfo::loadCurrentDBServers() {
         result._values.begin();
 
     for (; it != result._values.end(); ++it) {
+      VPackSlice const slice = it->second._vpack->slice();
       newDBServers.emplace(std::make_pair(
-          (*it).first, triagens::basics::JsonHelper::getStringValue(
-                           (*it).second._json, "")));
+          (*it).first,
+          arangodb::basics::VelocyPackHelper::getStringValue(slice, "")));
     }
 
     // Now set the new value:
     {
-      WRITE_LOCKER(_DBServersProt.lock);
+      WRITE_LOCKER(writeLocker, _DBServersProt.lock);
       _DBServers.swap(newDBServers);
       _DBServersProt.version++;       // such that others notice our change
       _DBServersProt.isValid = true;  // will never be reset to false
@@ -2280,7 +2273,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
   while (true) {
     {
       // return a consistent state of servers
-      READ_LOCKER(_DBServersProt.lock);
+      READ_LOCKER(readLocker, _DBServersProt.lock);
 
       result.reserve(_DBServers.size());
 
@@ -2330,8 +2323,8 @@ std::string ClusterInfo::getTargetServerEndpoint(ServerID const& serverID) {
         result._values.find(serverID);
 
     if (it != result._values.end()) {
-      return triagens::basics::JsonHelper::getStringValue((*it).second._json,
-                                                          "");
+      VPackSlice const slice = it->second._vpack->slice();
+      return arangodb::basics::VelocyPackHelper::getStringValue(slice, "");
     }
   }
 
@@ -2357,7 +2350,7 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
 
   while (true) {
     {
-      READ_LOCKER(_currentCollectionsProt.lock);
+      READ_LOCKER(readLocker, _currentCollectionsProt.lock);
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
@@ -2392,7 +2385,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   while (true) {
     {
       // Get the sharding keys and the number of shards:
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
       // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
       auto it = _shards.find(collectionID);
 
@@ -2438,14 +2431,14 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int tries = 0;
   std::shared_ptr<std::vector<std::string>> shardKeysPtr;
-  char const** shardKeys = nullptr;
+  std::unique_ptr<char const*[]> shardKeys;
   std::shared_ptr<std::vector<ShardID>> shards;
   bool found = false;
 
   while (true) {
     {
       // Get the sharding keys and the number of shards:
-      READ_LOCKER(_plannedCollectionsProt.lock);
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
       // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
       auto it = _shards.find(collectionID);
 
@@ -2455,18 +2448,16 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
         auto it2 = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
-          shardKeys = new char const* [shardKeysPtr->size()];
-          if (shardKeys != nullptr) {
-            size_t i;
-            for (i = 0; i < shardKeysPtr->size(); ++i) {
-              shardKeys[i] = shardKeysPtr->at(i).c_str();
-            }
-            usesDefaultShardingAttributes =
-                shardKeysPtr->size() == 1 &&
-                shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
-            found = true;
-            break;  // all OK
+          shardKeys.reset(new char const*[shardKeysPtr->size()]);
+          size_t i;
+          for (i = 0; i < shardKeysPtr->size(); ++i) {
+            shardKeys[i] = shardKeysPtr->at(i).c_str();
           }
+          usesDefaultShardingAttributes =
+              shardKeysPtr->size() == 1 &&
+              shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
+          found = true;
+          break;  // all OK
         }
       }
     }
@@ -2482,14 +2473,12 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int error;
   uint64_t hash = TRI_HashJsonByAttributes(
-      json, shardKeys, (int)shardKeysPtr->size(), docComplete, &error);
+      json, shardKeys.get(), (int)shardKeysPtr->size(), docComplete, &error);
   static char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static size_t const len = 52;
   // To improve our hash function:
   hash = TRI_FnvHashBlock(hash, magicPhrase, len);
-
-  delete[] shardKeys;
 
   shardID = shards->at(hash % shards->size());
   return error;
@@ -2510,7 +2499,7 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
   while (true) {
     {
       // return a consistent state of servers
-      READ_LOCKER(_coordinatorsProt.lock);
+      READ_LOCKER(readLocker, _coordinatorsProt.lock);
 
       result.reserve(_coordinators.size());
 
@@ -2568,7 +2557,7 @@ ClusterInfo::FollowerInfo ClusterInfo::getFollowerInfo(ShardID& c) {
 ClusterInfo::FollowerInfo ClusterInfo::newFollowerInfo(ShardID& c,
                                                        int64_t& index) {
   // Mutex must already be locked, which is done in the getFollowerInfo methods
-  auto v = make_shared<std::vector<ServerID> const>();
+  auto v = std::make_shared<std::vector<ServerID> const>();
   _followerInfos.push_back(v);
   try {
     index = static_cast<int64_t>(_followerInfos.size() - 1);
@@ -2595,7 +2584,7 @@ void ClusterInfo::addFollower(ShardID& c, ServerID const& s) {
   auto it = _followerInfoTable.find(c);
   TRI_ASSERT(it != _followerInfoTable.end());
   size_t pos = static_cast<size_t>(it->second);
-  auto v = make_shared<std::vector<ServerID>>(*_followerInfos[pos]);
+  auto v = std::make_shared<std::vector<ServerID>>(*_followerInfos[pos]);
   v->push_back(s);
   _followerInfos[pos] = v;  // will cast to std::vector<ServerID> const
   // Now tell the agency:
@@ -2615,7 +2604,7 @@ void ClusterInfo::removeFollower(ShardID& c, ServerID const& s) {
   auto it = _followerInfoTable.find(c);
   TRI_ASSERT(it != _followerInfoTable.end());
   size_t pos = static_cast<size_t>(it->second);
-  auto v = make_shared<std::vector<ServerID>>();
+  auto v = std::make_shared<std::vector<ServerID>>();
   v->reserve(_followerInfos[pos]->size() - 1);
   for (auto const& i : *_followerInfos[pos]) {
     if (i != s) {

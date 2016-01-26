@@ -30,20 +30,19 @@
 
 #include <array>
 
-
-
-struct TRI_json_t;
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of a key in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_VOC_KEY_MAX_LENGTH (254)
 
-
+namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+}
 class KeyGenerator {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief available key generators
@@ -55,7 +54,6 @@ class KeyGenerator {
     TYPE_AUTOINCREMENT = 2
   };
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -70,7 +68,6 @@ class KeyGenerator {
 
   virtual ~KeyGenerator();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the lookup table for key checks
@@ -82,15 +79,14 @@ class KeyGenerator {
   /// @brief get the generator type from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneratorType generatorType(struct TRI_json_t const*);
+  static GeneratorType generatorType(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a key generator based on the options specified
   //////////////////////////////////////////////////////////////////////////////
 
-  static KeyGenerator* factory(struct TRI_json_t const*);
+  static KeyGenerator* factory(arangodb::velocypack::Slice const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a key
@@ -111,19 +107,23 @@ class KeyGenerator {
   virtual void track(TRI_voc_key_t) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a JSON representation of the generator
+  /// @brief return a VelocyPack representation of the generator
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual struct TRI_json_t* toJson(TRI_memory_zone_t*) const = 0;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
 
-  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief build a VelocyPack representation of the generator in the builder
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check global key attributes
   //////////////////////////////////////////////////////////////////////////////
 
   int globalCheck(std::string const&, bool);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the users can specify their own keys
@@ -138,9 +138,7 @@ class KeyGenerator {
   static std::array<bool, 256> LookupTable;
 };
 
-
 class TraditionalKeyGenerator : public KeyGenerator {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -154,7 +152,6 @@ class TraditionalKeyGenerator : public KeyGenerator {
 
   ~TraditionalKeyGenerator();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate a key
@@ -162,7 +159,6 @@ class TraditionalKeyGenerator : public KeyGenerator {
 
   static bool validateKey(char const* key);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a key
@@ -189,15 +185,13 @@ class TraditionalKeyGenerator : public KeyGenerator {
   static std::string name() { return "traditional"; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a JSON representation of the generator
+  /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* toJson(TRI_memory_zone_t*) const override;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
 };
 
-
 class AutoIncrementKeyGenerator : public KeyGenerator {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -211,7 +205,6 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 
   ~AutoIncrementKeyGenerator();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate a key
@@ -219,7 +212,6 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 
   static bool validateKey(char const* key);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a key
@@ -246,14 +238,13 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   static std::string name() { return "autoincrement"; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a JSON representation of the generator
+  /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* toJson(TRI_memory_zone_t*) const override;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
 
-  
  private:
-  triagens::basics::Mutex _lock;
+  arangodb::basics::Mutex _lock;
 
   uint64_t _lastValue;  // last value assigned
 
@@ -269,5 +260,3 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 bool TRI_ValidateDocumentIdKeyGenerator(char const*, size_t*);
 
 #endif
-
-

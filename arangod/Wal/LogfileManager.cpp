@@ -42,14 +42,13 @@
 #include "Wal/Slots.h"
 #include "Wal/SynchronizerThread.h"
 
-using namespace triagens::wal;
+using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the logfile manager singleton
 ////////////////////////////////////////////////////////////////////////////////
 
 static LogfileManager* Instance = nullptr;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum value for --wal.throttle-when-pending
@@ -95,8 +94,6 @@ static inline uint32_t MinSlots() { return 1024 * 8; }
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the logfile manager
@@ -181,7 +178,6 @@ LogfileManager::~LogfileManager() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the logfile manager instance
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,13 +197,13 @@ void LogfileManager::initialize(std::string* path, TRI_server_t* server) {
   Instance = new LogfileManager(server, path);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::setupOptions(std::map<
-    std::string, triagens::basics::ProgramOptionsDescription>& options) {
+void LogfileManager::setupOptions(
+    std::map<std::string, arangodb::basics::ProgramOptionsDescription>&
+        options) {
   options["Write-ahead log options:help-wal"](
       "wal.allow-oversize-entries", &_allowOversizeEntries,
       "allow entries that are bigger than --wal.logfile-size")(
@@ -237,9 +233,6 @@ void LogfileManager::setupOptions(std::map<
       "maximum wait time per operation when write-throttled (in milliseconds)");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::prepare() {
   static bool Prepared = false;
@@ -331,9 +324,6 @@ bool LogfileManager::prepare() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::start() {
   static bool started = false;
@@ -388,9 +378,6 @@ bool LogfileManager::start() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::open() {
   static bool opened = false;
@@ -413,7 +400,7 @@ bool LogfileManager::open() {
   // note all failed transactions that we found plus the list
   // of collections and databases that we can ignore
   {
-    WRITE_LOCKER(_transactionsLock);
+    WRITE_LOCKER(writeLocker, _transactionsLock);
 
     _failedTransactions.reserve(_recoverState->failedTransactions.size());
 
@@ -427,7 +414,7 @@ bool LogfileManager::open() {
 
   {
     // set every open logfile to a status of sealed
-    WRITE_LOCKER(_logfilesLock);
+    WRITE_LOCKER(writeLocker, _logfilesLock);
 
     for (auto& it : _logfiles) {
       Logfile* logfile = it.second;
@@ -444,7 +431,7 @@ bool LogfileManager::open() {
         // we don't care about the previous status here
         logfile->forceStatus(Logfile::StatusType::SEALED);
 
-        MUTEX_LOCKER(_idLock);
+        MUTEX_LOCKER(mutexLocker, _idLock);
 
         if (logfile->id() > _lastSealedId) {
           _lastSealedId = logfile->id();
@@ -527,15 +514,9 @@ bool LogfileManager::open() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::close() {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::stop() {
   if (!_startCalled) {
@@ -585,7 +566,6 @@ void LogfileManager::stop() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -602,7 +582,7 @@ int LogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
   try {
     auto p = std::make_pair(lastCollectedId, lastSealedId);
 
-    WRITE_LOCKER(_transactionsLock);
+    WRITE_LOCKER(writeLocker, _transactionsLock);
 
     // insert into currently running list of transactions
     _transactions.emplace(transactionId, std::move(p));
@@ -620,7 +600,7 @@ int LogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
 
 void LogfileManager::unregisterTransaction(TRI_voc_tid_t transactionId,
                                            bool markAsFailed) {
-  WRITE_LOCKER(_transactionsLock);
+  WRITE_LOCKER(writeLocker, _transactionsLock);
 
   _transactions.erase(transactionId);
 
@@ -637,7 +617,7 @@ std::unordered_set<TRI_voc_tid_t> LogfileManager::getFailedTransactions() {
   std::unordered_set<TRI_voc_tid_t> failedTransactions;
 
   {
-    READ_LOCKER(_transactionsLock);
+    READ_LOCKER(readLocker, _transactionsLock);
     failedTransactions = _failedTransactions;
   }
 
@@ -653,7 +633,7 @@ std::unordered_set<TRI_voc_cid_t> LogfileManager::getDroppedCollections() {
   std::unordered_set<TRI_voc_cid_t> droppedCollections;
 
   {
-    READ_LOCKER(_logfilesLock);
+    READ_LOCKER(readLocker, _logfilesLock);
     droppedCollections = _droppedCollections;
   }
 
@@ -669,7 +649,7 @@ std::unordered_set<TRI_voc_tick_t> LogfileManager::getDroppedDatabases() {
   std::unordered_set<TRI_voc_tick_t> droppedDatabases;
 
   {
-    READ_LOCKER(_logfilesLock);
+    READ_LOCKER(readLocker, _logfilesLock);
     droppedDatabases = _droppedDatabases;
   }
 
@@ -682,7 +662,7 @@ std::unordered_set<TRI_voc_tick_t> LogfileManager::getDroppedDatabases() {
 
 void LogfileManager::unregisterFailedTransactions(
     std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  WRITE_LOCKER(_transactionsLock);
+  WRITE_LOCKER(writeLocker, _transactionsLock);
 
   std::for_each(failedTransactions.begin(), failedTransactions.end(),
                 [&](TRI_voc_tid_t id) { _failedTransactions.erase(id); });
@@ -708,7 +688,7 @@ bool LogfileManager::logfileCreationAllowed(uint32_t size) {
 
   // note: this information could also be cached instead of being recalculated
   // every time
-  READ_LOCKER(_logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;
@@ -733,7 +713,7 @@ bool LogfileManager::hasReserveLogfiles() {
 
   // note: this information could also be cached instead of being recalculated
   // every time
-  READ_LOCKER(_logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock);
 
   // reverse-scan the logfiles map
   for (auto it = _logfiles.rbegin(); it != _logfiles.rend(); ++it) {
@@ -935,7 +915,7 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
   Logfile::IdType lastSealedLogfileId;
 
   {
-    MUTEX_LOCKER(_idLock);
+    MUTEX_LOCKER(mutexLocker, _idLock);
     lastOpenLogfileId = _lastOpenedId;
     lastSealedLogfileId = _lastSealedId;
   }
@@ -996,7 +976,7 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
 void LogfileManager::relinkLogfile(Logfile* logfile) {
   Logfile::IdType const id = logfile->id();
 
-  WRITE_LOCKER(_logfilesLock);
+  WRITE_LOCKER(writeLocker, _logfilesLock);
   _logfiles.emplace(id, logfile);
 }
 
@@ -1007,7 +987,7 @@ void LogfileManager::relinkLogfile(Logfile* logfile) {
 bool LogfileManager::unlinkLogfile(Logfile* logfile) {
   Logfile::IdType const id = logfile->id();
 
-  WRITE_LOCKER(_logfilesLock);
+  WRITE_LOCKER(writeLocker, _logfilesLock);
   auto it = _logfiles.find(id);
 
   if (it == _logfiles.end()) {
@@ -1024,7 +1004,7 @@ bool LogfileManager::unlinkLogfile(Logfile* logfile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile* LogfileManager::unlinkLogfile(Logfile::IdType id) {
-  WRITE_LOCKER(_logfilesLock);
+  WRITE_LOCKER(writeLocker, _logfilesLock);
   auto it = _logfiles.find(id);
 
   if (it == _logfiles.end()) {
@@ -1065,7 +1045,7 @@ bool LogfileManager::removeLogfiles() {
 void LogfileManager::setLogfileOpen(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
-  WRITE_LOCKER(_logfilesLock);
+  WRITE_LOCKER(writeLocker, _logfilesLock);
   logfile->setStatus(Logfile::StatusType::OPEN);
 }
 
@@ -1077,7 +1057,7 @@ void LogfileManager::setLogfileSealRequested(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
   {
-    WRITE_LOCKER(_logfilesLock);
+    WRITE_LOCKER(writeLocker, _logfilesLock);
     logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
   }
 
@@ -1100,7 +1080,7 @@ void LogfileManager::setLogfileSealed(Logfile* logfile) {
 
 void LogfileManager::setLogfileSealed(Logfile::IdType id) {
   {
-    WRITE_LOCKER(_logfilesLock);
+    WRITE_LOCKER(writeLocker, _logfilesLock);
 
     auto it = _logfiles.find(id);
 
@@ -1112,7 +1092,7 @@ void LogfileManager::setLogfileSealed(Logfile::IdType id) {
   }
 
   {
-    MUTEX_LOCKER(_idLock);
+    MUTEX_LOCKER(mutexLocker, _idLock);
     _lastSealedId = id;
   }
 }
@@ -1122,7 +1102,7 @@ void LogfileManager::setLogfileSealed(Logfile::IdType id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile::StatusType LogfileManager::getLogfileStatus(Logfile::IdType id) {
-  READ_LOCKER(_logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock);
 
   auto it = _logfiles.find(id);
 
@@ -1138,7 +1118,7 @@ Logfile::StatusType LogfileManager::getLogfileStatus(Logfile::IdType id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::getLogfileDescriptor(Logfile::IdType id) {
-  READ_LOCKER(_logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock);
 
   auto it = _logfiles.find(id);
 
@@ -1182,7 +1162,7 @@ std::vector<Logfile*> LogfileManager::getLogfilesForTickRange(
   // threads
 
   {
-    READ_LOCKER(_logfilesLock);
+    READ_LOCKER(readLocker, _logfilesLock);
     temp.reserve(_logfiles.size());
     matching.reserve(_logfiles.size());
 
@@ -1246,7 +1226,7 @@ void LogfileManager::returnLogfiles(std::vector<Logfile*> const& logfiles) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile* LogfileManager::getLogfile(Logfile::IdType id) {
-  READ_LOCKER(_logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock);
 
   auto it = _logfiles.find(id);
 
@@ -1263,7 +1243,7 @@ Logfile* LogfileManager::getLogfile(Logfile::IdType id) {
 
 Logfile* LogfileManager::getLogfile(Logfile::IdType id,
                                     Logfile::StatusType& status) {
-  READ_LOCKER(_logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock);
 
   auto it = _logfiles.find(id);
 
@@ -1299,7 +1279,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
 
   while (++iterations < MaxIterations) {
     {
-      WRITE_LOCKER(_logfilesLock);
+      WRITE_LOCKER(writeLocker, _logfilesLock);
       auto it = _logfiles.begin();
 
       while (it != _logfiles.end()) {
@@ -1313,7 +1293,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
           {
             // LOG_TRACE("setting lastOpenedId %llu", (unsigned long long)
             // logfile->id());
-            MUTEX_LOCKER(_idLock);
+            MUTEX_LOCKER(mutexLocker, _idLock);
             _lastOpenedId = logfile->id();
           }
 
@@ -1371,7 +1351,7 @@ Logfile* LogfileManager::getCollectableLogfile() {
   Logfile::IdType minId = UINT64_MAX;
 
   {
-    READ_LOCKER(_transactionsLock);
+    READ_LOCKER(readLocker, _transactionsLock);
 
     // iterate over all active transactions and find their minimum used logfile
     // id
@@ -1385,7 +1365,7 @@ Logfile* LogfileManager::getCollectableLogfile() {
   }
 
   {
-    READ_LOCKER(_logfilesLock);
+    READ_LOCKER(readLocker, _logfilesLock);
 
     for (auto& it : _logfiles) {
       auto logfile = it.second;
@@ -1420,7 +1400,7 @@ Logfile* LogfileManager::getRemovableLogfile() {
   Logfile::IdType minId = UINT64_MAX;
 
   {
-    READ_LOCKER(_transactionsLock);
+    READ_LOCKER(readLocker, _transactionsLock);
 
     // iterate over all active readers and find their minimum used logfile id
     for (auto const& it : _transactions) {
@@ -1437,7 +1417,7 @@ Logfile* LogfileManager::getRemovableLogfile() {
     uint32_t const minHistoricLogfiles = historicLogfiles();
     Logfile* first = nullptr;
 
-    WRITE_LOCKER(_logfilesLock);
+    WRITE_LOCKER(writeLocker, _logfilesLock);
 
     for (auto& it : _logfiles) {
       Logfile* logfile = it.second;
@@ -1492,7 +1472,7 @@ void LogfileManager::setCollectionRequested(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
   {
-    WRITE_LOCKER(_logfilesLock);
+    WRITE_LOCKER(writeLocker, _logfilesLock);
 
     if (logfile->status() == Logfile::StatusType::COLLECTION_REQUESTED) {
       // the collector already asked for this file, but couldn't process it
@@ -1520,12 +1500,12 @@ void LogfileManager::setCollectionDone(Logfile* logfile) {
   // LOG_ERROR("setCollectionDone setting lastCollectedId to %llu", (unsigned
   // long long) id);
   {
-    WRITE_LOCKER(_logfilesLock);
+    WRITE_LOCKER(writeLocker, _logfilesLock);
     logfile->setStatus(Logfile::StatusType::COLLECTED);
   }
 
   {
-    MUTEX_LOCKER(_idLock);
+    MUTEX_LOCKER(mutexLocker, _idLock);
     _lastCollectedId = id;
   }
 
@@ -1544,7 +1524,7 @@ void LogfileManager::forceStatus(Logfile* logfile, Logfile::StatusType status) {
   TRI_ASSERT(logfile != nullptr);
 
   {
-    WRITE_LOCKER(_logfilesLock);
+    WRITE_LOCKER(writeLocker, _logfilesLock);
     logfile->forceStatus(status);
   }
 }
@@ -1570,7 +1550,7 @@ LogfileManagerState LogfileManager::state() {
 LogfileRanges LogfileManager::ranges() {
   LogfileRanges result;
 
-  READ_LOCKER(_logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock);
 
   for (auto const& it : _logfiles) {
     Logfile* logfile = it.second;
@@ -1604,7 +1584,7 @@ LogfileManager::runningTransactions() {
 
   {
     Logfile::IdType value;
-    READ_LOCKER(_transactionsLock);
+    READ_LOCKER(readLocker, _transactionsLock);
 
     for (auto const& it : _transactions) {
       ++count;
@@ -1624,7 +1604,6 @@ LogfileManager::runningTransactions() {
   return std::tuple<size_t, Logfile::IdType, Logfile::IdType>(
       count, lastCollectedId, lastSealedId);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a logfile in the file system
@@ -1744,7 +1723,7 @@ int LogfileManager::runRecovery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::closeLogfiles() {
-  WRITE_LOCKER(_logfilesLock);
+  WRITE_LOCKER(writeLocker, _logfilesLock);
 
   for (auto& it : _logfiles) {
     Logfile* logfile = it.second;
@@ -1763,15 +1742,20 @@ void LogfileManager::closeLogfiles() {
 
 int LogfileManager::readShutdownInfo() {
   std::string const filename = shutdownFilename();
-
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename.c_str(), nullptr));
-
-  if (json == nullptr) {
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+  } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
 
-  uint64_t lastTick = basics::JsonHelper::stringUInt64(json.get(), "tick");
+  VPackSlice slice = builder->slice();
+  if (!slice.isObject()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  uint64_t lastTick =
+      arangodb::basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(lastTick));
 
   if (lastTick > 0) {
@@ -1779,20 +1763,21 @@ int LogfileManager::readShutdownInfo() {
   }
 
   // read id of last collected logfile (maybe 0)
-  uint64_t lastCollectedId =
-      basics::JsonHelper::stringUInt64(json.get(), "lastCollected");
+  uint64_t lastCollectedId = arangodb::basics::VelocyPackHelper::stringUInt64(
+      slice.get("lastCollected"));
 
   // read if of last sealed logfile (maybe 0)
   uint64_t lastSealedId =
-      basics::JsonHelper::stringUInt64(json.get(), "lastSealed");
+      arangodb::basics::VelocyPackHelper::stringUInt64(slice.get("lastSealed"));
 
   if (lastSealedId < lastCollectedId) {
     // should not happen normally
     lastSealedId = lastCollectedId;
   }
 
-  std::string const shutdownTime(
-      basics::JsonHelper::getStringValue(json.get(), "shutdownTime", ""));
+  std::string const shutdownTime =
+      arangodb::basics::VelocyPackHelper::getStringValue(slice, "shutdownTime",
+                                                         "");
   if (shutdownTime.empty()) {
     LOG_TRACE("no previous shutdown time found");
   } else {
@@ -1800,7 +1785,7 @@ int LogfileManager::readShutdownInfo() {
   }
 
   {
-    MUTEX_LOCKER(_idLock);
+    MUTEX_LOCKER(mutexLocker, _idLock);
     _lastCollectedId = static_cast<Logfile::IdType>(lastCollectedId);
     _lastSealedId = static_cast<Logfile::IdType>(lastSealedId);
 
@@ -1824,59 +1809,54 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
 
   std::string const filename = shutdownFilename();
 
-  std::unique_ptr<TRI_json_t> json(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
+  try {
+    VPackBuilder builder;
+    builder.openObject();
 
-  if (json == nullptr) {
+    // create local copies of the instance variables while holding the read lock
+    Logfile::IdType lastCollectedId;
+    Logfile::IdType lastSealedId;
+
+    {
+      MUTEX_LOCKER(mutexLocker, _idLock);
+      lastCollectedId = _lastCollectedId;
+      lastSealedId = _lastSealedId;
+    }
+
+    std::string val;
+
+    val = basics::StringUtils::itoa(TRI_CurrentTickServer());
+    builder.add("tick", VPackValue(val));
+
+    val = basics::StringUtils::itoa(lastCollectedId);
+    builder.add("lastCollected", VPackValue(val));
+
+    val = basics::StringUtils::itoa(lastSealedId);
+    builder.add("lastSealed", VPackValue(val));
+
+    if (writeShutdownTime) {
+      std::string const t(getTimeString());
+      builder.add("shutdownTime", VPackValue(t));
+    }
+    builder.close();
+
+    bool ok;
+    {
+      // grab a lock so no two threads can write the shutdown info at the same
+      // time
+      MUTEX_LOCKER(mutexLocker, _shutdownFileLock);
+      ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
+          filename.c_str(), builder.slice(), true);
+    }
+
+    if (!ok) {
+      LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
+      return TRI_ERROR_CANNOT_WRITE_FILE;
+    }
+  } catch (...) {
     LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
 
     return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // create local copies of the instance variables while holding the read lock
-  Logfile::IdType lastCollectedId;
-  Logfile::IdType lastSealedId;
-
-  {
-    MUTEX_LOCKER(_idLock);
-    lastCollectedId = _lastCollectedId;
-    lastSealedId = _lastSealedId;
-  }
-
-  std::string val;
-
-  val = basics::StringUtils::itoa(TRI_CurrentTickServer());
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "tick",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
-
-  val = basics::StringUtils::itoa(lastCollectedId);
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "lastCollected",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
-
-  val = basics::StringUtils::itoa(lastSealedId);
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "lastSealed",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
-
-  if (writeShutdownTime) {
-    std::string const t(getTimeString());
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, json.get(), "shutdownTime",
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, t.c_str(), t.size()));
-  }
-
-  bool ok;
-  {
-    // grab a lock so no two threads can write the shutdown info at the same
-    // time
-    MUTEX_LOCKER(_shutdownFileLock);
-    ok = TRI_SaveJson(filename.c_str(), json.get(), true);
-  }
-
-  if (!ok) {
-    LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
-    return TRI_ERROR_CANNOT_WRITE_FILE;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2054,7 +2034,7 @@ int LogfileManager::inventory() {
         // update global tick
         TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
-        WRITE_LOCKER(_logfilesLock);
+        WRITE_LOCKER(writeLocker, _logfilesLock);
         _logfiles.emplace(id, nullptr);
       }
     }
@@ -2070,7 +2050,7 @@ int LogfileManager::inventory() {
 int LogfileManager::inspectLogfiles() {
   LOG_TRACE("inspecting WAL logfiles");
 
-  WRITE_LOCKER(_logfilesLock);
+  WRITE_LOCKER(writeLocker, _logfilesLock);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   // print an inventory
@@ -2148,7 +2128,7 @@ int LogfileManager::inspectLogfiles() {
     }
 
     {
-      MUTEX_LOCKER(_idLock);
+      MUTEX_LOCKER(mutexLocker, _idLock);
       if (logfile->status() == Logfile::StatusType::SEALED &&
           id > _lastSealedId) {
         _lastSealedId = id;
@@ -2200,7 +2180,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
     return res;
   }
 
-  WRITE_LOCKER(_logfilesLock);
+  WRITE_LOCKER(writeLocker, _logfilesLock);
   _logfiles.emplace(id, logfile);
 
   return TRI_ERROR_NO_ERROR;
@@ -2280,5 +2260,4 @@ std::string LogfileManager::getTimeString() {
 
   return std::string(buffer, len);
 }
-
 

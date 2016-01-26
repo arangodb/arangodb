@@ -34,7 +34,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
@@ -712,7 +712,7 @@ class DocumentMarker : public Marker {
     return static_cast<size_t>(size() - m->_offsetJson);
   }
 
-  void storeLegend(triagens::basics::JsonLegend&);
+  void storeLegend(arangodb::basics::JsonLegend&);
 
   void dump() const;
 
@@ -779,7 +779,7 @@ class EdgeMarker : public Marker {
     return static_cast<size_t>(size() - m->_offsetJson);
   }
 
-  void storeLegend(triagens::basics::JsonLegend&);
+  void storeLegend(arangodb::basics::JsonLegend&);
 
   void dump() const;
 

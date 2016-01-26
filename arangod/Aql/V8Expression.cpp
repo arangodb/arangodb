@@ -32,7 +32,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/v8-shape-conv.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +65,7 @@ V8Expression::~V8Expression() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
-                               triagens::arango::AqlTransaction* trx,
+                               arangodb::AqlTransaction* trx,
                                AqlItemBlock const* argv, size_t startPos,
                                std::vector<Variable const*> const& vars,
                                std::vector<RegisterId> const& regs) {
@@ -160,7 +160,12 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
 #ifdef TRI_ENABLE_FAILURE_TESTS
     // now that the V8 function call is finished, check that our
     // constants actually were not modified
-    TRI_ASSERT(hasher(isolate, constantValues) == hash);
+    uint64_t cmpHash = hasher(isolate, constantValues);
+
+    if (hash != 0 && cmpHash != 0) {
+      // only compare if both values are not 0
+      TRI_ASSERT(hasher(isolate, constantValues) == hash);
+    }
 #endif
 
     v8g->_query = old;
@@ -191,7 +196,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto j = new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json.get());
+  auto j = new arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, json.get());
   json.release();
   return AqlValue(j);
 }

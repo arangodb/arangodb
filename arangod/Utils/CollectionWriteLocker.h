@@ -25,12 +25,10 @@
 #define ARANGOD_UTILS_COLLECTION_WRITE_LOCKER_H 1
 
 #include "Basics/Common.h"
-
 #include "VocBase/document-collection.h"
+#include "VocBase/transaction.h"
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 class CollectionWriteLocker {
   
@@ -45,7 +43,7 @@ class CollectionWriteLocker {
   CollectionWriteLocker(TRI_document_collection_t* document, bool doLock)
       : _document(document), _doLock(false) {
     if (doLock) {
-      _document->beginWrite();
+      _document->beginWriteTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
       _doLock = true;
     }
   }
@@ -83,8 +81,6 @@ class CollectionWriteLocker {
   bool _doLock;
 };
 }
-}
 
 #endif
-
 

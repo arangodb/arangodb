@@ -25,23 +25,21 @@
 #define ARANGOSH_BENCHMARK_BENCHMARK_COUNTER_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 
-namespace triagens {
+namespace arangodb {
 namespace arangob {
-
-
 
 template <class T>
 class BenchmarkCounter {
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the counter
   //////////////////////////////////////////////////////////////////////////////
 
-  BenchmarkCounter(T initialValue, const T maxValue)
+  BenchmarkCounter(T initialValue, T const maxValue)
       : _mutex(),
         _value(initialValue),
         _maxValue(maxValue),
@@ -55,14 +53,14 @@ class BenchmarkCounter {
 
   ~BenchmarkCounter() {}
 
-  
  public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the counter value
   //////////////////////////////////////////////////////////////////////////////
 
   T getValue() {
-    MUTEX_LOCKER(this->_mutex);
+    MUTEX_LOCKER(mutexLocker, this->_mutex);
     return _value;
   }
 
@@ -71,7 +69,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t failures() {
-    MUTEX_LOCKER(this->_mutex);
+    MUTEX_LOCKER(mutexLocker, this->_mutex);
     return _failures;
   }
 
@@ -80,7 +78,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t incompleteFailures() {
-    MUTEX_LOCKER(this->_mutex);
+    MUTEX_LOCKER(mutexLocker, this->_mutex);
     return _incompleteFailures;
   }
 
@@ -95,7 +93,7 @@ class BenchmarkCounter {
       realValue = 1;
     }
 
-    MUTEX_LOCKER(this->_mutex);
+    MUTEX_LOCKER(mutexLocker, this->_mutex);
 
     T oldValue = _value;
     if (oldValue + realValue > _maxValue) {
@@ -112,7 +110,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   void done(const T value) {
-    MUTEX_LOCKER(this->_mutex);
+    MUTEX_LOCKER(mutexLocker, this->_mutex);
 
     _done += value;
   }
@@ -122,7 +120,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   T getDone() {
-    MUTEX_LOCKER(this->_mutex);
+    MUTEX_LOCKER(mutexLocker, this->_mutex);
 
     return _done;
   }
@@ -132,7 +130,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   void incFailures(size_t const value) {
-    MUTEX_LOCKER(this->_mutex);
+    MUTEX_LOCKER(mutexLocker, this->_mutex);
     _failures += value;
   }
 
@@ -141,17 +139,17 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   void incIncompleteFailures(size_t const value) {
-    MUTEX_LOCKER(this->_mutex);
+    MUTEX_LOCKER(mutexLocker, this->_mutex);
     _incompleteFailures += value;
   }
 
-  
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mutex protecting the counter
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _mutex;
+  arangodb::basics::Mutex _mutex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current value
@@ -163,7 +161,7 @@ class BenchmarkCounter {
   /// @brief the maximum value
   //////////////////////////////////////////////////////////////////////////////
 
-  const T _maxValue;
+  T const _maxValue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the number of incomplete replies

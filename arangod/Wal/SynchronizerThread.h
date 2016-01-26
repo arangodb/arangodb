@@ -30,7 +30,7 @@
 #include "Wal/Logfile.h"
 #include "Wal/SyncRegion.h"
 
-namespace triagens {
+namespace arangodb {
 namespace wal {
 
 class LogfileManager;

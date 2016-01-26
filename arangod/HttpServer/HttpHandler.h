@@ -34,7 +34,7 @@
 #include "Statistics/StatisticsAgent.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class Dispatcher;
 class HttpHandlerFactory;
@@ -74,7 +74,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief status of execution
   //////////////////////////////////////////////////////////////////////////////
 
-  enum status_e { HANDLER_DONE, HANDLER_FAILED };
+  enum status_e { HANDLER_DONE, HANDLER_FAILED, HANDLER_ASYNC };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief result of execution

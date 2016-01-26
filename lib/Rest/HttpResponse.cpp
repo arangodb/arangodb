@@ -27,10 +27,9 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 using namespace std;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch error count header
@@ -135,6 +134,8 @@ std::string HttpResponse::responseString(HttpResponseCode code) {
       return "429 Too Many Requests";
     case REQUEST_HEADER_FIELDS_TOO_LARGE:
       return "431 Request Header Fields Too Large";
+    case UNAVAILABLE_FOR_LEGAL_REASONS:
+      return "451 Unavailable For Legal Reasons";
 
     case SERVER_ERROR:
       return "500 Internal Server Error";
@@ -179,7 +180,8 @@ std::string HttpResponse::responseString(HttpResponseCode code) {
 /// @brief get http response code from string
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpResponse::responseCode(std::string const& str) {
+HttpResponse::HttpResponseCode HttpResponse::responseCode(
+    std::string const& str) {
   int number = ::atoi(str.c_str());
 
   switch (number) {
@@ -264,6 +266,8 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode(std::string const& str
       return TOO_MANY_REQUESTS;
     case 431:
       return REQUEST_HEADER_FIELDS_TOO_LARGE;
+    case 451:
+      return UNAVAILABLE_FOR_LEGAL_REASONS;
 
     case 500:
       return SERVER_ERROR;
@@ -432,7 +436,6 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode(int code) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new http response
 ////////////////////////////////////////////////////////////////////////////////
@@ -463,7 +466,6 @@ HttpResponse::~HttpResponse() {
     delete[] it;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the response code
@@ -560,7 +562,7 @@ std::string HttpResponse::header(std::string const& key, bool& found) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string HttpResponse::header(char const* key, size_t keyLength,
-                            bool& found) const {
+                                 bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
   if (kv == nullptr) {
@@ -757,8 +759,8 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              int lifeTimeSeconds, std::string const& path,
                              std::string const& domain, bool secure,
                              bool httpOnly) {
-  triagens::basics::StringBuffer* buffer =
-      new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer* buffer =
+      new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
   std::string tmp = StringUtils::trim(name);
   buffer->appendText(tmp.c_str(), tmp.length());
@@ -1006,7 +1008,6 @@ int HttpResponse::deflate(size_t bufferSize) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for special headers
 ////////////////////////////////////////////////////////////////////////////////
@@ -1020,5 +1021,3 @@ void HttpResponse::checkHeader(char const* key, char const* value) {
     }
   }
 }
-
-

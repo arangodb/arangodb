@@ -32,20 +32,16 @@
 #include "Utils/CursorRepository.h"
 #include "V8Server/ApplicationV8.h"
 
-using namespace triagens::arango;
-using namespace triagens::rest;
-
+using namespace arangodb;
+using namespace arangodb::rest;
 
 
 RestSimpleQueryHandler::RestSimpleQueryHandler(
-    HttpRequest* request, std::pair<triagens::arango::ApplicationV8*,
-                                    triagens::aql::QueryRegistry*>* pair)
+    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
+                                    arangodb::aql::QueryRegistry*>* pair)
     : RestCursorHandler(request, pair) {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestSimpleQueryHandler::execute() {
   // extract the sub-request type
@@ -153,7 +149,7 @@ void RestSimpleQueryHandler::allDocuments() {
     VPackSlice s = data.slice();
     // now run the actual query and handle the result
     processQuery(s);
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::bad_alloc const&) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);

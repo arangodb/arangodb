@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock logPrefix
-/// @brief log prefix
-/// `--log.prefix prefix`
-///
-/// This option is used specify an prefix to logged text.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+@brief log prefix
+`--log.prefix prefix`
+
+This option is used specify an prefix to logged text.
+

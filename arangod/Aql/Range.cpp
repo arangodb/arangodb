@@ -23,7 +23,7 @@
 
 #include "Range.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Range constructor

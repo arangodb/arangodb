@@ -28,9 +28,12 @@
 #include "Basics/logging.h"
 #include "Scheduler/Scheduler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors
@@ -46,15 +49,12 @@ TimerTask::~TimerTask() { cleanup(); }
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a task specific description in JSON format
+/// @brief get a task specific description in VelocyPack format
 ////////////////////////////////////////////////////////////////////////////////
 
-void TimerTask::getDescription(TRI_json_t* json) const {
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json, "type",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "timed", strlen("timed")));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "offset",
-                        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _seconds));
+void TimerTask::getDescription(VPackBuilder& builder) const {
+  builder.add("type", VPackValue("timed"));
+  builder.add("offset", VPackValue(_seconds));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

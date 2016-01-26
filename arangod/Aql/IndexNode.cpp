@@ -29,18 +29,17 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Index.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
+using JsonHelper = arangodb::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for IndexNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexNode::toJsonHelper(triagens::basics::Json& nodes,
+void IndexNode::toJsonHelper(arangodb::basics::Json& nodes,
                              TRI_memory_zone_t* zone, bool verbose) const {
-  triagens::basics::Json json(
+  arangodb::basics::Json json(
       ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));
   // call base class method
 
@@ -49,11 +48,11 @@ void IndexNode::toJsonHelper(triagens::basics::Json& nodes,
   }
 
   // Now put info about vocbase and cid in there
-  json("database", triagens::basics::Json(_vocbase->_name))(
-      "collection", triagens::basics::Json(_collection->getName()))(
+  json("database", arangodb::basics::Json(_vocbase->_name))(
+      "collection", arangodb::basics::Json(_collection->getName()))(
       "outVariable", _outVariable->toJson());
 
-  triagens::basics::Json indexes(triagens::basics::Json::Array,
+  arangodb::basics::Json indexes(arangodb::basics::Json::Array,
                                  _indexes.size());
   for (auto& index : _indexes) {
     indexes.add(index->toJson());
@@ -61,7 +60,7 @@ void IndexNode::toJsonHelper(triagens::basics::Json& nodes,
 
   json("indexes", indexes);
   json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
-  json("reverse", triagens::basics::Json(_reverse));
+  json("reverse", arangodb::basics::Json(_reverse));
 
   // And add it:
   nodes(json);
@@ -87,7 +86,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 /// @brief constructor for IndexNode from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexNode::IndexNode(ExecutionPlan* plan, triagens::basics::Json const& json)
+IndexNode::IndexNode(ExecutionPlan* plan, arangodb::basics::Json const& json)
     : ExecutionNode(plan, json),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
@@ -117,8 +116,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, triagens::basics::Json const& json)
   TRI_json_t const* condition =
       JsonHelper::checkAndGetObjectValue(json.json(), "condition");
 
-  triagens::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition,
-                                       triagens::basics::Json::NOFREE);
+  arangodb::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition,
+                                       arangodb::basics::Json::NOFREE);
   _condition = Condition::fromJson(plan, conditionJson);
 
   TRI_ASSERT(_condition != nullptr);
@@ -148,7 +147,7 @@ double IndexNode::estimateCost(size_t& nrItems) const {
     double estimatedCost = 0.0;
     size_t estimatedItems = 0;
 
-    triagens::aql::AstNode const* condition;
+    arangodb::aql::AstNode const* condition;
     if (root == nullptr || root->numMembers() <= i) {
       condition = nullptr;
     } else {

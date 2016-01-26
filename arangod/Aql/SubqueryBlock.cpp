@@ -26,10 +26,8 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::arango;
-using namespace triagens::aql;
 
+using namespace arangodb::aql;
 
 SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
                              ExecutionBlock* subquery)

@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
 
-namespace triagens {
+namespace arangodb {
 namespace admin {
 
 
@@ -43,9 +43,6 @@ class RestAdminLogHandler : public RestBaseHandler {
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   bool isDirect() const override;
 

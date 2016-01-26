@@ -208,6 +208,9 @@ class Builder {
     if (that.options == nullptr) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
+    if (!that.isClosed()) {
+      throw Exception(Exception::InternalError, "Cannot move an open Builder");
+    }
     _buffer = that._buffer;
     that._buffer.reset(new Buffer<uint8_t>());
     _start = _buffer->data();
@@ -228,6 +231,9 @@ class Builder {
   Builder& operator=(Builder&& that) {
     if (that.options == nullptr) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+    }
+    if (!that.isClosed()) {
+      throw Exception(Exception::InternalError, "Cannot move an open Builder");
     }
     _buffer = that._buffer;
     that._buffer.reset(new Buffer<uint8_t>());

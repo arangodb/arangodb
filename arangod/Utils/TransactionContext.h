@@ -32,8 +32,7 @@
 
 struct TRI_transaction_s;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class TransactionContext {
   
@@ -95,8 +94,6 @@ class TransactionContext {
   virtual int unregisterTransaction() = 0;
 };
 }
-}
 
 #endif
-
 

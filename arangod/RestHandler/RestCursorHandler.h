@@ -33,14 +33,16 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-
-namespace triagens {
+namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
 namespace aql {
 class Query;
 class QueryRegistry;
 }
 
-namespace arango {
 class ApplicationV8;
 class Cursor;
 
@@ -49,43 +51,30 @@ class Cursor;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
-  
  public:
+  RestCursorHandler(
+      rest::HttpRequest*,
+      std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
 
-  RestCursorHandler(rest::HttpRequest*,
-                    std::pair<triagens::arango::ApplicationV8*,
-                              triagens::aql::QueryRegistry*>*);
-
-  
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
-
   virtual status_t execute() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   bool cancel() override;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief processes the query and returns the results/cursor
   /// this method is also used by derived classes
   //////////////////////////////////////////////////////////////////////////////
 
-  void processQuery(VPackSlice const&);
+  void processQuery(arangodb::velocypack::Slice const&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerQuery(triagens::aql::Query*);
+  void registerQuery(arangodb::aql::Query*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the currently running query
@@ -109,7 +98,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief build options for the query as JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  VPackBuilder buildOptions(VPackSlice const&) const;
+  arangodb::velocypack::Builder buildOptions(
+      arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds the "extra" attribute values from the result.
@@ -117,13 +107,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// several values
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json buildExtra(triagens::aql::QueryResult&) const;
+  arangodb::basics::Json buildExtra(arangodb::aql::QueryResult&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpCursor(triagens::arango::Cursor*);
+  void dumpCursor(arangodb::Cursor*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursor and return the first results
@@ -143,31 +133,30 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   void deleteCursor();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _applicationV8
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::arango::ApplicationV8* _applicationV8;
+  arangodb::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our query registry
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::QueryRegistry* _queryRegistry;
+  arangodb::aql::QueryRegistry* _queryRegistry;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Mutex _queryLock;
+  arangodb::basics::Mutex _queryLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::aql::Query* _query;
+  arangodb::aql::Query* _query;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query was killed
@@ -176,8 +165,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   bool _queryKilled;
 };
 }
-}
 
 #endif
-
 

@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_request_rawBodyBuffer
-///
-/// `request.rawBodyBuffer()`
-///
-/// The raw request body, returned as a Buffer object.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`request.rawBodyBuffer()`
+
+The raw request body, returned as a Buffer object.
+

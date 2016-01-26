@@ -129,7 +129,7 @@ inline bool isBase64U(unsigned char c) {
 }
 
 bool parseHexanumber(char const* inputStr, size_t len, uint32_t* outputInt) {
-  const uint32_t charVal[16] = {0, 1, 2,  3,  4,  5,  6,  7,
+  uint32_t const charVal[16] = {0, 1, 2,  3,  4,  5,  6,  7,
                                 8, 9, 10, 11, 12, 13, 14, 15};
   bool ok = true;
   for (size_t j = 0; j < len; j++) {
@@ -205,7 +205,7 @@ bool isLowSurrugate(uint32_t number) {
 }
 }
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 namespace StringUtils {
 

@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DispatcherThread.h"
-
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
@@ -31,14 +30,13 @@
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"
 #include "Scheduler/Scheduler.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-
-
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global, but thread-local place to hold the current dispatcher
@@ -48,25 +46,19 @@ using namespace triagens::rest;
 thread_local DispatcherThread* DispatcherThread::currentDispatcherThread =
     nullptr;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
 DispatcherThread::DispatcherThread(DispatcherQueue* queue)
-    : Thread("dispat" + (queue->_id == Dispatcher::STANDARD_QUEUE
-                             ? std::string("_std")
+    : Thread("Dispatcher" + (queue->_id == Dispatcher::STANDARD_QUEUE
+                             ? std::string("Std")
                              : (queue->_id == Dispatcher::AQL_QUEUE
-                                    ? std::string("_aql")
+                                    ? std::string("Aql")
                                     : ("_" + to_string(queue->_id))))),
       _queue(queue) {
   allowAsynchronousCancelation();
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::run() {
   currentDispatcherThread = this;
@@ -130,9 +122,6 @@ void DispatcherThread::run() {
   _queue->removeStartedThread(this);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::addStatus(VPackBuilder* b) {
   Thread::addStatus(b);

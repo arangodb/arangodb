@@ -33,7 +33,7 @@
 // TODO: change to constexpr when feasible
 #define CONNECTION_MANAGER_BUCKETS 8
 
-namespace triagens {
+namespace arangodb {
 namespace httpclient {
 
 
@@ -91,13 +91,13 @@ class ConnectionManager {
   struct SingleServerConnection {
     ServerConnections* _connections;
     GeneralClientConnection* _connection;
-    triagens::rest::Endpoint* _endpoint;
+    arangodb::rest::Endpoint* _endpoint;
     std::string const _endpointSpecification;
     time_t _lastUsed;
 
     SingleServerConnection(ServerConnections* manager,
                            GeneralClientConnection* connection,
-                           triagens::rest::Endpoint* endpoint,
+                           arangodb::rest::Endpoint* endpoint,
                            std::string const& endpointSpecification)
         : _connections(manager),
           _connection(connection),
@@ -115,7 +115,7 @@ class ConnectionManager {
   struct ServerConnections {
     std::vector<SingleServerConnection*> _connections;
     std::list<SingleServerConnection*> _unused;
-    triagens::basics::ReadWriteLock _lock;
+    arangodb::basics::ReadWriteLock _lock;
 
     ServerConnections() = default;
 
@@ -209,7 +209,7 @@ class ConnectionManager {
   struct TRI_ALIGNAS(64) ConnectionsBucket {
     std::unordered_map<std::string, ServerConnections*> _connections;
 
-    triagens::basics::ReadWriteLock _lock;
+    arangodb::basics::ReadWriteLock _lock;
   };
 
   ConnectionsBucket _connectionsBuckets[CONNECTION_MANAGER_BUCKETS];

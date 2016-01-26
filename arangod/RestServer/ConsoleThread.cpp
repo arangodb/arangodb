@@ -36,9 +36,9 @@
 #include "V8/v8-utils.h"
 #include <v8.h>
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+
 using namespace arangodb;
 using namespace std;
 
@@ -64,7 +64,7 @@ Mutex ConsoleThread::serverConsoleMutex;
 ConsoleThread::ConsoleThread(ApplicationServer* applicationServer,
                              ApplicationV8* applicationV8,
                              TRI_vocbase_t* vocbase)
-    : Thread("console"),
+    : Thread("Console"),
       _applicationServer(applicationServer),
       _applicationV8(applicationV8),
       _context(nullptr),
@@ -177,7 +177,7 @@ start_pretty_print();
     console.open(true);
 
     {
-      MUTEX_LOCKER(serverConsoleMutex);
+      MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
       serverConsole = &console;
     }
 
@@ -191,7 +191,7 @@ start_pretty_print();
       bool eof;
 
       {
-        MUTEX_LOCKER(serverConsoleMutex);
+        MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
         input = console.prompt("arangod> ", "arangod", eof);
       }
 
@@ -232,7 +232,7 @@ start_pretty_print();
     }
 
     {
-      MUTEX_LOCKER(serverConsoleMutex);
+      MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
       serverConsole = nullptr;
     }
   }

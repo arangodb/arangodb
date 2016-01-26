@@ -33,8 +33,7 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
 
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge key
@@ -81,8 +80,8 @@ static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
       hash = edge->_fromCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
     } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* edge =
-          reinterpret_cast<triagens::wal::edge_marker_t const*>(
+      arangodb::wal::edge_marker_t const* edge =
+          reinterpret_cast<arangodb::wal::edge_marker_t const*>(
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetFromKey;
 
@@ -126,8 +125,8 @@ static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
       hash = edge->_toCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
     } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* edge =
-          reinterpret_cast<triagens::wal::edge_marker_t const*>(
+      arangodb::wal::edge_marker_t const* edge =
+          reinterpret_cast<arangodb::wal::edge_marker_t const*>(
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetToKey;
 
@@ -171,8 +170,8 @@ static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
     // rEdge->_fromCid, rKey);
     return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* rEdge =
-        reinterpret_cast<triagens::wal::edge_marker_t const*>(
+    arangodb::wal::edge_marker_t const* rEdge =
+        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetFromKey;
 
@@ -216,8 +215,8 @@ static bool IsEqualKeyEdgeTo(void* userData, TRI_edge_header_t const* left,
 
     return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* rEdge =
-        reinterpret_cast<triagens::wal::edge_marker_t const*>(
+    arangodb::wal::edge_marker_t const* rEdge =
+        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetToKey;
 
@@ -268,8 +267,8 @@ static bool IsEqualElementEdgeFromByKey(void* userData,
     lKey = (char const*)lEdge + lEdge->_offsetFromKey;
     lCid = lEdge->_fromCid;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* lEdge =
-        reinterpret_cast<triagens::wal::edge_marker_t const*>(
+    arangodb::wal::edge_marker_t const* lEdge =
+        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     lKey = (char const*)lEdge + lEdge->_offsetFromKey;
     lCid = lEdge->_fromCid;
@@ -287,8 +286,8 @@ static bool IsEqualElementEdgeFromByKey(void* userData,
     rKey = (char const*)rEdge + rEdge->_offsetFromKey;
     rCid = rEdge->_fromCid;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* rEdge =
-        reinterpret_cast<triagens::wal::edge_marker_t const*>(
+    arangodb::wal::edge_marker_t const* rEdge =
+        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     rKey = (char const*)rEdge + rEdge->_offsetFromKey;
     rCid = rEdge->_fromCid;
@@ -333,8 +332,8 @@ static bool IsEqualElementEdgeToByKey(void* userData,
     lKey = (char const*)lEdge + lEdge->_offsetToKey;
     lCid = lEdge->_toCid;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* lEdge =
-        reinterpret_cast<triagens::wal::edge_marker_t const*>(
+    arangodb::wal::edge_marker_t const* lEdge =
+        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     lKey = (char const*)lEdge + lEdge->_offsetToKey;
     lCid = lEdge->_toCid;
@@ -352,8 +351,8 @@ static bool IsEqualElementEdgeToByKey(void* userData,
     rKey = (char const*)rEdge + rEdge->_offsetToKey;
     rCid = rEdge->_toCid;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* rEdge =
-        reinterpret_cast<triagens::wal::edge_marker_t const*>(
+    arangodb::wal::edge_marker_t const* rEdge =
+        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     rKey = (char const*)rEdge + rEdge->_offsetToKey;
     rCid = rEdge->_toCid;
@@ -424,7 +423,7 @@ void EdgeIndexIterator::reset() {
 
 EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
     : Index(iid, collection,
-            std::vector<std::vector<triagens::basics::AttributeName>>(
+            std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{{TRI_VOC_ATTRIBUTE_FROM, false}},
                  {{TRI_VOC_ATTRIBUTE_TO, false}}}),
             false, false),
@@ -455,8 +454,8 @@ EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-EdgeIndex::EdgeIndex(TRI_json_t const* json)
-    : Index(json), _edgesFrom(nullptr), _edgesTo(nullptr), _numBuckets(1) {}
+EdgeIndex::EdgeIndex(VPackSlice const& slice)
+    : Index(slice), _edgesFrom(nullptr), _edgesTo(nullptr), _numBuckets(1) {}
 
 EdgeIndex::~EdgeIndex() {
   delete _edgesTo;
@@ -495,65 +494,24 @@ size_t EdgeIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> EdgeIndex::toVelocyPack(
-    bool withFigures, bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder =
-      Index::toVelocyPack(withFigures, false);
+void EdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
 
   // hard-coded
-  builder->add("unique", VPackValue(false));
-  builder->add("sparse", VPackValue(false));
-
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
+  builder.add("unique", VPackValue(false));
+  builder.add("sparse", VPackValue(false));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
+/// @brief return a VelocyPack representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> EdgeIndex::toVelocyPackFigures(
-    bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPackFigures(false);
-  builder->add("buckets", VPackValue(_numBuckets));
-
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
+void EdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  Index::toVelocyPackFigures(builder);
+  builder.add("buckets", VPackValue(_numBuckets));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
-triagens::basics::Json EdgeIndex::toJson(TRI_memory_zone_t* zone,
-                                         bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  // hard-coded
-  json("unique", triagens::basics::Json(false))("sparse",
-                                                triagens::basics::Json(false));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-triagens::basics::Json EdgeIndex::toJsonFigures(TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(triagens::basics::Json::Object);
-
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
-  json("buckets", triagens::basics::Json(static_cast<double>(_numBuckets)));
-
-  return json;
-}
-
-int EdgeIndex::insert(triagens::arango::Transaction* trx,
+int EdgeIndex::insert(arangodb::Transaction* trx,
                       TRI_doc_mptr_t const* doc, bool isRollback) {
   auto element = const_cast<TRI_doc_mptr_t*>(doc);
   _edgesFrom->insert(trx, element, true, isRollback);
@@ -568,7 +526,7 @@ int EdgeIndex::insert(triagens::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int EdgeIndex::remove(triagens::arango::Transaction* trx,
+int EdgeIndex::remove(arangodb::Transaction* trx,
                       TRI_doc_mptr_t const* doc, bool) {
   _edgesFrom->remove(trx, doc);
   _edgesTo->remove(trx, doc);
@@ -576,7 +534,7 @@ int EdgeIndex::remove(triagens::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int EdgeIndex::batchInsert(triagens::arango::Transaction* trx,
+int EdgeIndex::batchInsert(arangodb::Transaction* trx,
                            std::vector<TRI_doc_mptr_t const*> const* documents,
                            size_t numThreads) {
   _edgesFrom->batchInsert(
@@ -594,7 +552,7 @@ int EdgeIndex::batchInsert(triagens::arango::Transaction* trx,
 /// by next
 ////////////////////////////////////////////////////////////////////////////////
 
-void EdgeIndex::lookup(triagens::arango::Transaction* trx,
+void EdgeIndex::lookup(arangodb::Transaction* trx,
                        TRI_edge_index_iterator_t const* edgeIndexIterator,
                        std::vector<TRI_doc_mptr_copy_t>& result,
                        TRI_doc_mptr_copy_t*& next, size_t batchSize) {
@@ -643,7 +601,7 @@ void EdgeIndex::lookup(triagens::arango::Transaction* trx,
 /// @brief provides a size hint for the edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-int EdgeIndex::sizeHint(triagens::arango::Transaction* trx, size_t size) {
+int EdgeIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
   // we assume this is called when setting up the index and the index
   // is still empty
   TRI_ASSERT(_edgesFrom->size() == 0);
@@ -670,12 +628,12 @@ int EdgeIndex::sizeHint(triagens::arango::Transaction* trx, size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EdgeIndex::supportsFilterCondition(
-    triagens::aql::AstNode const* node,
-    triagens::aql::Variable const* reference, size_t itemsInIndex,
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   SimpleAttributeEqualityMatcher matcher(
-      {{triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false)},
-       {triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
+      {{arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false)},
+       {arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
   return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                           estimatedCost);
 }
@@ -685,14 +643,14 @@ bool EdgeIndex::supportsFilterCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* EdgeIndex::iteratorForCondition(
-    triagens::arango::Transaction* trx, IndexIteratorContext* context,
-    triagens::aql::Ast* ast, triagens::aql::AstNode const* node,
-    triagens::aql::Variable const* reference, bool reverse) const {
+    arangodb::Transaction* trx, IndexIteratorContext* context,
+    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher(
-      {{triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false)},
-       {triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
+      {{arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false)},
+       {arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
 
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -713,7 +671,7 @@ IndexIterator* EdgeIndex::iteratorForCondition(
     // a.b == value
     return createIterator(
         trx, context, attrNode,
-        std::vector<triagens::aql::AstNode const*>({valNode}));
+        std::vector<arangodb::aql::AstNode const*>({valNode}));
   }
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -722,7 +680,7 @@ IndexIterator* EdgeIndex::iteratorForCondition(
       return nullptr;
     }
 
-    std::vector<triagens::aql::AstNode const*> valNodes;
+    std::vector<arangodb::aql::AstNode const*> valNodes;
     size_t const n = valNode->numMembers();
     valNodes.reserve(n);
     for (size_t i = 0; i < n; ++i) {
@@ -743,12 +701,12 @@ IndexIterator* EdgeIndex::iteratorForCondition(
 /// @brief specializes the condition for use with the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* EdgeIndex::specializeCondition(
-    triagens::aql::AstNode* node,
-    triagens::aql::Variable const* reference) const {
+arangodb::aql::AstNode* EdgeIndex::specializeCondition(
+    arangodb::aql::AstNode* node,
+    arangodb::aql::Variable const* reference) const {
   SimpleAttributeEqualityMatcher matcher(
-      {{triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false)},
-       {triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
+      {{arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false)},
+       {arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
 
   return matcher.specializeOne(this, node, reference);
 }
@@ -759,9 +717,9 @@ triagens::aql::AstNode* EdgeIndex::specializeCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* EdgeIndex::createIterator(
-    triagens::arango::Transaction* trx, IndexIteratorContext* context,
-    triagens::aql::AstNode const* attrNode,
-    std::vector<triagens::aql::AstNode const*> const& valNodes) const {
+    arangodb::Transaction* trx, IndexIteratorContext* context,
+    arangodb::aql::AstNode const* attrNode,
+    std::vector<arangodb::aql::AstNode const*> const& valNodes) const {
   // only leave the valid elements in the vector
   size_t const n = valNodes.size();
   std::vector<TRI_edge_header_t> keys;
@@ -793,15 +751,16 @@ IndexIterator* EdgeIndex::createIterator(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-
-  if (keys.empty()) {
-    // nothing to do
-    return nullptr;
-  }
-
+  
   // _from or _to?
   bool const isFrom =
       (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
+
+
+  if (keys.empty()) {
+    // nothing to do. still need to return an empty iterator
+    return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
+  }
 
   TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

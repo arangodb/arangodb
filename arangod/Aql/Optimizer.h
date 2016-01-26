@@ -30,7 +30,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <deque>
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -45,13 +45,13 @@ class Optimizer {
     int64_t rulesSkipped = 0;
     int64_t plansCreated = 1;  // 1 for the initial plan
 
-    VPackBuilder toVelocyPack() const {
-      VPackBuilder result;
+    std::shared_ptr<VPackBuilder> toVelocyPack() const {
+      auto result = std::make_shared<VPackBuilder>();
       {
-        VPackObjectBuilder b(&result);
-        result.add("rulesExecuted", VPackValue(rulesExecuted));
-        result.add("rulesSkipped", VPackValue(rulesSkipped));
-        result.add("plansCreated", VPackValue(plansCreated));
+        VPackObjectBuilder b(result.get());
+        result->add("rulesExecuted", VPackValue(rulesExecuted));
+        result->add("rulesSkipped", VPackValue(rulesSkipped));
+        result->add("plansCreated", VPackValue(plansCreated));
       }
       return result;
     }
@@ -165,7 +165,7 @@ class Optimizer {
     removeSortRandRule_pass5 = 720,
 
     // remove INTO for COLLECT if appropriate
-    removeCollectIntoRule_pass5 = 740,
+    removeCollectVariablesRule_pass5 = 740,
 
     // propagate constant attributes in FILTERs
     propagateConstantAttributesRule_pass5 = 750,
@@ -617,7 +617,7 @@ class Optimizer {
   /// @brief mutex to protect rule setup
   //////////////////////////////////////////////////////////////////////////////
 
-  static triagens::basics::Mutex SetupLock;
+  static arangodb::basics::Mutex SetupLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current set of plans to be optimized
@@ -645,6 +645,6 @@ class Optimizer {
 };
 
 }  // namespace aql
-}  // namespace triagens
+}  // namespace arangodb
 #endif
 

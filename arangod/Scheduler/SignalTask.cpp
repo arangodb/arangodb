@@ -29,8 +29,8 @@
 
 #include "Scheduler/Scheduler.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors
@@ -49,7 +49,7 @@ SignalTask::~SignalTask() { cleanup(); }
 // -----------------------------------------------------------------------------
 
 bool SignalTask::addSignal(int signal) {
-  MUTEX_LOCKER(_changeLock);
+  MUTEX_LOCKER(mutexLocker, _changeLock);
 
   if (_signals.size() >= MAX_SIGNALS) {
     LOG_ERROR("maximal number of signals reached");

@@ -32,7 +32,7 @@
 #include <unicode/ustring.h>
 
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 class Utf8Helper {

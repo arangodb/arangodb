@@ -27,9 +27,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-using namespace triagens::arango;
-
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new geo index, type "geo1"
@@ -37,7 +35,7 @@ using namespace triagens::arango;
 
 GeoIndex2::GeoIndex2(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<TRI_shape_pid_t> const& paths, bool geoJson)
     : Index(iid, collection, fields, false, true),
       _paths(paths),
@@ -63,7 +61,7 @@ GeoIndex2::GeoIndex2(
 
 GeoIndex2::GeoIndex2(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<TRI_shape_pid_t> const& paths)
     : Index(iid, collection, fields, false, true),
       _paths(paths),
@@ -95,8 +93,7 @@ size_t GeoIndex2::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json GeoIndex2::toJson(TRI_memory_zone_t* zone,
-                                         bool withDetails) const {
+void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   std::vector<std::string> f;
 
   auto shaper = _collection->getShaper();
@@ -127,15 +124,16 @@ triagens::basics::Json GeoIndex2::toJson(TRI_memory_zone_t* zone,
   }
 
   if (f.empty()) {
-    return triagens::basics::Json();
+    // No info to provide
+    return;
   }
 
-  // create json
-  auto json = Index::toJson(zone, withDetails);
+  // Basic index 
+  Index::toVelocyPack(builder, withFigures);
 
   if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
       _variant == INDEX_GEO_COMBINED_LON_LAT) {
-    json("geoJson", triagens::basics::Json(zone, _geoJson));
+    builder.add("geoJson", VPackValue(_geoJson));
   }
 
   // geo indexes are always non-unique
@@ -144,26 +142,13 @@ triagens::basics::Json GeoIndex2::toJson(TRI_memory_zone_t* zone,
   // backwards compatibility
   // the "constraint" attribute has no meaning since ArangoDB 2.5 and is only
   // returned for backwards compatibility
-  json("constraint", triagens::basics::Json(zone, false))(
-      "unique", triagens::basics::Json(zone, false))(
-      "ignoreNull", triagens::basics::Json(zone, true))(
-      "sparse", triagens::basics::Json(zone, true));
-
-  return json;
+  builder.add("constraint", VPackValue(false));
+  builder.add("unique", VPackValue(false));
+  builder.add("ignoreNull", VPackValue(true));
+  builder.add("sparse", VPackValue(true));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-triagens::basics::Json GeoIndex2::toJsonFigures(TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
-
-  return json;
-}
-
-int GeoIndex2::insert(triagens::arango::Transaction*, TRI_doc_mptr_t const* doc,
+int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                       bool) {
   auto shaper =
       _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -215,7 +200,7 @@ int GeoIndex2::insert(triagens::arango::Transaction*, TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
 
-int GeoIndex2::remove(triagens::arango::Transaction*, TRI_doc_mptr_t const* doc,
+int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                       bool) {
   TRI_shaped_json_t shapedJson;
 
@@ -254,7 +239,7 @@ int GeoIndex2::remove(triagens::arango::Transaction*, TRI_doc_mptr_t const* doc,
 /// @brief looks up all points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::withinQuery(triagens::arango::Transaction* trx,
+GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx,
                                        double lat, double lon,
                                        double radius) const {
   GeoCoordinate gc;
@@ -268,7 +253,7 @@ GeoCoordinates* GeoIndex2::withinQuery(triagens::arango::Transaction* trx,
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::nearQuery(triagens::arango::Transaction* trx,
+GeoCoordinates* GeoIndex2::nearQuery(arangodb::Transaction* trx,
                                      double lat, double lon,
                                      size_t count) const {
   GeoCoordinate gc;

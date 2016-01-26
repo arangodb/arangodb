@@ -28,10 +28,13 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/random.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -374,11 +377,11 @@ class SkipList {
   bool isArray() const { return _isArray; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Appends information about statistics in the given json.
+  /// @brief Appends information about statistics in the given VelocyPack.
   //////////////////////////////////////////////////////////////////////////////
 
-  void appendToJson(TRI_memory_zone_t* zone, Json& json) {
-    json("nrUsed", Json(static_cast<double>(_nrUsed)));
+  void appendToVelocyPack(VPackBuilder& builder) {
+    builder.add("nrUsed", VPackValue(_nrUsed));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -703,8 +706,8 @@ class SkipList {
 
 };  // class SkipList
 
-}  // namespace triagens::basics
-}  // namespace triagens
+}  // namespace arangodb::basics
+}  // namespace arangodb
 
 #endif
 

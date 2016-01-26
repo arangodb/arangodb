@@ -113,7 +113,6 @@
 #define TRI_HAVE_MACOS_MEM_STATS 1
 #define TRI_HAVE_LINUX_SOCKETS 1
 #define TRI_HAVE_MACH 1
-#define TRI_HAVE_MACOS_SPIN 1
 #define TRI_HAVE_POSIX_THREADS 1
 #define TRI_HAVE_POSIX_MMAP 1
 #define TRI_HAVE_POSIX_PWD_GRP 1
@@ -291,7 +290,6 @@
 
 #define TRI_HAVE_LINUX_PROC 1
 #define TRI_HAVE_LINUX_SOCKETS 1
-#define TRI_HAVE_POSIX_SPIN 1
 #define TRI_HAVE_POSIX_THREADS 1
 #define TRI_HAVE_POSIX_MMAP 1
 #define TRI_HAVE_POSIX_PWD_GRP 1
@@ -457,7 +455,6 @@
 #define TRI_HAVE_SC_PHYS_PAGES 1
 #define TRI_HAVE_LINUX_PROC 1
 #define TRI_HAVE_LINUX_SOCKETS 1
-#define TRI_HAVE_POSIX_SPIN 1
 #define TRI_HAVE_POSIX_THREADS 1
 #define TRI_HAVE_POSIX_MMAP 1
 #define TRI_HAVE_POSIX_PWD_GRP 1
@@ -603,7 +600,6 @@
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_HAVE_GETTID 1
 #define TRI_HAVE_GMTIME_S 1
 #define TRI_HAVE_LOCALTIME_S 1
 #define TRI_HAVE_STRTOI64 1

@@ -25,15 +25,9 @@
 #define ARANGOD_V8_SERVER_V8_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Utils/CollectionNameResolver.h"
 #include "v8-vocbase.h"
 #include "VocBase/server.h"
-#include "Utils/CollectionNameResolver.h"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a coordinator collection
-////////////////////////////////////////////////////////////////////////////////
-
-void FreeCoordinatorCollection(TRI_vocbase_col_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection
@@ -46,13 +40,13 @@ void ReleaseCollection(TRI_vocbase_col_t const* collection);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* CoordinatorCollection(
-    TRI_vocbase_t* vocbase, triagens::arango::CollectionInfo const& ci);
+    TRI_vocbase_t* vocbase, arangodb::CollectionInfo const& ci);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EqualCollection(triagens::arango::CollectionNameResolver const* resolver,
+bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
                      std::string const& collectionName,
                      TRI_vocbase_col_t const* collection);
 
@@ -65,7 +59,7 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
 
 void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                           TRI_vocbase_t* vocbase,
-                          triagens::arango::JSLoader* loader,
+                          arangodb::JSLoader* loader,
                           size_t const threadNumber, TRI_v8_global_t* v8g,
                           v8::Isolate* isolate,
                           v8::Handle<v8::ObjectTemplate> ArangoDBNS);

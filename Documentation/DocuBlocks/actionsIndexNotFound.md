@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsIndexNotFound
-///
-/// `actions.indexNotFound(req, res, collection, index, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`actions.indexNotFound(req, res, collection, index, headers)`
+
+The function generates an error response.
+

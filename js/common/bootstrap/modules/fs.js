@@ -5,12 +5,9 @@ global.DEFINE_MODULE('fs', (function () {
 /*eslint-enable */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module "fs"
-///
-/// @file
-///
 /// DISCLAIMER
 ///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +25,6 @@ global.DEFINE_MODULE('fs', (function () {
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ///
 /// Parts of the code are based on:
 ///
@@ -57,8 +53,6 @@ global.DEFINE_MODULE('fs', (function () {
 var exports = {};
 var isWindows = require('internal').platform.substr(0, 3) === 'win';
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pathSeparator
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +63,6 @@ if (global.PATH_SEPARATOR) {
   exports.pathSeparator = global.PATH_SEPARATOR;
   delete global.PATH_SEPARATOR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes path parts
@@ -179,7 +172,6 @@ var normalize = isWindows ? normalizeWindows : normalizePosix;
 
 exports.normalize = normalize;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exists
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +180,6 @@ if (global.FS_EXISTS) {
   exports.exists = global.FS_EXISTS;
   delete global.FS_EXISTS;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief chmod
@@ -538,12 +529,21 @@ if (global.FS_UNZIP_FILE) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief append
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_APPEND) {
+  exports.append = global.SYS_APPEND;
+  delete global.SYS_APPEND;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief write
 ////////////////////////////////////////////////////////////////////////////////
 
-if (global.SYS_SAVE) {
-  exports.write = global.SYS_SAVE;
-  delete global.SYS_SAVE;
+if (global.SYS_WRITE) {
+  exports.write = global.SYS_WRITE;
+  delete global.SYS_WRITE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -566,5 +566,3 @@ if (global.FS_ZIP_FILE) {
 return exports;
 
 }()));
-
-

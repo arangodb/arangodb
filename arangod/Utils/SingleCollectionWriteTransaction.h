@@ -32,14 +32,13 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 template <uint64_t N>
 class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   
-  
  public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection object
   ///
@@ -108,6 +107,8 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
   int createDocument(TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
                      bool forceSync) {
+    TRI_ASSERT(json != nullptr);
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -142,6 +143,8 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
   int createEdge(TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
                  bool forceSync, void const* data) {
+    TRI_ASSERT(json != nullptr);
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -217,7 +220,12 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
                      bool forceSync, TRI_voc_rid_t expectedRevision,
                      TRI_voc_rid_t* actualRevision) {
     std::unique_ptr<TRI_json_t> json(
-        triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
+
+    if (json == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
     return updateDocument(key, mptr, json.get(), policy, forceSync,
                           expectedRevision, actualRevision);
   }
@@ -231,6 +239,8 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
                      TRI_json_t const* json, TRI_doc_update_policy_e policy,
                      bool forceSync, TRI_voc_rid_t expectedRevision,
                      TRI_voc_rid_t* actualRevision) {
+    TRI_ASSERT(json != nullptr);
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -305,7 +315,6 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
   uint64_t _numWrites;
 };
-}
 }
 
 #endif

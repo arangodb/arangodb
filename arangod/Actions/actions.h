@@ -30,7 +30,7 @@
 
 struct TRI_vocbase_t;
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class HttpResponse;
 class HttpRequest;
@@ -58,7 +58,7 @@ class TRI_action_result_t {
   bool isValid;
   bool canceled;
 
-  triagens::rest::HttpResponse* response;
+  arangodb::rest::HttpResponse* response;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,11 +77,11 @@ class TRI_action_t {
   virtual ~TRI_action_t() {}
 
   virtual TRI_action_result_t execute(TRI_vocbase_t*,
-                                      triagens::rest::HttpRequest*,
-                                      triagens::basics::Mutex* dataLock,
+                                      arangodb::rest::HttpRequest*,
+                                      arangodb::basics::Mutex* dataLock,
                                       void** data) = 0;
 
-  virtual bool cancel(triagens::basics::Mutex* dataLock, void** data) = 0;
+  virtual bool cancel(arangodb::basics::Mutex* dataLock, void** data) = 0;
 
   std::string _type;
   std::string _url;
@@ -104,7 +104,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
 /// @brief looks up an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t* TRI_LookupActionVocBase(triagens::rest::HttpRequest* request);
+TRI_action_t* TRI_LookupActionVocBase(arangodb::rest::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes all defined actions

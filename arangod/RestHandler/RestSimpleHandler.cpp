@@ -37,14 +37,13 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::arango;
-using namespace triagens::rest;
-
+using namespace arangodb;
+using namespace arangodb::rest;
 
 
 RestSimpleHandler::RestSimpleHandler(
-    HttpRequest* request, std::pair<triagens::arango::ApplicationV8*,
-                                    triagens::aql::QueryRegistry*>* pair)
+    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
+                                    arangodb::aql::QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
       _queryRegistry(pair->second),
@@ -53,9 +52,6 @@ RestSimpleHandler::RestSimpleHandler(
       _queryKilled(false) {}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestSimpleHandler::execute() {
   // extract the request type
@@ -101,9 +97,6 @@ HttpHandler::status_t RestSimpleHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestSimpleHandler::cancel() { return cancelQuery(); }
 
@@ -112,8 +105,8 @@ bool RestSimpleHandler::cancel() { return cancelQuery(); }
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::registerQuery(triagens::aql::Query* query) {
-  MUTEX_LOCKER(_queryLock);
+void RestSimpleHandler::registerQuery(arangodb::aql::Query* query) {
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   TRI_ASSERT(_query == nullptr);
   _query = query;
@@ -124,7 +117,7 @@ void RestSimpleHandler::registerQuery(triagens::aql::Query* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestSimpleHandler::unregisterQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   _query = nullptr;
 }
@@ -134,7 +127,7 @@ void RestSimpleHandler::unregisterQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestSimpleHandler::cancelQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
     _query->killed(true);
@@ -150,7 +143,7 @@ bool RestSimpleHandler::cancelQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestSimpleHandler::wasCanceled() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
   return _queryKilled;
 }
 
@@ -217,10 +210,10 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     aql.append(waitForSync ? "true" : "false");
     aql.append(" }");
 
-    triagens::aql::Query query(
+    arangodb::aql::Query query(
         _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
-        triagens::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
-        nullptr, triagens::aql::PART_MAIN);
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
+        nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
@@ -241,18 +234,20 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
       size_t ignored = 0;
       size_t removed = 0;
-      VPackSlice stats = queryResult.stats.slice();
+      if (queryResult.stats != nullptr) {
+        VPackSlice stats = queryResult.stats->slice();
 
-      if (!stats.isNone()) {
-        TRI_ASSERT(stats.isObject());
-        VPackSlice found = stats.get("writesIgnored");
-        if (found.isNumber()) {
-          ignored = found.getNumericValue<size_t>();
-        }
+        if (!stats.isNone()) {
+          TRI_ASSERT(stats.isObject());
+          VPackSlice found = stats.get("writesIgnored");
+          if (found.isNumber()) {
+            ignored = found.getNumericValue<size_t>();
+          }
 
-        found = stats.get("writesExecuted");
-        if (found.isNumber()) {
-          removed = found.getNumericValue<size_t>();
+          found = stats.get("writesExecuted");
+          if (found.isNumber()) {
+            removed = found.getNumericValue<size_t>();
+          }
         }
       }
 
@@ -265,12 +260,12 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       result.close();
       VPackSlice s = result.slice();
 
-      triagens::basics::VPackStringBufferAdapter buffer(
+      arangodb::basics::VPackStringBufferAdapter buffer(
           _response->body().stringBuffer());
       VPackDumper dumper(&buffer);
       dumper.dump(s);
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (...) {
@@ -319,7 +314,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     bindVars.add(VPackValue(VPackValueType::Object));
     bindVars.add("@collection", VPackValue(collectionName));
     VPackBuilder strippedBuilder =
-        triagens::aql::BindParameters::StripCollectionNames(
+        arangodb::aql::BindParameters::StripCollectionNames(
             keys, collectionName.c_str());
     VPackSlice stripped = strippedBuilder.slice();
 
@@ -330,10 +325,10 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     std::string const aql(
         "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
-    triagens::aql::Query query(
+    arangodb::aql::Query query(
         _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
-        triagens::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
-        nullptr, triagens::aql::PART_MAIN);
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
+        nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
@@ -357,7 +352,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       createResponse(HttpResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
-      triagens::basics::Json result(triagens::basics::Json::Object, 3);
+      arangodb::basics::Json result(arangodb::basics::Json::Object, 3);
 
       if (TRI_IsArrayJson(queryResult.json)) {
         size_t const n = TRI_LengthArrayJson(queryResult.json);
@@ -366,9 +361,9 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         // Should not be documented
         VPackSlice const postFilter = slice.get("filter");
         if (postFilter.isArray()) {
-          std::vector<triagens::arango::traverser::TraverserExpression*>
+          std::vector<arangodb::traverser::TraverserExpression*>
               expressions;
-          triagens::basics::ScopeGuard guard{[]() -> void {},
+          arangodb::basics::ScopeGuard guard{[]() -> void {},
                                              [&expressions]() -> void {
                                                for (auto& e : expressions) {
                                                  delete e;
@@ -388,9 +383,9 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
             }
           }
 
-          triagens::basics::Json filteredDocuments(
-              triagens::basics::Json::Array, n);
-          triagens::basics::Json filteredIds(triagens::basics::Json::Array);
+          arangodb::basics::Json filteredDocuments(
+              arangodb::basics::Json::Array, n);
+          arangodb::basics::Json filteredIds(arangodb::basics::Json::Array);
 
           for (size_t i = 0; i < n; ++i) {
             TRI_json_t const* tmp = TRI_LookupArrayJson(queryResult.json, i);
@@ -401,9 +396,9 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
                   add = false;
                   try {
                     std::string _id =
-                        triagens::basics::JsonHelper::checkAndGetStringValue(
+                        arangodb::basics::JsonHelper::checkAndGetStringValue(
                             tmp, "_id");
-                    triagens::basics::Json tmp(_id);
+                    arangodb::basics::Json tmp(_id);
                     filteredIds.add(tmp.steal());
                   } catch (...) {
                     // This should never occur.
@@ -420,20 +415,20 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
           result.set("documents", filteredDocuments);
           result.set("filtered", filteredIds);
         } else {
-          result.set("documents", triagens::basics::Json(
+          result.set("documents", arangodb::basics::Json(
                                       TRI_UNKNOWN_MEM_ZONE, queryResult.json,
-                                      triagens::basics::Json::AUTOFREE));
+                                      arangodb::basics::Json::AUTOFREE));
           queryResult.json = nullptr;
         }
       } else {
-        result.set("documents", triagens::basics::Json(
+        result.set("documents", arangodb::basics::Json(
                                     TRI_UNKNOWN_MEM_ZONE, queryResult.json,
-                                    triagens::basics::Json::AUTOFREE));
+                                    arangodb::basics::Json::AUTOFREE));
         queryResult.json = nullptr;
       }
 
-      result.set("error", triagens::basics::Json(false));
-      result.set("code", triagens::basics::Json(
+      result.set("error", arangodb::basics::Json(false));
+      result.set("code", arangodb::basics::Json(
                              static_cast<double>(_response->responseCode())));
 
       // reserve 48 bytes per result document by default
@@ -445,7 +440,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
 
       result.dump(_response->body());
     }
-  } catch (triagens::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {

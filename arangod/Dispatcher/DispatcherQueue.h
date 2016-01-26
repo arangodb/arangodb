@@ -33,7 +33,7 @@
 #include "Dispatcher/Dispatcher.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class DispatcherThread;
 class Job;
@@ -138,7 +138,7 @@ class DispatcherQueue {
   /// @brief sets the process affinity
   //////////////////////////////////////////////////////////////////////////////
 
-  void setProcessorAffinity(const std::vector<size_t>& cores);
+  void setProcessorAffinity(std::vector<size_t> const& cores);
 
   
  private:

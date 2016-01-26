@@ -1,9 +1,8 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JS_GetTempPath
-/// @brief returns the temporary directory
-/// `fs.getTempPath()`
-///
-/// Returns the absolute path of the temporary directory
-///
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+@brief returns the temporary directory
+`fs.getTempPath()`
+
+Returns the absolute path of the temporary directory
+
+

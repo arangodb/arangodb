@@ -17,6 +17,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/ApplicationServer/ApplicationFeature.cpp \
 	arangod/ApplicationServer/ApplicationServer.cpp \
+	arangod/Aql/Aggregator.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
 	arangod/Aql/AqlItemBlockManager.cpp \
 	arangod/Aql/AqlValue.cpp \
@@ -48,7 +49,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Function.cpp \
 	arangod/Aql/Functions.cpp \
 	arangod/Aql/grammar.cpp \
-        arangod/Aql/Graphs.cpp \
+	arangod/Aql/Graphs.cpp \
 	arangod/Aql/Index.cpp \
 	arangod/Aql/IndexBlock.cpp \
 	arangod/Aql/IndexNode.cpp \
@@ -71,7 +72,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/SortNode.cpp \
 	arangod/Aql/SubqueryBlock.cpp \
 	arangod/Aql/tokens.cpp \
-        arangod/Aql/TraversalConditionFinder.cpp \
+	arangod/Aql/TraversalConditionFinder.cpp \
 	arangod/Aql/TraversalBlock.cpp \
 	arangod/Aql/TraversalNode.cpp \
 	arangod/Aql/V8Expression.cpp \
@@ -132,7 +133,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestBaseHandler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestCursorHandler.cpp \
-	arangod/RestHandler/RestDebugHelperHandler.cpp \
+	arangod/RestHandler/RestDebugHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestEdgesHandler.cpp \
@@ -149,6 +150,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVersionHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
+	arangod/RestHandler/WorkMonitorHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/ConsoleThread.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
@@ -204,6 +206,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/collection.cpp \
 	arangod/VocBase/compactor.cpp \
 	arangod/VocBase/datafile.cpp \
+	arangod/VocBase/DatafileStatistics.cpp \
 	arangod/VocBase/Ditch.cpp \
 	arangod/VocBase/document-collection.cpp \
 	arangod/VocBase/DocumentAccessor.cpp \

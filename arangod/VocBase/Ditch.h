@@ -25,21 +25,17 @@
 #define ARANGOD_VOC_BASE_DITCH_H 1
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
 #include "Basics/Mutex.h"
 
 #include <functional>
 
-
 struct TRI_document_collection_t;
 struct TRI_collection_t;
-struct TRI_datafile_s;
+struct TRI_datafile_t;
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class Ditches;
-
 
 class Ditch {
   friend class Ditches;
@@ -194,9 +190,9 @@ class CompactionDitch : public Ditch {
 
 class DropDatafileDitch : public Ditch {
  public:
-  DropDatafileDitch(Ditches* ditches, struct TRI_datafile_s* datafile,
+  DropDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
                     void* data,
-                    std::function<void(struct TRI_datafile_s*, void*)>,
+                    std::function<void(struct TRI_datafile_t*, void*)>,
                     char const* filename, int line);
 
   ~DropDatafileDitch();
@@ -209,9 +205,9 @@ class DropDatafileDitch : public Ditch {
   void executeCallback() { _callback(_datafile, _data); }
 
  private:
-  struct TRI_datafile_s* _datafile;
+  struct TRI_datafile_t* _datafile;
   void* _data;
-  std::function<void(struct TRI_datafile_s*, void*)> _callback;
+  std::function<void(struct TRI_datafile_t*, void*)> _callback;
 };
 
 
@@ -221,9 +217,9 @@ class DropDatafileDitch : public Ditch {
 
 class RenameDatafileDitch : public Ditch {
  public:
-  RenameDatafileDitch(Ditches* ditches, struct TRI_datafile_s* datafile,
+  RenameDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
                       void* data,
-                      std::function<void(struct TRI_datafile_s*, void*)>,
+                      std::function<void(struct TRI_datafile_t*, void*)>,
                       char const* filename, int line);
 
   ~RenameDatafileDitch();
@@ -236,9 +232,9 @@ class RenameDatafileDitch : public Ditch {
   void executeCallback() { _callback(_datafile, _data); }
 
  private:
-  struct TRI_datafile_s* _datafile;
+  struct TRI_datafile_t* _datafile;
   void* _data;
-  std::function<void(struct TRI_datafile_s*, void*)> _callback;
+  std::function<void(struct TRI_datafile_t*, void*)> _callback;
 };
 
 
@@ -274,7 +270,7 @@ class UnloadCollectionDitch : public Ditch {
 class DropCollectionDitch : public Ditch {
  public:
   DropCollectionDitch(
-      triagens::arango::Ditches* ditches, struct TRI_collection_t* collection,
+      arangodb::Ditches* ditches, struct TRI_collection_t* collection,
       void* data, std::function<bool(struct TRI_collection_t*, void*)> callback,
       char const* filename, int line);
 
@@ -392,8 +388,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   DropDatafileDitch* createDropDatafileDitch(
-      struct TRI_datafile_s* datafile, void* data,
-      std::function<void(struct TRI_datafile_s*, void*)> callback,
+      struct TRI_datafile_t* datafile, void* data,
+      std::function<void(struct TRI_datafile_t*, void*)> callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -401,8 +397,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   RenameDatafileDitch* createRenameDatafileDitch(
-      struct TRI_datafile_s* datafile, void* data,
-      std::function<void(struct TRI_datafile_s*, void*)> callback,
+      struct TRI_datafile_t* datafile, void* data,
+      std::function<void(struct TRI_datafile_t*, void*)> callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -441,12 +437,11 @@ class Ditches {
  private:
   struct TRI_document_collection_t* _collection;
 
-  triagens::basics::Mutex _lock;
+  arangodb::basics::Mutex _lock;
   Ditch* _begin;
   Ditch* _end;
   uint64_t _numDocumentDitches;
 };
-}
 }
 
 #endif

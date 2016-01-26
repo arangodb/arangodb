@@ -32,14 +32,17 @@
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 
-
 struct TRI_json_t;
 class TRI_replication_applier_configuration_t;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
 
-namespace triagens {
+namespace arangodb {
+
+namespace velocypack {
+class Slice;
+}
 
 namespace httpclient {
 class GeneralClientConnection;
@@ -51,9 +54,7 @@ namespace rest {
 class Endpoint;
 }
 
-namespace arango {
 class Transaction;
-
 
 class Syncer {
   
@@ -88,6 +89,7 @@ class Syncer {
 
   
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection id from JSON
   //////////////////////////////////////////////////////////////////////////////
@@ -95,16 +97,28 @@ class Syncer {
   TRI_voc_cid_t getCid(struct TRI_json_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the collection id from VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_voc_cid_t getCid(arangodb::velocypack::Slice const&) const;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection name from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  char const* getCName(struct TRI_json_t const*) const;
+  std::string getCName(struct TRI_json_t const*) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the collection name from VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string getCName(arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(triagens::arango::Transaction*,
+  int applyCollectionDumpMarker(arangodb::Transaction*,
                                 struct TRI_transaction_collection_s*,
                                 TRI_replication_operation_e,
                                 const TRI_voc_key_t, const TRI_voc_rid_t,
@@ -127,6 +141,12 @@ class Syncer {
   //////////////////////////////////////////////////////////////////////////////
 
   int createIndex(struct TRI_json_t const*);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates an index, based on the VelocyPack provided
+  //////////////////////////////////////////////////////////////////////////////
+
+  int createIndex(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drops an index, based on the JSON provided
@@ -214,7 +234,6 @@ class Syncer {
 
   static std::string const BaseUrl;
 };
-}
 }
 
 #endif

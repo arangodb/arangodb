@@ -25,28 +25,21 @@
 #define ARANGOD_REST_HANDLER_REST_UPLOAD_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 
 class RestUploadHandler : public RestVocbaseBaseHandler {
-  
   
  public:
 
   explicit RestUploadHandler(rest::HttpRequest*);
 
-
   ~RestUploadHandler();
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   HttpHandler::status_t execute();
 
@@ -57,7 +50,6 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
 
   bool parseMultiPart(char const*&, size_t&);
 };
-}
 }
 
 #endif

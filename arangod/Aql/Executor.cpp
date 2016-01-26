@@ -34,7 +34,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/v8-shape-conv.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ using namespace triagens::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 static ExecutionCondition const NotInCluster = [] {
-  return !triagens::arango::ServerState::instance()->isRunningInCluster();
+  return !arangodb::ServerState::instance()->isRunningInCluster();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +202,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
                          true, true, &Functions::Flatten)},
     {"LENGTH", Function("LENGTH", "AQL_LENGTH", "las", true, true, false, true,
                         true, &Functions::Length)},
+    {"COUNT", Function("COUNT", "AQL_LENGTH", "las", true, true, false, true,
+                        true, &Functions::Length)}, // alias for LENGTH()
     {"MIN", Function("MIN", "AQL_MIN", "l", true, true, false, true, true,
                      &Functions::Min)},
     {"MAX", Function("MAX", "AQL_MAX", "l", true, true, false, true, true,
@@ -214,18 +216,26 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
                             false, true, true, &Functions::Percentile)},
     {"AVERAGE", Function("AVERAGE", "AQL_AVERAGE", "l", true, true, false, true,
                          true, &Functions::Average)},
+    {"AVG", Function("AVG", "AQL_AVERAGE", "l", true, true, false, true,
+                         true, &Functions::Average)}, // alias for AVERAGE()
     {"VARIANCE_SAMPLE",
      Function("VARIANCE_SAMPLE", "AQL_VARIANCE_SAMPLE", "l", true, true, false,
               true, true, &Functions::VarianceSample)},
     {"VARIANCE_POPULATION",
      Function("VARIANCE_POPULATION", "AQL_VARIANCE_POPULATION", "l", true, true,
               false, true, true, &Functions::VariancePopulation)},
+    {"VARIANCE",
+     Function("VARIANCE", "AQL_VARIANCE_POPULATION", "l", true, true,
+              false, true, true, &Functions::VariancePopulation)}, // alias for VARIANCE_POPULATION()
     {"STDDEV_SAMPLE",
      Function("STDDEV_SAMPLE", "AQL_STDDEV_SAMPLE", "l", true, true, false,
               true, true, &Functions::StdDevSample)},
     {"STDDEV_POPULATION",
      Function("STDDEV_POPULATION", "AQL_STDDEV_POPULATION", "l", true, true,
               false, true, true, &Functions::StdDevPopulation)},
+    {"STDDEV",
+     Function("STDDEV", "AQL_STDDEV_POPULATION", "l", true, true,
+              false, true, true, &Functions::StdDevPopulation)}, // alias for STDDEV_POPULATION()
     {"UNIQUE", Function("UNIQUE", "AQL_UNIQUE", "l", true, true, false, true,
                         true, &Functions::Unique)},
     {"SORTED_UNIQUE",
@@ -1447,9 +1457,9 @@ void Executor::generateCodeNode(AstNode const* node) {
 /// @brief create the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::StringBuffer* Executor::initializeBuffer() {
+arangodb::basics::StringBuffer* Executor::initializeBuffer() {
   if (_buffer == nullptr) {
-    _buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+    _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
     if (_buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

@@ -27,7 +27,7 @@
 #include "Common.h"
 #include <iosfwd>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -115,12 +115,12 @@ bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
 }
 }
 
-std::ostream& operator<<(std::ostream&, triagens::basics::AttributeName const*);
-std::ostream& operator<<(std::ostream&, triagens::basics::AttributeName const&);
+std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const*);
+std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
 std::ostream& operator<<(std::ostream&,
-                         std::vector<triagens::basics::AttributeName> const*);
+                         std::vector<arangodb::basics::AttributeName> const*);
 std::ostream& operator<<(std::ostream&,
-                         std::vector<triagens::basics::AttributeName> const&);
+                         std::vector<arangodb::basics::AttributeName> const&);
 
 #endif
 

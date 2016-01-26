@@ -32,7 +32,7 @@
 #include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
 
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,6 +145,10 @@ Ast::~Ast() {}
 
 TRI_json_t* Ast::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   TRI_json_t* json = TRI_CreateArrayJson(zone);
+
+  if (json == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   try {
     _root->toJson(json, zone, verbose);
@@ -494,8 +498,9 @@ AstNode* Ast::createNodeDistinct(AstNode const* value) {
 /// @brief create an AST collect node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeCollect(AstNode const* list, char const* name,
-                                size_t nameLength, AstNode const* keepVariables,
+AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates,
+                                AstNode const* into, AstNode const* intoExpression,
+                                AstNode const* keepVariables,
                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
 
@@ -505,47 +510,16 @@ AstNode* Ast::createNodeCollect(AstNode const* list, char const* name,
   }
 
   node->addMember(options);
-  node->addMember(list);
+  node->addMember(groups); // may be an empty array
+  
+  // wrap aggregates again
+  auto agg = createNode(NODE_TYPE_AGGREGATIONS);
+  agg->addMember(aggregates); // may be an empty array
+  node->addMember(agg);
 
-  // INTO
-  if (name != nullptr) {
-    AstNode* variable = createNodeVariable(name, nameLength, true);
-    node->addMember(variable);
-
-    // KEEP
-    if (keepVariables != nullptr) {
-      node->addMember(keepVariables);
-    }
-  } else {
-    TRI_ASSERT(keepVariables == nullptr);
-    TRI_ASSERT(nameLength == 0);
-  }
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST collect node, INTO var = expr
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeCollectExpression(AstNode const* list, char const* name,
-                                          size_t nameLength,
-                                          AstNode const* expression,
-                                          AstNode const* options) {
-  AstNode* node = createNode(NODE_TYPE_COLLECT_EXPRESSION);
-
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &NopNode;
-  }
-
-  node->addMember(options);
-  node->addMember(list);
-
-  AstNode* variable = createNodeVariable(name, nameLength, true);
-  node->addMember(variable);
-
-  node->addMember(expression);
+  node->addMember(into != nullptr ? into : &NopNode);
+  node->addMember(intoExpression != nullptr ? intoExpression : &NopNode);
+  node->addMember(keepVariables != nullptr ? keepVariables : &NopNode);
 
   return node;
 }
@@ -569,26 +543,6 @@ AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
 
   AstNode* variable = createNodeVariable(name, nameLength, true);
   node->addMember(variable);
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST collect node, AGGREGATE
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeCollectAggregate(AstNode const* list, AstNode const* aggregations, 
-                                AstNode const* options) {
-  AstNode* node = createNode(NODE_TYPE_COLLECT_AGGREGATE);
-
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &NopNode;
-  }
-
-  node->addMember(options);
-  node->addMember(list);
-  node->addMember(aggregations);
 
   return node;
 }
@@ -1049,10 +1003,10 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash,
-                     triagens::basics::JsonEqual>
-      cache(nl + nr, triagens::basics::JsonHash(),
-            triagens::basics::JsonEqual());
+  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
+                     arangodb::basics::JsonEqual>
+      cache(nl + nr, arangodb::basics::JsonHash(),
+            arangodb::basics::JsonEqual());
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
@@ -1088,10 +1042,10 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash,
-                     triagens::basics::JsonEqual>
-      cache(nl + nr, triagens::basics::JsonHash(),
-            triagens::basics::JsonEqual());
+  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
+                     arangodb::basics::JsonEqual>
+      cache(nl + nr, arangodb::basics::JsonHash(),
+            arangodb::basics::JsonEqual());
 
   for (size_t i = 0; i < nl + nr; ++i) {
     AstNode* member;
@@ -1609,6 +1563,8 @@ void Ast::validateAndOptimize() {
         // NOOPT will turn all function optimizations off
         ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
       }
+    } else if (node->type == NODE_TYPE_AGGREGATIONS) {
+      ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
     } else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
       return false;
     } else if (node->type == NODE_TYPE_REMOVE ||
@@ -1653,6 +1609,8 @@ void Ast::validateAndOptimize() {
         // NOOPT will turn all function optimizations off
         --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
       }
+    } else if (node->type == NODE_TYPE_AGGREGATIONS) {
+      --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
     }
   };
 
@@ -1984,9 +1942,9 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
 
   // TODO: sort values in place first and compare two adjacent members each
 
-  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash,
-                     triagens::basics::JsonEqual>
-      cache(n, triagens::basics::JsonHash(), triagens::basics::JsonEqual());
+  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
+                     arangodb::basics::JsonEqual>
+      cache(n, arangodb::basics::JsonHash(), arangodb::basics::JsonEqual());
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);

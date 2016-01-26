@@ -58,11 +58,11 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::httpclient;
-using namespace triagens::v8client;
-using namespace triagens::arango;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
+using namespace arangodb::httpclient;
+using namespace arangodb::v8client;
+
 using namespace arangodb;
 
 
@@ -193,7 +193,7 @@ static bool VoiceMode = false;
 /// @verbinclude fluent39
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_PagerOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_PagerOutput(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   for (int i = 0; i < args.Length(); i++) {
@@ -214,7 +214,7 @@ static void JS_PagerOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StartOutputPager(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -236,7 +236,7 @@ static void JS_StartOutputPager(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_StopOutputPager(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -267,7 +267,7 @@ static void JS_StopOutputPager(
 ////The separator is @CODE{\,} and the quote is @CODE{"}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ImportCsvFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ImportCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -356,7 +356,7 @@ static void JS_ImportCsvFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ImportJsonFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_ImportJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -407,7 +407,7 @@ static void JS_ImportJsonFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NormalizeString(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -424,7 +424,7 @@ static void JS_NormalizeString(
 /// @brief compare two UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CompareString(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_CompareString(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -649,7 +649,7 @@ static v8::Handle<v8::Value> WrapV8ClientConnection(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_ConstructorCallback(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -699,7 +699,7 @@ static void ClientConnection_ConstructorCallback(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_reconnect(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -840,7 +840,7 @@ static void ClientConnection_reconnect(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpGetAny(
-    const v8::FunctionCallbackInfo<v8::Value>& args, bool raw) {
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -873,7 +873,7 @@ static void ClientConnection_httpGetAny(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpGet(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpGetAny(args, false);
 }
 
@@ -882,7 +882,7 @@ static void ClientConnection_httpGet(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpGetRaw(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpGetAny(args, true);
 }
 
@@ -891,7 +891,7 @@ static void ClientConnection_httpGetRaw(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpHeadAny(
-    const v8::FunctionCallbackInfo<v8::Value>& args, bool raw) {
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -925,7 +925,7 @@ static void ClientConnection_httpHeadAny(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpHead(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpHeadAny(args, false);
 }
 
@@ -934,7 +934,7 @@ static void ClientConnection_httpHead(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpHeadRaw(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpHeadAny(args, true);
 }
 
@@ -943,7 +943,7 @@ static void ClientConnection_httpHeadRaw(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpDeleteAny(
-    const v8::FunctionCallbackInfo<v8::Value>& args, bool raw) {
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -977,7 +977,7 @@ static void ClientConnection_httpDeleteAny(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpDelete(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpDeleteAny(args, false);
 }
 
@@ -986,7 +986,7 @@ static void ClientConnection_httpDelete(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpDeleteRaw(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpDeleteAny(args, true);
 }
 
@@ -995,7 +995,7 @@ static void ClientConnection_httpDeleteRaw(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpOptionsAny(
-    const v8::FunctionCallbackInfo<v8::Value>& args, bool raw) {
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1032,7 +1032,7 @@ static void ClientConnection_httpOptionsAny(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpOptions(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpOptionsAny(args, false);
 }
 
@@ -1041,7 +1041,7 @@ static void ClientConnection_httpOptions(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpOptionsRaw(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpOptionsAny(args, true);
 }
 
@@ -1050,7 +1050,7 @@ static void ClientConnection_httpOptionsRaw(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpPostAny(
-    const v8::FunctionCallbackInfo<v8::Value>& args, bool raw) {
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1086,7 +1086,7 @@ static void ClientConnection_httpPostAny(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpPost(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPostAny(args, false);
 }
 
@@ -1095,7 +1095,7 @@ static void ClientConnection_httpPost(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpPostRaw(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPostAny(args, true);
 }
 
@@ -1104,7 +1104,7 @@ static void ClientConnection_httpPostRaw(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpPutAny(
-    const v8::FunctionCallbackInfo<v8::Value>& args, bool raw) {
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1140,7 +1140,7 @@ static void ClientConnection_httpPutAny(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpPut(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPutAny(args, false);
 }
 
@@ -1149,7 +1149,7 @@ static void ClientConnection_httpPut(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpPutRaw(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPutAny(args, true);
 }
 
@@ -1158,7 +1158,7 @@ static void ClientConnection_httpPutRaw(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpPatchAny(
-    const v8::FunctionCallbackInfo<v8::Value>& args, bool raw) {
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1194,7 +1194,7 @@ static void ClientConnection_httpPatchAny(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpPatch(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPatchAny(args, false);
 }
 
@@ -1203,7 +1203,7 @@ static void ClientConnection_httpPatch(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpPatchRaw(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPatchAny(args, true);
 }
 
@@ -1212,7 +1212,7 @@ static void ClientConnection_httpPatchRaw(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_httpSendFile(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1267,7 +1267,7 @@ static void ClientConnection_httpSendFile(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_getEndpoint(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1293,7 +1293,7 @@ static void ClientConnection_getEndpoint(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_lastHttpReturnCode(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1318,7 +1318,7 @@ static void ClientConnection_lastHttpReturnCode(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_lastErrorMessage(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1343,7 +1343,7 @@ static void ClientConnection_lastErrorMessage(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_isConnected(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1371,7 +1371,7 @@ static void ClientConnection_isConnected(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_toString(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1404,7 +1404,7 @@ static void ClientConnection_toString(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_getVersion(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1428,7 +1428,7 @@ static void ClientConnection_getVersion(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_getMode(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1452,7 +1452,7 @@ static void ClientConnection_getMode(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_getDatabaseName(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1476,7 +1476,7 @@ static void ClientConnection_getDatabaseName(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_setDatabaseName(
-    const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1636,7 +1636,7 @@ static int RunShell(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
     BaseClient.log("%s%s\n", dynamicPrompt, input);
 
-    std::string i = triagens::basics::StringUtils::trim(input);
+    std::string i = arangodb::basics::StringUtils::trim(input);
 
     if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
       break;
@@ -2070,7 +2070,7 @@ static bool PrintHelo(bool useServer) {
     BaseClient.printLine("");
 
     ostringstream s;
-    s << "arangosh (" << triagens::rest::Version::getVerboseVersionString()
+    s << "arangosh (" << arangodb::rest::Version::getVerboseVersionString()
       << ")" << std::endl;
     s << "Copyright (c) ArangoDB GmbH";
 
@@ -2308,6 +2308,7 @@ static int WarmupEnvironment(v8::Isolate* isolate,
   files.push_back("common/bootstrap/modules/internal.js");  // deps: -
   files.push_back("common/bootstrap/errors.js");            // deps: internal
   files.push_back("client/bootstrap/modules/internal.js");  // deps: internal
+  files.push_back("common/bootstrap/modules/vm.js");        // deps: internal
   files.push_back("common/bootstrap/modules/console.js");   // deps: internal
   files.push_back("common/bootstrap/modules/assert.js");    // deps: -
   files.push_back("common/bootstrap/modules/buffer.js");    // deps: internal
@@ -2428,6 +2429,10 @@ int main(int argc, char* args[]) {
   extern bool cygwinShell;
   if (getenv("SHELL") != nullptr) {
     cygwinShell = true;
+  }
+  if (!TRI_InitWindowsEventLog()) {
+    std::cerr << "failed to init event log" << std::endl;
+    return EXIT_FAILURE;
   }
 #endif
   LocalEntryFunction();

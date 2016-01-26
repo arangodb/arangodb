@@ -36,8 +36,8 @@
 #include "Scheduler/SignalTask.h"
 
 using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 namespace {
@@ -197,8 +197,8 @@ class Sigusr1Task : public SignalTask {
 class SchedulerReporterTask : public PeriodicTask {
  public:
   SchedulerReporterTask(Scheduler* scheduler, double _reportInterval)
-      : Task("Scheduler-Reporter"),
-        PeriodicTask("Scheduler-Reporter", 1.0, _reportInterval),
+      : Task("SchedulerReporter"),
+        PeriodicTask("SchedulerReporter", 1.0, _reportInterval),
         _scheduler(scheduler) {}
 
  public:
@@ -322,18 +322,6 @@ void ApplicationScheduler::allowMultiScheduler(bool value) {
 Scheduler* ApplicationScheduler::scheduler() const { return _scheduler; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installs a signal handler
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::installSignalHandler(SignalTask* task) {
-  if (_scheduler == nullptr) {
-    LOG_FATAL_AND_EXIT("no scheduler is known, cannot install signal handler");
-  }
-
-  _scheduler->registerTask(task);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of used threads
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -373,9 +361,6 @@ void ApplicationScheduler::disableControlCHandler() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
@@ -416,12 +401,9 @@ void ApplicationScheduler::setupOptions(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::afterOptionParsing(
-    triagens::basics::ProgramOptions& options) {
+    arangodb::basics::ProgramOptions& options) {
   // show io backends
   if (options.has("show-io-backends")) {
     std::cout << "available io backends are: "
@@ -435,9 +417,6 @@ bool ApplicationScheduler::afterOptionParsing(
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::prepare() {
   if (_disabled) {
@@ -449,9 +428,6 @@ bool ApplicationScheduler::prepare() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::start() {
   if (_disabled) {
@@ -485,9 +461,6 @@ bool ApplicationScheduler::start() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::open() {
   if (_disabled) {
@@ -501,9 +474,6 @@ bool ApplicationScheduler::open() {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::stop() {
   if (_disabled) {
@@ -563,8 +533,11 @@ void ApplicationScheduler::buildSchedulerReporter() {
   if (0.0 < _reportInterval) {
     Task* reporter = new SchedulerReporterTask(_scheduler, _reportInterval);
 
-    _scheduler->registerTask(reporter);
-    _tasks.emplace_back(reporter);
+    int res = _scheduler->registerTask(reporter);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _tasks.emplace_back(reporter);
+    }
   }
 }
 
@@ -582,21 +555,30 @@ void ApplicationScheduler::buildControlCHandler() {
     // control C handler
     Task* controlC = new ControlCTask(_applicationServer);
 
-    _scheduler->registerTask(controlC);
-    _tasks.emplace_back(controlC);
+    int res = _scheduler->registerTask(controlC);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _tasks.emplace_back(controlC);
+    }
   }
 
   // hangup handler
   Task* hangup = new HangupTask();
 
-  _scheduler->registerTask(hangup);
-  _tasks.emplace_back(hangup);
+  int res = _scheduler->registerTask(hangup);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _tasks.emplace_back(hangup);
+  }
 
   // sigusr handler
   Task* sigusr = new Sigusr1Task(this);
 
-  _scheduler->registerTask(sigusr);
-  _tasks.emplace_back(sigusr);
+  res = _scheduler->registerTask(sigusr);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _tasks.emplace_back(sigusr);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

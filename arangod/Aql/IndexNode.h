@@ -33,7 +33,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 struct Collection;
 class Condition;
@@ -67,7 +67,7 @@ class IndexNode : public ExecutionNode {
     TRI_ASSERT(_condition != nullptr);
   }
 
-  IndexNode(ExecutionPlan*, triagens::basics::Json const& base);
+  IndexNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
   ~IndexNode();
 
@@ -111,7 +111,7 @@ class IndexNode : public ExecutionNode {
   /// @brief export to JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -193,8 +193,8 @@ class IndexNode : public ExecutionNode {
   bool _reverse;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

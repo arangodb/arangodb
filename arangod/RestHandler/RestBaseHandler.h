@@ -32,8 +32,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-
-namespace triagens {
+namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 namespace admin {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,20 +43,12 @@ namespace admin {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestBaseHandler : public rest::HttpHandler {
-  
  public:
-
   explicit RestBaseHandler(rest::HttpRequest* request);
 
-  
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
-
   void handleError(basics::Exception const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from JSON
@@ -73,14 +67,14 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(VPackSlice const& slice);
+  virtual void generateResult(arangodb::velocypack::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void generateResult(rest::HttpResponse::HttpResponseCode,
-                              VPackSlice const& slice);
+                              arangodb::velocypack::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a cancel message
@@ -111,5 +105,4 @@ class RestBaseHandler : public rest::HttpHandler {
 }
 
 #endif
-
 

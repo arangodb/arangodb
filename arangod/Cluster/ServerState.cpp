@@ -22,17 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerState.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 
-using namespace std;
-using namespace triagens::arango;
-using namespace triagens::basics;
-
+using namespace arangodb;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single instance of ServerState - will live as long as the server is
@@ -40,8 +38,6 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 static ServerState Instance;
-
-
 
 ServerState::ServerState()
     : _id(),
@@ -64,9 +60,7 @@ ServerState::ServerState()
   storeRole(ROLE_UNDEFINED);
 }
 
-
 ServerState::~ServerState() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the (sole) instance
@@ -185,7 +179,7 @@ std::string ServerState::getAuthentication() { return _authentication; }
 
 void ServerState::flush() {
   {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     if (_id.empty()) {
       return;
@@ -303,7 +297,7 @@ void ServerState::setRole(ServerState::RoleEnum role) { storeRole(role); }
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getLocalInfo() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _localInfo;
 }
 
@@ -316,7 +310,7 @@ void ServerState::setLocalInfo(std::string const& localInfo) {
     return;
   }
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _localInfo = localInfo;
 }
 
@@ -325,7 +319,7 @@ void ServerState::setLocalInfo(std::string const& localInfo) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getId() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _id;
 }
 
@@ -334,7 +328,7 @@ std::string ServerState::getId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getPrimaryId() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _idOfPrimary;
 }
 
@@ -347,7 +341,7 @@ void ServerState::setId(std::string const& id) {
     return;
   }
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _id = id;
 }
 
@@ -356,7 +350,7 @@ void ServerState::setId(std::string const& id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getDescription() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _description;
 }
 
@@ -369,7 +363,7 @@ void ServerState::setDescription(std::string const& description) {
     return;
   }
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _description = description;
 }
 
@@ -381,7 +375,7 @@ std::string ServerState::getAddress() {
   std::string id;
 
   {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
     if (!_address.empty()) {
       return _address;
     }
@@ -399,7 +393,7 @@ std::string ServerState::getAddress() {
       ClusterInfo::instance()->getTargetServerEndpoint(id);
 
   {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
     _address = address;
   }
 
@@ -415,7 +409,7 @@ void ServerState::setAddress(std::string const& address) {
     return;
   }
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _address = address;
 }
 
@@ -424,7 +418,7 @@ void ServerState::setAddress(std::string const& address) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState::StateEnum ServerState::getState() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _state;
 }
 
@@ -436,7 +430,7 @@ void ServerState::setState(StateEnum state) {
   bool result = false;
   auto role = loadRole();
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   if (state == _state) {
     return;
@@ -470,7 +464,7 @@ void ServerState::setState(StateEnum state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getDataPath() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _dataPath;
 }
 
@@ -479,7 +473,7 @@ std::string ServerState::getDataPath() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setDataPath(std::string const& value) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _dataPath = value;
 }
 
@@ -488,7 +482,7 @@ void ServerState::setDataPath(std::string const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getLogPath() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _logPath;
 }
 
@@ -497,7 +491,7 @@ std::string ServerState::getLogPath() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setLogPath(std::string const& value) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _logPath = value;
 }
 
@@ -506,7 +500,7 @@ void ServerState::setLogPath(std::string const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getAgentPath() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _agentPath;
 }
 
@@ -515,7 +509,7 @@ std::string ServerState::getAgentPath() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setAgentPath(std::string const& value) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _agentPath = value;
 }
 
@@ -524,7 +518,7 @@ void ServerState::setAgentPath(std::string const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getArangodPath() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _arangodPath;
 }
 
@@ -533,7 +527,7 @@ std::string ServerState::getArangodPath() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setArangodPath(std::string const& value) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _arangodPath = value;
 }
 
@@ -542,7 +536,7 @@ void ServerState::setArangodPath(std::string const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getJavaScriptPath() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _javaScriptStartupPath;
 }
 
@@ -551,7 +545,7 @@ std::string ServerState::getJavaScriptPath() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setJavaScriptPath(std::string const& value) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _javaScriptStartupPath = value;
 }
 
@@ -560,7 +554,7 @@ void ServerState::setJavaScriptPath(std::string const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getDBserverConfig() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _dbserverConfig;
 }
 
@@ -569,7 +563,7 @@ std::string ServerState::getDBserverConfig() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setDBserverConfig(std::string const& value) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _dbserverConfig = value;
 }
 
@@ -578,7 +572,7 @@ void ServerState::setDBserverConfig(std::string const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getCoordinatorConfig() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _coordinatorConfig;
 }
 
@@ -587,7 +581,7 @@ std::string ServerState::getCoordinatorConfig() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setCoordinatorConfig(std::string const& value) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _coordinatorConfig = value;
 }
 
@@ -596,7 +590,7 @@ void ServerState::setCoordinatorConfig(std::string const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::getDisableDispatcherFrontend() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _disableDispatcherFrontend;
 }
 
@@ -605,7 +599,7 @@ bool ServerState::getDisableDispatcherFrontend() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setDisableDispatcherFrontend(bool value) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _disableDispatcherFrontend = value;
 }
 
@@ -614,7 +608,7 @@ void ServerState::setDisableDispatcherFrontend(bool value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::getDisableDispatcherKickstarter() {
-  READ_LOCKER(_lock);
+  READ_LOCKER(readLocker, _lock);
   return _disableDispatcherKickstarter;
 }
 
@@ -623,7 +617,7 @@ bool ServerState::getDisableDispatcherKickstarter() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setDisableDispatcherKickstarter(bool value) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _disableDispatcherKickstarter = value;
 }
 
@@ -852,15 +846,14 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
           result._values.find(localInfo);
 
       if (it != result._values.end()) {
-        TRI_json_t const* json = it->second._json;
-        Json j(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE);
-        id = triagens::basics::JsonHelper::getStringValue(json, "ID", "");
+        VPackSlice slice = it->second._vpack->slice();
+        id = arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID", "");
         if (id.empty()) {
           LOG_ERROR("ID not set!");
           return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
         }
-        std::string description = triagens::basics::JsonHelper::getStringValue(
-            json, "Description", "");
+        std::string description = arangodb::basics::VelocyPackHelper::getStringValue(
+            slice, "Description", "");
         if (!description.empty()) {
           setDescription(description);
         }
@@ -920,8 +913,9 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
     it = result._values.begin();
 
     while (it != result._values.end()) {
-      std::string const name =
-          triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
+      VPackSlice slice = (*it).second._vpack->slice();
+      std::string name =
+          arangodb::basics::VelocyPackHelper::getStringValue(slice, "");
 
       if (name == id) {
         role = ServerState::ROLE_SECONDARY;
@@ -935,5 +929,3 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
 
   return role;
 }
-
-

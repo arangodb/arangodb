@@ -110,10 +110,11 @@ function lastEntry (collection, start, clusterId) {
 
   var values = db._query(
       "FOR s in @@collection "
-    + "  FILTER s.time >= @start "
-    +    filter
-    + "  SORT s.time desc "
-    + "  RETURN s",
+    + "FILTER s.time >= @start "
+    +  filter
+    + "SORT s.time desc "
+    + "LIMIT 1 "
+    + "RETURN s",
     { start: start, '@collection': collection, clusterId: clusterId });
 
   if (values.hasNext()) {
@@ -460,9 +461,6 @@ exports.historian = function () {
     return;
   }
 
-  var statsRaw = db._statisticsRaw;
-  var statsCol = db._statistics;
-
   var clusterId;
 
   if (cluster.isCluster()) {
@@ -489,7 +487,7 @@ exports.historian = function () {
       raw.clusterId = clusterId;
     }
 
-    statsRaw.save(raw);
+    db.__save("_statisticsRaw", raw);
 
     // create the per-seconds statistics
     if (prevRaw !== null) {
@@ -500,7 +498,7 @@ exports.historian = function () {
           perSecs.clusterId = clusterId;
         }
 
-        statsCol.save(perSecs);
+        db.__save("_statistics", perSecs);
       }
     }
   }

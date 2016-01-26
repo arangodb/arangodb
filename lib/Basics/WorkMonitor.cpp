@@ -34,24 +34,7 @@
 #include <boost/lockfree/queue.hpp>
 
 using namespace arangodb;
-using namespace triagens::basics;
-
-
-
-
-CustomWorkStack::CustomWorkStack(char const* type, char const* text,
-                                 size_t length) {
-  WorkMonitor::pushCustom(type, text, length);
-}
-
-
-CustomWorkStack::CustomWorkStack(char const* type, uint64_t id) {
-  WorkMonitor::pushCustom(type, id);
-}
-
-
-CustomWorkStack::~CustomWorkStack() { WorkMonitor::popCustom(); }
-
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief singleton
@@ -96,11 +79,16 @@ static boost::lockfree::queue<WorkDescription*> EMPTY_WORK_DESCRIPTION(128);
 static boost::lockfree::queue<WorkDescription*> FREEABLE_WORK_DESCRIPTION(128);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tasks that want an overview
+////////////////////////////////////////////////////////////////////////////////
+
+static boost::lockfree::queue<uint64_t> WORK_OVERVIEW(128);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief stopped flag
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::atomic<bool> WORK_MONITOR_STOPPED(true);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a description and its resources
@@ -136,16 +124,12 @@ static void deleteWorkDescription(WorkDescription* desc, bool stopped) {
 /// @brief vpack representation of a work description
 ////////////////////////////////////////////////////////////////////////////////
 
-#undef SHOW_RESULTS
-// TODO(fc) use vpackWorkDescription
-#ifdef SHOW_RESULTS
-#include <iostream>
-
 static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
   switch (desc->_type) {
     case WorkType::THREAD:
       b->add("type", VPackValue("thread"));
       b->add("name", VPackValue(desc->_data.thread->name()));
+      b->add("number", VPackValue(desc->_data.thread->threadNumber()));
       b->add("status", VPackValue(VPackValueType::Object));
       desc->_data.thread->addStatus(b);
       b->close();
@@ -168,22 +152,12 @@ static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
   }
 }
 
-#endif
-
-
-
 
 WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
     : _type(type), _destroy(true), _prev(prev) {}
 
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructors a new monitor
-////////////////////////////////////////////////////////////////////////////////
-
-WorkMonitor::WorkMonitor() : Thread("Work Monitor"), _stopping(false) {}
-
+WorkMonitor::WorkMonitor() : Thread("WorkMonitor"), _stopping(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty WorkDescription
@@ -354,19 +328,23 @@ void WorkMonitor::popCustom() {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief requests a work overview
+////////////////////////////////////////////////////////////////////////////////
+
+void WorkMonitor::requestWorkOverview(uint64_t taskId) {
+  WORK_OVERVIEW.push(taskId);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief the main event loop, wait for requests and delete old descriptions
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::run() {
-  const uint32_t maxSleep = 100 * 1000;
-  const uint32_t minSleep = 100;
+  uint32_t const maxSleep = 100 * 1000;
+  uint32_t const minSleep = 100;
   uint32_t s = minSleep;
-
-#ifdef SHOW_RESULTS
-  double x = 0;
-#endif
 
   // clean old entries and create summary if requested
   while (!_stopping) {
@@ -387,27 +365,31 @@ void WorkMonitor::run() {
         s *= 2;
       }
 
-// TODO(fc) trigger output
-#ifdef SHOW_RESULTS
-      double y = TRI_microtime();
+      uint64_t taskId;
 
-      if (x + 10 < y) {
-        x = y;
-
-        MutexLocker guard(&THREADS_LOCK);
+      while (WORK_OVERVIEW.pop(taskId)) {
         VPackBuilder b;
-        b.add(VPackValue(VPackValueType::Array));
 
-        for (auto& thread : THREADS) {
-          WorkDescription* desc = thread->workDescription();
+        b.add(VPackValue(VPackValueType::Object));
 
-          if (desc != nullptr) {
-            b.add(VPackValue(VPackValueType::Object));
-            vpackWorkDescription(&b, desc);
-            b.close();
+        b.add("time", VPackValue(TRI_microtime()));
+        b.add("work", VPackValue(VPackValueType::Array));
+
+        {
+          MutexLocker guard(&THREADS_LOCK);
+
+          for (auto& thread : THREADS) {
+            WorkDescription* desc = thread->workDescription();
+
+            if (desc != nullptr) {
+              b.add(VPackValue(VPackValueType::Object));
+              vpackWorkDescription(&b, desc);
+              b.close();
+            }
           }
         }
 
+        b.close();
         b.close();
 
         VPackSlice s(b.start());
@@ -421,9 +403,8 @@ void WorkMonitor::run() {
         VPackDumper dumper(&sink, &options);
         dumper.dump(s);
 
-        std::cout << buffer << "\n";
+        SEND_WORK_OVERVIEW(taskId, buffer);
       }
-#endif
     } catch (...) {
       // must prevent propagation of exceptions from here
     }
@@ -451,6 +432,16 @@ void WorkMonitor::run() {
   }
 }
 
+CustomWorkStack::CustomWorkStack(char const* type, char const* text,
+                                 size_t length) {
+  WorkMonitor::pushCustom(type, text, length);
+}
+
+CustomWorkStack::CustomWorkStack(char const* type, uint64_t id) {
+  WorkMonitor::pushCustom(type, id);
+}
+
+CustomWorkStack::~CustomWorkStack() { WorkMonitor::popCustom(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the work monitor
@@ -469,5 +460,3 @@ void arangodb::ShutdownWorkMonitor() {
   WORK_MONITOR.shutdown();
   WORK_MONITOR.join();
 }
-
-

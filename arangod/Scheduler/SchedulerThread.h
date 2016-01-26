@@ -30,20 +30,15 @@
 #include <boost/lockfree/queue.hpp>
 
 #include "Basics/Mutex.h"
-#include "Basics/SpinLock.h"
 #include "Basics/Thread.h"
 #include "Scheduler/Task.h"
 #include "Scheduler/TaskManager.h"
 
 #include <deque>
 
-// #define TRI_USE_SPIN_LOCK_SCHEDULER_THREAD 1
-
-
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class Scheduler;
-
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief job scheduler thread
@@ -54,14 +49,10 @@ class SchedulerThread : public basics::Thread, private TaskManager {
   SchedulerThread(SchedulerThread const&);
   SchedulerThread& operator=(SchedulerThread const&);
 
-  
  public:
 
   SchedulerThread(Scheduler*, EventLoop, bool defaultLoop);
-
-
   ~SchedulerThread();
-
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -108,18 +99,10 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 
   
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   void run();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
-
   void addStatus(arangodb::velocypack::Builder* b);
-
   
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -180,11 +163,7 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 /// @brief queue lock
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
-  triagens::basics::SpinLock _queueLock;
-#else
-  triagens::basics::Mutex _queueLock;
-#endif
+  arangodb::basics::Mutex _queueLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief work queue

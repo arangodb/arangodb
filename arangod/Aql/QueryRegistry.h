@@ -29,7 +29,7 @@
 #include "Aql/Query.h"
 #include "Aql/types.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 
@@ -120,8 +120,8 @@ class QueryRegistry {
   basics::ReadWriteLock _lock;
 };
 
-}  // namespace triagens::aql
-}  // namespace triagens
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
 

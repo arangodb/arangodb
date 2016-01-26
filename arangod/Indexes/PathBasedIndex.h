@@ -31,22 +31,19 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 
-struct TRI_json_t;
 class VocShaper;
 
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 enum AstNodeType : uint32_t;
 }
 
-namespace arango {
-
 class PathBasedIndex : public Index {
  protected:
   struct PermutationState {
-    PermutationState(triagens::aql::AstNodeType type,
-                     triagens::aql::AstNode const* value,
+    PermutationState(arangodb::aql::AstNodeType type,
+                     arangodb::aql::AstNode const* value,
                      size_t attributePosition, size_t n)
         : type(type),
           value(value),
@@ -56,10 +53,10 @@ class PathBasedIndex : public Index {
       TRI_ASSERT(n > 0);
     }
 
-    triagens::aql::AstNode const* getValue() const;
+    arangodb::aql::AstNode const* getValue() const;
 
-    triagens::aql::AstNodeType type;
-    triagens::aql::AstNode const* value;
+    arangodb::aql::AstNodeType type;
+    arangodb::aql::AstNode const* value;
     size_t const attributePosition;
     size_t current;
     size_t const n;
@@ -72,10 +69,10 @@ class PathBasedIndex : public Index {
 
   PathBasedIndex(
       TRI_idx_iid_t, struct TRI_document_collection_t*,
-      std::vector<std::vector<triagens::basics::AttributeName>> const&,
+      std::vector<std::vector<arangodb::basics::AttributeName>> const&,
       bool unique, bool sparse, bool allowPartialIndex);
 
-  explicit PathBasedIndex(struct TRI_json_t const*, bool);
+  explicit PathBasedIndex(VPackSlice const&, bool);
 
   ~PathBasedIndex();
 
@@ -170,7 +167,6 @@ class PathBasedIndex : public Index {
 
   bool _allowPartialIndex;
 };
-}
 }
 
 #endif

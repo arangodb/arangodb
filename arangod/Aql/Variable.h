@@ -28,18 +28,18 @@
 #include "Basics/JsonHelper.h"
 #include "Aql/types.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
-
 struct Variable {
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the variable
   //////////////////////////////////////////////////////////////////////////////
 
   Variable(std::string const&, VariableId);
 
-  Variable(basics::Json const& json);
+  explicit Variable(basics::Json const& json);
 
   Variable* clone() const { return new Variable(name, id); }
 
@@ -49,7 +49,6 @@ struct Variable {
 
   ~Variable();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief registers a constant value for the variable
   /// this constant value is used for constant propagation in optimizations
@@ -86,7 +85,7 @@ struct Variable {
   /// @brief return a JSON representation of the variable
   //////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json toJson() const;
+  arangodb::basics::Json toJson() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief replace a variable by another

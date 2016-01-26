@@ -24,41 +24,26 @@
 #ifndef ARANGOD_REST_HANDLER_REST_VERSION_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_VERSION_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 
-namespace triagens {
-namespace admin {
-
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestVersionHandler : public RestBaseHandler {
-  
+class RestVersionHandler : public arangodb::admin::RestBaseHandler {
  public:
 
-  explicit RestVersionHandler(rest::HttpRequest*);
+  explicit RestVersionHandler(arangodb::rest::HttpRequest*);
 
-  
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   bool isDirect() const override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the server version number
-  //////////////////////////////////////////////////////////////////////////////
 
   status_t execute() override;
 };
 }
-}
 
 #endif
-
-

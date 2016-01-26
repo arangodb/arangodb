@@ -46,3 +46,10 @@ should be used in a query.
 !SUBSECTION Geo
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionGeo
+
+!SUBSECTION Related topics
+
+Other ArangoDB geographic features are described in: 
+- [AQL Geo functions](../Aql/GeoFunctions.md)
+- [Geo indexes](../IndexHandling/Geo.md)  
+

@@ -34,10 +34,11 @@
 
 #include <openssl/ssl.h>
 #include <sstream>
+#include <velocypack/Builder.h>
+#include <velocypack/Version.h>
+#include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::rest;
-
-
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
@@ -55,14 +56,15 @@ void Version::initialize() {
   Values["openssl-version"] = getOpenSSLVersion();
   Values["v8-version"] = getV8Version();
   Values["libev-version"] = getLibevVersion();
+  Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
   Values["configure"] = getConfigure();
   Values["env"] = getConfigureEnvironment();
   Values["build-date"] = getBuildDate();
   Values["repository-version"] = getRepositoryVersion();
-  Values["sizeof int"] = triagens::basics::StringUtils::itoa(sizeof(int));
-  Values["sizeof void*"] = triagens::basics::StringUtils::itoa(sizeof(void*));
-  Values["fd-setsize"] = triagens::basics::StringUtils::itoa(FD_SETSIZE);
+  Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
+  Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
+  Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   Values["maintainer-mode"] = "true";
 #else
@@ -80,6 +82,10 @@ void Version::initialize() {
 #else
   Values["fd-client-event-handler"] = "select";
 #endif
+    
+  for (auto& it : Values) {
+    arangodb::basics::StringUtils::trimInPlace(it.second);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +160,14 @@ std::string Version::getLibevVersion() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get vpack version
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Version::getVPackVersion() {
+  return arangodb::velocypack::Version::BuildVersion.toString();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get zlib version
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -223,7 +237,7 @@ std::string Version::getRepositoryVersion() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getBuildDate() {
-// the OpenSuSE build system does not liked it, if __DATE__ is used
+// the OpenSuSE build system does not like it, if __DATE__ is used
 #ifdef TRI_BUILD_DATE
   return std::string(TRI_BUILD_DATE).append(" ").append(__TIME__);
 #else
@@ -247,6 +261,7 @@ std::string Version::getVerboseVersionString() {
 #ifdef TRI_HAVE_TCMALLOC
           << "tcmalloc, "
 #endif
+          << "VPack " << getVPackVersion() << ", "
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", " << getOpenSSLVersion();
 
@@ -261,8 +276,7 @@ std::string Version::getDetailed() {
   std::string result;
 
   for (auto& it : Values) {
-    std::string value = it.second;
-    triagens::basics::StringUtils::trimInPlace(value);
+    std::string const& value = it.second;
 
     if (!value.empty()) {
       result.append(it.first);
@@ -284,9 +298,8 @@ std::string Version::getDetailed() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Version::getJson(TRI_memory_zone_t* zone, TRI_json_t* dst) {
-  for (auto& it : Values) {
-    std::string value = it.second;
-    triagens::basics::StringUtils::trimInPlace(value);
+  for (auto const& it : Values) {
+    std::string const& value = it.second;
 
     if (!value.empty()) {
       std::string const& key = it.first;
@@ -303,9 +316,8 @@ void Version::getJson(TRI_memory_zone_t* zone, TRI_json_t* dst) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Version::getVPack(VPackBuilder& dst) {
-  for (auto& it : Values) {
-    std::string value = it.second;
-    triagens::basics::StringUtils::trimInPlace(value);
+  for (auto const& it : Values) {
+    std::string const& value = it.second;
 
     if (!value.empty()) {
       dst.add(it.first, VPackValue(value));

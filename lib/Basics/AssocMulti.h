@@ -41,7 +41,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 
@@ -289,17 +289,17 @@ class AssocMulti {
   /// @brief Appends information about statistics in the given VPackBuilder
   //////////////////////////////////////////////////////////////////////////////
 
-  void appendToVelocyPack(std::shared_ptr<VPackBuilder> builder) {
-    builder->add("buckets", VPackValue(VPackValueType::Array));
+  void appendToVelocyPack(VPackBuilder& builder) {
+    builder.add("buckets", VPackValue(VPackValueType::Array));
     for (auto& b : _buckets) {
-      builder->add(VPackValue(VPackValueType::Object));
-      builder->add("nrAlloc", VPackValue(b._nrAlloc));
-      builder->add("nrUsed", VPackValue(b._nrUsed));
-      builder->close();
+      builder.openObject();
+      builder.add("nrAlloc", VPackValue(b._nrAlloc));
+      builder.add("nrUsed", VPackValue(b._nrUsed));
+      builder.close();
     }
-    builder->close();  // buckets
-    builder->add("nrBuckets", VPackValue(_buckets.size()));
-    builder->add("totalUsed", VPackValue(size()));
+    builder.close();  // buckets
+    builder.add("nrBuckets", VPackValue(_buckets.size()));
+    builder.add("totalUsed", VPackValue(size()));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -393,7 +393,7 @@ class AssocMulti {
 
     typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
 
-    triagens::basics::Mutex bucketMapLocker;
+    arangodb::basics::Mutex bucketMapLocker;
 
     std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
 
@@ -418,7 +418,7 @@ class AssocMulti {
           }
 
           // transfer ownership to the central map
-          MUTEX_LOCKER(bucketMapLocker);
+          MUTEX_LOCKER(mutexLocker, bucketMapLocker);
 
           for (auto& it : partitions) {
             auto it2 = allBuckets.find(it.first);
@@ -1086,6 +1086,9 @@ class AssocMulti {
   //////////////////////////////////////////////////////////////////////////////
 
   void resizeInternal(UserData* userData, Bucket& b, size_t size) {
+    LOG_TRACE("resizing index %s, target size: %llu", _contextCallback().c_str(),
+               (unsigned long long)size);
+
     LOG_ACTION("index-resize %s, target size: %llu", _contextCallback().c_str(),
                (unsigned long long)size);
     double start = TRI_microtime();
@@ -1159,6 +1162,8 @@ class AssocMulti {
     }
 
     delete[] oldTable;
+    
+    LOG_TRACE("resizing index %s done", _contextCallback().c_str());
 
     LOG_TIMER((TRI_microtime() - start), "index-resize, %s, target size: %llu",
               _contextCallback().c_str(), (unsigned long long)size);
@@ -1424,8 +1429,8 @@ class AssocMulti {
   }
 };
 
-}  // namespace triagens::basics
-}  // namespace triagens
+}  // namespace arangodb::basics
+}  // namespace arangodb
 
 #endif
 

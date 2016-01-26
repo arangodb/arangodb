@@ -29,9 +29,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 
-namespace triagens {
-namespace arango {
-
+namespace arangodb {
 
 namespace traverser {
 class TraverserExpression;
@@ -45,9 +43,6 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 
   
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// {@inheritDoc}
-  //////////////////////////////////////////////////////////////////////////////
 
   status_t execute() override final;
 
@@ -82,9 +77,8 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
       std::string const& id,
       std::vector<traverser::TraverserExpression*> const& expressions,
       TRI_edge_direction_e direction, SingleCollectionReadOnlyTransaction& trx,
-      triagens::basics::Json& result, size_t& scannedIndex, size_t& filtered);
+      arangodb::basics::Json& result, size_t& scannedIndex, size_t& filtered);
 };
-}
 }
 
 #endif

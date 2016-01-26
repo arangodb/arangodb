@@ -29,15 +29,13 @@
 #include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"
 
-namespace triagens {
-namespace arango {
+namespace arangodb {
 class DocumentDitch;
-}
+
 namespace wal {
 struct DocumentOperation;
 }
 }
-
 
 struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
@@ -106,7 +104,8 @@ typedef enum {
   TRI_TRANSACTION_HINT_NO_ABORT_MARKER = 16,
   TRI_TRANSACTION_HINT_NO_THROTTLING = 32,
   TRI_TRANSACTION_HINT_TRY_LOCK = 64,
-  TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK = 128
+  TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK = 128,
+  TRI_TRANSACTION_HINT_NO_USAGE_LOCK = 256
 } TRI_transaction_hint_e;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,8 +136,8 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_type_e _accessType;  // access type (read|write)
   int _nestingLevel;  // the transaction level that added this collection
   TRI_vocbase_col_t* _collection;  // vocbase collection pointer
-  triagens::arango::DocumentDitch* _ditch;
-  std::vector<triagens::wal::DocumentOperation*>* _operations;
+  arangodb::DocumentDitch* _ditch;
+  std::vector<arangodb::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t _originalRevision;   // collection revision at trx start
   TRI_transaction_type_e _lockType;  // collection lock type
   bool
@@ -250,6 +249,12 @@ bool TRI_IsLockedCollectionTransaction(TRI_transaction_collection_t const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsLockedCollectionTransaction(TRI_transaction_collection_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a collection is contained in a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsContainedCollectionTransaction(TRI_transaction_t*, TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin a transaction

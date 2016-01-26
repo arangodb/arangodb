@@ -26,8 +26,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
-using namespace triagens::arango;
-
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum size
@@ -40,7 +39,7 @@ CapConstraint::CapConstraint(TRI_idx_iid_t iid,
                              TRI_document_collection_t* collection,
                              size_t count, int64_t size)
     : Index(iid, collection,
-            std::vector<std::vector<triagens::basics::AttributeName>>(), false,
+            std::vector<std::vector<arangodb::basics::AttributeName>>(), false,
             false),
       _count(count),
       _size(static_cast<int64_t>(size)) {}
@@ -51,33 +50,18 @@ CapConstraint::~CapConstraint() {}
 size_t CapConstraint::memory() const { return 0; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
+/// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json CapConstraint::toJson(TRI_memory_zone_t* zone,
-                                             bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  json("size", triagens::basics::Json(zone, static_cast<double>(_count)))(
-      "byteSize", triagens::basics::Json(zone, static_cast<double>(_size)))(
-      "unique", triagens::basics::Json(zone, false));
-
-  return json;
+void CapConstraint::toVelocyPack(VPackBuilder& builder,
+                                 bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
+  builder.add("size", VPackValue(_count));
+  builder.add("byteSize", VPackValue(_size));
+  builder.add("unique", VPackValue(false));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-triagens::basics::Json CapConstraint::toJsonFigures(
-    TRI_memory_zone_t* zone) const {
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json("memory", triagens::basics::Json(static_cast<double>(memory())));
-
-  return json;
-}
-
-int CapConstraint::insert(triagens::arango::Transaction*,
+int CapConstraint::insert(arangodb::Transaction*,
                           TRI_doc_mptr_t const* doc, bool) {
   if (_size > 0) {
     // there is a size restriction
@@ -93,12 +77,12 @@ int CapConstraint::insert(triagens::arango::Transaction*,
   return TRI_ERROR_NO_ERROR;
 }
 
-int CapConstraint::remove(triagens::arango::Transaction*, TRI_doc_mptr_t const*,
+int CapConstraint::remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
                           bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int CapConstraint::postInsert(triagens::arango::Transaction* trx,
+int CapConstraint::postInsert(arangodb::Transaction* trx,
                               TRI_transaction_collection_t* trxCollection,
                               TRI_doc_mptr_t const*) {
   TRI_ASSERT(_count > 0 || _size > 0);
@@ -110,7 +94,7 @@ int CapConstraint::postInsert(triagens::arango::Transaction* trx,
 /// @brief initialize the cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-int CapConstraint::initialize(triagens::arango::Transaction* trx) {
+int CapConstraint::initialize(arangodb::Transaction* trx) {
   TRI_ASSERT(_count > 0 || _size > 0);
 
   TRI_headers_t* headers = _collection->_headersPtr;  // ONLY IN INDEX (CAP)
@@ -125,8 +109,8 @@ int CapConstraint::initialize(triagens::arango::Transaction* trx) {
     TRI_vocbase_t* vocbase = _collection->_vocbase;
     TRI_voc_cid_t cid = _collection->_info.id();
 
-    triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new triagens::arango::StandaloneTransactionContext(), vocbase, cid);
+    arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
+        new arangodb::StandaloneTransactionContext(), vocbase, cid);
     trx.addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);
     trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
     trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
@@ -154,7 +138,7 @@ int CapConstraint::initialize(triagens::arango::Transaction* trx) {
 /// @brief apply the cap constraint for the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int CapConstraint::apply(triagens::arango::Transaction* trx,
+int CapConstraint::apply(arangodb::Transaction* trx,
                          TRI_document_collection_t* document,
                          TRI_transaction_collection_t* trxCollection) {
   TRI_headers_t* headers =

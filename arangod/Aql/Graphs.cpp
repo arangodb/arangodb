@@ -21,17 +21,17 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Graphs.h"
+#include "Graphs.h"
 #include "Basics/JsonHelper.h"
 
-using namespace triagens::basics;
-using namespace triagens::aql;
+using namespace arangodb::basics;
+using namespace arangodb::aql;
 
 char const* Graph::_attrEdgeDefs = "edgeDefinitions";
 char const* Graph::_attrOrphans = "orphanCollections";
 
 
-void Graph::insertVertexCollectionsFromJsonArray(triagens::basics::Json& arr) {
+void Graph::insertVertexCollectionsFromJsonArray(arangodb::basics::Json& arr) {
   for (size_t j = 0; j < arr.size(); ++j) {
     Json c = arr.at(j);
     TRI_ASSERT(c.isString());
@@ -57,23 +57,23 @@ void Graph::addVertexCollection(std::string const& name) {
   _vertexColls.insert(name);
 }
 
-triagens::basics::Json Graph::toJson(TRI_memory_zone_t* z, bool verbose) const {
-  triagens::basics::Json json(z, triagens::basics::Json::Object);
+arangodb::basics::Json Graph::toJson(TRI_memory_zone_t* z, bool verbose) const {
+  arangodb::basics::Json json(z, arangodb::basics::Json::Object);
 
   if (!_vertexColls.empty()) {
-    triagens::basics::Json vcn(z, triagens::basics::Json::Array,
+    arangodb::basics::Json vcn(z, arangodb::basics::Json::Array,
                                _vertexColls.size());
     for (auto const& cn : _vertexColls) {
-      vcn.add(triagens::basics::Json(cn));
+      vcn.add(arangodb::basics::Json(cn));
     }
     json("vertexCollectionNames", vcn);
   }
 
   if (!_edgeColls.empty()) {
-    triagens::basics::Json ecn(z, triagens::basics::Json::Array,
+    arangodb::basics::Json ecn(z, arangodb::basics::Json::Array,
                                _edgeColls.size());
     for (auto const& cn : _edgeColls) {
-      ecn.add(triagens::basics::Json(cn));
+      ecn.add(arangodb::basics::Json(cn));
     }
     json("edgeCollectionNames", ecn);
   }
@@ -81,7 +81,7 @@ triagens::basics::Json Graph::toJson(TRI_memory_zone_t* z, bool verbose) const {
   return json;
 }
 
-Graph::Graph(triagens::basics::Json j) : _vertexColls(), _edgeColls() {
+Graph::Graph(arangodb::basics::Json const& j) : _vertexColls(), _edgeColls() {
   auto jsonDef = j.get(_attrEdgeDefs);
 
   for (size_t i = 0; i < jsonDef.size(); ++i) {

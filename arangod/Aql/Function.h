@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Aql/Functions.h"
 
-namespace triagens {
+namespace arangodb {
 namespace aql {
 
 struct Function {

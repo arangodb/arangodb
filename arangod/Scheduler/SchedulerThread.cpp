@@ -26,10 +26,6 @@
 
 #include "Basics/logging.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/SpinLocker.h"
-#include "velocypack/Value.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -38,20 +34,16 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/Task.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+#include <velocypack/Value.h>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
-#ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
-#define SCHEDULER_LOCKER(a) SPIN_LOCKER(a)
-#else
-#define SCHEDULER_LOCKER(a) MUTEX_LOCKER(a)
-#endif
-
-
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
                                  bool defaultLoop)
-    : Thread("scheduler"),
+    : Thread("Scheduler"),
       _scheduler(scheduler),
       _defaultLoop(defaultLoop),
       _loop(loop),
@@ -65,9 +57,7 @@ SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
   allowAsynchronousCancelation();
 }
 
-
 SchedulerThread::~SchedulerThread() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the scheduler thread is up and running
@@ -104,6 +94,7 @@ bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
   // thread has already been stopped
   if (_stopped.load()) {
     // do nothing
+    deleteTask(task);
     return false;
   }
 
@@ -129,7 +120,7 @@ bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   // put the register request onto the queue
-  SCHEDULER_LOCKER(_queueLock);
+  MUTEX_LOCKER(mutexLocker, _queueLock);
 
   _queue.push_back(w);
   _hasWork = true;
@@ -160,7 +151,7 @@ void SchedulerThread::unregisterTask(Task* task) {
     Work w(CLEANUP, nullptr, task);
 
     // put the unregister request into the queue
-    SCHEDULER_LOCKER(_queueLock);
+    MUTEX_LOCKER(mutexLocker, _queueLock);
 
     _queue.push_back(w);
     _hasWork = true;
@@ -191,7 +182,7 @@ void SchedulerThread::destroyTask(Task* task) {
     // put the unregister request into the queue
     Work w(DESTROY, nullptr, task);
 
-    SCHEDULER_LOCKER(_queueLock);
+    MUTEX_LOCKER(mutexLocker, _queueLock);
 
     _queue.push_back(w);
     _hasWork = true;
@@ -208,11 +199,6 @@ void SchedulerThread::signalTask(std::unique_ptr<TaskData>& data) {
   _taskData.push(data.release());
   _scheduler->wakeupLoop(_loop);
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::run() {
   LOG_TRACE("scheduler thread started (%llu)", (unsigned long long)threadId());
@@ -265,7 +251,7 @@ void SchedulerThread::run() {
       Work w;
 
       {
-        SCHEDULER_LOCKER(_queueLock);  // TODO(fc) XXX goto boost lockfree
+        MUTEX_LOCKER(mutexLocker, _queueLock);  // TODO(fc) XXX goto boost lockfree
 
         if (!_hasWork.load() || _queue.empty()) {
           break;
@@ -329,7 +315,7 @@ void SchedulerThread::run() {
     Work w;
 
     {
-      SCHEDULER_LOCKER(_queueLock);
+      MUTEX_LOCKER(mutexLocker, _queueLock);
 
       if (_queue.empty()) {
         break;
@@ -358,10 +344,6 @@ void SchedulerThread::run() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 void SchedulerThread::addStatus(VPackBuilder* b) {
   Thread::addStatus(b);
   b->add("stopping", VPackValue(_stopping.load()));
@@ -369,5 +351,3 @@ void SchedulerThread::addStatus(VPackBuilder* b) {
   b->add("stopped", VPackValue(_stopped.load()));
   b->add("numberTasks", VPackValue(_numberTasks.load()));
 }
-
-

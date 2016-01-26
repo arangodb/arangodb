@@ -32,17 +32,14 @@
 #include "VocBase/vocbase.h"
 
 
-namespace triagens {
+namespace arangodb {
 namespace rest {
 class ApplicationDispatcher;
 class ApplicationScheduler;
 }
 
-namespace arango {
 class ApplicationV8;
 }
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 actions function inside the global variable
@@ -50,10 +47,9 @@ class ApplicationV8;
 
 void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           TRI_vocbase_t* vocbase,
-                          triagens::rest::ApplicationScheduler* scheduler,
-                          triagens::rest::ApplicationDispatcher* dispatcher,
-                          triagens::arango::ApplicationV8*);
+                          arangodb::rest::ApplicationScheduler* scheduler,
+                          arangodb::rest::ApplicationDispatcher* dispatcher,
+                          arangodb::ApplicationV8*);
 
 #endif
-
 

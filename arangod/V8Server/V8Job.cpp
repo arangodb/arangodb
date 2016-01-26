@@ -22,39 +22,35 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Job.h"
-
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Dispatcher/DispatcherQueue.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Job::V8Job(TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
-             std::string const& command, TRI_json_t const* parameters,
+             std::string const& command, std::shared_ptr<VPackBuilder> parameters,
              bool allowUseDatabase)
     : Job("V8 Job"),
       _vocbase(vocbase),
       _v8Dealer(v8Dealer),
       _command(command),
-      _parameters(nullptr),
+      _parameters(parameters),
       _canceled(false),
       _allowUseDatabase(allowUseDatabase) {
-  if (parameters != nullptr) {
-    // create our own copy of the parameters
-    _parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,15 +58,9 @@ V8Job::V8Job(TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Job::~V8Job() {
-  if (_parameters != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
-  }
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void V8Job::work() {
   if (_canceled) {
@@ -108,7 +98,7 @@ void V8Job::work() {
       v8::Handle<v8::Value> fArgs;
 
       if (_parameters != nullptr) {
-        fArgs = TRI_ObjectJson(isolate, _parameters);
+        fArgs = TRI_VPackToV8(isolate, _parameters->slice());
       } else {
         fArgs = v8::Undefined(isolate);
       }
@@ -130,7 +120,7 @@ void V8Job::work() {
                 "caught non-catchable exception (aka termination) in job");
           }
         }
-      } catch (triagens::basics::Exception const& ex) {
+      } catch (arangodb::basics::Exception const& ex) {
         LOG_ERROR("caught exception in V8 job: %s %s",
                   TRI_errno_string(ex.code()), ex.what());
       } catch (std::bad_alloc const&) {
@@ -145,27 +135,18 @@ void V8Job::work() {
   _v8Dealer->exitContext(context);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool V8Job::cancel() {
   _canceled = true;
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void V8Job::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void V8Job::handleError(Exception const& ex) {}
 

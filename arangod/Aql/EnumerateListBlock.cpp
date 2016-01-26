@@ -26,12 +26,9 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::arango;
-using namespace triagens::aql;
+using namespace arangodb::aql;
 
-using Json = triagens::basics::Json;
-
+using Json = arangodb::basics::Json;
 
 EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
                                        EnumerateListNode const* en)

@@ -42,8 +42,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace triagens::basics;
-using namespace triagens::rest;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 using namespace std;
 
 
@@ -167,9 +167,6 @@ bool ApplicationEndpointServer::buildServers() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
@@ -205,9 +202,6 @@ void ApplicationEndpointServer::setupOptions(
       "SSL cipher list, see OpenSSL documentation");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   // create the ssl context (if possible)
@@ -236,12 +230,10 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
     _endpoints.push_back(httpEndpoint);
   }
 
-  const std::vector<std::string> dbNames;
-
   // add & validate endpoints
   for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.add((*i), dbNames, _backlogSize, _reuseAddress);
+    bool ok = _endpointList.add((*i), std::vector<std::string>(), _backlogSize, _reuseAddress);
 
     if (!ok) {
       LOG_FATAL_AND_EXIT("invalid endpoint '%s'", (*i).c_str());
@@ -291,7 +283,7 @@ bool ApplicationEndpointServer::loadEndpoints() {
 
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = triagens::basics::VelocyPackHelper::velocyPackFromFile(filename);
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
   } catch (...) {
     // Silently fail
     return false;
@@ -299,6 +291,7 @@ bool ApplicationEndpointServer::loadEndpoints() {
   VPackSlice const slice = builder->slice();
 
   if (!slice.isObject()) {
+    LOG_WARNING("error loading ENDPOINTS file '%s'", filename.c_str());
     return false;
   }
 
@@ -344,9 +337,6 @@ std::vector<std::string> const& ApplicationEndpointServer::getEndpointMapping(
   return _endpointList.getMapping(endpoint);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::prepare() {
   if (_disabled) {
@@ -373,9 +363,6 @@ bool ApplicationEndpointServer::prepare() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::open() {
   if (_disabled) {
@@ -389,9 +376,6 @@ bool ApplicationEndpointServer::open() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::close() {
   if (_disabled) {
@@ -404,9 +388,6 @@ void ApplicationEndpointServer::close() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::stop() {
   if (_disabled) {

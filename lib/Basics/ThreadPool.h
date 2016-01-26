@@ -32,7 +32,7 @@
 #include <functional>
 #include <deque>
 
-namespace triagens {
+namespace arangodb {
 namespace basics {
 
 class WorkerThread;
@@ -84,9 +84,9 @@ class ThreadPool {
 
   
  private:
-  triagens::basics::ConditionVariable _condition;
+  arangodb::basics::ConditionVariable _condition;
 
-  std::vector<triagens::basics::WorkerThread*> _threads;
+  std::vector<arangodb::basics::WorkerThread*> _threads;
 
   std::deque<std::function<void()>> _tasks;
 
@@ -95,8 +95,8 @@ class ThreadPool {
   std::atomic<bool> _stopping;
 };
 
-}  // namespace triagens::basics
-}  // namespace triagens
+}  // namespace arangodb::basics
+}  // namespace arangodb
 
 #endif
 

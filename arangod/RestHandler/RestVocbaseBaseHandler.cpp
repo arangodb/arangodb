@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVocbaseBaseHandler.h"
-
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
@@ -38,11 +37,9 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
-
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,13 +88,15 @@ std::string const RestVocbaseBaseHandler::IMPORT_PATH = "/_api/import";
 /// @brief replication path
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const RestVocbaseBaseHandler::REPLICATION_PATH = "/_api/replication";
+std::string const RestVocbaseBaseHandler::REPLICATION_PATH =
+    "/_api/replication";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple query all path
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH = "/_api/simple/all";
+std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH =
+    "/_api/simple/all";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch lookup path
@@ -119,17 +118,13 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 
 std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
-
-
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
     : RestBaseHandler(request),
       _context(static_cast<VocbaseContext*>(request->getRequestContext())),
       _vocbase(_context->getVocbase()),
       _nolockHeaderSet(nullptr) {}
 
-
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a collection needs to be created on the fly
@@ -179,8 +174,9 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generate20x(
-    HttpResponse::HttpResponseCode responseCode, std::string const& collectionName,
-    TRI_voc_key_t key, TRI_voc_rid_t rid, TRI_col_type_e type) {
+    HttpResponse::HttpResponseCode responseCode,
+    std::string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid,
+    TRI_col_type_e type) {
   std::string handle(
       std::move(DocumentHelper::assembleDocumentId(collectionName, key)));
   std::string rev(std::move(StringUtils::itoa(rid)));
@@ -205,11 +201,11 @@ void RestVocbaseBaseHandler::generate20x(
       if (type == TRI_COL_TYPE_EDGE) {
         _response->setHeader("location", 8,
                              std::string("/_db/" + _request->databaseName() +
-                                    EDGE_PATH + "/" + escapedHandle));
+                                         EDGE_PATH + "/" + escapedHandle));
       } else {
         _response->setHeader("location", 8,
                              std::string("/_db/" + _request->databaseName() +
-                                    DOCUMENT_PATH + "/" + escapedHandle));
+                                         DOCUMENT_PATH + "/" + escapedHandle));
       }
     }
   }
@@ -296,115 +292,85 @@ void RestVocbaseBaseHandler::generateDocument(
   std::string id(std::move(DocumentHelper::assembleDocumentId(
       resolver->getCollectionName(cid), key)));
 
-  TRI_json_t augmented;
-  TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, 5);
+  try {
+    VPackBuilder builder;
+    builder.openObject();
 
-  TRI_json_t* idJson =
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str(), id.size());
+    builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(id));
 
-  if (idJson != nullptr) {
-    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
-                          TRI_VOC_ATTRIBUTE_ID, idJson);
+    // convert rid from uint64_t to string
+    std::string rev(std::move(StringUtils::itoa(mptr._rid)));
+    builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+
+    TRI_df_marker_type_t type =
+        static_cast<TRI_df_marker_t const*>(mptr.getDataPtr())
+            ->_type;  // PROTECTED by trx passed from above
+
+    if (type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* marker =
+          static_cast<TRI_doc_edge_key_marker_t const*>(
+              mptr.getDataPtr());  // PROTECTED by trx passed from above
+      std::string from(std::move(DocumentHelper::assembleDocumentId(
+          resolver->getCollectionNameCluster(marker->_fromCid),
+          std::string((char*)marker + marker->_offsetFromKey))));
+      builder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
+
+      std::string to(std::move(DocumentHelper::assembleDocumentId(
+          resolver->getCollectionNameCluster(marker->_toCid),
+          std::string((char*)marker + marker->_offsetToKey))));
+      builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
+    } else if (type == TRI_WAL_MARKER_EDGE) {
+      arangodb::wal::edge_marker_t const* marker =
+          static_cast<arangodb::wal::edge_marker_t const*>(
+              mptr.getDataPtr());  // PROTECTED by trx passed from above
+      std::string from(std::move(DocumentHelper::assembleDocumentId(
+          resolver->getCollectionNameCluster(marker->_fromCid),
+          std::string((char*)marker + marker->_offsetFromKey))));
+      builder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
+
+      std::string to(std::move(DocumentHelper::assembleDocumentId(
+          resolver->getCollectionNameCluster(marker->_toCid),
+          std::string((char*)marker + marker->_offsetToKey))));
+      builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
+    }
+    builder.close();
+
+    // add document identifier to buffer
+    TRI_string_buffer_t buffer;
+
+    // convert object to string
+    TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+
+    TRI_shaped_json_t shapedJson;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(
+        shapedJson, mptr.getDataPtr());  // PROTECTED by trx passed from above
+
+    std::unique_ptr<TRI_json_t> augmented(
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(builder.slice()));
+    TRI_StringifyAugmentedShapedJson(shaper, &buffer, &shapedJson,
+                                     augmented.get());
+
+    // and generate a response
+    createResponse(HttpResponse::OK);
+    _response->setContentType("application/json; charset=utf-8");
+    _response->setHeader("etag", 4, "\"" + rev + "\"");
+
+    if (generateBody) {
+      _response->body().appendText(TRI_BeginStringBuffer(&buffer),
+                                   TRI_LengthStringBuffer(&buffer));
+    } else {
+      _response->headResponse(TRI_LengthStringBuffer(&buffer));
+    }
+
+    TRI_DestroyStringBuffer(&buffer);
+
+  } catch (arangodb::velocypack::Exception const&) {
+    // TODO What should happen on error here?
+    // Failed to build the object
+    // All other Exceptions were not catched before
   }
-
-  // convert rid from uint64_t to string
-  std::string rid(std::move(StringUtils::itoa(mptr._rid)));
-  TRI_json_t* rev =
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
-
-  if (rev != nullptr) {
-    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
-                          TRI_VOC_ATTRIBUTE_REV, rev);
-  }
-
-  TRI_json_t* keyJson =
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, key, strlen(key));
-
-  if (keyJson != nullptr) {
-    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
-                          TRI_VOC_ATTRIBUTE_KEY, keyJson);
-  }
-
-  TRI_df_marker_type_t type =
-      static_cast<TRI_df_marker_t const*>(mptr.getDataPtr())
-          ->_type;  // PROTECTED by trx passed from above
-
-  if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* marker =
-        static_cast<TRI_doc_edge_key_marker_t const*>(
-            mptr.getDataPtr());  // PROTECTED by trx passed from above
-    std::string from(std::move(DocumentHelper::assembleDocumentId(
-        resolver->getCollectionNameCluster(marker->_fromCid),
-        std::string((char*)marker + marker->_offsetFromKey))));
-    std::string to(std::move(DocumentHelper::assembleDocumentId(
-        resolver->getCollectionNameCluster(marker->_toCid),
-        std::string((char*)marker + marker->_offsetToKey))));
-
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
-                          TRI_VOC_ATTRIBUTE_FROM,
-                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                                   from.c_str(), from.size()));
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO,
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
-  } else if (type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* marker =
-        static_cast<triagens::wal::edge_marker_t const*>(
-            mptr.getDataPtr());  // PROTECTED by trx passed from above
-    std::string from(std::move(DocumentHelper::assembleDocumentId(
-        resolver->getCollectionNameCluster(marker->_fromCid),
-        std::string((char*)marker + marker->_offsetFromKey))));
-    std::string to(std::move(DocumentHelper::assembleDocumentId(
-        resolver->getCollectionNameCluster(marker->_toCid),
-        std::string((char*)marker + marker->_offsetToKey))));
-
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
-                          TRI_VOC_ATTRIBUTE_FROM,
-                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                                   from.c_str(), from.size()));
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO,
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
-  }
-
-  // add document identifier to buffer
-  TRI_string_buffer_t buffer;
-
-  // convert object to string
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-
-  TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(
-      shapedJson, mptr.getDataPtr());  // PROTECTED by trx passed from above
-  TRI_StringifyAugmentedShapedJson(shaper, &buffer, &shapedJson, &augmented);
-
-  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
-
-  if (idJson) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idJson);
-  }
-
-  if (rev) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, rev);
-  }
-
-  if (keyJson) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, keyJson);
-  }
-
-  // and generate a response
-  createResponse(HttpResponse::OK);
-  _response->setContentType("application/json; charset=utf-8");
-  _response->setHeader("etag", 4, "\"" + rid + "\"");
-
-  if (generateBody) {
-    _response->body().appendText(TRI_BeginStringBuffer(&buffer),
-                                 TRI_LengthStringBuffer(&buffer));
-  } else {
-    _response->headResponse(TRI_LengthStringBuffer(&buffer));
-  }
-
-  TRI_DestroyStringBuffer(&buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,7 +449,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     default:
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "failed with error: " + string(TRI_errno_string(res)));
+                    "failed with error: " + std::string(TRI_errno_string(res)));
   }
 }
 
@@ -594,8 +560,6 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
   return p.steal();
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle
 /// TODO: merge with DocumentHelper::parseDocumentId
@@ -641,7 +605,7 @@ int RestVocbaseBaseHandler::parseDocumentId(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, pos + 1, end - pos - 1);
+  key = TRI_DuplicateString(TRI_CORE_MEM_ZONE, pos + 1, end - pos - 1);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -659,7 +623,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   if (found) {
     _nolockHeaderSet = new std::unordered_set<std::string>();
     _nolockHeaderSet->insert(std::string(shardId));
-    triagens::arango::Transaction::_makeNolockHeaders = _nolockHeaderSet;
+    arangodb::Transaction::_makeNolockHeaders = _nolockHeaderSet;
   }
 }
 
@@ -669,12 +633,10 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    triagens::arango::Transaction::_makeNolockHeaders = nullptr;
+    arangodb::Transaction::_makeNolockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }
 
   RestBaseHandler::finalizeExecute();
 }
-
-

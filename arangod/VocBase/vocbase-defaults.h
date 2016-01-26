@@ -27,12 +27,13 @@
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 struct TRI_vocbase_t;
 
+namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default settings
@@ -46,10 +47,9 @@ struct TRI_vocbase_defaults_t {
   bool authenticateSystemOnly;
   bool forceSyncProperties;
 
-  
-  void toVelocyPack(VPackBuilder&) const;
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
 
-  std::shared_ptr<VPackBuilder> toVelocyPack() const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
 
   void applyToVocBase(TRI_vocbase_t*) const;
 };

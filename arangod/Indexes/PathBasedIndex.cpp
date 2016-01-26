@@ -25,16 +25,14 @@
 #include "Aql/AstNode.h"
 #include "Basics/logging.h"
 
-using namespace triagens::arango;
+using namespace arangodb;
 
-
-
-triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
+arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
     const {
-  if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+  if (type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     TRI_ASSERT(current == 0);
     return value;
-  } else if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+  } else if (type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     TRI_ASSERT(n > 0);
     TRI_ASSERT(current < n);
     return value->getMember(current);
@@ -51,7 +49,7 @@ triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
 
 PathBasedIndex::PathBasedIndex(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
-    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse, bool allowPartialIndex)
     : Index(iid, collection, fields, unique, sparse),
       _shaper(_collection->getShaper()),
@@ -75,8 +73,8 @@ PathBasedIndex::PathBasedIndex(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-PathBasedIndex::PathBasedIndex(TRI_json_t const* json, bool allowPartialIndex)
-    : Index(json),
+PathBasedIndex::PathBasedIndex(VPackSlice const& slice, bool allowPartialIndex)
+    : Index(slice),
       _shaper(nullptr),
       _paths(),
       _useExpansion(false),
@@ -143,7 +141,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
       }
       TRI_IF_FAILURE("FillElementOOM") {
         // clean up manually
-        TRI_index_element_t::free(element);
+        TRI_index_element_t::freeElement(element);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
@@ -161,7 +159,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
         elements.emplace_back(element);
       } catch (...) {
-        TRI_index_element_t::free(element);
+        TRI_index_element_t::freeElement(element);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
@@ -186,7 +184,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
         }
         TRI_IF_FAILURE("FillElementOOM") {
           // clean up manually
-          TRI_index_element_t::free(element);
+          TRI_index_element_t::freeElement(element);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
@@ -204,7 +202,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
           elements.emplace_back(element);
         } catch (...) {
-          TRI_index_element_t::free(element);
+          TRI_index_element_t::freeElement(element);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
       }

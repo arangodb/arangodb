@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock lookUpFulltextIndex
-/// @brief looks up a fulltext index
-/// `collection.lookupFulltextIndex(attribute, minLength)`
-///
-/// Checks whether a fulltext index on the given attribute *attribute* exists.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+@brief looks up a fulltext index
+`collection.lookupFulltextIndex(attribute, minLength)`
+
+Checks whether a fulltext index on the given attribute *attribute* exists.
+
