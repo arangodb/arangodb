@@ -23,16 +23,22 @@
 
 #include "Cursor.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/CollectionExport.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 
-Cursor::Cursor(CursorId id, size_t batchSize, TRI_json_t* extra, double ttl,
-               bool hasCount)
+Cursor::Cursor(CursorId id, size_t batchSize,
+               std::shared_ptr<VPackBuilder> extra, double ttl, bool hasCount)
     : _id(id),
       _batchSize(batchSize),
       _position(0),
@@ -44,21 +50,26 @@ Cursor::Cursor(CursorId id, size_t batchSize, TRI_json_t* extra, double ttl,
       _isUsed(false) {}
 
 Cursor::~Cursor() {
-  if (_extra != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _extra);
-  }
 }
 
+VPackSlice Cursor::extra() const {
+  if (_extra == nullptr) {
+    VPackSlice empty;
+    return empty;
+  }
+  return _extra->slice();
+}
 
-
-JsonCursor::JsonCursor(TRI_vocbase_t* vocbase, CursorId id, TRI_json_t* json,
-                       size_t batchSize, TRI_json_t* extra, double ttl,
+JsonCursor::JsonCursor(TRI_vocbase_t* vocbase, CursorId id,
+                       std::shared_ptr<VPackBuilder> json, size_t batchSize,
+                       std::shared_ptr<VPackBuilder> extra, double ttl,
                        bool hasCount, bool cached)
     : Cursor(id, batchSize, extra, ttl, hasCount),
       _vocbase(vocbase),
       _json(json),
-      _size(TRI_LengthArrayJson(_json)),
+      _size(json->slice().length()),
       _cached(cached) {
+  TRI_ASSERT(json->slice().isArray());
   TRI_UseVocBase(vocbase);
 }
 
@@ -89,9 +100,10 @@ bool JsonCursor::hasNext() {
 TRI_json_t* JsonCursor::next() {
   TRI_ASSERT_EXPENSIVE(_json != nullptr);
   TRI_ASSERT_EXPENSIVE(_position < _size);
-
-  return static_cast<TRI_json_t*>(
-      TRI_AtVector(&_json->_value._objects, _position++));
+  VPackSlice slice = _json->slice();
+  // TODO FIX THIS by returning the slice.
+  return arangodb::basics::VelocyPackHelper::velocyPackToJson(
+      slice.at(_position++));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,11 +169,14 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
     buffer.appendInteger(static_cast<uint64_t>(count()));
   }
 
-  TRI_json_t const* extraJson = extra();
+  VPackSlice const extraSlice = extra();
 
-  if (TRI_IsObjectJson(extraJson)) {
+  if (extraSlice.isObject()) {
+    arangodb::basics::VPackStringBufferAdapter bufferAdapter(
+        buffer.stringBuffer());
+    VPackDumper dumper(&bufferAdapter);
     buffer.appendText(",\"extra\":");
-    TRI_StringifyJson(buffer.stringBuffer(), extraJson);
+    dumper.dump(extraSlice);
   }
 
   buffer.appendText(",\"cached\":");
@@ -179,10 +194,7 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void JsonCursor::freeJson() {
-  if (_json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
-    _json = nullptr;
-  }
+  _json = nullptr;
 
   _isDeleted = true;
 }

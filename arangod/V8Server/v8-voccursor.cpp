@@ -27,6 +27,7 @@
 #include "Utils/CursorRepository.h"
 #include "Utils/transactions.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-voccursor.h"
 
 using namespace arangodb;
@@ -57,9 +58,10 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // extract objects
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
-  std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, array));
+  auto builder = std::make_shared<VPackBuilder>();
+  int res = TRI_V8ToVPack(isolate, *builder, array, false);
 
-  if (json == nullptr) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_TYPE_ERROR("cannot convert <array> to JSON");
   }
 
@@ -88,9 +90,8 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
       vocbase->_cursorRepository);
 
   try {
-    arangodb::Cursor* cursor = cursors->createFromJson(
-        json.get(), static_cast<size_t>(batchSize), nullptr, ttl, true, false);
-    json.release();
+    arangodb::Cursor* cursor = cursors->createFromVelocyPack(
+        builder, static_cast<size_t>(batchSize), nullptr, ttl, true, false);
 
     TRI_ASSERT(cursor != nullptr);
     cursors->release(cursor);
@@ -167,7 +168,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     bool hasCount = cursor->hasCount();
     size_t count = cursor->count();
     bool hasNext = cursor->hasNext();
-    TRI_json_t* extra = cursor->extra();
+    VPackSlice const extra = cursor->extra();
 
     result->ForceSet(TRI_V8_ASCII_STRING("hasMore"),
                      v8::Boolean::New(isolate, hasNext));
@@ -181,9 +182,9 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
       result->ForceSet(TRI_V8_ASCII_STRING("count"),
                        v8::Number::New(isolate, static_cast<double>(count)));
     }
-    if (extra != nullptr) {
+    if (!extra.isNone()) {
       result->ForceSet(TRI_V8_ASCII_STRING("extra"),
-                       TRI_ObjectJson(isolate, extra));
+                       TRI_VPackToV8(isolate, extra));
     }
 
     cursors->release(cursor);

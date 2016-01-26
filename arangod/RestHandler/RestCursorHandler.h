@@ -107,7 +107,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// several values
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json buildExtra(arangodb::aql::QueryResult&) const;
+  std::shared_ptr<arangodb::velocypack::Builder> buildExtra(
+      arangodb::aql::QueryResult&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body

@@ -32,6 +32,10 @@ struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
 
 class CollectionExport;
 
@@ -42,7 +46,7 @@ class Cursor {
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
-  Cursor(CursorId, size_t, struct TRI_json_t*, double, bool);
+  Cursor(CursorId, size_t, std::shared_ptr<arangodb::velocypack::Builder>, double, bool);
 
   virtual ~Cursor();
 
@@ -52,9 +56,13 @@ class Cursor {
 
   size_t batchSize() const { return _batchSize; }
 
-  struct TRI_json_t* extra() const {
-    return _extra;
-  }
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns a slice to read the extra values.
+  /// Make sure the Cursor Object is not destroyed while reading this slice.
+  /// If no extras are set this will return a NONE slice.
+  //////////////////////////////////////////////////////////////////////////////
+  
+  arangodb::velocypack::Slice extra() const;
 
   bool hasCount() const { return _hasCount; }
 
@@ -94,7 +102,7 @@ class Cursor {
   CursorId const _id;
   size_t const _batchSize;
   size_t _position;
-  struct TRI_json_t* _extra;
+  std::shared_ptr<arangodb::velocypack::Builder> _extra;
   double _ttl;
   double _expires;
   bool const _hasCount;
@@ -105,8 +113,10 @@ class Cursor {
 
 class JsonCursor : public Cursor {
  public:
-  JsonCursor(TRI_vocbase_t*, CursorId, struct TRI_json_t*, size_t,
-             struct TRI_json_t*, double, bool, bool);
+  JsonCursor(TRI_vocbase_t*, CursorId,
+             std::shared_ptr<arangodb::velocypack::Builder>, size_t,
+             std::shared_ptr<arangodb::velocypack::Builder>, double, bool,
+             bool);
 
   ~JsonCursor();
 
@@ -127,7 +137,7 @@ class JsonCursor : public Cursor {
   
  private:
   TRI_vocbase_t* _vocbase;
-  struct TRI_json_t* _json;
+  std::shared_ptr<arangodb::velocypack::Builder> _json;
   size_t const _size;
   bool _cached;
 };

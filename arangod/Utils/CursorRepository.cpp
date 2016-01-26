@@ -29,6 +29,9 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 
 size_t const CursorRepository::MaxCollectCount = 32;
@@ -90,24 +93,17 @@ CursorRepository::~CursorRepository() {
 /// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-JsonCursor* CursorRepository::createFromJson(TRI_json_t* json, size_t batchSize,
-                                             TRI_json_t* extra, double ttl,
-                                             bool count, bool cached) {
+JsonCursor* CursorRepository::createFromVelocyPack(
+    std::shared_ptr<VPackBuilder> json, size_t batchSize,
+    std::shared_ptr<VPackBuilder> extra, double ttl, bool count, bool cached) {
+
   TRI_ASSERT(json != nullptr);
 
   CursorId const id = TRI_NewTickServer();
   arangodb::JsonCursor* cursor = nullptr;
 
-  try {
-    cursor = new arangodb::JsonCursor(_vocbase, id, json, batchSize,
-                                              extra, ttl, count, cached);
-  } catch (...) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    if (extra != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
-    }
-    throw;
-  }
+  cursor = new arangodb::JsonCursor(_vocbase, id, json, batchSize, extra, ttl,
+                                    count, cached);
 
   cursor->use();
 
