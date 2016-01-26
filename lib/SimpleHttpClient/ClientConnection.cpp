@@ -331,6 +331,9 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 #elif defined(_WIN32)
   // MSG_NOSIGNAL not supported on windows platform
   int status = TRI_send(_socket, buffer, length, 0);
+#elif defined(__sun)
+  // MSG_NOSIGNAL not supported on solaris platform
+  int status = TRI_send(_socket, buffer, length, 0);
 #else
   int status = TRI_send(_socket, buffer, length, MSG_NOSIGNAL);
 #endif
