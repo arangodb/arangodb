@@ -1,6 +1,13 @@
 v2.7.5 (2016-01-22)
 -------------------
 
+* backported added automatic deadlock detection for transactions
+
+  In case a deadlock is detected, a multi-collection operation may be rolled back
+  automatically and fail with error 29 (`deadlock detected`). Client code for
+  operations containing more than one collection should be aware of this potential
+  error and handle it accordingly, either by giving up or retrying the transaction.
+
 * improved internal datafile statistics for compaction and compaction triggering
   conditions, preventing excessive growth of collection datafiles under some
   workloads. This should also fix issue #1596.
