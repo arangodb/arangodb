@@ -305,7 +305,7 @@ static char* FillVariables(char const* value) {
 static struct option* InitOptionStructure(struct option* option,
                                           char const* name, int hasArg,
                                           int* flag, int val) {
-  option->name = name;
+  option->name = const_cast<char*>(name);
   option->has_arg = hasArg;
   option->flag = flag;
   option->val = 256 + val;
