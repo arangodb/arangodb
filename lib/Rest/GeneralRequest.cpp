@@ -55,7 +55,7 @@ std::string const HttpRequest::MultiPartContentType = "multipart/form-data";
 /// @brief http request constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
+GeneralRequest::GeneralRequest(ConnectionInfo const& info, char const* header,
                          size_t length, int32_t defaultApiCompatibility,
                          bool allowMethodOverride)
     : _requestPath(EMPTY_STR),
@@ -91,8 +91,39 @@ HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief VelocyStream(VStream) request constructor
+////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::~HttpRequest() {
+GeneralRequest::GeneralRequest(ConnectionInfo const& info, Builder vobject, 
+                        uint32_t length, uint31_t chunk, uint1_t isFirstChunk, 
+                        uint64_t messageId, int32_t defaultApiCompatibility,
+                        bool allowMethodOverride)
+      : _values(10),
+        _arrayValues(1),
+        _cookies(1),
+        _headersVpack(),
+        _prefix(),
+        _suffix(),
+        _databaseName(),
+        _connectionInfo(info),
+        _freeablesVpack(),
+        _user(),
+        _requestContext(nullptr),
+        _isRequestContextOwner(false),
+        _clientTaskId(messageId),
+        _defaultApiCompatibility(defaultApiCompatibility),
+        _allowMethodOverride(allowMethodOverride){
+  // copy request values and rearange them as per VStream parameters
+        
+  if ((isFirstChunk == 1) && ()) {
+    Builder vpack = vobject;
+    _freeablesVpack.emplace_back(vpack);
+    parseHeader(vpack, length);
+  }   
+}
+
+GeneralRequest::~GeneralRequest() {
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
   for (_arrayValues.range(begin, end); begin < end; ++begin) {
@@ -118,10 +149,10 @@ HttpRequest::~HttpRequest() {
 
 
 
-char const* HttpRequest::requestPath() const { return _requestPath; }
+char const* GeneralRequest::requestPath() const { return _requestPath; }
 
 
-void HttpRequest::write(TRI_string_buffer_t* buffer) const {
+void GeneralRequest::write(TRI_string_buffer_t* buffer) const {
   std::string&& method = translateMethod(_type);
 
   TRI_AppendString2StringBuffer(buffer, method.c_str(), method.size());
@@ -216,10 +247,10 @@ void HttpRequest::write(TRI_string_buffer_t* buffer) const {
 }
 
 
-int64_t HttpRequest::contentLength() const { return _contentLength; }
+int64_t GeneralRequest::contentLength() const { return _contentLength; }
 
 
-char const* HttpRequest::header(char const* key) const {
+char const* GeneralRequest::header(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == nullptr) {
@@ -230,7 +261,7 @@ char const* HttpRequest::header(char const* key) const {
 }
 
 
-char const* HttpRequest::header(char const* key, bool& found) const {
+char const* GeneralRequest::header(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == nullptr) {
@@ -243,7 +274,7 @@ char const* HttpRequest::header(char const* key, bool& found) const {
 }
 
 
-std::map<std::string, std::string> HttpRequest::headers() const {
+std::map<std::string, std::string> GeneralRequest::headers() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -265,7 +296,7 @@ std::map<std::string, std::string> HttpRequest::headers() const {
 }
 
 
-char const* HttpRequest::value(char const* key) const {
+char const* GeneralRequest::value(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == nullptr) {
@@ -276,7 +307,7 @@ char const* HttpRequest::value(char const* key) const {
 }
 
 
-char const* HttpRequest::value(char const* key, bool& found) const {
+char const* GeneralRequest::value(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == nullptr) {
@@ -289,7 +320,7 @@ char const* HttpRequest::value(char const* key, bool& found) const {
 }
 
 
-std::map<std::string, std::string> HttpRequest::values() const {
+std::map<std::string, std::string> GeneralRequest::values() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -309,7 +340,7 @@ std::map<std::string, std::string> HttpRequest::values() const {
 }
 
 
-std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues() const {
+std::map<std::string, std::vector<char const*>*> GeneralRequest::arrayValues() const {
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
 
@@ -329,7 +360,7 @@ std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues() cons
 }
 
 
-char const* HttpRequest::cookieValue(char const* key) const {
+char const* GeneralRequest::cookieValue(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
   if (kv == nullptr) {
@@ -340,7 +371,7 @@ char const* HttpRequest::cookieValue(char const* key) const {
 }
 
 
-char const* HttpRequest::cookieValue(char const* key, bool& found) const {
+char const* GeneralRequest::cookieValue(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
   if (kv == nullptr) {
@@ -353,7 +384,7 @@ char const* HttpRequest::cookieValue(char const* key, bool& found) const {
 }
 
 
-std::map<std::string, std::string> HttpRequest::cookieValues() const {
+std::map<std::string, std::string> GeneralRequest::cookieValues() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -373,15 +404,15 @@ std::map<std::string, std::string> HttpRequest::cookieValues() const {
 }
 
 
-char const* HttpRequest::body() const {
+char const* GeneralRequest::body() const {
   return _body == nullptr ? EMPTY_STR : _body;
 }
 
 
-size_t HttpRequest::bodySize() const { return _bodySize; }
+size_t GeneralRequest::bodySize() const { return _bodySize; }
 
 
-int HttpRequest::setBody(char const* newBody, size_t length) {
+int GeneralRequest::setBody(char const* newBody, size_t length) {
   _body = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, newBody, length);
 
   if (_body == nullptr) {
@@ -400,7 +431,7 @@ int HttpRequest::setBody(char const* newBody, size_t length) {
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setHeader(char const* key, size_t keyLength,
+void GeneralRequest::setHeader(char const* key, size_t keyLength,
                             char const* value) {
   if (keyLength == 14 &&
       memcmp(key, "content-length", keyLength) ==
@@ -438,7 +469,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
 /// @brief gets the request body as VPackBuilder
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
+std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPack(
     VPackOptions const* options) {
   VPackParser parser(options);
   parser.parse(body());
@@ -449,7 +480,7 @@ std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
 /// @brief gets the request body as TRI_json_t*
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* HttpRequest::toJson(char** errmsg) {
+TRI_json_t* GeneralRequest::toJson(char** errmsg) {
   return TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
 }
 
@@ -457,7 +488,7 @@ TRI_json_t* HttpRequest::toJson(char** errmsg) {
 /// @brief determine version compatibility
 ////////////////////////////////////////////////////////////////////////////////
 
-int32_t HttpRequest::compatibility() {
+int32_t GeneralRequest::compatibility() {
   int32_t result = _defaultApiCompatibility;
 
   bool found;
@@ -520,19 +551,19 @@ int32_t HttpRequest::compatibility() {
 /// @brief returns the protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const& HttpRequest::protocol() const { return _protocol; }
+std::string const& GeneralRequest::protocol() const { return _protocol; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setProtocol(std::string const& protocol) { _protocol = protocol; }
+void GeneralRequest::setProtocol(std::string const& protocol) { _protocol = protocol; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-ConnectionInfo const& HttpRequest::connectionInfo() const {
+ConnectionInfo const& GeneralRequest::connectionInfo() const {
   return _connectionInfo;
 }
 
@@ -540,7 +571,7 @@ ConnectionInfo const& HttpRequest::connectionInfo() const {
 /// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setConnectionInfo(ConnectionInfo const& info) {
+void GeneralRequest::setConnectionInfo(ConnectionInfo const& info) {
   _connectionInfo = info;
 }
 
@@ -548,56 +579,56 @@ void HttpRequest::setConnectionInfo(ConnectionInfo const& info) {
 /// @brief returns the http request type
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::requestType() const { return _type; }
+GeneralRequest::HttpRequestType GeneralRequest::requestType() const { return _type; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the http request type
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setRequestType(HttpRequestType newType) { _type = newType; }
+void GeneralRequest::setRequestType(HttpRequestType newType) { _type = newType; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the database name
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const& HttpRequest::databaseName() const { return _databaseName; }
+std::string const& GeneralRequest::databaseName() const { return _databaseName; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the authenticated user
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const& HttpRequest::user() const { return _user; }
+std::string const& GeneralRequest::user() const { return _user; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the authenticated user
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setUser(std::string const& user) { _user = user; }
+void GeneralRequest::setUser(std::string const& user) { _user = user; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the path of the request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setRequestPath(char const* path) { _requestPath = path; }
+void GeneralRequest::setRequestPath(char const* path) { _requestPath = path; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the client task id
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t HttpRequest::clientTaskId() const { return _clientTaskId; }
+uint64_t GeneralRequest::clientTaskId() const { return _clientTaskId; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the client task id
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
+void GeneralRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the header type
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::getRequestType(char const* ptr,
+GeneralRequest::HttpRequestType GeneralRequest::getRequestType(char const* ptr,
                                                          size_t const length) {
   switch (length) {
     case 3:
@@ -644,10 +675,19 @@ HttpRequest::HttpRequestType HttpRequest::getRequestType(char const* ptr,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief parses the VStream header
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralRequest::parseHeader(Builder ptr, size_t length) {
+
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the http header
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::parseHeader(char* ptr, size_t length) {
+void GeneralRequest::parseHeader(char* ptr, size_t length) {
   char* start = ptr;
   char* end = start + length;
   size_t const versionLength = strlen("http/1.x");
@@ -981,12 +1021,56 @@ void HttpRequest::parseHeader(char* ptr, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieve object from Slice and return as string
+////////////////////////////////////////////////////////////////////////////////
+
+string getValue(Slice s, string key) {
+  string result;
+  switch(s.type()) {
+    case ValueType::String  :try{
+                                result = std::to_string(s.getString());
+                              }catch(Exception const& e){
+                                std::cout << "Parse error: " << e.what() << std::endl;
+                              }
+                             break;
+    case ValueType::Double  :try{
+                                result = std::to_string(s.getDouble());
+                              }catch(Exception const& e){
+                                std::cout << "Parse error: " << e.what() << std::endl;
+                              }
+                             break;
+    case ValueType::Int     :try{
+                                result = std::to_string(s.getInt());
+                              }catch(Exception const& e){
+                                std::cout << "Parse error: " << e.what() << std::endl;
+                              }
+                             break;
+    case ValueType::UInt    :try{
+                                result = std::to_string(s.getUInt());
+                              }catch(Exception const& e){
+                                std::cout << "Parse error: " << e.what() << std::endl;
+                              }
+                             break;
+    case ValueType::Bool    :try{
+                                result = std::to_string(s.getBool());
+                              }catch(Exception const& e){
+                                std::cout << "Parse error: " << e.what() << std::endl;
+                              }
+                             break;
+    default                 :result = "";
+                             break;
+  }
+  return result;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the full url
 /// this will create a copy of the characters in the range, so the original
 /// range can be modified afterwards
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setFullUrl(char const* begin, char const* end) {
+void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   TRI_ASSERT(begin != nullptr);
   TRI_ASSERT(end != nullptr);
   TRI_ASSERT(begin <= end);
@@ -995,10 +1079,10 @@ void HttpRequest::setFullUrl(char const* begin, char const* end) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the header values
+/// @brief sets the header values (for HTTP)
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setValues(char* buffer, char* end) {
+void GeneralRequest::setValues(char* buffer, char* end) {
   char* keyBegin = nullptr;
   char* key = nullptr;
 
@@ -1105,30 +1189,35 @@ void HttpRequest::setValues(char* buffer, char* end) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the header values (for HTTP)
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralRequest::setValues(char* buffer, ch) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the prefix path of the request
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::prefix() const { return _prefix.c_str(); }
+char const* GeneralRequest::prefix() const { return _prefix.c_str(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the path of the request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setPrefix(char const* path) { _prefix = path; }
+void GeneralRequest::setPrefix(char const* path) { _prefix = path; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all suffix parts
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> const& HttpRequest::suffix() const { return _suffix; }
+std::vector<std::string> const& GeneralRequest::suffix() const { return _suffix; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a suffix part
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::addSuffix(std::string const& part) {
+void GeneralRequest::addSuffix(std::string const& part) {
   std::string decoded = StringUtils::urlDecode(part);
   size_t tmpLength = 0;
   char* utf8_nfc = TRI_normalize_utf8_to_NFC(
@@ -1145,7 +1234,7 @@ void HttpRequest::addSuffix(std::string const& part) {
 /// @brief set the request context
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setRequestContext(RequestContext* requestContext,
+void GeneralRequest::setRequestContext(RequestContext* requestContext,
                                     bool isRequestContextOwner) {
   if (_requestContext) {
     // if we have a shared context, we should not have got here
@@ -1165,7 +1254,7 @@ void HttpRequest::setRequestContext(RequestContext* requestContext,
 /// @brief translate the HTTP protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpRequest::translateVersion(HttpVersion version) {
+std::string GeneralRequest::translateVersion(HttpVersion version) {
   switch (version) {
     case HTTP_1_1: {
       return "HTTP/1.1";
@@ -1180,7 +1269,7 @@ std::string HttpRequest::translateVersion(HttpVersion version) {
 /// @brief translate an enum value into an HTTP method string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpRequest::translateMethod(HttpRequestType method) {
+std::string GeneralRequest::translateMethod(HttpRequestType method) {
   if (method == HTTP_REQUEST_DELETE) {
     return "DELETE";
   } else if (method == HTTP_REQUEST_GET) {
@@ -1205,7 +1294,7 @@ std::string HttpRequest::translateMethod(HttpRequestType method) {
 /// @brief translate an HTTP method string into an enum value
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::translateMethod(
+GeneralRequest::HttpRequestType GeneralRequest::translateMethod(
     std::string const& method) {
   std::string const methodString = StringUtils::toupper(method);
 
@@ -1232,7 +1321,7 @@ HttpRequest::HttpRequestType HttpRequest::translateMethod(
 /// @brief append the request method string to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::appendMethod(HttpRequestType method, StringBuffer* buffer) {
+void GeneralRequest::appendMethod(HttpRequestType method, StringBuffer* buffer) {
   buffer->appendText(translateMethod(method));
   buffer->appendChar(' ');
 }
@@ -1241,7 +1330,7 @@ void HttpRequest::appendMethod(HttpRequestType method, StringBuffer* buffer) {
 /// @brief set array value
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setArrayValue(char* key, size_t length, char const* value) {
+void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {
   Dictionary<std::vector<char const*>*>::KeyValue const* kv =
       _arrayValues.lookup(key);
   std::vector<char const*>* v = nullptr;
@@ -1260,7 +1349,7 @@ void HttpRequest::setArrayValue(char* key, size_t length, char const* value) {
 /// @brief set cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setCookie(char* key, size_t length, char const* value) {
+void GeneralRequest::setCookie(char* key, size_t length, char const* value) {
   _cookies.insert(key, length, value);
 }
 
@@ -1268,7 +1357,7 @@ void HttpRequest::setCookie(char* key, size_t length, char const* value) {
 /// @brief parse value of a cookie header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::parseCookies(char const* buffer) {
+void GeneralRequest::parseCookies(char const* buffer) {
   char* keyBegin = nullptr;
   char* key = nullptr;
 
