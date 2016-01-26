@@ -2071,6 +2071,14 @@ std::string TRI_GetTempPath() {
   // possible path
   // ..........................................................................
 
+  /* from MSDN:
+    The GetTempPath function checks for the existence of environment variables in the following order and uses the first path found:
+
+    The path specified by the TMP environment variable.
+    The path specified by the TEMP environment variable.
+    The path specified by the USERPROFILE environment variable.
+    The Windows directory.
+  */
   dwReturnValue = GetTempPath(LOCAL_MAX_PATH_BUFFER, tempPathName);
 
   if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {

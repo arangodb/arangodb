@@ -215,12 +215,9 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
-  int processPid;
 
   if (usePipes) {
-    bool ok;
-
-    ok = CreatePipes(pipe_server_to_child, pipe_child_to_server);
+    bool ok = CreatePipes(pipe_server_to_child, pipe_child_to_server);
 
     if (!ok) {
       external->_status = TRI_EXT_PIPE_FAILED;
@@ -228,7 +225,7 @@ static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
     }
   }
 
-  processPid = fork();
+  int processPid = fork();
 
   // child process
   if (processPid == 0) {
@@ -497,7 +494,6 @@ static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
 }
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,13 +528,12 @@ TRI_process_info_t TRI_ProcessInfoSelf() {
 
 TRI_process_info_t TRI_ProcessInfoSelf() {
   TRI_process_info_t result;
-  struct rusage used;
-  int res;
 
   memset(&result, 0, sizeof(result));
   result._scClkTck = 1000000;
 
-  res = getrusage(RUSAGE_SELF, &used);
+  struct rusage used;
+  int res = getrusage(RUSAGE_SELF, &used);
 
   if (res == 0) {
     result._minorPageFaults = used.ru_minflt;
@@ -850,9 +845,9 @@ void TRI_SetProcessTitle(char const* title) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeExternal(TRI_external_t* ext) {
-  size_t i;
   TRI_Free(TRI_CORE_MEM_ZONE, ext->_executable);
-  for (i = 0; i < ext->_numberArguments; i++) {
+
+  for (size_t i = 0; i < ext->_numberArguments; i++) {
     TRI_Free(TRI_CORE_MEM_ZONE, ext->_arguments[i]);
   }
   TRI_Free(TRI_CORE_MEM_ZONE, ext->_arguments);
@@ -887,11 +882,25 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   TRI_external_t* external = static_cast<TRI_external_t*>(
       TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_external_t), true));
 
+  if (external == nullptr) {
+    // gracefully handle out of memory
+    pid->_pid = TRI_INVALID_PROCESS_ID;
+    return;
+  }
+
   external->_executable = TRI_DuplicateString(executable);
   external->_numberArguments = n + 1;
 
   external->_arguments = static_cast<char**>(
       TRI_Allocate(TRI_CORE_MEM_ZONE, (n + 2) * sizeof(char*), true));
+
+  if (external->_arguments == nullptr) {
+    // gracefully handle out of memory
+    pid->_pid = TRI_INVALID_PROCESS_ID;
+    FreeExternal(external);
+    return;
+  }
+
   external->_arguments[0] = TRI_DuplicateString(executable);
 
   for (size_t i = 0; i < n; ++i) {
@@ -902,6 +911,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   external->_status = TRI_EXT_NOT_STARTED;
 
   StartExternalProcess(external, usePipes);
+
   if (external->_status != TRI_EXT_RUNNING) {
     pid->_pid = TRI_INVALID_PROCESS_ID;
     FreeExternal(external);
@@ -909,6 +919,13 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   }
 
   LOG_DEBUG("adding process %d to list", (int)external->_pid);
+  
+  // Note that the following deals with different types under windows,
+  // however, this code here can be written in a platform-independent
+  // way:
+  pid->_pid = external->_pid;
+  pid->_readPipe = external->_readPipe;
+  pid->_writePipe = external->_writePipe;
   
   MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
@@ -920,13 +937,6 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
     FreeExternal(external);
     return;
   }
-  
-  // Note that the following deals with different types under windows,
-  // however, this code here can be written in a platform-independent
-  // way:
-  pid->_pid = external->_pid;
-  pid->_readPipe = external->_readPipe;
-  pid->_writePipe = external->_writePipe;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1142,7 +1152,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
 }
 
 #ifndef _WIN32
-static bool ourKillProcess(TRI_external_t* pid) {
+static bool OurKillProcess(TRI_external_t* pid) {
   if (0 == kill(pid->_pid, SIGTERM)) {
     int count;
 
@@ -1165,7 +1175,7 @@ static bool ourKillProcess(TRI_external_t* pid) {
   return false;
 }
 #else
-static bool ourKillProcess(TRI_external_t* pid) {
+static bool OurKillProcess(TRI_external_t* pid) {
   bool ok = true;
   UINT uExitCode = 0;
   DWORD exitCode;
@@ -1187,7 +1197,7 @@ static bool ourKillProcess(TRI_external_t* pid) {
   return ok;
 }
 
-static bool ourKillProcessPID(DWORD pid) {
+static bool OurKillProcessPID(DWORD pid) {
   HANDLE hProcess;
   UINT uExitCode = 0;
 
@@ -1244,14 +1254,14 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid) {
     }
     return false;
 #else
-    return ourKillProcessPID(pid._pid);
+    return OurKillProcessPID(pid._pid);
 #endif
   }
 
   bool ok = true;
   if (external->_status == TRI_EXT_RUNNING ||
       external->_status == TRI_EXT_STOPPED) {
-    ok = ourKillProcess(external);
+    ok = OurKillProcess(external);
   }
   
   FreeExternal(external);
