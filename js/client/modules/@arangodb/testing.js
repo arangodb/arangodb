@@ -1059,7 +1059,7 @@ function startDispatcher(instanceInfo) {
   instanceInfo.dispatcherPid = executeExternal(cmd, toArgv(args));
 
   while (arango.GET("/_admin/version").error === true) {
-    print("Waiting to dispatcher to appear");
+    print("Waiting for dispatcher to appear");
     sleep(1);
   }
 
