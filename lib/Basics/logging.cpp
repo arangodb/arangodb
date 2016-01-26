@@ -1522,6 +1522,7 @@ log_appender_syslog_t::log_appender_syslog_t(char const* contentFilter,
   if ('0' <= facility[0] && facility[0] <= '9') {
     value = atoi(facility);
   } else {
+#ifndef __sun
     CODE* ptr = reinterpret_cast<CODE*>(TRI_facilitynames);
 
     while (ptr->c_name != 0) {
@@ -1532,6 +1533,7 @@ log_appender_syslog_t::log_appender_syslog_t(char const* contentFilter,
 
       ++ptr;
     }
+#endif
   }
 
   // and open logging, openlog does not have a return value...
