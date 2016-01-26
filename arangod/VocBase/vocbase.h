@@ -267,7 +267,7 @@ struct TRI_vocbase_t {
 
   TRI_associative_pointer_t _authInfo;
   TRI_associative_pointer_t _authCache;
-  TRI_read_write_lock_t _authInfoLock;
+  arangodb::basics::ReadWriteLock _authInfoLock;
   bool _authInfoLoaded;  // flag indicating whether the authentication info was
                          // loaded successfully
   bool _hasCompactor;
