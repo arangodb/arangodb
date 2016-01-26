@@ -27,11 +27,9 @@
 #define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "Basics/Mutex.h"
-#include "Basics/SpinLock.h"
 #include "HttpServer/HttpHandler.h"
 #include "Rest/ConnectionInfo.h"
 #include "Scheduler/TaskManager.h"
-
 
 namespace arangodb {
 namespace rest {

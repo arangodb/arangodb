@@ -3191,7 +3191,7 @@ static void CreateDatabaseCoordinator(
 
     std::string const serverId(ServerState::instance()->getId());
     builder.add("coordinator", VPackValue(serverId));
-  } catch (VPackException const& e) {
+  } catch (VPackException const&) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 

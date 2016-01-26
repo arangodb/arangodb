@@ -1,6 +1,12 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* removed mostly unused internal spin-lock implementation
+
+* removed support for pre-Windows 7-style locks. This removes compatibility with
+  Windows versions older than Windows 7 (e.g. Windows Vista, Windows XP) or 
+  Windows 2008R2 (e.g. Windows 2008).
+
 * changed names of sub-threads started by arangod
 
 * added option `--default-number-of-shards` to arangorestore, allowing creating
@@ -429,6 +435,13 @@ v2.8.0-alpha1 (2015-12-03)
 
 v2.7.5 (2016-01-22)
 -------------------
+
+* backported added automatic deadlock detection for transactions
+
+  In case a deadlock is detected, a multi-collection operation may be rolled back
+  automatically and fail with error 29 (`deadlock detected`). Client code for
+  operations containing more than one collection should be aware of this potential
+  error and handle it accordingly, either by giving up or retrying the transaction.
 
 * improved internal datafile statistics for compaction and compaction triggering
   conditions, preventing excessive growth of collection datafiles under some

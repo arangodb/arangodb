@@ -42,8 +42,6 @@
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/random.h"
-#include "Basics/SpinLock.h"
-#include "Basics/SpinLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CursorRepository.h"

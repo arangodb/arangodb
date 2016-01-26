@@ -190,14 +190,10 @@ static inline void TRI_MemoryPrefetch(void* p) {}
 #define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fake spinlocks
-/// spin locks seem to have issues when used under Valgrind
-/// we thus mimic spinlocks using ordinary mutexes when in maintainer mode
+/// @brief asserts
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-
-#define TRI_FAKE_SPIN_LOCKS 1
 
 #ifndef TRI_ASSERT
 #define TRI_ASSERT(expr)    \
@@ -217,8 +213,6 @@ static inline void TRI_MemoryPrefetch(void* p) {}
 #endif
 
 #else
-
-#undef TRI_FAKE_SPIN_LOCKS
 
 #ifndef TRI_ASSERT
 #define TRI_ASSERT(expr) \

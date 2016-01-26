@@ -26,7 +26,6 @@
 
 #include "Basics/logging.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/SpinLocker.h"
 #include "velocypack/Value.h"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
@@ -41,11 +40,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-#ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
-#define SCHEDULER_LOCKER(a) SPIN_LOCKER(a)
-#else
 #define SCHEDULER_LOCKER(a) MUTEX_LOCKER(a)
-#endif
 
 SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
                                  bool defaultLoop)
