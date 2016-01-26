@@ -112,7 +112,7 @@ case $target in
     CC="gcc -std=gnu99"
     CPPFLAGS=" -I/opt/local/include -L/opt/local/lib"
     CXXFLAGS="-static-libstdc++ -D_GLIBCXX_USE_C99"
-    LDFLAGS="-Wl,-rpath,/opt/local/lib -L/opt/local/lib"
+    LDFLAGS="-Wl,-rpath,/opt/local/lib,-lnsl,-lsocket -L/opt/local/lib"
     ;;
 
   armv7l-*-linux-gnueabihf)
