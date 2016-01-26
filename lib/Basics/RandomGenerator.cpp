@@ -45,7 +45,7 @@ namespace {
 /// @brief random version
 ////////////////////////////////////////////////////////////////////////////////
 
-Random::random_e version = Random::RAND_MERSENNE;
+Random::random_e random_version = Random::RAND_MERSENNE;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief random lock
@@ -541,10 +541,10 @@ std::string UniformCharacter::random(size_t length) {
 random_e selectVersion(random_e newVersion) {
   MUTEX_LOCKER(RandomLock);
 
-  random_e oldVersion = version;
-  version = newVersion;
+  random_e oldVersion = random_version;
+  random_version = newVersion;
 
-  switch (version) {
+  switch (random_version) {
     case RAND_MERSENNE: {
       uniformInteger.reset(new UniformIntegerMersenne);
       break;
@@ -605,11 +605,11 @@ random_e selectVersion(random_e newVersion) {
   return oldVersion;
 }
 
-random_e currentVersion() { return version; }
+random_e currentVersion() { return random_version; }
 
 void shutdown() {}
 
-bool isBlocking() { return version == RAND_RANDOM; }
+bool isBlocking() { return random_version == RAND_RANDOM; }
 
 int32_t interval(int32_t left, int32_t right) {
   MUTEX_LOCKER(RandomLock);
