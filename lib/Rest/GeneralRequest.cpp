@@ -579,13 +579,13 @@ void GeneralRequest::setConnectionInfo(ConnectionInfo const& info) {
 /// @brief returns the http request type
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest::HttpRequestType GeneralRequest::requestType() const { return _type; }
+GeneralRequest::ProtocolRequestType GeneralRequest::requestType() const { return _type; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the http request type
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralRequest::setRequestType(HttpRequestType newType) { _type = newType; }
+void GeneralRequest::setRequestType(ProtocolRequestType newType) { _type = newType; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the database name
@@ -628,7 +628,7 @@ void GeneralRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
 /// @brief determine the header type
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest::HttpRequestType GeneralRequest::getRequestType(char const* ptr,
+GeneralRequest::ProtocolRequestType GeneralRequest::getRequestType(char const* ptr,
                                                          size_t const length) {
   switch (length) {
     case 3:
@@ -680,6 +680,27 @@ GeneralRequest::HttpRequestType GeneralRequest::getRequestType(char const* ptr,
 
 void GeneralRequest::parseHeader(Builder ptr, size_t length) {
 
+  Slice s(ptr.start());
+  for (auto const& it : ObjectIterator(s)) {
+     if(tolower(it.key.copyString()) == "method") {
+      _type = getRequestType(getValue(it.value).c_str(), getValue(it.value).size());
+     } else if( tolower(it.key.copyString()) == "version" ) {
+        if(tolower(getValue(it.value)) == "vstream_unknown"){
+          _version = VSTREAM_UNKNOWN;
+        } else if(tolower(getValue(it.value)) == "vstream_1_0"){
+          _version = VSTREAM_1_0
+        }
+     } else if(tolower(it.key.copyString()) == "databaseName") {
+        _databaseName = getValue(it.value);
+     } else if(tolower(it.key.copyString()) == "fullUrl") {
+        setFullUrl(getValue(it.value));
+     } else if(tolower(it.key.copyString()) == "requestPath") {
+        setRequestPath(getValue(it.value));
+     } else{
+        setHeader(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
+      }
+    }
+  }
 }
 
 
@@ -1021,14 +1042,15 @@ void GeneralRequest::parseHeader(char* ptr, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief retrieve object from Slice and return as string
+/// @brief retrieve object from Slice(VPack) and return as string
 ////////////////////////////////////////////////////////////////////////////////
 
-string getValue(Slice s, string key) {
+string getValue(Slice s) {
   string result;
   switch(s.type()) {
     case ValueType::String  :try{
-                                result = std::to_string(s.getString());
+                                ValueLength len;
+                                result = std::to_string(s.getString(len));
                               }catch(Exception const& e){
                                 std::cout << "Parse error: " << e.what() << std::endl;
                               }
@@ -1076,6 +1098,15 @@ void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   TRI_ASSERT(begin <= end);
 
   _fullUrl = std::string(begin, end - begin);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the full url (specifically for velocystream)
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralRequest::setFullUrl(std::string str) {
+  _fullUrl = str;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1254,7 +1285,7 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext,
 /// @brief translate the HTTP protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string GeneralRequest::translateVersion(HttpVersion version) {
+std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
     case HTTP_1_1: {
       return "HTTP/1.1";
@@ -1269,7 +1300,7 @@ std::string GeneralRequest::translateVersion(HttpVersion version) {
 /// @brief translate an enum value into an HTTP method string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string GeneralRequest::translateMethod(HttpRequestType method) {
+std::string GeneralRequest::translateMethod(ProtocolRequestType method) {
   if (method == HTTP_REQUEST_DELETE) {
     return "DELETE";
   } else if (method == HTTP_REQUEST_GET) {
@@ -1294,7 +1325,7 @@ std::string GeneralRequest::translateMethod(HttpRequestType method) {
 /// @brief translate an HTTP method string into an enum value
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest::HttpRequestType GeneralRequest::translateMethod(
+GeneralRequest::ProtocolRequestType GeneralRequest::translateMethod(
     std::string const& method) {
   std::string const methodString = StringUtils::toupper(method);
 
@@ -1321,7 +1352,7 @@ GeneralRequest::HttpRequestType GeneralRequest::translateMethod(
 /// @brief append the request method string to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralRequest::appendMethod(HttpRequestType method, StringBuffer* buffer) {
+void GeneralRequest::appendMethod(ProtocolRequestType method, StringBuffer* buffer) {
   buffer->appendText(translateMethod(method));
   buffer->appendChar(' ');
 }
