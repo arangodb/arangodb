@@ -46,7 +46,7 @@ using namespace std;
 /// anonymous mapped region (false)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsPhysicalDatafile(const TRI_datafile_t* const datafile) {
+static bool IsPhysicalDatafile(TRI_datafile_t const* datafile) {
   return datafile->_filename != nullptr;
 }
 
@@ -54,7 +54,7 @@ static bool IsPhysicalDatafile(const TRI_datafile_t* const datafile) {
 /// @brief return the name of a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static char const* GetNameDatafile(const TRI_datafile_t* const datafile) {
+static char const* GetNameDatafile(TRI_datafile_t const* datafile) {
   if (datafile->_filename == nullptr) {
     // anonymous regions do not have a filename
     return "anonymous region";
@@ -68,7 +68,7 @@ static char const* GetNameDatafile(const TRI_datafile_t* const datafile) {
 /// @brief close a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CloseDatafile(TRI_datafile_t* const datafile) {
+static void CloseDatafile(TRI_datafile_t* datafile) {
   TRI_ASSERT(datafile->_state != TRI_DF_STATE_CLOSED);
 
   if (datafile->isPhysical(datafile)) {
@@ -86,7 +86,7 @@ static void CloseDatafile(TRI_datafile_t* const datafile) {
 /// @brief destroy a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DestroyDatafile(TRI_datafile_t* const datafile) {
+static void DestroyDatafile(TRI_datafile_t* datafile) {
   if (datafile->_filename != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, datafile->_filename);
   }
@@ -96,7 +96,7 @@ static void DestroyDatafile(TRI_datafile_t* const datafile) {
 /// @brief sync the data of a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SyncDatafile(const TRI_datafile_t* const datafile,
+static bool SyncDatafile(TRI_datafile_t* datafile,
                          char const* begin, char const* end) {
   if (datafile->_filename == nullptr) {
     // anonymous regions do not need to be synced

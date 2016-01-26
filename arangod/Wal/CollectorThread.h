@@ -36,7 +36,7 @@
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
 
-struct TRI_datafile_s;
+struct TRI_datafile_t;
 struct TRI_df_marker_s;
 struct TRI_document_collection_t;
 struct TRI_server_t;

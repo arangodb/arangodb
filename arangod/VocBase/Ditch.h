@@ -31,7 +31,7 @@
 
 struct TRI_document_collection_t;
 struct TRI_collection_t;
-struct TRI_datafile_s;
+struct TRI_datafile_t;
 
 namespace arangodb {
 
@@ -190,9 +190,9 @@ class CompactionDitch : public Ditch {
 
 class DropDatafileDitch : public Ditch {
  public:
-  DropDatafileDitch(Ditches* ditches, struct TRI_datafile_s* datafile,
+  DropDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
                     void* data,
-                    std::function<void(struct TRI_datafile_s*, void*)>,
+                    std::function<void(struct TRI_datafile_t*, void*)>,
                     char const* filename, int line);
 
   ~DropDatafileDitch();
@@ -205,9 +205,9 @@ class DropDatafileDitch : public Ditch {
   void executeCallback() { _callback(_datafile, _data); }
 
  private:
-  struct TRI_datafile_s* _datafile;
+  struct TRI_datafile_t* _datafile;
   void* _data;
-  std::function<void(struct TRI_datafile_s*, void*)> _callback;
+  std::function<void(struct TRI_datafile_t*, void*)> _callback;
 };
 
 
@@ -217,9 +217,9 @@ class DropDatafileDitch : public Ditch {
 
 class RenameDatafileDitch : public Ditch {
  public:
-  RenameDatafileDitch(Ditches* ditches, struct TRI_datafile_s* datafile,
+  RenameDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
                       void* data,
-                      std::function<void(struct TRI_datafile_s*, void*)>,
+                      std::function<void(struct TRI_datafile_t*, void*)>,
                       char const* filename, int line);
 
   ~RenameDatafileDitch();
@@ -232,9 +232,9 @@ class RenameDatafileDitch : public Ditch {
   void executeCallback() { _callback(_datafile, _data); }
 
  private:
-  struct TRI_datafile_s* _datafile;
+  struct TRI_datafile_t* _datafile;
   void* _data;
-  std::function<void(struct TRI_datafile_s*, void*)> _callback;
+  std::function<void(struct TRI_datafile_t*, void*)> _callback;
 };
 
 
@@ -388,8 +388,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   DropDatafileDitch* createDropDatafileDitch(
-      struct TRI_datafile_s* datafile, void* data,
-      std::function<void(struct TRI_datafile_s*, void*)> callback,
+      struct TRI_datafile_t* datafile, void* data,
+      std::function<void(struct TRI_datafile_t*, void*)> callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -397,8 +397,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   RenameDatafileDitch* createRenameDatafileDitch(
-      struct TRI_datafile_s* datafile, void* data,
-      std::function<void(struct TRI_datafile_s*, void*)> callback,
+      struct TRI_datafile_t* datafile, void* data,
+      std::function<void(struct TRI_datafile_t*, void*)> callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////

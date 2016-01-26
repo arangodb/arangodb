@@ -436,7 +436,7 @@ CompactionDitch* Ditches::createCompactionDitch(char const* filename,
 
 DropDatafileDitch* Ditches::createDropDatafileDitch(
     TRI_datafile_t* datafile, void* data,
-    std::function<void(struct TRI_datafile_s*, void*)> callback,
+    std::function<void(struct TRI_datafile_t*, void*)> callback,
     char const* filename, int line) {
   try {
     auto ditch =
@@ -455,7 +455,7 @@ DropDatafileDitch* Ditches::createDropDatafileDitch(
 
 RenameDatafileDitch* Ditches::createRenameDatafileDitch(
     TRI_datafile_t* datafile, void* data,
-    std::function<void(struct TRI_datafile_s*, void*)> callback,
+    std::function<void(struct TRI_datafile_t*, void*)> callback,
     char const* filename, int line) {
   try {
     auto ditch =
