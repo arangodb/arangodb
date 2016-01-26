@@ -2430,6 +2430,10 @@ int main(int argc, char* args[]) {
   if (getenv("SHELL") != nullptr) {
     cygwinShell = true;
   }
+  if (!TRI_InitWindowsEventLog()) {
+    std::cerr << "failed to init event log" << std::endl;
+    return EXIT_FAILURE;
+  }
 #endif
   LocalEntryFunction();
 
