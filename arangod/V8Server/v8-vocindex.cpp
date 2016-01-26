@@ -185,23 +185,22 @@ static int ProcessIndexFields(v8::Isolate* isolate,
 /// @brief process the geojson flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexGeoJsonFlag(v8::Isolate* isolate,
-                                   v8::Handle<v8::Object> const obj,
-                                   VPackBuilder& builder) {
+static void ProcessIndexGeoJsonFlag(v8::Isolate* isolate,
+                                    v8::Handle<v8::Object> const obj,
+                                    VPackBuilder& builder) {
   v8::HandleScope scope(isolate);
   bool geoJson =
       ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("geoJson"), false);
   builder.add("geoJson", VPackValue(geoJson));
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the sparse flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexSparseFlag(v8::Isolate* isolate,
-                                  v8::Handle<v8::Object> const obj,
-                                  VPackBuilder& builder, bool create) {
+static void ProcessIndexSparseFlag(v8::Isolate* isolate,
+                                   v8::Handle<v8::Object> const obj,
+                                   VPackBuilder& builder, bool create) {
   v8::HandleScope scope(isolate);
   if (obj->Has(TRI_V8_ASCII_STRING("sparse"))) {
     bool sparse =
@@ -211,21 +210,19 @@ static int ProcessIndexSparseFlag(v8::Isolate* isolate,
     // not set. now add a default value
     builder.add("sparse", VPackValue(false));
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the unique flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexUniqueFlag(v8::Isolate* isolate,
-                                  v8::Handle<v8::Object> const obj,
-                                  VPackBuilder& builder) {
+static void ProcessIndexUniqueFlag(v8::Isolate* isolate,
+                                   v8::Handle<v8::Object> const obj,
+                                   VPackBuilder& builder) {
   v8::HandleScope scope(isolate);
   bool unique =
       ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("unique"), false);
   builder.add("unique", VPackValue(unique));
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -466,6 +463,7 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
         break;
     }
   } catch (...) {
+    // TODO Check for different type of Errors
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   return res;

@@ -40,7 +40,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <iostream>
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
 // only...
@@ -1537,7 +1536,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
           builder.add(key, entry.value);
         }
       }
-      builder.add("status", VPackValue("status"));
+      builder.add("status", VPackValue(status));
     } catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
