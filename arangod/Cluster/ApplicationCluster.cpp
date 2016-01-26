@@ -130,6 +130,13 @@ bool ApplicationCluster::prepare() {
   ServerState::instance()->setDisableDispatcherKickstarter(
       _disableDispatcherKickstarter);
 
+  // initialize ConnectionManager library
+  httpclient::ConnectionManager::initialize();
+
+  // initialize ClusterComm library
+  // must call initialize while still single-threaded
+  ClusterComm::initialize();
+
   if (_disabled) {
     // if ApplicationFeature is disabled
     _enableCluster = false;
@@ -207,11 +214,11 @@ bool ApplicationCluster::prepare() {
   }
 
   // initialize ConnectionManager library
-  httpclient::ConnectionManager::initialize();
+  // httpclient::ConnectionManager::initialize();
 
   // initialize ClusterComm library
   // must call initialize while still single-threaded
-  ClusterComm::initialize();
+  // ClusterComm::initialize();
 
   // disable error logging for a while
   ClusterComm::instance()->enableConnectionErrorLogging(false);
@@ -496,6 +503,7 @@ void ApplicationCluster::close() {
 
 
 void ApplicationCluster::stop() {
+  ClusterComm::cleanup();
   if (!enabled()) {
     return;
   }
@@ -528,7 +536,7 @@ void ApplicationCluster::stop() {
     }
   }
 
-  ClusterComm::cleanup();
+  //ClusterComm::cleanup();
   AgencyComm::cleanup();
 }
 

@@ -1645,7 +1645,9 @@ static void PrepareClusterCommRequest(
     std::string& destination, std::string& path, std::string& body,
     std::map<std::string, std::string>& headerFields,
     ClientTransactionID& clientTransactionID,
-    CoordTransactionID& coordTransactionID, double& timeout) {
+    CoordTransactionID& coordTransactionID, double& timeout,
+    bool& singleRequest) {
+
   v8::Isolate* isolate = args.GetIsolate();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
@@ -1704,6 +1706,7 @@ static void PrepareClusterCommRequest(
   clientTransactionID = "";
   coordTransactionID = 0;
   timeout = 24 * 3600.0;
+  singleRequest = false;
 
   if (args.Length() > 6 && args[6]->IsObject()) {
     v8::Handle<v8::Object> opt = args[6].As<v8::Object>();
@@ -1720,6 +1723,10 @@ static void PrepareClusterCommRequest(
     TRI_GET_GLOBAL_STRING(TimeoutKey);
     if (opt->Has(TimeoutKey)) {
       timeout = TRI_ObjectToDouble(opt->Get(TimeoutKey));
+    }
+    TRI_GET_GLOBAL_STRING(SingleRequestKey);
+    if (opt->Has(SingleRequestKey)) {
+      singleRequest = TRI_ObjectToBoolean(opt->Get(SingleRequestKey));
     }
   }
   if (clientTransactionID == "") {
@@ -1763,9 +1770,13 @@ static void Return_PrepareClusterCommResultForJS(
     id = StringUtils::itoa(res.operationID);
     TRI_GET_GLOBAL_STRING(OperationIDKey);
     r->Set(OperationIDKey, TRI_V8_STD_STRING(id));
-
+    TRI_GET_GLOBAL_STRING(EndpointKey);
+    r->Set(EndpointKey, TRI_V8_STD_STRING(res.endpoint));
+    TRI_GET_GLOBAL_STRING(SingleRequestKey);
+    r->Set(SingleRequestKey, v8::Boolean::New(isolate, res.single));
     TRI_GET_GLOBAL_STRING(ShardIDKey);
     r->Set(ShardIDKey, TRI_V8_STD_STRING(res.shardID));
+
     if (res.status == CL_COMM_SUBMITTED) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("SUBMITTED"));
@@ -1775,10 +1786,11 @@ static void Return_PrepareClusterCommResultForJS(
     } else if (res.status == CL_COMM_SENT) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("SENT"));
-      // This might be the result of a synchronous request and thus
-      // contain the actual response. If it is an asynchronous request
-      // which has not yet been answered, the following information is
-      // probably rather boring:
+      // This might be the result of a synchronous request or an asynchronous
+      // request with the `singleRequest` flag true and thus contain the
+      // actual response. If it is an asynchronous request which has not
+      // yet been answered, the following information is probably rather
+      // boring:
 
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
@@ -1865,6 +1877,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - clientTransactionID  (string)
   //   - coordTransactionID   (number)
   //   - timeout              (number)
+  //   - singleRequest        (boolean) default is false
 
   ClusterComm* cc = ClusterComm::instance();
 
@@ -1882,14 +1895,16 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
+  bool singleRequest = false;
 
   PrepareClusterCommRequest(args, reqType, destination, path, *body,
                             *headerFields, clientTransactionID,
-                            coordTransactionID, timeout);
+                            coordTransactionID, timeout, singleRequest);
 
   ClusterCommResult const res =
       cc->asyncRequest(clientTransactionID, coordTransactionID, destination,
-                       reqType, path, body, headerFields, 0, timeout);
+                       reqType, path, body, headerFields, 0, timeout,
+                       singleRequest);
 
   if (res.invalid) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1944,10 +1959,11 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
+  bool singleRequest = false;  // of no relevance here
 
   PrepareClusterCommRequest(args, reqType, destination, path, body,
                             *headerFields, clientTransactionID,
-                            coordTransactionID, timeout);
+                            coordTransactionID, timeout, singleRequest);
 
   std::unique_ptr<ClusterCommResult> res =
       cc->syncRequest(clientTransactionID, coordTransactionID, destination,
@@ -1975,14 +1991,6 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("enquire(operationID)");
   }
-
-  // Disabled to allow communication originating in a DBserver:
-  // 31.7.2014 Max
-
-  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-  //   TRI_V8_THROW_EXCEPTION_INTERNAL(scope,"request works only in coordinator
-  //   role");
-  // }
 
   ClusterComm* cc = ClusterComm::instance();
 
@@ -2018,14 +2026,6 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - operationID          (number)
   //   - shardID              (string)
   //   - timeout              (number)
-
-  // Disabled to allow communication originating in a DBserver:
-  // 31.7.2014 Max
-
-  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-  //   TRI_V8_THROW_EXCEPTION_INTERNAL(scope,"request works only in coordinator
-  //   role");
-  // }
 
   ClusterComm* cc = ClusterComm::instance();
 
