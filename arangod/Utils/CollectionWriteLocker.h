@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 
 #include "VocBase/document-collection.h"
+#include "VocBase/transaction.h"
 
 namespace triagens {
   namespace arango {
@@ -62,7 +63,7 @@ namespace triagens {
             _doLock(false) {
 
           if (doLock) {
-            _document->beginWrite();
+            _document->beginWriteTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
             _doLock = true;
           }
         }

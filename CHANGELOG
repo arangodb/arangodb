@@ -1,7 +1,7 @@
 v2.7.5 (2016-01-22)
 -------------------
 
-* backported added automatic deadlock detection for transactions
+* backported automatic deadlock detection for transactions
 
   In case a deadlock is detected, a multi-collection operation may be rolled back
   automatically and fail with error 29 (`deadlock detected`). Client code for
