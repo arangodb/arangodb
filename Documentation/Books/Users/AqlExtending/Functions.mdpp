@@ -49,7 +49,7 @@ when it detects syntactially invalid function code.
 ```
 
 The function code will not be executed in *strict mode* or *strong mode* by 
-default. In order to make a user function function being run in strict mode, use
+default. In order to make a user function being run in strict mode, use
 `use strict` explicitly, e.g.:
 
 ```js

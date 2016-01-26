@@ -94,7 +94,7 @@ to undefined behavior and should be avoided.
 !SECTION Enforcing strict mode
 
 By default, any user function code will not be executed in *strict mode* or 
-*strong mode*. In order to make a user function function being run in strict 
+*strong mode*. In order to make a user function being run in strict 
 mode, use `use strict` explicitly inside the user function, e.g.:
 
 ```js
