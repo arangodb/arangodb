@@ -291,8 +291,6 @@ bool copyDirectoryRecursive(std::string const& source,
                             std::string const& target, std::string& error) {
   bool rc = true;
 #ifdef TRI_HAVE_WIN32_LIST_FILES
-  auto isSymlink = [](struct _finddata_t item) -> bool { return false; };
-
   auto isSubDirectory = [](struct _finddata_t item) -> bool {
     return ((item.attrib & _A_SUBDIR) != 0);
   };
@@ -310,11 +308,7 @@ bool copyDirectoryRecursive(std::string const& source,
 
   do {
 #else
-  auto isSymlink =
-      [](struct dirent* item) -> bool { return (item->d_type == DT_LNK); };
-
-  auto isSubDirectory =
-      [](struct dirent* item) -> bool { return (item->d_type == DT_DIR); };
+  auto isSubDirectory = [](struct dirent* item) -> bool { return isDirectory(item->d_name); };
 
   struct dirent* d = (struct dirent*)TRI_Allocate(
       TRI_UNKNOWN_MEM_ZONE, (offsetof(struct dirent, d_name) + PATH_MAX + 1),
@@ -359,7 +353,7 @@ bool copyDirectoryRecursive(std::string const& source,
       if (!TRI_CopyAttributes(src, dst, error)) {
         break;
       }
-    } else if (isSymlink(oneItem)) {
+    } else if (isSymbolicLink(oneItem->d_name)) {
       if (!TRI_CopySymlink(src, dst, error)) {
         break;
       }
@@ -433,7 +427,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 bool isDirectory(std::string const& path) {
   TRI_stat_t stbuf;
   int res = TRI_STAT(path.c_str(), &stbuf);
-  return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFDIR);
+  return (res == 0) && S_ISDIR(stbuf.st_mode);
 }
 
 bool isSymbolicLink(std::string const& path) {
@@ -452,7 +446,7 @@ bool isSymbolicLink(std::string const& path) {
   struct stat stbuf;
   int res = TRI_STAT(path.c_str(), &stbuf);
 
-  return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFLNK);
+  return (res == 0) && S_ISLNK(stbuf.st_mode);
 
 #endif
 }
