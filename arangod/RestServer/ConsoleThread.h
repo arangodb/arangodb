@@ -59,7 +59,7 @@ class ConsoleThread : public basics::Thread {
   /// @brief mutex for console access
   //////////////////////////////////////////////////////////////////////////////
 
-  static arangodb::basics::Mutex serverConsoleMutex;
+  static arangodb::Mutex serverConsoleMutex;
 
  public:
   ConsoleThread(arangodb::rest::ApplicationServer*, ApplicationV8*,

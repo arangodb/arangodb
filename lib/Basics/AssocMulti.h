@@ -387,7 +387,7 @@ class AssocMulti {
 
     typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
 
-    arangodb::basics::Mutex bucketMapLocker;
+    arangodb::Mutex bucketMapLocker;
 
     std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
 

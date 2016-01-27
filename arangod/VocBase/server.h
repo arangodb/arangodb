@@ -65,7 +65,7 @@ struct TRI_server_t {
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // arangodb::basics::DataProtector<64>
   arangodb::basics::DataProtector _databasesProtector;
-  arangodb::basics::Mutex _databasesMutex;
+  arangodb::Mutex _databasesMutex;
 
   TRI_thread_t _databaseManager;
 

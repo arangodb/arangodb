@@ -36,7 +36,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-static arangodb::basics::Mutex ExecutorLock;
+static arangodb::Mutex ExecutorLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new db server job

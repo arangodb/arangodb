@@ -244,7 +244,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
 
  private:
-  arangodb::basics::Mutex _lock;
+  arangodb::Mutex _lock;
 
   uint64_t _lastValue;  // last value assigned
 

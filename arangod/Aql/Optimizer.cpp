@@ -28,7 +28,7 @@
 
 using namespace arangodb::aql;
 
-arangodb::basics::Mutex Optimizer::SetupLock;
+arangodb::Mutex Optimizer::SetupLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief list of all rules

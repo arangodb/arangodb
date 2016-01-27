@@ -28,6 +28,7 @@
 #include "Basics/logging.h"
 #endif
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
