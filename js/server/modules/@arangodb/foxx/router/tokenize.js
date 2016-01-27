@@ -30,9 +30,9 @@ const $_TERMINAL = Symbol.for('@@terminal'); // terminal -- routes be here
 const $_PARAM = Symbol.for('@@parameter'); // named parameter (no routes here, like static part)
 
 function reverse(pathTokens, pathParamNames) {
-  let path = [];
+  const path = [];
   let i = 0;
-  for (let token of pathTokens) {
+  for (const token of pathTokens) {
     if (token === $_PARAM) {
       path.push(':' + pathParamNames[i]);
       i++;
@@ -50,7 +50,7 @@ module.exports = _.extend(
     if (path === '/') {
       return [$_TERMINAL];
     }
-    let tokens = path.slice(1).split('/').map(function (name) {
+    const tokens = path.slice(1).split('/').map(function (name) {
       if (name === '*') {
         return $_WILDCARD;
       }

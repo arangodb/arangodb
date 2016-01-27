@@ -21,10 +21,10 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const assert = require('assert');
 const mimeTypes = require('mime-types');
 const querystring = require('querystring');
-const contentDisposition = require('content-disposition');
+// const assert = require('assert');
+// const contentDisposition = require('content-disposition');
 
 const DEFAULT_CHARSET = 'utf-8';
 

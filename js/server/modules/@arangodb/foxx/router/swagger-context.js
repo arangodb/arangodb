@@ -46,7 +46,7 @@ module.exports = exports = class SwaggerContext {
       path = '';
     }
     {
-      let n = path.length - 1;
+      const n = path.length - 1;
       if (path.charAt(n) === '/') {
         path = path.slice(0, n);
       }
@@ -291,13 +291,13 @@ module.exports = exports = class SwaggerContext {
 
   _merge(swaggerObj, pathOnly) {
     if (!pathOnly) {
-      for (let header of swaggerObj._headers.entries()) {
+      for (const header of swaggerObj._headers.entries()) {
         this._headers.set(header[0], header[1]);
       }
-      for (let queryParam of swaggerObj._queryParams.entries()) {
+      for (const queryParam of swaggerObj._queryParams.entries()) {
         this._queryParams.set(queryParam[0], queryParam[1]);
       }
-      for (let response of swaggerObj._responses.entries()) {
+      for (const response of swaggerObj._responses.entries()) {
         this._responses.set(response[0], response[1]);
       }
       if (swaggerObj._bodyParam) {
@@ -317,13 +317,13 @@ module.exports = exports = class SwaggerContext {
     }
     this._pathTokens.pop();
     this._pathTokens = this._pathTokens.concat(swaggerObj._pathTokens);
-    for (let pathParam of swaggerObj._pathParams.entries()) {
+    for (const pathParam of swaggerObj._pathParams.entries()) {
       let name = pathParam[0];
-      let def = pathParam[1];
+      const def = pathParam[1];
       if (this._pathParams.has(name)) {
         let baseName = name;
         let i = 2;
-        let match = name.match(/(^.+)([0-9]+)$/i);
+        const match = name.match(/(^.+)([0-9]+)$/i);
         if (match) {
           baseName = match[1];
           i = Number(match[2]);

@@ -21,13 +21,13 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const actions = require('@arangodb/actions');
+const ALL_METHODS = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'];
 const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
 const Route = require('@arangodb/foxx/router/route');
 const Middleware = require('@arangodb/foxx/router/middleware');
 const tokenize = require('@arangodb/foxx/router/tokenize');
 
-module.exports = exports = class Router extends SwaggerContext {
+const Router = module.exports = class Router extends SwaggerContext {
   constructor() {
     super();
     this._routes = [];
@@ -46,7 +46,7 @@ module.exports = exports = class Router extends SwaggerContext {
         }
         path += '*';
       }
-      let child = {
+      const child = {
         path: path,
         _pathParams: new Map(),
         _pathParamNames: [],
@@ -62,44 +62,17 @@ module.exports = exports = class Router extends SwaggerContext {
   }
 
   all(path, handler, name) {
-    const route = new Route(actions.ALL_METHODS, path, handler, name);
-    this._routes.push(route);
-    return route;
-  }
-
-  delete(path, handler, name) {
-    const route = new Route(['DELETE'], path, handler, name);
-    this._routes.push(route);
-    return route;
-  }
-
-  get(path, handler, name) {
-    const route = new Route(['GET'], path, handler, name);
-    this._routes.push(route);
-    return route;
-  }
-
-  head(path, handler, name) {
-    const route = new Route(['HEAD'], path, handler, name);
-    this._routes.push(route);
-    return route;
-  }
-
-  patch(path, handler, name) {
-    const route = new Route(['PATCH'], path, handler, name);
-    this._routes.push(route);
-    return route;
-  }
-
-  post(path, handler, name) {
-    const route = new Route(['POST'], path, handler, name);
-    this._routes.push(route);
-    return route;
-  }
-
-  put(path, handler, name) {
-    const route = new Route(['PUT'], path, handler, name);
+    const route = new Route(ALL_METHODS, path, handler, name);
     this._routes.push(route);
     return route;
   }
 };
+
+
+ALL_METHODS.forEach(function (method) {
+  Router.prototype[method.toLowerCase()] = function (path, handler, name) {
+    const route = new Route([method], path, handler, name);
+    this._routes.push(route);
+    return route;
+  };
+});

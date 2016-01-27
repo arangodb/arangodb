@@ -41,9 +41,9 @@ module.exports = class Tree {
     this.router = router;
     this.root = new Map();
 
-    for (let middleware of router._middleware) {
+    for (const middleware of router._middleware) {
       let node = this.root;
-      for (let token of middleware._pathTokens) {
+      for (const token of middleware._pathTokens) {
         if (!node.has(token)) {
           node.set(token, new Map());
         }
@@ -55,9 +55,9 @@ module.exports = class Tree {
       node.get($_MIDDLEWARE).push(middleware);
     }
 
-    for (let route of router._routes) {
+    for (const route of router._routes) {
       let node = this.root;
-      for (let token of route._pathTokens) {
+      for (const token of route._pathTokens) {
         if (!node.has(token)) {
           node.set(token, new Map());
         }
@@ -74,14 +74,14 @@ module.exports = class Tree {
   }
 
   *findRoutes(suffix) {
-    let result = [{router: this.router, path: [], suffix: suffix}];
-    for (let route of findRoutes(this.root, result, suffix, [])) {
+    const result = [{router: this.router, path: [], suffix: suffix}];
+    for (const route of findRoutes(this.root, result, suffix, [])) {
       yield route;
     }
   }
 
   *flatten() {
-    for (let route of flatten(this.root, [this.router])) {
+    for (const route of flatten(this.root, [this.router])) {
       yield route;
     }
   }
@@ -115,7 +115,7 @@ module.exports = class Tree {
   }
 
   dispatch(rawReq, rawRes) {
-    let route = this.resolve(rawReq);
+    const route = this.resolve(rawReq);
 
     if (!route) {
       return false;
@@ -129,12 +129,12 @@ module.exports = class Tree {
   }
 
   buildSwaggerPaths() {
-    let paths = {};
-    for (let route of this.flatten()) {
-      let parts = [];
-      let swagger = new SwaggerContext();
+    const paths = {};
+    for (const route of this.flatten()) {
+      const parts = [];
+      const swagger = new SwaggerContext();
       let i = 0;
-      for (let item of route) {
+      for (const item of route) {
         if (item.router) {
           swagger._merge(item, true);
           if (item.router) {
@@ -160,8 +160,8 @@ module.exports = class Tree {
       if (!paths[path]) {
         paths[path] = {};
       }
-      let pathItem = paths[path];
-      let operation = swagger._buildOperation();
+      const pathItem = paths[path];
+      const operation = swagger._buildOperation();
       for (let method of swagger._methods) {
         method = method.toLowerCase();
         if (!pathItem[method]) {
@@ -176,8 +176,8 @@ module.exports = class Tree {
 
 function applyPathParams(route) {
   for (const item of route) {
-    let context = item.middleware || item.endpoint || item.router;
-    let params = parsePathParams(
+    const context = item.middleware || item.endpoint || item.router;
+    const params = parsePathParams(
       context._pathParamNames,
       context._pathTokens,
       item.path

@@ -91,7 +91,7 @@ module.exports = class FoxxContext {
   }
 
   collectionName(name) {
-    let fqn = (
+    const fqn = (
       this.collectionPrefix
       + name.replace(/[^a-z0-9]/ig, '_').replace(/(^_+|_+$)/g, '').substr(0, 64)
     );

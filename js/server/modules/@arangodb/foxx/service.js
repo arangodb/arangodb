@@ -75,7 +75,7 @@ module.exports = class FoxxService {
 
     this.configuration = createConfiguration(this.manifest.configuration);
     this.dependencies = createDependencies(this.manifest.dependencies, this.options.dependencies);
-    let warnings = this.applyConfiguration(this.options.configuration);
+    const warnings = this.applyConfiguration(this.options.configuration);
     if (warnings.length) {
       console.warnLines(
         `Stored configuration for app "${data.mount}" has errors:\n${warnings.join('\n  ')}`
@@ -83,7 +83,7 @@ module.exports = class FoxxService {
     }
 
     if (this.manifest.thumbnail) {
-      let thumb = path.resolve(this.root, this.path, this.manifest.thumbnail);
+      const thumb = path.resolve(this.root, this.path, this.manifest.thumbnail);
       try {
         this.thumbnail = fs.read64(thumb);
       } catch (e) {
@@ -129,7 +129,7 @@ module.exports = class FoxxService {
       let warning;
 
       if (validate.isJoi) {
-        let result = validate.required().validate(rawValue);
+        const result = validate.required().validate(rawValue);
         if (result.error) {
           warning = result.error.message.replace(/^"value"/, `"${name}"`);
         } else {

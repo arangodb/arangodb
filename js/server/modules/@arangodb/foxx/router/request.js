@@ -181,7 +181,7 @@ function extractClient(req, trustProxy) {
   let ip = req.client.address;
   let ips = [ip];
   let port = req.client.port;
-  let forwardedFor = req.headers['x-forwarded-for'];
+  const forwardedFor = req.headers['x-forwarded-for'];
   if (trustProxy && forwardedFor) {
     const tokens = forwardedFor.split(/\s*,\s*/g).filter(Boolean);
     if (tokens.length) {
