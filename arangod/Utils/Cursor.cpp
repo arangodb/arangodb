@@ -97,13 +97,11 @@ bool JsonCursor::hasNext() {
 /// @brief return the next element
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* JsonCursor::next() {
+VPackSlice JsonCursor::next() {
   TRI_ASSERT_EXPENSIVE(_json != nullptr);
   TRI_ASSERT_EXPENSIVE(_position < _size);
   VPackSlice slice = _json->slice();
-  // TODO FIX THIS by returning the slice.
-  return arangodb::basics::VelocyPackHelper::velocyPackToJson(
-      slice.at(_position++));
+  return slice.at(_position++);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,14 +141,18 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
     }
 
     auto row = next();
-    if (row == nullptr) {
+    if (row.isNone()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    int res = TRI_StringifyJson(buffer.stringBuffer(), row);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
+    arangodb::basics::VPackStringBufferAdapter bufferAdapter(
+        buffer.stringBuffer());
+    VPackDumper dumper(&bufferAdapter);
+    try {
+      dumper.dump(row);
+    } catch (...) {
+      /// TODO correct error Handling!
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   }
 
@@ -233,9 +235,10 @@ bool ExportCursor::hasNext() {
 /// @brief return the next element (not implemented)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* ExportCursor::next() {
+VPackSlice ExportCursor::next() {
   // should not be called directly
-  return nullptr;
+  VPackSlice slice;
+  return slice;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

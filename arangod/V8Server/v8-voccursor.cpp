@@ -156,11 +156,11 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       auto row = cursor->next();
 
-      if (row == nullptr) {
+      if (row.isNone()) {
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      docs->Set(static_cast<uint32_t>(i), TRI_ObjectJson(isolate, row));
+      docs->Set(static_cast<uint32_t>(i), TRI_VPackToV8(isolate, row));
     }
 
     result->ForceSet(TRI_V8_ASCII_STRING("result"), docs);

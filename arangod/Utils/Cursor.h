@@ -28,7 +28,6 @@
 #include "Basics/StringBuffer.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -91,7 +90,7 @@ class Cursor {
 
   virtual bool hasNext() = 0;
 
-  virtual struct TRI_json_t* next() = 0;
+  virtual arangodb::velocypack::Slice next() = 0;
 
   virtual size_t count() const = 0;
 
@@ -124,7 +123,7 @@ class JsonCursor : public Cursor {
  public:
   bool hasNext() override final;
 
-  struct TRI_json_t* next() override final;
+  arangodb::velocypack::Slice next() override final;
 
   size_t count() const override final;
 
@@ -154,7 +153,7 @@ class ExportCursor : public Cursor {
  public:
   bool hasNext() override final;
 
-  struct TRI_json_t* next() override final;
+  arangodb::velocypack::Slice next() override final;
 
   size_t count() const override final;
 
