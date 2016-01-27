@@ -1697,7 +1697,7 @@ int ClusterInfo::ensureIndexCoordinator(
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
     try {
-      newBuilder.openObject();
+      VPackObjectBuilder b(&newBuilder);
       // Create a new collection VPack with the new Index
       for (auto const& entry : VPackObjectIterator(collectionSlice)) {
         TRI_ASSERT(entry.key.isString());
@@ -1709,17 +1709,18 @@ int ClusterInfo::ensureIndexCoordinator(
           for (auto const& idx : VPackArrayIterator(entry.value)) {
             newBuilder.add(idx);
           }
-          newBuilder.openObject();
-          // Add the new index ignoring "id"
-          for (auto const& e : VPackObjectIterator(slice)) {
-            TRI_ASSERT(e.key.isString());
-            std::string tmpkey = e.key.copyString();
-            if (tmpkey != "id") {
-              newBuilder.add(tmpkey, e.value);
+          {
+            VPackObjectBuilder ob(&newBuilder);
+            // Add the new index ignoring "id"
+            for (auto const& e : VPackObjectIterator(slice)) {
+              TRI_ASSERT(e.key.isString());
+              std::string tmpkey = e.key.copyString();
+              if (tmpkey != "id") {
+                newBuilder.add(tmpkey, e.value);
+              }
             }
+            newBuilder.add("id", VPackValue(idString));
           }
-          newBuilder.add("id", VPackValue(idString));
-          newBuilder.close(); // the idx object
           newBuilder.close(); // the array
         }
         else {
@@ -1727,7 +1728,6 @@ int ClusterInfo::ensureIndexCoordinator(
           newBuilder.add(key, entry.value);
         }
       }
-      newBuilder.close();
     } catch (...) {
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
@@ -1816,7 +1816,7 @@ int ClusterInfo::ensureIndexCoordinator(
           {
             // Copy over all elements in slice.
             VPackObjectBuilder b(&resultBuilder);
-            for (auto const& entry : VPackObjectIterator(slice)) {
+            for (auto const& entry : VPackObjectIterator(indexFinder)) {
               resultBuilder.add(entry.key.copyString(), entry.value);
             }
             resultBuilder.add("isNewlyCreated", VPackValue(true));
