@@ -131,8 +131,8 @@ function optimizerRuleTestSuite () {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         result.plan.nodes.forEach(function (thisNode) {
-          if (thisNode.type == "TraversalNode") {
-            assertNotNull(thisNode.hasOwnProperty("condition"), query);
+          if (thisNode.type === "TraversalNode") {
+            assertTrue(thisNode.hasOwnProperty("condition"), query);
           }
         });
       });
