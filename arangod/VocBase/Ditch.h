@@ -421,7 +421,7 @@ class Ditches {
  private:
   struct TRI_document_collection_t* _collection;
 
-  arangodb::basics::Mutex _lock;
+  arangodb::Mutex _lock;
   Ditch* _begin;
   Ditch* _end;
   uint64_t _numDocumentDitches;

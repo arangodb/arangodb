@@ -126,7 +126,7 @@ class ListenTask : virtual public Task {
 
   size_t _acceptFailures;
 
-  mutable basics::Mutex _changeLock;
+  mutable Mutex _changeLock;
 };
 }
 }

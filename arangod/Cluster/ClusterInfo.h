@@ -886,7 +886,7 @@ class ClusterInfo {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    arangodb::basics::Mutex mutex;
+    arangodb::Mutex mutex;
     std::atomic<uint64_t> version;
     arangodb::basics::ReadWriteLock lock;
 
@@ -962,7 +962,7 @@ class ClusterInfo {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _idLock;
+  arangodb::Mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the sole instance

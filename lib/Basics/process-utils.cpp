@@ -183,7 +183,7 @@ static std::vector<TRI_external_t*> ExternalProcesses;
 /// @brief lock for protected access to vector ExternalProcesses
 ////////////////////////////////////////////////////////////////////////////////
 
-static arangodb::basics::Mutex ExternalProcessesLock;
+static arangodb::Mutex ExternalProcessesLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates pipe pair

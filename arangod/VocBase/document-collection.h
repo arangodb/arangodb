@@ -248,7 +248,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
  private:
   VocShaper* _shaper;
 
-  arangodb::basics::Mutex _compactionStatusLock;
+  arangodb::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
   char _lastCompactionStamp[21];

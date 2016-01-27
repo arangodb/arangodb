@@ -98,7 +98,7 @@ class ScriptLoader {
   /// @brief mutex for _scripts
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::Mutex _lock;
+  Mutex _lock;
 };
 }
 
