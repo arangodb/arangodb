@@ -1165,7 +1165,7 @@ void GeneralRequest::setFullUrl(std::string str) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the header values (for HTTP)
+/// @brief sets the header values (for HTTP/VSTREAM)
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralRequest::setValues(char* buffer, char* end) {
@@ -1337,13 +1337,19 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief translate the HTTP protocol version
+/// @brief translate the HTTP/VSTREAM protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
     case HTTP_1_1: {
       return "HTTP/1.1";
+    }
+    case VSTREAM_1_0: {
+      return "VSTREAM_1_0";
+    }
+    case VSTREAM_UNKNOWN: {
+      return "VSTREAM_UNKNOWN";
     }
     case HTTP_1_0:
     case HTTP_UNKNOWN:
@@ -1356,26 +1362,40 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string GeneralRequest::translateMethod(ProtocolRequestType method) {
-  if ((method == HTTP_REQUEST_DELETE) || (method == VSTREAM_REQUEST_DELETE)) {
-    return "DELETE";
-  } else if ((method == HTTP_REQUEST_GET ) || (method == VSTREAM_REQUEST_GET)) {
-    return "GET";
-  } else if ((method == HTTP_REQUEST_HEAD) || (method == VSTREAM_REQUEST_HEAD)) {
-    return "HEAD";
-  } else if ((method == HTTP_REQUEST_OPTIONS) || || (method == VSTREAM_REQUEST_OPTIONS)) {
-    return "OPTIONS";
-  } else if ((method == HTTP_REQUEST_PATCH)| | (method == VSTREAM_REQUEST_PATCH)) {
-    return "PATCH";
-  } else if ((method == HTTP_REQUEST_POST) || (method == VSTREAM_REQUEST_POST)) {
-    return "POST";
-  } else if ((method == HTTP_REQUEST_PUT) || || (method == VSTREAM_REQUEST_PUT)) {
-    return "PUT";
+  if ( method == HTTP_REQUEST_DELETE) {
+    return "HTTP_DELETE";
+  } else if ( method == HTTP_REQUEST_GET) {
+    return "HTTP_GET";
+  } else if ( method == HTTP_REQUEST_HEAD) {
+    return "HTTP_HEAD";
+  } else if ( method == HTTP_REQUEST_OPTIONS) {
+    return "HTTP_OPTIONS";
+  } else if ( method == HTTP_REQUEST_PATCH) {
+    return "HTTP_PATCH";
+  } else if ( method == HTTP_REQUEST_POST) {
+    return "HTTP_POST";
+  } else if ( method == HTTP_REQUEST_PUT) {
+    return "HTTP_PUT";
   } else if (method == VSTREAM_REQUEST_CRED) {
-    return "CRED";
+    return "VSTREAM_CRED";
   } else if (method == VSTREAM_REQUEST_REGISTER) {
-    return "REGISTER";
+    return "VSTREAM_REGISTER";
   } else if (method == VSTREAM_REQUEST_STATUS){
-    return "STATUS";
+    return "VSTREAM_STATUS";
+  } else if( method == VSTREAM_REQUEST_DELETE) {
+    return "VSTREAM_DELETE";
+  } else if( method == VSTREAM_REQUEST_GET) {
+    return "VSTREAM_GET";
+  } else if( method == VSTREAM_REQUEST_HEAD) {
+    return "VSTREAM_HEAD";
+  } else if( method == VSTREAM_REQUEST_OPTIONS) {
+    return "VSTREAM_OPTIONS";
+  } else if( method == VSTREAM_REQUEST_PATCH) {
+    return "VSTREAM_PATCH";
+  } else if( method == VSTREAM_REQUEST_POST) {
+    return "VSTREAM_POST";
+  } else if( method == VSTREAM_REQUEST_PUT) {
+    return "VSTREAM_PUT";
   }
 
   LOG_WARNING("illegal http request method encountered in switch");
@@ -1390,20 +1410,38 @@ GeneralRequest::ProtocolRequestType GeneralRequest::translateMethod(
     std::string const& method) {
   std::string const methodString = StringUtils::toupper(method);
 
-  if (methodString == "DELETE") {
+  if (methodString == "HTTP_DELETE") {
     return HTTP_REQUEST_DELETE;
-  } else if (methodString == "GET") {
+  } else if (methodString == "HTTP_GET") {
     return HTTP_REQUEST_GET;
-  } else if (methodString == "HEAD") {
+  } else if (methodString == "HTTP_HEAD") {
     return HTTP_REQUEST_HEAD;
-  } else if (methodString == "OPTIONS") {
+  } else if (methodString == "HTTP_OPTIONS") {
     return HTTP_REQUEST_OPTIONS;
-  } else if (methodString == "PATCH") {
+  } else if (methodString == "HTTP_PATCH") {
     return HTTP_REQUEST_PATCH;
-  } else if (methodString == "POST") {
+  } else if (methodString == "HTTP_POST") {
     return HTTP_REQUEST_POST;
-  } else if (methodString == "PUT") {
+  } else if (methodString == "HTTP_PUT") {
     return HTTP_REQUEST_PUT;
+  } else if (methodString == "VSTREAM_GET") {
+    return VSTREAM_REQUEST_GET;
+  } else if (methodString == "VSTREAM_HEAD") {
+    return VSTREAM_REQUEST_HEAD;
+  } else if (methodString == "VSTREAM_DELETE") {
+    return VSTREAM_REQUEST_DELETE;
+  } else if (methodString == "VSTREAM_OPTIONS") {
+    return VSTREAM_REQUEST_OPTIONS;
+  } else if (methodString == "VSTREAM_PATCH") {
+    return VSTREAM_REQUEST_PATCH;
+  } else if (methodString == "VSTREAM_PUT") {
+    return VSTREAM_REQUEST_PUT;
+  } else if (methodString == "VSTREAM_CRED") {
+    return VSTREAM_REQUEST_CRED;
+  } else if (methodString == "VSTREAM_REGISTER") {
+    return VSTREAM_REQUEST_REGISTER;
+  } else if (methodString == "VSTREAM_STATUS") {
+    return VSTREAM_REQUEST_STATUS;
   }
 
   return HTTP_REQUEST_ILLEGAL;
