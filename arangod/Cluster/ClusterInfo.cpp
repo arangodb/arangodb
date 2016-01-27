@@ -1656,7 +1656,7 @@ int ClusterInfo::ensureIndexCoordinator(
             {
               // Copy over all elements in slice.
               VPackObjectBuilder b(&resultBuilder);
-              for (auto const& entry : VPackObjectIterator(slice)) {
+              for (auto const& entry : VPackObjectIterator(other)) {
                 resultBuilder.add(entry.key.copyString(), entry.value);
               }
               resultBuilder.add("isNewlyCreated", VPackValue(false));
