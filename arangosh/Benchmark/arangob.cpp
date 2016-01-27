@@ -295,8 +295,9 @@ int main(int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == nullptr) {
+    std::string endpointString = BaseClient.endpointString();
     LOG_FATAL_AND_EXIT("invalid value for --server.endpoint ('%s')",
-                       BaseClient.endpointString().c_str());
+                       endpointString.c_str());
   }
 
   BenchmarkOperation* testCase = GetTestCase(TestCase);

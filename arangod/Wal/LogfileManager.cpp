@@ -2058,8 +2058,9 @@ int LogfileManager::inspectLogfiles() {
     Logfile* logfile = (*it).second;
 
     if (logfile != nullptr) {
+      std::string const logfileName = logfile->filename();
       LOG_DEBUG("logfile %llu, filename '%s', status %s",
-                (unsigned long long)logfile->id(), logfile->filename().c_str(),
+                (unsigned long long)logfile->id(), logfileName.c_str(),
                 logfile->statusText().c_str());
     }
   }
@@ -2111,8 +2112,9 @@ int LogfileManager::inspectLogfiles() {
     // update the tick statistics
     if (!TRI_IterateDatafile(logfile->df(), &RecoverState::InitialScanMarker,
                              static_cast<void*>(_recoverState))) {
+      std::string const logfileName = logfile->filename();
       LOG_WARNING("WAL inspection failed when scanning logfile '%s'",
-                  logfile->filename().c_str());
+                  logfileName.c_str());
       return TRI_ERROR_ARANGO_RECOVERY;
     }
 

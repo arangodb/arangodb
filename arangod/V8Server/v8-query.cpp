@@ -2071,8 +2071,10 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bindVars("keys", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
                                           TRI_ObjectToJson(isolate, args[0])));
 
+  std::string const collectionName(col->name());
+
   arangodb::aql::BindParameters::StripCollectionNames(
-      TRI_LookupObjectJson(bindVars.json(), "keys"), col->_name);
+      TRI_LookupObjectJson(bindVars.json(), "keys"), collectionName.c_str());
 
   std::string const aql(
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");

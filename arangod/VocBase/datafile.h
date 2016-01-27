@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_DATAFILE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 

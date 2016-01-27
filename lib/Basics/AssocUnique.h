@@ -189,18 +189,18 @@ class AssocUnique {
       return;
     }
 
+    std::string const cb(_contextCallback());
+
     // only log performance infos for indexes with more than this number of
     // entries
     static uint64_t const NotificationSizeThreshold = 131072;
 
-    LOG_TRACE("resizing index %s, target size: %llu",
-              _contextCallback().c_str(),
+    LOG_TRACE("resizing index %s, target size: %llu", cb.c_str(),
               (unsigned long long) targetSize);
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
-      LOG_ACTION("index-resize %s, target size: %llu",
-                 _contextCallback().c_str(), (unsigned long long)targetSize);
+      LOG_ACTION("index-resize %s, target size: %llu", cb.c_str(), (unsigned long long)targetSize);
     }
 
     Element** oldTable = b._table;
@@ -254,10 +254,10 @@ class AssocUnique {
 
     delete[] oldTable;
     
-    LOG_TRACE("resizing index %s done", _contextCallback().c_str());
+    LOG_TRACE("resizing index %s done", cb.c_str());
 
     LOG_TIMER((TRI_microtime() - start), "index-resize %s, target size: %llu",
-              _contextCallback().c_str(), (unsigned long long)targetSize);
+              cb.c_str(), (unsigned long long)targetSize);
   }
 
   //////////////////////////////////////////////////////////////////////////////

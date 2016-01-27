@@ -286,7 +286,10 @@ bool RestReplicationHandler::sortCollections(TRI_vocbase_col_t const* l,
   if (l->_type != r->_type) {
     return l->_type < r->_type;
   }
-  return strcasecmp(l->_name, r->_name) < 0;
+  std::string const leftName = l->name();
+  std::string const rightName = r->name();
+
+  return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,12 +306,14 @@ bool RestReplicationHandler::filterCollection(TRI_vocbase_col_t* collection,
 
   bool includeSystem = *((bool*)data);
 
-  if (!includeSystem && collection->_name[0] == '_') {
+  std::string const collectionName(collection->name());
+
+  if (!includeSystem && collectionName[0] == '_') {
     // exclude all system collections
     return false;
   }
 
-  if (TRI_ExcludeCollectionReplication(collection->_name, includeSystem)) {
+  if (TRI_ExcludeCollectionReplication(collectionName.c_str(), includeSystem)) {
     // collection is excluded from replication
     return false;
   }
@@ -316,7 +321,6 @@ bool RestReplicationHandler::filterCollection(TRI_vocbase_col_t* collection,
   // all other cases should be included
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server

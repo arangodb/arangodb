@@ -33,6 +33,8 @@
 #include "Utils/AqlTransaction.h"
 #include "VocBase/document-collection.h"
 
+#include <v8.h>
+
 namespace arangodb {
 namespace aql {
 

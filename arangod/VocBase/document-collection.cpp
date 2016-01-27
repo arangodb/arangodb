@@ -259,11 +259,11 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
         // insert reader
         if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
           // deadlock
-          LOG_TRACE("deadlock detected while trying to acquire read-lock on collection '%s'", _info.name().c_str());
+          LOG_TRACE("deadlock detected while trying to acquire read-lock on collection '%s'", _info.namec_str());
           return TRI_ERROR_DEADLOCK;
         }
         wasBlocked = true;
-        LOG_TRACE("waiting for read-lock on collection '%s'", _info.name().c_str());
+        LOG_TRACE("waiting for read-lock on collection '%s'", _info.namec_str());
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -271,7 +271,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
         if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
           // deadlock
           _vocbase->_deadlockDetector.setReaderUnblocked(this);
-          LOG_TRACE("deadlock detected while trying to acquire read-lock on collection '%s'", _info.name().c_str());
+          LOG_TRACE("deadlock detected while trying to acquire read-lock on collection '%s'", _info.namec_str());
           return TRI_ERROR_DEADLOCK;
         }
       }
@@ -293,7 +293,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.setReaderUnblocked(this);
-      LOG_TRACE("timed out waiting for read-lock on collection '%s'", _info.name().c_str());
+      LOG_TRACE("timed out waiting for read-lock on collection '%s'", _info.namec_str());
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -340,11 +340,11 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
         // insert writer (with method named "setReaderBlocked"..., but it works)
         if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
           // deadlock
-          LOG_TRACE("deadlock detected while trying to acquire write-lock on collection '%s'", _info.name().c_str());
+          LOG_TRACE("deadlock detected while trying to acquire write-lock on collection '%s'", _info.namec_str());
           return TRI_ERROR_DEADLOCK;
         }
         wasBlocked = true;
-        LOG_TRACE("waiting for write-lock on collection '%s'", _info.name().c_str());
+        LOG_TRACE("waiting for write-lock on collection '%s'", _info.namec_str());
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -352,7 +352,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
         if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
           // deadlock
           _vocbase->_deadlockDetector.setReaderUnblocked(this);
-          LOG_TRACE("deadlock detected while trying to acquire write-lock on collection '%s'", _info.name().c_str());
+          LOG_TRACE("deadlock detected while trying to acquire write-lock on collection '%s'", _info.namec_str());
           return TRI_ERROR_DEADLOCK;
         }
       }
@@ -374,7 +374,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.setReaderUnblocked(this);
-      LOG_TRACE("timed out waiting for write-lock on collection '%s'", _info.name().c_str());
+      LOG_TRACE("timed out waiting for write-lock on collection '%s'", _info.namec_str());
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -2199,7 +2199,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
       "found %llu document markers, %llu deletion markers for collection '%s'",
       (unsigned long long)openState._documents,
       (unsigned long long)openState._deletions,
-      collection->_info.name().c_str());
+      collection->_info.namec_str());
 
   // abort any transaction that's unfinished after iterating over all markers
   OpenIteratorAbortTransaction(&openState);
@@ -2858,7 +2858,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   if (primaryIndex->size() > NotificationSizeThreshold) {
     LOG_ACTION(
         "fill-indexes-document-collection { collection: %s/%s }, indexes: %d",
-        document->_vocbase->_name, document->_info.name().c_str(),
+        document->_vocbase->_name, document->_info.namec_str(),
         (int)(n - 1));
   }
 
@@ -2930,7 +2930,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   LOG_TIMER(
       (TRI_microtime() - start),
       "fill-indexes-document-collection { collection: %s/%s }, indexes: %d",
-      document->_vocbase->_name, document->_info.name().c_str(), (int)(n - 1));
+      document->_vocbase->_name, document->_info.namec_str(), (int)(n - 1));
 
   return result.load();
 }
@@ -2942,7 +2942,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
 TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
                                                       TRI_vocbase_col_t* col,
                                                       bool ignoreErrors) {
-  char const* path = col->_path;
+  char const* path = col->pathc_str();
 
   // first open the document collection
   TRI_document_collection_t* document = nullptr;
@@ -2959,7 +2959,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
 
   double start = TRI_microtime();
   LOG_ACTION("open-document-collection { collection: %s/%s }", vocbase->_name,
-             col->_name);
+             col->namec_str());
 
   TRI_collection_t* collection =
       TRI_OpenCollection(vocbase, document, path, ignoreErrors);

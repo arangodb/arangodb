@@ -1606,8 +1606,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
       if (col != nullptr) {
         bool truncate = false;
 
-        if (col->_name[0] == '_' &&
-            TRI_EqualString(col->_name, TRI_COL_NAME_USERS)) {
+        if (col->name() == TRI_COL_NAME_USERS) {
           // better not throw away the _users collection. otherwise it is gone
           // and this may be a problem if the
           // server crashes in-between.

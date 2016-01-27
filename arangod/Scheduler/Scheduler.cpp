@@ -201,7 +201,8 @@ bool Scheduler::isShutdownInProgress() { return stopping != 0; }
 
 void Scheduler::shutdown() {
   for (auto& it : taskRegistered) {
-    LOG_DEBUG("forcefully removing task '%s'", it.second->name().c_str());
+    std::string const name = it.second->name();
+    LOG_DEBUG("forcefully removing task '%s'", name.c_str());
 
     deleteTask(it.second);
   }
@@ -341,6 +342,8 @@ int Scheduler::registerTask(Task* task, ssize_t* tn) {
 int Scheduler::unregisterTask(Task* task) {
   SchedulerThread* thread = nullptr;
 
+  std::string const taskName(task->name());
+
   {
     MUTEX_LOCKER(mutexLocker, schedulerLock);
 
@@ -349,13 +352,13 @@ int Scheduler::unregisterTask(Task* task) {
 
     if (it == task2thread.end()) {
       LOG_WARNING("unregisterTask called for an unknown task %p (%s)",
-                  (void*)task, task->name().c_str());
+                  (void*)task, taskName.c_str());
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
     LOG_TRACE("unregisterTask for task %p (%s)", (void*)task,
-              task->name().c_str());
+              taskName.c_str());
 
     thread = (*it).second;
 
@@ -374,6 +377,7 @@ int Scheduler::unregisterTask(Task* task) {
 
 int Scheduler::destroyTask(Task* task) {
   SchedulerThread* thread = nullptr;
+  std::string const taskName(task->name());
 
   {
     MUTEX_LOCKER(mutexLocker, schedulerLock);
@@ -382,13 +386,13 @@ int Scheduler::destroyTask(Task* task) {
 
     if (it == task2thread.end()) {
       LOG_WARNING("destroyTask called for an unknown task %p (%s)", (void*)task,
-                  task->name().c_str());
+                  taskName.c_str());
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
     LOG_TRACE("destroyTask for task %p (%s)", (void*)task,
-              task->name().c_str());
+              taskName.c_str());
 
     thread = (*it).second;
 

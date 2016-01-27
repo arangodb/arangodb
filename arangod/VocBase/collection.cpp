@@ -1441,7 +1441,7 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
 
 TRI_json_t* TRI_ReadJsonCollectionInfo(TRI_vocbase_col_t* collection) {
   char* filename =
-      TRI_Concatenate2File(collection->_path, TRI_VOC_PARAMETER_FILE);
+      TRI_Concatenate2File(collection->pathc_str(), TRI_VOC_PARAMETER_FILE);
 
   // load JSON description of the collection
   TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
@@ -1476,7 +1476,7 @@ int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  std::vector<std::string> files = TRI_FilesDirectory(collection->_path);
+  std::vector<std::string> files = TRI_FilesDirectory(collection->pathc_str());
   res = TRI_ERROR_NO_ERROR;
 
   // sort by index id
@@ -1484,7 +1484,7 @@ int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
 
   for (auto const& file : files) {
     if (regexec(&re, file.c_str(), (size_t)0, nullptr, 0) == 0) {
-      char* fqn = TRI_Concatenate2File(collection->_path, file.c_str());
+      char* fqn = TRI_Concatenate2File(collection->pathc_str(), file.c_str());
 
       res = filter(collection, fqn, data);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);

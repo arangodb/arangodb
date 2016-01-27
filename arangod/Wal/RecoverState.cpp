@@ -1395,9 +1395,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RecoverState::replayLogfile(Logfile* logfile, int number) {
+  std::string const logfileName = logfile->filename();
+
   int const n = static_cast<int>(logfilesToProcess.size());
 
-  LOG_INFO("replaying WAL logfile '%s' (%d of %d)", logfile->filename().c_str(),
+  LOG_INFO("replaying WAL logfile '%s' (%d of %d)", logfileName.c_str(),
            number + 1, n);
 
   // Advise on sequential use:
@@ -1409,7 +1411,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
   if (!TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker,
                            static_cast<void*>(this))) {
     LOG_WARNING("WAL inspection failed when scanning logfile '%s'",
-                logfile->filename().c_str());
+                logfileName.c_str());
     return TRI_ERROR_ARANGO_RECOVERY;
   }
 

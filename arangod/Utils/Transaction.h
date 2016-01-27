@@ -603,6 +603,21 @@ class Transaction {
 
     return res;
   }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief add a collection by id, with the name supplied
+  //////////////////////////////////////////////////////////////////////////////
+
+  int addCollection(TRI_voc_cid_t cid, std::string const& name,
+                    TRI_transaction_type_e type) {
+    int res = this->addCollection(cid, type);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      _errorData = name;
+    }
+
+    return res;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id

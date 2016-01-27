@@ -2135,7 +2135,8 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!collection->_isLocal) {
-    v8::Handle<v8::Value> result = TRI_V8_STRING(collection->_name);
+    std::string const collectionName(collection->name());
+    v8::Handle<v8::Value> result = TRI_V8_STRING(collectionName.c_str());
     TRI_V8_RETURN(result);
   }
 
@@ -3436,8 +3437,9 @@ static void JS_VersionVocbaseCol(
   // fallthru intentional
   READ_LOCKER(readLocker, collection->_lock);
   try {
+    std::string const collectionName(collection->name());
     VocbaseCollectionInfo info = VocbaseCollectionInfo::fromFile(
-        collection->_path, collection->_vocbase, collection->_name, false);
+        collection->pathc_str(), collection->vocbase(), collectionName.c_str(), false);
 
     TRI_V8_RETURN(v8::Number::New(isolate, (int)info.version()));
   } catch (arangodb::basics::Exception const& e) {
@@ -3856,7 +3858,7 @@ static void JS_DatafilesVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
-    structure = TRI_FileStructureCollectionDirectory(collection->_path);
+    structure = TRI_FileStructureCollectionDirectory(collection->pathc_str());
   }
 
   // build result
