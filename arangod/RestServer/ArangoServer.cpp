@@ -600,6 +600,14 @@ void ArangoServer::buildApplicationServer() {
   _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
+  // cluster options
+  // .............................................................................
+
+  _applicationAgency =
+      new ApplicationAgency();
+  _applicationServer->addFeature(_applicationAgency);
+
+  // .............................................................................
   // server options
   // .............................................................................
 

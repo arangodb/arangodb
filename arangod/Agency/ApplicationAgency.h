@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Kaveh Vahedipour
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_AGENCY_APPLICATION_AGENCY_H
@@ -32,8 +32,6 @@
 
 namespace arangodb {
 namespace rest {
-class ApplicationScheduler;
-//class Dispatcher;
 class Task;
 
 

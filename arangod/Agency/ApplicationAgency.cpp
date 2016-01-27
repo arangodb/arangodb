@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Kaveh Vahedipour
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -48,7 +48,11 @@ ApplicationAgency::~ApplicationAgency() { /*delete _dispatcher;*/ }
 
 void ApplicationAgency::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
-  options["Agency Options:help-agency"]("agency.size", &_size, "Agency size");
+  options["Agency Options:help-agency"]("agency.size", &_size, "Agency size")
+		("agency.election-timeout-min", &_size, "Minimum timeout before an agent"
+				" calls for new election (default: 150ms)")
+		("agency.election-timeout-max", &_size, "Minimum timeout before an agent"
+				" calls for new election (default: 300ms)");
 }
 
 
