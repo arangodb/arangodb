@@ -41,6 +41,7 @@ module.exports = class SyntheticRequest {
     this.queryParams = querystring.decode(this._url.query);
     this.pathParams = {};
     this.body = getRawBodyBuffer(req);
+    this.baseUrl = `/_db/${encodeURIComponent(this._raw.database)}${context.mount}`;
 
     const server = extractServer(req, context.trustProxy);
     this.protocol = server.protocol;
@@ -140,6 +141,13 @@ module.exports = class SyntheticRequest {
       }
     }
     return value;
+  }
+
+  makeAbsolute(path) {
+    return this.protocol + '://' + this.hostname + (
+      (this.secure ? this.port !== 443 : this.port !== 80)
+      ? ':' + this.port : ''
+    ) + this.baseUrl + path;
   }
 
   ranges(size) {
