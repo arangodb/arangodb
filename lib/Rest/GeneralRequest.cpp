@@ -647,6 +647,9 @@ GeneralRequest::ProtocolRequestType GeneralRequest::getRequestType(char const* p
       if (ptr[0] == 'h' && ptr[1] == 'e' && ptr[2] == 'a' && ptr[3] == 'd') {
         return HTTP_REQUEST_HEAD;
       }
+      if(ptr[0] == 'c' && ptr[1] == 'r' && ptr[2] == 'e' && ptr[3] == 'd') {
+        return VSTREAM_REQUEST_CRED;
+      }
       break;
 
     case 5:
@@ -661,6 +664,10 @@ GeneralRequest::ProtocolRequestType GeneralRequest::getRequestType(char const* p
           ptr[4] == 't' && ptr[5] == 'e') {
         return HTTP_REQUEST_DELETE;
       }
+      if(ptr[0] == 's' && ptr[1] == 't' && ptr[2] == 'a' && ptr[3] == 't' &&
+          ptr[4] == 'u' && ptr[5] == 's') {
+        return VSTREAM_REQUEST_STATUS;
+      }
       break;
 
     case 7:
@@ -668,6 +675,12 @@ GeneralRequest::ProtocolRequestType GeneralRequest::getRequestType(char const* p
           ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') {
         return HTTP_REQUEST_OPTIONS;
       }
+      break;
+    case 8:
+      if(ptr[0] == 'r' && ptr[1] == 'e' && ptr[2] == 'g' && ptr[3] == 'i' &&
+          ptr[4] == 's' && ptr[5] == 't' && ptr[6] == 'e' && ptr [7] == 'r') {
+        return VSTREAM_REQUEST_REGISTER;
+      }  
       break;
   }
 
@@ -679,27 +692,69 @@ GeneralRequest::ProtocolRequestType GeneralRequest::getRequestType(char const* p
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralRequest::parseHeader(Builder ptr, size_t length) {
-
+  std::string completeUrl;
+  int length = 0;
+  char *e = nullptr;
+  char *pathBegin = nullptr;
+  char *pathEnd = nullptr;
   Slice s(ptr.start());
   for (auto const& it : ObjectIterator(s)) {
+
      if(tolower(it.key.copyString()) == "method") {
+    
       _type = getRequestType(getValue(it.value).c_str(), getValue(it.value).size());
+    
      } else if( tolower(it.key.copyString()) == "version" ) {
+    
         if(tolower(getValue(it.value)) == "vstream_unknown"){
           _version = VSTREAM_UNKNOWN;
         } else if(tolower(getValue(it.value)) == "vstream_1_0"){
-          _version = VSTREAM_1_0
+          _version = VSTREAM_1_0   
         }
-     } else if(tolower(it.key.copyString()) == "databaseName") {
-        _databaseName = getValue(it.value);
-     } else if(tolower(it.key.copyString()) == "fullUrl") {
-        setFullUrl(getValue(it.value));
-     } else if(tolower(it.key.copyString()) == "requestPath") {
-        setRequestPath(getValue(it.value));
+      
+     } else if(tolower(it.key.copyString()) == "url") { // Sample Url retrieved : /_db/system/a/b/c?x=1
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////
+        //// @Todo: Review the use case of VSTREAM_REQUEST_ILLEGAL, analogous to HTTP_REQUEST_ILLEGAL
+        /////////////////////////////////////////////////////////////////////////////////////////////////
+
+        completeUrl = getValue(it.value).c_str();
+        length = completeUrl.length();
+        char *cstr = new char[length + 1]; // for std::string to char *
+        strcpy(cstr, completeUrl.c_str());
+        e = cstr;
+        e = + 5; // move pointer to database name, next to : /_db/
+        length =  + 5;
+        pathBegin = e;
+        
+        while (*e != '/') {
+          ++e;
+          length = + 1;
+        }
+        
+        _databaseName = std::string(pathBegin, e - pathBegin);
+        pathBegin = e;
+        
+        while (*e != '?') {
+          ++e;
+          length = + 1;
+        }
+        
+        setFullUrl(pathBegin, e);
+        pathBegin = e;
+        
+        while(length <= completeUrl.length()) {
+          ++e;
+          length = + 1;
+        }
+        
+        setValues(pathBegin, e);
+
+        /// Deallocating char * array
+        delete []cstr;
      } else{
         setHeader(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
-      }
-    }
+     } 
   }
 }
 
@@ -1301,20 +1356,26 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string GeneralRequest::translateMethod(ProtocolRequestType method) {
-  if (method == HTTP_REQUEST_DELETE) {
+  if ((method == HTTP_REQUEST_DELETE) || (method == VSTREAM_REQUEST_DELETE)) {
     return "DELETE";
-  } else if (method == HTTP_REQUEST_GET) {
+  } else if ((method == HTTP_REQUEST_GET ) || (method == VSTREAM_REQUEST_GET)) {
     return "GET";
-  } else if (method == HTTP_REQUEST_HEAD) {
+  } else if ((method == HTTP_REQUEST_HEAD) || (method == VSTREAM_REQUEST_HEAD)) {
     return "HEAD";
-  } else if (method == HTTP_REQUEST_OPTIONS) {
+  } else if ((method == HTTP_REQUEST_OPTIONS) || || (method == VSTREAM_REQUEST_OPTIONS)) {
     return "OPTIONS";
-  } else if (method == HTTP_REQUEST_PATCH) {
+  } else if ((method == HTTP_REQUEST_PATCH)| | (method == VSTREAM_REQUEST_PATCH)) {
     return "PATCH";
-  } else if (method == HTTP_REQUEST_POST) {
+  } else if ((method == HTTP_REQUEST_POST) || (method == VSTREAM_REQUEST_POST)) {
     return "POST";
-  } else if (method == HTTP_REQUEST_PUT) {
+  } else if ((method == HTTP_REQUEST_PUT) || || (method == VSTREAM_REQUEST_PUT)) {
     return "PUT";
+  } else if (method == VSTREAM_REQUEST_CRED) {
+    return "CRED";
+  } else if (method == VSTREAM_REQUEST_REGISTER) {
+    return "REGISTER";
+  } else if (method == VSTREAM_REQUEST_STATUS){
+    return "STATUS";
   }
 
   LOG_WARNING("illegal http request method encountered in switch");
