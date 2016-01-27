@@ -43,10 +43,11 @@ router.post(function (req, res) {
     throw e;
   }
   _.extend(<%= document %>, meta);
+  res.status(201);
   res.send(<%= document %>);
 })
 .body(<%= model %>, 'The <%= document %> to create.')
-.response(<%= model %>, 'The created <%= document %>.')
+.response(201, <%= model %>, 'The created <%= document %>.')
 .error(HTTP_CONFLICT, 'The <%= document %> already exists.')
 .summary('Create a new <%= document %>')
 .description(`
