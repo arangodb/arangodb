@@ -152,12 +152,14 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   auto const& it = v8g->JSCollections.find(collection);
   TRI_ASSERT(it != v8g->JSCollections.end())
 #endif
+
+  // dispose and clear the persistent handle
+  v8g->JSCollections[p].Reset();
+  v8g->JSCollections.erase(p);
+
   if (!collection->_isLocal) {
     delete collection;
   }
-  // dispose and clear the persistent handle
-  v8g->JSCollections[collection].Reset();
-  v8g->JSCollections.erase(collection);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
