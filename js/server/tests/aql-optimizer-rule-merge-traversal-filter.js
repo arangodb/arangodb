@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertNotNull, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON */
+/*global assertEqual, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -132,7 +132,7 @@ function optimizerRuleTestSuite () {
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         result.plan.nodes.forEach(function (thisNode) {
           if (thisNode.type === "TraversalNode") {
-            assertNotNull(thisNode.hasOwnProperty("condition"), query);
+            assertTrue(thisNode.hasOwnProperty("condition"), query);
           }
         });
       });
