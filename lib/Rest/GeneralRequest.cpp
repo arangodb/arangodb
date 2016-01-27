@@ -700,58 +700,53 @@ void GeneralRequest::parseHeader(Builder ptr, size_t length) {
   Slice s(ptr.start());
   for (auto const& it : ObjectIterator(s)) {
 
-     if(tolower(it.key.copyString()) == "method") {
+     if(tolower(it.key.copyString()) == "requestType") {
     
-      _type = getRequestType(getValue(it.value).c_str(), getValue(it.value).size());
+        _type = getRequestType(getValue(it.value).c_str(), getValue(it.value).size());
     
-     } else if( tolower(it.key.copyString()) == "version" ) {
+     } else if(tolower(it.key.copyString()) == "version") {
     
         if(tolower(getValue(it.value)) == "vstream_unknown"){
           _version = VSTREAM_UNKNOWN;
         } else if(tolower(getValue(it.value)) == "vstream_1_0"){
-          _version = VSTREAM_1_0   
+          _version = VSTREAM_1_0;   
         }
       
-     } else if(tolower(it.key.copyString()) == "url") { // Sample Url retrieved : /_db/system/a/b/c?x=1
+     } else if(tolower(it.key.copyString()) == "database"){
+        if(getValue(it.value).c_str() != ''){
+          _databaseName = getValue(it.value);
+        } else{
+          _databaseName = "_system";
+        }  
+     }else if(tolower(it.key.copyString()) == "request"){
+        if(getValue(it.value).c_str() != ''){
+          _fullUrl = getValue(it.value);
+        } else{
+          _fullUrl = "";
+        }  
+     }else if(tolower(it.key.copyString()) == "parameter"){
 
-        /////////////////////////////////////////////////////////////////////////////////////////////////
-        //// @Todo: Review the use case of VSTREAM_REQUEST_ILLEGAL, analogous to HTTP_REQUEST_ILLEGAL
-        /////////////////////////////////////////////////////////////////////////////////////////////////
+        /// @TODO: Revaluate _value.insert() and setArrayValue
+      
+        for (auto const& it : ObjectIterator(s.get("parameter"))) { 
+          if( it.value.isArray()){
 
-        completeUrl = getValue(it.value).c_str();
-        length = completeUrl.length();
-        char *cstr = new char[length + 1]; // for std::string to char *
-        strcpy(cstr, completeUrl.c_str());
-        e = cstr;
-        e = + 5; // move pointer to database name, next to : /_db/
-        length =  + 5;
-        pathBegin = e;
-        
-        while (*e != '/') {
-          ++e;
-          length = + 1;
-        }
-        
-        _databaseName = std::string(pathBegin, e - pathBegin);
-        pathBegin = e;
-        
-        while (*e != '?') {
-          ++e;
-          length = + 1;
-        }
-        
-        setFullUrl(pathBegin, e);
-        pathBegin = e;
-        
-        while(length <= completeUrl.length()) {
-          ++e;
-          length = + 1;
-        }
-        
-        setValues(pathBegin, e);
+            for(int i = 0; i < it.value.length(); i++){
+              setArrayValue(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
+            } 
 
-        /// Deallocating char * array
-        delete []cstr;
+          } else {
+            _values.insert(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
+          } 
+        }  
+
+     }else if(tolower(it.key.copyString()) == "meta") {
+
+        for (auto const& it : ObjectIterator(s.get("meta"))) {
+            if(getValue(it.value).c_str() != ''){
+              setHeader(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
+            }
+        }
      } else{
         setHeader(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
      } 
