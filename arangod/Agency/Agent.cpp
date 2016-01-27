@@ -8,15 +8,19 @@ Agent::Agent (AgentConfig<double> const&) {}
 
 Agent::Agent (Agent const&) {}
 
-Agent::~Agent() {}
+Agent::~Agent () {}
+
+Constituent::term_t Agent::term () const {
+  return _constituent.term();
+}
 
 Slice const& Agent::log (const Slice& slice) {
-    if (_constituent.Leader())
-        return _log.log(slice);
-    else
-        return redirect(slice);
+  if (_constituent.leader())
+    return _log.log(slice);
+  else
+    return redirect(slice);
 }
 
 Slice const& Agent::redirect (const Slice& slice) {
-    return slice; //TODO
+  return slice; //TODO
 }

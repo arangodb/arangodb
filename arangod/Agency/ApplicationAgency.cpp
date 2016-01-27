@@ -36,21 +36,11 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
-    : ApplicationFeature("agency"),
-      _reportInterval(0.0),
-      _nrStandardThreads(0) {}
+    : ApplicationFeature("agency"), _size(5) {}
 
 
 ApplicationAgency::~ApplicationAgency() { /*delete _dispatcher;*/ }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of used threads
-////////////////////////////////////////////////////////////////////////////////
-
-size_t ApplicationAgency::numberOfThreads() {
-  return _nrStandardThreads /* + _nrAQLThreads */;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the processor affinity
@@ -58,10 +48,10 @@ size_t ApplicationAgency::numberOfThreads() {
 
 void ApplicationAgency::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
-  options["Server Options:help-admin"]("dispatcher.report-interval",
-                                       &_reportInterval,
-                                       "dispatcher report interval");
+  options["Agency Options:help-agency"]("agency.size", &_size, "Agency size");
 }
+
+
 
 
 bool ApplicationAgency::prepare() {

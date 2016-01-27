@@ -28,6 +28,7 @@
 
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
+#include "Agency/ApplicationAgency.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/RestAqlHandler.h"
@@ -56,6 +57,7 @@
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAgencyHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -129,6 +131,10 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   factory->addPrefixHandler(
       "/_msg/please-upgrade",
       RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
+
+  // add "/agency" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PATH,
+                            RestHandlerCreator<RestAgencyHandler>::createNoData);
 
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,

@@ -15,6 +15,10 @@ arangod_libarangod_a_CPPFLAGS = \
 arangod_libarangod_a_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
+	arangod/Agency/ApplicationAgency.cpp \
+	arangod/Agency/Agent.cpp \
+	arangod/Agency/Constituent.cpp \
+	arangod/Agency/Log.cpp \
 	arangod/ApplicationServer/ApplicationFeature.cpp \
 	arangod/ApplicationServer/ApplicationServer.cpp \
 	arangod/Aql/Aggregator.cpp \
@@ -130,6 +134,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Replication/Syncer.cpp \
 	arangod/Rest/AnyServer.cpp \
 	arangod/RestHandler/RestAdminLogHandler.cpp \
+	arangod/RestHandler/RestAgencyHandler.cpp \
 	arangod/RestHandler/RestBaseHandler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestCursorHandler.cpp \
