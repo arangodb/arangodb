@@ -96,7 +96,7 @@ class SignalTask : virtual public Task {
 
  private:
   std::set<int> _signals;
-  basics::Mutex _changeLock;
+  Mutex _changeLock;
 };
 }
 }

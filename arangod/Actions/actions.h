@@ -76,10 +76,10 @@ class TRI_action_t {
 
   virtual TRI_action_result_t execute(TRI_vocbase_t*,
                                       arangodb::rest::HttpRequest*,
-                                      arangodb::basics::Mutex* dataLock,
+                                      arangodb::Mutex* dataLock,
                                       void** data) = 0;
 
-  virtual bool cancel(arangodb::basics::Mutex* dataLock, void** data) = 0;
+  virtual bool cancel(arangodb::Mutex* dataLock, void** data) = 0;
 
   std::string _type;
   std::string _url;

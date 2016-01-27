@@ -24,28 +24,85 @@
 
 #include "Mutex.h"
 
-using namespace arangodb::basics;
+#include "Basics/logging.h"
+
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-Mutex::Mutex() : _mutex() { TRI_InitMutex(&_mutex); }
+#ifdef TRI_HAVE_POSIX_THREADS
+
+Mutex::Mutex() : _mutex() { pthread_mutex_init(&_mutex, nullptr); }
+
+#endif
+
+#ifdef TRI_HAVE_WIN32_THREADS
+
+Mutex::Mutex() : _mutex() { InitializeSRWLock(&_mutex); }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-Mutex::~Mutex() { TRI_DestroyMutex(&_mutex); }
+#ifdef TRI_HAVE_POSIX_THREADS
+
+Mutex::~Mutex() { pthread_mutex_destroy(&_mutex); }
+
+#endif
+
+#ifdef TRI_HAVE_WIN32_THREADS
+
+Mutex::~Mutex() {}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief acquires the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void Mutex::lock() { TRI_LockMutex(&_mutex); }
+#ifdef TRI_HAVE_POSIX_THREADS
+
+void Mutex::lock() {
+  int rc = pthread_mutex_lock(&_mutex);
+
+  if (rc != 0) {
+    if (rc == EDEADLK) {
+      LOG_ERROR("mutex deadlock detected");
+    }
+
+    LOG_FATAL_AND_EXIT("could not lock the mutex: %s", strerror(rc));
+  }
+}
+
+#endif
+
+#ifdef TRI_HAVE_WIN32_THREADS
+
+void Mutex::lock() { AcquireSRWLockExclusive(&_mutex); }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void Mutex::unlock() { TRI_UnlockMutex(&_mutex); }
+#ifdef TRI_HAVE_POSIX_THREADS
+
+void Mutex::unlock() {
+  int rc = pthread_mutex_unlock(&_mutex);
+
+  if (rc != 0) {
+    LOG_FATAL_AND_EXIT("could not release the mutex: %s", strerror(rc));
+  }
+}
+
+#endif
+
+#ifdef TRI_HAVE_WIN32_THREADS
+
+void Mutex::unlock() { ReleaseSRWLockExclusive(&_mutex); }
+
+#endif

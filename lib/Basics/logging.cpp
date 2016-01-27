@@ -35,12 +35,13 @@
 #endif
 
 #include "Basics/Exceptions.h"
-#include "Basics/files.h"
-#include "Basics/hashes.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/shell-colors.h"
 #include "Basics/Thread.h"
+#include "Basics/files.h"
+#include "Basics/hashes.h"
+#include "Basics/locks.h"
+#include "Basics/shell-colors.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 
@@ -173,7 +174,7 @@ static std::vector<TRI_log_appender_t*> Appenders;
 /// @brief log appenders
 ////////////////////////////////////////////////////////////////////////////////
 
-static arangodb::basics::Mutex AppendersLock;
+static arangodb::Mutex AppendersLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal output length
@@ -215,7 +216,7 @@ static TRI_log_buffer_t BufferOutput[OUTPUT_LOG_LEVELS][OUTPUT_BUFFER_SIZE];
 /// @brief buffer lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static arangodb::basics::Mutex BufferLock;
+static arangodb::Mutex BufferLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable for the logger
@@ -227,7 +228,7 @@ static TRI_condition_t LogCondition;
 /// @brief message queue lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static arangodb::basics::Mutex LogMessageQueueLock;
+static arangodb::Mutex LogMessageQueueLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief message queue
@@ -1496,7 +1497,7 @@ struct log_appender_syslog_t : public TRI_log_appender_t {
   char const* typeName() override final { return "syslog"; }
 
  private:
-  arangodb::basics::Mutex _lock;
+  arangodb::Mutex _lock;
   bool _opened;
 };
 

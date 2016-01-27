@@ -886,7 +886,7 @@ class LogfileManager : public rest::ApplicationFeature {
   /// @brief a lock protecting the shutdown file
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::Mutex _shutdownFileLock;
+  Mutex _shutdownFileLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a lock protecting _transactions and _failedTransactions
@@ -926,7 +926,7 @@ class LogfileManager : public rest::ApplicationFeature {
   /// and _lastOpenedId
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::Mutex _idLock;
+  Mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not write-throttling is currently enabled
