@@ -114,7 +114,7 @@ function swaggerJson(req, res, opts) {
   }
   let docs = foxx.docs;
   if (!docs) {
-    var app = foxx.routes.foxxContext && foxx.routes.foxxContext.app;
+    var app = foxx.routes.foxxContext && foxx.routes.foxxContext.service;
     var swagger = parseRoutes(opts.appPath, foxx.routes.routes, foxx.routes.models);
     docs = {
       swagger: '2.0',

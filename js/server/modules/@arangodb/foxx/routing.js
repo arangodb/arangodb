@@ -130,7 +130,7 @@ exports.routeApp = function (service, throwOnErrors) {
     return {
       exports: service.main.exports,
       routes: service.routes,
-      docs: service.docs
+      docs: service.legacy ? null : service.docs
     };
   }
 
@@ -170,7 +170,6 @@ exports.routeApp = function (service, throwOnErrors) {
     if (service.manifest.main) {
       try {
         service.main.exports = service.run(service.manifest.main);
-        // TODO mount routes
       } catch (e) {
         console.errorLines(`Cannot execute Foxx service at ${service.mount}: ${e.stack}`);
         error = e;
@@ -187,7 +186,8 @@ exports.routeApp = function (service, throwOnErrors) {
 
   return {
     exports: service.main.exports,
-    routes: error ? createBrokenServiceRoute(service, error) : service.routes
+    routes: error ? createBrokenServiceRoute(service, error) : service.routes,
+    docs: service.legacy ? null : service.docs
   };
 };
 
