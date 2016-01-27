@@ -32,9 +32,10 @@ const Router = module.exports = class Router extends SwaggerContext {
     super();
     this._routes = [];
     this._middleware = [];
+    this._namedRoutes = new Map();
   }
 
-  use(path, fn) {
+  use(path, fn, name) {
     if (typeof path !== 'string') {
       fn = path;
       path = '/*';
@@ -54,6 +55,10 @@ const Router = module.exports = class Router extends SwaggerContext {
       };
       child._pathTokens = tokenize(path, child);
       this._routes.push(child);
+      if (name) {
+        child.name = name;
+        this._namedRoutes.set(child.name, child);
+      }
       return fn;
     }
     const middleware = new Middleware(path, fn);
@@ -64,6 +69,9 @@ const Router = module.exports = class Router extends SwaggerContext {
   all(path, handler, name) {
     const route = new Route(ALL_METHODS, path, handler, name);
     this._routes.push(route);
+    if (route.name) {
+      this._namedRoutes.set(route.name, route);
+    }
     return route;
   }
 };
@@ -73,6 +81,9 @@ ALL_METHODS.forEach(function (method) {
   Router.prototype[method.toLowerCase()] = function (path, handler, name) {
     const route = new Route([method], path, handler, name);
     this._routes.push(route);
+    if (route.name) {
+      this._namedRoutes.set(route.name, route);
+    }
     return route;
   };
 });

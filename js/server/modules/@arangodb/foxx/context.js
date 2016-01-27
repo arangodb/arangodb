@@ -35,8 +35,8 @@ module.exports = class FoxxContext {
     this.argv = [];
   }
 
-  use(path, router) {
-    this.service.router.use(path, router);
+  use(path, router, name) {
+    this.service.router.use(path, router, name);
   }
 
   registerType(type, def) {

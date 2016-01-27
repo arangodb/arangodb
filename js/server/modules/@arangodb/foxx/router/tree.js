@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const querystring = require('querystring');
 const httpError = require('http-errors');
 const union = require('@arangodb/util').union;
 const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
@@ -218,12 +219,14 @@ function dispatch(route, req, res) {
     }
   }
 
+  let i = 0;
   function next(err) {
     if (err) {
       throw err;
     }
 
-    const item = route.shift();
+    const item = route[i];
+    i++;
     if (!item) {
       return;
     }
@@ -260,11 +263,65 @@ function dispatch(route, req, res) {
     let tempQueryParams = req.queryParams;
     let tempSuffix = req.suffix;
     let tempPath = req.path;
+    let tempReverse = req.reverse;
     let tempResponses = res._responses;
 
     req.suffix = item.suffix.join('/');
     req.path = '/' + item.path.join('/');
     res._responses = item._responses;
+    req.reverse = function (routeName, params, suffix) {
+      if (typeof params === 'string') {
+        suffix = params;
+        params = undefined;
+      }
+      const reversedRoute = reverse(route.slice(0, i), routeName);
+      if (!reversedRoute) {
+        throw new Error(`Route could not be resolved: "${routeName}"`);
+      }
+
+      params = _.extend({}, params);
+      const parts = [];
+      for (const item of reversedRoute) {
+        const context = item.router || item.endpoint || item.middleware;
+        let i = 0;
+        for (let token of context._pathTokens) {
+          if (token === tokenize.PARAM) {
+            const name = context._pathParamNames[i];
+            if (params.hasOwnProperty(name)) {
+              if (Array.isArray(params[name])) {
+                if (!params[name].length) {
+                  throw new Error(`Not enough values for parameter "${name}"`);
+                }
+                token = params[name][0];
+                params[name] = params[name].slice(1);
+                if (!params[name].length) {
+                  delete params[name];
+                }
+              } else {
+                token = String(params[name]);
+                delete params[name];
+              }
+            } else {
+              throw new Error(`Missing value for parameter "${name}"`);
+            }
+            i++;
+          }
+          if (typeof token === 'string') {
+            parts.push(token);
+          }
+        }
+      }
+
+      const query = querystring.encode(params);
+      let path = '/' + parts.join('/');
+      if (suffix) {
+        path += '/' + suffix;
+      }
+      if (query) {
+        path += '?' + query;
+      }
+      return path;
+    };
 
     if (item.endpoint || item.router) {
       pathParams = _.extend(pathParams, item.pathParams);
@@ -285,6 +342,7 @@ function dispatch(route, req, res) {
     }
 
     res._responses = tempResponses;
+    req.reverse = tempReverse;
     req.path = tempPath;
     req.suffix = tempSuffix;
     req.queryParams = tempQueryParams;
@@ -389,4 +447,65 @@ function parsePathParams(names, route, path) {
     }
   }
   return params;
+}
+
+
+function reverse(route, path) {
+  const routers = route.filter(function (item) {
+    return item.router;
+  });
+  const keys = path.split('.');
+  const visited = [];
+  while (routers.length) {
+    const item = routers.pop();
+    const router = item.router;
+    const result = search(router.router || router, keys.slice(), visited);
+    if (result) {
+      return route.slice(0, route.indexOf(item) + 1).concat(result);
+    }
+    visited.push(item);
+  }
+  return null;
+}
+
+
+function search(router, path, visited) {
+  const name = path[0];
+  const tail = path.slice(1);
+
+  if (router._namedRoutes.has(name)) {
+    const child = router._namedRoutes.get(name);
+    if (child.router) {
+      // traverse named child router
+      console.log(visited.indexOf(child));
+      if (tail.length && visited.indexOf(child) === -1) {
+        visited.push(child);
+        const result = search(child.router, tail, visited);
+        if (result) {
+          result.unshift({router: child});
+          return result;
+        }
+      }
+    } else {
+      // found named route
+      if (!tail.length) {
+        return [{endpoint: child}];
+      }
+    }
+  }
+
+  // traverse anonymous child routers
+  for (const child of router._routes) {
+    console.log(visited.indexOf(child));
+    if (child.router && visited.indexOf(child) === -1) {
+      visited.push(child);
+      const result = search(child.router, tail, visited);
+      if (result) {
+        result.unshift({router: child});
+        return result;
+      }
+    }
+  }
+
+  return null;
 }

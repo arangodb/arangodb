@@ -23,7 +23,7 @@ module.exports = router;
 
 router.get(function (req, res) {
   res.send(<%= documents %>.all());
-})
+}, 'list')
 .response([<%= model %>], 'A list of <%= documents %>.')
 .summary('List all <%= documents %>')
 .description(`
@@ -44,8 +44,11 @@ router.post(function (req, res) {
   }
   _.extend(<%= document %>, meta);
   res.status(201);
+  res.set('location', req.makeAbsolute(
+    req.reverse('detail', {key: <%= document %>._key})
+  ));
   res.send(<%= document %>);
-})
+}, 'create')
 .body(<%= model %>, 'The <%= document %> to create.')
 .response(201, <%= model %>, 'The created <%= document %>.')
 .error(HTTP_CONFLICT, 'The <%= document %> already exists.')
@@ -68,7 +71,7 @@ router.get(':key', function (req, res) {
     throw e;
   }
   res.send(<%= document %>);
-})
+}, 'detail')
 .pathParam('key', keySchema)
 .response(<%= model %>, 'The <%= document %>.')
 .summary('Fetch a <%= document %>')
@@ -94,7 +97,7 @@ router.put(':key', function (req, res) {
   }
   _.extend(<%= document %>, meta);
   res.send(<%= document %>);
-})
+}, 'replace')
 .pathParam('key', keySchema)
 .body(<%= model %>, 'The data to replace the <%= document %> with.')
 .response(<%= model %>, 'The new <%= document %>.')
@@ -122,7 +125,7 @@ router.patch(':key', function (req, res) {
     throw e;
   }
   res.send(<%= document %>);
-})
+}, 'update')
 .pathParam('key', keySchema)
 .body(joi.object().description('The data to update the <%= document %> with.'))
 .response(<%= model %>, 'The updated <%= document %>.')
@@ -143,7 +146,7 @@ router.delete(':key', function (req, res) {
     }
     throw e;
   }
-})
+}, 'delete')
 .pathParam('key', keySchema)
 .response(null)
 .summary('Remove a <%= document %>')
