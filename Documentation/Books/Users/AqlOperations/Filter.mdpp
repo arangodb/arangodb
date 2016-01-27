@@ -18,11 +18,6 @@ FOR u IN users
   RETURN u
 ```
 
-In the above example, all array elements from *users* will be included that have
-an attribute *active* with value *true* and that have an attribute *age* with a
-value less than *39* (including *null* ones). All other elements from *users* 
-will be skipped and not be included the result produced by *RETURN*.
-
 It is allowed to specify multiple *FILTER* statements in a query, and even in
 the same block. If multiple *FILTER* statements are used, their results will be
 combined with a logical and, meaning all filter conditions must be true to
@@ -34,4 +29,13 @@ FOR u IN users
   FILTER u.age < 39
   RETURN u
 ```
+
+In the above example, will be included in the result all array elements from *users*  that have
+an attribute *active* with value *true* and that have an attribute *age* with a
+value less than *39* (including *null* ones). All other elements from *users* 
+will be skipped and not be included in the result produced by *RETURN*.
+You may refer to the chapter [Accessing Data from Collections](../Aql/DocumentData.md) for 
+a description of the impact of non-existent or null attributes. 
+
+
 

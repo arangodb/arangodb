@@ -21,7 +21,7 @@ about the optimizer's view of the query.
 !SUBSECTION Inspecting plans using the explain helper
 
 The `explain` method of `ArangoStatement` as shown in the next chapters creates very verbose output. 
-You can work on the output programaticaly, or use this handsome tool that we created
+You can work on the output programmatically, or use this handsome tool that we created
 to generate a more human readable representation.
 
 You may use it like this: (we disable syntax highlighting here)
@@ -40,7 +40,7 @@ You may use it like this: (we disable syntax highlighting here)
 
 !SUBSECTION Execution plans in detail
 
-Lets have a look at the raw json output of the same execution plan
+Let's have a look at the raw json output of the same execution plan
 using the `explain` method of `ArangoStatement`:
 
     @startDocuBlockInline AQLEXP_01_explainCreate
@@ -50,7 +50,7 @@ using the `explain` method of `ArangoStatement`:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_01_explainCreate
 
-The as you can see, result details are very verbose so we will not shown them in full in the next
+As you can see, the result details are very verbose so we will not show them in full in the next
 sections. Instead, lets take a closer look at the results step by step.
 
 !SUBSUBSECTION Execution nodes
