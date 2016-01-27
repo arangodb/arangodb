@@ -74,7 +74,7 @@ class CollectionInfo {
 
   int replicationFactor () const {
     TRI_json_t* const node 
-        = triagens::basics::JsonHelper::getObjectElement(_json,
+        = arangodb::basics::JsonHelper::getObjectElement(_json,
                                                          "replicationFactor");
 
     if (TRI_IsNumberJson(node)) {
@@ -89,7 +89,7 @@ class CollectionInfo {
 
   int replicationQuorum () const {
     TRI_json_t* const node 
-        = triagens::basics::JsonHelper::getObjectElement(_json,
+        = arangodb::basics::JsonHelper::getObjectElement(_json,
                                                          "replicationQuorum");
 
     if (TRI_IsNumberJson(node)) {
