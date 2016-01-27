@@ -3075,11 +3075,16 @@ AqlValue Functions::ParseIdentifier (triagens::aql::Query* query,
   }
 
   Json value = ExtractFunctionParameter(trx, parameters, 0, false);
-  if (value.isObject() && value.has("_id")) {
-    value = value.get("_id");
+  std::string identifier;
+
+  if (value.isObject() && value.has(TRI_VOC_ATTRIBUTE_ID)) {
+    identifier = triagens::basics::JsonHelper::getStringValue(value.get(TRI_VOC_ATTRIBUTE_ID).json(), "");
   }
-  if (value.isString()) {
-    std::string identifier = triagens::basics::JsonHelper::getStringValue(value.json(), "");
+  else if (value.isString()) {
+    identifier = triagens::basics::JsonHelper::getStringValue(value.json(), "");
+  }
+
+  if (! identifier.empty()) {
     std::vector<std::string> parts = triagens::basics::StringUtils::split(identifier, "/");
     if (parts.size() == 2) {
       Json result(Json::Object, 2);
@@ -4664,6 +4669,51 @@ AqlValue Functions::Fulltext (triagens::aql::Query* query,
     TRI_FreeResultFulltextIndex(queryResult);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function IS_SAME_COLLECTION
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::IsSameCollection (triagens::aql::Query* query,
+                                      triagens::arango::AqlTransaction* trx,
+                                      FunctionParameters const& parameters) {
+  if (parameters.size() != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "IS_SAME_COLLECTION", (int) 2, (int) 2);
+  }
+  
+  Json collectionJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! collectionJson.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "IS_SAME_COLLECTION");
+  }
+
+  std::string colName = basics::JsonHelper::getStringValue(collectionJson.json(), "");
+
+  Json value = ExtractFunctionParameter(trx, parameters, 1, false);
+  std::string identifier;
+
+  if (value.isObject() && value.has(TRI_VOC_ATTRIBUTE_ID)) {
+    identifier = triagens::basics::JsonHelper::getStringValue(value.get(TRI_VOC_ATTRIBUTE_ID).json(), "");
+  }
+  else if (value.isString()) {
+    identifier = triagens::basics::JsonHelper::getStringValue(value.json(), "");
+  }
+
+  if (! identifier.empty()) {
+    size_t pos = identifier.find('/');
+
+    if (pos != std::string::npos) {
+      bool const same = (colName == identifier.substr(0, pos));
+
+      return AqlValue(new Json(same));
+    }
+
+    // fallthrough intentional
+  }
+
+  RegisterWarning(query, "IS_SAME_COLLECTION", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  return AqlValue(new Json(Json::Null));
 }
 
 // -----------------------------------------------------------------------------

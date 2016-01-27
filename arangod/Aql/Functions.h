@@ -153,6 +153,7 @@ namespace triagens {
       static AqlValue Range               (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Position            (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Fulltext            (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
+      static AqlValue IsSameCollection    (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
     };
 
   }
