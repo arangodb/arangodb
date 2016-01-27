@@ -44,14 +44,11 @@ using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scheduler singleton
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<Scheduler> Scheduler::SCHEDULER;
-
-
 
 Scheduler::Scheduler(size_t nrThreads)
     : nrThreads(nrThreads),
@@ -80,9 +77,7 @@ Scheduler::Scheduler(size_t nrThreads)
   SCHEDULER.reset(this);
 }
 
-
 Scheduler::~Scheduler() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts scheduler, keeps running
@@ -357,8 +352,7 @@ int Scheduler::unregisterTask(Task* task) {
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG_TRACE("unregisterTask for task %p (%s)", (void*)task,
-              taskName.c_str());
+    LOG_TRACE("unregisterTask for task %p (%s)", (void*)task, taskName.c_str());
 
     thread = (*it).second;
 
@@ -391,8 +385,7 @@ int Scheduler::destroyTask(Task* task) {
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG_TRACE("destroyTask for task %p (%s)", (void*)task,
-              taskName.c_str());
+    LOG_TRACE("destroyTask for task %p (%s)", (void*)task, taskName.c_str());
 
     thread = (*it).second;
 
@@ -503,8 +496,7 @@ int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
 
     task2thread[task] = thread;
     taskRegistered[task->taskId()] = task;
-  }
-  catch (...) {
+  } catch (...) {
     destroyTask(task);
     throw;
   }
@@ -546,7 +538,6 @@ int Scheduler::checkInsertTask(Task const* task) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the signal handlers for the scheduler
 ////////////////////////////////////////////////////////////////////////////////
@@ -569,5 +560,3 @@ void Scheduler::initializeSignalHandlers() {
   }
 #endif
 }
-
-

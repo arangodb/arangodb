@@ -23,7 +23,6 @@
 
 #include "Basics/Common.h"
 
-
 static bool DeleteCollection(SimpleHttpClient*, std::string const&);
 
 static bool CreateCollection(SimpleHttpClient*, std::string const&, int const);
@@ -33,8 +32,6 @@ static bool CreateDocument(SimpleHttpClient*, std::string const&,
 
 static bool CreateIndex(SimpleHttpClient*, std::string const&,
                         std::string const&, std::string const&);
-
-
 
 struct VersionTest : public BenchmarkOperation {
   VersionTest() : BenchmarkOperation() { _url = "/_api/version"; }
@@ -68,7 +65,6 @@ struct VersionTest : public BenchmarkOperation {
 
   std::string _url;
 };
-
 
 struct DocumentCrudAppendTest : public BenchmarkOperation {
   DocumentCrudAppendTest() : BenchmarkOperation() {}
@@ -161,7 +157,6 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
   }
 };
 
-
 struct DocumentCrudWriteReadTest : public BenchmarkOperation {
   DocumentCrudWriteReadTest() : BenchmarkOperation() {}
 
@@ -242,7 +237,6 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
     }
   }
 };
-
 
 struct ShapesTest : public BenchmarkOperation {
   ShapesTest() : BenchmarkOperation() {}
@@ -330,7 +324,6 @@ struct ShapesTest : public BenchmarkOperation {
   }
 };
 
-
 struct ShapesAppendTest : public BenchmarkOperation {
   ShapesAppendTest() : BenchmarkOperation() {}
 
@@ -413,7 +406,6 @@ struct ShapesAppendTest : public BenchmarkOperation {
     }
   }
 };
-
 
 struct RandomShapesTest : public BenchmarkOperation {
   RandomShapesTest() : BenchmarkOperation() {
@@ -509,7 +501,6 @@ struct RandomShapesTest : public BenchmarkOperation {
   uint32_t _randomValue;
 };
 
-
 struct DocumentCrudTest : public BenchmarkOperation {
   DocumentCrudTest() : BenchmarkOperation() {}
 
@@ -602,7 +593,6 @@ struct DocumentCrudTest : public BenchmarkOperation {
     }
   }
 };
-
 
 struct EdgeCrudTest : public BenchmarkOperation {
   EdgeCrudTest() : BenchmarkOperation() {}
@@ -705,7 +695,6 @@ struct EdgeCrudTest : public BenchmarkOperation {
   }
 };
 
-
 struct SkiplistTest : public BenchmarkOperation {
   SkiplistTest() : BenchmarkOperation() {}
 
@@ -788,7 +777,6 @@ struct SkiplistTest : public BenchmarkOperation {
     }
   }
 };
-
 
 struct HashTest : public BenchmarkOperation {
   HashTest() : BenchmarkOperation() {}
@@ -873,7 +861,6 @@ struct HashTest : public BenchmarkOperation {
   }
 };
 
-
 struct DocumentImportTest : public BenchmarkOperation {
   DocumentImportTest() : BenchmarkOperation(), _url(), _buffer(0) {
     _url = "/_api/import?collection=" + Collection + "&type=documents";
@@ -902,7 +889,7 @@ struct DocumentImportTest : public BenchmarkOperation {
   void tearDown() {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-             size_t const globalCounter) {
+                  size_t const globalCounter) {
     return _url;
   }
 
@@ -926,7 +913,6 @@ struct DocumentImportTest : public BenchmarkOperation {
 
   size_t _length;
 };
-
 
 struct DocumentCreationTest : public BenchmarkOperation {
   DocumentCreationTest() : BenchmarkOperation(), _url(), _buffer(0) {
@@ -988,7 +974,6 @@ struct DocumentCreationTest : public BenchmarkOperation {
   size_t _length;
 };
 
-
 struct CollectionCreationTest : public BenchmarkOperation {
   CollectionCreationTest() : BenchmarkOperation(), _url() {
     _url = "/_api/collection";
@@ -1042,7 +1027,6 @@ struct CollectionCreationTest : public BenchmarkOperation {
 };
 
 std::atomic<uint64_t> CollectionCreationTest::_counter(0);
-
 
 struct TransactionAqlTest : public BenchmarkOperation {
   TransactionAqlTest() : BenchmarkOperation() {}
@@ -1138,7 +1122,6 @@ struct TransactionAqlTest : public BenchmarkOperation {
   std::string _c3;
 };
 
-
 struct TransactionCountTest : public BenchmarkOperation {
   TransactionCountTest() : BenchmarkOperation() {}
 
@@ -1188,7 +1171,6 @@ struct TransactionCountTest : public BenchmarkOperation {
     return (char const*)ptr;
   }
 };
-
 
 struct TransactionDeadlockTest : public BenchmarkOperation {
   TransactionDeadlockTest() : BenchmarkOperation() {}
@@ -1258,7 +1240,6 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
   std::string _c1;
   std::string _c2;
 };
-
 
 struct TransactionMultiTest : public BenchmarkOperation {
   TransactionMultiTest() : BenchmarkOperation() {}
@@ -1344,7 +1325,6 @@ struct TransactionMultiTest : public BenchmarkOperation {
   std::string _c2;
 };
 
-
 struct TransactionMultiCollectionTest : public BenchmarkOperation {
   TransactionMultiCollectionTest() : BenchmarkOperation() {}
 
@@ -1421,7 +1401,6 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
   std::string _c2;
 };
 
-
 struct AqlInsertTest : public BenchmarkOperation {
   AqlInsertTest() : BenchmarkOperation() {}
 
@@ -1475,7 +1454,6 @@ struct AqlInsertTest : public BenchmarkOperation {
     return (char const*)ptr;
   }
 };
-
 
 struct AqlV8Test : public BenchmarkOperation {
   AqlV8Test() : BenchmarkOperation() {}
@@ -1532,7 +1510,6 @@ struct AqlV8Test : public BenchmarkOperation {
     return (char const*)ptr;
   }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a collection
@@ -1714,5 +1691,3 @@ static BenchmarkOperation* GetTestCase(std::string const& name) {
 
   return nullptr;
 }
-
-

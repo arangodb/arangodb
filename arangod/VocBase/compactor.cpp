@@ -129,7 +129,6 @@ static char const* ReasonNothingToCompact =
 
 static int const COMPACTOR_INTERVAL = (1 * 1000 * 1000);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compaction blocker entry
 ////////////////////////////////////////////////////////////////////////////////
@@ -476,7 +475,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     if (found2->_fid != targetFid) {
       found2->_fid = targetFid;
     }
-      
+
     context->_dfi.numberAlive++;
     context->_dfi.sizeAlive += AlignedSize(marker);
   }
@@ -492,7 +491,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
         LOG_FATAL_AND_EXIT("cannot write document marker to compactor file: %s",
                            TRI_last_error());
       }
-      
+
       // update datafile info
       context->_dfi.numberDeletions++;
     }
@@ -515,7 +514,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
     }
-    
+
     context->_dfi.numberShapes++;
     context->_dfi.sizeShapes += AlignedSize(marker);
   }
@@ -537,7 +536,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate attribute marker");
     }
-    
+
     context->_dfi.numberAttributes++;
     context->_dfi.sizeAttributes += AlignedSize(marker);
   }
@@ -632,7 +631,6 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-
     TRI_doc_document_key_marker_t const* d =
         reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
     TRI_voc_key_t key = (char*)d + d->_offsetKey;
@@ -742,8 +740,9 @@ static compaction_initial_context_t InitCompaction(
 /// @brief compact a list of datafiles
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CompactifyDatafiles(TRI_document_collection_t* document,
-                                std::vector<compaction_info_t> const& toCompact) {
+static void CompactifyDatafiles(
+    TRI_document_collection_t* document,
+    std::vector<compaction_info_t> const& toCompact) {
   TRI_datafile_t* compactor;
   compaction_context_t context;
   size_t i, j;
@@ -829,7 +828,7 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
   document->_datafileStatistics.replace(compactor->_fid, context._dfi);
 
   trx.commit();
-  
+
   // remove all datafile statistics that we don't need anymore
   for (i = 1; i < n; ++i) {
     auto compaction = toCompact[i];
@@ -884,7 +883,7 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
 
     for (i = 0; i < n; ++i) {
       auto compaction = toCompact[i];
-      
+
       // datafile is also empty after compaction and thus useless
       RemoveDatafile(document, compaction._datafile);
 
@@ -915,7 +914,7 @@ static void CompactifyDatafiles(TRI_document_collection_t* document,
         }
       }
     }
-      
+
     for (i = 0; i < n; ++i) {
       auto compaction = toCompact[i];
 
@@ -960,9 +959,9 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
   //  if (! TRI_IsFullyCollectedDocumentCollection(document)) {
   //    return false;
   //  }
-  
+
   std::vector<compaction_info_t> toCompact;
-  toCompact.reserve(COMPACTOR_MAX_FILES); 
+  toCompact.reserve(COMPACTOR_MAX_FILES);
 
   // if we cannot acquire the read lock instantly, we will exit directly.
   // otherwise we'll risk a multi-thread deadlock between synchronizer,
@@ -989,7 +988,9 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     return false;
   }
 
-  LOG_TRACE("inspecting datafiles of collection '%s' for compaction opportunities", document->_info.namec_str());
+  LOG_TRACE(
+      "inspecting datafiles of collection '%s' for compaction opportunities",
+      document->_info.namec_str());
 
   size_t start = document->getNextCompactionStartIndex();
 
@@ -1028,14 +1029,18 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
 
     TRI_ASSERT(df != nullptr);
 
-    DatafileStatisticsContainer dfi = document->_datafileStatistics.get(df->_fid);
-    
+    DatafileStatisticsContainer dfi =
+        document->_datafileStatistics.get(df->_fid);
+
     if (dfi.numberUncollected > 0) {
-      LOG_TRACE("cannot compact datafile %llu of collection '%s' because it still has uncollected entries", (unsigned long long) df->_fid, document->_info.namec_str());
+      LOG_TRACE(
+          "cannot compact datafile %llu of collection '%s' because it still "
+          "has uncollected entries",
+          (unsigned long long)df->_fid, document->_info.namec_str());
       start = i + 1;
       break;
     }
-    
+
     if (!doCompact && df->_maximalSize < COMPACTOR_MIN_SIZE && i < n - 1) {
       // very small datafile and not the last one. let's compact it so it's
       // merged with others
@@ -1081,7 +1086,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     start = i + 1;
 
     if (totalSize + (uint64_t)df->_maximalSize >= maxSize &&
-        ! toCompact.empty()) {
+        !toCompact.empty()) {
       // found enough files to compact
       break;
     }
@@ -1114,10 +1119,10 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
 
     try {
       toCompact.push_back(compaction);
-    }
-    catch (...) {
+    } catch (...) {
       // silently fail. either we had found something to compact or not
-      // if not, then we can try again next time. if yes, then we'll simply forget
+      // if not, then we can try again next time. if yes, then we'll simply
+      // forget
       // about it and also try again next time
       break;
     }
@@ -1149,7 +1154,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
   if (toCompact.empty()) {
     // nothing to compact. now reset start index
     document->setNextCompactionStartIndex(0);
-    
+
     // cleanup local variables
     document->setCompactionStatus(ReasonNothingToCompact);
     return false;
@@ -1226,7 +1231,6 @@ static bool CheckAndLockCompaction(TRI_vocbase_t* vocbase) {
 
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the compaction blockers structure
@@ -1434,7 +1438,7 @@ void TRI_CompactorVocBase(void* data) {
         {
           TRY_READ_LOCKER(readLocker, collection->_lock);
 
-          if (! readLocker.isLocked()) {
+          if (!readLocker.isLocked()) {
             // if we can't acquire the read lock instantly, we continue directly
             // we don't want to stall here for too long
             continue;
@@ -1451,7 +1455,8 @@ void TRI_CompactorVocBase(void* data) {
 
           // for document collection, compactify datafiles
           if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
-            // check whether someone else holds a read-lock on the compaction lock
+            // check whether someone else holds a read-lock on the compaction
+            // lock
             if (!TRI_TryWriteLockReadWriteLock(&document->_compactionLock)) {
               // someone else is holding the compactor lock, we'll not compact
               continue;
@@ -1464,7 +1469,7 @@ void TRI_CompactorVocBase(void* data) {
               if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <=
                   now) {
                 auto ce = document->ditches()->createCompactionDitch(__FILE__,
-                    __LINE__);
+                                                                     __LINE__);
 
                 if (ce == nullptr) {
                   // out of memory
@@ -1482,7 +1487,8 @@ void TRI_CompactorVocBase(void* data) {
                     // force
                     // another round of compaction
                   } catch (...) {
-                    LOG_ERROR("an unknown exception occurred during compaction");
+                    LOG_ERROR(
+                        "an unknown exception occurred during compaction");
                     // in case an error occurs, we must still free this ditch
                   }
 
@@ -1495,7 +1501,7 @@ void TRI_CompactorVocBase(void* data) {
             }
           }
 
-        } // end of lock
+        }  // end of lock
 
         if (worked) {
           ++numCompacted;
@@ -1531,5 +1537,3 @@ void TRI_CompactorVocBase(void* data) {
 
   LOG_TRACE("shutting down compactor thread");
 }
-
-

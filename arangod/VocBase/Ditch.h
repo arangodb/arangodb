@@ -40,7 +40,6 @@ class Ditches;
 class Ditch {
   friend class Ditches;
 
-  
  protected:
   Ditch(Ditch const&) = delete;
   Ditch& operator=(Ditch const&) = delete;
@@ -50,7 +49,6 @@ class Ditch {
  public:
   virtual ~Ditch();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ditch type
@@ -66,7 +64,6 @@ class Ditch {
     TRI_DITCH_COLLECTION_DROP
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the ditch type
@@ -110,18 +107,15 @@ class Ditch {
 
   struct TRI_document_collection_t* collection() const;
 
-  
  protected:
   Ditches* _ditches;
 
-  
  private:
   Ditch* _prev;
   Ditch* _next;
   char const* _filename;
   int _line;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document ditch
@@ -149,7 +143,6 @@ class DocumentDitch : public Ditch {
   bool _usedByTransaction;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication ditch
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,7 +159,6 @@ class ReplicationDitch : public Ditch {
   char const* typeName() const override final { return "replication"; }
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compaction ditch
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +174,6 @@ class CompactionDitch : public Ditch {
 
   char const* typeName() const override final { return "compaction"; }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile removal ditch
@@ -210,7 +201,6 @@ class DropDatafileDitch : public Ditch {
   std::function<void(struct TRI_datafile_t*, void*)> _callback;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile rename ditch
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,7 +226,6 @@ class RenameDatafileDitch : public Ditch {
   void* _data;
   std::function<void(struct TRI_datafile_t*, void*)> _callback;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection unload ditch
@@ -288,13 +277,11 @@ class DropCollectionDitch : public Ditch {
   std::function<bool(struct TRI_collection_t*, void*)> _callback;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief doubly linked list of ditches
 ////////////////////////////////////////////////////////////////////////////////
 
 class Ditches {
-  
  public:
   Ditches(Ditches const&) = delete;
   Ditches& operator=(Ditches const&) = delete;
@@ -303,7 +290,6 @@ class Ditches {
   explicit Ditches(struct TRI_document_collection_t*);
   ~Ditches();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the ditches - to be called on shutdown only
@@ -419,7 +405,6 @@ class Ditches {
       std::function<bool(struct TRI_collection_t*, void*)> callback,
       char const* filename, int line);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief inserts the ditch into the linked list of ditches
@@ -433,7 +418,6 @@ class Ditches {
 
   void unlink(Ditch*);
 
-  
  private:
   struct TRI_document_collection_t* _collection;
 
@@ -445,5 +429,3 @@ class Ditches {
 }
 
 #endif
-
-

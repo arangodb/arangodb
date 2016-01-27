@@ -54,7 +54,6 @@ arangodb::basics::ReadWriteLock FailurePointsLock;
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make a delimited value from a string, so we can unambigiously
 /// search for it (e.g. searching for just "foo" would find "foo" and "foobar",
@@ -70,8 +69,8 @@ static char* MakeValue(char const* value) {
     return nullptr;
   }
 
-  char* delimited = static_cast<char*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, len + 3, false));
+  char* delimited =
+      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, len + 3, false));
 
   if (delimited != nullptr) {
     memcpy(delimited + 1, value, len);
@@ -82,7 +81,6 @@ static char* MakeValue(char const* value) {
 
   return delimited;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
@@ -160,7 +158,8 @@ void TRI_AddFailurePointDebugging(char const* value) {
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {
-      copy = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + 1, false));
+      copy =
+          static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + 1, false));
 
       if (copy == nullptr) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
@@ -392,5 +391,3 @@ void TRI_PrintBacktrace() {
 #endif
 #endif
 }
-
-

@@ -105,9 +105,7 @@ class ListenTask : virtual public Task {
 
   bool setup(Scheduler*, EventLoop) override;
 
-
   void cleanup() override;
-
 
   bool handleEvent(EventToken token, EventType) override;
 
@@ -134,4 +132,3 @@ class ListenTask : virtual public Task {
 }
 
 #endif
-

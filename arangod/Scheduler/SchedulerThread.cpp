@@ -251,7 +251,8 @@ void SchedulerThread::run() {
       Work w;
 
       {
-        MUTEX_LOCKER(mutexLocker, _queueLock);  // TODO(fc) XXX goto boost lockfree
+        MUTEX_LOCKER(mutexLocker,
+                     _queueLock);  // TODO(fc) XXX goto boost lockfree
 
         if (!_hasWork.load() || _queue.empty()) {
           break;

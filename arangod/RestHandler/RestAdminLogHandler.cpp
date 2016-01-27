@@ -36,7 +36,6 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::admin;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort ascending
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,12 +58,8 @@ static int LidCompareDesc(void const* l, void const* r) {
   return (int)(((int64_t)right->_lid) - ((int64_t)left->_lid));
 }
 
-
-
 RestAdminLogHandler::RestAdminLogHandler(rest::HttpRequest* request)
     : RestBaseHandler(request) {}
-
-
 
 bool RestAdminLogHandler::isDirect() const { return true; }
 
@@ -180,7 +175,8 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
   // .............................................................................
 
   bool search = false;
-  std::string searchString = StringUtils::tolower(_request->value("search", search));
+  std::string searchString =
+      StringUtils::tolower(_request->value("search", search));
 
   // .............................................................................
   // generate result
@@ -296,5 +292,3 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
 
   return status_t(HANDLER_DONE);
 }
-
-

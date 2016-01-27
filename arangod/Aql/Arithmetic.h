@@ -77,4 +77,3 @@ bool IsUnsafeDivision(T l, T r) {
 }
 
 #endif
-

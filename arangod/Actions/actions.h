@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -36,7 +35,6 @@ class HttpResponse;
 class HttpRequest;
 }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action result
@@ -92,7 +90,6 @@ class TRI_action_t {
   bool _allowUseDatabase;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,5 +110,3 @@ TRI_action_t* TRI_LookupActionVocBase(arangodb::rest::HttpRequest* request);
 void TRI_CleanupActions();
 
 #endif
-
-

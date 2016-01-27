@@ -36,9 +36,7 @@
 namespace arangodb {
 namespace aql {
 
-
 class ExecutionEngine {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the engine
@@ -52,7 +50,6 @@ class ExecutionEngine {
 
   ~ExecutionEngine();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   // @brief create an execution engine from a plan
@@ -101,10 +98,8 @@ class ExecutionEngine {
     if (_root != nullptr && !_wasShutdown) {
       // Take care of locking prevention measures in the cluster:
       if (_lockedShards != nullptr) {
-        if (arangodb::Transaction::_makeNolockHeaders ==
-            _lockedShards) {
-          arangodb::Transaction::_makeNolockHeaders =
-              _previouslyLockedShards;
+        if (arangodb::Transaction::_makeNolockHeaders == _lockedShards) {
+          arangodb::Transaction::_makeNolockHeaders = _previouslyLockedShards;
         }
         delete _lockedShards;
         _lockedShards = nullptr;
@@ -203,7 +198,6 @@ class ExecutionEngine {
     return _lockedShards;
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execution statistics for the query
@@ -218,7 +212,6 @@ class ExecutionEngine {
 
   AqlItemBlockManager _itemBlockManager;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief all blocks registered, used for memory management
@@ -267,5 +260,3 @@ class ExecutionEngine {
 }
 
 #endif
-
-

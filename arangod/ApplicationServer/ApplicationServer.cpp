@@ -49,7 +49,6 @@ using namespace std;
 
 static std::string DeprecatedParameter;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hidden Options
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,8 +64,6 @@ std::string const OPTIONS_HIDDEN = "Hidden Options";
 namespace {
 std::string const OPTIONS_CMDLINE = "General Options";
 }
-
-
 
 ApplicationServer::ApplicationServer(std::string const& name,
                                      std::string const& title,
@@ -109,14 +106,12 @@ ApplicationServer::ApplicationServer(std::string const& name,
       _finishedCondition() {
 }
 
-
 ApplicationServer::~ApplicationServer() {
   Random::shutdown();
   for (auto& it : _features) {
     delete it;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new feature
@@ -286,7 +281,9 @@ ProgramOptions& ApplicationServer::programOptions() { return _options; }
 /// @brief returns the command line arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> ApplicationServer::programArguments() { return _arguments; }
+std::vector<std::string> ApplicationServer::programArguments() {
+  return _arguments;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the arguments with empty options description
@@ -317,7 +314,8 @@ bool ApplicationServer::parse(
   }
 
   // construct options description
-  for (std::map<std::string, ProgramOptionsDescription>::iterator i = opts.begin();
+  for (std::map<std::string, ProgramOptionsDescription>::iterator i =
+           opts.begin();
        i != opts.end(); ++i) {
     std::string name = i->first;
 
@@ -455,7 +453,8 @@ void ApplicationServer::prepare() {
   // order and shutting them
   // down in forward order, we ensure that the features created last are
   // destroyed first, i.e.: LIFO
-  for (std::vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+  for (std::vector<ApplicationFeature*>::reverse_iterator i =
+           _features.rbegin();
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -478,7 +477,8 @@ void ApplicationServer::prepare() {
 
 void ApplicationServer::prepare2() {
   // prepare all features
-  for (std::vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+  for (std::vector<ApplicationFeature*>::reverse_iterator i =
+           _features.rbegin();
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -522,7 +522,8 @@ void ApplicationServer::start() {
   }
 
   // now open all features
-  for (std::vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+  for (std::vector<ApplicationFeature*>::reverse_iterator i =
+           _features.rbegin();
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -588,7 +589,8 @@ void ApplicationServer::stop() {
   }
 
   // stop all features
-  for (std::vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+  for (std::vector<ApplicationFeature*>::reverse_iterator i =
+           _features.rbegin();
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -730,7 +732,6 @@ void ApplicationServer::dropPrivilegesPermanently() {
 #endif
 }
 
-
 void ApplicationServer::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
   // .............................................................................
@@ -803,7 +804,6 @@ void ApplicationServer::setupOptions(
 #endif
               ;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the parent is still alive
@@ -980,5 +980,3 @@ bool ApplicationServer::readConfigurationFile() {
 
   return true;
 }
-
-

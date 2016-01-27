@@ -54,7 +54,6 @@ struct TRI_hash_index_search_value_t {
   struct TRI_shaped_json_s* _values;
 };
 
-
 namespace arangodb {
 namespace aql {
 class SortCondition;
@@ -93,7 +92,6 @@ class HashIndexIterator final : public IndexIterator {
 };
 
 class HashIndex final : public PathBasedIndex {
-  
  public:
   HashIndex() = delete;
 
@@ -105,7 +103,6 @@ class HashIndex final : public PathBasedIndex {
 
   ~HashIndex();
 
-  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_HASH_INDEX;
@@ -170,38 +167,30 @@ class HashIndex final : public PathBasedIndex {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  
  private:
-  int insertUnique(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-                   bool);
+  int insertUnique(arangodb::Transaction*, struct TRI_doc_mptr_t const*, bool);
 
   int batchInsertUnique(arangodb::Transaction*,
                         std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-  int insertMulti(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-                  bool);
+  int insertMulti(arangodb::Transaction*, struct TRI_doc_mptr_t const*, bool);
 
   int batchInsertMulti(arangodb::Transaction*,
                        std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-  int removeUniqueElement(arangodb::Transaction*, TRI_index_element_t*,
-                          bool);
+  int removeUniqueElement(arangodb::Transaction*, TRI_index_element_t*, bool);
 
-  int removeUnique(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-                   bool);
+  int removeUnique(arangodb::Transaction*, struct TRI_doc_mptr_t const*, bool);
 
-  int removeMultiElement(arangodb::Transaction*, TRI_index_element_t*,
-                         bool);
+  int removeMultiElement(arangodb::Transaction*, TRI_index_element_t*, bool);
 
-  int removeMulti(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-                  bool);
+  int removeMulti(arangodb::Transaction*, struct TRI_doc_mptr_t const*, bool);
 
   bool accessFitsIndex(arangodb::aql::AstNode const* access,
                        arangodb::aql::AstNode const* other,
                        arangodb::aql::Variable const* reference,
                        std::unordered_set<size_t>& found) const;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief given an element generates a hash integer
   //////////////////////////////////////////////////////////////////////////////
@@ -286,7 +275,6 @@ class HashIndex final : public PathBasedIndex {
     }
   };
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual hash index (unique type)
@@ -335,5 +323,3 @@ class HashIndex final : public PathBasedIndex {
 }
 
 #endif
-
-

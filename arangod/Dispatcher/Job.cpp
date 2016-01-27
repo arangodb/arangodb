@@ -29,12 +29,10 @@
 using namespace arangodb::rest;
 using namespace std;
 
-
 namespace {
 std::atomic_uint_fast64_t NEXT_JOB_ID(static_cast<uint64_t>(TRI_microtime() *
                                                             100000.0));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a job
@@ -45,14 +43,10 @@ Job::Job(std::string const& name)
       _name(name),
       _queuePosition((size_t)-1) {}
 
-
 Job::~Job() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name to use
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t Job::queue() const { return Dispatcher::STANDARD_QUEUE; }
-
-

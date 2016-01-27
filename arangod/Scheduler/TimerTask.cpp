@@ -94,5 +94,3 @@ bool TimerTask::handleEvent(EventToken token, EventType revents) {
 
   return result;
 }
-
-

@@ -134,7 +134,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
         break;
       }
 
-      case AqlValue::SHAPED: 
+      case AqlValue::SHAPED:
       case AqlValue::EMPTY: {
         throwArrayExpectedException();
       }
@@ -328,4 +328,3 @@ void EnumerateListBlock::throwArrayExpectedException() {
       TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
           std::string(" as operand to FOR loop"));
 }
-

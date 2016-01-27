@@ -46,7 +46,6 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-
 SimpleTraverserExpression::SimpleTraverserExpression(arangodb::aql::Ast* ast,
                                                      arangodb::basics::Json j)
     : TraverserExpression(), expression(nullptr) {
@@ -111,8 +110,9 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       auto eColName = graph->getMember(i)->getStringValue();
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
-        std::string msg(
-            "collection type invalid for collection '" + std::string(eColName) + ": expecting collection type 'edge'");
+        std::string msg("collection type invalid for collection '" +
+                        std::string(eColName) +
+                        ": expecting collection type 'edge'");
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
@@ -364,8 +364,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
             "simpleExpressions one expression set has to be an array.");
       }
 
-      std::vector<arangodb::traverser::TraverserExpression*>
-          oneExpressionSet;
+      std::vector<arangodb::traverser::TraverserExpression*> oneExpressionSet;
       oneExpressionSet.reserve(oneSetLength);
       size_t n = std::stoull(k);
       _expressions.emplace(n, oneExpressionSet);
@@ -535,16 +534,16 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 
   for (auto const& it : _edgeColls) {
     auto collection = collections->get(it);
-    
+
     if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected pointer for collection");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unexpected pointer for collection");
     }
 
     TRI_ASSERT(collection != nullptr);
 
     for (auto const& index : collection->getIndexes()) {
-      if (index->type ==
-          arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      if (index->type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         // We can only use Edge Index
         if (index->hasSelectivityEstimate()) {
           expectedEdgesPerDepth += 1 / index->selectivityEstimate();
@@ -609,4 +608,3 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess, size_t indexAccess,
   it->second.push_back(e.get());
   e.release();
 }
-

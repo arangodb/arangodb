@@ -41,12 +41,9 @@ struct Collection;
 
 class ExecutionEngine;
 
-
 class ModificationBlock : public ExecutionBlock {
  public:
-
   ModificationBlock(ExecutionEngine*, ModificationNode const*);
-
 
   virtual ~ModificationBlock();
 
@@ -56,7 +53,6 @@ class ModificationBlock : public ExecutionBlock {
 
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse
@@ -96,7 +92,6 @@ class ModificationBlock : public ExecutionBlock {
 
   void handleResult(int, bool, std::string const* errorMessage = nullptr);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief output register ($OLD)
@@ -135,16 +130,12 @@ class ModificationBlock : public ExecutionBlock {
   arangodb::basics::StringBuffer _buffer;
 };
 
-
 class RemoveBlock : public ModificationBlock {
  public:
-
   RemoveBlock(ExecutionEngine*, RemoveNode const*);
-
 
   ~RemoveBlock();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for removing data
@@ -153,16 +144,12 @@ class RemoveBlock : public ModificationBlock {
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
 };
 
-
 class InsertBlock : public ModificationBlock {
  public:
-
   InsertBlock(ExecutionEngine*, InsertNode const*);
-
 
   ~InsertBlock();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for inserting data
@@ -171,16 +158,12 @@ class InsertBlock : public ModificationBlock {
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
 };
 
-
 class UpdateBlock : public ModificationBlock {
  public:
-
   UpdateBlock(ExecutionEngine*, UpdateNode const*);
-
 
   ~UpdateBlock();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for updating data
@@ -189,16 +172,12 @@ class UpdateBlock : public ModificationBlock {
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
 };
 
-
 class ReplaceBlock : public ModificationBlock {
  public:
-
   ReplaceBlock(ExecutionEngine*, ReplaceNode const*);
-
 
   ~ReplaceBlock();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for replacing data
@@ -207,16 +186,12 @@ class ReplaceBlock : public ModificationBlock {
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
 };
 
-
 class UpsertBlock : public ModificationBlock {
  public:
-
   UpsertBlock(ExecutionEngine*, UpsertNode const*);
-
 
   ~UpsertBlock();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for updating data
@@ -229,4 +204,3 @@ class UpsertBlock : public ModificationBlock {
 }  // namespace arangodb
 
 #endif
-

@@ -147,7 +147,6 @@ ConditionPartCompareResult const ConditionPart::ResultsTable[3][7][7] = {
       OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
 
-
 ConditionPart::ConditionPart(Variable const* variable,
                              std::string const& attributeName,
                              AstNode const* operatorNode,
@@ -269,8 +268,6 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other) const {
   return false;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the condition
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,7 +283,6 @@ Condition::~Condition() {
   // memory for nodes is not owned and thus not freed by the condition
   // all nodes belong to the AST
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a condition from JSON
@@ -755,7 +751,6 @@ bool Condition::removeInvalidVariables(
 
   return isEmpty;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort ORs for the same attribute so they are in ascending value
@@ -1526,9 +1521,8 @@ AstNode* Condition::transformNode(AstNode* node) {
       for (size_t i = 0; i < n; ++i) {
         auto sub = node->getMemberUnchecked(i);
 
-        if (sub->type ==
-            NODE_TYPE_OPERATOR_NARY_OR) {  // || sub->type ==
-                                           // NODE_TYPE_OPERATOR_NARY_AND) {
+        if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {  // || sub->type ==
+          // NODE_TYPE_OPERATOR_NARY_AND) {
           permutationStates.emplace_back(
               PermutationState(sub, sub->numMembers()));
         } else {
@@ -1687,5 +1681,3 @@ AstNode* Condition::fixRoot(AstNode* node, int level) {
 
   return node;
 }
-
-

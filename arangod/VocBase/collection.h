@@ -175,8 +175,8 @@ class VocbaseCollectionInfo {
   bool _waitForSync;  // if true, wait for msync
 
  public:
-  VocbaseCollectionInfo() {};
-  ~VocbaseCollectionInfo() {};
+  VocbaseCollectionInfo(){};
+  ~VocbaseCollectionInfo(){};
 
   explicit VocbaseCollectionInfo(CollectionInfo const&);
 
@@ -235,7 +235,8 @@ class VocbaseCollectionInfo {
   /// the caller is responsible for freeing it
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOptions() const;
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOptions()
+      const;
 
   // If true, collection has been deleted
   bool deleted() const;
@@ -393,8 +394,8 @@ int TRI_IterateJsonIndexesCollectionInfo(
 struct TRI_json_t* TRI_CreateJsonCollectionInfo(
     arangodb::VocbaseCollectionInfo const&);
 
-std::shared_ptr<arangodb::velocypack::Builder> TRI_CreateVelocyPackCollectionInfo(
-    arangodb::VocbaseCollectionInfo const&);
+std::shared_ptr<arangodb::velocypack::Builder>
+TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&);
 
 // Expects the builder to be in an open Object state
 void TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&,
@@ -486,4 +487,3 @@ bool TRI_IsSystemNameCollection(char const*);
 bool TRI_IsAllowedNameCollection(bool, char const*);
 
 #endif
-

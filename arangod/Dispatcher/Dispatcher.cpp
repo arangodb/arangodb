@@ -36,7 +36,6 @@ using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the default dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,20 +44,16 @@ static DispatcherThread* CreateDispatcherThread(DispatcherQueue* queue) {
   return new DispatcherThread(queue);
 }
 
-
-
 Dispatcher::Dispatcher(Scheduler* scheduler)
     : _scheduler(scheduler), _stopping(false) {
   _queues.resize(SYSTEM_QUEUE_SIZE, nullptr);
 }
-
 
 Dispatcher::~Dispatcher() {
   for (size_t i = 0; i < SYSTEM_QUEUE_SIZE; ++i) {
     delete _queues[i];
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the standard queue
@@ -238,5 +233,3 @@ void Dispatcher::setProcessorAffinity(size_t id,
 
   queue->setProcessorAffinity(cores);
 }
-
-

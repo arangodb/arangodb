@@ -100,7 +100,6 @@ bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
 bool IGNORE_DATAFILE_ERRORS;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts list of size_t to string
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,10 +222,9 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
-  factory->addHandler(
-      "/_api/version",
-      RestHandlerCreator<RestVersionHandler>::createNoData,
-      nullptr);
+  factory->addHandler("/_api/version",
+                      RestHandlerCreator<RestVersionHandler>::createNoData,
+                      nullptr);
 
   // And now the _admin handlers
   factory->addPrefixHandler(
@@ -235,10 +233,9 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
-  factory->addHandler(
-      "/_admin/version",
-      RestHandlerCreator<RestVersionHandler>::createNoData,
-      nullptr);
+  factory->addHandler("/_admin/version",
+                      RestHandlerCreator<RestVersionHandler>::createNoData,
+                      nullptr);
 
   // further admin handlers
   factory->addHandler(
@@ -246,17 +243,15 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<arangodb::admin::RestAdminLogHandler>::createNoData,
       nullptr);
 
-  factory->addHandler(
-      "/_admin/work-monitor",
-      RestHandlerCreator<WorkMonitorHandler>::createNoData,
-      nullptr);
+  factory->addHandler("/_admin/work-monitor",
+                      RestHandlerCreator<WorkMonitorHandler>::createNoData,
+                      nullptr);
 
 // This handler is to activate SYS_DEBUG_FAILAT on DB servers
 #ifdef TRI_ENABLE_FAILURE_TESTS
-  factory->addPrefixHandler(
-      "/_admin/debug",
-      RestHandlerCreator<RestDebugHandler>::createNoData,
-      nullptr);
+  factory->addPrefixHandler("/_admin/debug",
+                            RestHandlerCreator<RestDebugHandler>::createNoData,
+                            nullptr);
 #endif
 
   factory->addPrefixHandler(
@@ -349,8 +344,7 @@ static bool SetRequestContext(arangodb::rest::HttpRequest* request,
     return false;
   }
 
-  VocbaseContext* ctx =
-      new arangodb::VocbaseContext(request, server, vocbase);
+  VocbaseContext* ctx = new arangodb::VocbaseContext(request, server, vocbase);
 
   if (ctx == nullptr) {
     // out of memory
@@ -362,9 +356,6 @@ static bool SetRequestContext(arangodb::rest::HttpRequest* request,
 
   return true;
 }
-
-
-
 
 ArangoServer::ArangoServer(int argc, char** argv)
     : _argc(argc),
@@ -421,7 +412,6 @@ ArangoServer::ArangoServer(int argc, char** argv)
   _server = new TRI_server_t;
 }
 
-
 ArangoServer::~ArangoServer() {
   delete _indexPool;
   delete _jobManager;
@@ -429,8 +419,6 @@ ArangoServer::~ArangoServer() {
 
   Nonce::destroy();
 }
-
-
 
 void ArangoServer::buildApplicationServer() {
   _applicationServer =
@@ -701,7 +689,7 @@ void ArangoServer::buildApplicationServer() {
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
     languageName =
         std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
-               Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
   } else {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
@@ -847,7 +835,6 @@ void ArangoServer::buildApplicationServer() {
     }
   }
 }
-
 
 int ArangoServer::startupServer() {
   TRI_InitializeStatistics();
@@ -1271,7 +1258,6 @@ int ArangoServer::startupServer() {
   return res;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run arbitrary checks at startup
 ////////////////////////////////////////////////////////////////////////////////
@@ -1642,5 +1628,3 @@ void ArangoServer::closeDatabases() {
 
   LOG_INFO("ArangoDB has been shut down");
 }
-
-

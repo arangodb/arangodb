@@ -50,10 +50,9 @@ class SchedulerThread : public basics::Thread, private TaskManager {
   SchedulerThread& operator=(SchedulerThread const&);
 
  public:
-
   SchedulerThread(Scheduler*, EventLoop, bool defaultLoop);
   ~SchedulerThread();
-  
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if the scheduler thread is up and running
@@ -97,13 +96,11 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 
   void signalTask(std::unique_ptr<TaskData>&);
 
-  
  protected:
-
   void run();
 
   void addStatus(arangodb::velocypack::Builder* b);
-  
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief what to do with the task
@@ -127,7 +124,6 @@ class SchedulerThread : public basics::Thread, private TaskManager {
     Task* task;
   };
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief underlying scheduler
@@ -159,9 +155,9 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 
   std::atomic<bool> _stopped;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief queue lock
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief queue lock
+  ////////////////////////////////////////////////////////////////////////////////
 
   arangodb::basics::Mutex _queueLock;
 
@@ -201,5 +197,3 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 }
 
 #endif
-
-

@@ -79,7 +79,6 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
   list->Set(name, result);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns server statistics
 ///
@@ -228,7 +227,6 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the statistics functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,5 +263,3 @@ void TRI_InitV8Statistics(v8::Isolate* isolate,
       isolate, context, TRI_V8_ASCII_STRING("BYTES_RECEIVED_DISTRIBUTION"),
       DistributionList(isolate, TRI_BytesReceivedDistributionVectorStatistics));
 }
-
-

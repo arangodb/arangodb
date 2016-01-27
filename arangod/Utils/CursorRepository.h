@@ -37,7 +37,6 @@ namespace arangodb {
 class CollectionExport;
 
 class CursorRepository {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursors repository
@@ -51,7 +50,6 @@ class CursorRepository {
 
   ~CursorRepository();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
@@ -67,8 +65,8 @@ class CursorRepository {
   /// @brief creates a cursor and stores it in the registry
   //////////////////////////////////////////////////////////////////////////////
 
-  ExportCursor* createFromExport(arangodb::CollectionExport*, size_t,
-                                 double, bool);
+  ExportCursor* createFromExport(arangodb::CollectionExport*, size_t, double,
+                                 bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id
@@ -102,7 +100,6 @@ class CursorRepository {
 
   bool garbageCollect(bool);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase
@@ -131,5 +128,3 @@ class CursorRepository {
 }
 
 #endif
-
-

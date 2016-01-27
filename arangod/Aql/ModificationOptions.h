@@ -35,7 +35,6 @@ namespace aql {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ModificationOptions {
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor, using default values
   //////////////////////////////////////////////////////////////////////////////
@@ -52,7 +51,6 @@ struct ModificationOptions {
 
   void toJson(arangodb::basics::Json&, TRI_memory_zone_t*) const;
 
-  
   bool ignoreErrors;
   bool waitForSync;
   bool nullMeansRemove;
@@ -65,4 +63,3 @@ struct ModificationOptions {
 }  // namespace arangodb
 
 #endif
-

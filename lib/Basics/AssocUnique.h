@@ -42,7 +42,6 @@
 namespace arangodb {
 namespace basics {
 
-
 struct BucketPosition {
   size_t bucketId;
   uint64_t position;
@@ -58,7 +57,6 @@ struct BucketPosition {
     return position == other.position && bucketId == other.bucketId;
   }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array
@@ -98,8 +96,6 @@ class AssocUnique {
   IsEqualElementElementFuncType const _isEqualElementElementByKey;
 
   std::function<std::string()> _contextCallback;
-
-  
 
  public:
   AssocUnique(HashKeyFuncType hashKey, HashElementFuncType hashElement,
@@ -151,7 +147,6 @@ class AssocUnique {
     }
   }
 
-
   ~AssocUnique() {
     for (auto& b : _buckets) {
       delete[] b._table;
@@ -196,11 +191,12 @@ class AssocUnique {
     static uint64_t const NotificationSizeThreshold = 131072;
 
     LOG_TRACE("resizing index %s, target size: %llu", cb.c_str(),
-              (unsigned long long) targetSize);
+              (unsigned long long)targetSize);
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
-      LOG_ACTION("index-resize %s, target size: %llu", cb.c_str(), (unsigned long long)targetSize);
+      LOG_ACTION("index-resize %s, target size: %llu", cb.c_str(),
+                 (unsigned long long)targetSize);
     }
 
     Element** oldTable = b._table;
@@ -253,7 +249,7 @@ class AssocUnique {
     }
 
     delete[] oldTable;
-    
+
     LOG_TRACE("resizing index %s done", cb.c_str());
 
     LOG_TIMER((TRI_microtime() - start), "index-resize %s, target size: %llu",
@@ -335,7 +331,6 @@ class AssocUnique {
     return TRI_ERROR_NO_ERROR;
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if this index is empty
@@ -1035,5 +1030,3 @@ class AssocUnique {
 }  // namespace arangodb
 
 #endif
-
-

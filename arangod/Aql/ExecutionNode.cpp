@@ -40,7 +40,6 @@ using namespace arangodb::aql;
 
 const static bool Optional = true;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum register id that can be assigned.
 /// this is used for assertions
@@ -76,7 +75,6 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(NORESULTS), "NoResultsNode"},
     {static_cast<int>(UPSERT), "UpsertNode"},
     {static_cast<int>(TRAVERSAL), "TraversalNode"}};
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the type name of the node
@@ -169,7 +167,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                        "invalid groups definition");
       }
-      
+
       arangodb::basics::Json jsonAggregates = oneNode.get("aggregates");
       if (!jsonAggregates.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -189,8 +187,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         }
       }
 
-      std::vector<std::pair<Variable const*, Variable const*>>
-        groupVariables;
+      std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
       {
         size_t const len = jsonGroups.size();
         groupVariables.reserve(len);
@@ -205,9 +202,10 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
           groupVariables.emplace_back(std::make_pair(outVar, inVar));
         }
       }
-      
-      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>
-        aggregateVariables;
+
+      std::vector<
+          std::pair<Variable const*, std::pair<Variable const*, std::string>>>
+          aggregateVariables;
       {
         size_t const len = jsonAggregates.size();
         aggregateVariables.reserve(len);
@@ -219,8 +217,10 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
           Variable* inVar =
               varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
-          std::string const type = JsonHelper::checkAndGetStringValue(oneJsonAggregate.json(), "type");
-          aggregateVariables.emplace_back(std::make_pair(outVar, std::make_pair(inVar, type)));
+          std::string const type = JsonHelper::checkAndGetStringValue(
+              oneJsonAggregate.json(), "type");
+          aggregateVariables.emplace_back(
+              std::make_pair(outVar, std::make_pair(inVar, type)));
         }
       }
 
@@ -625,13 +625,13 @@ Variable* ExecutionNode::varFromJson(Ast* ast,
   if (variableJson.isEmpty()) {
     if (optional) {
       return nullptr;
-    } 
-    
+    }
+
     std::string msg;
     msg +=
         "Mandatory variable \"" + std::string(variableName) + "\" not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
-  } 
+  }
 
   return ast->variables()->createVariable(variableJson);
 }
@@ -828,7 +828,6 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   std::cout << std::endl;
   */
 }
-
 
 // Copy constructor used for a subquery:
 ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v,
@@ -1180,7 +1179,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -1210,7 +1208,6 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
   nrItems = 1;
   return 1.0;
 }
-
 
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::basics::Json const& base)
@@ -1280,7 +1277,6 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   // random iteration is slightly more expensive than linear iteration
   return depCost + nrItems * (_random ? 1.005 : 1.0);
 }
-
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
                                      arangodb::basics::Json const& base)
@@ -1384,7 +1380,6 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
   return depCost + static_cast<double>(length) * incoming;
 }
 
-
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _offset(JsonHelper::checkAndGetNumericValue<decltype(_offset)>(
@@ -1427,7 +1422,6 @@ double LimitNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-
 CalculationNode::CalculationNode(ExecutionPlan* plan,
                                  arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -1452,8 +1446,8 @@ void CalculationNode::toJsonHelper(arangodb::basics::Json& nodes,
   }
 
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
-       "outVariable", _outVariable->toJson())(
-       "canThrow", arangodb::basics::Json(_expression->canThrow()));
+      "outVariable", _outVariable->toJson())(
+      "canThrow", arangodb::basics::Json(_expression->canThrow()));
 
   if (_conditionVariable != nullptr) {
     json("conditionVariable", _conditionVariable->toJson());
@@ -1497,7 +1491,6 @@ double CalculationNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
 }
-
 
 SubqueryNode::SubqueryNode(ExecutionPlan* plan,
                            arangodb::basics::Json const& base)
@@ -1692,7 +1685,6 @@ bool SubqueryNode::canThrow() {
   return finder._canThrow;
 }
 
-
 FilterNode::FilterNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
@@ -1747,7 +1739,6 @@ double FilterNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
@@ -1799,7 +1790,6 @@ double ReturnNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for NoResultsNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -1825,4 +1815,3 @@ double NoResultsNode::estimateCost(size_t& nrItems) const {
   nrItems = 0;
   return 0.5;  // just to make it non-zero
 }
-

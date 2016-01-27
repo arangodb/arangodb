@@ -87,7 +87,8 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType(
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
-  std::string const typeName = arangodb::basics::StringUtils::tolower(type.copyString());
+  std::string const typeName =
+      arangodb::basics::StringUtils::tolower(type.copyString());
 
   if (typeName == TraditionalKeyGenerator::name()) {
     return KeyGenerator::TYPE_TRADITIONAL;

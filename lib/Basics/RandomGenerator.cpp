@@ -638,4 +638,3 @@ uint32_t interval(uint32_t left, uint32_t right) {
 }
 }
 }
-

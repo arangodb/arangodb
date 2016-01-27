@@ -32,7 +32,6 @@
 namespace arangodb {
 namespace aql {
 
-
 class SimpleTraverserExpression
     : public arangodb::traverser::TraverserExpression {
  public:
@@ -44,8 +43,8 @@ class SimpleTraverserExpression
                             arangodb::aql::AstNodeType comparisonType,
                             arangodb::aql::AstNode const* varAccess,
                             arangodb::aql::AstNode* compareToNode)
-      : arangodb::traverser::TraverserExpression(
-            isEdgeAccess, comparisonType, varAccess),
+      : arangodb::traverser::TraverserExpression(isEdgeAccess, comparisonType,
+                                                 varAccess),
         compareToNode(compareToNode),
         expression(nullptr) {}
 
@@ -242,8 +241,7 @@ class TraversalNode : public ExecutionNode {
   ///        with default values.
   //////////////////////////////////////////////////////////////////////////////
 
-  void fillTraversalOptions(
-      arangodb::traverser::TraverserOptions& opts) const;
+  void fillTraversalOptions(arangodb::traverser::TraverserOptions& opts) const;
 
   std::vector<std::string> const edgeColls() const { return _edgeColls; }
 
@@ -295,13 +293,11 @@ class TraversalNode : public ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_map<
-      size_t,
-      std::vector<arangodb::traverser::TraverserExpression*>> const*
+      size_t, std::vector<arangodb::traverser::TraverserExpression*>> const*
   expressions() const {
     return &_expressions;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the database
@@ -392,8 +388,8 @@ class TraversalNode : public ExecutionNode {
   /// one vector of TraverserExpressions per matchdepth (size_t)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<
-      size_t, std::vector<arangodb::traverser::TraverserExpression*>>
+  std::unordered_map<size_t,
+                     std::vector<arangodb::traverser::TraverserExpression*>>
       _expressions;
 };
 
@@ -401,4 +397,3 @@ class TraversalNode : public ExecutionNode {
 }  // namespace arangodb
 
 #endif
-

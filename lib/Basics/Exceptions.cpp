@@ -26,13 +26,11 @@
 using namespace std;
 using namespace arangodb::basics;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief controls if backtraces are printed with exceptions
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool WithBackTrace = false;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief controls whether a backtrace is created for each exception
@@ -116,7 +114,6 @@ Exception::Exception(int code, char const* errorMessage, char const* file,
 #endif
 }
 
-
 Exception::~Exception() throw() {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,5 +168,3 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
 
   return std::string(buffer);
 }
-
-

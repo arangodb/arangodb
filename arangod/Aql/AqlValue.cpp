@@ -339,7 +339,7 @@ bool AqlValue::isNull(bool emptyIsNull) const {
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the array member at position i
 ////////////////////////////////////////////////////////////////////////////////
@@ -826,9 +826,8 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 Json AqlValue::extractObjectMember(
-    arangodb::AqlTransaction* trx,
-    TRI_document_collection_t const* document, char const* name, bool copy,
-    arangodb::basics::StringBuffer& buffer) const {
+    arangodb::AqlTransaction* trx, TRI_document_collection_t const* document,
+    char const* name, bool copy, arangodb::basics::StringBuffer& buffer) const {
   switch (_type) {
     case JSON: {
       TRI_ASSERT(_json != nullptr);
@@ -846,7 +845,8 @@ Json AqlValue::extractObjectMember(
             }
 
             // return a copy of the value
-            return Json(TRI_UNKNOWN_MEM_ZONE, c, arangodb::basics::Json::AUTOFREE);
+            return Json(TRI_UNKNOWN_MEM_ZONE, c,
+                        arangodb::basics::Json::AUTOFREE);
           }
 
           // return a pointer to the original value, without asking for its
@@ -978,7 +978,8 @@ Json AqlValue::extractArrayMember(arangodb::AqlTransaction* trx,
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
               }
               // return a copy of the value
-              return Json(TRI_UNKNOWN_MEM_ZONE, c, arangodb::basics::Json::AUTOFREE);
+              return Json(TRI_UNKNOWN_MEM_ZONE, c,
+                          arangodb::basics::Json::AUTOFREE);
             }
 
             // return a pointer to the original value, without asking for its
@@ -1044,8 +1045,7 @@ Json AqlValue::extractArrayMember(arangodb::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AqlValue::CreateFromBlocks(
-    arangodb::AqlTransaction* trx,
-    std::vector<AqlItemBlock*> const& src,
+    arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     std::vector<std::string> const& variableNames) {
   size_t totalSize = 0;
 
@@ -1091,8 +1091,7 @@ AqlValue AqlValue::CreateFromBlocks(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AqlValue::CreateFromBlocks(
-    arangodb::AqlTransaction* trx,
-    std::vector<AqlItemBlock*> const& src,
+    arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     arangodb::aql::RegisterId expressionRegister) {
   size_t totalSize = 0;
 
@@ -1119,8 +1118,7 @@ AqlValue AqlValue::CreateFromBlocks(
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int AqlValue::Compare(arangodb::AqlTransaction* trx,
-                      AqlValue const& left,
+int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
                       TRI_document_collection_t const* leftcoll,
                       AqlValue const& right,
                       TRI_document_collection_t const* rightcoll,
@@ -1272,4 +1270,3 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx,
     }
   }
 }
-

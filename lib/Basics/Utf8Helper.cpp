@@ -41,7 +41,6 @@ using namespace std;
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper;
 
-
 Utf8Helper::Utf8Helper(std::string const& lang) : _coll(nullptr) {
   setCollatorLanguage(lang);
 }
@@ -776,7 +775,6 @@ bool TRI_get_words(TRI_vector_string_t*& words, char const* text,
       words, text, textLength, minimalWordLength, maximalWordLength, lowerCase);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
@@ -999,5 +997,3 @@ char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
 
   return utf8Dest;
 }
-
-

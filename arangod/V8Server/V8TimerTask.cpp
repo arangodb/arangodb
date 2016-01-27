@@ -39,7 +39,8 @@ V8TimerTask::V8TimerTask(std::string const& id, std::string const& name,
                          TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
                          Scheduler* scheduler, Dispatcher* dispatcher,
                          double offset, std::string const& command,
-                         std::shared_ptr<VPackBuilder> parameters, bool allowUseDatabase)
+                         std::shared_ptr<VPackBuilder> parameters,
+                         bool allowUseDatabase)
     : Task(id, name),
       TimerTask(id, (offset <= 0.0 ? 0.00001 : offset)),  // offset must be (at
                                                           // least slightly)
@@ -59,12 +60,10 @@ V8TimerTask::V8TimerTask(std::string const& id, std::string const& name,
   TRI_UseVocBase(_vocbase);
 }
 
-
 V8TimerTask::~V8TimerTask() {
   // decrease reference counter for the database used
   TRI_ReleaseVocBase(_vocbase);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a task specific description in JSON format
@@ -93,5 +92,3 @@ bool V8TimerTask::handleTimeout() {
 
   return true;
 }
-
-

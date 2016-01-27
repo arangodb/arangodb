@@ -60,8 +60,7 @@ struct VertexId {
     return false;
   }
 
-  std::string toString(
-      arangodb::CollectionNameResolver const* resolver) const {
+  std::string toString(arangodb::CollectionNameResolver const* resolver) const {
     return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
   }
 };
@@ -73,10 +72,8 @@ typedef VertexId EdgeId;
 /// @brief Helper function to convert an _id string into a VertexId
 ////////////////////////////////////////////////////////////////////////////////
 
-VertexId IdStringToVertexId(
-    arangodb::CollectionNameResolver const* resolver,
-    std::string const& vertex);
-
+VertexId IdStringToVertexId(arangodb::CollectionNameResolver const* resolver,
+                            std::string const& vertex);
 
 class TraverserExpression {
  public:
@@ -131,7 +128,6 @@ class TraverserExpression {
   std::vector<std::string*> _stringRegister;
 };
 
-
 class TraversalPath {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -182,7 +178,6 @@ class TraversalPath {
   size_t _readDocuments;
 };
 
-
 struct TraverserOptions {
  private:
   std::function<bool(const TraversalPath* path)> pruningFunction;
@@ -212,7 +207,6 @@ struct TraverserOptions {
     return pruningFunction(path);
   }
 };
-
 
 class Traverser {
  public:
@@ -351,7 +345,6 @@ class Traverser {
 
 }  // traverser
 }  // arangodb
-
 
 namespace std {
 template <>

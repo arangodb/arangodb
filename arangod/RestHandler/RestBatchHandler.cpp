@@ -35,14 +35,10 @@ using namespace arangodb::rest;
 
 using namespace std;
 
-
-
 RestBatchHandler::RestBatchHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-
 RestBatchHandler::~RestBatchHandler() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_batch_processing
@@ -131,7 +127,8 @@ HttpHandler::status_t RestBatchHandler::execute() {
     }
 
     // set up request object for the part
-    LOG_TRACE("part header is: %s", std::string(headerStart, headerLength).c_str());
+    LOG_TRACE("part header is: %s",
+              std::string(headerStart, headerLength).c_str());
     HttpRequest* request =
         new HttpRequest(_request->connectionInfo(), headerStart, headerLength,
                         _request->compatibility(), false);
@@ -151,7 +148,8 @@ HttpHandler::status_t RestBatchHandler::execute() {
     request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
-      LOG_TRACE("part body is '%s'", std::string(bodyStart, bodyLength).c_str());
+      LOG_TRACE("part body is '%s'",
+                std::string(bodyStart, bodyLength).c_str());
       request->setBody(bodyStart, bodyLength);
     }
 
@@ -513,5 +511,3 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
 
   return true;
 }
-
-

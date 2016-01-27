@@ -78,9 +78,7 @@ ContinuousSyncer::ContinuousSyncer(
   }
 }
 
-
 ContinuousSyncer::~ContinuousSyncer() { abortOngoingTransactions(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run method, performs continuous synchronization
@@ -275,7 +273,6 @@ retry:
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abort all ongoing transactions
@@ -490,7 +487,8 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   TRI_json_t const* cnameJson = JsonHelper::getObjectElement(json, "cname");
 
   if (JsonHelper::isString(cnameJson)) {
-    std::string const cnameString = JsonHelper::getStringValue(json, "cname", "");
+    std::string const cnameString =
+        JsonHelper::getStringValue(json, "cname", "");
     isSystem = (!cnameString.empty() && cnameString[0] == '_');
 
     if (!cnameString.empty()) {
@@ -746,7 +744,8 @@ int ContinuousSyncer::commitTransaction(TRI_json_t const* json) {
 
 int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
   TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
-  std::string const name = JsonHelper::getStringValue(collectionJson, "name", "");
+  std::string const name =
+      JsonHelper::getStringValue(collectionJson, "name", "");
   std::string cname = getCName(json);
 
   if (name.empty()) {
@@ -1171,13 +1170,13 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
                                        TRI_voc_tick_t toTick,
                                        TRI_voc_tick_t& startTick) {
   std::string const baseUrl = BaseUrl + "/determine-open-transactions";
-  std::string const url = baseUrl + "?serverId=" + _localServerIdString + "&from=" +
-                     StringUtils::itoa(fromTick) + "&to=" +
-                     StringUtils::itoa(toTick);
+  std::string const url = baseUrl + "?serverId=" + _localServerIdString +
+                          "&from=" + StringUtils::itoa(fromTick) + "&to=" +
+                          StringUtils::itoa(toTick);
 
   std::string const progress = "fetching initial master state with from tick " +
-                          StringUtils::itoa(fromTick) + ", to tick " +
-                          StringUtils::itoa(toTick);
+                               StringUtils::itoa(fromTick) + ", to tick " +
+                               StringUtils::itoa(toTick);
 
   setProgress(progress);
 
@@ -1301,14 +1300,16 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
                                       TRI_voc_tick_t firstRegularTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
-  std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" + _chunkSize;
+  std::string const baseUrl =
+      BaseUrl + "/logger-follow?chunkSize=" + _chunkSize;
 
   worked = false;
 
   std::string const url = baseUrl + "&from=" + StringUtils::itoa(fetchTick) +
-                     "&firstRegular=" + StringUtils::itoa(firstRegularTick) +
-                     "&serverId=" + _localServerIdString + "&includeSystem=" +
-                     (_includeSystem ? "true" : "false");
+                          "&firstRegular=" +
+                          StringUtils::itoa(firstRegularTick) + "&serverId=" +
+                          _localServerIdString + "&includeSystem=" +
+                          (_includeSystem ? "true" : "false");
 
   LOG_TRACE(
       "running continuous replication request with from tick %llu, first "
@@ -1493,5 +1494,3 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-

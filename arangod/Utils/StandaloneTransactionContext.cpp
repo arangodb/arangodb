@@ -113,4 +113,3 @@ int StandaloneTransactionContext::unregisterTransaction() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool StandaloneTransactionContext::isEmbeddable() const { return false; }
-

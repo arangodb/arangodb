@@ -87,27 +87,25 @@ enum DropState {
 /// @brief collection constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, 
-                                     TRI_col_type_e type, 
-                                     std::string const& name, 
-                                     TRI_voc_cid_t cid, 
+TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase,
+                                     TRI_col_type_e type,
+                                     std::string const& name, TRI_voc_cid_t cid,
                                      std::string const& path)
-  : _vocbase(vocbase),
-    _cid(cid),
-    _planId(0),
-    _type(static_cast<TRI_col_type_t>(type)),
-    _lock(),
-    _internalVersion(0),
-    _status(TRI_VOC_COL_STATUS_CORRUPTED),
-    _collection(nullptr),
-    _path(path),
-    _dbName(vocbase->_name),
-    _name(name),
-    _isLocal(true),
-    _canDrop(true),
-    _canUnload(true),
-    _canRename(true) {
- 
+    : _vocbase(vocbase),
+      _cid(cid),
+      _planId(0),
+      _type(static_cast<TRI_col_type_t>(type)),
+      _lock(),
+      _internalVersion(0),
+      _status(TRI_VOC_COL_STATUS_CORRUPTED),
+      _collection(nullptr),
+      _path(path),
+      _dbName(vocbase->_name),
+      _name(name),
+      _isLocal(true),
+      _canDrop(true),
+      _canUnload(true),
+      _canRename(true) {
   // check for special system collection names
   if (TRI_IsSystemNameCollection(name.c_str())) {
     // a few system collections have special behavior
@@ -124,8 +122,7 @@ TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase,
 /// @brief collection destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t::~TRI_vocbase_col_t() {
-}
+TRI_vocbase_col_t::~TRI_vocbase_col_t() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the collection id
@@ -244,7 +241,6 @@ static bool UnregisterCollection(TRI_vocbase_t* vocbase,
   // pre-condition
   TRI_ASSERT(vocbase->_collectionsByName._nrUsed ==
              vocbase->_collectionsById._nrUsed);
-  
 
   // only if we find the collection by its id, we can delete it by name
   if (TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById,
@@ -422,7 +418,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   // rename collection directory
   // .............................................................................
 
-  if (! collection->path().empty()) {
+  if (!collection->path().empty()) {
     int regExpResult;
 
     regExpResult = regexec(&re, collection->pathc_str(),
@@ -469,8 +465,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
                   name.c_str(), collection->pathc_str(), newFilename,
                   TRI_errno_string(res));
       } else {
-        LOG_DEBUG("wiping dropped collection '%s' from disk",
-                  name.c_str());
+        LOG_DEBUG("wiping dropped collection '%s' from disk", name.c_str());
 
         res = TRI_RemoveDirectory(newFilename);
 
@@ -502,7 +497,8 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
                                         TRI_col_type_e type, char const* name,
                                         TRI_voc_cid_t cid, char const* path) {
   // create a new proxy
-  auto collection = std::make_unique<TRI_vocbase_col_t>(vocbase, type, name, cid, path);
+  auto collection =
+      std::make_unique<TRI_vocbase_col_t>(vocbase, type, name, cid, path);
 
   TRI_ASSERT(collection != nullptr);
 
@@ -617,10 +613,10 @@ static TRI_vocbase_col_t* CreateCollection(
   TRI_vocbase_col_t* collection = nullptr;
 
   try {
-    collection = AddCollection(vocbase, col->_info.type(), col->_info.namec_str(),
-                    col->_info.id(), col->_directory);
-  }
-  catch (...) {
+    collection =
+        AddCollection(vocbase, col->_info.type(), col->_info.namec_str(),
+                      col->_info.id(), col->_directory);
+  } catch (...) {
     // if an exception is caught, collection will be a nullptr
   }
 
@@ -684,8 +680,8 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
     else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
       try {
         arangodb::VocbaseCollectionInfo info =
-            arangodb::VocbaseCollectionInfo::fromFile(
-                collection->pathc_str(), vocbase, newName, true);
+            arangodb::VocbaseCollectionInfo::fromFile(collection->pathc_str(),
+                                                      vocbase, newName, true);
 
         int res = info.saveToFile(collection->pathc_str(),
                                   vocbase->_settings.forceSyncProperties);
@@ -835,10 +831,9 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
 
       try {
         arangodb::VocbaseCollectionInfo info =
-            arangodb::VocbaseCollectionInfo::fromFile(
-                file.c_str(), vocbase,
-                "",  // Name is unused
-                true);
+            arangodb::VocbaseCollectionInfo::fromFile(file.c_str(), vocbase,
+                                                      "",  // Name is unused
+                                                      true);
         TRI_UpdateTickServer(info.id());
 
         if (info.deleted()) {
@@ -897,8 +892,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
           try {
             c = AddCollection(vocbase, type, info.namec_str(), info.id(),
                               file.c_str());
-          }
-          catch (...) {
+          } catch (...) {
             // if we caught an exception, c is still a nullptr
           }
 
@@ -1148,8 +1142,9 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
     try {
       arangodb::VocbaseCollectionInfo info =
-          arangodb::VocbaseCollectionInfo::fromFile(
-              collection->pathc_str(), collection->vocbase(), colName.c_str(), true);
+          arangodb::VocbaseCollectionInfo::fromFile(collection->pathc_str(),
+                                                    collection->vocbase(),
+                                                    colName.c_str(), true);
       if (!info.deleted()) {
         info.setDeleted(true);
 
@@ -1340,7 +1335,6 @@ static bool FilenameStringComparator(std::string const& lhs,
   return numLeft < numRight;
 }
 
-
 void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
                                      TRI_voc_tick_t maxTick) {
   TRI_ASSERT(!builder.isClosed());
@@ -1433,7 +1427,6 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes(
   builder->close();
   return builder;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object, without threads and some other attributes
@@ -1727,7 +1720,7 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase(
       if (filter != nullptr && !filter(collection, data)) {
         continue;
       }
-      
+
       VPackObjectBuilder b(builder.get());
       collection->toVelocyPack(*builder, true, maxTick);
     }
@@ -2373,7 +2366,6 @@ void TRI_SetThrowCollectionNotLoadedVocBase(TRI_vocbase_t* vocbase,
   ThrowCollectionNotLoaded.store(value, std::memory_order_seq_cst);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object
 ////////////////////////////////////////////////////////////////////////////////
@@ -2505,5 +2497,3 @@ TRI_vocbase_t::getReplicationClients() {
   }
   return result;
 }
-
-

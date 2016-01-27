@@ -27,12 +27,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
     : HttpHandler(request) {}
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
-
 
 HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
   createResponse(HttpResponse::OK);
@@ -52,7 +50,4 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-
 void RestPleaseUpgradeHandler::handleError(const Exception&) {}
-
-

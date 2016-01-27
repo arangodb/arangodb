@@ -206,8 +206,7 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::applyCollectionDumpMarker(
-    arangodb::Transaction* trx,
-    TRI_transaction_collection_t* trxCollection,
+    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
     TRI_replication_operation_e type, const TRI_voc_key_t key,
     const TRI_voc_rid_t rid, TRI_json_t const* json, std::string& errorMsg) {
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_EDGE) {
@@ -324,8 +323,8 @@ int Syncer::applyCollectionDumpMarker(
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg =
-          "document removal operation failed: " + std::string(TRI_errno_string(res));
+      errorMsg = "document removal operation failed: " +
+                 std::string(TRI_errno_string(res));
     }
 
     return res;
@@ -736,4 +735,3 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
 
   return TRI_ERROR_NO_ERROR;
 }
-

@@ -262,14 +262,14 @@ static void JS_SynchronizeReplication(
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
-  config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(),
-                                           endpoint.size());
-  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
-                                           database.size());
-  config._username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(),
-                                           username.size());
-  config._password = TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(),
-                                           password.size());
+  config._endpoint =
+      TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._database =
+      TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
+  config._username =
+      TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
+  config._password =
+      TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
 
   if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
     if (object->Get(TRI_V8_ASCII_STRING("chunkSize"))->IsNumber()) {
@@ -314,7 +314,8 @@ static void JS_SynchronizeReplication(
                 V8TickId(isolate, syncer.getLastLogTick()));
 
     std::map<TRI_voc_cid_t, std::string>::const_iterator it;
-    std::map<TRI_voc_cid_t, std::string> const& c = syncer.getProcessedCollections();
+    std::map<TRI_voc_cid_t, std::string> const& c =
+        syncer.getProcessedCollections();
 
     uint32_t j = 0;
     v8::Handle<v8::Array> collections = v8::Array::New(isolate);

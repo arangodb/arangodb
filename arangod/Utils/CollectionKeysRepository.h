@@ -36,7 +36,6 @@ namespace arangodb {
 class CollectionKeys;
 
 class CollectionKeysRepository {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a collection keys repository
@@ -50,7 +49,6 @@ class CollectionKeysRepository {
 
   ~CollectionKeysRepository();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stores collection keys in the repository
@@ -90,7 +88,6 @@ class CollectionKeysRepository {
 
   bool garbageCollect(bool);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mutex for the repository
@@ -113,4 +110,3 @@ class CollectionKeysRepository {
 }
 
 #endif
-

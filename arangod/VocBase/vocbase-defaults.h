@@ -55,5 +55,3 @@ struct TRI_vocbase_defaults_t {
 };
 
 #endif
-
-

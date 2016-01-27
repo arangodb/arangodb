@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Rest/Endpoint.h"
 
-
 namespace arangodb {
 namespace basics {
 class ProgramOptionsDescription;
@@ -47,7 +46,6 @@ class ArangoClient {
   ArangoClient(const ArangoClient&);
   ArangoClient operator=(const ArangoClient&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief default request timeout
@@ -98,15 +96,11 @@ class ArangoClient {
 
   static char const* PROMPT_IGNORE_END;
 
-  
  public:
-
   explicit ArangoClient(char const* appName);
-
 
   ~ArangoClient();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets up a program-specific help message
@@ -378,7 +372,6 @@ class ArangoClient {
 
   uint32_t sslProtocol() const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prints a line
@@ -386,7 +379,6 @@ class ArangoClient {
 
   void _printLine(std::string const&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief configuration file
@@ -574,5 +566,3 @@ class ArangoClient {
 }
 
 #endif
-
-

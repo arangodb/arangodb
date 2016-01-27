@@ -27,7 +27,6 @@
 #include "Basics/vector.h"
 #include "Basics/associative.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief error number and system error
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +35,6 @@ typedef struct tri_error_s {
   int _number;
   int _sys;
 } tri_error_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief already initialized
@@ -61,7 +59,6 @@ static pthread_key_t ErrorKey;
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_associative_pointer_t ErrorMessages;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup
@@ -105,7 +102,6 @@ static bool EqualError(TRI_associative_pointer_t* array, void const* key,
 
   return *((int*)key) == entry->_code;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last error
@@ -253,8 +249,8 @@ void TRI_set_errno_string(int error, char const* msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* TRI_errno_string(int error) {
-  auto entry = static_cast<TRI_error_t*>(TRI_LookupByKeyAssociativePointer(&ErrorMessages,
-                                                          (void const*)&error));
+  auto entry = static_cast<TRI_error_t*>(
+      TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*)&error));
 
   if (entry == nullptr) {
     // return a hard-coded string as not all callers check for nullptr
@@ -317,5 +313,3 @@ void TRI_ShutdownError() {
 
   Initialized = false;
 }
-
-

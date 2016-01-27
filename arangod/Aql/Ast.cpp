@@ -34,7 +34,6 @@
 
 using namespace arangodb::aql;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a singleton no-op node instance
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +108,6 @@ std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),
      NODE_TYPE_OPERATOR_BINARY_GE}};
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the AST
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +134,6 @@ Ast::Ast(Query* query)
 ////////////////////////////////////////////////////////////////////////////////
 
 Ast::~Ast() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the AST into JSON
@@ -498,8 +495,9 @@ AstNode* Ast::createNodeDistinct(AstNode const* value) {
 /// @brief create an AST collect node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates,
-                                AstNode const* into, AstNode const* intoExpression,
+AstNode* Ast::createNodeCollect(AstNode const* groups,
+                                AstNode const* aggregates, AstNode const* into,
+                                AstNode const* intoExpression,
                                 AstNode const* keepVariables,
                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
@@ -510,11 +508,11 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
   }
 
   node->addMember(options);
-  node->addMember(groups); // may be an empty array
-  
+  node->addMember(groups);  // may be an empty array
+
   // wrap aggregates again
   auto agg = createNode(NODE_TYPE_AGGREGATIONS);
-  agg->addMember(aggregates); // may be an empty array
+  agg->addMember(aggregates);  // may be an empty array
   node->addMember(agg);
 
   node->addMember(into != nullptr ? into : &NopNode);
@@ -2010,7 +2008,6 @@ AstNodeType Ast::NaryOperatorType(AstNodeType old) {
                                  "invalid node type for n-ary operator");
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make condition from example
 ////////////////////////////////////////////////////////////////////////////////
@@ -3054,5 +3051,3 @@ AstNode* Ast::createNode(AstNodeType type) {
 
   return node;
 }
-
-

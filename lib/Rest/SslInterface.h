@@ -218,4 +218,3 @@ void saltChar(char*& result, size_t length = 8);
 }
 
 #endif
-

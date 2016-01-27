@@ -522,7 +522,6 @@ void TRI_CloseWindowsEventlog(void) {
   hEventLog = INVALID_HANDLE_VALUE;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
 /// we rather are keen on logging something at all then on being able to work
@@ -538,7 +537,7 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   char buf[1024];
   char linebuf[32];
   LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
-  
+
   TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
 
   snprintf(linebuf, sizeof(linebuf), "%d", line);
@@ -552,12 +551,9 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                    NULL)) {
     // well, fail then...
   }
-
 }
 
-
-void TRI_WindowsEmergencyLog(char const* func,
-                             char const* file, int line,
+void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
                              char const* fmt, ...) {
   va_list ap;
 

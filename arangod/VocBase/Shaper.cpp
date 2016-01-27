@@ -33,7 +33,6 @@
 
 // #define DEBUG_JSON_SHAPER 1
 
-
 TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_ILLEGAL = 0;
 TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_NULL = 1;
 TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_BOOLEAN = 2;
@@ -91,8 +90,6 @@ static_assert(BasicShapes::TRI_SHAPE_SID_NUMBER == 3,
 static_assert(BasicShapes::TRI_SHAPE_SID_SHORT_STRING == 4,
               "invalid shape id for short string shape");
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the shaper
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +101,6 @@ Shaper::Shaper() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 Shaper::~Shaper() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a shape is of primitive type
@@ -139,4 +135,3 @@ TRI_shape_t const* Shaper::lookupBasicShape(TRI_shape_t const* shape) {
 
   return nullptr;
 }
-

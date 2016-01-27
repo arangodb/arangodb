@@ -28,7 +28,6 @@
 #include "Scheduler/TimerTask.h"
 #include "VocBase/vocbase.h"
 
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -42,17 +41,14 @@ class Scheduler;
 class ApplicationV8;
 
 class V8TimerTask : public rest::TimerTask {
-  
  public:
-
   V8TimerTask(std::string const&, std::string const&, TRI_vocbase_t*,
               ApplicationV8*, rest::Scheduler*, rest::Dispatcher*, double,
-              std::string const&, std::shared_ptr<arangodb::velocypack::Builder>, bool);
-
+              std::string const&,
+              std::shared_ptr<arangodb::velocypack::Builder>, bool);
 
   ~V8TimerTask();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a task specific description in JSON format
@@ -66,7 +62,6 @@ class V8TimerTask : public rest::TimerTask {
 
   bool isUserDefined() const override { return true; }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles the timer event
@@ -74,7 +69,6 @@ class V8TimerTask : public rest::TimerTask {
 
   bool handleTimeout() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief system vocbase
@@ -121,4 +115,3 @@ class V8TimerTask : public rest::TimerTask {
 }
 
 #endif
-

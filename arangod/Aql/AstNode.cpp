@@ -46,7 +46,6 @@ using namespace arangodb::aql;
 using JsonHelper = arangodb::basics::JsonHelper;
 using Json = arangodb::basics::Json;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quick translation array from an AST node value type to a JSON type
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,7 +407,6 @@ static bool IsEmptyString(char const* p, size_t length) {
 
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node
@@ -792,7 +790,6 @@ AstNode::~AstNode() {
     computedJson = nullptr;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if all members of a node are equality comparisons
@@ -2613,7 +2610,6 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
   return ret;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the value of a node into a string buffer
 /// this creates an equivalent to what JSON.stringify() would do
@@ -2658,7 +2654,6 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the AstNode to an output stream
 ////////////////////////////////////////////////////////////////////////////////
@@ -2680,5 +2675,3 @@ std::ostream& operator<<(std::ostream& stream,
   stream << arangodb::aql::AstNode::toString(&node);
   return stream;
 }
-
-

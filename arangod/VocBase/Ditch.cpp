@@ -37,7 +37,6 @@ Ditch::Ditch(Ditches* ditches, char const* filename, int line)
 
 Ditch::~Ditch() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the associated collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,8 +44,6 @@ Ditch::~Ditch() {}
 TRI_document_collection_t* Ditch::collection() const {
   return _ditches->collection();
 }
-
-
 
 DocumentDitch::DocumentDitch(Ditches* ditches, bool usedByTransaction,
                              char const* filename, int line)
@@ -74,23 +71,17 @@ void DocumentDitch::setUsedByExternal() {
   _ditches->executeProtected(callback);
 }
 
-
-
 ReplicationDitch::ReplicationDitch(Ditches* ditches, char const* filename,
                                    int line)
     : Ditch(ditches, filename, line) {}
 
 ReplicationDitch::~ReplicationDitch() {}
 
-
-
 CompactionDitch::CompactionDitch(Ditches* ditches, char const* filename,
                                  int line)
     : Ditch(ditches, filename, line) {}
 
 CompactionDitch::~CompactionDitch() {}
-
-
 
 DropDatafileDitch::DropDatafileDitch(
     Ditches* ditches, TRI_datafile_t* datafile, void* data,
@@ -103,8 +94,6 @@ DropDatafileDitch::DropDatafileDitch(
 
 DropDatafileDitch::~DropDatafileDitch() {}
 
-
-
 RenameDatafileDitch::RenameDatafileDitch(
     Ditches* ditches, TRI_datafile_t* datafile, void* data,
     std::function<void(TRI_datafile_t*, void*)> callback, char const* filename,
@@ -115,8 +104,6 @@ RenameDatafileDitch::RenameDatafileDitch(
       _callback(callback) {}
 
 RenameDatafileDitch::~RenameDatafileDitch() {}
-
-
 
 UnloadCollectionDitch::UnloadCollectionDitch(
     Ditches* ditches, TRI_collection_t* collection, void* data,
@@ -129,8 +116,6 @@ UnloadCollectionDitch::UnloadCollectionDitch(
 
 UnloadCollectionDitch::~UnloadCollectionDitch() {}
 
-
-
 DropCollectionDitch::DropCollectionDitch(
     Ditches* ditches, TRI_collection_t* collection, void* data,
     std::function<bool(TRI_collection_t*, void*)> callback,
@@ -142,7 +127,6 @@ DropCollectionDitch::DropCollectionDitch(
 
 DropCollectionDitch::~DropCollectionDitch() {}
 
-
 Ditches::Ditches(TRI_document_collection_t* collection)
     : _collection(collection),
       _lock(),
@@ -153,7 +137,6 @@ Ditches::Ditches(TRI_document_collection_t* collection)
 }
 
 Ditches::~Ditches() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the ditches - to be called on shutdown only
@@ -506,7 +489,6 @@ DropCollectionDitch* Ditches::createDropCollectionDitch(
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts the ditch into the linked list of ditches
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,5 +541,3 @@ void Ditches::unlink(Ditch* ditch) {
     ditch->_next->_prev = ditch->_prev;
   }
 }
-
-

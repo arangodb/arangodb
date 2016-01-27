@@ -360,7 +360,7 @@ static void StoreOutput(TRI_log_level_e level, time_t timestamp,
   if (pos >= OUTPUT_LOG_LEVELS) {
     return;
   }
-  
+
   char* msg;
 
   if (length > OUTPUT_MAX_LENGTH) {
@@ -369,18 +369,17 @@ static void StoreOutput(TRI_log_level_e level, time_t timestamp,
     // but we are in the logging already...
     msg = static_cast<char*>(
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, OUTPUT_MAX_LENGTH + 1, false));
-    
+
     if (msg != nullptr) {
       memcpy(msg, text, OUTPUT_MAX_LENGTH - 4);
       memcpy(msg + OUTPUT_MAX_LENGTH - 4, " ...", 4);
       // append the \0 byte, otherwise we have potentially unbounded strings
       msg[OUTPUT_MAX_LENGTH] = '\0';
     }
-  }
-  else {
+  } else {
     msg = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, text, length);
   }
-      
+
   if (msg == nullptr) {
     // unable to allocate memory for the log message
     // do not try to log this (as we're in the logger ourselves)
@@ -390,12 +389,12 @@ static void StoreOutput(TRI_log_level_e level, time_t timestamp,
   char* old = nullptr;
 
   {
-    MUTEX_LOCKER(mutexLocker, BufferLock); 
+    MUTEX_LOCKER(mutexLocker, BufferLock);
 
     size_t oldPos = BufferCurrent[pos];
     BufferCurrent[pos] = (oldPos + 1) % OUTPUT_BUFFER_SIZE;
     size_t cur = BufferCurrent[pos];
-    
+
     TRI_log_buffer_t* buf = &BufferOutput[pos][cur];
 
     // save the old value, so we can free it outside the mutex
@@ -406,8 +405,8 @@ static void StoreOutput(TRI_log_level_e level, time_t timestamp,
     buf->_timestamp = timestamp;
     buf->_text = msg;
   }
- 
-  // now free the old value outside the mutex 
+
+  // now free the old value outside the mutex
   if (old != nullptr) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, old);
   }
@@ -1714,8 +1713,7 @@ void TRI_InitializeLogging(bool threaded) {
   if (threaded) {
     TRI_InitCondition(&LogCondition);
     TRI_InitThread(&LoggingThread);
-    TRI_StartThread(&LoggingThread, nullptr, "Logging", MessageQueueWorker,
-                    0);
+    TRI_StartThread(&LoggingThread, nullptr, "Logging", MessageQueueWorker, 0);
 
     while (true) {
       if (LoggingThreadActive.load()) {

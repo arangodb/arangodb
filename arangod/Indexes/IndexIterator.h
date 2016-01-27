@@ -74,5 +74,3 @@ class IndexIterator {
 }
 
 #endif
-
-

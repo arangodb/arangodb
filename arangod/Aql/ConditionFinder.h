@@ -66,4 +66,3 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
 }
 
 #endif
-

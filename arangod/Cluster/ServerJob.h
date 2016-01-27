@@ -45,7 +45,6 @@ class ServerJob : public arangodb::rest::Job {
   ServerJob(ServerJob const&) = delete;
   ServerJob& operator=(ServerJob const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new db server job
@@ -60,7 +59,6 @@ class ServerJob : public arangodb::rest::Job {
 
   ~ServerJob();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief abandon job
@@ -68,7 +66,6 @@ class ServerJob : public arangodb::rest::Job {
 
   void abandon();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the job is detached
@@ -76,32 +73,25 @@ class ServerJob : public arangodb::rest::Job {
 
   inline bool isDetached() const { return true; }
 
-
   void work() override;
-
 
   bool cancel() override;
 
-
   void cleanup(rest::DispatcherQueue* queue) override;
-
 
   bool beginShutdown() {
     _shutdown = 1;
     return true;
   }
 
-
   void handleError(basics::Exception const& ex) override {}
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute job
   //////////////////////////////////////////////////////////////////////////////
 
   bool execute();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the heartbeat thread
@@ -121,7 +111,6 @@ class ServerJob : public arangodb::rest::Job {
 
   ApplicationV8* _applicationV8;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shutdown in progress
@@ -144,5 +133,3 @@ class ServerJob : public arangodb::rest::Job {
 }
 
 #endif
-
-

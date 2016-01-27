@@ -34,8 +34,7 @@ using TraverserExpression = arangodb::traverser::TraverserExpression;
 ///        VertexId is in use
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::traverser::VertexId
-arangodb::traverser::IdStringToVertexId(
+arangodb::traverser::VertexId arangodb::traverser::IdStringToVertexId(
     CollectionNameResolver const* resolver, std::string const& vertex) {
   size_t split;
   char const* str = vertex.c_str();

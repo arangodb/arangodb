@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,7 +42,6 @@
 #define CONDITION_LOCKER(a, b) arangodb::basics::ConditionLocker a(&b)
 
 #endif
-
 
 namespace arangodb {
 namespace basics {
@@ -60,7 +58,6 @@ class ConditionLocker {
   ConditionLocker(ConditionLocker const&);
   ConditionLocker& operator=(ConditionLocker const&);
 
-  
  public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the condition variable
@@ -86,7 +83,6 @@ class ConditionLocker {
 
   ~ConditionLocker();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief waits for an event to occur
@@ -124,7 +120,6 @@ class ConditionLocker {
 
   void lock();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the condition
@@ -158,5 +153,3 @@ class ConditionLocker {
 }
 
 #endif
-
-

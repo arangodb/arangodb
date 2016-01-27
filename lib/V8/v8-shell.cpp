@@ -39,8 +39,6 @@
 
 using namespace std;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begins a new CSV line
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,7 +83,6 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Value> args[] = {*array, r};
   (*cb)->Call(*cb, 2, args);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a CSV file
@@ -300,8 +297,6 @@ static void JS_ProcessJsonFile(
   TRI_V8_TRY_CATCH_END
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 shell functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
@@ -430,5 +425,3 @@ void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("COLORS"),
                                colors);
 }
-
-

@@ -35,10 +35,8 @@
 
 #define NUM_SHAPE_ACCESSORS 8
 
-
 class VocShaper : public Shaper {
  public:
-  
   VocShaper(VocShaper const&);
   VocShaper& operator=(VocShaper const&);
 
@@ -46,7 +44,6 @@ class VocShaper : public Shaper {
 
   ~VocShaper();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the shaper's memory zone
@@ -145,7 +142,6 @@ class VocShaper : public Shaper {
                          TRI_shape_pid_t pid, TRI_shaped_json_t* result,
                          TRI_shape_t const** shape);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up a shape path by identifier
@@ -153,7 +149,6 @@ class VocShaper : public Shaper {
 
   TRI_shape_path_t const* findShapePathByName(char const* name, bool create);
 
-  
  private:
   TRI_memory_zone_t* _memoryZone;
   TRI_document_collection_t* _collection;
@@ -280,5 +275,3 @@ void TRI_FillShapedSub(TRI_shaped_sub_t*, TRI_shaped_json_t const*,
                        char const*);
 
 #endif
-
-

@@ -77,7 +77,6 @@ CollectionKeys::~CollectionKeys() {
   delete _guard;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initially creates the list of keys
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,5 +330,3 @@ void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
       arangodb::basics::VelocyPackHelper::velocyPackToJson(ids));
   dumpDocs(json, chunk, chunkSize, jsonIds.get());
 }
-
-

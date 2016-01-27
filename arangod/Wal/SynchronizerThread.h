@@ -35,7 +35,6 @@ namespace wal {
 
 class LogfileManager;
 
-
 class SynchronizerThread : public basics::Thread {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief SynchronizerThread
@@ -45,7 +44,6 @@ class SynchronizerThread : public basics::Thread {
   SynchronizerThread(SynchronizerThread const&) = delete;
   SynchronizerThread& operator=(SynchronizerThread const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the synchronizer thread
@@ -59,7 +57,6 @@ class SynchronizerThread : public basics::Thread {
 
   ~SynchronizerThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stops the synchronizer thread
@@ -73,7 +70,6 @@ class SynchronizerThread : public basics::Thread {
 
   void signalSync();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
@@ -81,7 +77,6 @@ class SynchronizerThread : public basics::Thread {
 
   void run();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief synchronize an unsynchronized region
@@ -95,7 +90,6 @@ class SynchronizerThread : public basics::Thread {
 
   int getLogfileDescriptor(Logfile::IdType);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -140,5 +134,3 @@ class SynchronizerThread : public basics::Thread {
 }
 
 #endif
-
-

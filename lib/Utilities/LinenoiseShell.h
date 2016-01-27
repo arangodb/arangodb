@@ -26,38 +26,27 @@
 
 #include "ShellBase.h"
 
-
 namespace arangodb {
 class Completer;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief LinenoiseShell
 ////////////////////////////////////////////////////////////////////////////////
 
 class LinenoiseShell : public ShellBase {
-  
  public:
-
   LinenoiseShell(std::string const& history, Completer*);
-
 
   ~LinenoiseShell();
 
-  
  public:
-
   bool open(bool autoComplete) override final;
-
 
   bool close() override final;
 
-
   void addHistory(std::string const&) override final;
 
-
   bool writeHistory() override final;
-
 
   std::string getLine(std::string const& prompt, bool& eof) override final;
 
@@ -75,5 +64,3 @@ class LinenoiseShell : public ShellBase {
 };
 }
 #endif
-
-

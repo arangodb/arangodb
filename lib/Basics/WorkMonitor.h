@@ -75,7 +75,6 @@ struct WorkDescription {
 
 class WorkMonitor : public arangodb::basics::Thread {
  public:
-
   WorkMonitor();
 
  public:
@@ -171,7 +170,6 @@ class WorkMonitor : public arangodb::basics::Thread {
   static void SEND_WORK_OVERVIEW(uint64_t, std::string const&);
 
  protected:
-
   void run() override;
 
  public:
@@ -197,12 +195,9 @@ class HandlerWorkStack {
   HandlerWorkStack& operator=(const HandlerWorkStack&) = delete;
 
  public:
-
   explicit HandlerWorkStack(arangodb::rest::HttpHandler*);
 
-
   explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::HttpHandler>&);
-
 
   ~HandlerWorkStack();
 
@@ -230,12 +225,9 @@ class CustomWorkStack {
   CustomWorkStack& operator=(const CustomWorkStack&) = delete;
 
  public:
-
   CustomWorkStack(char const* type, char const* text, size_t length);
 
-
   CustomWorkStack(char const* type, uint64_t id);
-
 
   ~CustomWorkStack();
 };

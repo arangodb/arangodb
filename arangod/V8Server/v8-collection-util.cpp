@@ -51,7 +51,8 @@ void ReleaseCollection(TRI_vocbase_col_t const* collection) {
 
 TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
                                          CollectionInfo const& ci) {
-  auto c = std::make_unique<TRI_vocbase_col_t>(vocbase, ci.type(), ci.name(), ci.id(), "");
+  auto c = std::make_unique<TRI_vocbase_col_t>(vocbase, ci.type(), ci.name(),
+                                               ci.id(), "");
 
   c->_isLocal = false;
   c->_planId = ci.id();

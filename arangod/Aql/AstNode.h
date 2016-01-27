@@ -198,7 +198,6 @@ enum AstNodeType : uint32_t {
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
 static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the node
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,7 +209,6 @@ struct AstNode {
   static std::unordered_map<int, std::string const> const TypeNames;
   static std::unordered_map<int, std::string const> const ValueTypeNames;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the node
   //////////////////////////////////////////////////////////////////////////////
@@ -261,7 +259,6 @@ struct AstNode {
 
   ~AstNode();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if all members of a node are equality comparisons
@@ -877,7 +874,6 @@ struct AstNode {
 
   std::string toString() const;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stringify the value of a node into a string buffer
   /// this method is used when generated JavaScript code for the node!
@@ -886,7 +882,6 @@ struct AstNode {
 
   void appendValue(arangodb::basics::StringBuffer*) const;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the node type
@@ -906,7 +901,6 @@ struct AstNode {
 
   AstNodeValue value;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief precomputed JSON value (used when executing expressions)
@@ -956,5 +950,3 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const*);
 std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
 
 #endif
-
-

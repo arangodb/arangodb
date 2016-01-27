@@ -28,8 +28,6 @@
 using namespace std;
 using namespace arangodb::basics;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint64 into a JSON string
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,5 +384,3 @@ std::ostream& operator<<(std::ostream& stream, TRI_json_t const& json) {
   stream << JsonHelper::toString(&json);
   return stream;
 }
-
-

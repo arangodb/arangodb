@@ -23,7 +23,6 @@
 
 #include "fulltext-result.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a result
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,5 +69,3 @@ void TRI_FreeResultFulltextIndex(TRI_fulltext_result_t* result) {
   TRI_DestroyResultFulltextIndex(result);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
 }
-
-

@@ -77,8 +77,8 @@ typedef arangodb::basics::PathFinder<arangodb::traverser::VertexId,
                                      arangodb::traverser::EdgeId,
                                      double> ArangoDBPathFinder;
 
-typedef arangodb::basics::ConstDistanceFinder<
-    arangodb::traverser::VertexId, arangodb::traverser::EdgeId>
+typedef arangodb::basics::ConstDistanceFinder<arangodb::traverser::VertexId,
+                                              arangodb::traverser::EdgeId>
     ArangoDBConstDistancePathFinder;
 
 namespace arangodb {
@@ -88,8 +88,7 @@ namespace traverser {
 // Should not be used directly, use specialization instead.
 struct BasicOptions {
  protected:
-  std::unordered_map<TRI_voc_cid_t, arangodb::ExampleMatcher*>
-      _edgeFilter;
+  std::unordered_map<TRI_voc_cid_t, arangodb::ExampleMatcher*> _edgeFilter;
   std::unordered_map<TRI_voc_cid_t, VertexFilterInfo> _vertexFilter;
 
   BasicOptions() : useEdgeFilter(false), useVertexFilter(false) {}
@@ -166,9 +165,7 @@ struct ShortestPathOptions : BasicOptions {
   bool matchesVertex(VertexId const&) const;
 };
 
-
 class SingleServerTraversalPath : public TraversalPath {
-  
  public:
   explicit SingleServerTraversalPath(
       arangodb::basics::EnumeratedPath<EdgeInfo, VertexId> const& path)
@@ -177,19 +174,15 @@ class SingleServerTraversalPath : public TraversalPath {
   ~SingleServerTraversalPath() {}
 
   arangodb::basics::Json* pathToJson(
-      arangodb::Transaction*,
-      arangodb::CollectionNameResolver*) override;
+      arangodb::Transaction*, arangodb::CollectionNameResolver*) override;
 
   arangodb::basics::Json* lastEdgeToJson(
-      arangodb::Transaction*,
-      arangodb::CollectionNameResolver*) override;
+      arangodb::Transaction*, arangodb::CollectionNameResolver*) override;
 
   arangodb::basics::Json* lastVertexToJson(
-      arangodb::Transaction*,
-      arangodb::CollectionNameResolver*) override;
+      arangodb::Transaction*, arangodb::CollectionNameResolver*) override;
 
  private:
-  
   arangodb::basics::Json* edgeToJson(Transaction* trx,
                                      CollectionNameResolver* resolver,
                                      EdgeInfo const& e);
@@ -198,10 +191,8 @@ class SingleServerTraversalPath : public TraversalPath {
                                        CollectionNameResolver* resolver,
                                        VertexId const& v);
 
-  
   arangodb::basics::EnumeratedPath<EdgeInfo, VertexId> _path;
 };
-
 
 class DepthFirstTraverser : public Traverser {
  private:
@@ -268,7 +259,6 @@ class DepthFirstTraverser : public Traverser {
 
   TraversalPath* next() override;
 
-  
  private:
   bool edgeMatchesConditions(TRI_doc_mptr_t&, size_t&, size_t);
 
@@ -328,7 +318,7 @@ class EdgeCollectionInfo {
 
   arangodb::traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
     return arangodb::traverser::EdgeId(_edgeCollectionCid,
-                                               TRI_EXTRACT_MARKER_KEY(&ptr));
+                                       TRI_EXTRACT_MARKER_KEY(&ptr));
   }
 
   std::vector<TRI_doc_mptr_copy_t> getEdges(

@@ -97,7 +97,8 @@ class MultiCollectionEdgeExpander {
         _isAllowed(isAllowed),
         _isAllowedVertex(isAllowedVertex) {}
 
-  void operator()(VertexId& source, std::vector<ArangoDBPathFinder::Step*>& result) {
+  void operator()(VertexId& source,
+                  std::vector<ArangoDBPathFinder::Step*>& result) {
     equal_to<VertexId> eq;
     for (auto const& edgeCollection : _edgeCollections) {
       TRI_ASSERT(edgeCollection != nullptr);
@@ -158,7 +159,8 @@ class SimpleEdgeExpander {
                      EdgeCollectionInfo* edgeCollection)
       : _direction(direction), _edgeCollection(edgeCollection){};
 
-  void operator()(VertexId& source, std::vector<ArangoDBPathFinder::Step*>& result) {
+  void operator()(VertexId& source,
+                  std::vector<ArangoDBPathFinder::Step*>& result) {
     TRI_ASSERT(_edgeCollection != nullptr);
     auto edges = _edgeCollection->getEdges(_direction, source);
 
@@ -191,7 +193,6 @@ class SimpleEdgeExpander {
     }
   }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Insert a new vertex matcher object
@@ -276,9 +277,8 @@ void BasicOptions::addEdgeFilter(v8::Isolate* isolate,
   } else {
     // Has to be Object
     _edgeFilter.emplace(
-        cid,
-        new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
-                           shaper, errorMessage));
+        cid, new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
+                                shaper, errorMessage));
   }
 }
 
@@ -318,7 +318,6 @@ bool BasicOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
   return it->second->matches(e.cid, edge);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,7 +329,6 @@ bool ShortestPathOptions::matchesVertex(VertexId const& v) const {
 
   return BasicOptions::matchesVertex(v);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
@@ -359,13 +357,13 @@ void NeighborsOptions::addCollectionRestriction(TRI_voc_cid_t cid) {
   _explicitCollections.emplace(cid);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Wrapper for the shortest path computation
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
-    std::vector<EdgeCollectionInfo*>& collectionInfos, ShortestPathOptions& opts) {
+    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
 
@@ -407,8 +405,9 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
-TRI_RunSimpleShortestPathSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
-                                ShortestPathOptions& opts) {
+TRI_RunSimpleShortestPathSearch(
+    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
 
@@ -423,50 +422,52 @@ TRI_RunSimpleShortestPathSearch(std::vector<EdgeCollectionInfo*>& collectionInfo
     backward = TRI_EDGE_ANY;
   }
 
-  auto fwExpander = [&collectionInfos, forward](
-      VertexId& v, std::vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
-    equal_to<VertexId> eq;
-    for (auto const& edgeCollection : collectionInfos) {
-      TRI_ASSERT(edgeCollection != nullptr);
-      auto edges = edgeCollection->getEdges(forward, v);
-      for (size_t j = 0; j < edges.size(); ++j) {
-        EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
-        VertexId from = ExtractFromId(edges[j]);
-        if (!eq(from, v)) {
-          res_edges.emplace_back(edgeId);
-          neighbors.emplace_back(from);
-        } else {
-          VertexId to = ExtractToId(edges[j]);
-          if (!eq(to, v)) {
-            res_edges.emplace_back(edgeId);
-            neighbors.emplace_back(to);
+  auto fwExpander =
+      [&collectionInfos, forward](VertexId& v, std::vector<EdgeId>& res_edges,
+                                  vector<VertexId>& neighbors) {
+        equal_to<VertexId> eq;
+        for (auto const& edgeCollection : collectionInfos) {
+          TRI_ASSERT(edgeCollection != nullptr);
+          auto edges = edgeCollection->getEdges(forward, v);
+          for (size_t j = 0; j < edges.size(); ++j) {
+            EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
+            VertexId from = ExtractFromId(edges[j]);
+            if (!eq(from, v)) {
+              res_edges.emplace_back(edgeId);
+              neighbors.emplace_back(from);
+            } else {
+              VertexId to = ExtractToId(edges[j]);
+              if (!eq(to, v)) {
+                res_edges.emplace_back(edgeId);
+                neighbors.emplace_back(to);
+              }
+            }
           }
         }
-      }
-    }
-  };
-  auto bwExpander = [&collectionInfos, backward](
-      VertexId& v, std::vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
-    equal_to<VertexId> eq;
-    for (auto const& edgeCollection : collectionInfos) {
-      TRI_ASSERT(edgeCollection != nullptr);
-      auto edges = edgeCollection->getEdges(backward, v);
-      for (size_t j = 0; j < edges.size(); ++j) {
-        EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
-        VertexId from = ExtractFromId(edges[j]);
-        if (!eq(from, v)) {
-          res_edges.emplace_back(edgeId);
-          neighbors.emplace_back(from);
-        } else {
-          VertexId to = ExtractToId(edges[j]);
-          if (!eq(to, v)) {
-            res_edges.emplace_back(edgeId);
-            neighbors.emplace_back(to);
+      };
+  auto bwExpander =
+      [&collectionInfos, backward](VertexId& v, std::vector<EdgeId>& res_edges,
+                                   vector<VertexId>& neighbors) {
+        equal_to<VertexId> eq;
+        for (auto const& edgeCollection : collectionInfos) {
+          TRI_ASSERT(edgeCollection != nullptr);
+          auto edges = edgeCollection->getEdges(backward, v);
+          for (size_t j = 0; j < edges.size(); ++j) {
+            EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
+            VertexId from = ExtractFromId(edges[j]);
+            if (!eq(from, v)) {
+              res_edges.emplace_back(edgeId);
+              neighbors.emplace_back(from);
+            } else {
+              VertexId to = ExtractToId(edges[j]);
+              if (!eq(to, v)) {
+                res_edges.emplace_back(edgeId);
+                neighbors.emplace_back(to);
+              }
+            }
           }
         }
-      }
-    }
-  };
+      };
 
   ArangoDBConstDistancePathFinder pathFinder(fwExpander, bwExpander);
   std::unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
@@ -658,7 +659,6 @@ void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
   }
 }
 
-
 Json* SingleServerTraversalPath::pathToJson(Transaction* trx,
                                             CollectionNameResolver* resolver) {
   auto path = std::make_unique<Json>(Json::Object, 2);
@@ -754,7 +754,6 @@ Json* SingleServerTraversalPath::vertexToJson(Transaction* trx,
       TRI_ExpandShapedJson(collection->_collection->_collection->getShaper(),
                            resolver, v.cid, &mptr));
 }
-
 
 DepthFirstTraverser::DepthFirstTraverser(
     std::vector<TRI_document_collection_t*> const& edgeCollections,
@@ -880,8 +879,7 @@ void DepthFirstTraverser::_defInternalFunctions() {
                    TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
       std::vector<TRI_doc_mptr_copy_t> tmp;
       TRI_ASSERT(eColIdx < _edgeCols.size());
-      arangodb::EdgeIndex* edgeIndex =
-          _edgeCols.at(eColIdx)->edgeIndex();
+      arangodb::EdgeIndex* edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
       if (dir) {
         TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid,
                                      startVertex.key);
@@ -968,8 +966,7 @@ void DepthFirstTraverser::_defInternalFunctions() {
       // encountered nullptr is final
       TRI_edge_index_iterator_t it(_opts.direction, startVertex.cid,
                                    startVertex.key);
-      arangodb::EdgeIndex* edgeIndex =
-          _edgeCols.at(eColIdx)->edgeIndex();
+      arangodb::EdgeIndex* edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
       edgeIndex->lookup(_trx, &it, tmp, last, 1);
       while (last == nullptr) {
         // This edge collection does not have any more edges for this vertex.

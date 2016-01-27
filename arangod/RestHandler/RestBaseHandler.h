@@ -105,4 +105,3 @@ class RestBaseHandler : public rest::HttpHandler {
 }
 
 #endif
-

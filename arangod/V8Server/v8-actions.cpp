@@ -54,7 +54,6 @@ static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
     v8::Handle<v8::Function> callback, HttpRequest* request);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +66,6 @@ static ApplicationV8* GlobalV8Dealer = nullptr;
 
 class v8_action_t : public TRI_action_t {
  public:
-
   v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {
     _type = "JAVASCRIPT";
   }
@@ -88,7 +86,6 @@ class v8_action_t : public TRI_action_t {
 
     _callbacks[isolate].Reset(isolate, callback);
   }
-
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, HttpRequest* request,
                               Mutex* dataLock, void** data) {
@@ -176,7 +173,6 @@ class v8_action_t : public TRI_action_t {
     return result;
   }
 
-
   bool cancel(Mutex* dataLock, void** data) {
     {
       MUTEX_LOCKER(mutexLocker, *dataLock);
@@ -210,7 +206,6 @@ class v8_action_t : public TRI_action_t {
 
   ReadWriteLock _callbacksLock;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the action options
@@ -471,16 +466,18 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   v8::Handle<v8::Object> valuesObject = v8::Object::New(isolate);
   std::map<std::string, std::string> values = request->values();
 
-  for (std::map<std::string, std::string>::iterator i = values.begin(); i != values.end();
-       ++i) {
+  for (std::map<std::string, std::string>::iterator i = values.begin();
+       i != values.end(); ++i) {
     valuesObject->ForceSet(TRI_V8_STD_STRING(i->first),
                            TRI_V8_STD_STRING(i->second));
   }
 
   // copy request array parameter (a[]=1&a[]=2&...)
-  std::map<std::string, std::vector<char const*>*> arrayValues = request->arrayValues();
+  std::map<std::string, std::vector<char const*>*> arrayValues =
+      request->arrayValues();
 
-  for (std::map<std::string, std::vector<char const*>*>::iterator i = arrayValues.begin();
+  for (std::map<std::string, std::vector<char const*>*>::iterator i =
+           arrayValues.begin();
        i != arrayValues.end(); ++i) {
     std::string const& k = i->first;
     std::vector<char const*>* v = i->second;
@@ -615,8 +612,8 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
       response->body().appendText(content, length);
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
     } else {
-      std::string msg =
-          std::string("cannot read file '") + *filename + "': " + TRI_last_error();
+      std::string msg = std::string("cannot read file '") + *filename + "': " +
+                        TRI_last_error();
 
       response->body().appendText(msg.c_str(), msg.size());
       response->setResponseCode(HttpResponse::SERVER_ERROR);
@@ -776,7 +773,6 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new action
@@ -1278,7 +1274,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 #ifdef TRI_ENABLE_FAILURE_TESTS
 static bool clusterSendToAllServers(
     std::string const& dbname,
-    std::string const& path, // Note: Has to be properly encoded!
+    std::string const& path,  // Note: Has to be properly encoded!
     arangodb::rest::HttpRequest::HttpRequestType const& method,
     std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1294,9 +1290,7 @@ static bool clusterSendToAllServers(
   for (auto const& sid : DBServers) {
     std::unique_ptr<std::map<std::string, std::string>> headers(
         new std::map<std::string, std::string>());
-    cc->asyncRequest("", coordTransactionID, "server:" + sid,
-                     method,
-                     url,
+    cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }
 
@@ -1377,8 +1371,9 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_AddFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
+    int res = clusterSendToAllServers(
+        dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1420,8 +1415,9 @@ static void JS_DebugRemoveFailAt(
   TRI_RemoveFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+    int res = clusterSendToAllServers(
+        dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1464,8 +1460,7 @@ static void JS_DebugClearFailAt(
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",
-        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE,
-        "");
+        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1480,7 +1475,7 @@ static void JS_DebugClearFailAt(
 void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           std::string const& startupPath,
                           std::string const& modules) {
-// debugging functions
+  // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
@@ -1496,4 +1491,3 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_DebugRemoveFailAt);
 #endif
 }
-

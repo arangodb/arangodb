@@ -32,9 +32,7 @@
 namespace arangodb {
 namespace aql {
 
-
 class VariableGenerator {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -48,7 +46,6 @@ class VariableGenerator {
 
   ~VariableGenerator();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a map of all variable ids with their names
@@ -110,7 +107,6 @@ class VariableGenerator {
 
   void fromJson(arangodb::basics::Json const& jsonAllVariablesList);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the next variable id
@@ -118,7 +114,6 @@ class VariableGenerator {
 
   inline VariableId nextId() { return _id++; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief all variables created
@@ -136,5 +131,3 @@ class VariableGenerator {
 }
 
 #endif
-
-

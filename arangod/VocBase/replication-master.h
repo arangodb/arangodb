@@ -28,8 +28,6 @@
 
 #include "VocBase/replication-common.h"
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state information about replication master
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +40,6 @@ typedef struct TRI_replication_master_info_s {
   TRI_voc_tick_t _lastLogTick;
   bool _active;
 } TRI_replication_master_info_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a master info struct
@@ -64,5 +61,3 @@ void TRI_LogMasterInfoReplication(TRI_replication_master_info_t const*,
                                   char const*);
 
 #endif
-
-

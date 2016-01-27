@@ -32,7 +32,6 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the statistics to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,5 +130,3 @@ ExecutionStats::ExecutionStats(arangodb::basics::Json const& jsonStats) {
   fullCount =
       JsonHelper::getNumericValue<int64_t>(jsonStats.json(), "fullCount", -1);
 }
-
-

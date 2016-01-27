@@ -43,7 +43,6 @@ using namespace arangodb::rest;
 RestImportHandler::RestImportHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request), _onDuplicateAction(DUPLICATE_ERROR) {}
 
-
 HttpHandler::status_t RestImportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
@@ -94,7 +93,6 @@ HttpHandler::status_t RestImportHandler::execute() {
   // this handler is done
   return status_t(HANDLER_DONE);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the collection type from the request
@@ -930,5 +928,3 @@ bool RestImportHandler::checkKeys(VPackSlice const& keys) const {
 
   return true;
 }
-
-

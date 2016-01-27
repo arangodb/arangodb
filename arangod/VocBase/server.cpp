@@ -656,7 +656,8 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloseDatabases(TRI_server_t* server) {
-  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);  // Only one should do this at a time
+  MUTEX_LOCKER(mutexLocker,
+               server->_databasesMutex);  // Only one should do this at a time
   // No need for the thread protector here, because we have the mutex
   // Note however, that somebody could still read the lists concurrently,
   // therefore we first install a new value, call scan() on the protector
@@ -1517,9 +1518,8 @@ static void DatabaseManager(void* data) {
         for (auto& p : theLists->_coordinatorDatabases) {
           TRI_vocbase_t* vocbase = p.second;
           TRI_ASSERT(vocbase != nullptr);
-          auto cursorRepository =
-              static_cast<arangodb::CursorRepository*>(
-                  vocbase->_cursorRepository);
+          auto cursorRepository = static_cast<arangodb::CursorRepository*>(
+              vocbase->_cursorRepository);
 
           try {
             cursorRepository->garbageCollect(false);
@@ -1878,7 +1878,8 @@ int TRI_StopServer(TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_StopReplicationAppliersServer(TRI_server_t* server) {
-  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);  // Only one should do this at a time
+  MUTEX_LOCKER(mutexLocker,
+               server->_databasesMutex);  // Only one should do this at a time
   // No need for the thread protector here, because we have the mutex
 
   for (auto& p : server->_databasesLists.load()->_databases) {

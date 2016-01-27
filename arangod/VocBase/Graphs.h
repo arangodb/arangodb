@@ -43,7 +43,6 @@ arangodb::aql::Graph* lookupGraphByName(TRI_vocbase_t*, std::string const&);
 
 #endif
 
-
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//

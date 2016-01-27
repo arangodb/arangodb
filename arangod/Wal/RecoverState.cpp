@@ -410,8 +410,7 @@ int RecoverState::executeSingleOperation(
 
   try {
     trx = new SingleWriteTransactionType(
-        new arangodb::StandaloneTransactionContext(), vocbase,
-        collectionId);
+        new arangodb::StandaloneTransactionContext(), vocbase, collectionId);
 
     if (trx == nullptr) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1181,8 +1180,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
       slice = b2.slice();
 
-      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(),
-                                                   slice);
+      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), slice);
 
       WaitForDeletion(vocbase, collectionId,
                       TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1528,8 +1526,8 @@ int RecoverState::fillIndexes() {
     document->useSecondaryIndexes(true);
 
     arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new arangodb::StandaloneTransactionContext(),
-        collection->_vocbase, document->_info.id());
+        new arangodb::StandaloneTransactionContext(), collection->_vocbase,
+        document->_info.id());
 
     int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);
 
@@ -1540,4 +1538,3 @@ int RecoverState::fillIndexes() {
 
   return TRI_ERROR_NO_ERROR;
 }
-

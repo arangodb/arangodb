@@ -28,7 +28,6 @@
 #error use <Basics/Common.h>
 #endif
 
-
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -210,7 +209,6 @@
 
 #endif
 
-
 #ifdef __FreeBSD__
 
 #define TRI_PLATFORM "freebsd"
@@ -365,7 +363,6 @@
 #define TRI_gid_t gid_t
 
 #endif
-
 
 #ifdef __linux__
 
@@ -536,7 +533,6 @@
 #define TRI_gid_t gid_t
 
 #endif
-
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
@@ -781,13 +777,11 @@ typedef unsigned char bool;
 
 #endif
 
-
 #ifdef __GNUC__
 #define TRI_HAVE_GCC_UNUSED 1
 #define TRI_HAVE_GCC_ATTRIBUTE 1
 #define TRI_HAVE_GCC_BUILTIN 1
 #endif
-
 
 #if defined(TRI_OVERLOAD_FUNCS_SIZE_T)
 #if TRI_SIZEOF_SIZE_T == 8
@@ -798,5 +792,3 @@ typedef unsigned char bool;
 #endif
 
 #endif
-
-

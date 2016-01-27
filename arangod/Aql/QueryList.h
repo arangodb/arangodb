@@ -37,14 +37,12 @@ namespace aql {
 
 class Query;
 
-
 struct QueryEntry {
   QueryEntry(arangodb::aql::Query const*, double);
 
   arangodb::aql::Query const* query;
   double const started;
 };
-
 
 struct QueryEntryCopy {
   QueryEntryCopy(TRI_voc_tick_t, std::string const&, double, double);
@@ -55,9 +53,7 @@ struct QueryEntryCopy {
   double runTime;
 };
 
-
 class QueryList {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a query list
@@ -71,7 +67,6 @@ class QueryList {
 
   ~QueryList();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not queries are tracked
@@ -210,7 +205,6 @@ class QueryList {
 
   void clearSlow();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief r/w lock for the list
@@ -288,5 +282,3 @@ class QueryList {
 }
 
 #endif
-
-

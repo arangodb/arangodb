@@ -54,7 +54,6 @@ static size_t MaxResults = 128;  // default value. can be changed later
 
 static std::atomic<arangodb::aql::QueryCacheMode> Mode(CACHE_ON_DEMAND);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cache entry
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,8 +70,8 @@ QueryCacheResultEntry::QueryCacheResultEntry(
       _next(nullptr),
       _refCount(0),
       _deletionRequested(0) {
-  _queryString = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, queryString,
-                                       queryStringLength);
+  _queryString =
+      TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, queryString, queryStringLength);
 
   if (_queryString == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -120,7 +119,6 @@ void QueryCacheResultEntry::unuse() {
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a database-specific cache
@@ -304,7 +302,6 @@ void QueryCacheDatabaseEntry::enforceMaxResults(size_t value) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the element can be destroyed, and delete it if yes
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,8 +360,6 @@ void QueryCacheDatabaseEntry::link(QueryCacheResultEntry* e) {
   e->_prev = _tail;
   _tail = e;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the query cache
@@ -605,7 +600,6 @@ uint64_t QueryCache::hashQueryString(char const* queryString,
 
 QueryCache* QueryCache::instance() { return &Instance; }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enforce maximum number of elements in each database-specific cache
 ////////////////////////////////////////////////////////////////////////////////
@@ -687,5 +681,3 @@ void QueryCache::setMode(std::string const& value) {
     setMode(CACHE_ALWAYS_OFF);
   }
 }
-
-

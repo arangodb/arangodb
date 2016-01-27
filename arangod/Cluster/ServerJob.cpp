@@ -78,15 +78,12 @@ void ServerJob::work() {
   _heartbeat->removeDispatchedJob(result);
 }
 
-
 bool ServerJob::cancel() { return false; }
-
 
 void ServerJob::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute job
@@ -141,5 +138,3 @@ bool ServerJob::execute() {
 
   return ok;
 }
-
-

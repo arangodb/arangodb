@@ -428,4 +428,3 @@ class SimpleHttpClient {
 }
 
 #endif
-

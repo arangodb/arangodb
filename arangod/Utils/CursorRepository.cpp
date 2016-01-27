@@ -33,7 +33,6 @@ using namespace arangodb;
 
 size_t const CursorRepository::MaxCollectCount = 32;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor repository
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +81,6 @@ CursorRepository::~CursorRepository() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cursor and stores it in the registry
 /// the cursor will be returned with the usage flag set to true. it must be
@@ -99,8 +97,8 @@ JsonCursor* CursorRepository::createFromJson(TRI_json_t* json, size_t batchSize,
   arangodb::JsonCursor* cursor = nullptr;
 
   try {
-    cursor = new arangodb::JsonCursor(_vocbase, id, json, batchSize,
-                                              extra, ttl, count, cached);
+    cursor = new arangodb::JsonCursor(_vocbase, id, json, batchSize, extra, ttl,
+                                      count, cached);
   } catch (...) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     if (extra != nullptr) {
@@ -125,14 +123,14 @@ JsonCursor* CursorRepository::createFromJson(TRI_json_t* json, size_t batchSize,
 /// @brief creates a cursor and stores it in the registry
 ////////////////////////////////////////////////////////////////////////////////
 
-ExportCursor* CursorRepository::createFromExport(
-    arangodb::CollectionExport* ex, size_t batchSize, double ttl,
-    bool count) {
+ExportCursor* CursorRepository::createFromExport(arangodb::CollectionExport* ex,
+                                                 size_t batchSize, double ttl,
+                                                 bool count) {
   TRI_ASSERT(ex != nullptr);
 
   CursorId const id = TRI_NewTickServer();
-  arangodb::ExportCursor* cursor = new arangodb::ExportCursor(
-      _vocbase, id, ex, batchSize, ttl, count);
+  arangodb::ExportCursor* cursor =
+      new arangodb::ExportCursor(_vocbase, id, ex, batchSize, ttl, count);
 
   cursor->use();
 
@@ -312,5 +310,3 @@ bool CursorRepository::garbageCollect(bool force) {
 
   return (!found.empty());
 }
-
-

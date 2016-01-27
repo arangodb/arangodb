@@ -59,36 +59,31 @@ extern bool IGNORE_DATAFILE_ERRORS;
 /// @brief tries to read lock the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(a) \
-  a->_lock.tryReadLock()
+#define TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(a) a->_lock.tryReadLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_READ_LOCK_STATUS_VOCBASE_COL(a) \
-  a->_lock.readLock()
+#define TRI_READ_LOCK_STATUS_VOCBASE_COL(a) a->_lock.readLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_READ_UNLOCK_STATUS_VOCBASE_COL(a) \
-  a->_lock.unlock()
+#define TRI_READ_UNLOCK_STATUS_VOCBASE_COL(a) a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to write lock the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_TRY_WRITE_LOCK_STATUS_VOCBASE_COL(a) \
-  a->_lock.tryWriteLock()
+#define TRI_TRY_WRITE_LOCK_STATUS_VOCBASE_COL(a) a->_lock.tryWriteLock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(a) \
-  a->_lock.unlock()
+#define TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(a) a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write locks the vocbase collection status using spinning
@@ -343,7 +338,9 @@ class TRI_vocbase_col_t {
   TRI_vocbase_col_t& operator=(TRI_vocbase_col_t const&) = delete;
   TRI_vocbase_col_t() = delete;
 
-  TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type, std::string const& name, TRI_voc_cid_t cid, std::string const& path);
+  TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
+                    std::string const& name, TRI_voc_cid_t cid,
+                    std::string const& path);
   ~TRI_vocbase_col_t();
 
   // Leftover from struct
@@ -368,7 +365,8 @@ class TRI_vocbase_col_t {
   /// @brief Transform the information for this collection to velocypack
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool, TRI_voc_tick_t);
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool,
+                                                              TRI_voc_tick_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the information for this collection to velocypack
@@ -382,7 +380,8 @@ class TRI_vocbase_col_t {
   /// velocypack
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackIndexes(TRI_voc_tick_t);
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackIndexes(
+      TRI_voc_tick_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the information for this collection to velocypack
@@ -398,17 +397,17 @@ class TRI_vocbase_col_t {
   TRI_voc_cid_t _planId;  // cluster-wide collection identifier
   TRI_col_type_t _type;   // collection type
 
-  arangodb::basics::ReadWriteLock _lock; // lock protecting the status and name
+  arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   uint32_t _internalVersion;  // is incremented when a collection is renamed
   // this is used to prevent caching of collection objects
   // with "wrong" names in the "db" object
   TRI_vocbase_col_status_e _status;  // status of the collection
   struct TRI_document_collection_t*
-      _collection;                      // NULL or pointer to loaded collection
-  std::string const _path; // path to the collection files
-  std::string const _dbName; // name of the database
-  std::string _name; // name of the collection
+      _collection;            // NULL or pointer to loaded collection
+  std::string const _path;    // path to the collection files
+  std::string const _dbName;  // name of the database
+  std::string _name;          // name of the collection
 
   bool _isLocal;    // if true, the collection is local. if false,
                     // the collection is a remote (cluster) collection
@@ -516,9 +515,9 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
 /// @brief creates a new (document) collection from parameter set
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
-    TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&, TRI_voc_cid_t cid,
-    bool);
+TRI_vocbase_col_t* TRI_CreateCollectionVocBase(TRI_vocbase_t*,
+                                               arangodb::VocbaseCollectionInfo&,
+                                               TRI_voc_cid_t cid, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a (document) collection
@@ -638,5 +637,3 @@ bool TRI_GetThrowCollectionNotLoadedVocBase(TRI_vocbase_t*);
 void TRI_SetThrowCollectionNotLoadedVocBase(TRI_vocbase_t*, bool);
 
 #endif
-
-

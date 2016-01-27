@@ -73,8 +73,7 @@ void TRI_InitReadWriteLock(TRI_read_write_lock_t* lock) {
 /// @brief destroys a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock) {
-}
+void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock a read-write lock
@@ -282,4 +281,3 @@ bool TRI_ComparePointer(void* volatile* theValue, void* oldValue) {
 }
 
 #endif
-

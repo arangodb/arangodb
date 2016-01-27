@@ -30,20 +30,15 @@
 namespace arangodb {
 namespace admin {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestAdminLogHandler : public RestBaseHandler {
-  
  public:
-
   explicit RestAdminLogHandler(rest::HttpRequest*);
 
-  
  public:
-
   bool isDirect() const override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -56,5 +51,3 @@ class RestAdminLogHandler : public RestBaseHandler {
 }
 
 #endif
-
-

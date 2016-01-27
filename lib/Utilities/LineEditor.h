@@ -30,7 +30,6 @@
 namespace arangodb {
 class ShellBase;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,7 +38,6 @@ class LineEditor {
   LineEditor(LineEditor const&) = delete;
   LineEditor& operator=(LineEditor const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of history entries
@@ -47,15 +45,11 @@ class LineEditor {
 
   static int const MAX_HISTORY_ENTRIES = 1000;
 
-  
  public:
-
   LineEditor();
-
 
   virtual ~LineEditor();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the shell implementation supports colors
@@ -100,7 +94,6 @@ class LineEditor {
 
   void setSignalFunction(std::function<void()> const&);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the shell implementation
@@ -117,5 +110,3 @@ class LineEditor {
 }
 
 #endif
-
-
