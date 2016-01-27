@@ -218,6 +218,8 @@ struct Functions {
                            FunctionParameters const&);
   static AqlValue Fulltext(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
+  static AqlValue IsSameCollection(arangodb::aql::Query*, arangodb::AqlTransaction*, 
+                                   FunctionParameters const&);
 };
 }
 }
