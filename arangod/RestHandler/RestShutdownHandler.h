@@ -32,20 +32,15 @@
 namespace arangodb {
 namespace admin {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestShutdownHandler : public RestBaseHandler {
-  
  public:
-
   RestShutdownHandler(rest::HttpRequest*, void* applicationServer);
 
-  
  public:
-
   bool isDirect() const override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -54,7 +49,6 @@ class RestShutdownHandler : public RestBaseHandler {
 
   status_t execute() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief application server
@@ -66,5 +60,3 @@ class RestShutdownHandler : public RestBaseHandler {
 }
 
 #endif
-
-

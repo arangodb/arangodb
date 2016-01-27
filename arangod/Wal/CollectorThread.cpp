@@ -44,7 +44,6 @@
 using namespace arangodb;
 using namespace arangodb::wal;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a reference to an existing datafile statistics struct
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,13 +323,11 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait interval for the collector thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t const CollectorThread::Interval = 1000000;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the collector thread
@@ -357,7 +354,6 @@ CollectorThread::CollectorThread(LogfileManager* logfileManager,
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectorThread::~CollectorThread() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the collector result
@@ -400,7 +396,6 @@ void CollectorThread::signal() {
   CONDITION_LOCKER(guard, _condition);
   guard.signal();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main loop
@@ -504,7 +499,6 @@ bool CollectorThread::hasQueuedOperations(TRI_voc_cid_t cid) {
 
   return (_operationsQueue.find(cid) != _operationsQueue.end());
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief step 1: perform collection of a logfile (if any)
@@ -701,10 +695,10 @@ size_t CollectorThread::numQueuedOperations() {
 /// @brief process a single marker in collector step 2
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectorThread::processCollectionMarker(arangodb::SingleCollectionWriteTransaction<UINT64_MAX>& trx,
-                                              TRI_document_collection_t* document,
-                                              CollectorCache* cache,
-                                              CollectorOperation const& operation) {
+void CollectorThread::processCollectionMarker(
+    arangodb::SingleCollectionWriteTransaction<UINT64_MAX>& trx,
+    TRI_document_collection_t* document, CollectorCache* cache,
+    CollectorOperation const& operation) {
   TRI_df_marker_t const* walMarker =
       reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_df_marker_t const* marker =
@@ -738,10 +732,10 @@ void CollectorThread::processCollectionMarker(arangodb::SingleCollectionWriteTra
           TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
 
       // we can safely update the master pointer's dataptr value
-      found->setDataPtr(static_cast<void*>(
-          const_cast<char*>(operation.datafilePosition)));
+      found->setDataPtr(
+          static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
       found->_fid = fid;
-      
+
       dfi.numberAlive++;
       dfi.sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
     }
@@ -768,10 +762,10 @@ void CollectorThread::processCollectionMarker(arangodb::SingleCollectionWriteTra
           TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
 
       // we can safely update the master pointer's dataptr value
-      found->setDataPtr(static_cast<void*>(
-          const_cast<char*>(operation.datafilePosition)));
+      found->setDataPtr(
+          static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
       found->_fid = fid;
-      
+
       dfi.numberAlive++;
       dfi.sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
     }
@@ -790,7 +784,7 @@ void CollectorThread::processCollectionMarker(arangodb::SingleCollectionWriteTra
     if (found != nullptr && found->_rid > m->_revisionId) {
       // somebody re-created the document with a newer revision
       dfi.numberDead++;
-      dfi.sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+      dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
     }
   } else if (walMarker->_type == TRI_WAL_MARKER_ATTRIBUTE) {
     // move the pointer to the attribute from WAL to the datafile
@@ -813,7 +807,7 @@ void CollectorThread::processCollectionMarker(arangodb::SingleCollectionWriteTra
     dfi.numberShapes++;
     dfi.sizeShapes += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
   }
-}      
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process all operations for a single collection
@@ -824,8 +818,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 
-  arangodb::CollectionGuard collectionGuard(vocbase,
-                                                    cache->collectionId, true);
+  arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId, true);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
 
   TRI_ASSERT(collection != nullptr);
@@ -845,8 +838,10 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
       new arangodb::StandaloneTransactionContext(), document->_vocbase,
       document->_info.id());
-  trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true); // already locked by guard above
-  trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true); // already locked above
+  trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
+              true);  // already locked by guard above
+  trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK,
+              true);  // already locked above
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, true);
@@ -1053,8 +1048,7 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 
-  arangodb::CollectionGuard collectionGuard(vocbase, collectionId,
-                                                    true);
+  arangodb::CollectionGuard collectionGuard(vocbase, collectionId, true);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
@@ -1175,7 +1169,7 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
         if (dst == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
-        
+
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi.numberUncollected++;
 
@@ -1205,7 +1199,7 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
         if (dst == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
-        
+
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi.numberUncollected++;
 
@@ -1250,7 +1244,7 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
         if (dst == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
-        
+
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi.numberUncollected++;
 
@@ -1299,7 +1293,7 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
         if (dst == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
-        
+
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi.numberUncollected++;
 
@@ -1392,9 +1386,10 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
 int CollectorThread::updateDatafileStatistics(
     TRI_document_collection_t* document, CollectorCache* cache) {
   // iterate over all datafile infos and update the collection's datafile stats
-  for (auto it = cache->dfi.begin(); it != cache->dfi.end(); /* no hoisting */) {
+  for (auto it = cache->dfi.begin(); it != cache->dfi.end();
+       /* no hoisting */) {
     document->_datafileStatistics.update((*it).first, (*it).second);
-    
+
     // flush the local datafile info so we don't update the statistics twice
     // with the same values
     (*it).second.reset();
@@ -1520,11 +1515,11 @@ char* CollectorThread::nextFreeMarkerPosition(
     // must rotate the existing journal. now update its stats
     if (cache->lastFid > 0) {
       auto& dfi = getDfi(cache, cache->lastFid);
-      document->_datafileStatistics.increaseUncollected(cache->lastFid, dfi.numberUncollected);
+      document->_datafileStatistics.increaseUncollected(cache->lastFid,
+                                                        dfi.numberUncollected);
       // and reset afterwards
       dfi.numberUncollected = 0;
     }
-
 
     datafile =
         TRI_CreateDatafileDocumentCollection(document, tick, targetSize, false);
@@ -1625,4 +1620,3 @@ void CollectorThread::finishMarker(char const* walPosition,
   cache->operations->emplace_back(CollectorOperation(
       datafilePosition, marker->_size, walPosition, cache->lastFid));
 }
-

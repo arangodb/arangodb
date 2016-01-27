@@ -30,7 +30,6 @@
 
 struct TRI_vocbase_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the user structures for a database
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,5 +49,3 @@ void TRI_FreeUserStructuresVocBase(TRI_vocbase_t*);
 void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 #endif
-
-

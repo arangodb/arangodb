@@ -87,15 +87,14 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType(
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
-  std::string typeName = type.copyString();
+  std::string const typeName =
+      arangodb::basics::StringUtils::tolower(type.copyString());
 
-  if (TRI_CaseEqualString(typeName.c_str(),
-                          TraditionalKeyGenerator::name().c_str())) {
+  if (typeName == TraditionalKeyGenerator::name()) {
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
-  if (TRI_CaseEqualString(typeName.c_str(),
-                          AutoIncrementKeyGenerator::name().c_str())) {
+  if (typeName == AutoIncrementKeyGenerator::name()) {
     return KeyGenerator::TYPE_AUTOINCREMENT;
   }
 

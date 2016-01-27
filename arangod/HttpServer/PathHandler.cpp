@@ -204,5 +204,3 @@ void PathHandler::handleError(const Exception&) {
 }
 }
 }
-
-

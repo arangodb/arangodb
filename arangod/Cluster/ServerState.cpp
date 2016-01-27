@@ -156,7 +156,6 @@ std::string ServerState::stateToString(StateEnum state) {
   return "";
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the authentication data for cluster-internal communication
 ////////////////////////////////////////////////////////////////////////////////
@@ -651,7 +650,6 @@ bool ServerState::redetermineRole() {
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the server role by fetching data from the agency
 /// Note: this method must be called under the _lock
@@ -847,13 +845,15 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
 
       if (it != result._values.end()) {
         VPackSlice slice = it->second._vpack->slice();
-        id = arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID", "");
+        id =
+            arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID", "");
         if (id.empty()) {
           LOG_ERROR("ID not set!");
           return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
         }
-        std::string description = arangodb::basics::VelocyPackHelper::getStringValue(
-            slice, "Description", "");
+        std::string description =
+            arangodb::basics::VelocyPackHelper::getStringValue(
+                slice, "Description", "");
         if (!description.empty()) {
           setDescription(description);
         }

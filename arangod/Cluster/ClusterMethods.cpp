@@ -61,7 +61,8 @@ static T ExtractFigure(VPackSlice const& slice, char const* group,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts answer from response into a VPackBuilder.
-///        If there was an error extracting the answer the builder will be empty.
+///        If there was an error extracting the answer the builder will be
+///        empty.
 ///        No Error can be thrown.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -484,7 +485,9 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 
         if (answer.isObject()) {
           // add to the total
-          result += arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(answer, "count", 0);
+          result +=
+              arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+                  answer, "count", 0);
           nrok++;
         }
       }
@@ -507,7 +510,8 @@ int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     VPackSlice const& slice, std::map<std::string, std::string> const& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
       arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   return createDocumentOnCoordinator(dbname, collname, waitForSync, json,
@@ -619,11 +623,13 @@ int createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int deleteDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -797,12 +803,13 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int getDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev,
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     bool generateDocument,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1084,7 +1091,8 @@ int getFilteredDocumentsOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int getAllDocumentsOnCoordinator(
-    std::string const& dbname, std::string const& collname, std::string const& returnType,
+    std::string const& dbname, std::string const& collname,
+    std::string const& returnType,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::string& contentType, std::string& resultBody) {
   // Set a few variables needed for our work:
@@ -1310,15 +1318,16 @@ int getFilteredEdgesOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
-    bool isPatch,
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
     bool keepNull,      // only counts for isPatch == true
     bool mergeObjects,  // only counts for isPatch == true
     VPackSlice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
       arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   return modifyDocumentOnCoordinator(
@@ -1331,15 +1340,16 @@ int modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
-    bool isPatch,
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
     bool keepNull,      // only counts for isPatch == true
     bool mergeObjects,  // only counts for isPatch == true
     std::unique_ptr<TRI_json_t>& json,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1497,7 +1507,8 @@ int createEdgeOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     std::unique_ptr<TRI_json_t>& json, char const* from, char const* to,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1591,8 +1602,8 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   std::vector<ServerID> DBservers = ci->getCurrentDBServers();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::string url = std::string("/_admin/wal/flush?waitForSync=") +
-               (waitForSync ? "true" : "false") + "&waitForCollector=" +
-               (waitForCollector ? "true" : "false");
+                    (waitForSync ? "true" : "false") + "&waitForCollector=" +
+                    (waitForCollector ? "true" : "false");
   auto body = std::make_shared<std::string const>();
   for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
     std::unique_ptr<std::map<std::string, std::string>> headers(
@@ -1623,5 +1634,3 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
 }
 
 }  // namespace arangodb
-
-

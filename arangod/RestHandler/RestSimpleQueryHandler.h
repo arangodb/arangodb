@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "RestHandler/RestCursorHandler.h"
 
-
 namespace arangodb {
 namespace aql {
 class QueryRegistry;
@@ -40,19 +39,14 @@ class ApplicationV8;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestSimpleQueryHandler : public RestCursorHandler {
-  
  public:
+  RestSimpleQueryHandler(
+      rest::HttpRequest*,
+      std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
 
-  RestSimpleQueryHandler(rest::HttpRequest*,
-                         std::pair<arangodb::ApplicationV8*,
-                                   arangodb::aql::QueryRegistry*>*);
-
-  
  public:
-
   status_t execute() override final;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a cursor with all documents from the collection
@@ -63,5 +57,3 @@ class RestSimpleQueryHandler : public RestCursorHandler {
 }
 
 #endif
-
-

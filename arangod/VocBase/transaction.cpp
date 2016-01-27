@@ -48,8 +48,6 @@
 
 #endif
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether the collection is currently locked
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,10 +218,11 @@ static void FreeOperations(TRI_transaction_t* trx) {
           }
         }
       }
-    
+
       // now update the stats for all datafiles of the collection in one go
       for (auto const& it : stats) {
-        document->_datafileStatistics.increaseDead(it.first, it.second.first, it.second.second);
+        document->_datafileStatistics.increaseDead(it.first, it.second.first,
+                                                   it.second.second);
       }
     }
 
@@ -483,7 +482,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
 
     if (trxCollection->_collection == nullptr) {
       // open the collection
-      if (!HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER) && 
+      if (!HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER) &&
           !HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
         // use and usage-lock
         TRI_vocbase_col_status_e status;
@@ -757,7 +756,6 @@ static void UpdateTransactionStatus(TRI_transaction_t* const trx,
   trx->_status = status;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new transaction container
 ////////////////////////////////////////////////////////////////////////////////
@@ -830,7 +828,6 @@ void TRI_FreeTransaction(TRI_transaction_t* trx) {
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trx);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the transaction type from a string
@@ -1062,7 +1059,8 @@ bool TRI_IsLockedCollectionTransaction(
 /// @brief check whether a collection is used in a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsContainedCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid) {
+bool TRI_IsContainedCollectionTransaction(TRI_transaction_t* trx,
+                                          TRI_voc_cid_t cid) {
   size_t const n = trx->_collections._length;
 
   for (size_t i = 0; i < n; ++i) {
@@ -1247,8 +1245,10 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       TRI_ASSERT(operation.oldHeader._fid > 0);
 
       TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-            operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
-      document->_datafileStatistics.increaseDead(operation.oldHeader._fid, 1, static_cast<int64_t>(TRI_DF_ALIGN_BLOCK(marker->_size)));
+          operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
+      document->_datafileStatistics.increaseDead(
+          operation.oldHeader._fid, 1,
+          static_cast<int64_t>(TRI_DF_ALIGN_BLOCK(marker->_size)));
     }
   } else {
     // operation is buffered and might be rolled back
@@ -1404,5 +1404,3 @@ int TRI_AbortTransaction(TRI_transaction_t* trx, int nestingLevel) {
 
   return res;
 }
-
-

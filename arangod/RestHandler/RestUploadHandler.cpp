@@ -36,10 +36,7 @@ using namespace arangodb::rest;
 RestUploadHandler::RestUploadHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-
 RestUploadHandler::~RestUploadHandler() {}
-
-
 
 HttpHandler::status_t RestUploadHandler::execute() {
   // extract the request type
@@ -259,5 +256,3 @@ bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
 
   return true;
 }
-
-

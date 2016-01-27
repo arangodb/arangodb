@@ -28,16 +28,14 @@
 #include "Cluster/ClusterMethods.h"
 using namespace arangodb::basics;
 
-
 std::string const graphs = "_graphs";
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::aql::Graph* arangodb::lookupGraphByName(
-    TRI_vocbase_t* vocbase, std::string const& name) {
+arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
+                                                  std::string const& name) {
   if (ServerState::instance()->isCoordinator()) {
     arangodb::rest::HttpResponse::HttpResponseCode responseCode;
     auto headers = std::make_unique<std::map<std::string, std::string>>();

@@ -680,7 +680,8 @@ class ClusterInfo {
   int ensureIndexCoordinator(
       std::string const& databaseName, std::string const& collectionID,
       arangodb::velocypack::Slice const& slice, bool create,
-      bool (*compare)(arangodb::velocypack::Slice const&, arangodb::velocypack::Slice const&),
+      bool (*compare)(arangodb::velocypack::Slice const&,
+                      arangodb::velocypack::Slice const&),
       TRI_json_t*& resultJson, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -794,9 +795,8 @@ class ClusterInfo {
   /// @brief actually clears a list of current databases
   //////////////////////////////////////////////////////////////////////////////
 
-  void clearCurrentDatabases(
-      std::unordered_map<DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>&
-          databases);
+  void clearCurrentDatabases(std::unordered_map<
+      DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>& databases);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
@@ -992,4 +992,3 @@ class ClusterInfo {
 }  // end namespace arangodb
 
 #endif
-

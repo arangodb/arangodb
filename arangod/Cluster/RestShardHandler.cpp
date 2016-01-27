@@ -40,10 +40,7 @@ RestShardHandler::RestShardHandler(arangodb::rest::HttpRequest* request,
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
-
-
 bool RestShardHandler::isDirect() const { return true; }
-
 
 arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
 // Deactivated to allow for asynchronous cluster internal communication
@@ -81,5 +78,3 @@ arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
 
   return status_t(HANDLER_DONE);
 }
-
-

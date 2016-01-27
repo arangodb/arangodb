@@ -39,4 +39,3 @@ std::atomic<int> arangodb::basics::DataProtector::_last(0);
 
 // TODO: Reactivate this template instantiation once everybody has gcc >= 4.9.2
 // template class arangodb::basics::DataProtector<64>;
-

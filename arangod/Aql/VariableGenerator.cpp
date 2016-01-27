@@ -27,7 +27,6 @@
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the generator
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +45,6 @@ VariableGenerator::~VariableGenerator() {
     delete it.second;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a map of all variable ids with their names
@@ -223,5 +221,3 @@ void VariableGenerator::fromJson(Json const& query) {
     createVariable(jsonAllVariablesList.at(i));
   }
 }
-
-

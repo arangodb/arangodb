@@ -112,4 +112,3 @@ int GeoIndex_INDEXVALID(GeoIndex* gi);
 #endif
 
 /* end of GeoIndex.h  */
-

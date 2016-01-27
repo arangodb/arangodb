@@ -34,12 +34,9 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestEdgeHandler : public RestDocumentHandler {
-  
  public:
-
   explicit RestEdgeHandler(rest::HttpRequest*);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collection type
@@ -49,7 +46,6 @@ class RestEdgeHandler : public RestDocumentHandler {
     return TRI_COL_TYPE_EDGE;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an edge
@@ -68,4 +64,3 @@ class RestEdgeHandler : public RestDocumentHandler {
 }
 
 #endif
-

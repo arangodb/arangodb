@@ -49,4 +49,3 @@ void Mutex::lock() { TRI_LockMutex(&_mutex); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void Mutex::unlock() { TRI_UnlockMutex(&_mutex); }
-

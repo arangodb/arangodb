@@ -28,12 +28,10 @@
 
 #include "ApplicationServer/ApplicationServer.h"
 
-
 namespace arangodb {
 namespace basics {
 class ProgramOptionsDescription;
 }
-
 
 namespace rest {
 
@@ -46,15 +44,11 @@ class ApplicationFeature {
   ApplicationFeature(ApplicationFeature const&);
   ApplicationFeature& operator=(ApplicationFeature const&);
 
-  
  public:
-
   explicit ApplicationFeature(std::string const& name);
-
 
   virtual ~ApplicationFeature();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the name
@@ -123,7 +117,6 @@ class ApplicationFeature {
 
   void disable();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief feature is disabled
@@ -131,7 +124,6 @@ class ApplicationFeature {
 
   bool _disabled;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief name of the feature
@@ -143,5 +135,3 @@ class ApplicationFeature {
 }
 
 #endif
-
-

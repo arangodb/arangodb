@@ -39,16 +39,11 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::admin;
 
-
-
 RestBaseHandler::RestBaseHandler(HttpRequest* request) : HttpHandler(request) {}
-
-
 
 void RestBaseHandler::handleError(Exception const& ex) {
   generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from JSON
@@ -178,4 +173,3 @@ void RestBaseHandler::generateError(HttpResponse::HttpResponseCode code,
 void RestBaseHandler::generateOOMError() {
   generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 }
-

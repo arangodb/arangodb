@@ -31,7 +31,6 @@ using JsonHelper = arangodb::basics::JsonHelper;
 
 static bool const Optional = true;
 
-
 ModificationNode::ModificationNode(ExecutionPlan* plan,
                                    arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -87,7 +86,6 @@ double ModificationNode::estimateCost(size_t& nrItems) const {
   return depCost + incoming;
 }
 
-
 RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
@@ -139,7 +137,6 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-
 InsertNode::InsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
@@ -190,7 +187,6 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return static_cast<ExecutionNode*>(c);
 }
-
 
 UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
@@ -260,7 +256,6 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return static_cast<ExecutionNode*>(c);
 }
-
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
                          arangodb::basics::Json const& base)
@@ -332,7 +327,6 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-
 UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
@@ -396,4 +390,3 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return static_cast<ExecutionNode*>(c);
 }
-

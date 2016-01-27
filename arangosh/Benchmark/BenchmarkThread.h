@@ -40,8 +40,6 @@
 namespace arangodb {
 namespace arangob {
 
-
-
 class BenchmarkThread : public arangodb::basics::Thread {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -94,7 +92,6 @@ class BenchmarkThread : public arangodb::basics::Thread {
     delete _connection;
   }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the thread program
@@ -182,7 +179,6 @@ class BenchmarkThread : public arangodb::basics::Thread {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request location rewriter (injects database name)
@@ -390,7 +386,6 @@ class BenchmarkThread : public arangodb::basics::Thread {
     delete result;
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the threads offset value
@@ -404,7 +399,6 @@ class BenchmarkThread : public arangodb::basics::Thread {
 
   double getTime() const { return _time; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the operation to benchmark
@@ -560,5 +554,3 @@ class BenchmarkThread : public arangodb::basics::Thread {
 }
 
 #endif
-
-

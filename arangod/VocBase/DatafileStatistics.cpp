@@ -34,24 +34,24 @@ using namespace arangodb;
 /// @brief create an empty datafile statistics container
 ////////////////////////////////////////////////////////////////////////////////
 
-DatafileStatisticsContainer::DatafileStatisticsContainer() 
-  : numberAlive(0),
-    numberDead(0),
-    numberDeletions(0),
-    numberShapes(0),
-    numberAttributes(0),
-    sizeAlive(0),
-    sizeDead(0),
-    sizeShapes(0),
-    sizeAttributes(0),
-    numberUncollected(0) {
-}
+DatafileStatisticsContainer::DatafileStatisticsContainer()
+    : numberAlive(0),
+      numberDead(0),
+      numberDeletions(0),
+      numberShapes(0),
+      numberAttributes(0),
+      sizeAlive(0),
+      sizeDead(0),
+      sizeShapes(0),
+      sizeAttributes(0),
+      numberUncollected(0) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update statistics from another container
 ////////////////////////////////////////////////////////////////////////////////
-  
-void DatafileStatisticsContainer::update(DatafileStatisticsContainer const& other) {
+
+void DatafileStatisticsContainer::update(
+    DatafileStatisticsContainer const& other) {
   numberAlive += other.numberAlive;
   numberDead += other.numberDead;
   numberDeletions += other.numberDeletions;
@@ -67,7 +67,7 @@ void DatafileStatisticsContainer::update(DatafileStatisticsContainer const& othe
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the statistics values
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 void DatafileStatisticsContainer::reset() {
   numberAlive = 0;
   numberDead = 0;
@@ -85,10 +85,7 @@ void DatafileStatisticsContainer::reset() {
 /// @brief create statistics manager for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-DatafileStatistics::DatafileStatistics()
-  : _lock(),
-    _stats() {
-}
+DatafileStatistics::DatafileStatistics() : _lock(), _stats() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy statistics manager
@@ -96,7 +93,7 @@ DatafileStatistics::DatafileStatistics()
 
 DatafileStatistics::~DatafileStatistics() {
   WRITE_LOCKER(writeLocker, _lock);
-  
+
   for (auto& it : _stats) {
     delete it.second;
   }
@@ -118,7 +115,7 @@ void DatafileStatistics::create(TRI_voc_fid_t fid) {
     return;
   }
 
-  LOG_TRACE("creating statistics for datafile %llu", (unsigned long long) fid);
+  LOG_TRACE("creating statistics for datafile %llu", (unsigned long long)fid);
   _stats.emplace(fid, stats.get());
   stats.release();
 }
@@ -126,8 +123,9 @@ void DatafileStatistics::create(TRI_voc_fid_t fid) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create statistics for a datafile, using the stats provided
 ////////////////////////////////////////////////////////////////////////////////
-  
-void DatafileStatistics::create(TRI_voc_fid_t fid, DatafileStatisticsContainer const& src) {
+
+void DatafileStatistics::create(TRI_voc_fid_t fid,
+                                DatafileStatisticsContainer const& src) {
   auto stats = std::make_unique<DatafileStatisticsContainer>();
   *stats = src;
 
@@ -139,8 +137,9 @@ void DatafileStatistics::create(TRI_voc_fid_t fid, DatafileStatisticsContainer c
     // already exists
     return;
   }
-  
-  LOG_TRACE("creating statistics for datafile %llu from initial data", (unsigned long long) fid);
+
+  LOG_TRACE("creating statistics for datafile %llu from initial data",
+            (unsigned long long)fid);
 
   _stats.emplace(fid, stats.get());
   stats.release();
@@ -151,7 +150,7 @@ void DatafileStatistics::create(TRI_voc_fid_t fid, DatafileStatisticsContainer c
 ////////////////////////////////////////////////////////////////////////////////
 
 void DatafileStatistics::remove(TRI_voc_fid_t fid) {
-  LOG_TRACE("removing statistics for datafile %llu", (unsigned long long) fid);
+  LOG_TRACE("removing statistics for datafile %llu", (unsigned long long)fid);
 
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -162,19 +161,22 @@ void DatafileStatistics::remove(TRI_voc_fid_t fid) {
 /// @brief merge statistics for a file
 ////////////////////////////////////////////////////////////////////////////////
 
-void DatafileStatistics::update(TRI_voc_fid_t fid, DatafileStatisticsContainer const& src) {
+void DatafileStatistics::update(TRI_voc_fid_t fid,
+                                DatafileStatisticsContainer const& src) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG_WARNING("did not find required statistics for datafile %llu", (unsigned long long) fid);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "required datafile statistics not found");
+    LOG_WARNING("did not find required statistics for datafile %llu",
+                (unsigned long long)fid);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "required datafile statistics not found");
   }
 
   auto& dst = (*it).second;
 
-  LOG_TRACE("updating statistics for datafile %llu", (unsigned long long) fid);
+  LOG_TRACE("updating statistics for datafile %llu", (unsigned long long)fid);
   dst->update(src);
 }
 
@@ -188,20 +190,24 @@ void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG_WARNING("did not find required statistics for datafile %llu", (unsigned long long) fid);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "required datafile statistics not found");
+    LOG_WARNING("did not find required statistics for datafile %llu",
+                (unsigned long long)fid);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "required datafile statistics not found");
   }
 
   auto& dst = (*it).second;
-  
+
   it = _stats.find(src);
 
   if (it == _stats.end()) {
-    LOG_WARNING("did not find required statistics for source datafile %llu", (unsigned long long) src);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "required datafile statistics not found");
+    LOG_WARNING("did not find required statistics for source datafile %llu",
+                (unsigned long long)src);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "required datafile statistics not found");
   }
 
-  LOG_TRACE("updating statistics for datafile %llu", (unsigned long long) fid);
+  LOG_TRACE("updating statistics for datafile %llu", (unsigned long long)fid);
   dst->update(*(*it).second);
 }
 
@@ -209,27 +215,31 @@ void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
 /// @brief replace statistics for a file
 ////////////////////////////////////////////////////////////////////////////////
 
-void DatafileStatistics::replace(TRI_voc_fid_t fid, DatafileStatisticsContainer const& src) {
+void DatafileStatistics::replace(TRI_voc_fid_t fid,
+                                 DatafileStatisticsContainer const& src) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG_WARNING("did not find required statistics for datafile %llu", (unsigned long long) fid);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "required datafile statistics not found");
+    LOG_WARNING("did not find required statistics for datafile %llu",
+                (unsigned long long)fid);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "required datafile statistics not found");
   }
 
   auto& dst = (*it).second;
   *dst = src;
 
-  LOG_TRACE("replacing statistics for datafile %llu", (unsigned long long) fid);
+  LOG_TRACE("replacing statistics for datafile %llu", (unsigned long long)fid);
 }
-  
+
 /////////////////////////////////////////////////////////////////////////////////
 /// @brief increase dead stats for a datafile, if it exists
 /////////////////////////////////////////////////////////////////////////////////
 
-void DatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, int64_t size) {
+void DatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number,
+                                      int64_t size) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
@@ -241,16 +251,17 @@ void DatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, int64_t
 
   auto& dst = (*it).second;
   dst->numberDead += number;
-  dst->sizeDead += size; 
+  dst->sizeDead += size;
   dst->numberAlive -= number;
-  dst->sizeAlive -= size; 
+  dst->sizeAlive -= size;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 /// @brief increase number of uncollected entries
 /////////////////////////////////////////////////////////////////////////////////
 
-void DatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t number) {
+void DatafileStatistics::increaseUncollected(TRI_voc_fid_t fid,
+                                             int64_t number) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
@@ -262,8 +273,9 @@ void DatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t number) 
 
   auto& dst = (*it).second;
   dst->numberUncollected += number;
-  
-  LOG_TRACE("increasing uncollected count for datafile %llu", (unsigned long long) fid);
+
+  LOG_TRACE("increasing uncollected count for datafile %llu",
+            (unsigned long long)fid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,8 +290,10 @@ DatafileStatisticsContainer DatafileStatistics::get(TRI_voc_fid_t fid) {
     auto it = _stats.find(fid);
 
     if (it == _stats.end()) {
-      LOG_WARNING("did not find required statistics for datafile %llu", (unsigned long long) fid);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "required datafile statistics not found");
+      LOG_WARNING("did not find required statistics for datafile %llu",
+                  (unsigned long long)fid);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "required datafile statistics not found");
     }
 
     result = *(*it).second;
@@ -315,7 +329,7 @@ void DatafileStatistics::addJournal(TRI_datafile_t* df) {
   TRI_ASSERT(_journals.empty());
   _journals.push_back(df);
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a datafile
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,7 +338,7 @@ void DatafileStatistics::addDatafile(TRI_datafile_t* df) {
   WRITE_LOCKER(writeLocker, _lock);
   _datafiles.push_back(df);
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a compactor
 ////////////////////////////////////////////////////////////////////////////////
@@ -345,7 +359,7 @@ bool DatafileStatistics::hasCompactor() {
 
   return !_compactors.empty();
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief turn a compactor into a datafile
 ////////////////////////////////////////////////////////////////////////////////
@@ -367,7 +381,7 @@ bool DatafileStatistics::compactorToDatafile(TRI_datafile_t* df) {
   // not found
   return false;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief turn a journal into a datafile
 ////////////////////////////////////////////////////////////////////////////////
@@ -389,7 +403,7 @@ bool DatafileStatistics::journalToDatafile(TRI_datafile_t* df) {
   // not found
   return false;
 }
-  
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief remove a compactor file
 //////////////////////////////////////////////////////////////////////////////
@@ -408,4 +422,3 @@ bool DatafileStatistics::removeCompactor(TRI_datafile_t* df) {
   // not found
   return false;
 }
-

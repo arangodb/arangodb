@@ -44,8 +44,6 @@ using namespace arangodb::rest;
 using namespace arangodb::v8client;
 using namespace std;
 
-
-
 V8ClientConnection::V8ClientConnection(
     Endpoint* endpoint, std::string databaseName, std::string const& username,
     std::string const& password, double requestTimeout, double connectTimeout,
@@ -126,20 +124,18 @@ V8ClientConnection::V8ClientConnection(
   }
 }
 
-
 V8ClientConnection::~V8ClientConnection() {
   delete _httpResult;
   delete _client;
   delete _connection;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string V8ClientConnection::rewriteLocation(void* data,
-                                           std::string const& location) {
+                                                std::string const& location) {
   V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
 
   TRI_ASSERT(c != nullptr);
@@ -341,7 +337,6 @@ v8::Handle<v8::Value> V8ClientConnection::patchData(
   return requestData(isolate, HttpRequest::HTTP_REQUEST_PATCH, location, body,
                      headerFields);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a request
@@ -598,5 +593,3 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   // and returns
   return scope.Escape<v8::Value>(result);
 }
-
-

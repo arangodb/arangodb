@@ -1007,7 +1007,7 @@ bool ApplicationV8::prepare2() {
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts = new V8Context*[nrInstances];
+    _contexts = new V8Context* [nrInstances];
   }
 
   std::vector<std::thread> threads;

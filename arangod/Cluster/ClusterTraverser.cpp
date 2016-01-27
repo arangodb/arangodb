@@ -27,7 +27,6 @@
 using ClusterTraversalPath = arangodb::traverser::ClusterTraversalPath;
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
-
 arangodb::basics::Json* ClusterTraversalPath::pathToJson(
     arangodb::Transaction*, arangodb::CollectionNameResolver*) {
   auto result =
@@ -71,7 +70,6 @@ arangodb::basics::Json* ClusterTraversalPath::lastVertexToJson(
     arangodb::Transaction*, arangodb::CollectionNameResolver*) {
   return _traverser->vertexToJson(_path.vertices.back());
 }
-
 
 bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
                                                 std::string const& vertexId,
@@ -242,8 +240,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
   }
 }
 
-void ClusterTraverser::setStartVertex(
-    arangodb::traverser::VertexId const& v) {
+void ClusterTraverser::setStartVertex(arangodb::traverser::VertexId const& v) {
   std::string id = v.toString(_resolver);
   _enumerator.reset(
       new arangodb::basics::PathEnumerator<std::string, std::string, size_t>(

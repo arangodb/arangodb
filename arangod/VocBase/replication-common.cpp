@@ -28,8 +28,6 @@
 #include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp string in a target buffer
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,5 +87,3 @@ bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem) {
 
   return false;
 }
-
-

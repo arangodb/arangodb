@@ -29,9 +29,7 @@ using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 static std::vector<std::string> const EmptyMapping;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an endpoint list
@@ -52,7 +50,6 @@ EndpointList::~EndpointList() {
 
   _endpoints.clear();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a new endpoint
@@ -246,5 +243,3 @@ std::string EndpointList::getEncryptionName(
       return "non-encrypted";
   }
 }
-
-

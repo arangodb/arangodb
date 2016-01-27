@@ -64,7 +64,6 @@ class SkiplistIterator {
  private:
   friend class SkiplistIndex;
 
-  
  private:
   // Shorthand for the skiplist node
   typedef arangodb::basics::SkipListNode<TRI_skiplist_index_key_t,
@@ -78,7 +77,6 @@ class SkiplistIterator {
         : _leftEndPoint(nullptr), _rightEndPoint(nullptr) {}
   };
 
-  
  private:
   SkiplistIndex const* _index;
   size_t _currentInterval;  // starts with 0, current interval used
@@ -86,7 +84,6 @@ class SkiplistIterator {
   Node* _cursor;
   std::vector<SkiplistIteratorInterval> _intervals;
 
-  
  public:
   SkiplistIterator(SkiplistIndex const* idx, bool reverse)
       : _index(idx), _currentInterval(0), _reverse(reverse), _cursor(nullptr) {}
@@ -105,7 +102,6 @@ class SkiplistIterator {
   // SkiplistPrevIterationCallback for the exact
   // condition for the iterator to be exhausted.
 
-  
  public:
   size_t size() const;
 
@@ -118,7 +114,6 @@ class SkiplistIterator {
   void findHelper(TRI_index_operator_t const* indexOperator,
                   std::vector<SkiplistIteratorInterval>& interval);
 
-  
  private:
   bool hasPrevIteration() const;
   TRI_index_element_t* prevIteration();
@@ -136,8 +131,7 @@ class SkiplistIterator {
 
 class SkiplistIndexIterator final : public IndexIterator {
  public:
-  SkiplistIndexIterator(arangodb::Transaction* trx,
-                        SkiplistIndex const* index,
+  SkiplistIndexIterator(arangodb::Transaction* trx, SkiplistIndex const* index,
                         std::vector<TRI_index_operator_t*> op, bool reverse)
       : _trx(trx),
         _index(index),
@@ -195,7 +189,6 @@ class SkiplistIndex final : public PathBasedIndex {
   typedef arangodb::basics::SkipList<TRI_skiplist_index_key_t,
                                      TRI_index_element_t> TRI_Skiplist;
 
-  
  public:
   SkiplistIndex() = delete;
 
@@ -208,7 +201,6 @@ class SkiplistIndex final : public PathBasedIndex {
 
   ~SkiplistIndex();
 
-  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
@@ -238,8 +230,8 @@ class SkiplistIndex final : public PathBasedIndex {
   /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
   //////////////////////////////////////////////////////////////////////////////
 
-  SkiplistIterator* lookup(arangodb::Transaction*,
-                           TRI_index_operator_t*, bool) const;
+  SkiplistIterator* lookup(arangodb::Transaction*, TRI_index_operator_t*,
+                           bool) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -259,7 +251,6 @@ class SkiplistIndex final : public PathBasedIndex {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
                            std::unordered_set<int> const&) const;
@@ -282,7 +273,6 @@ class SkiplistIndex final : public PathBasedIndex {
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
       size_t&, bool) const;
 
-  
  private:
   ElementElementComparator CmpElmElm;
 
@@ -297,5 +287,3 @@ class SkiplistIndex final : public PathBasedIndex {
 }
 
 #endif
-
-

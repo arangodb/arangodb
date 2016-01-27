@@ -29,9 +29,7 @@
 namespace arangodb {
 namespace aql {
 
-
 class ShortStringStorage {
-  
  public:
   ShortStringStorage(ShortStringStorage const&) = delete;
   ShortStringStorage& operator=(ShortStringStorage const&) = delete;
@@ -40,21 +38,18 @@ class ShortStringStorage {
 
   ~ShortStringStorage();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a short string
   //////////////////////////////////////////////////////////////////////////////
 
   char* registerString(char const*, size_t);
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief allocate a new block of memory
   //////////////////////////////////////////////////////////////////////////////
 
   void allocateBlock();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximum length of strings in short string storage
@@ -62,7 +57,6 @@ class ShortStringStorage {
 
   static size_t const MaxStringLength;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief already allocated string blocks
@@ -92,5 +86,3 @@ class ShortStringStorage {
 }
 
 #endif
-
-

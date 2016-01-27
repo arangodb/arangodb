@@ -31,7 +31,6 @@
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clean interval in microseconds
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +48,6 @@ static int const CLEANUP_CURSOR_ITERATIONS = 3;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int const CLEANUP_INDEX_ITERATIONS = 5;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks all datafiles of a collection
@@ -72,8 +70,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
     // check and remove all callback elements at the beginning of the list
     auto callback = [&](arangodb::Ditch const* ditch) -> bool {
-      if (ditch->type() ==
-          arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
+      if (ditch->type() == arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
         // check if we can really unload, this is only the case if the
         // collection's WAL markers
         // were fully collected
@@ -120,10 +117,10 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
       if (gotStatus && !isUnloading) {
         popped = false;
-        auto unloader = ditches->process(
-            popped, [](arangodb::Ditch const* ditch) -> bool {
-            return (ditch->type() ==
-                arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
+        auto unloader =
+            ditches->process(popped, [](arangodb::Ditch const* ditch) -> bool {
+              return (ditch->type() ==
+                      arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
             });
         if (popped) {
           // we've changed the list. try with current state in next turn
@@ -138,7 +135,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
         // if there is still some garbage collection to perform,
         // check if the collection was deleted already
-        { 
+        {
           TRY_READ_LOCKER(readLocker, collection->_lock);
 
           if (readLocker.isLocked()) {
@@ -174,19 +171,17 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
     auto const type = ditch->type();
 
     if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_DROP) {
-      dynamic_cast<arangodb::DropDatafileDitch*>(ditch)
-          ->executeCallback();
+      dynamic_cast<arangodb::DropDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
       // next iteration
     } else if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_RENAME) {
-      dynamic_cast<arangodb::RenameDatafileDitch*>(ditch)
-          ->executeCallback();
+      dynamic_cast<arangodb::RenameDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
       // next iteration
     } else if (type == arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
       // collection will be unloaded
-      bool hasUnloaded = dynamic_cast<arangodb::UnloadCollectionDitch*>(
-                             ditch)->executeCallback();
+      bool hasUnloaded = dynamic_cast<arangodb::UnloadCollectionDitch*>(ditch)
+                             ->executeCallback();
       delete ditch;
 
       if (hasUnloaded) {
@@ -195,8 +190,8 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
       }
     } else if (type == arangodb::Ditch::TRI_DITCH_COLLECTION_DROP) {
       // collection will be dropped
-      bool hasDropped = dynamic_cast<arangodb::DropCollectionDitch*>(
-                            ditch)->executeCallback();
+      bool hasDropped = dynamic_cast<arangodb::DropCollectionDitch*>(ditch)
+                            ->executeCallback();
       delete ditch;
 
       if (hasDropped) {
@@ -218,8 +213,8 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
 static void CleanupCursors(TRI_vocbase_t* vocbase, bool force) {
   // clean unused cursors
-  auto cursors = static_cast<arangodb::CursorRepository*>(
-      vocbase->_cursorRepository);
+  auto cursors =
+      static_cast<arangodb::CursorRepository*>(vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
   try {
@@ -228,7 +223,6 @@ static void CleanupCursors(TRI_vocbase_t* vocbase, bool force) {
     LOG_WARNING("caught exception during cursor cleanup");
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup event loop
@@ -327,5 +321,3 @@ void TRI_CleanupVocBase(void* data) {
 
   LOG_TRACE("shutting down cleanup thread");
 }
-
-

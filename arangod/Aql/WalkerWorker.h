@@ -35,13 +35,11 @@ namespace aql {
 
 template <class T>
 class WalkerWorker {
-  
  public:
   WalkerWorker() {}
 
   virtual ~WalkerWorker() {}
 
-  
   virtual bool before(T*) {
     return false;  // true to abort the whole walking process
   }
@@ -82,7 +80,6 @@ class WalkerWorker {
 
 #endif
 
-  
  private:
 #ifdef TRI_ENABLE_FAILURE_TESTS
   std::unordered_set<T*> _done;
@@ -92,4 +89,3 @@ class WalkerWorker {
 }
 
 #endif
-

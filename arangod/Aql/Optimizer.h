@@ -33,7 +33,6 @@
 namespace arangodb {
 namespace aql {
 
-
 class Optimizer {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -296,7 +295,6 @@ class Optimizer {
     std::deque<ExecutionPlan*> list;
     std::deque<int> levelDone;
 
-
     PlanList() {}
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +411,6 @@ class Optimizer {
     }
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor, this will initialize the rules database
@@ -423,10 +420,8 @@ class Optimizer {
 
   explicit Optimizer(size_t);
 
-
   ~Optimizer() {}
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief do the optimization, this does the optimization, the resulting
@@ -532,7 +527,6 @@ class Optimizer {
     return (*it).second.level;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief estimatePlans
@@ -591,7 +585,6 @@ class Optimizer {
 
   static void setupRules();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief optimizer statistics
@@ -599,7 +592,6 @@ class Optimizer {
 
   Stats _stats;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the rules database
@@ -647,4 +639,3 @@ class Optimizer {
 }  // namespace aql
 }  // namespace arangodb
 #endif
-

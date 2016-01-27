@@ -46,7 +46,6 @@ class Cursor {
 
   virtual ~Cursor();
 
-  
  public:
   CursorId id() const { return _id; }
 
@@ -89,7 +88,6 @@ class Cursor {
 
   virtual void dump(arangodb::basics::StringBuffer&) = 0;
 
-  
  protected:
   CursorId const _id;
   size_t const _batchSize;
@@ -102,7 +100,6 @@ class Cursor {
   bool _isUsed;
 };
 
-
 class JsonCursor : public Cursor {
  public:
   JsonCursor(TRI_vocbase_t*, CursorId, struct TRI_json_t*, size_t,
@@ -110,7 +107,6 @@ class JsonCursor : public Cursor {
 
   ~JsonCursor();
 
-  
  public:
   bool hasNext() override final;
 
@@ -120,11 +116,9 @@ class JsonCursor : public Cursor {
 
   void dump(arangodb::basics::StringBuffer&) override final;
 
-  
  private:
   void freeJson();
 
-  
  private:
   TRI_vocbase_t* _vocbase;
   struct TRI_json_t* _json;
@@ -132,15 +126,13 @@ class JsonCursor : public Cursor {
   bool _cached;
 };
 
-
 class ExportCursor : public Cursor {
  public:
-  ExportCursor(TRI_vocbase_t*, CursorId, arangodb::CollectionExport*,
-               size_t, double, bool);
+  ExportCursor(TRI_vocbase_t*, CursorId, arangodb::CollectionExport*, size_t,
+               double, bool);
 
   ~ExportCursor();
 
-  
  public:
   bool hasNext() override final;
 
@@ -150,7 +142,6 @@ class ExportCursor : public Cursor {
 
   void dump(arangodb::basics::StringBuffer&) override final;
 
-  
  private:
   TRI_vocbase_t* _vocbase;
   arangodb::CollectionExport* _ex;
@@ -159,4 +150,3 @@ class ExportCursor : public Cursor {
 }
 
 #endif
-

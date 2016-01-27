@@ -35,8 +35,6 @@ struct TRI_transaction_s;
 namespace arangodb {
 
 class TransactionContext {
-  
-  
  public:
   TransactionContext(TransactionContext const&) = delete;
   TransactionContext& operator=(TransactionContext const&) = delete;
@@ -55,7 +53,6 @@ class TransactionContext {
 
   virtual ~TransactionContext();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
@@ -96,4 +93,3 @@ class TransactionContext {
 }
 
 #endif
-

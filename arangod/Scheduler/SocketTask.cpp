@@ -35,7 +35,6 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,14 +82,11 @@ SocketTask::~SocketTask() {
   ConnectionStatisticsAgent::release();
 }
 
-
-
 void SocketTask::setKeepAliveTimeout(double timeout) {
   if (_keepAliveWatcher != nullptr && timeout > 0.0) {
     _scheduler->rearmTimer(_keepAliveWatcher, timeout);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills the read buffer
@@ -219,7 +215,6 @@ bool SocketTask::handleWrite() {
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets an active write buffer
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,8 +263,6 @@ void SocketTask::setWriteBuffer(StringBuffer* buffer,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::hasWriteBuffer() const { return _writeBuffer != nullptr; }
-
-
 
 bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
 #ifdef _WIN32
@@ -358,7 +351,6 @@ void SocketTask::cleanup() {
   _writeWatcher = nullptr;
 }
 
-
 bool SocketTask::handleEvent(EventToken token, EventType revents) {
   bool result = true;
 
@@ -398,5 +390,3 @@ bool SocketTask::handleEvent(EventToken token, EventType revents) {
 
   return result;
 }
-
-

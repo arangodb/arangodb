@@ -198,5 +198,3 @@ bool JSLoader::executeAllScripts(v8::Isolate* isolate,
 
   return ok;
 }
-
-

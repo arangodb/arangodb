@@ -25,8 +25,8 @@ struct DocumentOperation {
     REVERTED
   };
 
-  DocumentOperation(arangodb::Transaction* trx, Marker* marker,
-                    bool freeMarker, TRI_document_collection_t* document,
+  DocumentOperation(arangodb::Transaction* trx, Marker* marker, bool freeMarker,
+                    TRI_document_collection_t* document,
                     TRI_voc_document_operation_e type, TRI_voc_rid_t rid)
       : trx(trx),
         marker(marker),
@@ -139,5 +139,3 @@ struct DocumentOperation {
 }
 
 #endif
-
-

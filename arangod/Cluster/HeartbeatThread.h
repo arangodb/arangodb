@@ -42,7 +42,6 @@ class ApplicationDispatcher;
 class ApplicationV8;
 
 class HeartbeatThread : public basics::Thread {
-  
  private:
   HeartbeatThread(HeartbeatThread const&);
   HeartbeatThread& operator=(HeartbeatThread const&);
@@ -61,7 +60,6 @@ class HeartbeatThread : public basics::Thread {
 
   ~HeartbeatThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the heartbeat
@@ -120,7 +118,6 @@ class HeartbeatThread : public basics::Thread {
 
   static bool hasRunOnce() { return (HasRunOnce == 1); }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop
@@ -128,7 +125,6 @@ class HeartbeatThread : public basics::Thread {
 
   void run();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop, coordinator version
@@ -178,7 +174,6 @@ class HeartbeatThread : public basics::Thread {
 
   bool fetchUsers(TRI_vocbase_t*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief server
@@ -287,5 +282,3 @@ class HeartbeatThread : public basics::Thread {
 }
 
 #endif
-
-

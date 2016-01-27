@@ -42,7 +42,6 @@ std::map<int, Optimizer::Rule> Optimizer::_rules;
 
 std::unordered_map<std::string, int> Optimizer::_ruleLookup;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // @brief constructor, this will initialize the rules database
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +53,6 @@ Optimizer::Optimizer(size_t maxNumberOfPlans)
     setupRules();
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief add a plan to the optimizer
@@ -291,7 +289,6 @@ char const* Optimizer::translateRule(int rule) {
 
   return nullptr;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimatePlans
@@ -564,4 +561,3 @@ void Optimizer::setupRules() {
                  undistributeRemoveAfterEnumCollRule_pass10, true);
   }
 }
-

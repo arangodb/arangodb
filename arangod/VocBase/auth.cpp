@@ -251,7 +251,6 @@ static void ClearAuthInfo(TRI_vocbase_t* vocbase) {
   vocbase->_authCache._nrUsed = 0;
 }
 
-
 uint64_t VocbaseAuthInfo::hash() const {
   return TRI_FnvHashString(_username.c_str());
 }
@@ -374,7 +373,7 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
           ConvertAuthInfo(vocbase, document, ptr));
       if (auth != nullptr) {
         VocbaseAuthInfo* old =
-          static_cast<VocbaseAuthInfo*>(TRI_InsertKeyAssociativePointer(
+            static_cast<VocbaseAuthInfo*>(TRI_InsertKeyAssociativePointer(
                 &vocbase->_authInfo, auth->username(), auth.get(), true));
         auth.release();
 
@@ -400,7 +399,7 @@ bool TRI_PopulateAuthInfo(TRI_vocbase_t* vocbase, VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
   WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
-  
+
   ClearAuthInfo(vocbase);
 
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
@@ -446,7 +445,7 @@ char* TRI_CheckCacheAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
   char* username = nullptr;
 
   READ_LOCKER(readLocker, vocbase->_authInfoLock);
-  
+
   TRI_vocbase_auth_cache_t* cached = static_cast<TRI_vocbase_auth_cache_t*>(
       TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash));
 
@@ -505,8 +504,8 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
     size_t const n = strlen(auth->passwordSalt());
     size_t const p = strlen(password);
 
-    char* salted =
-      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + p + 1, false));
+    char* salted = static_cast<char*>(
+        TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + p + 1, false));
 
     if (salted == nullptr) {
       return false;
@@ -527,22 +526,22 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
     try {
       if (strcmp(passwordMethod, "sha1") == 0) {
         arangodb::rest::SslInterface::sslSHA1(salted, n + p, crypted,
-            cryptedLength);
+                                              cryptedLength);
       } else if (strcmp(passwordMethod, "sha512") == 0) {
         arangodb::rest::SslInterface::sslSHA512(salted, n + p, crypted,
-            cryptedLength);
+                                                cryptedLength);
       } else if (strcmp(passwordMethod, "sha384") == 0) {
         arangodb::rest::SslInterface::sslSHA384(salted, n + p, crypted,
-            cryptedLength);
+                                                cryptedLength);
       } else if (strcmp(passwordMethod, "sha256") == 0) {
         arangodb::rest::SslInterface::sslSHA256(salted, n + p, crypted,
-            cryptedLength);
+                                                cryptedLength);
       } else if (strcmp(passwordMethod, "sha224") == 0) {
         arangodb::rest::SslInterface::sslSHA224(salted, n + p, crypted,
-            cryptedLength);
+                                                cryptedLength);
       } else if (strcmp(passwordMethod, "md5") == 0) {
         arangodb::rest::SslInterface::sslMD5(salted, n + p, crypted,
-            cryptedLength);
+                                             cryptedLength);
       } else {
         // invalid algorithm...
         res = false;
@@ -600,4 +599,3 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
 
   return res;
 }
-

@@ -36,12 +36,9 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 class arangodb::rest::AsyncCallbackContext {
-  
  public:
-
   explicit AsyncCallbackContext(std::string const& coordHeader)
       : _coordHeader(coordHeader), _response(nullptr) {}
-
 
   ~AsyncCallbackContext() {
     if (_response != nullptr) {
@@ -49,14 +46,13 @@ class arangodb::rest::AsyncCallbackContext {
     }
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief gets the coordinator header
   //////////////////////////////////////////////////////////////////////////////
 
   std::string& getCoordinatorHeader() { return _coordHeader; }
-  
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief coordinator header
@@ -95,12 +91,10 @@ AsyncJobResult::AsyncJobResult(IdType jobId, HttpResponse* response,
       _status(status),
       _ctx(ctx) {}
 
-
 AsyncJobResult::~AsyncJobResult() {}
 
 AsyncJobManager::AsyncJobManager(callback_fptr callback)
     : _lock(), _jobs(), callback(callback) {}
-
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
@@ -323,5 +317,3 @@ void AsyncJobManager::finishAsyncJob(AsyncJobResult::IdType jobId,
     }
   }
 }
-
-

@@ -60,7 +60,6 @@ class Transaction {
   Transaction(Transaction const&) = delete;
   Transaction& operator=(Transaction const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
@@ -114,7 +113,6 @@ class Transaction {
     delete _transactionContext;
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return database of transaction
@@ -557,10 +555,9 @@ class Transaction {
   /// @brief return the setup state
   //////////////////////////////////////////////////////////////////////////////
 
-  int setupState () { return _setupState; }
-  
+  int setupState() { return _setupState; }
+
  protected:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection
   //////////////////////////////////////////////////////////////////////////////
@@ -605,6 +602,21 @@ class Transaction {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief add a collection by id, with the name supplied
+  //////////////////////////////////////////////////////////////////////////////
+
+  int addCollection(TRI_voc_cid_t cid, std::string const& name,
+                    TRI_transaction_type_e type) {
+    int res = this->addCollection(cid, type);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      _errorData = name;
+    }
+
+    return res;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id
   //////////////////////////////////////////////////////////////////////////////
 
@@ -617,7 +629,7 @@ class Transaction {
       // invalid cid
       return registerError(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
-    
+
     if (_setupState != TRI_ERROR_NO_ERROR) {
       return _setupState;
     }
@@ -888,7 +900,6 @@ class Transaction {
     return res;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register an error for the transaction
@@ -1021,7 +1032,6 @@ class Transaction {
     return TRI_ERROR_NO_ERROR;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief external transaction id. used in replication only
@@ -1077,7 +1087,6 @@ class Transaction {
 
   bool _isReal;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the C transaction struct
@@ -1107,5 +1116,3 @@ class Transaction {
 }
 
 #endif
-
-

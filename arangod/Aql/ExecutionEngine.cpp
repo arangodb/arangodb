@@ -94,11 +94,11 @@ static ExecutionBlock* CreateBlock(
       if (aggregationMethod ==
           CollectOptions::CollectMethod::COLLECT_METHOD_HASH) {
         return new HashedCollectBlock(engine,
-                                        static_cast<CollectNode const*>(en));
-      } else if (aggregationMethod == CollectOptions::CollectMethod::
-                                          COLLECT_METHOD_SORTED) {
+                                      static_cast<CollectNode const*>(en));
+      } else if (aggregationMethod ==
+                 CollectOptions::CollectMethod::COLLECT_METHOD_SORTED) {
         return new SortedCollectBlock(engine,
-                                        static_cast<CollectNode const*>(en));
+                                      static_cast<CollectNode const*>(en));
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -164,8 +164,6 @@ static ExecutionBlock* CreateBlock(
   return nullptr;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the engine
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +195,6 @@ ExecutionEngine::~ExecutionEngine() {
     delete it;
   }
 }
-
 
 struct Instanciator final : public WalkerWorker<ExecutionNode> {
   ExecutionEngine* engine;
@@ -249,7 +246,6 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
     cache.emplace(en, block);
   }
 };
-
 
 // Here is a description of how the instantiation of an execution plan
 // works in the cluster. See below for a complete example
@@ -411,7 +407,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   // coordinator. Note that the main query and engine is not put into
   // this map at all.
 
-
   CoordinatorInstanciator(Query* query, QueryRegistry* queryRegistry)
       : query(query),
         queryRegistry(queryRegistry),
@@ -424,7 +419,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     engines.emplace_back(COORDINATOR, 0, PART_MAIN, 0);
   }
-
 
   ~CoordinatorInstanciator() {}
 
@@ -449,8 +443,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
       if (current->getType() == ExecutionNode::REMOTE) {
         // update the remote node with the information about the query
-        static_cast<RemoteNode*>(clone)->server(
-            "server:" + arangodb::ServerState::instance()->getId());
+        static_cast<RemoteNode*>(clone)
+            ->server("server:" + arangodb::ServerState::instance()->getId());
         static_cast<RemoteNode*>(clone)->ownName(shardId);
         static_cast<RemoteNode*>(clone)->queryId(connectedId);
         // only one of the remote blocks is responsible for forwarding the
@@ -475,10 +469,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   /// @brief distributePlanToShard, send a single plan to one shard
   //////////////////////////////////////////////////////////////////////////////
 
-  void distributePlanToShard(
-      arangodb::CoordTransactionID& coordTransactionID,
-      EngineInfo const& info, Collection* collection, QueryId& connectedId,
-      std::string const& shardId, TRI_json_t* jsonPlan) {
+  void distributePlanToShard(arangodb::CoordTransactionID& coordTransactionID,
+                             EngineInfo const& info, Collection* collection,
+                             QueryId& connectedId, std::string const& shardId,
+                             TRI_json_t* jsonPlan) {
     // create a JSON representation of the plan
     Json result(Json::Object);
 
@@ -536,10 +530,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   /// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
   //////////////////////////////////////////////////////////////////////////////
 
-  void aggregateQueryIds(
-      EngineInfo const& info, arangodb::ClusterComm*& cc,
-      arangodb::CoordTransactionID& coordTransactionID,
-      Collection* collection) {
+  void aggregateQueryIds(EngineInfo const& info, arangodb::ClusterComm*& cc,
+                         arangodb::CoordTransactionID& coordTransactionID,
+                         Collection* collection) {
     // pick up the remote query ids
     auto shardIds = collection->shardIds();
 
@@ -602,8 +595,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // std::cout << "distributePlansToShards: " << info.id << std::endl;
     Collection* collection = info.getCollection();
     // now send the plan to the remote servers
-    arangodb::CoordTransactionID coordTransactionID =
-        TRI_NewTickServer();
+    arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto cc = arangodb::ClusterComm::instance();
     TRI_ASSERT(cc != nullptr);
 
@@ -851,7 +843,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
@@ -862,8 +853,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
   auto role = arangodb::ServerState::instance()->getRole();
   bool const isCoordinator =
       arangodb::ServerState::instance()->isCoordinator(role);
-  bool const isDBServer =
-      arangodb::ServerState::instance()->isDBServer(role);
+  bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
 
   ExecutionEngine* engine = nullptr;
 
@@ -950,8 +940,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           std::string const& shardId = p.first;
           std::string const& queryId = p.second;
           // Lock shard on DBserver:
-          arangodb::CoordTransactionID coordTransactionID =
-              TRI_NewTickServer();
+          arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
           auto cc = arangodb::ClusterComm::instance();
           TRI_vocbase_t* vocbase = query->vocbase();
           std::string const url(
@@ -1067,5 +1056,3 @@ void ExecutionEngine::addBlock(ExecutionBlock* block) {
 
   _blocks.emplace_back(block);
 }
-
-

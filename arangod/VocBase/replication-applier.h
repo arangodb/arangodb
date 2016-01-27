@@ -31,12 +31,9 @@
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 
-
 struct TRI_json_t;
 struct TRI_server_t;
 struct TRI_vocbase_t;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct containing a replication apply configuration
@@ -233,7 +230,6 @@ class TRI_replication_applier_t {
 
   std::shared_ptr<VPackBuilder> toVelocyPack() const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register an applier error
@@ -254,14 +250,12 @@ class TRI_replication_applier_t {
   TRI_thread_t _thread;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_server_t*,
                                                         TRI_vocbase_t*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication apply configuration
@@ -352,5 +346,3 @@ int TRI_SaveConfigurationReplicationApplier(
     TRI_vocbase_t*, TRI_replication_applier_configuration_t const*, bool);
 
 #endif
-
-

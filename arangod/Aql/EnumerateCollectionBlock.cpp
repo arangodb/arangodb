@@ -29,11 +29,9 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
-
 
 EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
@@ -307,4 +305,3 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   // We skipped atLeast documents
   return skipped;
 }
-

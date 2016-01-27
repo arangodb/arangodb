@@ -59,8 +59,6 @@ RestAqlHandler::RestAqlHandler(arangodb::rest::HttpRequest* request,
 
 size_t RestAqlHandler::queue() const { return Dispatcher::AQL_QUEUE; }
 
-
-
 bool RestAqlHandler::isDirect() const { return false; }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +126,8 @@ void RestAqlHandler::createQueryFromJson() {
   createResponse(arangodb::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 2);
-  answerBody("queryId", arangodb::basics::Json(arangodb::basics::StringUtils::itoa(_qId)))(
+  answerBody("queryId",
+             arangodb::basics::Json(arangodb::basics::StringUtils::itoa(_qId)))(
       "ttl", arangodb::basics::Json(ttl));
 
   _response->body().appendText(answerBody.toString());
@@ -319,7 +318,8 @@ void RestAqlHandler::createQueryFromString() {
   createResponse(arangodb::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 2);
-  answerBody("queryId", arangodb::basics::Json(arangodb::basics::StringUtils::itoa(_qId)))(
+  answerBody("queryId",
+             arangodb::basics::Json(arangodb::basics::StringUtils::itoa(_qId)))(
       "ttl", arangodb::basics::Json(ttl));
   _response->body().appendText(answerBody.toString());
 }
@@ -646,7 +646,6 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle for useQuery
 ////////////////////////////////////////////////////////////////////////////////
@@ -869,5 +868,3 @@ TRI_json_t* RestAqlHandler::parseJsonBody() {
 
   return json;
 }
-
-

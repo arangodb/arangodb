@@ -39,7 +39,6 @@ using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,9 +284,6 @@ bool CtrlHandler(DWORD eventType) {
 #endif
 }
 
-
-
-
 ApplicationScheduler::ApplicationScheduler(ApplicationServer* applicationServer)
     : ApplicationFeature("scheduler"),
       _applicationServer(applicationServer),
@@ -300,12 +296,10 @@ ApplicationScheduler::ApplicationScheduler(ApplicationServer* applicationServer)
       _descriptorMinimum(1024),
       _disableControlCHandler(false) {}
 
-
 ApplicationScheduler::~ApplicationScheduler() {
   Scheduler::SCHEDULER.release();  // TODO(fc) XXX remove this
   delete _scheduler;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows a multi scheduler to be build
@@ -360,8 +354,6 @@ void ApplicationScheduler::disableControlCHandler() {
   _disableControlCHandler = true;
 }
 
-
-
 void ApplicationScheduler::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
   // .............................................................................
@@ -401,7 +393,6 @@ void ApplicationScheduler::setupOptions(
   }
 }
 
-
 bool ApplicationScheduler::afterOptionParsing(
     arangodb::basics::ProgramOptions& options) {
   // show io backends
@@ -417,7 +408,6 @@ bool ApplicationScheduler::afterOptionParsing(
   return true;
 }
 
-
 bool ApplicationScheduler::prepare() {
   if (_disabled) {
     return true;
@@ -427,7 +417,6 @@ bool ApplicationScheduler::prepare() {
 
   return true;
 }
-
 
 bool ApplicationScheduler::start() {
   if (_disabled) {
@@ -461,7 +450,6 @@ bool ApplicationScheduler::start() {
   return true;
 }
 
-
 bool ApplicationScheduler::open() {
   if (_disabled) {
     return true;
@@ -473,7 +461,6 @@ bool ApplicationScheduler::open() {
 
   return false;
 }
-
 
 void ApplicationScheduler::stop() {
   if (_disabled) {
@@ -506,7 +493,6 @@ void ApplicationScheduler::stop() {
     _scheduler = nullptr;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the scheduler
@@ -660,5 +646,3 @@ void ApplicationScheduler::adjustFileDescriptors() {
 
 #endif
 }
-
-

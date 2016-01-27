@@ -410,8 +410,7 @@ int RecoverState::executeSingleOperation(
 
   try {
     trx = new SingleWriteTransactionType(
-        new arangodb::StandaloneTransactionContext(), vocbase,
-        collectionId);
+        new arangodb::StandaloneTransactionContext(), vocbase, collectionId);
 
     if (trx == nullptr) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1181,8 +1180,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
       slice = b2.slice();
 
-      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(),
-                                                   slice);
+      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), slice);
 
       WaitForDeletion(vocbase, collectionId,
                       TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1395,9 +1393,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RecoverState::replayLogfile(Logfile* logfile, int number) {
+  std::string const logfileName = logfile->filename();
+
   int const n = static_cast<int>(logfilesToProcess.size());
 
-  LOG_INFO("replaying WAL logfile '%s' (%d of %d)", logfile->filename().c_str(),
+  LOG_INFO("replaying WAL logfile '%s' (%d of %d)", logfileName.c_str(),
            number + 1, n);
 
   // Advise on sequential use:
@@ -1409,7 +1409,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
   if (!TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker,
                            static_cast<void*>(this))) {
     LOG_WARNING("WAL inspection failed when scanning logfile '%s'",
-                logfile->filename().c_str());
+                logfileName.c_str());
     return TRI_ERROR_ARANGO_RECOVERY;
   }
 
@@ -1526,8 +1526,8 @@ int RecoverState::fillIndexes() {
     document->useSecondaryIndexes(true);
 
     arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new arangodb::StandaloneTransactionContext(),
-        collection->_vocbase, document->_info.id());
+        new arangodb::StandaloneTransactionContext(), collection->_vocbase,
+        document->_info.id());
 
     int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);
 
@@ -1538,4 +1538,3 @@ int RecoverState::fillIndexes() {
 
   return TRI_ERROR_NO_ERROR;
 }
-

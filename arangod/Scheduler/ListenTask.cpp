@@ -294,5 +294,3 @@ bool ListenTask::bindSocket() {
 
   return true;
 }
-
-

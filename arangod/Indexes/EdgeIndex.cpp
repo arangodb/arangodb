@@ -369,8 +369,6 @@ static bool IsEqualElementEdgeToByKey(void* userData,
   return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
 }
 
-
-
 TRI_doc_mptr_t* EdgeIndexIterator::next() {
   while (true) {
     if (_position >= _keys.size()) {
@@ -420,7 +418,6 @@ void EdgeIndexIterator::reset() {
   _buffer = nullptr;
 }
 
-
 EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
@@ -461,7 +458,6 @@ EdgeIndex::~EdgeIndex() {
   delete _edgesTo;
   delete _edgesFrom;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a selectivity estimate for the index
@@ -511,8 +507,8 @@ void EdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   builder.add("buckets", VPackValue(_numBuckets));
 }
 
-int EdgeIndex::insert(arangodb::Transaction* trx,
-                      TRI_doc_mptr_t const* doc, bool isRollback) {
+int EdgeIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
+                      bool isRollback) {
   auto element = const_cast<TRI_doc_mptr_t*>(doc);
   _edgesFrom->insert(trx, element, true, isRollback);
 
@@ -526,8 +522,8 @@ int EdgeIndex::insert(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int EdgeIndex::remove(arangodb::Transaction* trx,
-                      TRI_doc_mptr_t const* doc, bool) {
+int EdgeIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
+                      bool) {
   _edgesFrom->remove(trx, doc);
   _edgesTo->remove(trx, doc);
 
@@ -711,7 +707,6 @@ arangodb::aql::AstNode* EdgeIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
@@ -751,11 +746,10 @@ IndexIterator* EdgeIndex::createIterator(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-  
+
   // _from or _to?
   bool const isFrom =
       (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
-
 
   if (keys.empty()) {
     // nothing to do. still need to return an empty iterator
@@ -768,5 +762,3 @@ IndexIterator* EdgeIndex::createIterator(
 
   return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
 }
-
-

@@ -38,7 +38,6 @@ class V8Job : public rest::Job {
   V8Job(V8Job const&) = delete;
   V8Job& operator=(V8Job const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new V8 job
@@ -53,24 +52,17 @@ class V8Job : public rest::Job {
 
   ~V8Job();
 
-  
  public:
-
   void work() override;
-
 
   bool cancel() override;
 
-
   void cleanup(rest::DispatcherQueue*) override;
-
 
   void handleError(basics::Exception const& ex) override;
 
-
   virtual std::string const& getName() const override { return _command; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase
@@ -111,4 +103,3 @@ class V8Job : public rest::Job {
 }
 
 #endif
-

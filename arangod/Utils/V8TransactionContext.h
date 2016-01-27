@@ -35,8 +35,6 @@ struct TRI_transaction_s;
 namespace arangodb {
 
 class V8TransactionContext final : public TransactionContext {
-  
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the context
@@ -50,7 +48,6 @@ class V8TransactionContext final : public TransactionContext {
 
   ~V8TransactionContext();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
@@ -122,7 +119,6 @@ class V8TransactionContext final : public TransactionContext {
 
   static bool IsEmbedded();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the v8 thread-local "global" transaction context
@@ -169,4 +165,3 @@ class V8TransactionContext final : public TransactionContext {
 }
 
 #endif
-

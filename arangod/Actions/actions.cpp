@@ -169,5 +169,3 @@ void TRI_CleanupActions() {
   }
   PrefixActions.clear();
 }
-
-

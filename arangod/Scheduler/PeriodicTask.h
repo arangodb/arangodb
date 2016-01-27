@@ -56,7 +56,6 @@ class PeriodicTask : virtual public Task {
   virtual bool handlePeriod() = 0;
 
  protected:
-
   ~PeriodicTask();
 
  public:
@@ -73,12 +72,9 @@ class PeriodicTask : virtual public Task {
   void resetTimer(double offset, double interval);
 
  protected:
-
   bool setup(Scheduler*, EventLoop) override;
 
-
   void cleanup() override;
-
 
   bool handleEvent(EventToken, EventType) override;
 
@@ -96,4 +92,3 @@ class PeriodicTask : virtual public Task {
 }
 
 #endif
-

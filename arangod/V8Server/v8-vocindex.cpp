@@ -405,8 +405,7 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
 
   // extract index type
-  arangodb::Index::IndexType type =
-      arangodb::Index::TRI_IDX_TYPE_UNKNOWN;
+  arangodb::Index::IndexType type = arangodb::Index::TRI_IDX_TYPE_UNKNOWN;
 
   if (obj->Has(TRI_V8_ASCII_STRING("type")) &&
       obj->Get(TRI_V8_ASCII_STRING("type"))->IsString()) {
@@ -1141,8 +1140,7 @@ static void CreateCollectionCoordinator(
 
       if (collectionType == TRI_COL_TYPE_EDGE) {
         // create a dummy edge index
-        auto edgeIndex =
-            std::make_unique<arangodb::EdgeIndex>(id, nullptr);
+        auto edgeIndex = std::make_unique<arangodb::EdgeIndex>(id, nullptr);
 
         velocy.openObject();
         edgeIndex->toVelocyPack(velocy, false);
@@ -1425,8 +1423,7 @@ static void JS_GetIndexesVocbaseCol(
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::Index* TRI_LookupIndexByHandle(
-    v8::Isolate* isolate,
-    arangodb::CollectionNameResolver const* resolver,
+    v8::Isolate* isolate, arangodb::CollectionNameResolver const* resolver,
     TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val,
     bool ignoreNotFound) {
   // reset the collection identifier

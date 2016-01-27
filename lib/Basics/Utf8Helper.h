@@ -31,7 +31,6 @@
 #include <unicode/regex.h>
 #include <unicode/ustring.h>
 
-
 namespace arangodb {
 namespace basics {
 
@@ -55,9 +54,7 @@ class Utf8Helper {
 
   explicit Utf8Helper(std::string const& lang);
 
-
   Utf8Helper();
-
 
   ~Utf8Helper();
 
@@ -174,7 +171,6 @@ class Utf8Helper {
 }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,5 +252,3 @@ bool TRI_get_words(TRI_vector_string_t*& words, char const* text,
                    size_t maximalWordLength, bool lowerCase);
 
 #endif
-
-

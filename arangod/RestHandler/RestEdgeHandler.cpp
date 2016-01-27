@@ -37,7 +37,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a string if defined, nop otherwise
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,10 +47,8 @@ using namespace arangodb::rest;
     what = 0;                   \
   }
 
-
 RestEdgeHandler::RestEdgeHandler(HttpRequest* request)
     : RestDocumentHandler(request) {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock API_EDGE_CREATE
@@ -249,9 +246,9 @@ bool RestEdgeHandler::createDocumentCoordinator(std::string const& collname,
 
   std::unique_ptr<TRI_json_t> json(
       arangodb::basics::VelocyPackHelper::velocyPackToJson(document));
-  int error = arangodb::createEdgeOnCoordinator(
-      dbname, collname, waitForSync, json, from, to, responseCode,
-      resultHeaders, resultBody);
+  int error = arangodb::createEdgeOnCoordinator(dbname, collname, waitForSync,
+                                                json, from, to, responseCode,
+                                                resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname.c_str(), error);
@@ -290,5 +287,3 @@ bool RestEdgeHandler::createDocumentCoordinator(std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock API_EDGE_DELETE
 ////////////////////////////////////////////////////////////////////////////////
-
-

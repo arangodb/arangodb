@@ -28,8 +28,6 @@
 #include "Basics/json.h"
 #include "V8/v8-globals.h"
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the keys of a TRI_json_t* object into a V8 array
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,8 +96,6 @@ double TRI_ObjectToDouble(v8::Handle<v8::Value> const, bool& error);
 
 bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const);
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the V8 conversion module
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,5 +103,3 @@ bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const);
 void TRI_InitV8Conversions(v8::Handle<v8::Context>);
 
 #endif
-
-

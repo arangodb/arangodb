@@ -35,7 +35,6 @@
 
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,8 +66,6 @@ HttpsCommTask::~HttpsCommTask() {
 
   delete[] _tmpReadBuffer;
 }
-
-
 
 bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   // setup base class
@@ -107,7 +104,6 @@ bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
 
   return true;
 }
-
 
 bool HttpsCommTask::handleEvent(EventToken token, EventType revents) {
   // try to accept the SSL connection
@@ -158,8 +154,6 @@ bool HttpsCommTask::handleEvent(EventToken token, EventType revents) {
   return result;
 }
 
-
-
 bool HttpsCommTask::fillReadBuffer() {
   if (nullptr == _ssl) {
     _clientClosed = true;
@@ -174,7 +168,6 @@ bool HttpsCommTask::fillReadBuffer() {
   return trySSLRead();
 }
 
-
 bool HttpsCommTask::handleWrite() {
   if (nullptr == _ssl) {
     _clientClosed = true;
@@ -188,7 +181,6 @@ bool HttpsCommTask::handleWrite() {
 
   return trySSLWrite();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief accepts SSL connection
@@ -468,5 +460,3 @@ void HttpsCommTask::shutdownSsl(bool initShutdown) {
     TRI_invalidatesocket(&_commSocket);
   }
 }
-
-

@@ -270,8 +270,7 @@ static void WeakDocumentDitchCallback(const v8::WeakCallbackData<
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_WrapShapedJson(
-    v8::Isolate* isolate,
-    arangodb::CollectionNameResolver const* resolver,
+    v8::Isolate* isolate, arangodb::CollectionNameResolver const* resolver,
     arangodb::DocumentDitch* ditch, TRI_voc_cid_t cid,
     TRI_document_collection_t* collection, void const* data) {
   v8::EscapableHandleScope scope(isolate);

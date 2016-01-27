@@ -29,7 +29,6 @@
 #include "Utils/ReplicationTransaction.h"
 #include "VocBase/replication-applier.h"
 
-
 struct TRI_json_t;
 struct TRI_server_t;
 struct TRI_vocbase_t;
@@ -48,19 +47,14 @@ enum RestrictType : uint32_t {
   RESTRICT_EXCLUDE
 };
 
-
 class ContinuousSyncer : public Syncer {
-  
  public:
-
   ContinuousSyncer(TRI_server_t*, TRI_vocbase_t*,
                    TRI_replication_applier_configuration_t const*,
                    TRI_voc_tick_t, bool);
 
-
   ~ContinuousSyncer();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run method, performs continuous synchronization
@@ -74,7 +68,6 @@ class ContinuousSyncer : public Syncer {
 
   TRI_replication_applier_t* applier() const { return _applier; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief abort all ongoing transactions
@@ -184,7 +177,6 @@ class ContinuousSyncer : public Syncer {
   int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
                       bool&, bool&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief server
@@ -274,5 +266,3 @@ class ContinuousSyncer : public Syncer {
 }
 
 #endif
-
-

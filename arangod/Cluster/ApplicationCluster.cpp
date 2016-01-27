@@ -40,10 +40,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-
-
-
-
 ApplicationCluster::ApplicationCluster(
     TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
     ApplicationV8* applicationV8)
@@ -72,7 +68,6 @@ ApplicationCluster::ApplicationCluster(
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
-
 ApplicationCluster::~ApplicationCluster() {
   delete _heartbeat;
 
@@ -80,8 +75,6 @@ ApplicationCluster::~ApplicationCluster() {
   auto cm = httpclient::ConnectionManager::instance();
   delete cm;
 }
-
-
 
 void ApplicationCluster::setupOptions(
     std::map<std::string, basics::ProgramOptionsDescription>& options) {
@@ -110,7 +103,6 @@ void ApplicationCluster::setupOptions(
       "cluster.disable-dispatcher-kickstarter", &_disableDispatcherKickstarter,
       "disable the kickstarter functionality");
 }
-
 
 bool ApplicationCluster::prepare() {
   // set authentication data
@@ -277,7 +269,6 @@ bool ApplicationCluster::prepare() {
   return true;
 }
 
-
 bool ApplicationCluster::start() {
   if (!enabled()) {
     return true;
@@ -372,7 +363,6 @@ bool ApplicationCluster::start() {
 
   return true;
 }
-
 
 bool ApplicationCluster::open() {
   if (!enabled()) {
@@ -484,7 +474,6 @@ bool ApplicationCluster::open() {
   return true;
 }
 
-
 void ApplicationCluster::close() {
   if (!enabled()) {
     return;
@@ -500,7 +489,6 @@ void ApplicationCluster::close() {
   AgencyComm comm;
   comm.sendServerState(0.0);
 }
-
 
 void ApplicationCluster::stop() {
   ClusterComm::cleanup();
@@ -536,8 +524,6 @@ void ApplicationCluster::stop() {
     }
   }
 
-  //ClusterComm::cleanup();
+  // ClusterComm::cleanup();
   AgencyComm::cleanup();
 }
-
-

@@ -99,9 +99,8 @@ bool Index::supportsSortCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::IndexIterator* Index::getIterator(
-    arangodb::Transaction* trx,
-    arangodb::IndexIteratorContext* context, arangodb::aql::Ast* ast,
-    arangodb::aql::AstNode const* condition,
+    arangodb::Transaction* trx, arangodb::IndexIteratorContext* context,
+    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(hasInternals());
   return getInternals()->iteratorForCondition(trx, context, ast, condition,
@@ -140,4 +139,3 @@ std::ostream& operator<<(std::ostream& stream,
   stream << index.getInternals()->context();
   return stream;
 }
-

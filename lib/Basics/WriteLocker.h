@@ -41,24 +41,22 @@
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-#define WRITE_LOCKER(obj, lock)                                           \
+#define WRITE_LOCKER(obj, lock) \
   arangodb::basics::WriteLocker obj(&lock, __FILE__, __LINE__)
 
-#define WRITE_LOCKER_EVENTUAL(obj, lock, t)                               \
+#define WRITE_LOCKER_EVENTUAL(obj, lock, t) \
   arangodb::basics::WriteLocker obj(&lock, t, __FILE__, __LINE__)
 
 #else
 
-#define WRITE_LOCKER(obj, lock)                                           \
-  arangodb::basics::WriteLocker obj(&lock)
+#define WRITE_LOCKER(obj, lock) arangodb::basics::WriteLocker obj(&lock)
 
-#define WRITE_LOCKER_EVENTUAL(obj, lock, t)                               \
+#define WRITE_LOCKER_EVENTUAL(obj, lock, t) \
   arangodb::basics::WriteLocker obj(&lock, t)
 
 #endif
 
-#define TRY_WRITE_LOCKER(obj, lock)                                       \
-  arangodb::basics::TryWriteLocker obj(&lock)
+#define TRY_WRITE_LOCKER(obj, lock) arangodb::basics::TryWriteLocker obj(&lock)
 
 namespace arangodb {
 namespace basics {
@@ -71,12 +69,10 @@ namespace basics {
 ////////////////////////////////////////////////////////////////////////////////
 
 class WriteLocker {
-
   WriteLocker(WriteLocker const&) = delete;
   WriteLocker& operator=(WriteLocker const&) = delete;
-  
- public:
 
+ public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a write-lock
 ///
@@ -94,7 +90,8 @@ class WriteLocker {
 
 #else
 
-  explicit WriteLocker(ReadWriteLock* readWriteLock) : _readWriteLock(readWriteLock) {
+  explicit WriteLocker(ReadWriteLock* readWriteLock)
+      : _readWriteLock(readWriteLock) {
     _readWriteLock->writeLock();
   }
 
@@ -107,7 +104,8 @@ class WriteLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-  WriteLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime, char const* file, int line)
+  WriteLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime,
+              char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
     double t = TRI_microtime();
     while (!_readWriteLock->tryWriteLock()) {
@@ -150,7 +148,6 @@ class WriteLocker {
   }
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the read-write lock
   //////////////////////////////////////////////////////////////////////////////
@@ -181,20 +178,19 @@ class WriteLocker {
 };
 
 class TryWriteLocker {
-
   TryWriteLocker(TryWriteLocker const&) = delete;
   TryWriteLocker& operator=(TryWriteLocker const&) = delete;
-  
+
  public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tries to aquire a write-lock
+  ///
+  /// The constructor tries to aquire a write lock, the destructors unlocks the
+  /// lock if we acquired it in the constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to aquire a write-lock
-///
-/// The constructor tries to aquire a write lock, the destructors unlocks the 
-/// lock if we acquired it in the constructor
-////////////////////////////////////////////////////////////////////////////////
-
-  explicit TryWriteLocker(ReadWriteLock* readWriteLock) : _readWriteLock(readWriteLock) {
+  explicit TryWriteLocker(ReadWriteLock* readWriteLock)
+      : _readWriteLock(readWriteLock) {
     _isLocked = _readWriteLock->tryWriteLock();
   }
 
@@ -207,7 +203,7 @@ class TryWriteLocker {
       _readWriteLock->unlock();
     }
   }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not we acquired the lock
   //////////////////////////////////////////////////////////////////////////////
@@ -215,23 +211,19 @@ class TryWriteLocker {
   bool isLocked() const { return _isLocked; }
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the read-write lock
   //////////////////////////////////////////////////////////////////////////////
 
   ReadWriteLock* _readWriteLock;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not we acquired the lock
   //////////////////////////////////////////////////////////////////////////////
 
   bool _isLocked;
-
 };
 }
 }
 
 #endif
-
-

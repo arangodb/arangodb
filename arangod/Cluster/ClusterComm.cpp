@@ -39,8 +39,8 @@ using namespace arangodb;
 /// @brief global callback for asynchronous REST handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::ClusterCommRestCallback(
-    std::string& coordinator, arangodb::rest::HttpResponse* response) {
+void arangodb::ClusterCommRestCallback(std::string& coordinator,
+                                       arangodb::rest::HttpResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
 
@@ -48,8 +48,8 @@ void arangodb::ClusterCommRestCallback(
 /// @brief routine to set the destination
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterCommResult::setDestination (std::string const& dest,
-                                        bool logConnectionErrors) {
+void ClusterCommResult::setDestination(std::string const& dest,
+                                       bool logConnectionErrors) {
   // This sets result.shardId, result.serverId and result.endpoint,
   // depending on what dest is. Note that if a shardID is given, the
   // responsible server is looked up, if a serverID is given, the endpoint
@@ -79,12 +79,11 @@ void ClusterCommResult::setDestination (std::string const& dest,
   } else if (dest.substr(0, 7) == "server:") {
     shardID = "";
     serverID = dest.substr(7);
-  } else if (dest.substr(0, 6) == "tcp://" ||
-             dest.substr(0, 6) == "ssl://") {
+  } else if (dest.substr(0, 6) == "tcp://" || dest.substr(0, 6) == "ssl://") {
     shardID = "";
     serverID = "";
     endpoint = dest;
-    return;   // all good
+    return;  // all good
   } else {
     shardID = "";
     serverID = "";
@@ -231,7 +230,6 @@ ClusterCommResult const ClusterComm::asyncRequest(
     std::unique_ptr<std::map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
     bool singleRequest) {
-
   auto op = std::make_unique<ClusterCommOperation>();
   op->result.clientTransactionID = clientTransactionID;
   op->result.coordTransactionID = coordTransactionID;
@@ -253,9 +251,11 @@ ClusterCommResult const ClusterComm::asyncRequest(
     // In the non-singleRequest mode we want to put it into the received
     // queue right away for backward compatibility:
     ClusterCommResult const resCopy(op->result);
-    if (! singleRequest) {
-      LOG_DEBUG("In asyncRequest, putting failed request %llu directly into"
-                " received queue.", (unsigned long long) resCopy.operationID);
+    if (!singleRequest) {
+      LOG_DEBUG(
+          "In asyncRequest, putting failed request %llu directly into"
+          " received queue.",
+          (unsigned long long)resCopy.operationID);
       CONDITION_LOCKER(locker, somethingReceived);
       received.push_back(op.get());
       op.release();
@@ -266,12 +266,12 @@ ClusterCommResult const ClusterComm::asyncRequest(
     return resCopy;
   }
 
-  if (destination.substr(0,6) == "shard:") {
+  if (destination.substr(0, 6) == "shard:") {
     if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
-      auto it = arangodb::Transaction::_makeNolockHeaders->find(
-          op->result.shardID);
+      auto it =
+          arangodb::Transaction::_makeNolockHeaders->find(op->result.shardID);
       if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found our shard\n";
@@ -286,7 +286,8 @@ ClusterCommResult const ClusterComm::asyncRequest(
     (*op->headerFields)["X-Arango-Coordinator"] =
         ServerState::instance()->getId() + ":" +
         basics::StringUtils::itoa(op->result.operationID) + ":" +
-        clientTransactionID + ":" + basics::StringUtils::itoa(coordTransactionID);
+        clientTransactionID + ":" +
+        basics::StringUtils::itoa(coordTransactionID);
     (*op->headerFields)["Authorization"] =
         ServerState::instance()->getAuthentication();
   }
@@ -350,14 +351,11 @@ ClusterCommResult const ClusterComm::asyncRequest(
 
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     ClientTransactionID const& clientTransactionID,
-    CoordTransactionID const coordTransactionID,
-    std::string const& destination,
+    CoordTransactionID const coordTransactionID, std::string const& destination,
     arangodb::rest::HttpRequest::HttpRequestType reqtype,
-    std::string const& path,
-    std::string const& body, 
+    std::string const& path, std::string const& body,
     std::map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
-
   std::map<std::string, std::string> headersCopy(headerFields);
 
   auto res = std::make_unique<ClusterCommResult>();
@@ -378,12 +376,11 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     return res;
   }
 
-  if (destination.substr(0,6) == "shard:") {
+  if (destination.substr(0, 6) == "shard:") {
     if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
-      auto it = arangodb::Transaction::_makeNolockHeaders->find(
-          res->shardID);
+      auto it = arangodb::Transaction::_makeNolockHeaders->find(res->shardID);
       if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found our shard\n";
@@ -392,15 +389,14 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     }
   }
 
-  httpclient::ConnectionManager* cm =
-      httpclient::ConnectionManager::instance();
+  httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
   httpclient::ConnectionManager::SingleServerConnection* connection =
       cm->leaseConnection(res->endpoint);
 
   if (nullptr == connection) {
     res->status = CL_COMM_ERROR;
-    res->errorMessage = "cannot create connection to server '" +
-                        res->serverID + "'";
+    res->errorMessage =
+        "cannot create connection to server '" + res->serverID + "'";
     if (logConnectionErrors()) {
       LOG_ERROR("cannot create connection to server '%s'",
                 res->serverID.c_str());
@@ -424,8 +420,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
         connection->_connection, endTime - currentTime, false);
     client->keepConnectionOnDestruction(true);
 
-    headersCopy["Authorization"] =
-        ServerState::instance()->getAuthentication();
+    headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
@@ -436,8 +431,8 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
 #endif
 #endif
 #endif
-    res->result.reset(client->request(reqtype, path, body.c_str(),
-                                      body.size(), headersCopy));
+    res->result.reset(
+        client->request(reqtype, path, body.c_str(), body.size(), headersCopy));
 
     if (res->result == nullptr || !res->result->isComplete()) {
       res->errorMessage = client->getErrorMessage();
@@ -548,7 +543,6 @@ ClusterCommResult const ClusterComm::wait(
     ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, OperationID const operationID,
     ShardID const& shardID, ClusterCommTimeout timeout) {
-
   IndexIterator i;
   QueueIterator q;
   double endtime;
@@ -600,8 +594,7 @@ ClusterCommResult const ClusterComm::wait(
           try {
             receivedByOpID.erase(i);
             received.erase(q);
-          }
-          catch (...) {
+          } catch (...) {
             op.release();
             throw;
           }
@@ -799,7 +792,8 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
   // Now find the connection to which the request goes from the coordinatorID:
   httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
-  std::string endpoint = ClusterInfo::instance()->getServerEndpoint(coordinatorID);
+  std::string endpoint =
+      ClusterInfo::instance()->getServerEndpoint(coordinatorID);
   if (endpoint == "") {
     if (logConnectionErrors()) {
       LOG_ERROR("asyncAnswer: cannot find endpoint for server '%s'",
@@ -837,9 +831,9 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
-  std::unique_ptr<httpclient::SimpleHttpResult> result
-      (client->request(rest::HttpRequest::HTTP_REQUEST_PUT, "/_api/shard-comm",
-                       body, len, headers));
+  std::unique_ptr<httpclient::SimpleHttpResult> result(
+      client->request(rest::HttpRequest::HTTP_REQUEST_PUT, "/_api/shard-comm",
+                      body, len, headers));
   if (result.get() == nullptr || !result->isComplete()) {
     cm->brokenConnection(connection);
     client->invalidateConnection();
@@ -859,7 +853,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                  arangodb::rest::HttpRequest* answer) {
+                                       arangodb::rest::HttpRequest* answer) {
   // First take apart the header to get the operaitonID:
   OperationID operationID;
   size_t start = 0;
@@ -869,7 +863,8 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
 
   pos = coordinatorHeader.find(":", start);
   if (pos == std::string::npos) {
-    return std::string("could not find coordinator ID in 'X-Arango-Coordinator'");
+    return std::string(
+        "could not find coordinator ID in 'X-Arango-Coordinator'");
   }
   // coordinatorID = coordinatorHeader.substr(start,pos-start);
   start = pos + 1;
@@ -999,8 +994,6 @@ void ClusterComm::cleanupAllQueues() {
   }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a ClusterCommThread
 ////////////////////////////////////////////////////////////////////////////////
@@ -1015,7 +1008,6 @@ ClusterCommThread::ClusterCommThread()
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterCommThread::~ClusterCommThread() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
@@ -1079,20 +1071,19 @@ void ClusterCommThread::run() {
         } else {
           if (nullptr != op->body.get()) {
             LOG_DEBUG("sending %s request to DB server '%s': %s",
-                      arangodb::rest::HttpRequest::translateMethod(
-                          op->reqtype).c_str(),
+                      arangodb::rest::HttpRequest::translateMethod(op->reqtype)
+                          .c_str(),
                       op->result.serverID.c_str(), op->body->c_str());
           } else {
             LOG_DEBUG("sending %s request to DB server '%s'",
-                      arangodb::rest::HttpRequest::translateMethod(
-                          op->reqtype).c_str(),
+                      arangodb::rest::HttpRequest::translateMethod(op->reqtype)
+                          .c_str(),
                       op->result.serverID.c_str());
           }
 
           auto client =
               std::make_unique<arangodb::httpclient::SimpleHttpClient>(
-                  connection->_connection, op->endTime - currentTime,
-                  false);
+                  connection->_connection, op->endTime - currentTime, false);
           client->keepConnectionOnDestruction(true);
 
           // We add this result to the operation struct without acquiring
@@ -1122,9 +1113,8 @@ void ClusterCommThread::run() {
             if (op->result.result->wasHttpError()) {
               op->result.status = CL_COMM_ERROR;
               op->result.errorMessage = "HTTP error, status ";
-              op->result.errorMessage +=
-                  arangodb::basics::StringUtils::itoa(
-                      op->result.result->getHttpReturnCode());
+              op->result.errorMessage += arangodb::basics::StringUtils::itoa(
+                  op->result.result->getHttpReturnCode());
             }
           }
         }
@@ -1166,11 +1156,8 @@ void ClusterCommThread::run() {
   LOG_DEBUG("stopped ClusterComm thread");
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the cluster comm background thread
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClusterCommThread::init() { return true; }
-
-

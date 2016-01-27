@@ -130,7 +130,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   } else {
     config->_database =
         TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
-                              value->_value._string.length - 1);
+                            value->_value._string.length - 1);
   }
 
   // read username / password
@@ -139,7 +139,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   if (TRI_IsStringJson(value)) {
     config->_username =
         TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
-                              value->_value._string.length - 1);
+                            value->_value._string.length - 1);
   }
 
   value = TRI_LookupObjectJson(json.get(), "password");
@@ -147,7 +147,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   if (TRI_IsStringJson(value)) {
     config->_password =
         TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
-                              value->_value._string.length - 1);
+                            value->_value._string.length - 1);
   }
 
   value = TRI_LookupObjectJson(json.get(), "requestTimeout");
@@ -293,7 +293,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   } else {
     config->_endpoint =
         TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
-                              value->_value._string.length - 1);
+                            value->_value._string.length - 1);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -498,7 +498,6 @@ static TRI_json_t* JsonState(TRI_replication_applier_state_t const* state) {
   return json;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a replication applier
 ////////////////////////////////////////////////////////////////////////////////
@@ -538,8 +537,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(
 
   return applier;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Frees all internal strings
@@ -729,8 +726,8 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
          sizeof(state->_progressTime));
 
   if (applier->_state._lastError._msg != nullptr) {
-    state->_lastError._msg = TRI_DuplicateString(
-        TRI_CORE_MEM_ZONE, applier->_state._lastError._msg);
+    state->_lastError._msg =
+        TRI_DuplicateString(TRI_CORE_MEM_ZONE, applier->_state._lastError._msg);
   } else {
     state->_lastError._msg = nullptr;
   }
@@ -1059,7 +1056,6 @@ int TRI_SaveConfigurationReplicationApplier(
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a replication applier
@@ -1498,7 +1494,6 @@ std::shared_ptr<VPackBuilder> TRI_replication_applier_t::toVelocyPack() const {
   return builder;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register an applier error
 ////////////////////////////////////////////////////////////////////////////////
@@ -1531,5 +1526,3 @@ int TRI_replication_applier_t::doSetError(int errorCode, char const* msg) {
 
   return errorCode;
 }
-
-

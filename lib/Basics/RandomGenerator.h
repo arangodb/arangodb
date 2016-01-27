@@ -149,12 +149,9 @@ class UniformCharacter {
   UniformCharacter& operator=(UniformCharacter const&);
 
  public:
-
   explicit UniformCharacter(size_t length);
 
-
   explicit UniformCharacter(std::string const& characters);
-
 
   UniformCharacter(size_t length, std::string const& characters);
 
@@ -181,4 +178,3 @@ class UniformCharacter {
 }
 
 #endif
-

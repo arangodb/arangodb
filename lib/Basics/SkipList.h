@@ -37,8 +37,6 @@
 namespace arangodb {
 namespace basics {
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a skiplist node
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +140,6 @@ class SkipList {
   size_t _memoryUsed;
 
  public:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new skiplist
   ///
@@ -191,7 +188,6 @@ class SkipList {
     freeNode(_start);
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the start node, note that this does not return the first
   /// data node but the (internal) artificial node stored under _start. This
@@ -488,7 +484,6 @@ class SkipList {
     return pos[0];
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief allocate a new SkipListNode of a certain height. If height is 0,
@@ -710,5 +705,3 @@ class SkipList {
 }  // namespace arangodb
 
 #endif
-
-

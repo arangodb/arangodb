@@ -43,17 +43,12 @@ namespace aql {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestAqlHandler : public RestVocbaseBaseHandler {
-  
  public:
-
   RestAqlHandler(rest::HttpRequest* request,
                  std::pair<ApplicationV8*, QueryRegistry*>* pair);
 
-  
  public:
-
   bool isDirect() const override;
-
 
   size_t queue() const override;
 
@@ -133,7 +128,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   void getInfoQuery(std::string const& operation, std::string const& idString);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle for useQuery
@@ -149,7 +143,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   TRI_json_t* parseJsonBody();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dig out vocbase from context and query from ID, handle errors
@@ -197,5 +190,3 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

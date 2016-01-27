@@ -32,7 +32,6 @@ using namespace arangodb;
 
 size_t const CollectionKeysRepository::MaxCollectCount = 32;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection keys repository
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +78,6 @@ CollectionKeysRepository::~CollectionKeysRepository() {
     _keys.clear();
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores collection keys in the repository
@@ -252,5 +250,3 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
 
   return (!found.empty());
 }
-
-

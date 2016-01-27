@@ -185,4 +185,3 @@ std::string homeDirectory();
 }
 
 #endif
-

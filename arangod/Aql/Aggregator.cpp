@@ -25,8 +25,9 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
-  
-Aggregator* Aggregator::fromTypeString(arangodb::AqlTransaction* trx, std::string const& type) {
+
+Aggregator* Aggregator::fromTypeString(arangodb::AqlTransaction* trx,
+                                       std::string const& type) {
   if (type == "LENGTH" || type == "COUNT") {
     return new AggregatorLength(trx);
   }
@@ -61,35 +62,32 @@ Aggregator* Aggregator::fromTypeString(arangodb::AqlTransaction* trx, std::strin
 }
 
 Aggregator* Aggregator::fromJson(arangodb::AqlTransaction* trx,
-                                 arangodb::basics::Json const& json,  
+                                 arangodb::basics::Json const& json,
                                  char const* variableName) {
   arangodb::basics::Json variableJson = json.get(variableName);
 
   if (variableJson.isString()) {
-    std::string const type(variableJson.json()->_value._string.data, variableJson.json()->_value._string.length - 1);
+    std::string const type(variableJson.json()->_value._string.data,
+                           variableJson.json()->_value._string.length - 1);
     return fromTypeString(trx, type);
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregate function"); 
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid aggregate function");
 }
 
 bool Aggregator::isSupported(std::string const& type) {
-  return (
-      type == "LENGTH" || type == "COUNT" ||
-      type == "MIN" ||
-      type == "MAX" ||
-      type == "SUM" ||
-      type == "AVERAGE" || type == "AVG" ||
-      type == "VARIANCE_POPULATION" || type == "VARIANCE" || 
-      type == "VARIANCE_SAMPLE" ||
-      type == "STDDEV_POPULATION" || type == "STDDEV" || 
-      type == "STDDEV_SAMPLE" 
-  );
+  return (type == "LENGTH" || type == "COUNT" || type == "MIN" ||
+          type == "MAX" || type == "SUM" || type == "AVERAGE" ||
+          type == "AVG" || type == "VARIANCE_POPULATION" ||
+          type == "VARIANCE" || type == "VARIANCE_SAMPLE" ||
+          type == "STDDEV_POPULATION" || type == "STDDEV" ||
+          type == "STDDEV_SAMPLE");
 }
 
 bool Aggregator::requiresInput(std::string const& type) {
   if (type == "LENGTH" || type == "COUNT") {
-    // LENGTH/COUNT do not require its input parameter, so 
+    // LENGTH/COUNT do not require its input parameter, so
     // it can be optimized away
     return false;
   }
@@ -97,39 +95,36 @@ bool Aggregator::requiresInput(std::string const& type) {
   return true;
 }
 
-void AggregatorLength::reset() {
-  count = 0;
-}
+void AggregatorLength::reset() { count = 0; }
 
-void AggregatorLength::reduce(AqlValue const&, TRI_document_collection_t const*) {
+void AggregatorLength::reduce(AqlValue const&,
+                              TRI_document_collection_t const*) {
   ++count;
 }
-  
+
 AqlValue AggregatorLength::stealValue() {
   uint64_t copy = count;
-  count = 0; 
+  count = 0;
   return AqlValue(new Json(static_cast<double>(copy)));
 }
 
-AggregatorMin::~AggregatorMin() {
-  value.destroy();
-}
+AggregatorMin::~AggregatorMin() { value.destroy(); }
 
-void AggregatorMin::reset() {
-  value.destroy();
-}
+void AggregatorMin::reset() { value.destroy(); }
 
 void AggregatorMin::reduce(AqlValue const& cmpValue,
                            TRI_document_collection_t const* cmpColl) {
-  if (value.isEmpty() || 
-      (!cmpValue.isNull(true) && AqlValue::Compare(trx, value, coll, cmpValue, cmpColl, true) > 0)) {
-    // the value `null` itself will not be used in MIN() to compare lower than e.g. value `false`
+  if (value.isEmpty() ||
+      (!cmpValue.isNull(true) &&
+       AqlValue::Compare(trx, value, coll, cmpValue, cmpColl, true) > 0)) {
+    // the value `null` itself will not be used in MIN() to compare lower than
+    // e.g. value `false`
     value.destroy();
     value = cmpValue.clone();
     coll = cmpColl;
   }
 }
-  
+
 AqlValue AggregatorMin::stealValue() {
   if (value.isEmpty()) {
     return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
@@ -139,17 +134,13 @@ AqlValue AggregatorMin::stealValue() {
   return copy;
 }
 
-AggregatorMax::~AggregatorMax() {
-  value.destroy();
-}
+AggregatorMax::~AggregatorMax() { value.destroy(); }
 
-void AggregatorMax::reset() {
-  value.destroy();
-}
+void AggregatorMax::reset() { value.destroy(); }
 
 void AggregatorMax::reduce(AqlValue const& cmpValue,
                            TRI_document_collection_t const* cmpColl) {
-  if (value.isEmpty() || 
+  if (value.isEmpty() ||
       AqlValue::Compare(trx, value, coll, cmpValue, cmpColl, true) < 0) {
     value.destroy();
     value = cmpValue.clone();
@@ -181,7 +172,8 @@ void AggregatorSum::reduce(AqlValue const& cmpValue,
     if (cmpValue.isNumber()) {
       bool failed = false;
       double const number = cmpValue.toNumber(failed);
-      if (! failed && !std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+      if (!failed && !std::isnan(number) && number != HUGE_VAL &&
+          number != -HUGE_VAL) {
         sum += number;
         return;
       }
@@ -215,7 +207,8 @@ void AggregatorAverage::reduce(AqlValue const& cmpValue,
     if (cmpValue.isNumber()) {
       bool failed = false;
       double const number = cmpValue.toNumber(failed);
-      if (! failed && !std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+      if (!failed && !std::isnan(number) && number != HUGE_VAL &&
+          number != -HUGE_VAL) {
         sum += number;
         ++count;
         return;
@@ -227,7 +220,8 @@ void AggregatorAverage::reduce(AqlValue const& cmpValue,
 }
 
 AqlValue AggregatorAverage::stealValue() {
-  if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+  if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL ||
+      sum == -HUGE_VAL) {
     return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
   }
 
@@ -253,7 +247,8 @@ void AggregatorVarianceBase::reduce(AqlValue const& cmpValue,
     if (cmpValue.isNumber()) {
       bool failed = false;
       double const number = cmpValue.toNumber(failed);
-      if (! failed && !std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+      if (!failed && !std::isnan(number) && number != HUGE_VAL &&
+          number != -HUGE_VAL) {
         double const delta = number - mean;
         ++count;
         mean += delta / count;
@@ -267,7 +262,8 @@ void AggregatorVarianceBase::reduce(AqlValue const& cmpValue,
 }
 
 AqlValue AggregatorVariance::stealValue() {
-  if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+  if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) ||
+      sum == HUGE_VAL || sum == -HUGE_VAL) {
     return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
   }
 
@@ -275,13 +271,15 @@ AqlValue AggregatorVariance::stealValue() {
 
   if (!population) {
     TRI_ASSERT(count > 1);
-    return AqlValue(new arangodb::basics::Json(sum / static_cast<double>(count - 1)));
+    return AqlValue(
+        new arangodb::basics::Json(sum / static_cast<double>(count - 1)));
   }
   return AqlValue(new arangodb::basics::Json(sum / static_cast<double>(count)));
 }
 
 AqlValue AggregatorStddev::stealValue() {
-  if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+  if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) ||
+      sum == HUGE_VAL || sum == -HUGE_VAL) {
     return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
   }
 
@@ -289,8 +287,9 @@ AqlValue AggregatorStddev::stealValue() {
 
   if (!population) {
     TRI_ASSERT(count > 1);
-    return AqlValue(new arangodb::basics::Json(sqrt(sum / static_cast<double>(count - 1))));
+    return AqlValue(
+        new arangodb::basics::Json(sqrt(sum / static_cast<double>(count - 1))));
   }
-  return AqlValue(new arangodb::basics::Json(sqrt(sum / static_cast<double>(count))));
+  return AqlValue(
+      new arangodb::basics::Json(sqrt(sum / static_cast<double>(count))));
 }
-

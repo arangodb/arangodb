@@ -30,13 +30,11 @@
 
 #include "Scheduler/ApplicationScheduler.h"
 
-
 namespace arangodb {
 namespace rest {
 class ApplicationScheduler;
 class Dispatcher;
 class Task;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application server with dispatcher
@@ -47,15 +45,11 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
   ApplicationDispatcher(ApplicationDispatcher const&);
   ApplicationDispatcher& operator=(ApplicationDispatcher const&);
 
-  
  public:
-
   ApplicationDispatcher();
-
 
   ~ApplicationDispatcher();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the scheduler
@@ -99,27 +93,19 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 
   void setProcessorAffinity(std::vector<size_t> const& cores);
 
-  
  public:
-
   void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&);
-
 
   bool prepare();
 
-
   bool start();
-
 
   bool open();
 
-
   void close();
-
 
   void stop();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds the dispatcher
   //////////////////////////////////////////////////////////////////////////////
@@ -132,7 +118,6 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 
   void buildDispatcherReporter();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief application dispatcher
@@ -168,5 +153,3 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 }
 
 #endif
-
-

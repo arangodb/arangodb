@@ -152,10 +152,8 @@ static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
   }
 }
 
-
 WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
     : _type(type), _destroy(true), _prev(prev) {}
-
 
 WorkMonitor::WorkMonitor() : Thread("WorkMonitor"), _stopping(false) {}
 
@@ -335,7 +333,6 @@ void WorkMonitor::popCustom() {
 void WorkMonitor::requestWorkOverview(uint64_t taskId) {
   WORK_OVERVIEW.push(taskId);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the main event loop, wait for requests and delete old descriptions

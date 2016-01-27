@@ -167,4 +167,3 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-

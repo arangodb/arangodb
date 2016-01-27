@@ -48,12 +48,9 @@ RestQueryHandler::RestQueryHandler(HttpRequest* request,
                                    ApplicationV8* applicationV8)
     : RestVocbaseBaseHandler(request), _applicationV8(applicationV8) {}
 
-
-
 bool RestQueryHandler::isDirect() const {
   return _request->requestType() != HttpRequest::HTTP_REQUEST_POST;
 }
-
 
 HttpHandler::status_t RestQueryHandler::execute() {
   // extract the sub-request type
@@ -97,7 +94,6 @@ HttpHandler::status_t RestQueryHandler::execute() {
   // this handler is done
   return status_t(HANDLER_DONE);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock GetApiQueryProperties
@@ -448,5 +444,3 @@ bool RestQueryHandler::parseQuery() {
 
   return true;
 }
-
-

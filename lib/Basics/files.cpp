@@ -2046,15 +2046,14 @@ std::string TRI_GetTempPath() {
 #else
 
 std::string TRI_GetTempPath() {
-
-  // ..........................................................................
-  // Unfortunately we generally have little control on whether or not the
-  // application will be compiled with UNICODE defined. In some cases such as
-  // this one, we attempt to cater for both. MS provides some methods which are
-  // 'defined' for both, for example, GetTempPath (below) actually converts to
-  // GetTempPathA (ascii) or GetTempPathW (wide characters or what MS call
-  // unicode).
-  // ..........................................................................
+// ..........................................................................
+// Unfortunately we generally have little control on whether or not the
+// application will be compiled with UNICODE defined. In some cases such as
+// this one, we attempt to cater for both. MS provides some methods which are
+// 'defined' for both, for example, GetTempPath (below) actually converts to
+// GetTempPathA (ascii) or GetTempPathW (wide characters or what MS call
+// unicode).
+// ..........................................................................
 
 #define LOCAL_MAX_PATH_BUFFER 2049
   TCHAR tempFileName[LOCAL_MAX_PATH_BUFFER];
@@ -2072,7 +2071,8 @@ std::string TRI_GetTempPath() {
   // ..........................................................................
 
   /* from MSDN:
-    The GetTempPath function checks for the existence of environment variables in the following order and uses the first path found:
+    The GetTempPath function checks for the existence of environment variables
+    in the following order and uses the first path found:
 
     The path specified by the TMP environment variable.
     The path specified by the TEMP environment variable.
@@ -2134,7 +2134,7 @@ std::string TRI_GetTempPath() {
     size_t j;
     size_t pathSize = _tcsclen(tempPathName);
     char* temp = static_cast<char*>(
-                                    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
+        TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
 
     if (temp == nullptr) {
       LOG_FATAL_AND_EXIT("Out of memory");
@@ -2276,8 +2276,8 @@ void TRI_SetUserTempPath(std::string const& path) { TempPath = path; }
 
 std::string TRI_LocateInstallDirectory() {
   return TRI_LocateBinaryPath(nullptr) +
-    std::string(1, TRI_DIR_SEPARATOR_CHAR) + ".." +
-    std::string(1, TRI_DIR_SEPARATOR_CHAR);
+         std::string(1, TRI_DIR_SEPARATOR_CHAR) + ".." +
+         std::string(1, TRI_DIR_SEPARATOR_CHAR);
 }
 
 #endif

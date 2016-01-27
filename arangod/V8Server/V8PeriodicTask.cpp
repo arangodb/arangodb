@@ -38,7 +38,8 @@ V8PeriodicTask::V8PeriodicTask(std::string const& id, std::string const& name,
                                TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
                                Scheduler* scheduler, Dispatcher* dispatcher,
                                double offset, double period,
-                               std::string const& command, std::shared_ptr<VPackBuilder> parameters,
+                               std::string const& command,
+                               std::shared_ptr<VPackBuilder> parameters,
                                bool allowUseDatabase)
     : Task(id, name),
       PeriodicTask(id, offset, period),
@@ -55,12 +56,10 @@ V8PeriodicTask::V8PeriodicTask(std::string const& id, std::string const& name,
   TRI_UseVocBase(_vocbase);
 }
 
-
 V8PeriodicTask::~V8PeriodicTask() {
   // decrease reference counter for the database used
   TRI_ReleaseVocBase(_vocbase);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a task specific description in JSON format
@@ -88,5 +87,3 @@ bool V8PeriodicTask::handlePeriod() {
 
   return true;
 }
-
-

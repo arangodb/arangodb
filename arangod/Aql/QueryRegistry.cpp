@@ -280,4 +280,3 @@ void QueryRegistry::expireQueries() {
     }
   }
 }
-

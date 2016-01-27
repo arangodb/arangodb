@@ -322,5 +322,3 @@ int TRI_MMFileAdvise(void*, size_t, int) {
 }
 
 #endif
-
-

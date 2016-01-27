@@ -919,5 +919,3 @@ std::string SimpleHttpClient::getServerVersion() {
 }
 }
 }
-
-

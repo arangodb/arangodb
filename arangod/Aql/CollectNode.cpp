@@ -27,7 +27,7 @@
 #include "Aql/WalkerWorker.h"
 
 using namespace arangodb::aql;
-    
+
 CollectNode::CollectNode(
     ExecutionPlan* plan, arangodb::basics::Json const& base,
     Variable const* expressionVariable, Variable const* outVariable,
@@ -35,7 +35,8 @@ CollectNode::CollectNode(
     std::unordered_map<VariableId, std::string const> const& variableMap,
     std::vector<std::pair<Variable const*, Variable const*>> const&
         groupVariables,
-    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const&
+    std::vector<std::pair<Variable const*,
+                          std::pair<Variable const*, std::string>>> const&
         aggregateVariables,
     bool count, bool isDistinctCommand)
     : ExecutionNode(plan, base),
@@ -48,19 +49,16 @@ CollectNode::CollectNode(
       _variableMap(variableMap),
       _count(count),
       _isDistinctCommand(isDistinctCommand),
-      _specialized(false) {
+      _specialized(false) {}
 
-}
-  
-CollectNode::~CollectNode() {
-}
+CollectNode::~CollectNode() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for CollectNode
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone, bool verbose) const {
+                               TRI_memory_zone_t* zone, bool verbose) const {
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
@@ -75,13 +73,13 @@ void CollectNode::toJsonHelper(arangodb::basics::Json& nodes,
 
     for (auto const& groupVariable : _groupVariables) {
       arangodb::basics::Json variable(arangodb::basics::Json::Object);
-      variable("outVariable", groupVariable.first->toJson())("inVariable",
-                                                   groupVariable.second->toJson());
+      variable("outVariable", groupVariable.first->toJson())(
+          "inVariable", groupVariable.second->toJson());
       values(variable);
     }
     json("groups", values);
   }
-  
+
   // aggregate variables
   {
     arangodb::basics::Json values(arangodb::basics::Json::Array,
@@ -89,8 +87,8 @@ void CollectNode::toJsonHelper(arangodb::basics::Json& nodes,
 
     for (auto const& aggregateVariable : _aggregateVariables) {
       arangodb::basics::Json variable(arangodb::basics::Json::Object);
-      variable("outVariable", aggregateVariable.first->toJson())("inVariable",
-                                                     aggregateVariable.second.first->toJson());
+      variable("outVariable", aggregateVariable.first->toJson())(
+          "inVariable", aggregateVariable.second.first->toJson());
       variable("type", arangodb::basics::Json(aggregateVariable.second.second));
       values(variable);
     }
@@ -133,7 +131,7 @@ void CollectNode::toJsonHelper(arangodb::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                    bool withProperties) const {
+                                  bool withProperties) const {
   auto outVariable = _outVariable;
   auto expressionVariable = _expressionVariable;
   auto groupVariables = _groupVariables;
@@ -157,19 +155,21 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
       auto in = plan->getAst()->variables()->createVariable(it.second);
       groupVariables.emplace_back(std::make_pair(out, in));
     }
-    
+
     aggregateVariables.clear();
 
     for (auto& it : _aggregateVariables) {
       auto out = plan->getAst()->variables()->createVariable(it.first);
       auto in = plan->getAst()->variables()->createVariable(it.second.first);
-      aggregateVariables.emplace_back(std::make_pair(out, std::make_pair(in, it.second.second)));
+      aggregateVariables.emplace_back(
+          std::make_pair(out, std::make_pair(in, it.second.second)));
     }
   }
 
-  auto c = new CollectNode(plan, _id, _options, groupVariables, aggregateVariables,
-                             expressionVariable, outVariable, _keepVariables,
-                             _variableMap, _count, _isDistinctCommand);
+  auto c =
+      new CollectNode(plan, _id, _options, groupVariables, aggregateVariables,
+                      expressionVariable, outVariable, _keepVariables,
+                      _variableMap, _count, _isDistinctCommand);
 
   // specialize the cloned node
   if (isSpecialized()) {
@@ -309,4 +309,3 @@ double CollectNode::estimateCost(size_t& nrItems) const {
 
   return depCost + nrItems;
 }
-

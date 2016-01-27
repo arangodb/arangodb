@@ -66,11 +66,9 @@ class ClusterTraverser : public Traverser {
   arangodb::basics::Json* vertexToJson(std::string const&) const;
 
  private:
-  
   bool vertexMatchesCondition(TRI_json_t*,
                               std::vector<TraverserExpression*> const&);
 
-  
   class VertexGetter {
    public:
     explicit VertexGetter(ClusterTraverser* traverser)
@@ -97,7 +95,6 @@ class ClusterTraverser : public Traverser {
     size_t _continueConst;
   };
 
-  
   std::unordered_map<std::string, TRI_json_t*> _edges;
 
   std::unordered_map<std::string, TRI_json_t*> _vertices;

@@ -377,4 +377,3 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
-

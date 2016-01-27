@@ -721,7 +721,6 @@ static bool IterateFiles(TRI_vector_string_t* vector,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the full directory name for a collection
 ///
@@ -947,7 +946,6 @@ void TRI_FreeCollection(TRI_collection_t* collection) {
   TRI_DestroyCollection(collection);
   delete collection;
 }
-
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
     : _version(TRI_COL_VERSION),
@@ -1318,7 +1316,8 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   TRI_json_t* json = TRI_CreateJsonCollectionInfo(*this);
 
   if (json == nullptr) {
-    LOG_ERROR("cannot save collection properties file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    LOG_ERROR("cannot save collection properties file '%s': %s", filename,
+              TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1334,7 +1333,7 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   } else {
     res = TRI_ERROR_NO_ERROR;
   }
-  
+
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   return res;
@@ -1361,8 +1360,7 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
       if (slice.hasKey("journalSize")) {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "journalSize", vocbase->_settings.defaultMaximalSize);
-      }
-      else {
+      } else {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
       }
@@ -1378,8 +1376,7 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
         _maximalSize =
             arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
-      }
-      else {
+      } else {
         _maximalSize =
             arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
@@ -1397,8 +1394,7 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
       _maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               slice, "journalSize", _maximalSize);
-    }
-    else {
+    } else {
       _maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               slice, "maximalSize", _maximalSize);
@@ -1430,7 +1426,6 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _waitForSync = other.waitForSync();
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return JSON information about the collection from the collection's
 /// "parameter.json" file. This function does not require the collection to be
@@ -1441,7 +1436,7 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
 
 TRI_json_t* TRI_ReadJsonCollectionInfo(TRI_vocbase_col_t* collection) {
   char* filename =
-      TRI_Concatenate2File(collection->_path, TRI_VOC_PARAMETER_FILE);
+      TRI_Concatenate2File(collection->pathc_str(), TRI_VOC_PARAMETER_FILE);
 
   // load JSON description of the collection
   TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
@@ -1476,7 +1471,7 @@ int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  std::vector<std::string> files = TRI_FilesDirectory(collection->_path);
+  std::vector<std::string> files = TRI_FilesDirectory(collection->pathc_str());
   res = TRI_ERROR_NO_ERROR;
 
   // sort by index id
@@ -1484,7 +1479,7 @@ int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
 
   for (auto const& file : files) {
     if (regexec(&re, file.c_str(), (size_t)0, nullptr, 0) == 0) {
-      char* fqn = TRI_Concatenate2File(collection->_path, file.c_str());
+      char* fqn = TRI_Concatenate2File(collection->pathc_str(), file.c_str());
 
       res = filter(collection, fqn, data);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
@@ -1530,8 +1525,7 @@ std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
 }
 
 void TRI_CreateVelocyPackCollectionInfo(
-    arangodb::VocbaseCollectionInfo const& info,
-    VPackBuilder& builder) {
+    arangodb::VocbaseCollectionInfo const& info, VPackBuilder& builder) {
   // This function might throw
   //
   TRI_ASSERT(!builder.isClosed());
@@ -1611,7 +1605,6 @@ int TRI_RenameCollection(TRI_collection_t* collection, char const* name) {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection
@@ -1890,5 +1883,3 @@ bool TRI_IsAllowedNameCollection(bool allowSystem, char const* name) {
 
   return true;
 }
-
-

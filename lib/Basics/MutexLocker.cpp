@@ -30,7 +30,6 @@
 
 using namespace arangodb::basics;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
 ///
@@ -65,5 +64,3 @@ MutexLocker::~MutexLocker() {
   }
 #endif
 }
-
-

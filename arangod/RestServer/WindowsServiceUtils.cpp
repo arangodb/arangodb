@@ -36,7 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-
 #ifdef _WIN32
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +43,6 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 extern AnyServer* ArangoInstance;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief running flag
@@ -222,7 +220,6 @@ static void DeleteService(int argc, char* argv[], bool force) {
   CloseServiceHandle(schService);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Start the service and optionaly wait till its up & running
 ////////////////////////////////////////////////////////////////////////////////
@@ -380,7 +377,6 @@ static void StopArangoService(bool WaitForShutdown) {
   exit(EXIT_SUCCESS);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flips the status for a service
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,14 +453,13 @@ static void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
   }
 }
 
-
 #include <DbgHelp.h>
 LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 #if HAVE_BACKTRACE
 
   if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
     LOG_FATAL_WINDOWS("Unhandled exception: %d",
-              (int)e->ExceptionRecord->ExceptionCode);
+                      (int)e->ExceptionRecord->ExceptionCode);
   } else {
     LOG_FATAL_WINDOWS("Unhandled exception without ExceptionCode!");
   }
@@ -501,9 +496,10 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 #endif
   if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
     LOG_FATAL_WINDOWS("Unhandled exception: %d - will crash now.",
-              (int)e->ExceptionRecord->ExceptionCode);
+                      (int)e->ExceptionRecord->ExceptionCode);
   } else {
-    LOG_FATAL_WINDOWS("Unhandled exception without ExceptionCode - will crash now.!");
+    LOG_FATAL_WINDOWS(
+        "Unhandled exception without ExceptionCode - will crash now.!");
   }
   return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -603,8 +599,7 @@ class WindowsArangoServer : public ArangoServer {
     miniDumpFilename = TRI_GetTempPath();
 
     miniDumpFilename +=
-      "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
-
+        "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
   }
 };
 
@@ -613,7 +608,7 @@ static char** ARGV;
 
 static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
   if (!TRI_InitWindowsEventLog()) {
-    return ;
+    return;
   }
   // register the service ctrl handler,  lpszArgv[0] contains service name
   ServiceStatus =
@@ -650,7 +645,7 @@ bool TRI_ParseMoreArgs(int argc, char* argv[]) {
     std::cout << "failed to open windows event log!" << std::endl;
     exit(1);
   }
-      
+
   if (1 < argc) {
     if (TRI_EqualString(argv[1], "--install-service")) {
       InstallService(argc, argv);

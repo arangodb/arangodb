@@ -29,7 +29,6 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the block
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,7 +191,6 @@ void AqlItemBlock::destroy() {
 
   _valueCount.clear();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shrink the block to the specified number of rows
@@ -577,4 +575,3 @@ Json AqlItemBlock::toJson(arangodb::AqlTransaction* trx) const {
                                                        Json(false));
   return json;
 }
-

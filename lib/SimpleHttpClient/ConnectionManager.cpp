@@ -47,7 +47,6 @@ ConnectionOptions ConnectionManager::_globalConnectionOptions = {
 
 static ConnectionManager* Instance = nullptr;
 
-
 ConnectionManager::~ConnectionManager() {
   for (size_t i = 0; i < CONNECTION_MANAGER_BUCKETS; ++i) {
     WRITE_LOCKER(writeLocker, _connectionsBuckets[i]._lock);
@@ -351,5 +350,3 @@ void ConnectionManager::closeUnusedConnections(double limit) {
     it->closeUnusedConnections(limit);
   }
 }
-
-

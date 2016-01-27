@@ -28,7 +28,6 @@
 #include <unistd.h>
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief threshold for producing malloc warnings
 ///
@@ -74,7 +73,6 @@
 #define MALLOC_WRAPPER(zone, n) BuiltInMalloc(n)
 #define REALLOC_WRAPPER(zone, ptr, n) BuiltInRealloc(ptr, n)
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief core memory zone, allocation will never fail
@@ -506,4 +504,3 @@ void TRI_ShutdownMemory() {
     CoreInitialized = 0;
   }
 }
-

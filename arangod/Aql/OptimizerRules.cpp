@@ -44,7 +44,6 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using EN = arangodb::aql::ExecutionNode;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a SORT operation for IN right-hand side operands
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,7 +437,8 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
 /// additionally remove all unused aggregate calculations from a COLLECT
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::aql::removeCollectVariablesRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
+                                               ExecutionPlan* plan,
                                                Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::COLLECT, true));
@@ -457,19 +457,22 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt, ExecutionPlan* pl
       modified = true;
     }
 
-    collectNode->clearAggregates([&varsUsedLater, &modified] (std::pair<Variable const*, std::pair<Variable const*, std::string>> const& aggregate) -> bool {
-      if (varsUsedLater.find(aggregate.first) == varsUsedLater.end()) {
-        // result of aggregate function not used later
-        modified = true;
-        return true;
-      }
-      return false;
-    });
+    collectNode->clearAggregates(
+        [&varsUsedLater, &modified](
+            std::pair<Variable const*,
+                      std::pair<Variable const*, std::string>> const& aggregate)
+            -> bool {
+              if (varsUsedLater.find(aggregate.first) == varsUsedLater.end()) {
+                // result of aggregate function not used later
+                modified = true;
+                return true;
+              }
+              return false;
+            });
   }
 
   opt->addPlan(plan, rule, modified);
 }
-
 
 class PropagateConstantAttributesHelper {
  public:
@@ -3543,4 +3546,3 @@ void arangodb::aql::mergeFilterIntoTraversalRule(Optimizer* opt,
 
   opt->addPlan(plan, rule, planAltered);
 }
-

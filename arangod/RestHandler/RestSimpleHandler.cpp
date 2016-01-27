@@ -40,18 +40,15 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-
 RestSimpleHandler::RestSimpleHandler(
-    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
-                                    arangodb::aql::QueryRegistry*>* pair)
+    HttpRequest* request,
+    std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
       _queryRegistry(pair->second),
       _queryLock(),
       _query(nullptr),
       _queryKilled(false) {}
-
-
 
 HttpHandler::status_t RestSimpleHandler::execute() {
   // extract the request type
@@ -97,9 +94,7 @@ HttpHandler::status_t RestSimpleHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-
 bool RestSimpleHandler::cancel() { return cancelQuery(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
@@ -361,8 +356,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         // Should not be documented
         VPackSlice const postFilter = slice.get("filter");
         if (postFilter.isArray()) {
-          std::vector<arangodb::traverser::TraverserExpression*>
-              expressions;
+          std::vector<arangodb::traverser::TraverserExpression*> expressions;
           arangodb::basics::ScopeGuard guard{[]() -> void {},
                                              [&expressions]() -> void {
                                                for (auto& e : expressions) {
@@ -451,5 +445,3 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
-
-

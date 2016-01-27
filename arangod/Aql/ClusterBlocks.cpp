@@ -58,7 +58,6 @@ using StringBuffer = arangodb::basics::StringBuffer;
 #define LEAVE_BLOCK
 #endif
 
-
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
@@ -70,11 +69,11 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
       auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
       TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      _sortRegisters.emplace_back(std::make_pair(it->second.registerId, p.second));
+      _sortRegisters.emplace_back(
+          std::make_pair(it->second.registerId, p.second));
     }
   }
 }
-
 
 GatherBlock::~GatherBlock() {
   ENTER_BLOCK
@@ -504,8 +503,6 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
   return false;
 }
 
-
-
 BlockWithClients::BlockWithClients(ExecutionEngine* engine,
                                    ExecutionNode const* ep,
                                    std::vector<std::string> const& shardIds)
@@ -638,7 +635,6 @@ size_t BlockWithClients::getClientId(std::string const& shardId) {
   return ((*it).second);
   LEAVE_BLOCK
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
@@ -803,7 +799,6 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
 }
-
 
 DistributeBlock::DistributeBlock(ExecutionEngine* engine,
                                  DistributeNode const* ep,
@@ -1335,8 +1330,7 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _isResponsibleForInitCursor(en->isResponsibleForInitCursor()) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT_EXPENSIVE(
-      (arangodb::ServerState::instance()->isCoordinator() &&
-       ownName.empty()) ||
+      (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
       (!arangodb::ServerState::instance()->isCoordinator() &&
        !ownName.empty()));
 }
@@ -1617,8 +1611,9 @@ int64_t RemoteBlock::count() const {
 int64_t RemoteBlock::remaining() {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/remaining/", std::string());
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/remaining/",
+                  std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1634,4 +1629,3 @@ int64_t RemoteBlock::remaining() {
                                               "remaining", 0);
   LEAVE_BLOCK
 }
-

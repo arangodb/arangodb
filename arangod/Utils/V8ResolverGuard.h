@@ -35,8 +35,6 @@
 namespace arangodb {
 
 class V8ResolverGuard {
-  
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the guard
@@ -67,7 +65,6 @@ class V8ResolverGuard {
     }
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
@@ -80,7 +77,6 @@ class V8ResolverGuard {
         ->getResolver();
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief v8 global context
@@ -97,4 +93,3 @@ class V8ResolverGuard {
 }
 
 #endif
-

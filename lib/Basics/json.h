@@ -29,10 +29,7 @@
 #include "Basics/associative.h"
 #include "Basics/vector.h"
 
-
 struct TRI_string_buffer_s;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json type
@@ -63,7 +60,6 @@ typedef struct TRI_json_t {
     TRI_vector_t _objects;
   } _value;
 } TRI_json_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a null object
@@ -175,7 +171,6 @@ void TRI_DestroyJson(TRI_memory_zone_t*, TRI_json_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeJson(TRI_memory_zone_t*, TRI_json_t*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a user printable string
@@ -402,5 +397,3 @@ class default_delete<TRI_json_t> {
 }
 
 #endif
-
-

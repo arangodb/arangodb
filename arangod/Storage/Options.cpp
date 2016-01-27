@@ -199,5 +199,3 @@ VPackCustomTypeHandler* StorageOptions::createCustomHandler(
     arangodb::CollectionNameResolver const* resolver) {
   return new CustomTypeHandlerImpl(resolver);
 }
-
-

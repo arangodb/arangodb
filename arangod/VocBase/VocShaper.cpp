@@ -375,7 +375,6 @@ VocShaper::~VocShaper() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a shape by identifier
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,11 +522,11 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
       TRI_IF_FAILURE("ShaperWriteAttributeMarker") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      
+
       {
         // make room for one more element
         WRITE_LOCKER(writeLocker, _attributeIdsLock);
-        if (! TRI_ReserveAssociativePointer(&_attributeIds, 1)) {
+        if (!TRI_ReserveAssociativePointer(&_attributeIds, 1)) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
       }
@@ -535,7 +534,7 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
       {
         // make room for one more element
         WRITE_LOCKER(writeLocker, _attributeNamesLock);
-        if (! TRI_ReserveAssociativePointer(&_attributeNames, 1)) {
+        if (!TRI_ReserveAssociativePointer(&_attributeNames, 1)) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
       }
@@ -643,7 +642,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
     {
       // make room for one more element
       WRITE_LOCKER(writeLocker, _shapeIdsLock);
-      if (! TRI_ReserveAssociativePointer(&_shapeIds, 1)) {
+      if (!TRI_ReserveAssociativePointer(&_shapeIds, 1)) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
     }
@@ -651,7 +650,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
     {
       // make room for one more element
       WRITE_LOCKER(writeLocker, _shapeDictionaryLock);
-      if (! TRI_ReserveAssociativePointer(&_shapeDictionary, 1)) {
+      if (!TRI_ReserveAssociativePointer(&_shapeDictionary, 1)) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
     }
@@ -1110,7 +1109,6 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a shape path by identifier
 ////////////////////////////////////////////////////////////////////////////////
@@ -1220,20 +1218,20 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
          name, len + 1);
 
   TRI_Free(_memoryZone, aids);
-      
+
   {
     // make room for one more element
     WRITE_LOCKER(writeLocker, _attributePathsByNameLock);
-    if (! TRI_ReserveAssociativePointer(&_attributePathsByName, 1)) {
+    if (!TRI_ReserveAssociativePointer(&_attributePathsByName, 1)) {
       TRI_Free(_memoryZone, result);
       return nullptr;
     }
   }
-  
+
   {
     // make room for one more element
     WRITE_LOCKER(writeLocker, _attributePathsByPidLock);
-    if (! TRI_ReserveAssociativePointer(&_attributePathsByPid, 1)) {
+    if (!TRI_ReserveAssociativePointer(&_attributePathsByPid, 1)) {
       TRI_Free(_memoryZone, result);
       return nullptr;
     }
@@ -1895,5 +1893,3 @@ void TRI_FillShapedSub(TRI_shaped_sub_t* element,
         static_cast<uint32_t>(((char const*)shapedObject->_data.data) - ptr);
   }
 }
-
-
