@@ -840,7 +840,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
           } else {
             for (size_t i = 0; i < n; ++i) {
               VPackSlice f = flds.at(i);
-              if (f.isString()) {
+              if (!f.isString()) {
                 res = TRI_ERROR_INTERNAL;
                 continue;
               } else {
