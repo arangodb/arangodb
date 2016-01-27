@@ -133,7 +133,8 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 
   // add "/agency" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PATH,
-                            RestHandlerCreator<RestAgencyHandler>::createNoData);
+                            RestHandlerCreator<RestAgencyHandler>::createData<
+					          consensus::Agent*>, _applicationAgency->agent());
 
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
@@ -600,7 +601,7 @@ void ArangoServer::buildApplicationServer() {
   _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
-  // cluster options
+  // agency options
   // .............................................................................
 
   _applicationAgency =

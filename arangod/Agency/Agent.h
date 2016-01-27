@@ -83,9 +83,11 @@ namespace consensus {
      */
     Slice const& log (Slice const&);
     Slice const& redirect (Slice const&);
+
+    bool vote(Constituent::id_t, Constituent::term_t);
       
   private:
-      Constituent _constituent; /**< @brief Leader election delegate */
+    Constituent _constituent; /**< @brief Leader election delegate */
     Log         _log;         /**< @brief Log replica              */
     
   };

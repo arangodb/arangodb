@@ -95,6 +95,8 @@ public:
   
   bool leader() const;
 
+  bool vote(id_t, term_t);
+
 private:
   
   /**
@@ -115,6 +117,7 @@ private:
   term_t _term;                /**< @brief term number */
   id_t _leader_id;           /**< @brief Current leader */
   id_t _cur_vote;            /**< @brief My current vote */
+  id_t _id;
   constituency_t _constituency; /**< @brief List of consituents */
   uint32_t _nvotes;            /**< @brief Votes in my favour
                                 * (candidate/leader) */

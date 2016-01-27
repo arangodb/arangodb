@@ -37,6 +37,10 @@ Constituent::term_t Agent::term () const {
   return _constituent.term();
 }
 
+bool Agent::vote(Constituent::id_t id, Constituent::term_t term) {
+	bool res = _constituent.vote(id, term);
+}
+
 Slice const& Agent::log (const Slice& slice) {
   if (_constituent.leader())
     return _log.log(slice);

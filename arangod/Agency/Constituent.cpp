@@ -59,6 +59,19 @@ Constituent::mode_t Constituent::mode () const {
   return _mode;
 }
 
+bool Constituent::vote (id_t id, term_t term) {
+	if (id == _id)
+		return false;
+	else {
+		if (term > _term) {
+			_state = FOLLOWER;
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+
 void Constituent::gossip (const Constituent::constituency_t& constituency) {
   // Talk to all peers i have not talked to
   // Answer by sending my complete list of peers

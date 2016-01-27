@@ -36,10 +36,12 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
-    : ApplicationFeature("agency"), _size(5) {}
+    : ApplicationFeature("agency"), _size(5), _min_election_timeout(.15),
+	  _max_election_timeout(.3), _agent(new consensus::Agent()) {
+}
 
 
-ApplicationAgency::~ApplicationAgency() { /*delete _dispatcher;*/ }
+ApplicationAgency::~ApplicationAgency() {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,10 +51,11 @@ ApplicationAgency::~ApplicationAgency() { /*delete _dispatcher;*/ }
 void ApplicationAgency::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
   options["Agency Options:help-agency"]("agency.size", &_size, "Agency size")
-		("agency.election-timeout-min", &_size, "Minimum timeout before an agent"
-				" calls for new election (default: 150ms)")
-		("agency.election-timeout-max", &_size, "Minimum timeout before an agent"
-				" calls for new election (default: 300ms)");
+		("agency.election-timeout-min", &_min_election_timeout, "Minimum "
+		 "timeout before an agent calls for new election [s]")
+		("agency.election-timeout-max", &_max_election_timeout, "Minimum "
+		 "timeout before an agent calls for new election [s]")
+		("agency.host", &_agency_endpoints, "Agency endpoints");
 }
 
 
@@ -88,6 +91,10 @@ void ApplicationAgency::stop() {
   if (_disabled) {
     return;
   }
+}
+
+arangodb::consensus::Agent* ApplicationAgency::agent () const {
+  return _agent.get();
 }
 
 

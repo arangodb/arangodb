@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 
 #include "ApplicationServer/ApplicationFeature.h"
-#include "ApplicationAgency.h"
+#include "Agency/Agent.h"
 
 
 namespace arangodb {
@@ -105,10 +105,16 @@ class Task;
 
   void stop();
 
+  consensus::Agent* agent() const;
+
   
  private:
 
   uint64_t _size; /**< @brief: agency size (default: 5)*/
+  double   _min_election_timeout; /**< @brief: min election timeout */
+  double   _max_election_timeout; /**< @brief: max election timeout */
+  std::vector<std::string> _agency_endpoints;
+  std::unique_ptr<consensus::Agent> _agent;
 
 };
 }
