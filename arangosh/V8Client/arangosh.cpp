@@ -28,7 +28,6 @@
 #include <libplatform/libplatform.h>
 
 #include "ArangoShell/ArangoClient.h"
-#include "Basics/messages.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
@@ -37,12 +36,14 @@
 #include "Basics/csv.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
+#include "Basics/Logger.h"
+#include "Basics/messages.h"
 #include "Basics/shell-colors.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/Version.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -609,8 +610,9 @@ static V8ClientConnection* CreateConnection() {
 /// @brief weak reference callback for queries (call the destructor here)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_DestructorCallback(const v8::WeakCallbackData<
-    v8::External, v8::Persistent<v8::External>>& data) {
+static void ClientConnection_DestructorCallback(
+    const v8::WeakCallbackData<v8::External, v8::Persistent<v8::External>>&
+        data) {
   auto persistent = data.GetParameter();
   auto myConnection =
       v8::Local<v8::External>::New(data.GetIsolate(), *persistent);
