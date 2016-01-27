@@ -1120,31 +1120,6 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     TRI_ASSERT(params.planId() == 0);
   }
 
-  if (cid > 0) {
-    // wait for "old" collection to be dropped
-    char* dirName =
-        TRI_GetDirectoryCollection(_vocbase->_path, name.c_str(), type, cid);
-
-    if (dirName != nullptr) {
-      char* parameterName =
-          TRI_Concatenate2File(dirName, TRI_VOC_PARAMETER_FILE);
-
-      if (parameterName != nullptr) {
-        int iterations = 0;
-
-        // TODO: adjust sleep timer & maxiterations
-        while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) &&
-               iterations++ < 1200) {
-          usleep(100 * 1000);
-        }
-
-        TRI_FreeString(TRI_CORE_MEM_ZONE, parameterName);
-      }
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, dirName);
-    }
-  }
-
   col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
 
   if (col == nullptr) {

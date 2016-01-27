@@ -2161,6 +2161,29 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the path of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_PathVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_col_t const* collection =
+      TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  std::string const path(collection->path());
+
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(path);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection's cluster plan id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4066,6 +4089,8 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("name"),
                        JS_NameVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("path"),
+                       JS_PathVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("planId"),
                        JS_PlanIdVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("properties"),

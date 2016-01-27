@@ -1,6 +1,14 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* change collection directory names to include a random id component at the end
+
+  The new pattern is `collection-<id>-<random>`, where `<id>` is the collection
+  id and `<random>` is a random number. Previous versions of ArangoDB used a
+  pattern `collection-<id>` without the random number.
+
+  ArangoDB 3.0 understands both the old and name directory name patterns.
+
 * removed mostly unused internal spin-lock implementation
 
 * removed support for pre-Windows 7-style locks. This removes compatibility with

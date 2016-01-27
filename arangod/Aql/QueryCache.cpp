@@ -247,7 +247,7 @@ void QueryCacheDatabaseEntry::store(uint64_t hash,
 ////////////////////////////////////////////////////////////////////////////////
 
 void QueryCacheDatabaseEntry::invalidate(
-    std::vector<char const*> const& collections) {
+    std::vector<std::string> const& collections) {
   for (auto const& it : collections) {
     invalidate(it);
   }
@@ -258,8 +258,8 @@ void QueryCacheDatabaseEntry::invalidate(
 /// cache
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryCacheDatabaseEntry::invalidate(char const* collection) {
-  auto it = _entriesByCollection.find(std::string(collection));
+void QueryCacheDatabaseEntry::invalidate(std::string const& collection) {
+  auto it = _entriesByCollection.find(collection);
 
   if (it == _entriesByCollection.end()) {
     return;
@@ -282,6 +282,15 @@ void QueryCacheDatabaseEntry::invalidate(char const* collection) {
   }
 
   _entriesByCollection.erase(it);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate all entries for a collection in the database-specific
+/// cache
+////////////////////////////////////////////////////////////////////////////////
+
+void QueryCacheDatabaseEntry::invalidate(char const* collection) {
+  return invalidate(std::string(collection));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,7 +516,7 @@ QueryCacheResultEntry* QueryCache::store(
 ////////////////////////////////////////////////////////////////////////////////
 
 void QueryCache::invalidate(TRI_vocbase_t* vocbase,
-                            std::vector<char const*> const& collections) {
+                            std::vector<std::string> const& collections) {
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 

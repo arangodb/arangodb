@@ -332,7 +332,7 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
 
 static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   TRI_vocbase_t* vocbase;
-  regmatch_t matches[3];
+  regmatch_t matches[4];
   regex_t re;
   int res;
 
@@ -343,11 +343,11 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   // .........................................................................
   // Just thank your lucky stars that there are only 4 backslashes
   // .........................................................................
-  res = regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)$",
+  res = regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)(-[0-9]+)?$",
                 REG_ICASE | REG_EXTENDED);
 #else
   res =
-      regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+      regcomp(&re, "^(.*)/collection-([0-9][0-9]*)(-[0-9]+)?$", REG_ICASE | REG_EXTENDED);
 #endif
 
   if (res != 0) {
@@ -745,7 +745,7 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
 
   // invalidate all entries for the two collections
   arangodb::aql::QueryCache::instance()->invalidate(
-      vocbase, std::vector<char const*>{oldName, newName});
+      vocbase, std::vector<std::string>{oldName, newName});
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -775,11 +775,10 @@ static bool StartupTickIterator(TRI_df_marker_t const* marker, void* data,
 
 static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
                     bool iterateMarkers) {
-  regmatch_t matches[2];
+  regmatch_t matches[3];
   regex_t re;
-  int res;
 
-  res = regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
+  int res = regcomp(&re, "^collection-([0-9][0-9]*)(-[0-9]+)?$", REG_EXTENDED | REG_NOSUB);
 
   if (res != 0) {
     LOG_ERROR("unable to compile regular expression");
@@ -918,7 +917,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             TRI_UpdateTickServer(tick);
           }
 
-          LOG_DEBUG("added document collection from '%s'", file.c_str());
+          LOG_DEBUG("added document collection '%s' from '%s'", info.namec_str(), file.c_str());
         }
 
       } catch (arangodb::basics::Exception const& e) {

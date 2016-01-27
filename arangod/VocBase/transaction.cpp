@@ -109,7 +109,7 @@ static inline bool NeedWriteMarker(TRI_transaction_t const* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClearQueryCache(TRI_transaction_t* trx) {
-  std::vector<char const*> collections;
+  std::vector<std::string> collections;
 
   size_t const n = trx->_collections._length;
 
@@ -125,8 +125,7 @@ void ClearQueryCache(TRI_transaction_t* trx) {
         continue;
       }
 
-      collections.emplace_back(
-          reinterpret_cast<char const*>(&(trxCollection->_collection->_name)));
+      collections.emplace_back(trxCollection->_collection->name());
     }
 
     if (!collections.empty()) {
