@@ -44,6 +44,7 @@ function optimizerRuleTestSuite () {
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
   var graphName = "myUnittestGraph";
   var opts = _.clone(paramEnabled);
+  var edgeKey;
 
   return {
 
@@ -72,7 +73,7 @@ function optimizerRuleTestSuite () {
 
 
       // Add relevant edges
-      graph.edges.save("circles/A", "circles/C", {theFalse: false, theTruth: true, "label": 'foo'});
+      edgeKey = graph.edges.save("circles/A", "circles/C", {theFalse: false, theTruth: true, "label": 'foo'})._key;
       graph.edges.save("circles/A", "circles/B", {theFalse: false, theTruth: true, "label": 'bar'});
       graph.edges.save("circles/B", "circles/D", {theFalse: false, theTruth: true, "label": 'blarg'});
       graph.edges.save("circles/B", "circles/E", {theFalse: false, theTruth: true, "label": 'blub'});
@@ -100,7 +101,10 @@ function optimizerRuleTestSuite () {
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[-1].theTruth == true return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[*].theTruth == true or p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[RAND()].theFalse == false return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[p.edges.length - 1].theFalse == false return {v:v,e:e,p:p}"
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[p.edges.length - 1].theFalse == false return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER CONCAT(p.edges[0]._key, '') == " + edgeKey + " SORT v._key RETURN v._key",
+        "FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER NOOPT(CONCAT(p.edges[0]._key, '')) == " + edgeKey + " SORT v._key RETURN v._key",
+        "FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER NOOPT(V8(CONCAT(p.edges[0]._key, ''))) == " + edgeKey + " SORT v._key RETURN v._key"
       ];
 
       queries.forEach(function(query) {
@@ -114,17 +118,23 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
-      var queries = [ 
+      var queries = [
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[1].theTruth == true return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[2].theTruth == true return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[2].theTruth == true AND    p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'bar' return {v:v,e:e,p:p}"
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
+        "FOR snippet IN ['a', 'b'] FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[1].label == CONCAT(snippet, 'ar') return {v:v,e:e,p:p}"
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        result.plan.nodes.forEach(function (thisNode) {
+          if (thisNode.type == "TraversalNode") {
+            assertNotNull(thisNode.hasOwnProperty("condition"), query);
+          }
+        });
       });
     },
 
@@ -162,6 +172,35 @@ function optimizerRuleTestSuite () {
       });
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test early abort function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFunction : function () {
+      var queries = [
+        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER p.edges[0]._key == CONCAT(@edgeKey, '') SORT v._key RETURN v._key",
+        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER p.edges[0]._key == @edgeKey SORT v._key RETURN v._key",
+        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER CONCAT(p.edges[0]._key, '') == @edgeKey SORT v._key RETURN v._key",
+        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER NOOPT(CONCAT(p.edges[0]._key, '')) == @edgeKey SORT v._key RETURN v._key",
+        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER NOOPT(V8(CONCAT(p.edges[0]._key, ''))) == @edgeKey SORT v._key RETURN v._key"
+      ];
+      var bindVars = {
+        start: "circles/A",
+        "@ecol": "edges",
+        edgeKey: edgeKey
+      };
+      queries.forEach(function (q) {
+        var res = AQL_EXECUTE(q, bindVars, paramDisabled).json;
+        assertEqual(res.length, 2, "query: " + q);
+        assertEqual(res[0], "F", "query: " + q);
+        assertEqual(res[1], "G", "query: " + q);
+        res = AQL_EXECUTE(q, bindVars, paramEnabled).json;
+        assertEqual(res.length, 2, "query (enabled): " + q);
+        assertEqual(res[0], "F", "query (enabled): " + q);
+        assertEqual(res[1], "G", "query (enabled): " + q);
+      });
+
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test NOOP results
@@ -169,7 +208,6 @@ function optimizerRuleTestSuite () {
 
     testNoResults : function () {
       var queries = [ 
-         // sure shot: 5 < 7
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[7].label == 'foo' return {v:v,e:e,p:p}",
         // indexed access starts with 0 - this is also forbidden since it will look for the 6th!
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[5].label == 'foo' return {v:v,e:e,p:p}",
