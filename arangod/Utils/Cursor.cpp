@@ -33,6 +33,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -247,6 +248,34 @@ VPackSlice ExportCursor::next() {
 
 size_t ExportCursor::count() const { return _size; }
 
+static bool IncludeAttribute(
+    CollectionExport::Restrictions::Type const restrictionType,
+    std::unordered_set<std::string> const& fields, std::string const& key) {
+  if (restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
+      restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
+    bool const keyContainedInRestrictions =
+        (fields.find(key) !=
+         fields.end());
+    if ((restrictionType ==
+             CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
+         !keyContainedInRestrictions) ||
+        (restrictionType ==
+             CollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
+         keyContainedInRestrictions)) {
+      // exclude the field
+      return false;
+    }
+    // include the field
+    return true;
+  } else {
+    // no restrictions
+    TRI_ASSERT(restrictionType ==
+               CollectionExport::Restrictions::RESTRICTION_NONE);
+    return true;
+  }
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the cursor contents into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,105 +304,80 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
 
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
-    arangodb::basics::Json json(shaper->memoryZone(),
-                                TRI_JsonShapedJson(shaper, &shaped));
+    // Only Temporary wait for Shaped ==> VPack
+    std::unique_ptr<TRI_json_t> tmp(TRI_JsonShapedJson(shaper, &shaped)); 
+    std::shared_ptr<VPackBuilder> builder = arangodb::basics::JsonHelper::toVelocyPack(tmp.get());
 
-    // append the internal attributes
-
-    // _id, _key, _rev
-    char const* key = TRI_EXTRACT_MARKER_KEY(marker);
-    std::string id(
-        _ex->_resolver.getCollectionName(_ex->_document->_info.id()));
-    id.push_back('/');
-    id.append(key);
-
-    json(TRI_VOC_ATTRIBUTE_ID, arangodb::basics::Json(id));
-    json(
-        TRI_VOC_ATTRIBUTE_REV,
-        arangodb::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
-    json(TRI_VOC_ATTRIBUTE_KEY, arangodb::basics::Json(key));
-
-    if (TRI_IS_EDGE_MARKER(marker)) {
-      // _from
-      std::string from(_ex->_resolver.getCollectionNameCluster(
-          TRI_EXTRACT_MARKER_FROM_CID(marker)));
-      from.push_back('/');
-      from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
-      json(TRI_VOC_ATTRIBUTE_FROM, arangodb::basics::Json(from));
-
-      // _to
-      std::string to(_ex->_resolver.getCollectionNameCluster(
-          TRI_EXTRACT_MARKER_TO_CID(marker)));
-      to.push_back('/');
-      to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
-      json(TRI_VOC_ATTRIBUTE_TO, arangodb::basics::Json(to));
+    if (builder == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-
-    if (restrictionType ==
-            CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
-        restrictionType ==
-            CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
-      // only include the specified fields
-      // for this we'll modify the JSON that we already have, in place
-      // we'll scan through the JSON attributs from left to right and
-      // keep all those that we want to keep. we'll overwrite existing
-      // other values in the JSON
-      TRI_json_t* obj = json.json();
-      TRI_ASSERT(TRI_IsObjectJson(obj));
-
-      size_t const n = TRI_LengthVector(&obj->_value._objects);
-
-      size_t j = 0;
-      for (size_t i = 0; i < n; i += 2) {
-        auto key = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&obj->_value._objects, i));
-
-        if (!TRI_IsStringJson(key)) {
+    VPackSlice const shapedSlice = builder->slice();
+    VPackBuilder result;
+    {
+      VPackObjectBuilder b(&result);
+      // Copy over shaped values
+      for (auto const& entry : VPackObjectIterator(shapedSlice)) {
+        std::string key = entry.key.copyString();
+        if (key == TRI_VOC_ATTRIBUTE_ID || key == TRI_VOC_ATTRIBUTE_KEY ||
+            key == TRI_VOC_ATTRIBUTE_FROM || key == TRI_VOC_ATTRIBUTE_TO ||
+            key == TRI_VOC_ATTRIBUTE_REV) {
+          // This if excludes all internal values. Just to make sure they are not present when added later.
           continue;
         }
-
-        bool const keyContainedInRestrictions =
-            (_ex->_restrictions.fields.find(key->_value._string.data) !=
-             _ex->_restrictions.fields.end());
-
-        if ((restrictionType ==
-                 CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
-             keyContainedInRestrictions) ||
-            (restrictionType ==
-                 CollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
-             !keyContainedInRestrictions)) {
-          // include the field
-          if (i != j) {
-            // steal the key and the value
-            void* src = TRI_AddressVector(&obj->_value._objects, i);
-            void* dst = TRI_AddressVector(&obj->_value._objects, j);
-            memcpy(dst, src, 2 * sizeof(TRI_json_t));
-          }
-          j += 2;
-        } else {
-          // do not include the field
-          // key
-          auto src = static_cast<TRI_json_t*>(
-              TRI_AddressVector(&obj->_value._objects, i));
-          TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, src);
-          // value
-          TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, src + 1);
+        if (!IncludeAttribute(restrictionType, _ex->_restrictions.fields, key)) {
+          // Ignore everything that should be excluded or not included
+          continue;
         }
+        // If we get here we need this entry in the final result
+        result.add(key, entry.value);
+      }
+      // append the internal attributes
+   
+      // _id, _key, _rev
+      char const* key = TRI_EXTRACT_MARKER_KEY(marker);
+      if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_ID)) {
+        std::string id(
+            _ex->_resolver.getCollectionName(_ex->_document->_info.id()));
+        id.push_back('/');
+        id.append(key);
+        result.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(id));
+      }
+      if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_KEY)) {
+        result.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+      }
+      if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_REV)) {
+        std::string rev = std::to_string(TRI_EXTRACT_MARKER_RID(marker)); 
+        result.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
       }
 
-      // finally adjust the length of the patched JSON so the NULL fields at
-      // the end will not be dumped
-      TRI_SetLengthVector(&obj->_value._objects, j);
-    } else {
-      // no restrictions
-      TRI_ASSERT(restrictionType ==
-                 CollectionExport::Restrictions::RESTRICTION_NONE);
+      if (TRI_IS_EDGE_MARKER(marker)) {
+        if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_FROM)) {
+          // _from
+          std::string from(_ex->_resolver.getCollectionNameCluster(
+              TRI_EXTRACT_MARKER_FROM_CID(marker)));
+          from.push_back('/');
+          from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
+          result.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
+        }
+
+        if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_TO)) {
+          // _to
+          std::string to(_ex->_resolver.getCollectionNameCluster(
+              TRI_EXTRACT_MARKER_TO_CID(marker)));
+          to.push_back('/');
+          to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
+          result.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(to));
+        }
+      }
     }
-
-    int res = TRI_StringifyJson(buffer.stringBuffer(), json.json());
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
+    arangodb::basics::VPackStringBufferAdapter bufferAdapter(
+        buffer.stringBuffer());
+    VPackDumper dumper(&bufferAdapter);
+    try {
+      dumper.dump(result.slice());
+    } catch (...) {
+      /// TODO correct error Handling!
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   }
 
