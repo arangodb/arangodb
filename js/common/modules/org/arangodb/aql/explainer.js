@@ -712,7 +712,7 @@ function processQuery (query, explain) {
         if (Array.isArray(node.graph)) {
           rc += node.graph.map(function(g, index) { 
             var tmp = "";
-            if (node.directions[index] != defaultDirection) {
+            if (node.directions[index] !== defaultDirection) {
               tmp += keyword(translate[node.directions[index]]);
               tmp += " ";
             }
