@@ -248,6 +248,11 @@ retry:
                       _vocbase->_name,
                       (int) _configuration._autoResyncRetries);
         }
+        else {
+          LOG_WARNING(
+              "aborting automatic resynchronization for database '%s' because autoResyncRetries is 0",
+              _vocbase->_name);
+        }
 
         // always abort if we get here
         return res;
