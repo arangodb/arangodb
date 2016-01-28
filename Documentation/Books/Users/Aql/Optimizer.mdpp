@@ -51,7 +51,7 @@ using the `explain` method of `ArangoStatement`:
     @endDocuBlock AQLEXP_01_explainCreate
 
 As you can see, the result details are very verbose so we will not show them in full in the next
-sections. Instead, lets take a closer look at the results step by step.
+sections. Instead, let's take a closer look at the results step by step.
 
 !SUBSUBSECTION Execution nodes
 
@@ -69,7 +69,7 @@ the *execution plan*. The output is still very verbose, so here's a shorted form
     @endDocuBlock AQLEXP_02_explainOverview
 
 *Note that the list of nodes might slightly change in future versions of ArangoDB if 
-new execution node types get added or the optimizer will create somewhat more 
+new execution node types get added or the optimizer create somewhat more 
 optimized plans).*
 
 When a plan is executed, the query execution engine will start with the node at
