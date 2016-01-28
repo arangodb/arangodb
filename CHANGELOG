@@ -27,6 +27,49 @@ v3.0.0 (XXXX-XX-XX)
 * added WorkMonitor to inspect server threads
 
 
+v2.8.1 (XXXX-XX-XX)
+-------------------
+
+* Improved AQL Pattern matching by allowing to specify a different traversal
+direction for one or many of the edge collections.
+
+    FOR v, e, p IN OUTBOUND @start @@ec1, INBOUND @@ec2, @@ec3
+
+Will traverse *ec1* and *ec3* in the OUTBOUND direction and for *ec2* it will use
+the INBOUND direction. These directions can be combined in arbitrary ways, the
+direction defined after *IN [steps]* will we used as default direction and can
+be overriden for specific collections.
+This feature is only available for collection lists, it is not possible to
+combine it with graph names.
+
+* fixed undefined behavior in AQL function `PARSE_IDENTIFIER`
+
+* added AQL function `IS_SAME_COLLECTION`:
+
+  *IS_SAME_COLLECTION(collection, document)*: Return true if *document* has the same
+  collection id as the collection specified in *collection*. *document* can either be
+  a [document handle](../Glossary/README.md#document-handle) string, or a document with
+  an *_id* attribute. The function does not validate whether the collection actually
+  contains the specified document, but only compares the name of the specified collection
+  with the collection name part of the specified document.
+  If *document* is neither an object with an *id* attribute nor a *string* value,
+  the function will return *null* and raise a warning.
+
+      /* true */
+      IS_SAME_COLLECTION('_users', '_users/my-user')
+      IS_SAME_COLLECTION('_users', { _id: '_users/my-user' })
+
+      /* false */ 
+      IS_SAME_COLLECTION('_users', 'foobar/baz')
+      IS_SAME_COLLECTION('_users', { _id: 'something/else' })
+
+
+v2.8.0 (2016-01-25)
+-------------------
+
+* avoid recursive locking
+
+
 v2.8.0-beta8 (2016-01-19)
 -------------------------
 

@@ -162,7 +162,7 @@ AQL supports the following functions to operate on document values:
       /* { "collection" : "mycollection", "key" : "mykey" } */ 
       PARSE_IDENTIFIER({ "_id" : "mycollection/mykey", "value" : "some value" })
 
-- *IS_SAME_COLLECTION(collection, document)*: Return true if *document* has the same
+- *IS_SAME_COLLECTION(collection, document)*: Returns *true* if *document* has the same
   collection id as the collection specified in *collection*. *document* can either be
   a [document handle](../Glossary/README.md#document-handle) string, or a document with
   an *_id* attribute. The function does not validate whether the collection actually
