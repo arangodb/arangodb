@@ -92,7 +92,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& info, char const* header,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief VelocyStream(VStream) request constructor
+/// @brief VelocyStream(VStream) request constructor @TODO: _freeables for vpack
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralRequest::GeneralRequest( ConnectionInfo const& info, Builder vobject, 
@@ -584,13 +584,13 @@ void GeneralRequest::setConnectionInfo(ConnectionInfo const& info) {
 /// @brief returns the http/vstream request type
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest::ProtocolRequestType GeneralRequest::requestType() const { return _type; }
+GeneralRequest::RequestType GeneralRequest::requestType() const { return _type; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the http/vstream request type
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralRequest::setRequestType(ProtocolRequestType newType) { _type = newType; }
+void GeneralRequest::setRequestType(RequestType newType) { _type = newType; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the database name
@@ -633,7 +633,7 @@ void GeneralRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
 /// @brief determine the header type
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest::ProtocolRequestType GeneralRequest::getRequestType(char const* ptr,
+GeneralRequest::RequestType GeneralRequest::getRequestType(char const* ptr,
                                                          size_t const length) {
   switch (length) {
     case 3:
@@ -1364,7 +1364,7 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
 /// @brief translate an enum value into an HTTP/VSTREAM method string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string GeneralRequest::translateMethod(ProtocolRequestType method) {
+std::string GeneralRequest::translateMethod(RequestType method) {
   if ( method == HTTP_REQUEST_DELETE) {
     return "HTTP_DELETE";
   } else if ( method == HTTP_REQUEST_GET) {
@@ -1409,7 +1409,7 @@ std::string GeneralRequest::translateMethod(ProtocolRequestType method) {
 /// @brief translate an HTTP/VSTERAM method string into an enum value
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest::ProtocolRequestType GeneralRequest::translateMethod(
+GeneralRequest::RequestType GeneralRequest::translateMethod(
     std::string const& method) {
   std::string const methodString = StringUtils::toupper(method);
 
@@ -1454,7 +1454,7 @@ GeneralRequest::ProtocolRequestType GeneralRequest::translateMethod(
 /// @brief append the request method string to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralRequest::appendMethod(ProtocolRequestType method, StringBuffer* buffer) {
+void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
   buffer->appendText(translateMethod(method));
   buffer->appendChar(' ');
 }

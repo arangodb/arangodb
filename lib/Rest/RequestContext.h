@@ -32,7 +32,7 @@
 namespace arangodb {
 namespace rest {
 
-class HttpRequest;
+class GeneralRequest;
 
 
 class RequestContext {
@@ -42,7 +42,7 @@ class RequestContext {
   /// @brief create the request context
   //////////////////////////////////////////////////////////////////////////////
 
-  RequestContext(HttpRequest* request) : _request(request) {}
+  RequestContext(GeneralRequest* request) : _request(request) {}
 
   virtual ~RequestContext() {}
 
@@ -76,7 +76,7 @@ class RequestContext {
   /// @brief the request of the context
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest* _request;
+  GeneralRequest* _request;
 };
 }
 }

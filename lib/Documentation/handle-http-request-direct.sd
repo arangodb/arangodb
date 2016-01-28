@@ -3,8 +3,8 @@ Scheduler:Scheduler[t]
 HttpCommTask:Task
 HttpServer:GeneralServer
 /HttpHandler:Handler
-/HttpRequest:Request
-/HttpResponse:Response
+/GeneralRequest:Request
+/GeneralResponse:Response
 
 Scheduler:HttpCommTask.processRead
 

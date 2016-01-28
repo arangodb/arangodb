@@ -3,7 +3,7 @@ Scheduler:Scheduler[t]
 HttpCommTask:Task
 HttpServer:GeneralServer
 /HttpHandler:Handler
-/HttpRequest:Request
+/GeneralRequest:Request
 /HttpResponse:Response
 /GeneralServerJob:Job
 Dispatcher:Dispatcher[t]

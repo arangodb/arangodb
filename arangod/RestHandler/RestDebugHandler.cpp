@@ -40,7 +40,7 @@ using namespace arangodb::admin;
 extern AnyServer* ArangoInstance;
 
 
-RestDebugHandler::RestDebugHandler(HttpRequest* request)
+RestDebugHandler::RestDebugHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 
@@ -49,7 +49,7 @@ bool RestDebugHandler::isDirect() const { return false; }
 
 HttpHandler::status_t RestDebugHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
   size_t const len = _request->suffix().size();
   if (len == 0 || len > 2 || !(_request->suffix()[0] == "failat")) {
     generateNotImplemented("ILLEGAL /_admin/debug/failat");
@@ -59,14 +59,14 @@ HttpHandler::status_t RestDebugHandler::execute() {
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::HTTP_REQUEST_DELETE:
       if (len == 1) {
         TRI_ClearFailurePointsDebugging();
       } else {
         TRI_RemoveFailurePointDebugging(suffix[1].c_str());
       }
       break;
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::HTTP_REQUEST_PUT:
       if (len == 2) {
         TRI_AddFailurePointDebugging(suffix[1].c_str());
       } else {

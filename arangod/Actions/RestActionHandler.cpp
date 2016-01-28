@@ -31,7 +31,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(HttpRequest* request,
+RestActionHandler::RestActionHandler(GeneralRequest* request,
                                      action_options_t* data)
     : RestVocbaseBaseHandler(request),
       _action(nullptr),
@@ -63,17 +63,17 @@ HttpHandler::status_t RestActionHandler::execute() {
   // execute
   else {
     // extract the sub-request type
-    HttpRequest::HttpRequestType type = _request->requestType();
+    GeneralRequest::RequestType type = _request->requestType();
 
     // execute one of the HTTP methods
     switch (type) {
-      case HttpRequest::HTTP_REQUEST_GET:
-      case HttpRequest::HTTP_REQUEST_POST:
-      case HttpRequest::HTTP_REQUEST_PUT:
-      case HttpRequest::HTTP_REQUEST_DELETE:
-      case HttpRequest::HTTP_REQUEST_HEAD:
-      case HttpRequest::HTTP_REQUEST_OPTIONS:
-      case HttpRequest::HTTP_REQUEST_PATCH: {
+      case GeneralRequest::HTTP_REQUEST_GET:
+      case GeneralRequest::HTTP_REQUEST_POST:
+      case GeneralRequest::HTTP_REQUEST_PUT:
+      case GeneralRequest::HTTP_REQUEST_DELETE:
+      case GeneralRequest::HTTP_REQUEST_HEAD:
+      case GeneralRequest::HTTP_REQUEST_OPTIONS:
+      case GeneralRequest::HTTP_REQUEST_PATCH: {
         result = executeAction();
         break;
       }
