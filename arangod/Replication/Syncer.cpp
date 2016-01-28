@@ -393,27 +393,6 @@ int Syncer::createCollection(TRI_json_t const* json, TRI_vocbase_col_t** dst) {
 
   VocbaseCollectionInfo params(_vocbase, name.c_str(), builder->slice());
 
-  // wait for "old" collection to be dropped
-  char* dirName =
-      TRI_GetDirectoryCollection(_vocbase->_path, name.c_str(), type, cid);
-
-  if (dirName != nullptr) {
-    char* parameterName = TRI_Concatenate2File(dirName, TRI_VOC_PARAMETER_FILE);
-
-    if (parameterName != nullptr) {
-      int iterations = 0;
-
-      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) &&
-             iterations++ < 1200) {
-        usleep(1000 * 100);
-      }
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, parameterName);
-    }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dirName);
-  }
-
   col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
 
   if (col == nullptr) {

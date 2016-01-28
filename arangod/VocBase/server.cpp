@@ -34,6 +34,7 @@
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/hashes.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
@@ -276,25 +277,6 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
 /// the filename. this is used to sort database filenames on startup
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DatabaseIdComparator(const void* lhs, const void* rhs) {
-  char const* l = *((char**)lhs);
-  char const* r = *((char**)rhs);
-
-  uint64_t const numLeft = GetNumericFilenamePart(l);
-  uint64_t const numRight = GetNumericFilenamePart(r);
-
-  if (numLeft != numRight) {
-    return numLeft < numRight ? -1 : 1;
-  }
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two filenames, based on the numeric part contained in
-/// the filename. this is used to sort database filenames on startup
-////////////////////////////////////////////////////////////////////////////////
-
 static bool DatabaseIdStringComparator(std::string const& lhs,
                                        std::string const& rhs) {
   uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
@@ -407,70 +389,51 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
   }
 
   MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
+
   auto oldLists = server->_databasesLists.load();
   auto newLists = new DatabasesLists(*oldLists);
   // No try catch here, if we crash here because out of memory...
 
   for (auto const& name : files) {
-    TRI_vocbase_t* vocbase;
-    TRI_voc_tick_t id;
-    TRI_vocbase_defaults_t defaults;
-    char* parametersFile;
-    char* databaseName;
     TRI_ASSERT(!name.empty());
 
     // .........................................................................
     // construct and validate path
     // .........................................................................
 
-    char* databaseDirectory =
-        TRI_Concatenate2File(server->_databasePath, name.c_str());
+    std::string const databaseDirectory(arangodb::basics::FileUtils::buildFilename(server->_databasePath, name.c_str()));
 
-    if (databaseDirectory == nullptr) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      break;
-    }
-
-    if (!TRI_IsDirectory(databaseDirectory)) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+    if (!TRI_IsDirectory(databaseDirectory.c_str())) {
       continue;
     }
 
     if (regexec(regex, name.c_str(), sizeof(matches) / sizeof(matches[0]),
                 matches, 0) != 0) {
       // name does not match the pattern, ignore this directory
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       continue;
     }
 
     // we have a directory...
 
-    if (!TRI_IsWritable(databaseDirectory)) {
+    if (!TRI_IsWritable(databaseDirectory.c_str())) {
       // the database directory we found is not writable for the current user
       // this can cause serious trouble so we will abort the server start if we
       // encounter this situation
       LOG_ERROR("database directory '%s' is not writable for current user",
-                databaseDirectory);
+                databaseDirectory.c_str());
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       res = TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
       break;
     }
 
     // we have a writable directory...
+    std::string const tmpfile(arangodb::basics::FileUtils::buildFilename(databaseDirectory.c_str(), ".tmp"));
 
-    char* tmpfile = TRI_Concatenate2File(databaseDirectory, ".tmp");
-
-    if (TRI_ExistsFile(tmpfile)) {
+    if (TRI_ExistsFile(tmpfile.c_str())) {
       // still a temporary... must ignore
-      LOG_TRACE("ignoring temporary directory '%s'", tmpfile);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      LOG_TRACE("ignoring temporary directory '%s'", tmpfile.c_str());
       continue;
     }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
 
     // a valid database directory
 
@@ -479,42 +442,30 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     // .........................................................................
 
     // now read data from parameter.json file
-    parametersFile =
-        TRI_Concatenate2File(databaseDirectory, TRI_VOC_PARAMETER_FILE);
+    std::string const parametersFile(arangodb::basics::FileUtils::buildFilename(databaseDirectory, TRI_VOC_PARAMETER_FILE));
 
-    if (parametersFile == nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      break;
-    }
-
-    if (!TRI_ExistsFile(parametersFile)) {
+    if (!TRI_ExistsFile(parametersFile.c_str())) {
       // no parameter.json file
       LOG_ERROR(
           "database directory '%s' does not contain parameters file or "
           "parameters file cannot be read",
-          databaseDirectory);
+          databaseDirectory.c_str());
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       // abort
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
 
-    LOG_DEBUG("reading database parameters from file '%s'", parametersFile);
-    std::string fileName(parametersFile);
+    LOG_DEBUG("reading database parameters from file '%s'", parametersFile.c_str());
     std::shared_ptr<VPackBuilder> builder;
     try {
       builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(fileName);
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(parametersFile);
     } catch (...) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
-          databaseDirectory);
+          databaseDirectory.c_str());
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       // abort
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
@@ -524,19 +475,15 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 
     LOG_DEBUG("database parameters: %s", parametersString.c_str());
 
-    TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
-
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters,
                                                             "deleted", false)) {
       // database is deleted, skip it!
-      LOG_INFO("found dropped database in directory '%s'", databaseDirectory);
+      LOG_INFO("found dropped database in directory '%s'", databaseDirectory.c_str());
 
       LOG_INFO("removing superfluous database directory '%s'",
-               databaseDirectory);
+               databaseDirectory.c_str());
 
-      TRI_RemoveDirectory(databaseDirectory);
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      TRI_RemoveDirectory(databaseDirectory.c_str());
       continue;
     }
     VPackSlice idSlice = parameters.get("id");
@@ -544,53 +491,38 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     if (!idSlice.isString()) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
-          databaseDirectory);
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+          databaseDirectory.c_str());
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
     std::string idString = idSlice.copyString();
 
-    id = (TRI_voc_tick_t)TRI_UInt64String(idString.c_str());
+    TRI_voc_tick_t id = (TRI_voc_tick_t)TRI_UInt64String(idString.c_str());
 
     VPackSlice nameSlice = parameters.get("name");
 
     if (!nameSlice.isString()) {
       LOG_ERROR(
           "database directory '%s' does not contain a valid parameters file",
-          databaseDirectory);
+          databaseDirectory.c_str());
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
-    std::string dbname = nameSlice.copyString();
 
-    databaseName = TRI_DuplicateString(TRI_CORE_MEM_ZONE, dbname.c_str());
-
-    // .........................................................................
-    // setup defaults
-    // .........................................................................
+    std::string const databaseName = nameSlice.copyString();
 
     // use defaults
+    TRI_vocbase_defaults_t defaults;
     TRI_GetDatabaseDefaultsServer(server, &defaults);
-
-    if (databaseName == nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      break;
-    }
 
     // .........................................................................
     // create app directories
     // .........................................................................
 
-    res = CreateApplicationDirectory(databaseName, server->_appPath);
+    res = CreateApplicationDirectory(databaseName.c_str(), server->_appPath);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       break;
     }
 
@@ -599,11 +531,9 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     // .........................................................................
 
     // try to open this database
-    vocbase =
-        TRI_OpenVocBase(server, databaseDirectory, id, databaseName, &defaults,
+    TRI_vocbase_t* vocbase =
+        TRI_OpenVocBase(server, databaseDirectory.c_str(), id, databaseName.c_str(), &defaults,
                         isUpgrade, server->_iterateMarkersOnOpen);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
 
     if (vocbase == nullptr) {
       // grab last error
@@ -616,15 +546,11 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 
       LOG_ERROR(
           "could not process database directory '%s' for database '%s': %s",
-          databaseDirectory, name.c_str(), TRI_errno_string(res));
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+          databaseDirectory.c_str(), name.c_str(), TRI_errno_string(res));
       break;
     }
 
     // we found a valid database
-    TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-
     void const* TRI_UNUSED found = nullptr;
 
     try {
@@ -757,7 +683,7 @@ static int CloseDroppedDatabases(TRI_server_t* server) {
 /// @brief get the names of all databases in the ArangoDB 1.4 layout
 ////////////////////////////////////////////////////////////////////////////////
 
-static int GetDatabases(TRI_server_t* server, TRI_vector_string_t* databases) {
+static int GetDatabases(TRI_server_t* server, std::vector<std::string>& databases) {
   regmatch_t matches[2];
 
   TRI_ASSERT(server != nullptr);
@@ -785,57 +711,17 @@ static int GetDatabases(TRI_server_t* server, TRI_vector_string_t* databases) {
     }
 
     // found a database name
-    char* dname = TRI_Concatenate2File(server->_databasePath, name.c_str());
+    std::string const dname(arangodb::basics::FileUtils::buildFilename(server->_databasePath, name.c_str()));
 
-    if (dname == nullptr) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      break;
+    if (TRI_IsDirectory(dname.c_str())) {
+      databases.push_back(name);
     }
-
-    if (TRI_IsDirectory(dname)) {
-      TRI_PushBackVectorString(
-          databases, TRI_DuplicateString(TRI_CORE_MEM_ZONE, name.c_str()));
-    }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
   }
 
   regfree(&re);
 
   // sort by id
-  qsort(databases->_buffer, databases->_length, sizeof(char*),
-        &DatabaseIdComparator);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move the VERSION file from the main data directory into the _system
-/// database subdirectory
-////////////////////////////////////////////////////////////////////////////////
-
-static int MoveVersionFile(TRI_server_t* server, char const* systemName) {
-  char* oldName = TRI_Concatenate2File(server->_basePath, "VERSION");
-
-  if (oldName == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  char* targetName =
-      TRI_Concatenate3File(server->_databasePath, systemName, "VERSION");
-
-  if (targetName == nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  int res = TRI_ERROR_NO_ERROR;
-  if (TRI_ExistsFile(oldName)) {
-    res = TRI_RenameFile(oldName, targetName);
-  }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, targetName);
+  std::sort(databases.begin(), databases.end(), DatabaseIdStringComparator);
 
   return res;
 }
@@ -846,18 +732,17 @@ static int MoveVersionFile(TRI_server_t* server, char const* systemName) {
 
 static bool HasOldCollections(TRI_server_t* server) {
   regex_t re;
-  regmatch_t matches[2];
-  bool found;
+  regmatch_t matches[3];
 
   TRI_ASSERT(server != nullptr);
 
-  if (regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED) != 0) {
+  if (regcomp(&re, "^collection-([0-9][0-9]*)(-[0-9]+)?$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
     return false;
   }
 
-  found = false;
+  bool found = false;
   std::vector<std::string> files = TRI_FilesDirectory(server->_basePath);
 
   for (auto const& name : files) {
@@ -874,93 +759,6 @@ static bool HasOldCollections(TRI_server_t* server) {
   regfree(&re);
 
   return found;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move collections from the main data directory into the _system
-/// database subdirectory
-////////////////////////////////////////////////////////////////////////////////
-
-static int MoveOldCollections(TRI_server_t* server, char const* systemName) {
-  regex_t re;
-  regmatch_t matches[2];
-  int res;
-
-  TRI_ASSERT(server != nullptr);
-  TRI_ASSERT(systemName != nullptr);
-
-  // first move the VERSION file
-  MoveVersionFile(server, systemName);
-
-  res = regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
-
-  if (res != 0) {
-    LOG_ERROR("unable to compile regular expression");
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  res = TRI_ERROR_NO_ERROR;
-  std::vector<std::string> files = TRI_FilesDirectory(server->_basePath);
-
-  for (auto const& name : files) {
-    char* oldName;
-    char* targetName;
-
-    TRI_ASSERT(!name.empty());
-
-    if (regexec(&re, name.c_str(), sizeof(matches) / sizeof(matches[0]),
-                matches, 0) != 0) {
-      // found something else than "collection-xxxx". we can ignore these
-      // files/directories
-      continue;
-    }
-
-    oldName = TRI_Concatenate2File(server->_basePath, name.c_str());
-
-    if (oldName == nullptr) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      break;
-    }
-
-    if (!TRI_IsDirectory(oldName)) {
-      // not a directory
-      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-      continue;
-    }
-
-    // move into system database directory
-
-    targetName =
-        TRI_Concatenate3File(server->_databasePath, systemName, name.c_str());
-
-    if (targetName == nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      break;
-    }
-
-    LOG_INFO(
-        "moving standalone collection directory from '%s' to system database "
-        "directory '%s'",
-        oldName, targetName);
-
-    // rename directory
-    res = TRI_RenameFile(oldName, targetName);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, targetName);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("moving collection directory failed: %s",
-                TRI_errno_string(res));
-      break;
-    }
-  }
-
-  regfree(&re);
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1025,235 +823,81 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
 static int CreateDatabaseDirectory(TRI_server_t* server, TRI_voc_tick_t tick,
                                    char const* databaseName,
                                    TRI_vocbase_defaults_t const* defaults,
-                                   char** name) {
-  char* tickString;
-  char* dname;
-  char* file;
-  int res;
-
+                                   std::string& name) {
   TRI_ASSERT(server != nullptr);
   TRI_ASSERT(databaseName != nullptr);
 
-  tickString = TRI_StringUInt64(tick);
-
-  if (tickString == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  dname = TRI_Concatenate2String("database-", tickString);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-
-  if (dname == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  file = TRI_Concatenate2File(server->_databasePath, dname);
-
-  if (file == nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  std::string const dname("database-" + std::to_string(tick));
+  std::string const dirname(arangodb::basics::FileUtils::buildFilename(server->_databasePath, dname.c_str())); 
 
   // use a temporary directory first. otherwise, if creation fails, the server
   // might be left with an empty database directory at restart, and abort.
-  char* tmpname = TRI_Concatenate2String(file, ".tmp");
 
-  if (TRI_IsDirectory(tmpname)) {
-    TRI_RemoveDirectory(tmpname);
+  std::string const tmpname(dirname + ".tmp");
+
+  if (TRI_IsDirectory(tmpname.c_str())) {
+    TRI_RemoveDirectory(tmpname.c_str());
   }
 
   std::string errorMessage;
   long systemError;
 
-  res = TRI_CreateDirectory(tmpname, systemError, errorMessage);
+  int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res != TRI_ERROR_FILE_EXISTS) {
       LOG_ERROR("failed to create database directory: %s",
                 errorMessage.c_str());
     }
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
     return res;
   }
 
   TRI_IF_FAILURE("CreateDatabase::tempDirectory") {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
     return TRI_ERROR_DEBUG;
   }
 
-  char* tmpfile = TRI_Concatenate2File(tmpname, ".tmp");
-  res = TRI_WriteFile(tmpfile, "", 0);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+  std::string const tmpfile(arangodb::basics::FileUtils::buildFilename(tmpname, ".tmp"));
+  res = TRI_WriteFile(tmpfile.c_str(), "", 0);
 
   TRI_IF_FAILURE("CreateDatabase::tempFile") {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
     return TRI_ERROR_DEBUG;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_RemoveDirectory(tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+    TRI_RemoveDirectory(tmpname.c_str());
     return res;
   }
 
   // finally rename
-  res = TRI_RenameFile(tmpname, file);
+  res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
 
   TRI_IF_FAILURE("CreateDatabase::renameDirectory") {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
     return TRI_ERROR_DEBUG;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_RemoveDirectory(tmpname);  // clean up
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+    TRI_RemoveDirectory(tmpname.c_str());  // clean up
     return res;
   }
 
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-
   // now everything is valid
 
-  res = SaveDatabaseParameters(tick, databaseName, false, defaults, file);
+  res = SaveDatabaseParameters(tick, databaseName, false, defaults, dirname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
     return res;
   }
 
   // finally remove the .tmp file
   {
-    char* tmpfile = TRI_Concatenate2File(file, ".tmp");
-    TRI_UnlinkFile(tmpfile);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+    std::string const tmpfile(arangodb::basics::FileUtils::buildFilename(dirname, ".tmp"));
+    TRI_UnlinkFile(tmpfile.c_str());
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
   // takes ownership of the string
-  *name = dname;
+  name = dname;
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move 1.4-alpha database directories around until they are matching
-/// the final ArangoDB 1.4 filename layout
-////////////////////////////////////////////////////////////////////////////////
-
-static int Move14AlphaDatabases(TRI_server_t* server) {
-  regex_t re;
-  regmatch_t matches[2];
-  int res;
-
-  TRI_ASSERT(server != nullptr);
-
-  res = regcomp(&re, "^database-([0-9][0-9]*)$", REG_EXTENDED);
-
-  if (res != 0) {
-    LOG_ERROR("unable to compile regular expression");
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  res = TRI_ERROR_NO_ERROR;
-  std::vector<std::string> files = TRI_FilesDirectory(server->_databasePath);
-
-  for (auto const& name : files) {
-    char* tickString;
-    char* dname;
-    char* targetName;
-    char* oldName;
-    TRI_voc_tick_t tick;
-
-    TRI_ASSERT(!name.empty());
-
-    if (regexec(&re, name.c_str(), sizeof(matches) / sizeof(matches[0]),
-                matches, 0) == 0) {
-      // found "database-xxxx". this is the desired format already
-      continue;
-    }
-
-    // found some other format. we need to adjust the name
-
-    oldName = TRI_Concatenate2File(server->_databasePath, name.c_str());
-
-    if (oldName == nullptr) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      break;
-    }
-
-    if (!TRI_IsDirectory(oldName)) {
-      // found a non-directory
-      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-      continue;
-    }
-
-    tick = TRI_NewTickServer();
-    tickString = TRI_StringUInt64(tick);
-
-    if (tickString == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    dname = TRI_Concatenate2String("database-", tickString);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-
-    if (dname == nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      break;
-    }
-
-    targetName = TRI_Concatenate2File(server->_databasePath, dname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
-
-    if (targetName == nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      break;
-    }
-
-    res = SaveDatabaseParameters(tick, name.c_str(), false, &server->_defaults,
-                                 oldName);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, targetName);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-      break;
-    }
-
-    LOG_INFO("renaming database directory from '%s' to '%s'", oldName,
-             targetName);
-
-    res = TRI_RenameFile(oldName, targetName);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, targetName);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("renaming database failed: %s", TRI_errno_string(res));
-      break;
-    }
-  }
-
-  regfree(&re);
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1264,15 +908,11 @@ static int InitDatabases(TRI_server_t* server, bool checkVersion,
                          bool performUpgrade) {
   TRI_ASSERT(server != nullptr);
 
-  TRI_vector_string_t names;
-  TRI_InitVectorString(&names, TRI_CORE_MEM_ZONE);
-
-  int res = GetDatabases(server, &names);
+  std::vector<std::string> names;
+  int res = GetDatabases(server, names);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (names._length == 0) {
-      char* name;
-
+    if (names.empty()) {
       if (!performUpgrade && HasOldCollections(server)) {
         LOG_ERROR(
             "no databases found. Please start the server with the --upgrade "
@@ -1283,40 +923,14 @@ static int InitDatabases(TRI_server_t* server, bool checkVersion,
 
       // no databases found, i.e. there is no system database!
       // create a database for the system database
+      std::string dirname;
       res = CreateDatabaseDirectory(server, TRI_NewTickServer(),
                                     TRI_VOC_SYSTEM_DATABASE, &server->_defaults,
-                                    &name);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        if (TRI_PushBackVectorString(&names, name) != TRI_ERROR_NO_ERROR) {
-          TRI_FreeString(TRI_CORE_MEM_ZONE, name);
-          res = TRI_ERROR_OUT_OF_MEMORY;
-        }
-      }
+                                    dirname);
 
       server->_hasCreatedSystemDatabase = true;
     }
-
-    if (res == TRI_ERROR_NO_ERROR && performUpgrade) {
-      char const* systemName;
-
-      TRI_ASSERT(names._length > 0);
-
-      systemName = names._buffer[0];
-
-      // this performs a migration of the collections of the "only" pre-1.4
-      // database into the system database and its own directory
-      res = MoveOldCollections(server, systemName);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        // this renames database directories created with 1.4-alpha from the
-        // database name to "database-xxx"
-        res = Move14AlphaDatabases(server);
-      }
-    }
   }
-
-  TRI_DestroyVectorString(&names);
 
   return res;
 }
@@ -2017,30 +1631,27 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     }
 
     // create the database directory
-    char* file;
-
     if (databaseId == 0) {
       databaseId = TRI_NewTickServer();
     }
-
-    res = CreateDatabaseDirectory(server, databaseId, name, defaults, &file);
+     
+    std::string dirname;
+    res = CreateDatabaseDirectory(server, databaseId, name, defaults, dirname);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
 
-    char* path = TRI_Concatenate2File(server->_databasePath, file);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+    std::string const path(arangodb::basics::FileUtils::buildFilename(server->_databasePath, dirname.c_str()));
 
     if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-      LOG_TRACE("creating database '%s', directory '%s'", name, path);
+      LOG_TRACE("creating database '%s', directory '%s'", name, path.c_str());
     } else {
-      LOG_INFO("creating database '%s', directory '%s'", name, path);
+      LOG_INFO("creating database '%s', directory '%s'", name, path.c_str());
     }
 
     vocbase =
-        TRI_OpenVocBase(server, path, databaseId, name, defaults, false, false);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, path);
+        TRI_OpenVocBase(server, path.c_str(), databaseId, name, defaults, false, false);
 
     if (vocbase == nullptr) {
       // grab last error

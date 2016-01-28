@@ -41,8 +41,8 @@ namespace rest {
 
 class ApplicationFeature {
  private:
-  ApplicationFeature(ApplicationFeature const&);
-  ApplicationFeature& operator=(ApplicationFeature const&);
+  ApplicationFeature(ApplicationFeature const&) = delete;
+  ApplicationFeature& operator=(ApplicationFeature const&) = delete;
 
  public:
   explicit ApplicationFeature(std::string const& name);

@@ -52,6 +52,15 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
     size_t len = onePath.size();
     bool isEdgeAccess = false;
 
+    for (auto const & node : onePath) {
+      if (node->type == NODE_TYPE_FCALL) {
+        //
+        // we currently don't know how to execute functions in the
+        // traversal (-> TraverserExpression::recursiveCheck
+        return false;
+      }
+    }
+
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
 
@@ -76,8 +85,10 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
           (indexAccessNode->value.value._int < 0)) {
         return false;
       }
+
       conditionIsImpossible =
           !tn->isInRange(indexAccessNode->value.value._int, isEdgeAccess);
+
     } else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
                (onePath[len - 4]->type == NODE_TYPE_EXPANSION)) {
       // we now need to check for p.edges[*] which becomes a fancy structure
@@ -163,7 +174,6 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
           // Path variable access on the RHS? can't do that.
           continue;
         }
-
         AstNode* newNode = pathAccessNode->clone(ast);
 
         // since we just copied one path, we should only find one.
