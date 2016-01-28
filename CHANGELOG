@@ -1,6 +1,8 @@
 v2.8.1 (XXXX-XX-XX)
 -------------------
 
+* fixed display of relational operators in traversal explain output 
+
 * fixed undefined behavior in AQL function `PARSE_IDENTIFIER`
 
 * added AQL function `IS_SAME_COLLECTION`:
