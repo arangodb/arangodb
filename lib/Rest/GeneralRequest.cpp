@@ -43,12 +43,12 @@ using namespace arangodb::rest;
 static char const* EMPTY_STR = "";
 
 
-int32_t const HttpRequest::MinCompatibility = 10300L;
+int32_t const GeneralRequest::MinCompatibility = 10300L;
 
-std::string const HttpRequest::BatchContentType =
-    "application/x-arango-batchpart";
+std::string const GeneralRequest::BatchContentType 
+                      = "application/x-arango-batchpart";
 
-std::string const HttpRequest::MultiPartContentType = "multipart/form-data";
+std::string const GeneralRequest::MultiPartContentType = "multipart/form-data";
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,13 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& info, Builder vobject,
       : _values(10),
         _arrayValues(1),
         _cookies(1),
-        _headersVpack(),
+        _requestPath(EMPTY_STR),
+        _headers(5),
+        _contentLength(0),
+        _body(nullptr),
+        _bodySize(0),
+        _type(VSTREAM_REQUEST_GET), // Default type is supposed to be GET
+        _version(VSTREAM_UNKNOWN),
         _prefix(),
         _suffix(),
         _databaseName(),
@@ -113,14 +119,13 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& info, Builder vobject,
         _isRequestContextOwner(false),
         _clientTaskId(messageId),
         _defaultApiCompatibility(defaultApiCompatibility),
-        _allowMethodOverride(allowMethodOverride){
-  // copy request values and rearange them as per VStream parameters
+        _allowMethodOverride(allowMethodOverride) {
         
-  if ((isFirstChunk == 1) && ()) {
-    Builder vpack = vobject;
-    _freeablesVpack.emplace_back(vpack);
-    parseHeader(vpack, length);
-  }   
+          if ((isFirstChunk == 1)) {
+            Builder vpack = vobject;
+            _freeablesVpack.emplace_back(vpack);
+            parseHeader(vpack, length);
+          }   
 }
 
 GeneralRequest::~GeneralRequest() {
@@ -446,18 +451,18 @@ void GeneralRequest::setHeader(char const* key, size_t keyLength,
       // handle x-... headers
 
       // override HTTP method?
-      if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
-          (keyLength == 17 &&
-           memcmp(key, "x-method-override", keyLength) == 0) ||
-          (keyLength == 22 &&
-           memcmp(key, "x-http-method-override", keyLength) == 0)) {
-        std::string overriddenType(value);
-        StringUtils::tolowerInPlace(&overriddenType);
+      if ( (keyLength == 16 && memcmp(key, "x-vstream-method", keyLength) == 0) || 
+         (keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
+         (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
+         (keyLength == 22 && memcmp(key, "x-http-method-override", keyLength) == 0) ||
+         (keyLength == 25 && memcmp(key, "x-vstream-method-override", keyLength) == 0)) {
+  
+            std::string overriddenType(value);
+            StringUtils::tolowerInPlace(&overriddenType);
+            _type = getRequestType(overriddenType.c_str(), overriddenType.size());
 
-        _type = getRequestType(overriddenType.c_str(), overriddenType.size());
-
-        // don't insert this header!!
-        return;
+            // don't insert this header!!
+            return;
       }
     }
 
@@ -576,13 +581,13 @@ void GeneralRequest::setConnectionInfo(ConnectionInfo const& info) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the http request type
+/// @brief returns the http/vstream request type
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralRequest::ProtocolRequestType GeneralRequest::requestType() const { return _type; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the http request type
+/// @brief sets the http/vstream request type
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralRequest::setRequestType(ProtocolRequestType newType) { _type = newType; }
@@ -692,12 +697,9 @@ GeneralRequest::ProtocolRequestType GeneralRequest::getRequestType(char const* p
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralRequest::parseHeader(Builder ptr, size_t length) {
-  std::string completeUrl;
-  int length = 0;
-  char *e = nullptr;
-  char *pathBegin = nullptr;
-  char *pathEnd = nullptr;
+
   Slice s(ptr.start());
+
   for (auto const& it : ObjectIterator(s)) {
 
      if(tolower(it.key.copyString()) == "requestType") {
@@ -713,21 +715,33 @@ void GeneralRequest::parseHeader(Builder ptr, size_t length) {
         }
       
      } else if(tolower(it.key.copyString()) == "database"){
+
         if(getValue(it.value).c_str() != ''){
           _databaseName = getValue(it.value);
         } else{
           _databaseName = "_system";
         }  
+
      }else if(tolower(it.key.copyString()) == "request"){
+
+        if(getValue(it.value).c_str() != ''){
+          _requestPath = getValue(it.value);
+        } else{
+          _requestPath = "";
+        }  
+
+     } else if(tolower(it.key.copyString()) == "fullUrl") { 
+
         if(getValue(it.value).c_str() != ''){
           _fullUrl = getValue(it.value);
         } else{
           _fullUrl = "";
-        }  
+        }
+
      }else if(tolower(it.key.copyString()) == "parameter"){
 
         /// @TODO: Revaluate _value.insert() and setArrayValue
-      
+
         for (auto const& it : ObjectIterator(s.get("parameter"))) { 
           if( it.value.isArray()){
 
@@ -1102,31 +1116,31 @@ string getValue(Slice s) {
                                 ValueLength len;
                                 result = std::to_string(s.getString(len));
                               }catch(Exception const& e){
-                                std::cout << "Parse error: " << e.what() << std::endl;
+                                LOG_ERROR("String Parse error: '%s'", e.what());
                               }
                              break;
     case ValueType::Double  :try{
                                 result = std::to_string(s.getDouble());
                               }catch(Exception const& e){
-                                std::cout << "Parse error: " << e.what() << std::endl;
+                                LOG_ERROR("Double Parse error: '%s'", e.what());
                               }
                              break;
     case ValueType::Int     :try{
                                 result = std::to_string(s.getInt());
                               }catch(Exception const& e){
-                                std::cout << "Parse error: " << e.what() << std::endl;
+                                LOG_ERROR("Int Parse error: '%s'", e.what());
                               }
                              break;
     case ValueType::UInt    :try{
                                 result = std::to_string(s.getUInt());
                               }catch(Exception const& e){
-                                std::cout << "Parse error: " << e.what() << std::endl;
+                                LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
                               }
                              break;
     case ValueType::Bool    :try{
                                 result = std::to_string(s.getBool());
                               }catch(Exception const& e){
-                                std::cout << "Parse error: " << e.what() << std::endl;
+                                LOG_ERROR("Boolean Parse error: '%s'", e.what());
                               }
                              break;
     default                 :result = "";
@@ -1271,12 +1285,6 @@ void GeneralRequest::setValues(char* buffer, char* end) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the header values (for HTTP)
-////////////////////////////////////////////////////////////////////////////////
-
-void GeneralRequest::setValues(char* buffer, ch) {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the prefix path of the request
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1353,7 +1361,7 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief translate an enum value into an HTTP method string
+/// @brief translate an enum value into an HTTP/VSTREAM method string
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string GeneralRequest::translateMethod(ProtocolRequestType method) {
@@ -1398,7 +1406,7 @@ std::string GeneralRequest::translateMethod(ProtocolRequestType method) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief translate an HTTP method string into an enum value
+/// @brief translate an HTTP/VSTERAM method string into an enum value
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralRequest::ProtocolRequestType GeneralRequest::translateMethod(
