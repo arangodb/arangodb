@@ -95,10 +95,10 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& info, char const* header,
 /// @brief VelocyStream(VStream) request constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest::GeneralRequest(ConnectionInfo const& info, Builder vobject, 
+GeneralRequest::GeneralRequest( ConnectionInfo const& info, Builder vobject, 
                         uint32_t length, uint31_t chunk, uint1_t isFirstChunk, 
                         uint64_t messageId, int32_t defaultApiCompatibility,
-                        bool allowMethodOverride)
+                        bool allowMethodOverride )
       : _values(10),
         _arrayValues(1),
         _cookies(1),
