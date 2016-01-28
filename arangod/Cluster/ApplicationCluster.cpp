@@ -244,7 +244,7 @@ bool ApplicationCluster::prepare() {
 
   // check if my-address is set
   if (_myAddress.empty()) {
-    // no address given, now ask the agency for out address
+    // no address given, now ask the agency for our address
     _myAddress = ServerState::instance()->getAddress();
   }
   // if nonempty, it has already been set above
