@@ -40,22 +40,22 @@ using namespace arangodb::admin;
 /// @brief sort ascending
 ////////////////////////////////////////////////////////////////////////////////
 
-static int LidCompareAsc(void const* l, void const* r) {
+static bool LidCompareAsc(void const* l, void const* r) {
   TRI_log_buffer_t const* left = (TRI_log_buffer_t const*)l;
   TRI_log_buffer_t const* right = (TRI_log_buffer_t const*)r;
 
-  return (int)(((int64_t)left->_lid) - ((int64_t)right->_lid));
+  return left->_lid < right->_lid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort descending
 ////////////////////////////////////////////////////////////////////////////////
 
-static int LidCompareDesc(void const* l, void const* r) {
+static bool LidCompareDesc(void const* l, void const* r) {
   TRI_log_buffer_t const* left = (TRI_log_buffer_t const*)l;
   TRI_log_buffer_t const* right = (TRI_log_buffer_t const*)r;
 
-  return (int)(((int64_t)right->_lid) - ((int64_t)left->_lid));
+  return right->_lid < left->_lid;
 }
 
 RestAdminLogHandler::RestAdminLogHandler(rest::HttpRequest* request)
@@ -191,7 +191,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
 
   std::vector<TRI_log_buffer_t*> clean;
   for (size_t i = 0; i < TRI_LengthVector(logs); ++i) {
-    TRI_log_buffer_t* buf = (TRI_log_buffer_t*)TRI_AtVector(logs, i);
+    TRI_log_buffer_t* buf = static_cast<TRI_log_buffer_t*>(TRI_AtVector(logs, i));
 
     if (search) {
       std::string text = StringUtils::tolower(buf->_text);
@@ -202,6 +202,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     }
     clean.emplace_back(buf);
   }
+
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   size_t length = clean.size();
