@@ -20,7 +20,6 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Cluster/AgencyComm.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
@@ -496,33 +495,40 @@ void AgencyComm::cleanup() {
 
 bool AgencyComm::tryConnect() {
   {
+    std::string endpointsStr { getUniqueEndpointsString() };
+
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
     if (_globalEndpoints.size() == 0) {
       return false;
     }
+    
+    // mop: not sure if a timeout makes sense here
+    while (true) {
+      LOG_INFO("Trying to find an active agency. Checking %s", endpointsStr.c_str());
+      std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
-    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+      while (it != _globalEndpoints.end()) {
+        AgencyEndpoint* agencyEndpoint = (*it);
 
-    while (it != _globalEndpoints.end()) {
-      AgencyEndpoint* agencyEndpoint = (*it);
+        TRI_ASSERT(agencyEndpoint != nullptr);
+        TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
+        TRI_ASSERT(agencyEndpoint->_connection != nullptr);
 
-      TRI_ASSERT(agencyEndpoint != nullptr);
-      TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
-      TRI_ASSERT(agencyEndpoint->_connection != nullptr);
+        if (agencyEndpoint->_endpoint->isConnected()) {
+          return true;
+        }
 
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
+        agencyEndpoint->_endpoint->connect(
+            _globalConnectionOptions._connectTimeout,
+            _globalConnectionOptions._requestTimeout);
+
+        if (agencyEndpoint->_endpoint->isConnected()) {
+          return true;
+        }
+
+        ++it;
       }
-
-      agencyEndpoint->_endpoint->connect(
-          _globalConnectionOptions._connectTimeout,
-          _globalConnectionOptions._requestTimeout);
-
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
-      }
-
-      ++it;
+      sleep(1);
     }
   }
 
@@ -650,6 +656,46 @@ std::vector<std::string> AgencyComm::getEndpoints() {
       TRI_ASSERT(agencyEndpoint != nullptr);
 
       result.push_back(agencyEndpoint->_endpoint->getSpecification());
+      ++it;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a stringified version of all endpoints (unique)
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::getUniqueEndpointsString() {
+  std::string result;
+
+  {
+    // iterate over the list of endpoints
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
+
+    std::list<AgencyEndpoint*> uniqueEndpoints{
+      AgencyComm::_globalEndpoints.begin(),
+      AgencyComm::_globalEndpoints.end()
+    };
+
+    uniqueEndpoints.unique([] (AgencyEndpoint *a, AgencyEndpoint *b) {
+        return a->_endpoint->getSpecification() == b->_endpoint->getSpecification();
+    });
+
+    std::list<AgencyEndpoint*>::const_iterator it =
+        uniqueEndpoints.begin();
+    
+    while (it != uniqueEndpoints.end()) {
+      if (!result.empty()) {
+        result += ", ";
+      }
+
+      AgencyEndpoint const* agencyEndpoint = (*it);
+
+      TRI_ASSERT(agencyEndpoint != nullptr);
+
+      result.append(agencyEndpoint->_endpoint->getSpecification());
       ++it;
     }
   }
