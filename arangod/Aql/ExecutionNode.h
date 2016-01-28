@@ -217,6 +217,17 @@ class ExecutionNode {
   bool hasParent() const { return (_parents.size() == 1); }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the first parent, or a nullptr if none present
+  //////////////////////////////////////////////////////////////////////////////
+
+  ExecutionNode* getFirstParent() const {
+    if (_parents.empty()) {
+      return nullptr;
+    }
+    return _parents[0];
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief add the node parents to a vector
   //////////////////////////////////////////////////////////////////////////////
 
@@ -224,6 +235,27 @@ class ExecutionNode {
     for (auto const& it : _parents) {
       result.emplace_back(it);
     }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the node and its dependencies as a vector
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<ExecutionNode*> getDependencyChain(bool includeSelf) {
+    std::vector<ExecutionNode*> result;
+
+    auto current = this;
+    while (current != nullptr) {
+      if (includeSelf || current != this) {
+        result.emplace_back(current);
+      }
+      if (! current->hasDependency()) {
+        break;
+      }
+      current = current->getFirstDependency();
+    }
+
+    return result;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1013,6 +1045,12 @@ class EnumerateListNode : public ExecutionNode {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return in variable
+  //////////////////////////////////////////////////////////////////////////////
+
+  Variable const* inVariable() const { return _inVariable; }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief return out variable
   //////////////////////////////////////////////////////////////////////////////
 
@@ -1610,6 +1648,8 @@ class ReturnNode : public ExecutionNode {
       std::unordered_set<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
+
+  Variable const* inVariable() const { return _inVariable; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
