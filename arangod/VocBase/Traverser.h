@@ -168,7 +168,7 @@ class TraversalPath {
   /// @brief Gets the amount of read documents
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getReadDocuments() const { return _readDocuments; }
+  virtual size_t getReadDocuments() const { return _readDocuments; }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -179,33 +179,24 @@ class TraversalPath {
 };
 
 struct TraverserOptions {
- private:
-  std::function<bool(const TraversalPath* path)> pruningFunction;
+
+  std::vector<std::string> _collections;
+  std::vector<TRI_edge_direction_e> _directions;
 
  public:
-  TRI_edge_direction_e direction;
 
   uint64_t minDepth;
 
   uint64_t maxDepth;
 
-  bool usesPrune;
+  TraverserOptions() : minDepth(1), maxDepth(1) {}
 
-  TraverserOptions()
-      : direction(TRI_EDGE_OUT), minDepth(1), maxDepth(1), usesPrune(false) {}
+  void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
+  void setCollections(std::vector<std::string> const&, std::vector<TRI_edge_direction_e> const&);
 
-  void setPruningFunction(
-      std::function<bool(TraversalPath const* path)> const& callback) {
-    pruningFunction = callback;
-    usesPrune = true;
-  }
+  size_t collectionCount() const;
 
-  bool shouldPrunePath(TraversalPath const* path) {
-    if (!usesPrune) {
-      return false;
-    }
-    return pruningFunction(path);
-  }
+  bool getCollection(size_t const, std::string&, TRI_edge_direction_e&) const;
 };
 
 class Traverser {

@@ -564,9 +564,9 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 
 void TraversalNode::fillTraversalOptions(
     arangodb::traverser::TraverserOptions& opts) const {
-  opts.direction = _direction;
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
+  opts.setCollections(_edgeColls, _direction);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
