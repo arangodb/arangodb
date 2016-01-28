@@ -1817,6 +1817,25 @@ function brokenGraphSuite () {
         assertEqual(result.length, 1, "Without opt: ", query);
         assertEqual(result, [ vertex.B ], "Without opt: ", query);
       }
+    },
+
+    testQueryWithEmptyGraph: function () {
+      var query = `FOR x IN OUTBOUND 'start/123' GRAPH @graph RETURN x`;
+      var emptyGN = "UnitTestEmptyGraph";
+      try {
+        gm._drop(emptyGN);
+      } catch (e) {
+      }
+      var emptyGraph = gm._create(emptyGN);
+      var bindVars = {
+        graph: emptyGN
+      };
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_GRAPH_EMPTY.code);
+      }
     }
   };
 }

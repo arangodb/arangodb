@@ -700,7 +700,8 @@ function processQuery (query, explain) {
           value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
 
         var translate = ["ANY", "INBOUND", "OUTBOUND"];
-        rc += keyword(translate[node.direction]);
+        var defaultDirection = node.directions[0];
+        rc += keyword(translate[defaultDirection]);
         if (node.hasOwnProperty("vertexId")) {
           rc += " '" + value(node.vertexId) + "' ";
         }
@@ -710,7 +711,14 @@ function processQuery (query, explain) {
         rc += annotation("/* startnode */") + "  ";
           
         if (Array.isArray(node.graph)) {
-          rc += node.graph.map(function(g) { return collection(g); }).join(", ");
+          rc += node.graph.map(function(g, index) { 
+            var tmp = "";
+            if (node.directions[index] !== defaultDirection) {
+              tmp += keyword(translate[node.directions[index]]);
+              tmp += " ";
+            }
+            return tmp + collection(g);
+          }).join(", ");
         }
         else {
           rc += keyword("GRAPH") +  " '" + value(node.graph) + "'";

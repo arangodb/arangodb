@@ -585,6 +585,8 @@
 ///   The collection is already used in the orphans of the graph.
 /// - 1939: @LIT{edge collection does not exist or is not part of the graph}
 ///   the specified edge collection does not exist or is not part of the graph.
+/// - 1940: @LIT{empty graph}
+///   The requested graph has no edge collections.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -3137,6 +3139,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST                           (1939)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1940: ERROR_GRAPH_EMPTY
+///
+/// empty graph
+///
+/// The requested graph has no edge collections.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_EMPTY                                             (1940)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN

@@ -187,6 +187,9 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
 
         auto eColls = _graphObj->edgeCollections();
         size_t length = eColls.size();
+        if (length == 0) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
+        }
         _edgeColls.reserve(length);
         _directions.reserve(length);
         for (const auto& n: eColls) {
