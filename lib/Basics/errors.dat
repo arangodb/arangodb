@@ -333,6 +333,7 @@ ERROR_GRAPH_INVALID_PARAMETER,1936,"Invalid parameter type.","Invalid parameter 
 ERROR_GRAPH_INVALID_ID,1937,"Invalid id","Invalid id",
 ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,1938,"collection used in orphans","The collection is already used in the orphans of the graph.",
 ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,1939,"edge collection does not exist or is not part of the graph","the specified edge collection does not exist or is not part of the graph.",
+ERROR_GRAPH_EMPTY,1940,"empty graph","The requested graph has no edge collections."
 
 ################################################################################
 ## Session errors
