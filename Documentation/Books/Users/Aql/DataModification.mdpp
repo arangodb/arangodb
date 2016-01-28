@@ -1,4 +1,4 @@
-!CHAPTER Data modification queries
+!CHAPTER Data Modification Queries
 
 AQL supports the following data-modification operations:
 
@@ -7,6 +7,9 @@ AQL supports the following data-modification operations:
 - **REPLACE**: completely replace existing documents in a collection
 - **REMOVE**: remove existing documents from a collection
 - **UPSERT**: conditionally insert or update documents in a collection
+
+Those operations are detailed in the chapter [High Level Operations](Operations.md). 
+
 
 !SUBSECTION Modifying a single document 
 
