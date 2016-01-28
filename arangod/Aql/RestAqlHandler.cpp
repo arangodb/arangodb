@@ -41,7 +41,7 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
-RestAqlHandler::RestAqlHandler(arangodb::rest::HttpRequest* request,
+RestAqlHandler::RestAqlHandler(arangodb::rest::GeneralRequest* request,
                                std::pair<ApplicationV8*, QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
@@ -541,18 +541,18 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 
 arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
   // std::cout << "GOT INCOMING REQUEST: " <<
-  // arangodb::rest::HttpRequest::translateMethod(_request->requestType()) << ",
+  // arangodb::rest::GeneralRequest::translateMethod(_request->requestType()) << ",
   // " << arangodb::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _request->body() << "\n\n";
 
   std::vector<std::string> const& suffix = _request->suffix();
 
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_POST: {
+    case GeneralRequest::HTTP_REQUEST_POST: {
       if (suffix.size() != 1) {
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffix[0] == "instantiate") {
@@ -569,7 +569,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
       }
       break;
     }
-    case HttpRequest::HTTP_REQUEST_PUT: {
+    case GeneralRequest::HTTP_REQUEST_PUT: {
       if (suffix.size() != 2) {
         LOG_ERROR("unknown PUT API");
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
@@ -578,7 +578,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
       }
       break;
     }
-    case HttpRequest::HTTP_REQUEST_GET: {
+    case GeneralRequest::HTTP_REQUEST_GET: {
       if (suffix.size() != 2) {
         LOG_ERROR("Unknown GET API");
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
@@ -587,11 +587,11 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
       }
       break;
     }
-    case HttpRequest::HTTP_REQUEST_DELETE:
-    case HttpRequest::HTTP_REQUEST_HEAD:
-    case HttpRequest::HTTP_REQUEST_PATCH:
-    case HttpRequest::HTTP_REQUEST_OPTIONS:
-    case HttpRequest::HTTP_REQUEST_ILLEGAL: {
+    case GeneralRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::HTTP_REQUEST_HEAD:
+    case GeneralRequest::HTTP_REQUEST_PATCH:
+    case GeneralRequest::HTTP_REQUEST_OPTIONS:
+    case GeneralRequest::HTTP_REQUEST_ILLEGAL: {
       generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_NOT_IMPLEMENTED,
                     "illegal method for /_api/aql");
       break;

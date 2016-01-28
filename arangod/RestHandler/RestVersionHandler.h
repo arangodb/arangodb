@@ -35,7 +35,7 @@ namespace arangodb {
 class RestVersionHandler : public arangodb::admin::RestBaseHandler {
  public:
 
-  explicit RestVersionHandler(arangodb::rest::HttpRequest*);
+  explicit RestVersionHandler(arangodb::rest::GeneralRequest*);
 
  public:
 

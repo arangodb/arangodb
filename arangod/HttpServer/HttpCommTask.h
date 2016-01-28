@@ -37,7 +37,7 @@ namespace arangodb {
 namespace rest {
 class HttpCommTask;
 class HttpHandler;
-class HttpRequest;
+class GeneralRequest;
 class HttpResponse;
 class HttpServer;
 class HttpServerJob;
@@ -278,19 +278,19 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief the request with possible incomplete body
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest* _request;
+  GeneralRequest* _request;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief http version number used
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest::HttpVersion _httpVersion;
+  GeneralRequest::HttpVersion _httpVersion;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief type of request (GET, POST, ...)
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest::HttpRequestType _requestType;
+  GeneralRequest::RequestType _requestType;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief value of requested URL

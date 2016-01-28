@@ -37,7 +37,7 @@ class RestEdgeHandler : public RestDocumentHandler {
   
  public:
 
-  explicit RestEdgeHandler(rest::HttpRequest*);
+  explicit RestEdgeHandler(rest::GeneralRequest*);
 
   
  protected:

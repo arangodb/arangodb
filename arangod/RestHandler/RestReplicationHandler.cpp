@@ -59,7 +59,7 @@ using namespace arangodb::rest;
 uint64_t const RestReplicationHandler::defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
-RestReplicationHandler::RestReplicationHandler(HttpRequest* request)
+RestReplicationHandler::RestReplicationHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 
@@ -69,7 +69,7 @@ RestReplicationHandler::~RestReplicationHandler() {}
 
 HttpHandler::status_t RestReplicationHandler::execute() {
   // extract the request type
-  HttpRequest::HttpRequestType const type = _request->requestType();
+  GeneralRequest::RequestType const type = _request->requestType();
 
   std::vector<std::string> const& suffix = _request->suffix();
 
@@ -79,12 +79,12 @@ HttpHandler::status_t RestReplicationHandler::execute() {
     std::string const& command = suffix[0];
 
     if (command == "logger-state") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
     } else if (command == "logger-tick-ranges") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
@@ -92,7 +92,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
       handleCommandLoggerTickRanges();
     } else if (command == "logger-first-tick") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
@@ -100,8 +100,8 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
       handleCommandLoggerFirstTick();
     } else if (command == "logger-follow") {
-      if (type != HttpRequest::HTTP_REQUEST_GET &&
-          type != HttpRequest::HTTP_REQUEST_PUT) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET &&
+          type != GeneralRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
@@ -109,7 +109,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
       handleCommandLoggerFollow();
     } else if (command == "determine-open-transactions") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       handleCommandDetermineOpenTransactions();
@@ -120,7 +120,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         handleCommandBatch();
       }
     } else if (command == "inventory") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       if (ServerState::instance()->isCoordinator()) {
@@ -129,10 +129,10 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         handleCommandInventory();
       }
     } else if (command == "keys") {
-      if (type != HttpRequest::HTTP_REQUEST_GET &&
-          type != HttpRequest::HTTP_REQUEST_POST &&
-          type != HttpRequest::HTTP_REQUEST_PUT &&
-          type != HttpRequest::HTTP_REQUEST_DELETE) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET &&
+          type != GeneralRequest::HTTP_REQUEST_POST &&
+          type != GeneralRequest::HTTP_REQUEST_PUT &&
+          type != GeneralRequest::HTTP_REQUEST_DELETE) {
         goto BAD_CALL;
       }
 
@@ -140,17 +140,17 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         return status_t(HttpHandler::HANDLER_DONE);
       }
 
-      if (type == HttpRequest::HTTP_REQUEST_POST) {
+      if (type == GeneralRequest::HTTP_REQUEST_POST) {
         handleCommandCreateKeys();
-      } else if (type == HttpRequest::HTTP_REQUEST_GET) {
+      } else if (type == GeneralRequest::HTTP_REQUEST_GET) {
         handleCommandGetKeys();
-      } else if (type == HttpRequest::HTTP_REQUEST_PUT) {
+      } else if (type == GeneralRequest::HTTP_REQUEST_PUT) {
         handleCommandFetchKeys();
-      } else if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+      } else if (type == GeneralRequest::HTTP_REQUEST_DELETE) {
         handleCommandRemoveKeys();
       }
     } else if (command == "dump") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
 
@@ -160,19 +160,19 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         handleCommandDump();
       }
     } else if (command == "restore-collection") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+      if (type != GeneralRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
       handleCommandRestoreCollection();
     } else if (command == "restore-indexes") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+      if (type != GeneralRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
       handleCommandRestoreIndexes();
     } else if (command == "restore-data") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+      if (type != GeneralRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
@@ -182,7 +182,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         handleCommandRestoreData();
       }
     } else if (command == "sync") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+      if (type != GeneralRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
@@ -192,7 +192,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
 
       handleCommandSync();
     } else if (command == "make-slave") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+      if (type != GeneralRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
@@ -202,21 +202,21 @@ HttpHandler::status_t RestReplicationHandler::execute() {
 
       handleCommandMakeSlave();
     } else if (command == "server-id") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       handleCommandServerId();
     } else if (command == "applier-config") {
-      if (type == HttpRequest::HTTP_REQUEST_GET) {
+      if (type == GeneralRequest::HTTP_REQUEST_GET) {
         handleCommandApplierGetConfig();
       } else {
-        if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        if (type != GeneralRequest::HTTP_REQUEST_PUT) {
           goto BAD_CALL;
         }
         handleCommandApplierSetConfig();
       }
     } else if (command == "applier-start") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+      if (type != GeneralRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
@@ -226,7 +226,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
 
       handleCommandApplierStart();
     } else if (command == "applier-stop") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+      if (type != GeneralRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
 
@@ -236,16 +236,16 @@ HttpHandler::status_t RestReplicationHandler::execute() {
 
       handleCommandApplierStop();
     } else if (command == "applier-state") {
-      if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+      if (type == GeneralRequest::HTTP_REQUEST_DELETE) {
         handleCommandApplierDeleteState();
       } else {
-        if (type != HttpRequest::HTTP_REQUEST_GET) {
+        if (type != GeneralRequest::HTTP_REQUEST_GET) {
           goto BAD_CALL;
         }
         handleCommandApplierGetState();
       }
     } else if (command == "clusterInventory") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
+      if (type != GeneralRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       if (!ServerState::instance()->isCoordinator()) {
@@ -516,13 +516,13 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 
 void RestReplicationHandler::handleCommandBatch() {
   // extract the request type
-  HttpRequest::HttpRequestType const type = _request->requestType();
+  GeneralRequest::RequestType const type = _request->requestType();
   std::vector<std::string> const& suffix = _request->suffix();
   size_t const len = suffix.size();
 
   TRI_ASSERT(len >= 1);
 
-  if (type == HttpRequest::HTTP_REQUEST_POST) {
+  if (type == GeneralRequest::HTTP_REQUEST_POST) {
     // create a new blocker
 
     std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
@@ -558,7 +558,7 @@ void RestReplicationHandler::handleCommandBatch() {
     return;
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT && len >= 2) {
+  if (type == GeneralRequest::HTTP_REQUEST_PUT && len >= 2) {
     // extend an existing blocker
     TRI_voc_tick_t id = (TRI_voc_tick_t)StringUtils::uint64(suffix[1]);
 
@@ -584,7 +584,7 @@ void RestReplicationHandler::handleCommandBatch() {
     return;
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_DELETE && len >= 2) {
+  if (type == GeneralRequest::HTTP_REQUEST_DELETE && len >= 2) {
     // delete an existing blocker
     TRI_voc_tick_t id = (TRI_voc_tick_t)StringUtils::uint64(suffix[1]);
 
@@ -719,7 +719,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   std::unordered_set<TRI_voc_tid_t> transactionIds;
 
   if (_request->requestType() ==
-      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT) {
+      arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT) {
     value = _request->value("firstRegularTick", found);
     if (found) {
       firstRegularTick =
@@ -2288,7 +2288,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
         auto body =
             std::make_shared<std::string const>(bufs[j]->c_str(), bufs[j]->length());
         cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                         arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+                         arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
                          "/_db/" + StringUtils::urlEncode(dbName) +
                              "/_api/replication/restore-data?collection=" +
                              p.first + forceopt,

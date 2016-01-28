@@ -28,11 +28,11 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-using arangodb::rest::HttpRequest;
+using arangodb::rest::GeneralRequest;
 using arangodb::rest::HttpHandler;
 
 
-WorkMonitorHandler::WorkMonitorHandler(HttpRequest* request)
+WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request)
     : RestBaseHandler(request) {}
 
 

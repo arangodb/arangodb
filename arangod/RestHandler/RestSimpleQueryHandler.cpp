@@ -37,7 +37,7 @@ using namespace arangodb::rest;
 
 
 RestSimpleQueryHandler::RestSimpleQueryHandler(
-    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
+    GeneralRequest* request, std::pair<arangodb::ApplicationV8*,
                                     arangodb::aql::QueryRegistry*>* pair)
     : RestCursorHandler(request, pair) {}
 
@@ -45,9 +45,9 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
 
 HttpHandler::status_t RestSimpleQueryHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT) {
+  if (type == GeneralRequest::HTTP_REQUEST_PUT) {
     char const* prefix = _request->requestPath();
 
     if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH.c_str()) ==

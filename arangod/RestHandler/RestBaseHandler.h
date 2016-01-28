@@ -43,7 +43,7 @@ class RestBaseHandler : public rest::HttpHandler {
   
  public:
 
-  explicit RestBaseHandler(rest::HttpRequest* request);
+  explicit RestBaseHandler(rest::GeneralRequest* request);
 
   
  public:

@@ -38,7 +38,7 @@ using namespace std;
 
 
 
-RestJobHandler::RestJobHandler(HttpRequest* request,
+RestJobHandler::RestJobHandler(GeneralRequest* request,
                                std::pair<Dispatcher*, AsyncJobManager*>* data)
     : RestBaseHandler(request),
       _dispatcher(data->first),
@@ -51,11 +51,11 @@ bool RestJobHandler::isDirect() const { return true; }
 
 HttpHandler::status_t RestJobHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_GET) {
+  if (type == GeneralRequest::HTTP_REQUEST_GET) {
     getJob();
-  } else if (type == HttpRequest::HTTP_REQUEST_PUT) {
+  } else if (type == GeneralRequest::HTTP_REQUEST_PUT) {
     std::vector<std::string> const& suffix = _request->suffix();
 
     if (suffix.size() == 1) {
@@ -65,7 +65,7 @@ HttpHandler::status_t RestJobHandler::execute() {
     } else {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     }
-  } else if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+  } else if (type == GeneralRequest::HTTP_REQUEST_DELETE) {
     deleteJob();
   } else {
     generateError(HttpResponse::METHOD_NOT_ALLOWED,

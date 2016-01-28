@@ -32,29 +32,29 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestEdgesHandler::RestEdgesHandler(HttpRequest* request)
+RestEdgesHandler::RestEdgesHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 HttpHandler::status_t RestEdgesHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_GET: {
+    case GeneralRequest::HTTP_REQUEST_GET: {
       std::vector<traverser::TraverserExpression*> empty;
       readEdges(empty);
       break;
     }
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::HTTP_REQUEST_PUT:
       readFilteredEdges();
       break;
-    case HttpRequest::HTTP_REQUEST_POST:
+    case GeneralRequest::HTTP_REQUEST_POST:
       readEdgesForMultipleVertices();
       break;
-    case HttpRequest::HTTP_REQUEST_HEAD:
-    case HttpRequest::HTTP_REQUEST_DELETE:
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
+    case GeneralRequest::HTTP_REQUEST_HEAD:
+    case GeneralRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::HTTP_REQUEST_ILLEGAL:
     default: {
       generateNotImplemented("ILLEGAL " + EDGES_PATH);
       break;

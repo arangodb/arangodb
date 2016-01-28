@@ -40,7 +40,7 @@ class RestShardHandler : public admin::RestBaseHandler {
   
  public:
 
-  RestShardHandler(rest::HttpRequest* request, rest::Dispatcher*);
+  RestShardHandler(rest::GeneralRequest* request, rest::Dispatcher*);
 
   
  public:

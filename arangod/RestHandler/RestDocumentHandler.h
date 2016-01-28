@@ -37,7 +37,7 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   
  public:
 
-  explicit RestDocumentHandler(rest::HttpRequest*);
+  explicit RestDocumentHandler(rest::GeneralRequest*);
 
   
  public:

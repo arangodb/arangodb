@@ -39,7 +39,7 @@ class RestAdminLogHandler : public RestBaseHandler {
   
  public:
 
-  explicit RestAdminLogHandler(rest::HttpRequest*);
+  explicit RestAdminLogHandler(rest::GeneralRequest*);
 
   
  public:

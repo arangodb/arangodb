@@ -88,12 +88,12 @@ void WorkMonitor::DELETE_HANDLER(WorkDescription* desc) {
 
 void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
   HttpHandler* handler = desc->_data.handler;
-  const HttpRequest* request = handler->getRequest();
+  const GeneralRequest* request = handler->getRequest();
 
   b->add("type", VPackValue("http-handler"));
   b->add("protocol", VPackValue(request->protocol()));
   b->add("method",
-         VPackValue(HttpRequest::translateMethod(request->requestType())));
+         VPackValue(GeneralRequest::translateMethod(request->requestType())));
   b->add("url", VPackValue(request->fullUrl()));
   b->add("httpVersion", VPackValue(request->httpVersion()));
   b->add("database", VPackValue(request->databaseName()));
@@ -128,7 +128,7 @@ void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
 
 void WorkMonitor::SEND_WORK_OVERVIEW(uint64_t taskId, std::string const& data) {
   auto response = std::make_unique<HttpResponse>(HttpResponse::OK,
-                                                 HttpRequest::MinCompatibility);
+                                                 GeneralRequest::MinCompatibility);
 
   response->setContentType("application/json; charset=utf-8");
   TRI_AppendString2StringBuffer(response->body().stringBuffer(), data.c_str(),

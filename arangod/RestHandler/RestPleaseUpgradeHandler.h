@@ -37,7 +37,7 @@ class RestPleaseUpgradeHandler : public rest::HttpHandler {
   
  public:
 
-  explicit RestPleaseUpgradeHandler(rest::HttpRequest*);
+  explicit RestPleaseUpgradeHandler(rest::GeneralRequest*);
 
   
  public:

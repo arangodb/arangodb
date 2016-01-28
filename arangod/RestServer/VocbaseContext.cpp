@@ -143,7 +143,7 @@ double VocbaseContext::accessSid(std::string const& database,
 
 
 
-VocbaseContext::VocbaseContext(HttpRequest* request, TRI_server_t* server,
+VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_server_t* server,
                                TRI_vocbase_t* vocbase)
     : RequestContext(request), _server(server), _vocbase(vocbase) {
   TRI_ASSERT(_server != nullptr);
@@ -354,8 +354,8 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   _request->setUser(username);
 
   if (mustChange) {
-    if ((_request->requestType() == HttpRequest::HTTP_REQUEST_PUT ||
-         _request->requestType() == HttpRequest::HTTP_REQUEST_PATCH) &&
+    if ((_request->requestType() == GeneralRequest::HTTP_REQUEST_PUT ||
+         _request->requestType() == GeneralRequest::HTTP_REQUEST_PATCH) &&
         TRI_EqualString(_request->requestPath(), "/_api/user/", 11)) {
       return HttpResponse::OK;
     }

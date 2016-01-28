@@ -44,7 +44,7 @@ std::atomic_uint_fast64_t NEXT_HANDLER_ID(
 /// @brief constructs a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::HttpHandler(HttpRequest* request)
+HttpHandler::HttpHandler(GeneralRequest* request)
     : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
       _taskId(0),
       _request(request),
@@ -184,7 +184,7 @@ HttpHandler::status_t HttpHandler::executeFull() {
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {
     _response = new HttpResponse(HttpResponse::SERVER_ERROR,
-                                 HttpRequest::MinCompatibility);
+                                 GeneralRequest::MinCompatibility);
   }
 
   requestStatisticsAgentSetRequestEnd();
@@ -202,14 +202,14 @@ void HttpHandler::setServer(HttpHandlerFactory* server) { _server = server; }
 /// @brief return a pointer to the request
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest const* HttpHandler::getRequest() const { return _request; }
+GeneralRequest const* HttpHandler::getRequest() const { return _request; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief steal the request
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest* HttpHandler::stealRequest() {
-  HttpRequest* tmp = _request;
+GeneralRequest* HttpHandler::stealRequest() {
+  GeneralRequest* tmp = _request;
   _request = nullptr;
   return tmp;
 }
@@ -247,7 +247,7 @@ void HttpHandler::createResponse(HttpResponse::HttpResponseCode code) {
   if (_request != nullptr) {
     apiCompatibility = _request->compatibility();
   } else {
-    apiCompatibility = HttpRequest::MinCompatibility;
+    apiCompatibility = GeneralRequest::MinCompatibility;
   }
 
   // create a "standard" (standalone) Http response

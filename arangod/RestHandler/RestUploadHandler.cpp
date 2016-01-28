@@ -27,13 +27,13 @@
 #include "Basics/logging.h"
 #include "Basics/StringUtils.h"
 #include "HttpServer/HttpServer.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUploadHandler::RestUploadHandler(HttpRequest* request)
+RestUploadHandler::RestUploadHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 
@@ -43,9 +43,9 @@ RestUploadHandler::~RestUploadHandler() {}
 
 HttpHandler::status_t RestUploadHandler::execute() {
   // extract the request type
-  const HttpRequest::HttpRequestType type = _request->requestType();
+  const GeneralRequest::RequestType type = _request->requestType();
 
-  if (type != HttpRequest::HTTP_REQUEST_POST) {
+  if (type != GeneralRequest::HTTP_REQUEST_POST) {
     generateError(HttpResponse::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 

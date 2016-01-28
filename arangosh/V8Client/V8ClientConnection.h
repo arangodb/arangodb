@@ -260,7 +260,7 @@ class V8ClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   v8::Handle<v8::Value> requestData(
-      v8::Isolate* isolate, rest::HttpRequest::HttpRequestType method,
+      v8::Isolate* isolate, rest::GeneralRequest::RequestType method,
       std::string const& location, char const* body, size_t bodySize,
       std::map<std::string, std::string> const& headerFields);
 
@@ -269,7 +269,7 @@ class V8ClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   v8::Handle<v8::Value> requestData(
-      v8::Isolate* isolate, rest::HttpRequest::HttpRequestType method,
+      v8::Isolate* isolate, rest::GeneralRequest::RequestType method,
       std::string const& location, std::string const& body,
       std::map<std::string, std::string> const& headerFields);
 
@@ -284,7 +284,7 @@ class V8ClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   v8::Handle<v8::Value> requestDataRaw(
-      v8::Isolate* isolate, rest::HttpRequest::HttpRequestType method,
+      v8::Isolate* isolate, rest::GeneralRequest::RequestType method,
       std::string const& location, std::string const& body,
       std::map<std::string, std::string> const& headerFields);
 

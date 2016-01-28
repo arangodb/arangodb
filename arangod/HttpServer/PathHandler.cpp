@@ -40,7 +40,7 @@ namespace rest {
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-PathHandler::PathHandler(HttpRequest* request, Options const* options)
+PathHandler::PathHandler(GeneralRequest* request, Options const* options)
     : HttpHandler(request),
       path(options->path),
       contentType(options->contentType),
@@ -168,7 +168,7 @@ HttpHandler::status_t PathHandler::execute() {
 
   // check if we should use caching and this is an HTTP GET request
   if (cacheMaxAge > 0 &&
-      _request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
+      _request->requestType() == GeneralRequest::HTTP_REQUEST_GET) {
     // yes, then set a pro-caching header
     _response->setHeader(TRI_CHAR_LENGTH_PAIR("cache-control"), maxAgeHeader);
   }

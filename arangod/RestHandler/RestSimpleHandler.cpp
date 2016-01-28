@@ -42,7 +42,7 @@ using namespace arangodb::rest;
 
 
 RestSimpleHandler::RestSimpleHandler(
-    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
+    GeneralRequest* request, std::pair<arangodb::ApplicationV8*,
                                     arangodb::aql::QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
@@ -55,9 +55,9 @@ RestSimpleHandler::RestSimpleHandler(
 
 HttpHandler::status_t RestSimpleHandler::execute() {
   // extract the request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT) {
+  if (type == GeneralRequest::HTTP_REQUEST_PUT) {
     bool parsingSuccess = true;
     VPackOptions options;
     std::shared_ptr<VPackBuilder> parsedBody =

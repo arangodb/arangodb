@@ -43,7 +43,7 @@ class RestSimpleQueryHandler : public RestCursorHandler {
   
  public:
 
-  RestSimpleQueryHandler(rest::HttpRequest*,
+  RestSimpleQueryHandler(rest::GeneralRequest*,
                          std::pair<arangodb::ApplicationV8*,
                                    arangodb::aql::QueryRegistry*>*);
 

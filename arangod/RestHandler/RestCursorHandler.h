@@ -51,7 +51,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   
  public:
 
-  RestCursorHandler(rest::HttpRequest*,
+  RestCursorHandler(rest::GeneralRequest*,
                     std::pair<arangodb::ApplicationV8*,
                               arangodb::aql::QueryRegistry*>*);
 

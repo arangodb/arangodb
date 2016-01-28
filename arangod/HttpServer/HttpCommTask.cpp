@@ -68,8 +68,8 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       _newRequest(true),
       _isChunked(false),
       _request(nullptr),
-      _httpVersion(HttpRequest::HTTP_UNKNOWN),
-      _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
+      _httpVersion(GeneralRequest::HTTP_UNKNOWN),
+      _requestType(GeneralRequest::HTTP_REQUEST_ILLEGAL),
       _fullUrl(),
       _origin(),
       _startPosition(0),
@@ -147,8 +147,8 @@ bool HttpCommTask::processRead() {
 
       _newRequest = false;
       _startPosition = _readPosition;
-      _httpVersion = HttpRequest::HTTP_UNKNOWN;
-      _requestType = HttpRequest::HTTP_REQUEST_ILLEGAL;
+      _httpVersion = GeneralRequest::HTTP_UNKNOWN;
+      _requestType = GeneralRequest::HTTP_REQUEST_ILLEGAL;
       _fullUrl = "";
       _denyCredentials = false;
       _acceptDeflate = false;
@@ -228,8 +228,8 @@ bool HttpCommTask::processRead() {
       // check HTTP protocol version
       _httpVersion = _request->httpVersion();
 
-      if (_httpVersion != HttpRequest::HTTP_1_0 &&
-          _httpVersion != HttpRequest::HTTP_1_1) {
+      if (_httpVersion != GeneralRequest::HTTP_1_0 &&
+          _httpVersion != GeneralRequest::HTTP_1_1) {
         HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED,
                               getCompatibility());
 
@@ -292,21 +292,21 @@ bool HttpCommTask::processRead() {
 
       // handle different HTTP methods
       switch (_requestType) {
-        case HttpRequest::HTTP_REQUEST_GET:
-        case HttpRequest::HTTP_REQUEST_DELETE:
-        case HttpRequest::HTTP_REQUEST_HEAD:
-        case HttpRequest::HTTP_REQUEST_OPTIONS:
-        case HttpRequest::HTTP_REQUEST_POST:
-        case HttpRequest::HTTP_REQUEST_PUT:
-        case HttpRequest::HTTP_REQUEST_PATCH: {
+        case GeneralRequest::HTTP_REQUEST_GET:
+        case GeneralRequest::HTTP_REQUEST_DELETE:
+        case GeneralRequest::HTTP_REQUEST_HEAD:
+        case GeneralRequest::HTTP_REQUEST_OPTIONS:
+        case GeneralRequest::HTTP_REQUEST_POST:
+        case GeneralRequest::HTTP_REQUEST_PUT:
+        case GeneralRequest::HTTP_REQUEST_PATCH: {
           // technically, sending a body for an HTTP DELETE request is not
           // forbidden, but it is not explicitly supported
           bool const expectContentLength =
-              (_requestType == HttpRequest::HTTP_REQUEST_POST ||
-               _requestType == HttpRequest::HTTP_REQUEST_PUT ||
-               _requestType == HttpRequest::HTTP_REQUEST_PATCH ||
-               _requestType == HttpRequest::HTTP_REQUEST_OPTIONS ||
-               _requestType == HttpRequest::HTTP_REQUEST_DELETE);
+              (_requestType == GeneralRequest::HTTP_REQUEST_POST ||
+               _requestType == GeneralRequest::HTTP_REQUEST_PUT ||
+               _requestType == GeneralRequest::HTTP_REQUEST_PATCH ||
+               _requestType == GeneralRequest::HTTP_REQUEST_OPTIONS ||
+               _requestType == GeneralRequest::HTTP_REQUEST_DELETE);
 
           if (!checkContentLength(expectContentLength)) {
             return false;
@@ -409,7 +409,7 @@ bool HttpCommTask::processRead() {
       return false;
     }
 
-    // read "bodyLength" from read buffer and add this body to "httpRequest"
+    // read "bodyLength" from read buffer and add this body to "GeneralRequest"
     _request->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
     LOG_TRACE("%s", std::string(_readBuffer->c_str() + _bodyPosition,
@@ -437,7 +437,7 @@ bool HttpCommTask::processRead() {
                                          _bodyLength);
 
   bool const isOptionsRequest =
-      (_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
+      (_requestType == GeneralRequest::HTTP_REQUEST_OPTIONS);
   resetState(false);
 
   // .............................................................................
@@ -618,7 +618,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   size_t const responseBodyLength = response->bodySize();
 
-  if (_requestType == HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_requestType == GeneralRequest::HTTP_REQUEST_HEAD) {
     // clear body if this is an HTTP HEAD request
     // HEAD must not return a body
     response->headResponse(responseBodyLength);
@@ -641,7 +641,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   response->writeHeader(buffer.get());
 
   // write body
-  if (_requestType != HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_requestType != GeneralRequest::HTTP_REQUEST_HEAD) {
     if (_isChunked) {
       if (0 != responseBodyLength) {
         buffer->appendHex(response->body().length());
@@ -671,8 +671,8 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   LOG_USAGE(
       ",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
       _connectionInfo.clientAddress.c_str(),
-      HttpRequest::translateMethod(_requestType).c_str(),
-      HttpRequest::translateVersion(_httpVersion).c_str(),
+      GeneralRequest::translateMethod(_requestType).c_str(),
+      GeneralRequest::translateVersion(_httpVersion).c_str(),
       (int)response->responseCode(), (unsigned long long)_originalBodyLength,
       (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
 
@@ -948,7 +948,7 @@ int32_t HttpCommTask::getCompatibility() const {
     return _request->compatibility();
   }
 
-  return HttpRequest::MinCompatibility;
+  return GeneralRequest::MinCompatibility;
 }
 
 

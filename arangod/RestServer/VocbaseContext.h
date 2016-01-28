@@ -70,7 +70,7 @@ class VocbaseContext : public arangodb::rest::RequestContext {
   
  public:
 
-  VocbaseContext(rest::HttpRequest*, TRI_server_t*, TRI_vocbase_t*);
+  VocbaseContext(rest::GeneralRequest*, TRI_server_t*, TRI_vocbase_t*);
 
 
   ~VocbaseContext();

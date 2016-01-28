@@ -34,7 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestShardHandler::RestShardHandler(arangodb::rest::HttpRequest* request,
+RestShardHandler::RestShardHandler(arangodb::rest::GeneralRequest* request,
                                    Dispatcher* data)
     : RestBaseHandler(request), _dispatcher(data) {
   TRI_ASSERT(_dispatcher != nullptr);

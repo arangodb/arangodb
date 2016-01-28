@@ -38,7 +38,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   
  public:
 
-  RestQueryHandler(rest::HttpRequest*, ApplicationV8*);
+  RestQueryHandler(rest::GeneralRequest*, ApplicationV8*);
 
   
  public:

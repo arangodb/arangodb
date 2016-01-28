@@ -44,40 +44,40 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(HttpRequest* request,
+RestQueryHandler::RestQueryHandler(GeneralRequest* request,
                                    ApplicationV8* applicationV8)
     : RestVocbaseBaseHandler(request), _applicationV8(applicationV8) {}
 
 
 
 bool RestQueryHandler::isDirect() const {
-  return _request->requestType() != HttpRequest::HTTP_REQUEST_POST;
+  return _request->requestType() != GeneralRequest::HTTP_REQUEST_POST;
 }
 
 
 HttpHandler::status_t RestQueryHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
   // execute one of the CRUD methods
   try {
     switch (type) {
-      case HttpRequest::HTTP_REQUEST_DELETE:
+      case GeneralRequest::HTTP_REQUEST_DELETE:
         deleteQuery();
         break;
-      case HttpRequest::HTTP_REQUEST_GET:
+      case GeneralRequest::HTTP_REQUEST_GET:
         readQuery();
         break;
-      case HttpRequest::HTTP_REQUEST_PUT:
+      case GeneralRequest::HTTP_REQUEST_PUT:
         replaceProperties();
         break;
-      case HttpRequest::HTTP_REQUEST_POST:
+      case GeneralRequest::HTTP_REQUEST_POST:
         parseQuery();
         break;
 
-      case HttpRequest::HTTP_REQUEST_HEAD:
-      case HttpRequest::HTTP_REQUEST_PATCH:
-      case HttpRequest::HTTP_REQUEST_ILLEGAL:
+      case GeneralRequest::HTTP_REQUEST_HEAD:
+      case GeneralRequest::HTTP_REQUEST_PATCH:
+      case GeneralRequest::HTTP_REQUEST_ILLEGAL:
       default: {
         generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
         break;

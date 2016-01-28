@@ -852,7 +852,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 std::string AgencyComm::getVersion() {
   AgencyCommResult result;
 
-  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+  sendWithFailover(arangodb::rest::GeneralRequest::HTTP_REQUEST_GET,
                    _globalConnectionOptions._requestTimeout, result, "version",
                    "", false);
 
@@ -950,7 +950,7 @@ void AgencyComm::increaseVersionRepeated(std::string const& key) {
 AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
   AgencyCommResult result;
 
-  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+  sendWithFailover(arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
                    _globalConnectionOptions._requestTimeout, result,
                    buildUrl(key) + "?dir=true", "", false);
 
@@ -965,7 +965,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       TRI_json_t const* json, double ttl) {
   AgencyCommResult result;
 
-  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+  sendWithFailover(arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
                    _globalConnectionOptions._requestTimeout, result,
                    buildUrl(key) + ttlParam(ttl, true),
                    "value=" + arangodb::basics::StringUtils::urlEncode(
@@ -985,7 +985,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+      arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
       _globalConnectionOptions._requestTimeout, result,
       buildUrl(key) + ttlParam(ttl, true),
       "value=" + arangodb::basics::StringUtils::urlEncode(json.toJson()),
@@ -1003,7 +1003,7 @@ bool AgencyComm::exists(std::string const& key) {
 
   AgencyCommResult result;
 
-  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+  sendWithFailover(arangodb::rest::GeneralRequest::HTTP_REQUEST_GET,
                    _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
@@ -1022,7 +1022,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
 
   AgencyCommResult result;
 
-  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+  sendWithFailover(arangodb::rest::GeneralRequest::HTTP_REQUEST_GET,
                    _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
@@ -1050,7 +1050,7 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 
   AgencyCommResult result;
 
-  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE,
+  sendWithFailover(arangodb::rest::GeneralRequest::HTTP_REQUEST_DELETE,
                    _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
@@ -1068,7 +1068,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+      arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, buildUrl(key) + "?prevExist=" + (prevExist ? "true" : "false") +
                   ttlParam(ttl, false),
@@ -1092,7 +1092,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+      arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, buildUrl(key) + "?prevExist=" + (prevExist ? "true" : "false") +
                   ttlParam(ttl, false),
@@ -1115,7 +1115,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+      arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, buildUrl(key) + "?prevValue=" +
                   arangodb::basics::StringUtils::urlEncode(
@@ -1148,7 +1148,7 @@ AgencyCommResult AgencyComm::watchValue(std::string const& key,
   AgencyCommResult result;
 
   sendWithFailover(
-      arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+      arangodb::rest::GeneralRequest::HTTP_REQUEST_GET,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, url, "", true);
 
@@ -1511,7 +1511,7 @@ std::string AgencyComm::buildUrl() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::sendWithFailover(
-    arangodb::rest::HttpRequest::HttpRequestType method, double const timeout,
+    arangodb::rest::GeneralRequest::RequestType method, double const timeout,
     AgencyCommResult& result, std::string const& url, std::string const& body,
     bool isWatch) {
   size_t numEndpoints;
@@ -1638,14 +1638,14 @@ bool AgencyComm::sendWithFailover(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
-                      arangodb::rest::HttpRequest::HttpRequestType method,
+                      arangodb::rest::GeneralRequest::RequestType method,
                       double timeout, AgencyCommResult& result,
                       std::string const& url, std::string const& body) {
   TRI_ASSERT(connection != nullptr);
 
-  if (method == arangodb::rest::HttpRequest::HTTP_REQUEST_GET ||
-      method == arangodb::rest::HttpRequest::HTTP_REQUEST_HEAD ||
-      method == arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE) {
+  if (method == arangodb::rest::GeneralRequest::HTTP_REQUEST_GET ||
+      method == arangodb::rest::GeneralRequest::HTTP_REQUEST_HEAD ||
+      method == arangodb::rest::GeneralRequest::HTTP_REQUEST_DELETE) {
     TRI_ASSERT(body.empty());
   }
 
@@ -1655,7 +1655,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   result._statusCode = 0;
 
   LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s",
-            arangodb::rest::HttpRequest::translateMethod(method).c_str(),
+            arangodb::rest::GeneralRequest::translateMethod(method).c_str(),
             connection->getEndpoint()->getSpecification().c_str(), url.c_str(),
             body.c_str());
 
@@ -1665,8 +1665,8 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
 
   // set up headers
   std::map<std::string, std::string> headers;
-  if (method == arangodb::rest::HttpRequest::HTTP_REQUEST_PUT ||
-      method == arangodb::rest::HttpRequest::HTTP_REQUEST_POST) {
+  if (method == arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT ||
+      method == arangodb::rest::GeneralRequest::HTTP_REQUEST_POST) {
     // the agency needs this content-type for the body
     headers["content-type"] = "application/x-www-form-urlencoded";
   }

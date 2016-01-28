@@ -34,7 +34,7 @@ namespace arangodb {
 class WorkMonitorHandler : public arangodb::admin::RestBaseHandler {
  public:
 
-  explicit WorkMonitorHandler(arangodb::rest::HttpRequest*);
+  explicit WorkMonitorHandler(arangodb::rest::GeneralRequest*);
 
  public:
 

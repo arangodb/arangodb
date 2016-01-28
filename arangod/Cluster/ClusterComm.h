@@ -100,7 +100,7 @@ struct ClusterCommResult {
   std::shared_ptr<httpclient::SimpleHttpResult> result;
   // the field answer is != 0 if status is == CL_COMM_RECEIVED
   // answer_code is valid iff answer is != 0
-  std::shared_ptr<rest::HttpRequest> answer;
+  std::shared_ptr<rest::GeneralRequest> answer;
   rest::HttpResponse::HttpResponseCode answer_code;
 
   ClusterCommResult()
@@ -145,7 +145,7 @@ typedef double ClusterCommTimeout;
 
 struct ClusterCommOperation {
   ClusterCommResult result;
-  rest::HttpRequest::HttpRequestType reqtype;
+  rest::GeneralRequest::RequestType reqtype;
   std::string path;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::map<std::string, std::string>> headerFields;
@@ -238,7 +238,7 @@ class ClusterComm {
       ClientTransactionID const clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination,
-      rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+      rest::GeneralRequest::RequestType reqtype, std::string const& path,
       std::shared_ptr<std::string const> body,
       std::unique_ptr<std::map<std::string, std::string>>& headerFields,
       std::shared_ptr<ClusterCommCallback> callback,
@@ -252,7 +252,7 @@ class ClusterComm {
       ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination,
-      rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+      rest::GeneralRequest::RequestType reqtype, std::string const& path,
       std::string const& body,
       std::map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);
@@ -286,7 +286,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string processAnswer(std::string& coordinatorHeader,
-                            rest::HttpRequest* answer);
+                            rest::GeneralRequest* answer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator

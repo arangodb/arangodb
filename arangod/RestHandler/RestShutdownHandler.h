@@ -41,7 +41,7 @@ class RestShutdownHandler : public RestBaseHandler {
   
  public:
 
-  RestShutdownHandler(rest::HttpRequest*, void* applicationServer);
+  RestShutdownHandler(rest::GeneralRequest*, void* applicationServer);
 
   
  public:

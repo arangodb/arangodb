@@ -38,7 +38,7 @@ namespace arangodb {
 namespace rest {
 class Dispatcher;
 class HttpHandlerFactory;
-class HttpRequest;
+class GeneralRequest;
 class HttpServer;
 
 
@@ -59,7 +59,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// responsibility to destroy them both. See also the two steal methods.
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit HttpHandler(HttpRequest*);
+  explicit HttpHandler(GeneralRequest*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructs a handler
@@ -174,13 +174,13 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief return a pointer to the request
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest const* getRequest() const;
+  GeneralRequest const* getRequest() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief steal the pointer to the request
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest* stealRequest();
+  GeneralRequest* stealRequest();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the response
@@ -226,7 +226,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief the request
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest* _request;
+  GeneralRequest* _request;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the response

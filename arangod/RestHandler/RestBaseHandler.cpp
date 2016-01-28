@@ -40,7 +40,7 @@ using namespace arangodb::admin;
 
 
 
-RestBaseHandler::RestBaseHandler(HttpRequest* request) : HttpHandler(request) {}
+RestBaseHandler::RestBaseHandler(GeneralRequest* request) : HttpHandler(request) {}
 
 
 

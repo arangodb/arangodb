@@ -45,7 +45,7 @@ class RestJobHandler : public RestBaseHandler {
   
  public:
 
-  RestJobHandler(rest::HttpRequest* request,
+  RestJobHandler(rest::GeneralRequest* request,
                  std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
 
   

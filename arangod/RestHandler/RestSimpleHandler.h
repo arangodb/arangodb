@@ -46,7 +46,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
   
  public:
 
-  RestSimpleHandler(rest::HttpRequest*,
+  RestSimpleHandler(rest::GeneralRequest*,
                     std::pair<arangodb::ApplicationV8*,
                               arangodb::aql::QueryRegistry*>*);
 

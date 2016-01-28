@@ -69,7 +69,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   
  public:
 
-  explicit RestBatchHandler(rest::HttpRequest*);
+  explicit RestBatchHandler(rest::GeneralRequest*);
 
 
   ~RestBatchHandler();

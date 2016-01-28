@@ -122,7 +122,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
 
     // test the connection
     httpclient::SimpleHttpResult* result =
-        _client->request(rest::HttpRequest::HTTP_REQUEST_GET, "/_api/version",
+        _client->request(rest::GeneralRequest::HTTP_REQUEST_GET, "/_api/version",
                          nullptr, 0, _headers);
 
     if (!result || !result->isComplete()) {
@@ -227,7 +227,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
       // append content-type, this will also begin the body
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: "));
-      batchPayload.appendText(rest::HttpRequest::BatchContentType);
+      batchPayload.appendText(rest::GeneralRequest::BatchContentType);
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
       // everything else (i.e. part request header & body) will get into the
@@ -241,14 +241,14 @@ class BenchmarkThread : public arangodb::basics::Thread {
       char const* payload =
           _operation->payload(&payloadLength, _threadNumber, threadCounter,
                               globalCounter, &mustFree);
-      const rest::HttpRequest::HttpRequestType type =
+      const rest::GeneralRequest::RequestType type =
           _operation->type(_threadNumber, threadCounter, globalCounter);
       if (url.empty()) {
         LOG_WARNING("URL is empty!");
       }
 
       // headline, e.g. POST /... HTTP/1.1
-      rest::HttpRequest::appendMethod(type, &batchPayload);
+      rest::GeneralRequest::appendMethod(type, &batchPayload);
       batchPayload.appendText(url);
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
@@ -269,11 +269,11 @@ class BenchmarkThread : public arangodb::basics::Thread {
 
     _headers.erase("Content-Type");
     _headers["Content-Type"] =
-        rest::HttpRequest::MultiPartContentType + "; boundary=" + boundary;
+        rest::GeneralRequest::MultiPartContentType + "; boundary=" + boundary;
 
     double start = TRI_microtime();
     httpclient::SimpleHttpResult* result =
-        _client->request(rest::HttpRequest::HTTP_REQUEST_POST, "/_api/batch",
+        _client->request(rest::GeneralRequest::HTTP_REQUEST_POST, "/_api/batch",
                          batchPayload.c_str(), batchPayload.length(), _headers);
     _time += TRI_microtime() - start;
 
@@ -342,7 +342,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
   void executeSingleRequest() {
     size_t const threadCounter = _counter++;
     size_t const globalCounter = _offset + threadCounter;
-    const rest::HttpRequest::HttpRequestType type =
+    const rest::GeneralRequest::RequestType type =
         _operation->type(_threadNumber, threadCounter, globalCounter);
     std::string const url =
         _operation->url(_threadNumber, threadCounter, globalCounter);

@@ -127,7 +127,7 @@ void mergeResponseHeaders(HttpResponse* response,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::map<std::string, std::string> getForwardableRequestHeaders(
-    arangodb::rest::HttpRequest* request) {
+    arangodb::rest::GeneralRequest* request) {
   std::map<std::string, std::string> const& headers = request->headers();
   std::map<std::string, std::string>::const_iterator it = headers.begin();
 
@@ -236,7 +236,7 @@ int usersOnCoordinator(std::string const& dbname, VPackBuilder& result,
 
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+        arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/simple/all", body,
         headers, nullptr, 10.0);
   }
@@ -307,7 +307,7 @@ int revisionOnCoordinator(std::string const& dbname,
         new std::map<std::string, std::string>());
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+        arangodb::rest::GeneralRequest::HTTP_REQUEST_GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/revision",
         std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
@@ -384,7 +384,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
         new std::map<std::string, std::string>());
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+        arangodb::rest::GeneralRequest::HTTP_REQUEST_GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/figures",
         std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
@@ -493,7 +493,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
         new std::map<std::string, std::string>());
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+        arangodb::rest::GeneralRequest::HTTP_REQUEST_GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/count",
         std::shared_ptr<std::string>(nullptr), headers, nullptr, 300.0);
@@ -612,7 +612,7 @@ int createDocumentOnCoordinator(
   // Send a synchronous request to that shard using ClusterComm:
   auto res = cc->syncRequest(
       "", TRI_NewTickServer(), "shard:" + shardID,
-      arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
+      arangodb::rest::GeneralRequest::HTTP_REQUEST_POST,
       "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection=" +
           StringUtils::urlEncode(shardID) + "&waitForSync=" +
           (waitForSync ? "true" : "false"),
@@ -700,7 +700,7 @@ int deleteDocumentOnCoordinator(
     // Send a synchronous request to that shard using ClusterComm:
     auto res = cc->syncRequest(
         "", TRI_NewTickServer(), "shard:" + shardID,
-        arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE,
+        arangodb::rest::GeneralRequest::HTTP_REQUEST_DELETE,
         "/_db/" + dbname + "/_api/document/" + StringUtils::urlEncode(shardID) +
             "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
             (waitForSync ? "true" : "false") + revstr + policystr,
@@ -735,7 +735,7 @@ int deleteDocumentOnCoordinator(
     std::unique_ptr<std::map<std::string, std::string>> headersCopy(
         new std::map<std::string, std::string>(*headers));
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE,
+                     arangodb::rest::GeneralRequest::HTTP_REQUEST_DELETE,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document/" + StringUtils::urlEncode(p.first) +
                          "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
@@ -793,7 +793,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
     std::unique_ptr<std::map<std::string, std::string>> headers(
         new std::map<std::string, std::string>());
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+                     arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/collection/" + p.first + "/truncate",
                      std::shared_ptr<std::string>(nullptr), headers, nullptr,
@@ -864,11 +864,11 @@ int getDocumentOnCoordinator(
   if (rev != 0) {
     revstr = "?rev=" + StringUtils::itoa(rev);
   }
-  arangodb::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::rest::GeneralRequest::GeneralRequestType reqType;
   if (generateDocument) {
-    reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_GET;
+    reqType = arangodb::rest::GeneralRequest::HTTP_REQUEST_GET;
   } else {
-    reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_HEAD;
+    reqType = arangodb::rest::GeneralRequest::HTTP_REQUEST_HEAD;
   }
 
   if (usesDefaultShardingAttributes) {
@@ -1045,7 +1045,7 @@ int getFilteredDocumentsOnCoordinator(
     auto bodyString = std::make_shared<std::string>(reqBody.toString());
 
     cc->asyncRequest("", coordTransactionID, "shard:" + shard.first,
-                     arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+                     arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/simple/lookup-by-keys",
                      bodyString, headersCopy, nullptr, 60.0);
@@ -1130,7 +1130,7 @@ int getAllDocumentsOnCoordinator(
     std::unique_ptr<std::map<std::string, std::string>> headers(
         new std::map<std::string, std::string>());
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+                     arangodb::rest::GeneralRequest::HTTP_REQUEST_GET,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document?collection=" + p.first + "&type=" +
                          StringUtils::urlEncode(returnType),
@@ -1249,7 +1249,7 @@ int getFilteredEdgesOnCoordinator(
     std::unique_ptr<std::map<std::string, std::string>> headers(
         new std::map<std::string, std::string>());
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+                     arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" +
                          p.first + queryParameters,
                      reqBodyString, headers, nullptr, 3600.0);
@@ -1415,9 +1415,9 @@ int modifyDocumentOnCoordinator(
   if (rev != 0) {
     revstr = "&rev=" + StringUtils::itoa(rev);
   }
-  arangodb::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::rest::GeneralRequest::GeneralRequestType reqType;
   if (isPatch) {
-    reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_PATCH;
+    reqType = arangodb::rest::GeneralRequest::HTTP_REQUEST_PATCH;
     if (!keepNull) {
       revstr += "&keepNull=false";
     }
@@ -1427,7 +1427,7 @@ int modifyDocumentOnCoordinator(
       revstr += "&mergeObjects=false";
     }
   } else {
-    reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_PUT;
+    reqType = arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT;
   }
 
   std::string policystr;
@@ -1578,7 +1578,7 @@ int createEdgeOnCoordinator(
   std::map<std::string, std::string> headers;
   auto res = cc->syncRequest(
       "", TRI_NewTickServer(), "shard:" + shardID,
-      arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
+      arangodb::rest::GeneralRequest::HTTP_REQUEST_POST,
       "/_db/" + dbname + "/_api/edge?collection=" +
           StringUtils::urlEncode(shardID) + "&waitForSync=" +
           (waitForSync ? "true" : "false") + "&from=" +
@@ -1625,7 +1625,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
         new std::map<std::string, std::string>());
     // set collection name (shard id)
     cc->asyncRequest("", coordTransactionID, "server:" + *it,
-                     arangodb::rest::HttpRequest::HTTP_REQUEST_PUT, url, body,
+                     arangodb::rest::GeneralRequest::HTTP_REQUEST_PUT, url, body,
                      headers, nullptr, 120.0);
   }
 

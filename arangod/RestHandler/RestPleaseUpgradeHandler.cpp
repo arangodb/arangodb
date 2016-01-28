@@ -28,7 +28,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 
-RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
+RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(GeneralRequest* request)
     : HttpHandler(request) {}
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }

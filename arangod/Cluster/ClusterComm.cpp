@@ -150,7 +150,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 ClusterCommResult const ClusterComm::asyncRequest(
     ClientTransactionID const clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::rest::HttpRequest::HttpRequestType reqtype,
+    arangodb::rest::GeneralRequest::RequestType reqtype,
     std::string const& path, std::shared_ptr<std::string const> body,
     std::unique_ptr<std::map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout) {
@@ -223,7 +223,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
 
   // LOCKING-DEBUG
   // std::cout << "asyncRequest: sending " <<
-  // arangodb::rest::HttpRequest::translateMethod(reqtype) << " request to DB
+  // arangodb::rest::GeneralRequest::translateMethod(reqtype) << " request to DB
   // server '" << op->serverID << ":" << path << "\n" << *(body.get()) << "\n";
   // for (auto& h : *(op->headerFields)) {
   //   std::cout << h.first << ":" << h.second << std::endl;
@@ -270,7 +270,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+    arangodb::rest::GeneralRequest::RequestType reqtype, std::string const& path,
     std::string const& body, std::map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
   std::map<std::string, std::string> headersCopy(headerFields);
@@ -348,11 +348,11 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       }
     } else {
       LOG_DEBUG("sending %s request to DB server '%s': %s",
-                arangodb::rest::HttpRequest::translateMethod(reqtype).c_str(),
+                arangodb::rest::GeneralRequest::translateMethod(reqtype).c_str(),
                 res->serverID.c_str(), body.c_str());
       // LOCKING-DEBUG
       // std::cout << "syncRequest: sending " <<
-      // arangodb::rest::HttpRequest::translateMethod(reqtype) << " request to
+      // arangodb::rest::GeneralRequest::translateMethod(reqtype) << " request to
       // DB server '" << res->serverID << ":" << path << "\n" << body << "\n";
       // for (auto& h : headersCopy) {
       //   std::cout << h.first << ":" << h.second << std::endl;
@@ -767,7 +767,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
   httpclient::SimpleHttpResult* result =
-      client->request(rest::HttpRequest::HTTP_REQUEST_PUT, "/_api/shard-comm",
+      client->request(rest::GeneralRequest::HTTP_REQUEST_PUT, "/_api/shard-comm",
                       body, len, headers);
   if (result == nullptr || !result->isComplete()) {
     cm->brokenConnection(connection);
@@ -789,7 +789,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                  arangodb::rest::HttpRequest* answer) {
+                                  arangodb::rest::GeneralRequest* answer) {
   // First take apart the header to get the operaitonID:
   OperationID operationID;
   size_t start = 0;
@@ -1027,12 +1027,12 @@ void ClusterCommThread::run() {
             } else {
               if (nullptr != op->body.get()) {
                 LOG_DEBUG("sending %s request to DB server '%s': %s",
-                          arangodb::rest::HttpRequest::translateMethod(
+                          arangodb::rest::GeneralRequest::translateMethod(
                               op->reqtype).c_str(),
                           op->result.serverID.c_str(), op->body->c_str());
               } else {
                 LOG_DEBUG("sending %s request to DB server '%s'",
-                          arangodb::rest::HttpRequest::translateMethod(
+                          arangodb::rest::GeneralRequest::translateMethod(
                               op->reqtype).c_str(),
                           op->result.serverID.c_str());
               }

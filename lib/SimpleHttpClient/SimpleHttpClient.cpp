@@ -111,7 +111,7 @@ void SimpleHttpClient::close() {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleHttpResult* SimpleHttpClient::retryRequest(
-    rest::HttpRequest::HttpRequestType method, std::string const& location,
+    rest::GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength) {
   return retryRequest(method, location, body, bodyLength, NoHeaders);
 }
@@ -125,7 +125,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleHttpResult* SimpleHttpClient::retryRequest(
-    rest::HttpRequest::HttpRequestType method, std::string const& location,
+    rest::GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength,
     std::map<std::string, std::string> const& headers) {
   SimpleHttpResult* result = nullptr;
@@ -168,7 +168,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleHttpResult* SimpleHttpClient::request(
-    rest::HttpRequest::HttpRequestType method, std::string const& location,
+    rest::GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength) {
   return doRequest(method, location, body, bodyLength, NoHeaders);
 }
@@ -179,7 +179,7 @@ SimpleHttpResult* SimpleHttpClient::request(
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleHttpResult* SimpleHttpClient::request(
-    rest::HttpRequest::HttpRequestType method, std::string const& location,
+    rest::GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength,
     std::map<std::string, std::string> const& headers) {
   return doRequest(method, location, body, bodyLength, headers);
@@ -190,7 +190,7 @@ SimpleHttpResult* SimpleHttpClient::request(
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleHttpResult* SimpleHttpClient::doRequest(
-    rest::HttpRequest::HttpRequestType method, std::string const& location,
+    rest::GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength,
     std::map<std::string, std::string> const& headers) {
   // ensure connection has not yet been invalidated
@@ -458,7 +458,7 @@ SimpleHttpResult* SimpleHttpClient::getResult() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SimpleHttpClient::setRequest(
-    rest::HttpRequest::HttpRequestType method, std::string const& location,
+    rest::GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength,
     std::map<std::string, std::string> const& headers) {
   // clear read-buffer (no pipeling!)
@@ -472,7 +472,7 @@ void SimpleHttpClient::setRequest(
   _writeBuffer.clear();
 
   // append method
-  HttpRequest::appendMethod(method, &_writeBuffer);
+  GeneralRequest::appendMethod(method, &_writeBuffer);
 
   // append location
   std::string l(location);
@@ -541,7 +541,7 @@ void SimpleHttpClient::setRequest(
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
-  if (method != HttpRequest::HTTP_REQUEST_GET) {
+  if (method != GeneralRequest::HTTP_REQUEST_GET) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
     _writeBuffer.appendInteger(bodyLength);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
@@ -695,7 +695,7 @@ void SimpleHttpClient::processHeader() {
 
 void SimpleHttpClient::processBody() {
   // HEAD requests may be responded to without a body...
-  if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_method == GeneralRequest::HTTP_REQUEST_HEAD) {
     _result->setResultType(SimpleHttpResult::COMPLETE);
     _state = FINISHED;
 
@@ -807,7 +807,7 @@ void SimpleHttpClient::processChunkedHeader() {
 
 void SimpleHttpClient::processChunkedBody() {
   // HEAD requests may be responded to without a body...
-  if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_method == GeneralRequest::HTTP_REQUEST_HEAD) {
     _result->setResultType(SimpleHttpResult::COMPLETE);
     _state = FINISHED;
 
@@ -880,7 +880,7 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult* result) {
 
 std::string SimpleHttpClient::getServerVersion() {
   std::unique_ptr<SimpleHttpResult> response(
-      request(HttpRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
+      request(GeneralRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     return "";

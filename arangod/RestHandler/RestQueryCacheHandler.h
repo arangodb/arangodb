@@ -37,7 +37,7 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
   
  public:
 
-  explicit RestQueryCacheHandler(rest::HttpRequest*);
+  explicit RestQueryCacheHandler(rest::GeneralRequest*);
 
   
  public:

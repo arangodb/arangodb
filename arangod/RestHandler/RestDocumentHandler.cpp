@@ -39,36 +39,36 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(HttpRequest* request)
+RestDocumentHandler::RestDocumentHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 
 HttpHandler::status_t RestDocumentHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::HTTP_REQUEST_DELETE:
       deleteDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_GET:
+    case GeneralRequest::HTTP_REQUEST_GET:
       readDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_HEAD:
+    case GeneralRequest::HTTP_REQUEST_HEAD:
       checkDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_POST:
+    case GeneralRequest::HTTP_REQUEST_POST:
       createDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::HTTP_REQUEST_PUT:
       replaceDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PATCH:
+    case GeneralRequest::HTTP_REQUEST_PATCH:
       updateDocument();
       break;
 
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
+    case GeneralRequest::HTTP_REQUEST_ILLEGAL:
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
       break;

@@ -67,7 +67,7 @@ class PathHandler : public HttpHandler {
   /// @brief factory methods
   //////////////////////////////////////////////////////////////////////////////
 
-  static HttpHandler* create(HttpRequest* request, void* data) {
+  static HttpHandler* create(GeneralRequest* request, void* data) {
     Options* options = static_cast<Options*>(data);
 
     return new PathHandler(request, options);
@@ -75,7 +75,7 @@ class PathHandler : public HttpHandler {
 
  public:
 
-  PathHandler(HttpRequest* request, Options const* options);
+  PathHandler(GeneralRequest* request, Options const* options);
 
  public:
 

@@ -291,7 +291,7 @@ static std::string GetHttpErrorMessage(SimpleHttpResult* result) {
 
 static std::string GetArangoVersion() {
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
+      GeneralRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     return "";
@@ -338,7 +338,7 @@ static std::string GetArangoVersion() {
 
 static bool GetArangoIsCluster() {
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_admin/server/role", "", 0));
+      GeneralRequest::HTTP_REQUEST_GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -380,7 +380,7 @@ static int StartBatch(std::string DBserver, std::string& errorMsg) {
   }
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_POST, url + urlExt, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_POST, url + urlExt, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -432,7 +432,7 @@ static void ExtendBatch(std::string DBserver) {
   }
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_PUT, url + urlExt, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_PUT, url + urlExt, body.c_str(), body.size()));
 
   // ignore any return value
 }
@@ -454,7 +454,7 @@ static void EndBatch(std::string DBserver) {
   BatchId = 0;
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_DELETE, url + urlExt, nullptr, 0));
+      GeneralRequest::HTTP_REQUEST_DELETE, url + urlExt, nullptr, 0));
 
   // ignore any return value
 }
@@ -489,7 +489,7 @@ static int DumpCollection(int fd, std::string const& cid, std::string const& nam
     Stats._totalBatches++;
 
     std::unique_ptr<SimpleHttpResult> response(
-        Client->request(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+        Client->request(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -581,7 +581,7 @@ static void FlushWal() {
       "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_PUT, url, nullptr, 0));
+      Client->request(GeneralRequest::HTTP_REQUEST_PUT, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete() ||
       response->wasHttpError()) {
@@ -599,7 +599,7 @@ static int RunDump(std::string& errorMsg) {
                           std::string(IncludeSystemCollections ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+      Client->request(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -861,7 +861,7 @@ static int DumpShard(int fd, std::string const& DBserver, std::string const& nam
     Stats._totalBatches++;
 
     std::unique_ptr<SimpleHttpResult> response(
-        Client->request(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+        Client->request(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -947,7 +947,7 @@ static int RunClusterDump(std::string& errorMsg) {
       std::string(IncludeSystemCollections ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+      Client->request(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();

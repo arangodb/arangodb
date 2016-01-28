@@ -43,7 +43,7 @@ sig_atomic_t MaintenanceMode = 0;
 namespace {
 class MaintenanceHandler : public HttpHandler {
  public:
-  explicit MaintenanceHandler(HttpRequest* request) : HttpHandler(request){};
+  explicit MaintenanceHandler(GeneralRequest* request) : HttpHandler(request){};
 
   bool isDirect() const override { return true; };
 
@@ -135,7 +135,7 @@ void HttpHandlerFactory::setMaintenance(bool value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
-    HttpRequest* request) {
+    GeneralRequest* request) {
   auto context = request->getRequestContext();
 
   if (context == nullptr) {
@@ -155,7 +155,7 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
+bool HttpHandlerFactory::setRequestContext(GeneralRequest* request) {
   return _setContext(request, _setContextData);
 }
 
@@ -163,7 +163,7 @@ bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpHandlerFactory::authenticationRealm(HttpRequest* request) const {
+std::string HttpHandlerFactory::authenticationRealm(GeneralRequest* request) const {
   auto context = request->getRequestContext();
 
   if (context != nullptr) {
@@ -180,9 +180,9 @@ std::string HttpHandlerFactory::authenticationRealm(HttpRequest* request) const 
 /// @brief creates a new request
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
+GeneralRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
                                                char const* ptr, size_t length) {
-  HttpRequest* request = new HttpRequest(info, ptr, length, _minCompatibility,
+  GeneralRequest* request = new GeneralRequest(info, ptr, length, _minCompatibility,
                                          _allowMethodOverride);
 
   if (request != nullptr) {
@@ -196,7 +196,7 @@ HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
+HttpHandler* HttpHandlerFactory::createHandler(GeneralRequest* request) {
   if (MaintenanceMode) {
     return new MaintenanceHandler(request);
   }

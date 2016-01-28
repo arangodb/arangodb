@@ -41,7 +41,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestExportHandler::RestExportHandler(HttpRequest* request)
+RestExportHandler::RestExportHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request), _restrictions() {}
 
 
@@ -54,19 +54,19 @@ HttpHandler::status_t RestExportHandler::execute() {
   }
 
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_POST) {
+  if (type == GeneralRequest::HTTP_REQUEST_POST) {
     createCursor();
     return status_t(HANDLER_DONE);
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT) {
+  if (type == GeneralRequest::HTTP_REQUEST_PUT) {
     modifyCursor();
     return status_t(HANDLER_DONE);
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+  if (type == GeneralRequest::HTTP_REQUEST_DELETE) {
     deleteCursor();
     return status_t(HANDLER_DONE);
   }
