@@ -1887,7 +1887,7 @@ function multiEdgeDirectionSuite () {
         { q1 :"FOR x IN INBOUND @start OUTBOUND @@ec1, @@ec2 SORT x._key RETURN x._id",
           q2 :`FOR x IN INBOUND @start OUTBOUND ${en}, ${en2} SORT x._key RETURN x._id`,
           res: [vertex.B, vertex.E] },
-      ]
+      ];
 
       var bindVars = {
         "@ec1": en,
@@ -1909,7 +1909,6 @@ function multiEdgeDirectionSuite () {
   };
 }
 
-/*
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
 jsunity.run(multiEdgeCollectionGraphSuite);
@@ -1917,7 +1916,6 @@ jsunity.run(potentialErrorsSuite);
 jsunity.run(complexInternaSuite);
 jsunity.run(complexFilteringSuite);
 jsunity.run(brokenGraphSuite);
-*/
 jsunity.run(multiEdgeDirectionSuite);
 
 return jsunity.done();
