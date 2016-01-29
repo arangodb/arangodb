@@ -27,7 +27,8 @@
 
 #include "Basics/logging.h"
 
-#include <iostream>
+#include <bitset>
+#include <iosfwd>
 #include <sstream>
 
 ////////////////////////////////////////////////////////////////////////////////
