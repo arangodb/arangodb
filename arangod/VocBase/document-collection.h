@@ -377,10 +377,6 @@ public:
   void setCompactionStatus (char const*);
   void getCompactionStatus (char const*&, char*, size_t);
 
-  inline TRI_tid_t getCurrentWriterThread () const {
-    return _currentWriterThread.load();
-  }
-
   inline bool useSecondaryIndexes () const {
     return _useSecondaryIndexes;
   }
@@ -420,8 +416,6 @@ public:
   int64_t                                _numberDocuments;
   TRI_read_write_lock_t                  _compactionLock;
   double                                 _lastCompaction;
-
-  std::atomic<TRI_tid_t>                 _currentWriterThread;
 
   // ...........................................................................
   // this condition variable protects the _journalsCondition
