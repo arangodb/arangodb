@@ -47,7 +47,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       public:
 
-        Graph (triagens::basics::Json const& j);
+        explicit Graph (triagens::basics::Json const& j);
 
         ~Graph () {
         }
