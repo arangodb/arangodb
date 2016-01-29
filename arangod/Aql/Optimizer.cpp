@@ -394,6 +394,13 @@ void Optimizer::setupRules() {
   registerHiddenRule("specialize-collect", specializeCollectRule,
                      specializeCollectRule_pass1, false);
 
+  // inline subqueries one level higher
+  // rule not yet tested
+#if 0
+  registerRule("inline-subqueries", inlineSubqueriesRule,
+               inlineSubqueriesRule_pass1, true);
+#endif
+
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
   registerRule("move-calculations-up", moveCalculationsUpRule,

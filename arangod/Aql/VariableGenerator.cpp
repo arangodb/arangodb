@@ -162,6 +162,30 @@ Variable* VariableGenerator::createVariable(
 Variable* VariableGenerator::createTemporaryVariable() {
   return createVariable(nextName(), false);
 }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a variable (assigns a temporary name)
+////////////////////////////////////////////////////////////////////////////////
+
+Variable* VariableGenerator::renameVariable(VariableId id) {
+  return renameVariable(id, nextName());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a variable (assigns the specified name
+////////////////////////////////////////////////////////////////////////////////
+
+Variable* VariableGenerator::renameVariable(VariableId id, std::string const& name) {
+  auto it = _variables.find(id);
+
+  if (it == _variables.end()) {
+    return nullptr;
+  }
+
+  (*it).second->name = name;
+
+  return (*it).second;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a variable by id - this does not respect the scopes!
@@ -184,7 +208,7 @@ Variable* VariableGenerator::getVariable(VariableId id) const {
 std::string VariableGenerator::nextName() {
   // note: if the naming scheme is adjusted, it may be necessary to adjust
   // Variable::isUserDefined, too!
-  return std::to_string(nextId());  // to_string: c++11
+  return std::to_string(nextId());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -267,6 +267,12 @@ void patchUpdateStatementsRule(Optimizer*, ExecutionPlan*,
 void mergeFilterIntoTraversalRule(Optimizer* opt, ExecutionPlan* plan,
                                   Optimizer::Rule const* rule);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moves simple subqueries one level higher
+////////////////////////////////////////////////////////////////////////////////
+
+void inlineSubqueriesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
 }  // namespace aql
 }  // namespace arangodb
 

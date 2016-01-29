@@ -747,18 +747,13 @@ IndexIterator* EdgeIndex::createIterator(
     }
   }
 
-  // _from or _to?
-  bool const isFrom =
-      (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
-
-  if (keys.empty()) {
-    // nothing to do. still need to return an empty iterator
-    return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
-  }
-
   TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
+  // _from or _to?
+  bool const isFrom =
+      (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
 
   return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
 }

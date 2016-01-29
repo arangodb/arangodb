@@ -30,6 +30,18 @@ v3.0.0 (XXXX-XX-XX)
 v2.8.1 (XXXX-XX-XX)
 -------------------
 
+* Improved AQL Pattern matching by allowing to specify a different traversal
+direction for one or many of the edge collections.
+
+    FOR v, e, p IN OUTBOUND @start @@ec1, INBOUND @@ec2, @@ec3
+
+Will traverse *ec1* and *ec3* in the OUTBOUND direction and for *ec2* it will use
+the INBOUND direction. These directions can be combined in arbitrary ways, the
+direction defined after *IN [steps]* will we used as default direction and can
+be overriden for specific collections.
+This feature is only available for collection lists, it is not possible to
+combine it with graph names.
+
 * fixed undefined behavior in AQL function `PARSE_IDENTIFIER`
 
 * added AQL function `IS_SAME_COLLECTION`:
