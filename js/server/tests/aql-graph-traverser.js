@@ -1826,7 +1826,7 @@ function brokenGraphSuite () {
         gm._drop(emptyGN);
       } catch (e) {
       }
-      var emptyGraph = gm._create(emptyGN);
+      /* var emptyGraph = */ gm._create(emptyGN);
       var bindVars = {
         graph: emptyGN
       };
