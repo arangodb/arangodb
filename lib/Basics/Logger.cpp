@@ -30,7 +30,7 @@ namespace {
 std::atomic_int_fast16_t NEXT_TOPIC_ID(0);
 }
 
-LogLevel Logger::_level = LogLevel::INFO;
+std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
 LogTopic::LogTopic(std::string const& name)
     : LogTopic(name, LogLevel::DEFAULT) {}
@@ -49,7 +49,7 @@ LogTopic LogTopic::operator|(LogTopic const& that) {
     result._topics |= that._topics;
 
     if (result._level < that._level) {
-      result._level = that._level;
+      result._level.store(that._level, std::memory_order_relaxed);
     }
   }
 
@@ -60,3 +60,7 @@ LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::PERFORMANCE("performance");
 LogTopic Logger::REQUESTS("request");
+
+void Logger::setLevel(LogLevel level) {
+  _level = level;
+}
