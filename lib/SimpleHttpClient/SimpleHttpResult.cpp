@@ -244,5 +244,3 @@ bool SimpleHttpResult::isJson() const {
 }
 }
 }
-
-

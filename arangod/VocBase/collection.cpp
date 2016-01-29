@@ -27,10 +27,12 @@
 
 #include "Basics/conversions.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/hashes.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
+#include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Basics/memory-map.h"
 #include "Basics/VelocyPackHelper.h"
@@ -146,7 +148,7 @@ static void SortDatafiles(TRI_vector_pointer_t* files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InitCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection,
-                           char* directory, VocbaseCollectionInfo const& info) {
+                           std::string const& directory, VocbaseCollectionInfo const& info) {
   TRI_ASSERT(collection != nullptr);
 
   collection->_info.update(info);
@@ -155,7 +157,7 @@ static void InitCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection,
   collection->_tickMax = 0;
   collection->_state = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
-  collection->_directory = directory;
+  collection->_directory = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, directory.c_str(), directory.size());
 
   TRI_InitVectorPointer(&collection->_datafiles, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&collection->_journals, TRI_UNKNOWN_MEM_ZONE);
@@ -721,47 +723,21 @@ static bool IterateFiles(TRI_vector_string_t* vector,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the full directory name for a collection
-///
-/// it is the caller's responsibility to check if the returned string is NULL
-/// and to free it if not.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetDirectoryCollection(char const* path, char const* name,
-                                 TRI_col_type_e type, TRI_voc_cid_t cid) {
+static std::string GetCollectionDirectory(char const* path, char const* name, 
+                                          TRI_voc_cid_t cid) {
   TRI_ASSERT(path != nullptr);
   TRI_ASSERT(name != nullptr);
 
-  char* tmp1 = TRI_StringUInt64(cid);
+  std::string filename("collection-");
+  filename.append(std::to_string(cid));
+  filename.push_back('-');
+  filename.append(std::to_string(TRI_UInt32Random()));
 
-  if (tmp1 == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-
-  char* tmp2 = TRI_Concatenate2String("collection-", tmp1);
-
-  if (tmp2 == nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-
-  char* filename = TRI_Concatenate2File(path, tmp2);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
-
-  if (filename == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  // might be NULL
-  return filename;
+  return arangodb::basics::FileUtils::buildFilename(path, filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -791,25 +767,17 @@ TRI_collection_t* TRI_CreateCollection(
     return nullptr;
   }
 
-  char* filename = TRI_GetDirectoryCollection(
-      path, parameters.namec_str(), parameters.type(), parameters.id());
-
-  if (filename == nullptr) {
-    LOG_ERROR("cannot create collection '%s': %s", parameters.namec_str(),
-              TRI_last_error());
-    return nullptr;
-  }
+  std::string const dirname = GetCollectionDirectory(
+      path, parameters.namec_str(), parameters.id());
 
   // directory must not exist
-  if (TRI_ExistsFile(filename)) {
+  if (TRI_ExistsFile(dirname.c_str())) {
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 
     LOG_ERROR(
         "cannot create collection '%s' in directory '%s': directory already "
         "exists",
-        parameters.namec_str(), filename);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+        parameters.namec_str(), dirname.c_str());
 
     return nullptr;
   }
@@ -817,38 +785,30 @@ TRI_collection_t* TRI_CreateCollection(
   // use a temporary directory first. this saves us from leaving an empty
   // directory
   // behind, an the server refusing to start
-  char* tmpname = TRI_Concatenate2String(filename, ".tmp");
+  std::string const tmpname = dirname + ".tmp";
 
   // create directory
   std::string errorMessage;
   long systemError;
-  int res = TRI_CreateDirectory(tmpname, systemError, errorMessage);
+  int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
               parameters.namec_str(), path, TRI_errno_string(res), systemError,
               errorMessage.c_str());
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return nullptr;
   }
 
   TRI_IF_FAILURE("CreateCollection::tempDirectory") {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return nullptr;
   }
 
   // create a temporary file
-  char* tmpfile = TRI_Concatenate2File(tmpname, ".tmp");
-  res = TRI_WriteFile(tmpfile, "", 0);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+  std::string const tmpfile(arangodb::basics::FileUtils::buildFilename(tmpname.c_str(), ".tmp"));
+  res = TRI_WriteFile(tmpfile.c_str(), "", 0);
 
   TRI_IF_FAILURE("CreateCollection::tempFile") {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return nullptr;
   }
 
@@ -856,34 +816,25 @@ TRI_collection_t* TRI_CreateCollection(
     LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
               parameters.namec_str(), path, TRI_errno_string(res), systemError,
               errorMessage.c_str());
-    TRI_RemoveDirectory(tmpname);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    TRI_RemoveDirectory(tmpname.c_str());
 
     return nullptr;
   }
 
   TRI_IF_FAILURE("CreateCollection::renameDirectory") {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return nullptr;
   }
 
-  res = TRI_RenameFile(tmpname, filename);
+  res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
               parameters.namec_str(), path, TRI_errno_string(res), systemError,
               errorMessage.c_str());
-    TRI_RemoveDirectory(tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    TRI_RemoveDirectory(tmpname.c_str());
 
     return nullptr;
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
 
   // now we have the collection directory in place with the correct name and a
   // .tmp file in it
@@ -899,17 +850,13 @@ TRI_collection_t* TRI_CreateCollection(
     }
 
     if (collection == nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
       LOG_ERROR("cannot create collection '%s': out of memory", path);
 
       return nullptr;
     }
   }
 
-  // we are passing filename to this struct, so we must not free it if you use
-  // the struct later
-  InitCollection(vocbase, collection, filename, parameters);
+  InitCollection(vocbase, collection, dirname, parameters);
   /* PANAIA: 1) the parameter file if it exists must be removed
              2) if collection
   */
@@ -947,7 +894,6 @@ void TRI_FreeCollection(TRI_collection_t* collection) {
   TRI_DestroyCollection(collection);
   delete collection;
 }
-
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
     : _version(TRI_COL_VERSION),
@@ -1318,7 +1264,8 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   TRI_json_t* json = TRI_CreateJsonCollectionInfo(*this);
 
   if (json == nullptr) {
-    LOG_ERROR("cannot save collection properties file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    LOG_ERROR("cannot save collection properties file '%s': %s", filename,
+              TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1334,7 +1281,7 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   } else {
     res = TRI_ERROR_NO_ERROR;
   }
-  
+
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   return res;
@@ -1361,8 +1308,7 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
       if (slice.hasKey("journalSize")) {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "journalSize", vocbase->_settings.defaultMaximalSize);
-      }
-      else {
+      } else {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
       }
@@ -1378,8 +1324,7 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
         _maximalSize =
             arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
-      }
-      else {
+      } else {
         _maximalSize =
             arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
@@ -1397,8 +1342,7 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
       _maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               slice, "journalSize", _maximalSize);
-    }
-    else {
+    } else {
       _maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               slice, "maximalSize", _maximalSize);
@@ -1430,7 +1374,6 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _waitForSync = other.waitForSync();
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return JSON information about the collection from the collection's
 /// "parameter.json" file. This function does not require the collection to be
@@ -1441,7 +1384,7 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
 
 TRI_json_t* TRI_ReadJsonCollectionInfo(TRI_vocbase_col_t* collection) {
   char* filename =
-      TRI_Concatenate2File(collection->_path, TRI_VOC_PARAMETER_FILE);
+      TRI_Concatenate2File(collection->pathc_str(), TRI_VOC_PARAMETER_FILE);
 
   // load JSON description of the collection
   TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
@@ -1476,7 +1419,7 @@ int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  std::vector<std::string> files = TRI_FilesDirectory(collection->_path);
+  std::vector<std::string> files = TRI_FilesDirectory(collection->pathc_str());
   res = TRI_ERROR_NO_ERROR;
 
   // sort by index id
@@ -1484,7 +1427,7 @@ int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
 
   for (auto const& file : files) {
     if (regexec(&re, file.c_str(), (size_t)0, nullptr, 0) == 0) {
-      char* fqn = TRI_Concatenate2File(collection->_path, file.c_str());
+      char* fqn = TRI_Concatenate2File(collection->pathc_str(), file.c_str());
 
       res = filter(collection, fqn, data);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
@@ -1530,8 +1473,7 @@ std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
 }
 
 void TRI_CreateVelocyPackCollectionInfo(
-    arangodb::VocbaseCollectionInfo const& info,
-    VPackBuilder& builder) {
+    arangodb::VocbaseCollectionInfo const& info, VPackBuilder& builder) {
   // This function might throw
   //
   TRI_ASSERT(!builder.isClosed());
@@ -1603,6 +1545,7 @@ int TRI_RenameCollection(TRI_collection_t* collection, char const* name) {
   // Save name for rollback
   std::string oldName = collection->_info.name();
   collection->_info.rename(name);
+
   int res = collection->_info.saveToFile(collection->_directory, true);
   if (res != TRI_ERROR_NO_ERROR) {
     // Rollback
@@ -1611,7 +1554,6 @@ int TRI_RenameCollection(TRI_collection_t* collection, char const* name) {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection
@@ -1734,7 +1676,7 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
         VocbaseCollectionInfo::fromFile(path, vocbase,
                                         "",  // Name will be set later on
                                         true);
-    InitCollection(vocbase, collection, TRI_DuplicateString(path), info);
+    InitCollection(vocbase, collection, std::string(path), info);
 
     double start = TRI_microtime();
 
@@ -1890,4 +1832,3 @@ bool TRI_IsAllowedNameCollection(bool allowSystem, char const* name) {
 
   return true;
 }
-

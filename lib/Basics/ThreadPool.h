@@ -37,9 +37,7 @@ namespace basics {
 
 class WorkerThread;
 
-
 class ThreadPool {
-  
  public:
   ThreadPool(ThreadPool const&) = delete;
   ThreadPool& operator=(ThreadPool const&) = delete;
@@ -48,7 +46,6 @@ class ThreadPool {
 
   ~ThreadPool();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the number of threads in the pool
@@ -82,7 +79,6 @@ class ThreadPool {
     _condition.signal();
   }
 
-  
  private:
   arangodb::basics::ConditionVariable _condition;
 
@@ -99,5 +95,3 @@ class ThreadPool {
 }  // namespace arangodb
 
 #endif
-
-

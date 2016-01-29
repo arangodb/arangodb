@@ -28,7 +28,6 @@
 
 #include "Statistics/statistics.h"
 
-
 namespace arangodb {
 namespace rest {
 
@@ -41,7 +40,6 @@ class StatisticsAgent {
   StatisticsAgent(StatisticsAgent const&) = delete;
   StatisticsAgent& operator=(StatisticsAgent const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new agent
@@ -59,7 +57,6 @@ class StatisticsAgent {
     }
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief acquires a new statistics block
@@ -117,7 +114,6 @@ class StatisticsAgent {
     return 0.0;
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief statistics
@@ -131,7 +127,6 @@ class StatisticsAgent {
 
   double _lastReadStart;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief replaces a statistics block
@@ -147,7 +142,6 @@ class StatisticsAgent {
 };
 }
 }
-
 
 namespace arangodb {
 namespace rest {
@@ -345,7 +339,6 @@ class RequestStatisticsAgent
 }
 }
 
-
 namespace arangodb {
 namespace rest {
 
@@ -411,5 +404,3 @@ class ConnectionStatisticsAgent
 }
 
 #endif
-
-

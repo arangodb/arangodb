@@ -34,11 +34,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace std;
 
-
 namespace {
 sig_atomic_t MaintenanceMode = 0;
 }
-
 
 namespace {
 class MaintenanceHandler : public HttpHandler {
@@ -58,7 +56,6 @@ class MaintenanceHandler : public HttpHandler {
   };
 };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler factory
@@ -118,7 +115,6 @@ HttpHandlerFactory& HttpHandlerFactory::operator=(
 
 HttpHandlerFactory::~HttpHandlerFactory() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets maintenance mode
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +122,6 @@ HttpHandlerFactory::~HttpHandlerFactory() {}
 void HttpHandlerFactory::setMaintenance(bool value) {
   MaintenanceMode = value ? 1 : 0;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request
@@ -163,7 +158,8 @@ bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpHandlerFactory::authenticationRealm(HttpRequest* request) const {
+std::string HttpHandlerFactory::authenticationRealm(
+    HttpRequest* request) const {
   auto context = request->getRequestContext();
 
   if (context != nullptr) {
@@ -318,8 +314,8 @@ void HttpHandlerFactory::addHandler(std::string const& path, create_fptr func,
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addPrefixHandler(std::string const& path, create_fptr func,
-                                          void* data) {
+void HttpHandlerFactory::addPrefixHandler(std::string const& path,
+                                          create_fptr func, void* data) {
   _constructors[path] = func;
   _datas[path] = data;
   _prefixes.emplace_back(path);
@@ -332,5 +328,3 @@ void HttpHandlerFactory::addPrefixHandler(std::string const& path, create_fptr f
 void HttpHandlerFactory::addNotFoundHandler(create_fptr func) {
   _notFound = func;
 }
-
-

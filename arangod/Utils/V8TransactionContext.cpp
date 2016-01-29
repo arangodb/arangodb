@@ -183,5 +183,3 @@ bool V8TransactionContext::IsEmbedded() {
   return static_cast<V8TransactionContext*>(v8g->_transactionContext)
              ->_currentTransaction != nullptr;
 }
-
-

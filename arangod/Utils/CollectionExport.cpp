@@ -60,7 +60,6 @@ CollectionExport::~CollectionExport() {
   delete _guard;
 }
 
-
 void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   // try to acquire the exclusive lock on the compaction
   while (!TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
@@ -100,7 +99,8 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
                                             _document->_vocbase, _name);
 
-    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true); // already locked by guard above
+    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
+                true);  // already locked by guard above
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -137,5 +137,3 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     trx.finish(res);
   }
 }
-
-

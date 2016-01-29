@@ -97,8 +97,7 @@ static TRI_index_operator_t* buildBoundOperator(VPackSlice const& bound,
     return nullptr;
   }
 
-  return TRI_CreateIndexOperator(type, nullptr, nullptr, builder,
-                                 shaper, 1);
+  return TRI_CreateIndexOperator(type, nullptr, nullptr, builder, shaper, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,9 +126,9 @@ static TRI_index_operator_t* buildRangeOperator(VPackSlice const& lowerBound,
   }
 
   // And combine both
-  std::unique_ptr<TRI_index_operator_t> rangeOperator(
-      TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, lowerOperator.get(),
-                              upperOperator.get(), std::make_shared<VPackBuilder>(), nullptr, 2));
+  std::unique_ptr<TRI_index_operator_t> rangeOperator(TRI_CreateIndexOperator(
+      TRI_AND_INDEX_OPERATOR, lowerOperator.get(), upperOperator.get(),
+      std::make_shared<VPackBuilder>(), nullptr, 2));
   lowerOperator.release();
   upperOperator.release();
   return rangeOperator.release();
@@ -288,8 +287,6 @@ static int FillLookupOperator(TRI_index_operator_t* slOperator,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 size_t SkiplistIterator::size() const { return _intervals.size(); }
 
@@ -564,7 +561,6 @@ void SkiplistIterator::findHelper(
   }  // end of switch statement
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Attempts to determine if there is a previous document within an
 /// interval or before it - without advancing the iterator.
@@ -686,8 +682,6 @@ TRI_index_element_t* SkiplistIterator::nextIteration() {
   return _cursor->document();
 }
 
-
-
 TRI_doc_mptr_t* SkiplistIndexIterator::next() {
   while (_iterator == nullptr) {
     if (_currentOperator == _operators.size()) {
@@ -724,8 +718,6 @@ void SkiplistIndexIterator::reset() {
   _currentOperator = 0;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the skiplist index
 ////////////////////////////////////////////////////////////////////////////////
@@ -759,7 +751,6 @@ SkiplistIndex::SkiplistIndex(VPackSlice const& slice)
 
 SkiplistIndex::~SkiplistIndex() { delete _skiplistIndex; }
 
-
 size_t SkiplistIndex::memory() const {
   return _skiplistIndex->memoryUsage() +
          static_cast<size_t>(_skiplistIndex->getNrUsed()) * elementSize();
@@ -769,7 +760,8 @@ size_t SkiplistIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void SkiplistIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+void SkiplistIndex::toVelocyPack(VPackBuilder& builder,
+                                 bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
   builder.add("unique", VPackValue(_unique));
   builder.add("sparse", VPackValue(_sparse));
@@ -789,8 +781,8 @@ void SkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 /// @brief inserts a document into a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex::insert(arangodb::Transaction*,
-                          TRI_doc_mptr_t const* doc, bool) {
+int SkiplistIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
+                          bool) {
   std::vector<TRI_index_element_t*> elements;
 
   int res = fillElement(elements, doc);
@@ -838,12 +830,12 @@ int SkiplistIndex::insert(arangodb::Transaction*,
 /// @brief removes a document from a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex::remove(arangodb::Transaction*,
-                          TRI_doc_mptr_t const* doc, bool) {
+int SkiplistIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
+                          bool) {
   std::vector<TRI_index_element_t*> elements;
 
   int res = fillElement(elements, doc);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
       // free all elements to prevent leak
@@ -860,7 +852,7 @@ int SkiplistIndex::remove(arangodb::Transaction*,
 
   for (size_t i = 0; i < count; ++i) {
     int result = _skiplistIndex->remove(elements[i]);
-    
+
     // we may be looping through this multiple times, and if an error
     // occurs, we want to keep it
     if (result != TRI_ERROR_NO_ERROR) {
@@ -908,7 +900,6 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
   // Finally initialize _cursor if the result is not empty:
   return results.release();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares a key with an element in a skip list, generic callback
@@ -1493,9 +1484,9 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
 
           if (rangeOperator != nullptr) {
             std::unique_ptr<TRI_index_operator_t> combinedOp(
-                TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, tmpOp.get(),
-                                        rangeOperator.get(), std::make_shared<VPackBuilder>(), _shaper,
-                                        2));
+                TRI_CreateIndexOperator(
+                    TRI_AND_INDEX_OPERATOR, tmpOp.get(), rangeOperator.get(),
+                    std::make_shared<VPackBuilder>(), _shaper, 2));
             rangeOperator.release();
             tmpOp.release();
             searchValues.emplace_back(combinedOp.get());
@@ -1684,5 +1675,3 @@ bool SkiplistIndex::isDuplicateOperator(
 
   return duplicate;
 }
-
-

@@ -36,7 +36,6 @@ namespace arangodb {
 class CollectionGuard;
 class DocumentDitch;
 
-
 class CollectionExport {
   friend class ExportCursor;
 
@@ -58,11 +57,9 @@ class CollectionExport {
 
   ~CollectionExport();
 
-  
  public:
   void run(uint64_t, size_t);
 
-  
  private:
   arangodb::CollectionGuard* _guard;
   struct TRI_document_collection_t* _document;
@@ -75,5 +72,3 @@ class CollectionExport {
 }
 
 #endif
-
-

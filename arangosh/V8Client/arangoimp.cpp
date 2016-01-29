@@ -125,7 +125,6 @@ static std::string OnDuplicateAction = "error";
 
 static bool Progress = true;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,11 +152,11 @@ static void ParseProgramOptions(int argc, char* argv[]) {
       "from the collection)")("quote", &Quote,
                               "quote character(s), used for csv")(
       "separator", &Separator, "field separator, used for csv")(
-      "progress", &Progress,
-      "show progress")("on-duplicate", &OnDuplicateAction,
-                       "action to perform when a unique key constraint "
-                       "violation occurs. Possible values: 'error', 'update', "
-                       "'replace', 'ignore')")(deprecatedOptions, true);
+      "progress", &Progress, "show progress")(
+      "on-duplicate", &OnDuplicateAction,
+      "action to perform when a unique key constraint "
+      "violation occurs. Possible values: 'error', 'update', "
+      "'replace', 'ignore')")(deprecatedOptions, true);
 
   BaseClient.setupGeneral(description);
   BaseClient.setupServer(description);
@@ -174,7 +173,6 @@ static void ParseProgramOptions(int argc, char* argv[]) {
     FileName = arguments[0];
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -284,7 +282,7 @@ int main(int argc, char* argv[]) {
 
   if (BaseClient.endpointServer() == nullptr) {
     std::cerr << "invalid value for --server.endpoint ('"
-         << BaseClient.endpointString() << "')" << std::endl;
+              << BaseClient.endpointString() << "')" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -315,24 +313,28 @@ int main(int argc, char* argv[]) {
       client.getServerVersion();
 
       if (!connection->isConnected()) {
-        std::cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
-             << "', database: '" << BaseClient.databaseName()
-             << "', username: '" << BaseClient.username() << "'" << std::endl;
-        std::cerr << "Error message: '" << client.getErrorMessage() << "'" << std::endl;
+        std::cerr << "Could not connect to endpoint '"
+                  << BaseClient.endpointString() << "', database: '"
+                  << BaseClient.databaseName() << "', username: '"
+                  << BaseClient.username() << "'" << std::endl;
+        std::cerr << "Error message: '" << client.getErrorMessage() << "'"
+                  << std::endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
       // successfully connected
       std::cout << "Connected to ArangoDB '"
-           << BaseClient.endpointServer()->getSpecification() << "', version "
-           << client.getServerVersion() << ", database: '"
-           << BaseClient.databaseName() << "', username: '"
-           << BaseClient.username() << "'" << std::endl;
+                << BaseClient.endpointServer()->getSpecification()
+                << "', version " << client.getServerVersion() << ", database: '"
+                << BaseClient.databaseName() << "', username: '"
+                << BaseClient.username() << "'" << std::endl;
 
       std::cout << "----------------------------------------" << std::endl;
-      std::cout << "database:         " << BaseClient.databaseName() << std::endl;
+      std::cout << "database:         " << BaseClient.databaseName()
+                << std::endl;
       std::cout << "collection:       " << CollectionName << std::endl;
-      std::cout << "create:           " << (CreateCollection ? "yes" : "no") << std::endl;
+      std::cout << "create:           " << (CreateCollection ? "yes" : "no")
+                << std::endl;
       std::cout << "file:             " << FileName << std::endl;
       std::cout << "type:             " << TypeImport << std::endl;
 
@@ -341,8 +343,10 @@ int main(int argc, char* argv[]) {
         std::cout << "separator:        " << Separator << std::endl;
       }
 
-      std::cout << "connect timeout:  " << BaseClient.connectTimeout() << std::endl;
-      std::cout << "request timeout:  " << BaseClient.requestTimeout() << std::endl;
+      std::cout << "connect timeout:  " << BaseClient.connectTimeout()
+                << std::endl;
+      std::cout << "request timeout:  " << BaseClient.requestTimeout()
+                << std::endl;
       std::cout << "----------------------------------------" << std::endl;
 
       arangodb::v8client::ImportHelper ih(&client, ChunkSize);
@@ -391,13 +395,14 @@ int main(int argc, char* argv[]) {
       if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
         if (!FileUtils::exists(FileName)) {
           std::cerr << "Cannot open file '" << FileName << "'. File not found."
-               << std::endl;
+                    << std::endl;
         } else if (FileUtils::isDirectory(FileName)) {
           std::cerr << "Specified file '" << FileName
-               << "' is a directory. Please use a regular file." << std::endl;
+                    << "' is a directory. Please use a regular file."
+                    << std::endl;
         } else {
           std::cerr << "Cannot open '" << FileName << "'. Invalid file type."
-               << std::endl;
+                    << std::endl;
         }
 
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
@@ -410,8 +415,9 @@ int main(int argc, char* argv[]) {
 
       if (OnDuplicateAction != "error" && OnDuplicateAction != "update" &&
           OnDuplicateAction != "replace" && OnDuplicateAction != "ignore") {
-        std::cerr << "Invalid value for '--on-duplicate'. Possible values: 'error', "
-                "'update', 'replace', 'ignore'." << std::endl;
+        std::cerr
+            << "Invalid value for '--on-duplicate'. Possible values: 'error', "
+               "'update', 'replace', 'ignore'." << std::endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
 
@@ -449,20 +455,26 @@ int main(int argc, char* argv[]) {
 
         // give information about import
         if (ok) {
-          std::cout << "created:          " << ih.getNumberCreated() << std::endl;
-          std::cout << "warnings/errors:  " << ih.getNumberErrors() << std::endl;
-          std::cout << "updated/replaced: " << ih.getNumberUpdated() << std::endl;
-          std::cout << "ignored:          " << ih.getNumberIgnored() << std::endl;
+          std::cout << "created:          " << ih.getNumberCreated()
+                    << std::endl;
+          std::cout << "warnings/errors:  " << ih.getNumberErrors()
+                    << std::endl;
+          std::cout << "updated/replaced: " << ih.getNumberUpdated()
+                    << std::endl;
+          std::cout << "ignored:          " << ih.getNumberIgnored()
+                    << std::endl;
 
           if (TypeImport == "csv" || TypeImport == "tsv") {
             std::cout << "lines read:       " << ih.getReadLines() << std::endl;
           }
 
         } else {
-          std::cerr << "error message:    " << ih.getErrorMessage() << std::endl;
+          std::cerr << "error message:    " << ih.getErrorMessage()
+                    << std::endl;
         }
       } catch (std::exception const& ex) {
-        std::cerr << "Caught exception " << ex.what() << " during import" << std::endl;
+        std::cerr << "Caught exception " << ex.what() << " during import"
+                  << std::endl;
       } catch (...) {
         std::cerr << "Got an unknown exception during import" << std::endl;
       }
@@ -475,5 +487,3 @@ int main(int argc, char* argv[]) {
 
   return ret;
 }
-
-

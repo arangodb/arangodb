@@ -77,4 +77,3 @@ void ConditionVariable::broadcast() { TRI_BroadcastCondition(&_condition); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ConditionVariable::signal() { TRI_SignalCondition(&_condition); }
-

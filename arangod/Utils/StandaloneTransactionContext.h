@@ -38,7 +38,6 @@ struct TRI_transaction_s;
 namespace arangodb {
 
 class StandaloneTransactionContext final : public TransactionContext {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the context
@@ -52,7 +51,6 @@ class StandaloneTransactionContext final : public TransactionContext {
 
   ~StandaloneTransactionContext();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
@@ -90,7 +88,6 @@ class StandaloneTransactionContext final : public TransactionContext {
 
   bool isEmbeddable() const override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection name resolver
@@ -107,4 +104,3 @@ class StandaloneTransactionContext final : public TransactionContext {
 }
 
 #endif
-

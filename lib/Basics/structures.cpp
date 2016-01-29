@@ -23,8 +23,6 @@
 
 #include "Basics/Common.h"
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the data of blob, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +34,6 @@ void TRI_DestroyBlob(TRI_memory_zone_t* zone, TRI_blob_t* blob) {
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a blob into given destination
@@ -80,5 +77,3 @@ int TRI_AssignToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-

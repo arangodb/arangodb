@@ -33,6 +33,7 @@
 #include <chrono>
 
 using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
@@ -638,4 +639,3 @@ uint32_t interval(uint32_t left, uint32_t right) {
 }
 }
 }
-

@@ -362,8 +362,11 @@ static void DocumentVocbaseColCoordinator(
       TRI_V8_RETURN_FALSE();
     }
     if (generateDocument) {
-      int errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice, "errorNum", 0);
-      std::string errorMessage = arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+      int errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          slice, "errorNum", 0);
+      std::string errorMessage =
+          arangodb::basics::VelocyPackHelper::getStringValue(
+              slice, "errorMessage", "");
       TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
     } else {
       TRI_V8_RETURN_FALSE();
@@ -531,8 +534,7 @@ static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster(
 
     try {
       result.emplace_back(c);
-    }
-    catch (...) {
+    } catch (...) {
       delete c;
       throw;
     }
@@ -2135,7 +2137,8 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!collection->_isLocal) {
-    v8::Handle<v8::Value> result = TRI_V8_STRING(collection->_name);
+    std::string const collectionName(collection->name());
+    v8::Handle<v8::Value> result = TRI_V8_STRING(collectionName.c_str());
     TRI_V8_RETURN(result);
   }
 
@@ -2152,6 +2155,29 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Value> result = TRI_V8_STRING(name);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, name);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the path of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_PathVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_col_t const* collection =
+      TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  std::string const path(collection->path());
+
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(path);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -2863,7 +2889,7 @@ static void InsertEdgeCol(TRI_vocbase_col_t* col, uint32_t argOffset,
 
   // extract from
   res = trx.setupState();
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -3440,8 +3466,10 @@ static void JS_VersionVocbaseCol(
   // fallthru intentional
   READ_LOCKER(readLocker, collection->_lock);
   try {
+    std::string const collectionName(collection->name());
     VocbaseCollectionInfo info = VocbaseCollectionInfo::fromFile(
-        collection->_path, collection->_vocbase, collection->_name, false);
+        collection->pathc_str(), collection->vocbase(), collectionName.c_str(),
+        false);
 
     TRI_V8_RETURN(v8::Number::New(isolate, (int)info.version()));
   } catch (arangodb::basics::Exception const& e) {
@@ -3860,7 +3888,7 @@ static void JS_DatafilesVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
-    structure = TRI_FileStructureCollectionDirectory(collection->_path);
+    structure = TRI_FileStructureCollectionDirectory(collection->pathc_str());
   }
 
   // build result
@@ -3962,15 +3990,16 @@ static void JS_DatafileScanVocbaseCol(
       v8::Handle<v8::Object> o = v8::Object::New(isolate);
 
       o->Set(TRI_V8_ASCII_STRING("position"),
-            v8::Number::New(isolate, entry->_position));
-      o->Set(TRI_V8_ASCII_STRING("size"), v8::Number::New(isolate, entry->_size));
+             v8::Number::New(isolate, entry->_position));
+      o->Set(TRI_V8_ASCII_STRING("size"),
+             v8::Number::New(isolate, entry->_size));
       o->Set(TRI_V8_ASCII_STRING("realSize"),
-            v8::Number::New(isolate, entry->_realSize));
+             v8::Number::New(isolate, entry->_realSize));
       o->Set(TRI_V8_ASCII_STRING("tick"), V8TickId(isolate, entry->_tick));
       o->Set(TRI_V8_ASCII_STRING("type"),
-            v8::Number::New(isolate, (int)entry->_type));
+             v8::Number::New(isolate, (int)entry->_type));
       o->Set(TRI_V8_ASCII_STRING("status"),
-            v8::Number::New(isolate, (int)entry->_status));
+             v8::Number::New(isolate, (int)entry->_status));
 
       if (entry->_key != nullptr) {
         o->Set(TRI_V8_ASCII_STRING("key"), TRI_V8_ASCII_STRING(entry->_key));
@@ -3978,12 +4007,12 @@ static void JS_DatafileScanVocbaseCol(
 
       if (entry->_typeName != nullptr) {
         o->Set(TRI_V8_ASCII_STRING("typeName"),
-              TRI_V8_ASCII_STRING(entry->_typeName));
+               TRI_V8_ASCII_STRING(entry->_typeName));
       }
 
       if (entry->_diagnosis != nullptr) {
         o->Set(TRI_V8_ASCII_STRING("diagnosis"),
-              TRI_V8_ASCII_STRING(entry->_diagnosis));
+               TRI_V8_ASCII_STRING(entry->_diagnosis));
       }
 
       entries->Set((uint32_t)i, o);
@@ -3991,7 +4020,7 @@ static void JS_DatafileScanVocbaseCol(
 
     TRI_DestroyDatafileScan(&scan);
   }
-  
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -4064,6 +4093,8 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("name"),
                        JS_NameVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("path"),
+                       JS_PathVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("planId"),
                        JS_PlanIdVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("properties"),

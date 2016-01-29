@@ -201,9 +201,8 @@ void LogfileManager::initialize(std::string* path, TRI_server_t* server) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::setupOptions(
-    std::map<std::string, arangodb::basics::ProgramOptionsDescription>&
-        options) {
+void LogfileManager::setupOptions(std::map<
+    std::string, arangodb::basics::ProgramOptionsDescription>& options) {
   options["Write-ahead log options:help-wal"](
       "wal.allow-oversize-entries", &_allowOversizeEntries,
       "allow entries that are bigger than --wal.logfile-size")(
@@ -232,7 +231,6 @@ void LogfileManager::setupOptions(
       "wal.throttle-wait", &_maxThrottleWait,
       "maximum wait time per operation when write-throttled (in milliseconds)");
 }
-
 
 bool LogfileManager::prepare() {
   static bool Prepared = false;
@@ -324,7 +322,6 @@ bool LogfileManager::prepare() {
   return true;
 }
 
-
 bool LogfileManager::start() {
   static bool started = false;
 
@@ -377,7 +374,6 @@ bool LogfileManager::start() {
 
   return true;
 }
-
 
 bool LogfileManager::open() {
   static bool opened = false;
@@ -514,9 +510,7 @@ bool LogfileManager::open() {
   return true;
 }
 
-
 void LogfileManager::close() {}
-
 
 void LogfileManager::stop() {
   if (!_startCalled) {
@@ -2058,8 +2052,9 @@ int LogfileManager::inspectLogfiles() {
     Logfile* logfile = (*it).second;
 
     if (logfile != nullptr) {
+      std::string const logfileName = logfile->filename();
       LOG_DEBUG("logfile %llu, filename '%s', status %s",
-                (unsigned long long)logfile->id(), logfile->filename().c_str(),
+                (unsigned long long)logfile->id(), logfileName.c_str(),
                 logfile->statusText().c_str());
     }
   }
@@ -2111,8 +2106,9 @@ int LogfileManager::inspectLogfiles() {
     // update the tick statistics
     if (!TRI_IterateDatafile(logfile->df(), &RecoverState::InitialScanMarker,
                              static_cast<void*>(_recoverState))) {
+      std::string const logfileName = logfile->filename();
       LOG_WARNING("WAL inspection failed when scanning logfile '%s'",
-                  logfile->filename().c_str());
+                  logfileName.c_str());
       return TRI_ERROR_ARANGO_RECOVERY;
     }
 
@@ -2260,4 +2256,3 @@ std::string LogfileManager::getTimeString() {
 
   return std::string(buffer, len);
 }
-

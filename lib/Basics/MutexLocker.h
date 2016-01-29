@@ -39,13 +39,12 @@
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-#define MUTEX_LOCKER(obj, lock)                                        \
+#define MUTEX_LOCKER(obj, lock) \
   arangodb::basics::MutexLocker obj(&lock, __FILE__, __LINE__)
 
 #else
 
-#define MUTEX_LOCKER(obj, lock) \
-  arangodb::basics::MutexLocker obj(&lock)
+#define MUTEX_LOCKER(obj, lock) arangodb::basics::MutexLocker obj(&lock)
 
 #endif
 
@@ -60,10 +59,9 @@ namespace basics {
 ////////////////////////////////////////////////////////////////////////////////
 
 class MutexLocker {
-
   MutexLocker(MutexLocker const&) = delete;
   MutexLocker& operator=(MutexLocker const&) = delete;
-  
+
  public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
@@ -88,7 +86,6 @@ class MutexLocker {
   ~MutexLocker();
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the mutex
   //////////////////////////////////////////////////////////////////////////////
@@ -121,5 +118,3 @@ class MutexLocker {
 }
 
 #endif
-
-

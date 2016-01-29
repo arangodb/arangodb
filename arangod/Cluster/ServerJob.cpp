@@ -36,7 +36,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-static arangodb::basics::Mutex ExecutorLock;
+static arangodb::Mutex ExecutorLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new db server job
@@ -78,15 +78,12 @@ void ServerJob::work() {
   _heartbeat->removeDispatchedJob(result);
 }
 
-
 bool ServerJob::cancel() { return false; }
-
 
 void ServerJob::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute job
@@ -141,5 +138,3 @@ bool ServerJob::execute() {
 
   return ok;
 }
-
-

@@ -33,9 +33,7 @@ namespace arangodb {
 namespace aql {
 struct Index;
 
-
 struct Collection {
-  
   Collection& operator=(Collection const&) = delete;
   Collection(Collection const&) = delete;
   Collection() = delete;
@@ -44,7 +42,6 @@ struct Collection {
 
   ~Collection();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the current shard
   //////////////////////////////////////////////////////////////////////////////
@@ -167,7 +164,6 @@ struct Collection {
 
   void setCollection(TRI_vocbase_col_t* coll) { collection = coll; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fills the index list for the collection
@@ -194,7 +190,6 @@ struct Collection {
 
   void fillIndexesLocal() const;
 
-  
  private:
   TRI_vocbase_col_t* collection;
 
@@ -205,7 +200,6 @@ struct Collection {
 
   std::string currentShard;
 
-  
  public:
   std::string const name;
   TRI_vocbase_t* vocbase;
@@ -220,5 +214,3 @@ struct Collection {
 }
 
 #endif
-
-

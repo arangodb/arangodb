@@ -78,7 +78,6 @@ class JsonLegend {
         _att_data(TRI_UNKNOWN_MEM_ZONE),
         _shape_data(TRI_UNKNOWN_MEM_ZONE) {}
 
-
   ~JsonLegend() {}
 
   //////////////////////////////////////////////////////////////////////////////
@@ -283,5 +282,3 @@ class LegendReader : public Shaper {
 }
 
 #endif
-
-

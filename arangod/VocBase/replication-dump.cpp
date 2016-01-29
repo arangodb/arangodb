@@ -43,8 +43,6 @@
 
 using namespace arangodb;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut function
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +78,6 @@ using namespace arangodb;
 #define APPEND_UINT64(buffer, val) \
   FAIL_IFNOT(APPEND_FUNC(AppendUInt64), buffer, val)
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a datafile descriptor
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +89,6 @@ typedef struct df_entry_s {
   TRI_voc_tick_t _tickMax;
   bool _isJournal;
 } df_entry_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translate a (local) collection id into a collection name
@@ -132,10 +128,9 @@ static char const* NameFromCid(TRI_replication_dump_t* dump,
 /// @brief append a collection name or id to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static int AppendCollection(
-    TRI_replication_dump_t* dump, TRI_voc_cid_t cid,
-    bool translateCollectionIds, bool failOnUnknown,
-    arangodb::CollectionNameResolver* resolver) {
+static int AppendCollection(TRI_replication_dump_t* dump, TRI_voc_cid_t cid,
+                            bool translateCollectionIds, bool failOnUnknown,
+                            arangodb::CollectionNameResolver* resolver) {
   if (translateCollectionIds) {
     if (cid > 0) {
       std::string name;
@@ -264,10 +259,11 @@ static int AppendContext(TRI_replication_dump_t* dump,
 /// @brief stringify a raw marker from a datafile for a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-static int StringifyMarkerDump(
-    TRI_replication_dump_t* dump, TRI_document_collection_t* document,
-    TRI_df_marker_t const* marker, bool withTicks, bool translateCollectionIds,
-    bool failOnUnknown, arangodb::CollectionNameResolver* resolver) {
+static int StringifyMarkerDump(TRI_replication_dump_t* dump,
+                               TRI_document_collection_t* document,
+                               TRI_df_marker_t const* marker, bool withTicks,
+                               bool translateCollectionIds, bool failOnUnknown,
+                               arangodb::CollectionNameResolver* resolver) {
   // This covers two cases:
   //   1. document is not nullptr and marker points into a data file
   //   2. document is a nullptr and marker points into a WAL file
@@ -1168,7 +1164,6 @@ static int DumpCollection(TRI_replication_dump_t* dump,
                           bool withTicks, bool translateCollectionIds,
                           bool failOnUnknown,
                           arangodb::CollectionNameResolver* resolver) {
-
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu",
             (unsigned long long)document->_info.id(),
             (unsigned long long)dataMin, (unsigned long long)dataMax);
@@ -1655,5 +1650,3 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
   return res;
 }
-
-

@@ -46,7 +46,6 @@ struct AstNode;
 struct Collection;
 class ExecutionEngine;
 
-
 class IndexBlock : public ExecutionBlock {
  public:
   IndexBlock(ExecutionEngine* engine, IndexNode const* ep);
@@ -75,7 +74,6 @@ class IndexBlock : public ExecutionBlock {
 
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a SORT to a dynamic IN condition
@@ -125,7 +123,6 @@ class IndexBlock : public ExecutionBlock {
 
   void cleanupNonConstExpressions();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection
@@ -215,4 +212,3 @@ class IndexBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

@@ -662,7 +662,6 @@ static void RequestEdges(arangodb::basics::Json const& vertexJson,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called before a query starts
 /// has the chance to set up any thread-local storage
@@ -677,13 +676,11 @@ void Functions::InitializeThreadContext() {}
 
 void Functions::DestroyThreadContext() { ClearRegexCache(); }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function IS_NULL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsNull(arangodb::aql::Query*,
-                           arangodb::AqlTransaction* trx,
+AqlValue Functions::IsNull(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isNull()));
@@ -693,8 +690,7 @@ AqlValue Functions::IsNull(arangodb::aql::Query*,
 /// @brief function IS_BOOL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsBool(arangodb::aql::Query*,
-                           arangodb::AqlTransaction* trx,
+AqlValue Functions::IsBool(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isBoolean()));
@@ -791,8 +787,7 @@ AqlValue Functions::ToString(arangodb::aql::Query*,
 /// @brief function TO_BOOL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ToBool(arangodb::aql::Query*,
-                           arangodb::AqlTransaction* trx,
+AqlValue Functions::ToBool(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
@@ -817,8 +812,7 @@ AqlValue Functions::ToArray(arangodb::aql::Query*,
   }
   if (value.isArray()) {
     // return copy of the original array
-    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                             SafeCopyJson(value.json())));
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, SafeCopyJson(value.json())));
   }
   if (value.isObject()) {
     // return an array with the attribute values
@@ -843,8 +837,7 @@ AqlValue Functions::ToArray(arangodb::aql::Query*,
 /// @brief function LENGTH
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Length(arangodb::aql::Query*,
-                           arangodb::AqlTransaction* trx,
+AqlValue Functions::Length(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   if (!parameters.empty() && parameters[0].first.isArray()) {
     // shortcut!
@@ -1020,8 +1013,7 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
 /// @brief function CONCAT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Concat(arangodb::aql::Query*,
-                           arangodb::AqlTransaction* trx,
+AqlValue Functions::Concat(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
 
@@ -1061,7 +1053,7 @@ AqlValue Functions::Concat(arangodb::aql::Query*,
   size_t length = buffer.length();
   std::unique_ptr<TRI_json_t> j(
       TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, buffer.steal(), length));
-  
+
   if (j == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -1683,8 +1675,7 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
 
     auto value = static_cast<TRI_json_t const*>(
         TRI_AddressVector(&valueJson->_value._objects, i + 1));
-    result.add(
-        Json(TRI_UNKNOWN_MEM_ZONE, SafeCopyJson(value)));
+    result.add(Json(TRI_UNKNOWN_MEM_ZONE, SafeCopyJson(value)));
   }
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
@@ -1723,8 +1714,7 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
   }
 
   if (minValue != nullptr) {
-    std::unique_ptr<TRI_json_t> result(
-        SafeCopyJson(minValue));
+    std::unique_ptr<TRI_json_t> result(SafeCopyJson(minValue));
 
     if (result != nullptr) {
       auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
@@ -1770,8 +1760,7 @@ AqlValue Functions::Max(arangodb::aql::Query* query,
   }
 
   if (maxValue != nullptr) {
-    std::unique_ptr<TRI_json_t> result(
-        SafeCopyJson(maxValue));
+    std::unique_ptr<TRI_json_t> result(SafeCopyJson(maxValue));
 
     if (result != nullptr) {
       auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
@@ -1979,7 +1968,7 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
 
   std::unique_ptr<TRI_json_t> result(
       TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, values.size()));
-  
+
   if (result == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -2033,7 +2022,7 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
 
   std::unique_ptr<TRI_json_t> result(
       TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, values.size()));
-  
+
   if (result == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -2098,8 +2087,7 @@ AqlValue Functions::Union(arangodb::aql::Query* query,
 
     // this passes ownership for the JSON contens into result
     for (size_t j = 0; j < nrValues; ++j) {
-      TRI_json_t* copy =
-          SafeCopyJson(TRI_LookupArrayJson(valueJson, j));
+      TRI_json_t* copy = SafeCopyJson(TRI_LookupArrayJson(valueJson, j));
 
       TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), copy);
 
@@ -2164,8 +2152,7 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
             TRI_AddressVector(&valueJson->_value._objects, j));
 
         if (values.find(value) == values.end()) {
-          std::unique_ptr<TRI_json_t> copy(
-              SafeCopyJson(value));
+          std::unique_ptr<TRI_json_t> copy(SafeCopyJson(value));
 
           if (copy == nullptr) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -2257,8 +2244,7 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
 
         if (i == 0) {
           // round one
-          std::unique_ptr<TRI_json_t> copy(
-              SafeCopyJson(value));
+          std::unique_ptr<TRI_json_t> copy(SafeCopyJson(value));
 
           TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2714,10 +2700,9 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  GeoCoordinates* cors =
-      static_cast<arangodb::GeoIndex2*>(index)
-          ->nearQuery(trx, latitude.json()->_value._number,
-                      longitude.json()->_value._number, limitValue);
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->nearQuery(
+      trx, latitude.json()->_value._number, longitude.json()->_value._number,
+      limitValue);
 
   if (cors == nullptr) {
     Json array(Json::Array, 0);
@@ -2880,10 +2865,9 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  GeoCoordinates* cors =
-      static_cast<arangodb::GeoIndex2*>(index)->withinQuery(
-          trx, latitude.json()->_value._number,
-          longitude.json()->_value._number, radius.json()->_value._number);
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->withinQuery(
+      trx, latitude.json()->_value._number, longitude.json()->_value._number,
+      radius.json()->_value._number);
 
   if (cors == nullptr) {
     Json array(Json::Array, 0);
@@ -3052,12 +3036,16 @@ AqlValue Functions::ParseIdentifier(arangodb::aql::Query* query,
   }
 
   Json value = ExtractFunctionParameter(trx, parameters, 0, false);
-  if (value.isObject() && value.has("_id")) {
-    value = value.get("_id");
+  std::string identifier;
+
+  if (value.isObject() && value.has(TRI_VOC_ATTRIBUTE_ID)) {
+    identifier = arangodb::basics::JsonHelper::getStringValue(value.get(TRI_VOC_ATTRIBUTE_ID).json(), "");
   }
-  if (value.isString()) {
-    std::string identifier =
-        arangodb::basics::JsonHelper::getStringValue(value.json(), "");
+  else if (value.isString()) {
+    identifier = arangodb::basics::JsonHelper::getStringValue(value.json(), "");
+  }
+
+  if (!identifier.empty()) {
     std::vector<std::string> parts =
         arangodb::basics::StringUtils::split(identifier, "/");
     if (parts.size() == 2) {
@@ -3455,8 +3443,8 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
       }
       if (buildMatcher) {
         try {
-          matcher.reset(new arangodb::ExampleMatcher(exampleJson.json(),
-                                                             shaper, resolver));
+          matcher.reset(new arangodb::ExampleMatcher(exampleJson.json(), shaper,
+                                                     resolver));
         } catch (arangodb::basics::Exception const& e) {
           if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
             throw;
@@ -4454,8 +4442,7 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
     auto const stepJson = ExtractFunctionParameter(trx, parameters, 2, false);
     if (!TRI_IsNullJson(stepJson.json())) {
       step = ValueToNumber(stepJson.json(), unused);
-    }
-    else {
+    } else {
       // no step specified
       if (from <= to) {
         step = 1.0;
@@ -4697,4 +4684,48 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function IS_SAME_COLLECTION
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::IsSameCollection (arangodb::aql::Query* query,
+                                      arangodb::AqlTransaction* trx,
+                                      FunctionParameters const& parameters) {
+  if (parameters.size() != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "IS_SAME_COLLECTION", (int) 2, (int) 2);
+  }
+  
+  Json collectionJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! collectionJson.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "IS_SAME_COLLECTION");
+  }
+
+  std::string colName = basics::JsonHelper::getStringValue(collectionJson.json(), "");
+
+  Json value = ExtractFunctionParameter(trx, parameters, 1, false);
+  std::string identifier;
+
+  if (value.isObject() && value.has(TRI_VOC_ATTRIBUTE_ID)) {
+    identifier = arangodb::basics::JsonHelper::getStringValue(value.get(TRI_VOC_ATTRIBUTE_ID).json(), "");
+  }
+  else if (value.isString()) {
+    identifier = arangodb::basics::JsonHelper::getStringValue(value.json(), "");
+  }
+
+  if (! identifier.empty()) {
+    size_t pos = identifier.find('/');
+
+    if (pos != std::string::npos) {
+      bool const same = (colName == identifier.substr(0, pos));
+
+      return AqlValue(new Json(same));
+    }
+
+    // fallthrough intentional
+ }
+
+  RegisterWarning(query, "IS_SAME_COLLECTION", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  return AqlValue(new Json(Json::Null));
+}
 

@@ -36,7 +36,6 @@ namespace wal {
 
 class LogfileManager;
 
-
 class AllocatorThread : public basics::Thread {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AllocatorThread
@@ -46,7 +45,6 @@ class AllocatorThread : public basics::Thread {
   AllocatorThread(AllocatorThread const&) = delete;
   AllocatorThread& operator=(AllocatorThread const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the allocator thread
@@ -60,7 +58,6 @@ class AllocatorThread : public basics::Thread {
 
   ~AllocatorThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stops the allocator thread
@@ -99,14 +96,12 @@ class AllocatorThread : public basics::Thread {
   }
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
   //////////////////////////////////////////////////////////////////////////////
 
   void run();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new reserve logfile
@@ -114,7 +109,6 @@ class AllocatorThread : public basics::Thread {
 
   int createReserveLogfile(uint32_t);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -174,5 +168,3 @@ class AllocatorThread : public basics::Thread {
 }
 
 #endif
-
-

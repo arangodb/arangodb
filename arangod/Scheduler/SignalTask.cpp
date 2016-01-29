@@ -113,5 +113,3 @@ bool SignalTask::handleEvent(EventToken token, EventType revents) {
 }
 
 bool SignalTask::needsMainEventLoop() const { return true; }
-
-

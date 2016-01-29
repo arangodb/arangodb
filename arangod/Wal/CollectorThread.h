@@ -47,7 +47,6 @@ namespace wal {
 class LogfileManager;
 class Logfile;
 
-
 struct CollectorOperation {
   CollectorOperation(char const* datafilePosition,
                      TRI_voc_size_t datafileMarkerSize, char const* walPosition,
@@ -67,7 +66,6 @@ struct CollectorOperation {
   char const* walPosition;
   TRI_voc_fid_t datafileId;
 };
-
 
 struct CollectorCache {
   CollectorCache(CollectorCache const&) = delete;
@@ -171,7 +169,6 @@ struct CollectorCache {
   TRI_datafile_t* lastDatafile;
 };
 
-
 class CollectorThread : public basics::Thread {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief CollectorThread
@@ -181,7 +178,6 @@ class CollectorThread : public basics::Thread {
   CollectorThread(CollectorThread const&) = delete;
   CollectorThread& operator=(CollectorThread const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the collector thread
@@ -195,7 +191,6 @@ class CollectorThread : public basics::Thread {
 
   ~CollectorThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief typedef key => document marker
@@ -210,7 +205,6 @@ class CollectorThread : public basics::Thread {
 
   typedef std::vector<struct TRI_df_marker_s const*> OperationsType;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait for the collector result
@@ -243,7 +237,6 @@ class CollectorThread : public basics::Thread {
 
   bool hasQueuedOperations(TRI_voc_cid_t);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
@@ -251,17 +244,14 @@ class CollectorThread : public basics::Thread {
 
   void run();
 
-  
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief process a single marker in collector step 2
   //////////////////////////////////////////////////////////////////////////////
 
-  void processCollectionMarker(arangodb::SingleCollectionWriteTransaction<UINT64_MAX>&,
-                               TRI_document_collection_t*,
-                               CollectorCache*,
-                               CollectorOperation const&);
+  void processCollectionMarker(
+      arangodb::SingleCollectionWriteTransaction<UINT64_MAX>&,
+      TRI_document_collection_t*, CollectorCache*, CollectorOperation const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the number of queued operations
@@ -347,7 +337,6 @@ class CollectorThread : public basics::Thread {
   void finishMarker(char const*, char*, struct TRI_document_collection_t*,
                     TRI_voc_tick_t, CollectorCache*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -371,7 +360,7 @@ class CollectorThread : public basics::Thread {
   /// @brief operations lock
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _operationsQueueLock;
+  arangodb::Mutex _operationsQueueLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief operations to collect later
@@ -420,5 +409,3 @@ class CollectorThread : public basics::Thread {
 }
 
 #endif
-
-

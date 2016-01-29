@@ -26,7 +26,6 @@
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initial number of elements in the array
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,7 +152,6 @@ void TRI_DestroyAssociativePointer(TRI_associative_pointer_t* array) {
     array->_table = nullptr;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General hash function that can be used to hash a key
@@ -458,7 +456,6 @@ int TRI_InsertKeyAssociativePointer2(TRI_associative_pointer_t* array,
 
 void* TRI_RemoveKeyAssociativePointer(TRI_associative_pointer_t* array,
                                       void const* key) {
-
   if (array->_nrUsed == 0) {
     return nullptr;
   }
@@ -508,5 +505,3 @@ void* TRI_RemoveKeyAssociativePointer(TRI_associative_pointer_t* array,
   // return success
   return old;
 }
-
-

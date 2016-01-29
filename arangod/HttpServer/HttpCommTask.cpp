@@ -36,7 +36,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static initializers
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +108,6 @@ HttpCommTask::~HttpCommTask() {
   // free request
   delete _request;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles response
@@ -951,8 +949,6 @@ int32_t HttpCommTask::getCompatibility() const {
   return HttpRequest::MinCompatibility;
 }
 
-
-
 bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   bool ok = SocketTask::setup(scheduler, loop);
 
@@ -962,15 +958,13 @@ bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
 
   _scheduler = scheduler;
   _loop = loop;
-  
+
   setupDone();
 
   return true;
 }
 
-
 void HttpCommTask::cleanup() { SocketTask::cleanup(); }
-
 
 bool HttpCommTask::handleEvent(EventToken token, EventType events) {
   bool result = SocketTask::handleEvent(token, events);
@@ -981,7 +975,6 @@ bool HttpCommTask::handleEvent(EventToken token, EventType events) {
 
   return result;
 }
-
 
 void HttpCommTask::signalTask(TaskData* data) {
   // data response
@@ -1017,7 +1010,6 @@ void HttpCommTask::signalTask(TaskData* data) {
   }
 }
 
-
 bool HttpCommTask::handleRead() {
   bool res = true;
 
@@ -1051,7 +1043,6 @@ bool HttpCommTask::handleRead() {
   return res;
 }
 
-
 void HttpCommTask::completedWriteBuffer() {
   _writeBuffer = nullptr;
   _writeLength = 0;
@@ -1071,7 +1062,6 @@ void HttpCommTask::completedWriteBuffer() {
     _server->handleCommunicationClosed(this);
   }
 }
-
 
 void HttpCommTask::handleTimeout() {
   _clientClosed = true;

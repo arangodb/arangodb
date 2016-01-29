@@ -35,7 +35,6 @@
 
 using namespace std;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of a double
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,9 +137,7 @@ typedef struct po_visit_functions_s {
                                 void* output);
 } po_visit_functions_t;
 
-
 static bool HasPrintedError = false;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints out an error message about an unrecognized option
@@ -903,7 +900,6 @@ static bool HandleOption(TRI_program_options_t* options,
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new program options description
 ////////////////////////////////////////////////////////////////////////////////
@@ -1020,7 +1016,6 @@ void TRI_FreeProgramOptions(TRI_program_options_t* options) {
   TRI_DestroyProgramOptions(options);
   TRI_Free(TRI_CORE_MEM_ZONE, options);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a flag option
@@ -1323,7 +1318,7 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
       TRI_FreeString(TRI_CORE_MEM_ZONE, section);
 
       section = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                     matches[1].rm_eo - matches[1].rm_so);
+                                    matches[1].rm_eo - matches[1].rm_so);
       TRI_SystemFree(buffer);
       buffer = nullptr;
 
@@ -1336,9 +1331,9 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
     if (res == 0) {
       option = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                    matches[1].rm_eo - matches[1].rm_so);
+                                   matches[1].rm_eo - matches[1].rm_so);
       raw = TRI_DuplicateString(buffer + matches[2].rm_so,
-                                 matches[2].rm_eo - matches[2].rm_so);
+                                matches[2].rm_eo - matches[2].rm_so);
       value = FillVariables(raw);
       TRI_FreeString(TRI_CORE_MEM_ZONE, raw);
 
@@ -1371,7 +1366,7 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
     if (res == 0) {
       option = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                    matches[1].rm_eo - matches[1].rm_so);
+                                   matches[1].rm_eo - matches[1].rm_so);
 
       TRI_SystemFree(buffer);
       buffer = nullptr;
@@ -1400,11 +1395,11 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
     if (res == 0) {
       tmpSection = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                        matches[1].rm_eo - matches[1].rm_so);
+                                       matches[1].rm_eo - matches[1].rm_so);
       option = TRI_DuplicateString(buffer + matches[2].rm_so,
-                                    matches[2].rm_eo - matches[2].rm_so);
+                                   matches[2].rm_eo - matches[2].rm_so);
       raw = TRI_DuplicateString(buffer + matches[3].rm_so,
-                                 matches[3].rm_eo - matches[3].rm_so);
+                                matches[3].rm_eo - matches[3].rm_so);
       value = FillVariables(raw);
       TRI_FreeString(TRI_CORE_MEM_ZONE, raw);
 
@@ -1435,9 +1430,9 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
     if (res == 0) {
       tmpSection = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                        matches[1].rm_eo - matches[1].rm_so);
+                                       matches[1].rm_eo - matches[1].rm_so);
       option = TRI_DuplicateString(buffer + matches[2].rm_so,
-                                    matches[2].rm_eo - matches[1].rm_so);
+                                   matches[2].rm_eo - matches[1].rm_so);
 
       TRI_SystemFree(buffer);
       buffer = nullptr;
@@ -1484,5 +1479,3 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
   return ok;
 }
-
-

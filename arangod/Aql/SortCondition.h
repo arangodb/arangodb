@@ -32,9 +32,7 @@ namespace arangodb {
 namespace aql {
 struct AstNode;
 
-
 class SortCondition {
-  
  public:
   SortCondition(SortCondition const&) = delete;
   SortCondition& operator=(SortCondition const&) = delete;
@@ -64,7 +62,6 @@ class SortCondition {
 
   ~SortCondition();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the condition consists only of attribute accesses
@@ -117,7 +114,6 @@ class SortCondition {
       Variable const*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sort expressions
@@ -155,5 +151,3 @@ class SortCondition {
 }
 
 #endif
-
-

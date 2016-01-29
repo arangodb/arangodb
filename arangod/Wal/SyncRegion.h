@@ -61,5 +61,3 @@ struct SyncRegion {
 }
 
 #endif
-
-

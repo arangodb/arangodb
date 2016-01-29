@@ -34,8 +34,7 @@ using TraverserExpression = arangodb::traverser::TraverserExpression;
 ///        VertexId is in use
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::traverser::VertexId
-arangodb::traverser::IdStringToVertexId(
+arangodb::traverser::VertexId arangodb::traverser::IdStringToVertexId(
     CollectionNameResolver const* resolver, std::string const& vertex) {
   size_t split;
   char const* str = vertex.c_str();
@@ -51,6 +50,47 @@ arangodb::traverser::IdStringToVertexId(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   return VertexId(cid, const_cast<char*>(str + split + 1));
+}
+
+void arangodb::traverser::TraverserOptions::setCollections(
+    std::vector<std::string> const& colls, TRI_edge_direction_e dir) {
+  // We do not allow to reset the collections.
+  TRI_ASSERT(_collections.empty());
+  TRI_ASSERT(_directions.empty());
+  TRI_ASSERT(!colls.empty());
+  _collections = colls;
+  _directions.emplace_back(dir);
+}
+
+void arangodb::traverser::TraverserOptions::setCollections(
+    std::vector<std::string> const& colls,
+    std::vector<TRI_edge_direction_e> const& dirs) {
+  // We do not allow to reset the collections.
+  TRI_ASSERT(_collections.empty());
+  TRI_ASSERT(_directions.empty());
+  TRI_ASSERT(!colls.empty());
+  TRI_ASSERT(colls.size() == dirs.size());
+  _collections = colls;
+  _directions = dirs;
+}
+
+size_t arangodb::traverser::TraverserOptions::collectionCount () const {
+  return _collections.size();
+}
+
+bool arangodb::traverser::TraverserOptions::getCollection(
+    size_t const index, std::string& name, TRI_edge_direction_e& dir) const {
+  if (index >= _collections.size()) {
+    // No more collections stop now
+    return false;
+  }
+  if (_directions.size() == 1) {
+    dir = _directions.at(0);
+  } else {
+    dir = _directions.at(index);
+  }
+  name = _collections.at(index);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -40,10 +40,7 @@ RestActionHandler::RestActionHandler(HttpRequest* request,
   _action = TRI_LookupActionVocBase(request);
 }
 
-
-
 bool RestActionHandler::isDirect() const { return _action == nullptr; }
-
 
 HttpHandler::status_t RestActionHandler::execute() {
   TRI_action_result_t result;
@@ -89,9 +86,7 @@ HttpHandler::status_t RestActionHandler::execute() {
   return status_t(result.isValid ? HANDLER_DONE : HANDLER_FAILED);
 }
 
-
 bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
@@ -118,5 +113,3 @@ TRI_action_result_t RestActionHandler::executeAction() {
 
   return result;
 }
-
-

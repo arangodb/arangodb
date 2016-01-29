@@ -60,7 +60,6 @@ class Query;
 class QueryRegistry;
 struct Variable;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief equery part
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +81,6 @@ enum ExecutionState {
 
   INVALID_STATE
 };
-
 
 struct Profile {
   Profile(Profile const&) = delete;
@@ -108,16 +106,14 @@ struct Profile {
   bool tracked;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
 class Query {
-  
  public:
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*,
-        size_t, struct TRI_json_t*, struct TRI_json_t*, QueryPart);
+  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
+        struct TRI_json_t*, struct TRI_json_t*, QueryPart);
 
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
         arangodb::basics::Json queryStruct, struct TRI_json_t*, QueryPart);
@@ -132,7 +128,6 @@ class Query {
 
   Query* clone(QueryPart, bool);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query is killed
@@ -429,7 +424,6 @@ class Query {
 
   Graph const* lookupGraphByName(std::string const& name);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the query
@@ -491,7 +485,6 @@ class Query {
 
   arangodb::TransactionContext* createTransactionContext();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief query id
@@ -677,5 +670,3 @@ class Query {
 }
 
 #endif
-
-

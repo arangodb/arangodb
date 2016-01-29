@@ -156,7 +156,6 @@ std::string ServerState::stateToString(StateEnum state) {
   return "";
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the authentication data for cluster-internal communication
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,19 +238,14 @@ bool ServerState::isRunningInCluster() {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState::RoleEnum ServerState::getRole() {
-  std::string id;
-  std::string info;
+  auto role = loadRole();
 
-  {
-    auto role = loadRole();
-
-    if (role != ServerState::ROLE_UNDEFINED || !_clusterEnabled) {
-      return role;
-    }
-
-    info = _localInfo;
-    id = _id;
+  if (role != ServerState::ROLE_UNDEFINED || !_clusterEnabled) {
+    return role;
   }
+
+  std::string info = _localInfo;
+  std::string id = _id;
 
   if (id.empty()) {
     // We need to announce ourselves in the agency to get a role configured:
@@ -276,7 +270,7 @@ ServerState::RoleEnum ServerState::getRole() {
   }
 
   // role not yet set
-  RoleEnum role = determineRole(info, id);
+  role = determineRole(info, id);
   std::string roleString = roleToString(role);
 
   LOG_DEBUG("Found my role: %s", roleString.c_str());
@@ -651,7 +645,6 @@ bool ServerState::redetermineRole() {
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the server role by fetching data from the agency
 /// Note: this method must be called under the _lock
@@ -847,13 +840,15 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
 
       if (it != result._values.end()) {
         VPackSlice slice = it->second._vpack->slice();
-        id = arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID", "");
+        id =
+            arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID", "");
         if (id.empty()) {
           LOG_ERROR("ID not set!");
           return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
         }
-        std::string description = arangodb::basics::VelocyPackHelper::getStringValue(
-            slice, "Description", "");
+        std::string description =
+            arangodb::basics::VelocyPackHelper::getStringValue(
+                slice, "Description", "");
         if (!description.empty()) {
           setDescription(description);
         }

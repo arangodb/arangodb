@@ -37,7 +37,6 @@ using namespace arangodb::basics;
 
 // #define DEBUG_JSON_SHAPER 1
 
-
 static int FillShapeValueJson(v8::Isolate* isolate, VocShaper* shaper,
                               TRI_shape_value_t* dst,
                               v8::Handle<v8::Value> const json, size_t level,
@@ -54,7 +53,6 @@ static v8::Handle<v8::Value> JsonShapeData(v8::Isolate* isolate, VocShaper*,
                                            TRI_shape_t const*, char const*,
                                            size_t);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shape cache (caches pointer to last shape)
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,8 +61,6 @@ typedef struct shape_cache_s {
   TRI_shape_sid_t _sid;
   TRI_shape_t const* _shape;
 } shape_cache_t;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a null into TRI_shape_value_t
@@ -1510,5 +1506,3 @@ int TRI_FillShapedJsonV8Object(v8::Isolate* isolate,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-

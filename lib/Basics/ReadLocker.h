@@ -41,24 +41,22 @@
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-#define READ_LOCKER(obj, lock)                                           \
+#define READ_LOCKER(obj, lock) \
   arangodb::basics::ReadLocker obj(&lock, __FILE__, __LINE__)
 
-#define READ_LOCKER_EVENTUAL(obj, lock, t)                               \
+#define READ_LOCKER_EVENTUAL(obj, lock, t) \
   arangodb::basics::ReadLocker obj(&lock, t, __FILE__, __LINE__)
 
 #else
 
-#define READ_LOCKER(obj, lock)                                           \
-  arangodb::basics::ReadLocker obj(&lock)
+#define READ_LOCKER(obj, lock) arangodb::basics::ReadLocker obj(&lock)
 
-#define READ_LOCKER_EVENTUAL(obj, lock, t)                               \
+#define READ_LOCKER_EVENTUAL(obj, lock, t) \
   arangodb::basics::ReadLocker obj(&lock, t)
 
 #endif
 
-#define TRY_READ_LOCKER(obj, lock)                                       \
-  arangodb::basics::TryReadLocker obj(&lock)
+#define TRY_READ_LOCKER(obj, lock) arangodb::basics::TryReadLocker obj(&lock)
 
 namespace arangodb {
 namespace basics {
@@ -71,12 +69,10 @@ namespace basics {
 ////////////////////////////////////////////////////////////////////////////////
 
 class ReadLocker {
-
   ReadLocker(ReadLocker const&) = delete;
   ReadLocker& operator=(ReadLocker const&) = delete;
-  
- public:
 
+ public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a read-lock
 ///
@@ -94,7 +90,8 @@ class ReadLocker {
 
 #else
 
-  explicit ReadLocker(ReadWriteLock* readWriteLock) : _readWriteLock(readWriteLock) {
+  explicit ReadLocker(ReadWriteLock* readWriteLock)
+      : _readWriteLock(readWriteLock) {
     _readWriteLock->readLock();
   }
 
@@ -107,7 +104,8 @@ class ReadLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-  ReadLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime, char const* file, int line)
+  ReadLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime, char const* file,
+             int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
     double t = TRI_microtime();
     while (!_readWriteLock->tryReadLock()) {
@@ -150,7 +148,6 @@ class ReadLocker {
   }
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the read-write lock
   //////////////////////////////////////////////////////////////////////////////
@@ -181,20 +178,19 @@ class ReadLocker {
 };
 
 class TryReadLocker {
-
   TryReadLocker(TryReadLocker const&) = delete;
   TryReadLocker& operator=(TryReadLocker const&) = delete;
-  
+
  public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tries to aquire a read-lock
+  ///
+  /// The constructors tries to read-lock the lock, the destructors unlocks the
+  /// lock if it was acquired in the constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to aquire a read-lock
-///
-/// The constructors tries to read-lock the lock, the destructors unlocks the 
-/// lock if it was acquired in the constructor
-////////////////////////////////////////////////////////////////////////////////
-
-  explicit TryReadLocker(ReadWriteLock* readWriteLock) : _readWriteLock(readWriteLock), _isLocked(false) {
+  explicit TryReadLocker(ReadWriteLock* readWriteLock)
+      : _readWriteLock(readWriteLock), _isLocked(false) {
     _isLocked = _readWriteLock->tryReadLock();
   }
 
@@ -207,7 +203,7 @@ class TryReadLocker {
       _readWriteLock->unlock();
     }
   }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not we acquired the lock
   //////////////////////////////////////////////////////////////////////////////
@@ -215,7 +211,6 @@ class TryReadLocker {
   bool isLocked() const { return _isLocked; }
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the read-write lock
   //////////////////////////////////////////////////////////////////////////////
@@ -227,10 +222,8 @@ class TryReadLocker {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _isLocked;
-
 };
 }
 }
 
 #endif
-

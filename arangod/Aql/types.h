@@ -50,5 +50,3 @@ typedef uint64_t QueryId;
 }
 
 #endif
-
-

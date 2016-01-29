@@ -43,9 +43,7 @@ struct AstNode;
 class SortCondition;
 struct Variable;
 
-
 struct Index {
-  
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
@@ -73,9 +71,8 @@ struct Index {
             arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice,
                                                                        "id"))),
         type(arangodb::Index::type(
-            arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice,
-                                                                       "type")
-                .c_str())),
+            arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+                slice, "type").c_str())),
         unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
             slice, "unique", false)),
         sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -90,7 +87,6 @@ struct Index {
       fields.reserve(n);
 
       for (auto const& name : VPackArrayIterator(f)) {
-
         if (name.isString()) {
           std::vector<arangodb::basics::AttributeName> parsedAttributes;
           TRI_ParseAttributeString(name.copyString(), parsedAttributes);
@@ -108,8 +104,7 @@ struct Index {
   arangodb::basics::Json toJson() const {
     arangodb::basics::Json json(arangodb::basics::Json::Object);
 
-    json("type",
-         arangodb::basics::Json(arangodb::Index::typeName(type)))(
+    json("type", arangodb::basics::Json(arangodb::Index::typeName(type)))(
         "id", arangodb::basics::Json(arangodb::basics::StringUtils::itoa(id)))(
         "unique", arangodb::basics::Json(unique))(
         "sparse", arangodb::basics::Json(sparse));
@@ -182,10 +177,12 @@ struct Index {
   /// @brief get an iterator for the index
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::IndexIterator* getIterator(
-      arangodb::Transaction*, arangodb::IndexIteratorContext*,
-      arangodb::aql::Ast*, arangodb::aql::AstNode const*,
-      arangodb::aql::Variable const*, bool) const;
+  arangodb::IndexIterator* getIterator(arangodb::Transaction*,
+                                       arangodb::IndexIteratorContext*,
+                                       arangodb::aql::Ast*,
+                                       arangodb::aql::AstNode const*,
+                                       arangodb::aql::Variable const*,
+                                       bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief specialize the condition for the index
@@ -196,7 +193,6 @@ struct Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
 
-  
  public:
   TRI_idx_iid_t const id;
   arangodb::Index::IndexType type;
@@ -215,5 +211,3 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::Index const*);
 std::ostream& operator<<(std::ostream&, arangodb::aql::Index const&);
 
 #endif
-
-

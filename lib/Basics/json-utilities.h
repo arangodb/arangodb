@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/json.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two json values
 ///
@@ -137,5 +136,3 @@ struct JsonLess {
 }
 
 #endif
-
-

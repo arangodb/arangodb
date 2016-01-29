@@ -33,11 +33,10 @@
 #include "Rest/ConnectionInfo.h"
 #include "Rest/RequestContext.h"
 
-
 namespace arangodb {
 namespace velocypack {
-  class Builder;
-  struct Options;
+class Builder;
+struct Options;
 }
 namespace rest {
 
@@ -54,7 +53,6 @@ class HttpRequest {
   HttpRequest(HttpRequest const&);
   HttpRequest& operator=(HttpRequest const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief http request type
@@ -77,7 +75,6 @@ class HttpRequest {
 
   enum HttpVersion { HTTP_UNKNOWN, HTTP_1_0, HTTP_1_1 };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum API compatibility
@@ -97,7 +94,6 @@ class HttpRequest {
 
   static std::string const MultiPartContentType;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief translate the HTTP protocol version
   //////////////////////////////////////////////////////////////////////////////
@@ -134,7 +130,6 @@ class HttpRequest {
 
   static std::string const& getMultipartContentType();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief http request constructor
@@ -149,10 +144,8 @@ class HttpRequest {
 
   HttpRequest(ConnectionInfo const&, char const*, size_t, int32_t, bool);
 
-
   ~HttpRequest();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the protocol
@@ -275,7 +268,6 @@ class HttpRequest {
 
   void setClientTaskId(uint64_t);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the prefix path of the request
@@ -319,7 +311,6 @@ class HttpRequest {
 
   RequestContext* getRequestContext() const { return _requestContext; }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the content length
@@ -359,7 +350,6 @@ class HttpRequest {
 
   std::map<std::string, std::string> headers() const;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the value of a key
@@ -420,7 +410,6 @@ class HttpRequest {
 
   std::map<std::string, std::string> cookieValues() const;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief gets the body
@@ -465,7 +454,6 @@ class HttpRequest {
 
   TRI_json_t* toJson(char**);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine the header type
@@ -515,7 +503,6 @@ class HttpRequest {
 
   void parseCookies(char const* buffer);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief complete request path, without protocol, host, and parameters
@@ -662,5 +649,3 @@ class HttpRequest {
 }
 
 #endif
-
-

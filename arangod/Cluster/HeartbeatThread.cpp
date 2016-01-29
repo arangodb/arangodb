@@ -390,7 +390,6 @@ void HeartbeatThread::runCoordinator() {
   LOG_TRACE("stopped heartbeat thread");
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the heartbeat
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,7 +433,6 @@ void HeartbeatThread::removeDispatchedJob(bool success) {
   _numDispatchedJobs = -1;
   _lastDispatchedJobResult = success;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the index id of the value of Sync/Commands/my-id from the
@@ -523,7 +521,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
       TRI_voc_tick_t id = 0;
       if (options.hasKey("id")) {
-        VPackSlice const v = options.get("id"); 
+        VPackSlice const v = options.get("id");
         if (v.isString()) {
           id = arangodb::basics::StringUtils::uint64(v.copyString());
         }
@@ -750,5 +748,3 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
 
   return result;
 }
-
-

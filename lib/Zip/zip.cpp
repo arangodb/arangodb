@@ -147,11 +147,10 @@ typedef struct {
                                currenty writing */
   char* central_header;      /* central header data for the current file */
   uLong size_centralExtra;
-  uLong size_centralheader; /* size of the central header for cur file */
-  uLong
-      size_centralExtraFree; /* Extra bytes allocated to the centralheader but
-                                that are not used */
-  uLong flag;                /* flag of the file currently writing */
+  uLong size_centralheader;    /* size of the central header for cur file */
+  uLong size_centralExtraFree; /* Extra bytes allocated to the centralheader but
+                                  that are not used */
+  uLong flag;                  /* flag of the file currently writing */
 
   int method;                    /* compression method of file currenty wr.*/
   int raw;                       /* 1 for directly writing raw data */
@@ -1799,9 +1798,8 @@ int Write_Zip64EndOfCentralDirectoryRecord(zip64_internal* zi,
     err = zip64local_putValue(&zi->z_filefunc, zi->filestream,
                               (ZPOS64_T)size_centraldir, 8);
 
-  if (err ==
-      ZIP_OK) /* offset of start of central directory with respect to the
-                 starting disk number */
+  if (err == ZIP_OK) /* offset of start of central directory with respect to the
+                        starting disk number */
   {
     ZPOS64_T pos = centraldir_pos_inzip - zi->add_position_when_writting_offset;
     err =
@@ -1852,9 +1850,8 @@ int Write_EndOfCentralDirectoryRecord(zip64_internal* zi, uLong size_centraldir,
     err = zip64local_putValue(&zi->z_filefunc, zi->filestream,
                               (uLong)size_centraldir, 4);
 
-  if (err ==
-      ZIP_OK) /* offset of start of central directory with respect to the
-                 starting disk number */
+  if (err == ZIP_OK) /* offset of start of central directory with respect to the
+                        starting disk number */
   {
     ZPOS64_T pos = centraldir_pos_inzip - zi->add_position_when_writting_offset;
     if (pos >= 0xffffffff) {
@@ -1999,4 +1996,3 @@ zipRemoveExtraInfoBlock(char* pData, int* dataLen, short sHeader) {
 
   return retVal;
 }
-

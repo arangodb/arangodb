@@ -23,8 +23,6 @@
 
 #include "v8-globals.h"
 
-
-
 TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
     : JSCollections(),
       JSDitches(),
@@ -207,9 +205,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING("_to"));
 }
 
-
 TRI_v8_global_s::~TRI_v8_global_s() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global context
@@ -305,5 +301,3 @@ void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate,
   // all global variables are read-only
   context->Global()->ForceSet(name, value, v8::ReadOnly);
 }
-
-

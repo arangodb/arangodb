@@ -38,11 +38,11 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  var i, c, ids = [ ];
+  var i, c, paths = [ ];
   for (i = 0; i < 10; ++i) {
     db._drop("UnitTestsRecovery" + i);
     c = db._create("UnitTestsRecovery" + i);
-    ids[i] = c._id;
+    paths[i] = c.path();
     c.drop();
   }
   db._drop("test");
@@ -51,7 +51,7 @@ function runSetup () {
 
   internal.wait(3, true);
   for (i = 0; i < 10; ++i) {
-    var path = fs.join(db._path(), "collection-" + ids[i]);
+    var path = paths[i];
     fs.makeDirectory(path);
 
     if (i < 5) {

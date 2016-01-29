@@ -93,8 +93,6 @@ static bool ListTextExtractor(VocShaper* shaper, TRI_shape_t const* shape,
   return true;
 }
 
-
-
 FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
                              TRI_document_collection_t* collection,
                              std::string const& attribute, int minWordLength)
@@ -130,7 +128,6 @@ FulltextIndex::~FulltextIndex() {
   }
 }
 
-
 size_t FulltextIndex::memory() const {
   return TRI_MemoryFulltextIndex(_fulltextIndex);
 }
@@ -149,8 +146,8 @@ void FulltextIndex::toVelocyPack(VPackBuilder& builder,
   builder.add("minLength", VPackValue(_minWordLength));
 }
 
-int FulltextIndex::insert(arangodb::Transaction*,
-                          TRI_doc_mptr_t const* doc, bool isRollback) {
+int FulltextIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
+                          bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
   TRI_fulltext_wordlist_t* words = wordlist(doc);
@@ -175,8 +172,8 @@ int FulltextIndex::insert(arangodb::Transaction*,
   return res;
 }
 
-int FulltextIndex::remove(arangodb::Transaction*,
-                          TRI_doc_mptr_t const* doc, bool) {
+int FulltextIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
+                          bool) {
   TRI_DeleteDocumentFulltextIndex(_fulltextIndex,
                                   (TRI_fulltext_doc_t)((uintptr_t)doc));
 
@@ -195,7 +192,6 @@ int FulltextIndex::cleanup() {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function called by the fulltext index to determine the
@@ -297,5 +293,3 @@ TRI_fulltext_wordlist_t* FulltextIndex::wordlist(
 
   return wordlist;
 }
-
-

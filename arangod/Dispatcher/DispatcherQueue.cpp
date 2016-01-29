@@ -79,13 +79,10 @@ DispatcherQueue::DispatcherQueue(Scheduler* scheduler, Dispatcher* dispatcher,
   }
 }
 
-
 DispatcherQueue::~DispatcherQueue() {
   beginShutdown();
   delete[] _jobs;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a job
@@ -98,7 +95,8 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   size_t pos;
 
   if (!_jobPositions.pop(pos)) {
-    LOG_TRACE("cannot add job %p to queue %p. queue is full", (void*) job.get(), (void*) this);
+    LOG_TRACE("cannot add job %p to queue %p. queue is full", (void*)job.get(),
+              (void*)this);
     return TRI_ERROR_QUEUE_FULL;
   }
 
@@ -112,8 +110,7 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   bool ok;
   try {
     ok = _readyJobs.push(raw);
-  }
-  catch (...) {
+  } catch (...) {
     ok = false;
   }
 
@@ -460,7 +457,6 @@ void DispatcherQueue::setProcessorAffinity(std::vector<size_t> const& cores) {
   _affinityCores = cores;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes old threads
 ////////////////////////////////////////////////////////////////////////////////
@@ -474,5 +470,3 @@ void DispatcherQueue::deleteOldThreads() {
     }
   }
 }
-
-

@@ -60,9 +60,7 @@ HttpServerJob::~HttpServerJob() {
   }
 }
 
-
 size_t HttpServerJob::queue() const { return _handler->queue(); }
-
 
 void HttpServerJob::work() {
   TRI_ASSERT(_handler.get() != nullptr);
@@ -103,15 +101,12 @@ void HttpServerJob::work() {
   _workDesc = WorkMonitor::popHandler(_handler.release(), false);
 }
 
-
 bool HttpServerJob::cancel() { return _handler->cancel(); }
-
 
 void HttpServerJob::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
-
 
 void HttpServerJob::handleError(arangodb::basics::Exception const& ex) {
   _handler->handleError(ex);

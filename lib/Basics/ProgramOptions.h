@@ -29,14 +29,12 @@
 #include "Basics/vector.h"
 #include "Basics/ProgramOptionsDescription.h"
 
-
 struct TRI_json_t;
 struct TRI_program_options_s;
 struct TRI_PO_section_s;
 
 namespace arangodb {
 namespace basics {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ProgramOptions
@@ -47,15 +45,11 @@ class ProgramOptions {
   ProgramOptions(ProgramOptions const&) = delete;
   ProgramOptions& operator=(ProgramOptions const&) = delete;
 
-  
  public:
-
   ProgramOptions();
-
 
   ~ProgramOptions();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parse command line
@@ -93,7 +87,6 @@ class ProgramOptions {
 
   static struct TRI_json_t const* getJson();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates description for the main section
@@ -116,7 +109,6 @@ class ProgramOptions {
   bool extractValues(ProgramOptionsDescription const&,
                      struct TRI_program_options_s*, std::set<std::string> seen);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bool values
@@ -176,5 +168,3 @@ class ProgramOptions {
 }
 
 #endif
-
-

@@ -37,7 +37,6 @@ class Scheduler;
 class ApplicationV8;
 
 class V8PeriodicTask : public rest::PeriodicTask {
-  
  public:
   V8PeriodicTask(std::string const&, std::string const&, TRI_vocbase_t*,
                  ApplicationV8*, rest::Scheduler*, rest::Dispatcher*, double,
@@ -46,7 +45,6 @@ class V8PeriodicTask : public rest::PeriodicTask {
 
   ~V8PeriodicTask();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a task specific description in VelocyPack format
@@ -60,7 +58,6 @@ class V8PeriodicTask : public rest::PeriodicTask {
 
   bool isUserDefined() const override { return true; }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles the next tick
@@ -68,7 +65,6 @@ class V8PeriodicTask : public rest::PeriodicTask {
 
   bool handlePeriod() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief system vocbase
@@ -115,4 +111,3 @@ class V8PeriodicTask : public rest::PeriodicTask {
 }
 
 #endif
-

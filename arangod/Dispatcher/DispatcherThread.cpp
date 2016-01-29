@@ -52,10 +52,10 @@ thread_local DispatcherThread* DispatcherThread::currentDispatcherThread =
 
 DispatcherThread::DispatcherThread(DispatcherQueue* queue)
     : Thread("Dispatcher" + (queue->_id == Dispatcher::STANDARD_QUEUE
-                             ? std::string("Std")
-                             : (queue->_id == Dispatcher::AQL_QUEUE
-                                    ? std::string("Aql")
-                                    : ("_" + to_string(queue->_id))))),
+                                 ? std::string("Std")
+                                 : (queue->_id == Dispatcher::AQL_QUEUE
+                                        ? std::string("Aql")
+                                        : ("_" + to_string(queue->_id))))),
       _queue(queue) {
   allowAsynchronousCancelation();
 }
@@ -122,7 +122,6 @@ void DispatcherThread::run() {
   _queue->removeStartedThread(this);
 }
 
-
 void DispatcherThread::addStatus(VPackBuilder* b) {
   Thread::addStatus(b);
   b->add("queue", VPackValue(_queue->_id));
@@ -132,7 +131,6 @@ void DispatcherThread::addStatus(VPackBuilder* b) {
   b->add("numberWaiting", VPackValue((int)_queue->_nrWaiting.load()));
   b->add("numberBlocked", VPackValue((int)_queue->_nrBlocked.load()));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates that thread is doing a blocking operation
@@ -145,7 +143,6 @@ void DispatcherThread::block() { _queue->blockThread(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::unblock() { _queue->unblockThread(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do the real work
@@ -171,8 +168,8 @@ void DispatcherThread::handleJob(Job* job) {
   } catch (std::bad_alloc const& ex) {
     try {
       Exception ex2(TRI_ERROR_OUT_OF_MEMORY,
-                    std::string("job failed with bad_alloc: ") + ex.what(), __FILE__,
-                    __LINE__);
+                    std::string("job failed with bad_alloc: ") + ex.what(),
+                    __FILE__, __LINE__);
 
       job->handleError(ex2);
       LOG_WARNING("caught exception in work(): %s", ex2.what());
@@ -182,8 +179,8 @@ void DispatcherThread::handleJob(Job* job) {
   } catch (std::exception const& ex) {
     try {
       Exception ex2(TRI_ERROR_INTERNAL,
-                    std::string("job failed with error: ") + ex.what(), __FILE__,
-                    __LINE__);
+                    std::string("job failed with error: ") + ex.what(),
+                    __FILE__, __LINE__);
 
       job->handleError(ex2);
       LOG_WARNING("caught exception in work(): %s", ex2.what());
@@ -223,5 +220,3 @@ void DispatcherThread::handleJob(Job* job) {
     LOG_WARNING("caught error while cleaning up!");
   }
 }
-
-

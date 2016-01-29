@@ -33,7 +33,6 @@
 
 class VocShaper;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// Explanation of what an index operator is capable of and how one has to
 /// use it:
@@ -135,17 +134,18 @@ class TRI_relation_index_operator_t : public TRI_index_operator_t {
                                // a json array to a shaped json array
   size_t _numFields;           // number of fields in the array above
 
-  TRI_relation_index_operator_t(TRI_index_operator_type_e const type,
-                                VocShaper const* shaper, std::shared_ptr<arangodb::velocypack::Builder> parameters,
-                                TRI_shaped_json_t* fields, size_t numFields)
+  TRI_relation_index_operator_t(
+      TRI_index_operator_type_e const type, VocShaper const* shaper,
+      std::shared_ptr<arangodb::velocypack::Builder> parameters,
+      TRI_shaped_json_t* fields, size_t numFields)
       : TRI_index_operator_t(type, shaper),
         _parameters(parameters),
         _fields(fields),
         _numFields(numFields) {
-          // We can only take a complete closed Array
-          TRI_ASSERT(parameters->isClosed());
-          TRI_ASSERT(parameters->slice().isArray());
-        }
+    // We can only take a complete closed Array
+    TRI_ASSERT(parameters->isClosed());
+    TRI_ASSERT(parameters->slice().isArray());
+  }
 
   ~TRI_relation_index_operator_t();
 };

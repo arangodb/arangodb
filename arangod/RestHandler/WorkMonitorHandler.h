@@ -33,13 +33,10 @@ namespace arangodb {
 
 class WorkMonitorHandler : public arangodb::admin::RestBaseHandler {
  public:
-
   explicit WorkMonitorHandler(arangodb::rest::HttpRequest*);
 
  public:
-
   bool isDirect() const override;
-
 
   status_t execute() override;
 };

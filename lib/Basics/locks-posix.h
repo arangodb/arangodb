@@ -52,4 +52,3 @@ typedef struct TRI_condition_s {
 #endif
 
 #endif
-

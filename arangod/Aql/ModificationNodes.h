@@ -40,7 +40,6 @@ struct Collection;
 class ExecutionBlock;
 class ExecutionPlan;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base class for modification operations
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +76,6 @@ class ModificationNode : public ExecutionNode {
   virtual void toJsonHelper(arangodb::basics::Json& json,
                             TRI_memory_zone_t* zone, bool) const override;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the database
@@ -156,7 +154,6 @@ class ModificationNode : public ExecutionNode {
 
   bool isModificationNode() const override { return true; }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _vocbase, the database
@@ -189,7 +186,6 @@ class ModificationNode : public ExecutionNode {
   Variable const* _outVariableNew;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class RemoveNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +194,6 @@ class RemoveNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class RemoveBlock;
-
 
  public:
   RemoveNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
@@ -249,7 +244,6 @@ class RemoveNode : public ModificationNode {
     vars.emplace(_inVariable);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable
@@ -257,7 +251,6 @@ class RemoveNode : public ModificationNode {
 
   Variable const* _inVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class InsertNode
@@ -267,7 +260,6 @@ class InsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class InsertBlock;
-
 
  public:
   InsertNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
@@ -319,7 +311,6 @@ class InsertNode : public ModificationNode {
     vars.emplace(_inVariable);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable
@@ -327,7 +318,6 @@ class InsertNode : public ModificationNode {
 
   Variable const* _inVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class UpdateNode
@@ -405,7 +395,6 @@ class UpdateNode : public ModificationNode {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable for documents
@@ -419,7 +408,6 @@ class UpdateNode : public ModificationNode {
 
   Variable const* _inKeyVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ReplaceNode
@@ -497,7 +485,6 @@ class ReplaceNode : public ModificationNode {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable for documents
@@ -511,7 +498,6 @@ class ReplaceNode : public ModificationNode {
 
   Variable const* _inKeyVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class UpsertNode
@@ -589,7 +575,6 @@ class UpsertNode : public ModificationNode {
     vars.emplace(_updateVariable);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable for the search document
@@ -620,4 +605,3 @@ class UpsertNode : public ModificationNode {
 }  // namespace arangodb
 
 #endif
-

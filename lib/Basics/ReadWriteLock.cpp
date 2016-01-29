@@ -38,17 +38,13 @@ ReadWriteLock::ReadWriteLock() : _rwlock(), _writeLocked(false) {
 /// @brief deletes read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadWriteLock::~ReadWriteLock() {
-  TRI_DestroyReadWriteLock(&_rwlock);
-}
+ReadWriteLock::~ReadWriteLock() { TRI_DestroyReadWriteLock(&_rwlock); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks for reading
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReadWriteLock::readLock() {
-  TRI_ReadLockReadWriteLock(&_rwlock);
-}
+void ReadWriteLock::readLock() { TRI_ReadLockReadWriteLock(&_rwlock); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to lock for reading
@@ -131,4 +127,3 @@ void ReadWriteLock::unlock() {
     TRI_ReadUnlockReadWriteLock(&_rwlock);
   }
 }
-

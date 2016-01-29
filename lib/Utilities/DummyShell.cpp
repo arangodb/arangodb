@@ -31,15 +31,10 @@ using namespace std;
 using namespace arangodb;
 using namespace arangodb;
 
-
-
-
 DummyShell::DummyShell(std::string const& history, Completer* completer)
     : ShellBase(history, completer) {}
 
-
 DummyShell::~DummyShell() { close(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
@@ -50,18 +45,14 @@ bool DummyShell::open(bool) {
   return true;
 }
 
-
 bool DummyShell::close() {
   _state = STATE_CLOSED;
   return true;
 }
 
-
 void DummyShell::addHistory(std::string const&) {}
 
-
 bool DummyShell::writeHistory() { return true; }
-
 
 std::string DummyShell::getLine(std::string const& prompt, bool& eof) {
   std::cout << prompt << flush;
@@ -76,5 +67,3 @@ std::string DummyShell::getLine(std::string const& prompt, bool& eof) {
 
   return line;
 }
-
-

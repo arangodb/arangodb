@@ -34,14 +34,13 @@ namespace basics {
 
 template <typename T>
 class DeadlockDetector {
-  
  public:
   DeadlockDetector() = default;
   ~DeadlockDetector() = default;
 
   DeadlockDetector(DeadlockDetector const&) = delete;
   DeadlockDetector& operator=(DeadlockDetector const&) = delete;
-  
+
  public:
   bool isDeadlocked(T const* value) {
     auto tid = TRI_CurrentThreadId();
@@ -153,7 +152,7 @@ class DeadlockDetector {
   /// @brief lock for managing the readers
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _readersLock;
+  arangodb::Mutex _readersLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief readers that are blocked on writers
@@ -166,5 +165,3 @@ class DeadlockDetector {
 }  // namespace arangodb
 
 #endif
-
-

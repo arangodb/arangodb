@@ -68,7 +68,6 @@ struct KeySpaceElement {
   TRI_json_t* json;
 };
 
-
 class KeySpace {
  public:
   explicit KeySpace(uint32_t initialSize) : _lock() {
@@ -799,14 +798,12 @@ class KeySpace {
   TRI_associative_pointer_t _hash;
 };
 
-
 struct UserStructures {
   struct {
     arangodb::basics::ReadWriteLock lock;
     std::unordered_map<std::string, KeySpace*> data;
   } hashes;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the vocbase pointer from the current V8 context
@@ -1773,7 +1770,6 @@ static void JS_KeyCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the user structures for a database
 ////////////////////////////////////////////////////////////////////////////////
@@ -1871,5 +1867,3 @@ void TRI_InitV8UserStructures(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("KEY_SET_AT"), JS_KeySetAt, true);
 }
-
-

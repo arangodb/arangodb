@@ -28,7 +28,7 @@
 
 using namespace arangodb::aql;
 
-arangodb::basics::Mutex Optimizer::SetupLock;
+arangodb::Mutex Optimizer::SetupLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief list of all rules
@@ -42,7 +42,6 @@ std::map<int, Optimizer::Rule> Optimizer::_rules;
 
 std::unordered_map<std::string, int> Optimizer::_ruleLookup;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // @brief constructor, this will initialize the rules database
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +53,6 @@ Optimizer::Optimizer(size_t maxNumberOfPlans)
     setupRules();
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief add a plan to the optimizer
@@ -292,7 +290,6 @@ char const* Optimizer::translateRule(int rule) {
   return nullptr;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimatePlans
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,6 +393,13 @@ void Optimizer::setupRules() {
   // wrong!)
   registerHiddenRule("specialize-collect", specializeCollectRule,
                      specializeCollectRule_pass1, false);
+
+  // inline subqueries one level higher
+  // rule not yet tested
+#if 0
+  registerRule("inline-subqueries", inlineSubqueriesRule,
+               inlineSubqueriesRule_pass1, true);
+#endif
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
@@ -564,4 +568,3 @@ void Optimizer::setupRules() {
                  undistributeRemoveAfterEnumCollRule_pass10, true);
   }
 }
-

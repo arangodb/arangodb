@@ -41,7 +41,6 @@ class SchedulerLibev : public Scheduler {
   SchedulerLibev(SchedulerLibev const&);
   SchedulerLibev& operator=(SchedulerLibev const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the available backends
@@ -55,7 +54,6 @@ class SchedulerLibev : public Scheduler {
 
   static void switchAllocator();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a scheduler
@@ -69,50 +67,35 @@ class SchedulerLibev : public Scheduler {
 
   ~SchedulerLibev();
 
-  
  public:
-
   void eventLoop(EventLoop) override;
 
-
   void wakeupLoop(EventLoop) override;
-
 
   EventToken installSocketEvent(EventLoop, EventType, Task*,
                                 TRI_socket_t) override;
 
-
   void startSocketEvents(EventToken) override;
-
 
   void stopSocketEvents(EventToken) override;
 
-
   EventToken installTimerEvent(EventLoop, Task*, double timeout) override;
-
 
   void clearTimer(EventToken) override;
 
-
   void rearmTimer(EventToken, double timeout) override;
-
 
   EventToken installPeriodicEvent(EventLoop, Task*, double offset,
                                   double interval) override;
 
-
   void rearmPeriodic(EventToken, double offset, double timeout) override;
-
 
   EventToken installSignalEvent(EventLoop, Task*, int signal) override;
 
-
   void uninstallEvent(EventToken) override;
-
 
   void signalTask(std::unique_ptr<TaskData>&) override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up an event lookup
@@ -120,7 +103,6 @@ class SchedulerLibev : public Scheduler {
 
   void* lookupLoop(EventLoop);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief backend to use
@@ -150,5 +132,3 @@ class SchedulerLibev : public Scheduler {
 }
 
 #endif
-
-

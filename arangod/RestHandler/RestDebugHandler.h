@@ -34,13 +34,10 @@ namespace arangodb {
 
 class RestDebugHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-
   explicit RestDebugHandler(arangodb::rest::HttpRequest*);
 
  public:
-
   bool isDirect() const override;
-
 
   status_t execute() override;
 };

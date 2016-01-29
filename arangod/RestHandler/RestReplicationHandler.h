@@ -44,20 +44,14 @@ class Transaction;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestReplicationHandler : public RestVocbaseBaseHandler {
-  
  public:
-
   explicit RestReplicationHandler(rest::HttpRequest*);
-
 
   ~RestReplicationHandler();
 
-  
  public:
-
   HttpHandler::status_t execute();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief comparator to sort collections
@@ -74,7 +68,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   static bool filterCollection(TRI_vocbase_col_t*, void*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
@@ -190,8 +183,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the structure of a collection, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreCollectionCoordinator(VPackSlice const&, bool, bool, bool, uint64_t,
-                                          std::string&);
+  int processRestoreCollectionCoordinator(VPackSlice const&, bool, bool, bool,
+                                          uint64_t, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection TODO MOVE
@@ -323,7 +316,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   void handleCommandApplierDeleteState();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum chunk size
@@ -340,5 +332,3 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

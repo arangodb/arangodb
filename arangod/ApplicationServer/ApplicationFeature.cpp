@@ -27,14 +27,10 @@ using namespace arangodb;
 using namespace arangodb::rest;
 using namespace std;
 
-
-
 ApplicationFeature::ApplicationFeature(std::string const& name)
     : _disabled(false), _name(name) {}
 
-
 ApplicationFeature::~ApplicationFeature() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name
@@ -99,5 +95,3 @@ void ApplicationFeature::stop() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationFeature::disable() { _disabled = true; }
-
-

@@ -37,7 +37,7 @@
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 struct AttributeSorter {
-  bool operator() (std::string const& l, std::string const& r) const {
+  bool operator()(std::string const& l, std::string const& r) const {
     return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
   }
 };
@@ -91,14 +91,14 @@ std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
                                                      char const* name) {
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
-    std::string msg = "The attribute '" + std::string(name) +
-                      "' was not found.";
+    std::string msg =
+        "The attribute '" + std::string(name) + "' was not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
   VPackSlice const sub = slice.get(name);
   if (!sub.isString()) {
-    std::string msg = "The attribute '" + std::string(name) +
-                      "' is not a string.";
+    std::string msg =
+        "The attribute '" + std::string(name) + "' is not a string.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
   return sub.copyString();

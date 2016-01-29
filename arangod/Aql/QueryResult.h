@@ -33,7 +33,6 @@ class Builder;
 }
 namespace aql {
 
-
 struct QueryResult {
   QueryResult& operator=(QueryResult const& other) = delete;
 
@@ -99,5 +98,3 @@ struct QueryResult {
 }
 
 #endif
-
-

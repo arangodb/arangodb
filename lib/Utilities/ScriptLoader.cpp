@@ -80,7 +80,8 @@ std::string ScriptLoader::buildScript(char const** script) {
 /// @brief defines a new named script
 ////////////////////////////////////////////////////////////////////////////////
 
-void ScriptLoader::defineScript(std::string const& name, std::string const& script) {
+void ScriptLoader::defineScript(std::string const& name,
+                                std::string const& script) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   _scripts[name] = script;
@@ -138,7 +139,6 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
   return empty;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a list of all specified directory parts
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,5 +171,3 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
 
   return directories;
 }
-
-

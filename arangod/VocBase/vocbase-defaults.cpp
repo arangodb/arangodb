@@ -69,5 +69,3 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_defaults_t::toVelocyPack() const {
   builder->close();
   return builder;
 }
-
-

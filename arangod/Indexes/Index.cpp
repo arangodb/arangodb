@@ -641,8 +641,7 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
 /// @brief append the index description to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Index const* index) {
+std::ostream& operator<<(std::ostream& stream, arangodb::Index const* index) {
   stream << index->context();
   return stream;
 }
@@ -651,9 +650,7 @@ std::ostream& operator<<(std::ostream& stream,
 /// @brief append the index description to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Index const& index) {
+std::ostream& operator<<(std::ostream& stream, arangodb::Index const& index) {
   stream << index.context();
   return stream;
 }
-

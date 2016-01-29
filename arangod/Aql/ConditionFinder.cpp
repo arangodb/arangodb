@@ -208,4 +208,3 @@ bool ConditionFinder::before(ExecutionNode* en) {
 bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
-

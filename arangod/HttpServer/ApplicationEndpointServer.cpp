@@ -46,7 +46,6 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace std;
 
-
 namespace {
 class BIOGuard {
  public:
@@ -58,8 +57,6 @@ class BIOGuard {
   BIO* _bio;
 };
 }
-
-
 
 ApplicationEndpointServer::ApplicationEndpointServer(
     ApplicationServer* applicationServer,
@@ -104,7 +101,6 @@ ApplicationEndpointServer::ApplicationEndpointServer(
   _defaultApiCompatibility = Version::getNumericServerVersion();
 }
 
-
 ApplicationEndpointServer::~ApplicationEndpointServer() {
   // ..........................................................................
   // Where ever possible we should EXPLICITLY write down the type used in
@@ -125,7 +121,6 @@ ApplicationEndpointServer::~ApplicationEndpointServer() {
     _sslContext = nullptr;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the endpoint servers
@@ -166,8 +161,6 @@ bool ApplicationEndpointServer::buildServers() {
   return true;
 }
 
-
-
 void ApplicationEndpointServer::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
   // issue #175: add deprecated hidden option for downwards compatibility
@@ -202,7 +195,6 @@ void ApplicationEndpointServer::setupOptions(
       "SSL cipher list, see OpenSSL documentation");
 }
 
-
 bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   // create the ssl context (if possible)
   bool ok = createSslContext();
@@ -233,7 +225,8 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   // add & validate endpoints
   for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.add((*i), std::vector<std::string>(), _backlogSize, _reuseAddress);
+    bool ok = _endpointList.add((*i), std::vector<std::string>(), _backlogSize,
+                                _reuseAddress);
 
     if (!ok) {
       LOG_FATAL_AND_EXIT("invalid endpoint '%s'", (*i).c_str());
@@ -337,7 +330,6 @@ std::vector<std::string> const& ApplicationEndpointServer::getEndpointMapping(
   return _endpointList.getMapping(endpoint);
 }
 
-
 bool ApplicationEndpointServer::prepare() {
   if (_disabled) {
     return true;
@@ -363,7 +355,6 @@ bool ApplicationEndpointServer::prepare() {
   return true;
 }
 
-
 bool ApplicationEndpointServer::open() {
   if (_disabled) {
     return true;
@@ -376,7 +367,6 @@ bool ApplicationEndpointServer::open() {
   return true;
 }
 
-
 void ApplicationEndpointServer::close() {
   if (_disabled) {
     return;
@@ -388,7 +378,6 @@ void ApplicationEndpointServer::close() {
   }
 }
 
-
 void ApplicationEndpointServer::stop() {
   if (_disabled) {
     return;
@@ -398,7 +387,6 @@ void ApplicationEndpointServer::stop() {
     server->stop();
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an ssl context
@@ -519,5 +507,3 @@ bool ApplicationEndpointServer::createSslContext() {
 
   return true;
 }
-
-

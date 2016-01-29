@@ -34,7 +34,6 @@
 
 using namespace arangodb::aql;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the v8 expression
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +57,6 @@ V8Expression::~V8Expression() {
   _constantValues.Reset();
   _func.Reset();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the expression
@@ -200,7 +198,6 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
   json.release();
   return AqlValue(j);
 }
-
 
 // Local Variables:
 // mode: outline-minor

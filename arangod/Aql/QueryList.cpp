@@ -31,27 +31,18 @@
 
 using namespace arangodb::aql;
 
-
 QueryEntry::QueryEntry(arangodb::aql::Query const* query, double started)
     : query(query), started(started) {}
 
-QueryEntryCopy::QueryEntryCopy (TRI_voc_tick_t id,
-                                std::string const& queryString,
-                                double started,
-                                double runTime,
-                                std::string const& queryState) 
-  : id(id),
-    queryString(queryString),
-    started(started),
-    runTime(runTime),
-    queryState(queryState) {
-}
-
+QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
+                               std::string const& queryString, double started,
+                               double runTime)
+    : id(id), queryString(queryString), started(started), runTime(runTime),
+      queryState(queryState) {}
 
 double const QueryList::DefaultSlowQueryThreshold = 10.0;
 size_t const QueryList::DefaultMaxSlowQueries = 64;
 size_t const QueryList::DefaultMaxQueryStringLength = 4096;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a query list
@@ -83,7 +74,6 @@ QueryList::~QueryList() {
   _current.clear();
   _slow.clear();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a query
@@ -317,5 +307,3 @@ void QueryList::clearSlow() {
   _slow.clear();
   _slowCount = 0;
 }
-
-

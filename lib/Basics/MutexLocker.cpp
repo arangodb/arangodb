@@ -28,8 +28,8 @@
 #include "Basics/logging.h"
 #endif
 
+using namespace arangodb;
 using namespace arangodb::basics;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
@@ -65,5 +65,3 @@ MutexLocker::~MutexLocker() {
   }
 #endif
 }
-
-

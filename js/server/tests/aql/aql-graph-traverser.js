@@ -1815,9 +1815,117 @@ function brokenGraphSuite () {
         assertEqual(result.length, 1, "Without opt: ", query);
         assertEqual(result, [ vertex.B ], "Without opt: ", query);
       }
+    },
+
+    testQueryWithEmptyGraph: function () {
+      var query = `FOR x IN OUTBOUND 'start/123' GRAPH @graph RETURN x`;
+      var emptyGN = "UnitTestEmptyGraph";
+      try {
+        gm._drop(emptyGN);
+      } catch (e) {
+      }
+      gm._create(emptyGN);
+      var bindVars = {
+        graph: emptyGN
+      };
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_GRAPH_EMPTY.code);
+      }
     }
   };
+}
 
+function multiEdgeDirectionSuite () {
+  const en2 = "UnitTestEdgeCollection2";
+  var ec2;
+
+  return {
+
+    setUp: function () {
+      cleanup();
+      db._drop(en2);
+
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      ec2 = db._createEdgeCollection(en2, {numberOfShards: 4});
+     
+      vertex.A = vc.save({_key: "A"})._id;
+      vertex.B = vc.save({_key: "B"})._id;
+      vertex.C = vc.save({_key: "C"})._id;
+      vertex.D = vc.save({_key: "D"})._id;
+      vertex.E = vc.save({_key: "E"})._id;
+
+      vertex.F = vc.save({_key: "F"})._id;
+
+      // F is always 2 hops away and only reachable with alternating
+      // collections and directions
+
+      ec.save(vertex.A, vertex.B, {});
+      ec.save(vertex.C, vertex.A, {});
+      ec2.save(vertex.A, vertex.D, {});
+      ec2.save(vertex.E, vertex.A, {});
+
+      ec2.save(vertex.F, vertex.B, {});
+      ec2.save(vertex.C, vertex.F, {});
+
+      ec.save(vertex.F, vertex.D, {});
+      ec.save(vertex.E, vertex.F, {});
+    },
+
+    tearDown: function () {
+      cleanup();
+      db._drop(en2);
+    },
+
+    testOverrideOneDirection: function () {
+      var queries = [
+        { q1 :"FOR x IN ANY @start @@ec1, INBOUND @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN ANY @start ${en}, INBOUND ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.C, vertex.E] },
+        { q1 :"FOR x IN ANY @start @@ec1, OUTBOUND @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN ANY @start ${en}, OUTBOUND ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.C, vertex.D] },
+        { q1 :"FOR x IN ANY @start INBOUND @@ec1, @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN ANY @start INBOUND ${en}, ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.C, vertex.D, vertex.E] },
+        { q1 :"FOR x IN ANY @start OUTBOUND @@ec1, @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN ANY @start OUTBOUND ${en}, ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.D, vertex.E] },
+        { q1 :"FOR x IN OUTBOUND @start INBOUND @@ec1, @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN OUTBOUND @start INBOUND ${en}, ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.C, vertex.D] },
+        { q1 :"FOR x IN OUTBOUND @start @@ec1, INBOUND @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN OUTBOUND @start ${en}, INBOUND ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.E] },
+        { q1 :"FOR x IN INBOUND @start @@ec1, OUTBOUND @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN INBOUND @start ${en}, OUTBOUND ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.C, vertex.D] },
+        { q1 :"FOR x IN INBOUND @start OUTBOUND @@ec1, @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN INBOUND @start OUTBOUND ${en}, ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.E] },
+      ];
+
+      var bindVars = {
+        "@ec1": en,
+        "@ec2": en2,
+        start: vertex.A
+      };
+      var bindVars2 = {
+        start: vertex.A
+      };
+      queries.forEach(function (item) {
+        var result = db._query(item.q1, bindVars).toArray();
+        assertEqual(result, item.res);
+        result = db._query(item.q2, bindVars2).toArray();
+        assertEqual(result, item.res);
+      });
+    }
+
+
+  };
 }
 
 jsunity.run(namedGraphSuite);
@@ -1827,5 +1935,6 @@ jsunity.run(potentialErrorsSuite);
 jsunity.run(complexInternaSuite);
 jsunity.run(complexFilteringSuite);
 jsunity.run(brokenGraphSuite);
+jsunity.run(multiEdgeDirectionSuite);
 
 return jsunity.done();

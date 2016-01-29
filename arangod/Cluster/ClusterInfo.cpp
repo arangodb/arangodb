@@ -73,7 +73,8 @@ static inline int setErrormsg(int ourerrno, std::string& errorMsg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool hasError(VPackSlice const& slice) {
-  return arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false);
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error",
+                                                             false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,11 +82,12 @@ static inline bool hasError(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string extractErrorMessage(std::string const& shardId,
-                                  VPackSlice const& slice) {
+                                       VPackSlice const& slice) {
   std::string msg = " shardID:" + shardId + ": ";
 
   // add error message text
-  msg += arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+  msg += arangodb::basics::VelocyPackHelper::getStringValue(slice,
+                                                            "errorMessage", "");
 
   // add error number
   if (slice.hasKey("errorNum")) {
@@ -99,8 +101,6 @@ static std::string extractErrorMessage(std::string const& shardId,
 
   return msg;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty collection info object
@@ -174,8 +174,6 @@ CollectionInfo::~CollectionInfo() {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
   }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty collection info object
@@ -269,7 +267,6 @@ void CollectionInfoCurrent::copyAllJsons() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an instance of the cluster info class
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,7 +291,6 @@ ClusterInfo::~ClusterInfo() {
   clearPlannedDatabases(_plannedDatabases);
   clearCurrentDatabases(_currentDatabases);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the uniqid value. if it exceeds the upper bound, fetch a
@@ -504,7 +500,9 @@ void ClusterInfo::loadPlannedDatabases() {
       std::string const& name = (*it).first;
       // TODO: _plannedDatabases need to be moved to velocypack
       // Than this can be merged to swap
-      TRI_json_t* options = arangodb::basics::VelocyPackHelper::velocyPackToJson((*it).second._vpack->slice());
+      TRI_json_t* options =
+          arangodb::basics::VelocyPackHelper::velocyPackToJson(
+              (*it).second._vpack->slice());
 
       // steal the VelocyPack
       (*it).second._vpack.reset();
@@ -618,7 +616,8 @@ void ClusterInfo::loadCurrentDatabases() {
         //
         // TODO: _plannedDatabases need to be moved to velocypack
         // Than this can be merged to swap
-        TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson((*it).second._vpack->slice());
+        TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
+            (*it).second._vpack->slice());
 
         // steal the VelocyPack
         (*it).second._vpack.reset();
@@ -1023,7 +1022,8 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
 
 int ClusterInfo::createDatabaseCoordinator(std::string const& name,
                                            VPackSlice const& slice,
-                                           std::string& errorMsg, double timeout) {
+                                           std::string& errorMsg,
+                                           double timeout) {
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1080,7 +1080,8 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
                   slice, "error", false)) {
             tmpHaveError = true;
             tmpMsg += " DBServer:" + it->first + ":";
-            tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+            tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
+                slice, "errorMessage", "");
             if (slice.hasKey("errorNum")) {
               VPackSlice errorNum = slice.get("errorNum");
               if (errorNum.isNumber()) {
@@ -1124,7 +1125,8 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
 
-int ClusterInfo::dropDatabaseCoordinator(std::string const& name, std::string& errorMsg,
+int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
+                                         std::string& errorMsg,
                                          double timeout) {
   AgencyComm ac;
   AgencyCommResult res;
@@ -1213,7 +1215,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                                              std::string const& collectionID,
                                              uint64_t numberOfShards,
                                              VPackSlice const json,
-                                             std::string& errorMsg, double timeout) {
+                                             std::string& errorMsg,
+                                             double timeout) {
   using arangodb::velocypack::Slice;
 
   AgencyComm ac;
@@ -1229,8 +1232,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     AllCollections::const_iterator it = _plannedCollections.find(databaseName);
     if (it != _plannedCollections.end()) {
       std::string const name =
-          arangodb::basics::VelocyPackHelper::getStringValue(json, "name",
-                                                             "");
+          arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
 
       DatabaseCollections::const_iterator it2 = (*it).second.find(name);
 
@@ -1281,10 +1283,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         bool tmpHaveError = false;
         for (auto const& p : res._values) {
           VPackSlice const slice = p.second._vpack->slice();
-          if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false)) {
+          if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+                  slice, "error", false)) {
             tmpHaveError = true;
             tmpMsg += " shardID:" + p.first + ":";
-            tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(slice, "errorMessage", "");
+            tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
+                slice, "errorMessage", "");
             if (slice.hasKey("errorNum")) {
               VPackSlice const errorNum = slice.get("errorNum");
               if (errorNum.isNumber()) {
@@ -1322,7 +1326,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
 int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
                                            std::string const& collectionID,
-                                           std::string& errorMsg, double timeout) {
+                                           std::string& errorMsg,
+                                           double timeout) {
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1526,7 +1531,8 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_NO_ERROR;
     }
 
-    std::unique_ptr<TRI_json_t> copy(arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
+    std::unique_ptr<TRI_json_t> copy(
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
     if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -1538,7 +1544,6 @@ int ClusterInfo::setCollectionStatusCoordinator(
     res.clear();
     res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID,
                       copy.get(), 0.0);
-
   }
 
   if (res.successful()) {
@@ -1583,7 +1588,8 @@ int ClusterInfo::ensureIndexCoordinator(
 
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
-  std::string const key = "Plan/Collections/" + databaseName + "/" + collectionID;
+  std::string const key =
+      "Plan/Collections/" + databaseName + "/" + collectionID;
   AgencyCommResult previous = ac.getValues(key, false);
   previous.parse("", false);
   auto it = previous._values.begin();
@@ -1636,7 +1642,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
         for (auto const& other : VPackArrayIterator(indexes)) {
           if (arangodb::basics::VelocyPackHelper::compare(
-                    type, other.get("type"), false) != 0) {
+                  type, other.get("type"), false) != 0) {
             // compare index types first. they must match
             continue;
           }
@@ -1647,8 +1653,8 @@ int ClusterInfo::ensureIndexCoordinator(
 
           if (isSame) {
             // found an existing index...
-            resultJson = arangodb::basics::VelocyPackHelper::velocyPackToJson(
-                other);
+            resultJson =
+                arangodb::basics::VelocyPackHelper::velocyPackToJson(other);
             TRI_Insert3ObjectJson(
                 TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
                 TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
@@ -1710,10 +1716,9 @@ int ClusterInfo::ensureIndexCoordinator(
             }
           }
           newBuilder.add("id", VPackValue(idString));
-          newBuilder.close(); // the idx object
-          newBuilder.close(); // the array
-        }
-        else {
+          newBuilder.close();  // the idx object
+          newBuilder.close();  // the array
+        } else {
           // Plain copy everything else
           newBuilder.add(key, entry.value);
         }
@@ -1725,8 +1730,8 @@ int ClusterInfo::ensureIndexCoordinator(
 
     AgencyCommResult result;
     if (usePrevious) {
-      result =
-          ac.casValue(key, it->second._vpack->slice(), newBuilder.slice(), 0.0, 0.0);
+      result = ac.casValue(key, it->second._vpack->slice(), newBuilder.slice(),
+                           0.0, 0.0);
     } else {  // only when there is no previous value
       result = ac.setValue(key, newBuilder.slice(), 0.0);
     }
@@ -1750,7 +1755,8 @@ int ClusterInfo::ensureIndexCoordinator(
   }
   uint64_t index = res._index;
 
-  std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
+  std::string where =
+      "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
     res.clear();
     res = ac.getValues(where, true);
@@ -1802,9 +1808,10 @@ int ClusterInfo::ensureIndexCoordinator(
           indexFinder = indexFinder.get("indexes");
           TRI_ASSERT(indexFinder.isArray());
           VPackValueLength l = indexFinder.length();
-          indexFinder = indexFinder.at(l - 1); // Get the last index
+          indexFinder = indexFinder.at(l - 1);  // Get the last index
           TRI_ASSERT(indexFinder.isObject());
-          resultJson = arangodb::basics::VelocyPackHelper::velocyPackToJson(indexFinder);
+          resultJson =
+              arangodb::basics::VelocyPackHelper::velocyPackToJson(indexFinder);
           TRI_Insert3ObjectJson(
               TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
               TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
@@ -1819,7 +1826,6 @@ int ClusterInfo::ensureIndexCoordinator(
     res = ac.watchValue("Current/Version", index, interval, false);
     index = res._index;
   }
-
 
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
@@ -1841,7 +1847,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   int numberOfShards = 0;
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
-  std::string const key = "Plan/Collections/" + databaseName + "/" + collectionID;
+  std::string const key =
+      "Plan/Collections/" + databaseName + "/" + collectionID;
   AgencyCommResult previous = ac.getValues(key, false);
   previous.parse("", false);
   auto it = previous._values.begin();
@@ -1964,7 +1971,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   }
   uint64_t index = res._index;
 
-  std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
+  std::string where =
+      "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
     res.clear();
     res = ac.getValues(where, true);
@@ -1979,11 +1987,9 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
           if (indexes.isArray()) {
             for (auto const& v : VPackArrayIterator(indexes)) {
-
               if (v.isObject()) {
                 VPackSlice const k = v.get("id");
-                if (k.isString() &&
-                    idString == k.copyString()) {
+                if (k.isString() && idString == k.copyString()) {
                   // still found the index in some shard
                   found = true;
                   break;
@@ -2431,7 +2437,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int tries = 0;
   std::shared_ptr<std::vector<std::string>> shardKeysPtr;
-  std::unique_ptr<char const*[]> shardKeys;
+  std::unique_ptr<char const* []> shardKeys;
   std::shared_ptr<std::vector<ShardID>> shards;
   bool found = false;
 
@@ -2448,7 +2454,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
         auto it2 = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
-          shardKeys.reset(new char const*[shardKeysPtr->size()]);
+          shardKeys.reset(new char const* [shardKeysPtr->size()]);
           size_t i;
           for (i = 0; i < shardKeysPtr->size(); ++i) {
             shardKeys[i] = shardKeysPtr->at(i).c_str();

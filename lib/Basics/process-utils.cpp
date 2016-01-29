@@ -183,7 +183,7 @@ static std::vector<TRI_external_t*> ExternalProcesses;
 /// @brief lock for protected access to vector ExternalProcesses
 ////////////////////////////////////////////////////////////////////////////////
 
-static arangodb::basics::Mutex ExternalProcessesLock;
+static arangodb::Mutex ExternalProcessesLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates pipe pair
@@ -919,20 +919,19 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   }
 
   LOG_DEBUG("adding process %d to list", (int)external->_pid);
-  
+
   // Note that the following deals with different types under windows,
   // however, this code here can be written in a platform-independent
   // way:
   pid->_pid = external->_pid;
   pid->_readPipe = external->_readPipe;
   pid->_writePipe = external->_writePipe;
-  
+
   MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
   try {
     ExternalProcesses.push_back(external);
-  }
-  catch (...) {
+  } catch (...) {
     pid->_pid = TRI_INVALID_PROCESS_ID;
     FreeExternal(external);
     return;
@@ -949,7 +948,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
   status._status = TRI_EXT_NOT_FOUND;
   status._exitStatus = 0;
 
-  TRI_external_t* external = nullptr;  
+  TRI_external_t* external = nullptr;
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
@@ -1138,7 +1137,8 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
       external->_status != TRI_EXT_STOPPED) {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
-    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end(); ++it) {
+    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
+         ++it) {
       if ((*it)->_pid == pid._pid) {
         ExternalProcesses.erase(it);
         break;
@@ -1222,7 +1222,8 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid) {
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
-    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end(); ++it) {
+    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
+         ++it) {
       if ((*it)->_pid == pid._pid) {
         external = (*it);
         ExternalProcesses.erase(it);
@@ -1263,7 +1264,7 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid) {
       external->_status == TRI_EXT_STOPPED) {
     ok = OurKillProcess(external);
   }
-  
+
   FreeExternal(external);
 
   return ok;
@@ -1368,4 +1369,3 @@ void TRI_ShutdownProcess() {
   }
 #endif
 }
-

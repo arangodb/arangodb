@@ -63,7 +63,6 @@ struct QueryEntryCopy {
 };
 
 class QueryList {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a query list
@@ -77,7 +76,6 @@ class QueryList {
 
   ~QueryList();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not queries are tracked
@@ -216,7 +214,6 @@ class QueryList {
 
   void clearSlow();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief r/w lock for the list
@@ -294,5 +291,3 @@ class QueryList {
 }
 
 #endif
-
-

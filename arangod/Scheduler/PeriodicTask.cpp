@@ -38,7 +38,8 @@ using namespace arangodb::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-PeriodicTask::PeriodicTask(std::string const& id, double offset, double interval)
+PeriodicTask::PeriodicTask(std::string const& id, double offset,
+                           double interval)
     : Task(id, "PeriodicTask"),
       _watcher(nullptr),
       _offset(offset),
@@ -93,5 +94,3 @@ bool PeriodicTask::handleEvent(EventToken token, EventType revents) {
 
   return result;
 }
-
-

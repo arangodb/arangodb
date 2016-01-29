@@ -28,13 +28,11 @@
 
 #include "Rest/Endpoint.h"
 
-
 namespace arangodb {
 namespace rest {
 
 class EndpointList {
  public:
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint list
@@ -48,7 +46,6 @@ class EndpointList {
 
   ~EndpointList();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns whether the list is empty
@@ -111,7 +108,6 @@ class EndpointList {
 
   static std::string getEncryptionName(Endpoint::EncryptionType);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of endpoints
@@ -124,5 +120,3 @@ class EndpointList {
 }
 
 #endif
-
-

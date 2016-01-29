@@ -47,9 +47,8 @@ class JSLoader;
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ParseVertex(v8::FunctionCallbackInfo<v8::Value> const& args,
-                    arangodb::CollectionNameResolver const*,
-                    TRI_voc_cid_t&, std::unique_ptr<char[]>&,
-                    v8::Handle<v8::Value> const);
+                    arangodb::CollectionNameResolver const*, TRI_voc_cid_t&,
+                    std::unique_ptr<char[]>&, v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value
@@ -84,8 +83,7 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate);
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, arangodb::ApplicationV8*,
                          v8::Handle<v8::Context>, arangodb::aql::QueryRegistry*,
-                         TRI_server_t*, TRI_vocbase_t*,
-                         arangodb::JSLoader*, size_t);
+                         TRI_server_t*, TRI_vocbase_t*, arangodb::JSLoader*,
+                         size_t);
 
 #endif
-

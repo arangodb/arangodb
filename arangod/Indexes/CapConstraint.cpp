@@ -34,7 +34,6 @@ using namespace arangodb;
 
 int64_t const CapConstraint::MinSize = 16384;
 
-
 CapConstraint::CapConstraint(TRI_idx_iid_t iid,
                              TRI_document_collection_t* collection,
                              size_t count, int64_t size)
@@ -45,7 +44,6 @@ CapConstraint::CapConstraint(TRI_idx_iid_t iid,
       _size(static_cast<int64_t>(size)) {}
 
 CapConstraint::~CapConstraint() {}
-
 
 size_t CapConstraint::memory() const { return 0; }
 
@@ -61,8 +59,8 @@ void CapConstraint::toVelocyPack(VPackBuilder& builder,
   builder.add("unique", VPackValue(false));
 }
 
-int CapConstraint::insert(arangodb::Transaction*,
-                          TRI_doc_mptr_t const* doc, bool) {
+int CapConstraint::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
+                          bool) {
   if (_size > 0) {
     // there is a size restriction
     auto marker = static_cast<TRI_df_marker_t const*>(
@@ -77,8 +75,7 @@ int CapConstraint::insert(arangodb::Transaction*,
   return TRI_ERROR_NO_ERROR;
 }
 
-int CapConstraint::remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
-                          bool) {
+int CapConstraint::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -133,7 +130,6 @@ int CapConstraint::initialize(arangodb::Transaction* trx) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the cap constraint for the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,5 +180,3 @@ int CapConstraint::apply(arangodb::Transaction* trx,
 
   return res;
 }
-
-

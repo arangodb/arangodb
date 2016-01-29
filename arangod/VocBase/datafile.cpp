@@ -40,7 +40,6 @@
 
 using namespace std;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the datafile is a physical file (true) or an
 /// anonymous mapped region (false)
@@ -75,7 +74,8 @@ static void CloseDatafile(TRI_datafile_t* datafile) {
     int res = TRI_CLOSE(datafile->_fd);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to close datafile '%s': %d", datafile->getName(datafile), res);
+      LOG_ERROR("unable to close datafile '%s': %d",
+                datafile->getName(datafile), res);
     }
   }
 
@@ -96,8 +96,8 @@ static void DestroyDatafile(TRI_datafile_t* datafile) {
 /// @brief sync the data of a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SyncDatafile(TRI_datafile_t* datafile,
-                         char const* begin, char const* end) {
+static bool SyncDatafile(TRI_datafile_t* datafile, char const* begin,
+                         char const* end) {
   if (datafile->_filename == nullptr) {
     // anonymous regions do not need to be synced
     return true;
@@ -326,7 +326,7 @@ static void InitDatafile(TRI_datafile_t* datafile, char* filename, int fd,
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
 
-  datafile->_initSize    = maximalSize;
+  datafile->_initSize = maximalSize;
   datafile->_maximalSize = maximalSize;
   datafile->_currentSize = currentSize;
   datafile->_footerSize = sizeof(TRI_df_footer_marker_t);
@@ -630,14 +630,12 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
       char const* ptr = reinterpret_cast<char const*>(marker) +
                         reinterpret_cast<TRI_doc_document_key_marker_t const*>(
                             marker)->_offsetKey;
-      entry._key =
-          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
+      entry._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
     } else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
       char const* ptr =
           reinterpret_cast<char const*>(marker) +
           reinterpret_cast<TRI_doc_deletion_key_marker_t*>(marker)->_offsetKey;
-      entry._key =
-          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
+      entry._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
     } else if (marker->_type == TRI_DF_MARKER_SHAPE) {
       char* p = ((char*)marker) + sizeof(TRI_df_shape_marker_t);
       TRI_shape_t* l = (TRI_shape_t*)p;
@@ -1254,7 +1252,6 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   return datafile;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates either an anonymous or a physical datafile
 ////////////////////////////////////////////////////////////////////////////////
@@ -1351,8 +1348,8 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile(TRI_voc_fid_t fid,
   // memory map the data
   void* data;
   void* mmHandle;
-  ssize_t res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags, fd,
-                   &mmHandle, 0, &data);
+  ssize_t res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags,
+                           fd, &mmHandle, 0, &data);
 
 #ifdef MAP_ANONYMOUS
 // nothing to do
@@ -1465,7 +1462,6 @@ void TRI_FreeDatafile(TRI_datafile_t* datafile) {
   TRI_DestroyDatafile(datafile);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, datafile);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name for a marker
@@ -1884,8 +1880,8 @@ TRI_datafile_t* TRI_OpenDatafile(char const* filename, bool ignoreFailures) {
 bool TRI_CloseDatafile(TRI_datafile_t* datafile) {
   if (datafile->_state == TRI_DF_STATE_READ ||
       datafile->_state == TRI_DF_STATE_WRITE) {
-    int res = TRI_UNMMFile(datafile->_data, datafile->_initSize,
-                           datafile->_fd, &datafile->_mmHandle);
+    int res = TRI_UNMMFile(datafile->_data, datafile->_initSize, datafile->_fd,
+                           &datafile->_mmHandle);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("munmap failed with: %d", res);
@@ -2133,5 +2129,3 @@ void TRI_DestroyDatafileScan(TRI_df_scan_t* scan) {
 
   TRI_DestroyVector(&scan->_entries);
 }
-
-

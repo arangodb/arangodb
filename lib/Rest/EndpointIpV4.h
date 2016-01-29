@@ -31,9 +31,7 @@
 namespace arangodb {
 namespace rest {
 
-
 class EndpointIpV4 final : public EndpointIp {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
@@ -48,7 +46,6 @@ class EndpointIpV4 final : public EndpointIp {
 
   ~EndpointIpV4();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get endpoint domain
@@ -68,5 +65,3 @@ class EndpointIpV4 final : public EndpointIp {
 }
 
 #endif
-
-

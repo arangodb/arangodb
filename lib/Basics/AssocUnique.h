@@ -42,7 +42,6 @@
 namespace arangodb {
 namespace basics {
 
-
 struct BucketPosition {
   size_t bucketId;
   uint64_t position;
@@ -58,7 +57,6 @@ struct BucketPosition {
     return position == other.position && bucketId == other.bucketId;
   }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array
@@ -98,8 +96,6 @@ class AssocUnique {
   IsEqualElementElementFuncType const _isEqualElementElementByKey;
 
   std::function<std::string()> _contextCallback;
-
-  
 
  public:
   AssocUnique(HashKeyFuncType hashKey, HashElementFuncType hashElement,
@@ -151,7 +147,6 @@ class AssocUnique {
     }
   }
 
-
   ~AssocUnique() {
     for (auto& b : _buckets) {
       delete[] b._table;
@@ -189,18 +184,19 @@ class AssocUnique {
       return;
     }
 
+    std::string const cb(_contextCallback());
+
     // only log performance infos for indexes with more than this number of
     // entries
     static uint64_t const NotificationSizeThreshold = 131072;
 
-    LOG_TRACE("resizing index %s, target size: %llu",
-              _contextCallback().c_str(),
-              (unsigned long long) targetSize);
+    LOG_TRACE("resizing index %s, target size: %llu", cb.c_str(),
+              (unsigned long long)targetSize);
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
-      LOG_ACTION("index-resize %s, target size: %llu",
-                 _contextCallback().c_str(), (unsigned long long)targetSize);
+      LOG_ACTION("index-resize %s, target size: %llu", cb.c_str(),
+                 (unsigned long long)targetSize);
     }
 
     Element** oldTable = b._table;
@@ -253,11 +249,11 @@ class AssocUnique {
     }
 
     delete[] oldTable;
-    
-    LOG_TRACE("resizing index %s done", _contextCallback().c_str());
+
+    LOG_TRACE("resizing index %s done", cb.c_str());
 
     LOG_TIMER((TRI_microtime() - start), "index-resize %s, target size: %llu",
-              _contextCallback().c_str(), (unsigned long long)targetSize);
+              cb.c_str(), (unsigned long long)targetSize);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -335,7 +331,6 @@ class AssocUnique {
     return TRI_ERROR_NO_ERROR;
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if this index is empty
@@ -600,7 +595,7 @@ class AssocUnique {
     size_t const chunkSize = elements.size() / numThreads;
 
     typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
-    arangodb::basics::Mutex bucketMapLocker;
+    arangodb::Mutex bucketMapLocker;
 
     std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
 
@@ -1035,5 +1030,3 @@ class AssocUnique {
 }  // namespace arangodb
 
 #endif
-
-

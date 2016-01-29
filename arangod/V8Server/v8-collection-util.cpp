@@ -51,39 +51,12 @@ void ReleaseCollection(TRI_vocbase_col_t const* collection) {
 
 TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
                                          CollectionInfo const& ci) {
-  auto c = std::make_unique<TRI_vocbase_col_t>();
+  auto c = std::make_unique<TRI_vocbase_col_t>(vocbase, ci.type(), ci.name(),
+                                               ci.id(), "");
 
-  c->_internalVersion = 0;
   c->_isLocal = false;
-  c->_vocbase = vocbase;
-  c->_type = ci.type();
-  c->_cid = ci.id();
   c->_planId = ci.id();
   c->_status = ci.status();
-  c->_collection = nullptr;
-
-  std::string const name = ci.name();
-
-  memset(c->_name, 0, TRI_COL_NAME_LENGTH + 1);
-  memcpy(c->_name, name.c_str(), name.size());
-  memset(c->_path, 0, TRI_COL_PATH_LENGTH + 1);
-
-  memset(c->_dbName, 0, TRI_COL_NAME_LENGTH + 1);
-  memcpy(c->_dbName, vocbase->_name, strlen(vocbase->_name));
-
-  c->_canDrop = true;
-  c->_canUnload = true;
-  c->_canRename = true;
-
-  if (TRI_IsSystemNameCollection(c->_name)) {
-    // a few system collections have special behavior
-    if (TRI_EqualString(c->_name, TRI_COL_NAME_USERS) ||
-        TRI_IsPrefixString(c->_name, TRI_COL_NAME_STATISTICS)) {
-      // these collections cannot be dropped or renamed
-      c->_canDrop = false;
-      c->_canRename = false;
-    }
-  }
 
   return c.release();
 }
@@ -152,12 +125,14 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   auto const& it = v8g->JSCollections.find(collection);
   TRI_ASSERT(it != v8g->JSCollections.end())
 #endif
-  if (!collection->_isLocal) {
-    delete collection;
-  }
+
   // dispose and clear the persistent handle
   v8g->JSCollections[collection].Reset();
   v8g->JSCollections.erase(collection);
+
+  if (!collection->_isLocal) {
+    delete collection;
+  }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +179,7 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(VersionKeyHidden);
     result->ForceSet(_IdKey, V8CollectionId(isolate, collection->_cid),
                      v8::ReadOnly);
-    result->Set(_DbNameKey, TRI_V8_STRING(collection->_dbName));
+    result->Set(_DbNameKey, TRI_V8_STRING(collection->dbName().c_str()));
     result->ForceSet(
         VersionKeyHidden,
         v8::Integer::NewFromUnsigned(isolate, collection->_internalVersion),

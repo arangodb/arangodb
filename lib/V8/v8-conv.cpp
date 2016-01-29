@@ -35,8 +35,6 @@
 using namespace std;
 using namespace arangodb::basics;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t NULL into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +170,6 @@ static v8::Handle<v8::Value> ExtractObject(v8::Isolate* isolate,
 
   return scope.Escape<v8::Value>(result);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the keys of a TRI_json_t* object into a V8 array
@@ -787,7 +784,6 @@ bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const value) {
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the V8 conversion module
 ////////////////////////////////////////////////////////////////////////////////
@@ -795,5 +791,3 @@ bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const value) {
 void TRI_InitV8Conversions(v8::Handle<v8::Context> context) {
   // nothing special to do here
 }
-
-

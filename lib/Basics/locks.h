@@ -187,5 +187,3 @@ void TRI_LockCondition(TRI_condition_t* cond);
 void TRI_UnlockCondition(TRI_condition_t* cond);
 
 #endif
-
-

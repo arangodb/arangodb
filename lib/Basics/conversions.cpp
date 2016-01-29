@@ -27,7 +27,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 
-
 static char const* const HEX = "0123456789ABCDEF";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,7 +284,6 @@ uint64_t TRI_UInt64String2(char const* str, size_t length) {
 
   return TRI_UInt64String(str);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from int8, using the specified buffer.
@@ -1100,5 +1098,3 @@ std::string TRI_StringTimeStamp(double stamp) {
 
   return std::string(buffer, len);
 }
-
-

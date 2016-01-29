@@ -917,7 +917,7 @@ void ApplicationV8::setupOptions(
       "javascript.gc-frequency", &_gcFrequency,
       "JavaScript time-based garbage collection frequency (each x seconds)")(
       "javascript.app-path", &_appPath,
-      "directory for Foxx applications (normal mode)")(
+      "directory for Foxx applications")(
       "javascript.startup-directory", &_startupPath,
       "path to the directory containing JavaScript startup scripts")(
       "javascript.v8-options", &_v8Options, "options to pass to v8");
@@ -1007,7 +1007,7 @@ bool ApplicationV8::prepare2() {
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts = new V8Context*[nrInstances];
+    _contexts = new V8Context* [nrInstances];
   }
 
   std::vector<std::thread> threads;
