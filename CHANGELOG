@@ -1,3 +1,9 @@
+v2.7.6 (XXXX-XX-XX)
+-------------------
+
+* detect more types of transaction deadlocks early
+
+
 v2.7.5 (2016-01-22)
 -------------------
 
