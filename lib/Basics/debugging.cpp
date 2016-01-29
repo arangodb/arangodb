@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
@@ -88,7 +88,7 @@ static char* MakeValue(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SegfaultDebugging(char const* message) {
-  LOG_WARNING("%s: summon Baal!", message);
+  LOG(WARNING) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
   TRI_ShutdownLogging(true);
 
@@ -152,9 +152,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
     // not yet found. so add it
     char* copy;
 
-    LOG_WARNING(
-        "activating intentional failure point '%s'. the server will misbehave!",
-        value);
+    LOG(WARNING) << "activating intentional failure point '" << value << "'. the server will misbehave!";
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {

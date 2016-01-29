@@ -23,7 +23,7 @@
 
 #include "json.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 
@@ -1024,7 +1024,7 @@ bool TRI_SaveJson(char const* filename, TRI_json_t const* object,
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot create json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
+    LOG(ERROR) << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
   }
@@ -1032,19 +1032,19 @@ bool TRI_SaveJson(char const* filename, TRI_json_t const* object,
   if (!TRI_PrintJson(fd, object, true)) {
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot write to json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
+    LOG(ERROR) << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
   }
 
   if (syncFile) {
-    LOG_TRACE("syncing tmp file '%s'", tmp);
+    LOG(TRACE) << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_ERROR("cannot sync saved json '%s': %s", tmp, TRI_LAST_ERROR_STR);
+      LOG(ERROR) << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
       TRI_UnlinkFile(tmp);
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
       return false;
@@ -1055,7 +1055,7 @@ bool TRI_SaveJson(char const* filename, TRI_json_t const* object,
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot close saved file '%s': %s", tmp, TRI_LAST_ERROR_STR);
+    LOG(ERROR) << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
@@ -1065,8 +1065,7 @@ bool TRI_SaveJson(char const* filename, TRI_json_t const* object,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG_ERROR("cannot rename saved file '%s' to '%s': %s", tmp, filename,
-              TRI_LAST_ERROR_STR);
+    LOG(ERROR) << "cannot rename saved file '" << tmp << "' to '" << filename << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 

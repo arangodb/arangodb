@@ -28,7 +28,6 @@
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/init.h"
-#include "Basics/logging.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"

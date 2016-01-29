@@ -23,7 +23,7 @@
 
 #include "RandomGenerator.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -199,8 +199,7 @@ class RandomDeviceCombined : public RandomDevice {
       if (r == 0) {
         LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
       } else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-        LOG_INFO("not enough entropy (got %d), switching to pseudo-random",
-                 (int)(sizeof(buffer) - n));
+        LOG(INFO) << "not enough entropy (got " << (sizeof(buffer) - n) << "), switching to pseudo-random";
         break;
       } else if (r < 0) {
         LOG_FATAL_AND_EXIT("read on random device failed: %s", strerror(errno));
@@ -211,7 +210,7 @@ class RandomDeviceCombined : public RandomDevice {
 
       rseed = buffer[0];
 
-      LOG_TRACE("using seed %lu", (long unsigned int)rseed);
+      LOG(TRACE) << "using seed " << (long unsigned int)rseed;
     }
 
     if (0 < n) {
@@ -405,12 +404,12 @@ class UniformGenerator {
 
     while (r >= g) {
       if (++count >= MAX_COUNT) {
-        LOG_ERROR("cannot generate small random number after %d tries", count);
+        LOG(ERROR) << "cannot generate small random number after " << count << " tries";
         r %= g;
         continue;
       }
 
-      LOG_DEBUG("random number too large, trying again");
+      LOG(DEBUG) << "random number too large, trying again";
       r = device->random();
     }
 

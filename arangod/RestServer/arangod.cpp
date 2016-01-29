@@ -23,7 +23,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
 #include "Basics/messages.h"
 #include "Rest/InitializeRest.h"
 #include "RestServer/ArangoServer.h"

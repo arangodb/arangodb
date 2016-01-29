@@ -24,7 +24,7 @@
 
 #include "SimpleHttpClient.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
 #include "GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -148,8 +148,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     }
 
     if (!_retryMessage.empty() && (_maxRetries - tries) > 0) {
-      LOG_WARNING("%s - retries left: %d", _retryMessage.c_str(),
-                  (int)(_maxRetries - tries));
+      LOG(WARNING) << "" << _retryMessage.c_str() << " - retries left: " << (_maxRetries - tries);
     }
 
 #ifdef _WIN32
@@ -553,7 +552,7 @@ void SimpleHttpClient::setRequest(
     _writeBuffer.appendText(body, bodyLength);
   }
 
-  LOG_TRACE("Request: %s", _writeBuffer.c_str());
+  LOG(TRACE) << "Request: " << _writeBuffer.c_str();
 
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();

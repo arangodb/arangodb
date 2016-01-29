@@ -24,7 +24,7 @@
 
 #include "Mutex.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 using namespace arangodb;
 
@@ -70,7 +70,7 @@ void Mutex::lock() {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("mutex deadlock detected");
+      LOG(ERROR) << "mutex deadlock detected";
     }
 
     LOG_FATAL_AND_EXIT("could not lock the mutex: %s", strerror(rc));

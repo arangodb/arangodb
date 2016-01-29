@@ -23,7 +23,7 @@
 
 #include "threads.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +95,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   if (*thread == 0) {
     TRI_Free(TRI_CORE_MEM_ZONE, d);
-    LOG_ERROR("could not start thread: %s ", strerror(errno));
+    LOG(ERROR) << "could not start thread: " << strerror(errno) << " ";
     return false;
   }
 
@@ -110,8 +110,7 @@ int TRI_StopThread(TRI_thread_t* thread) {
   if (TerminateThread(*thread, 0) == 0) {
     DWORD result = GetLastError();
 
-    LOG_ERROR("threads-win32.c:TRI_StopThread:could not stop thread -->%d",
-              result);
+    LOG(ERROR) << "threads-win32.c:TRI_StopThread:could not stop thread -->" << result;
 
     return TRI_ERROR_INTERNAL;
   }

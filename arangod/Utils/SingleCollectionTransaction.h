@@ -25,13 +25,10 @@
 #define ARANGOD_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/logging.h"
 #include "Basics/voc-errors.h"
 #include "Basics/StringUtils.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"

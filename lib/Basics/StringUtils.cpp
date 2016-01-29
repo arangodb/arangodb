@@ -26,7 +26,7 @@
 #include <math.h>
 #include <time.h>
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringBuffer.h"
@@ -615,7 +615,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   delete[] buffer;
 
   if (corrupted) {
-    LOG_WARNING("escaped corrupted unicode string");
+    LOG(WARNING) << "escaped corrupted unicode string";
   }
 
   return result;

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EndpointList.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
 
 using namespace std;
@@ -224,8 +224,7 @@ void EndpointList::dump() const {
   for (auto& it : _endpoints) {
     Endpoint const* ep = it.second.first;
 
-    LOG_INFO("using endpoint '%s' for %s requests", it.first.c_str(),
-             getEncryptionName(ep->getEncryption()).c_str());
+    LOG(INFO) << "using endpoint '" << it.first.c_str() << "' for " << getEncryptionName(ep->getEncryption()).c_str() << " requests";
   }
 }
 

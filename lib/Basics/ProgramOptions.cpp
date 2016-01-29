@@ -22,12 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ProgramOptions.h"
-
-#include "Basics/tri-strings.h"
 #include "Basics/conversions.h"
-#include "Basics/json.h"
-#include "Basics/logging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
 #include "ProgramOptions/program-options.h"
 
 using namespace std;

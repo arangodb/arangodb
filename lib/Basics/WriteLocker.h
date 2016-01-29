@@ -29,7 +29,7 @@
 #include "Basics/ReadWriteLock.h"
 
 #ifdef TRI_SHOW_LOCK_TIME
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +142,7 @@ class WriteLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-      LOG_WARNING("WriteLocker %s:%d took %f s", _file, _line, _time);
+      LOG(WARNING) << "WriteLocker " << _file << ":" << _line << " took " << _time << " s";
     }
 #endif
   }

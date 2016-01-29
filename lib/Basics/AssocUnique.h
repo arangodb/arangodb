@@ -29,7 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/gcd.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
@@ -190,8 +190,7 @@ class AssocUnique {
     // entries
     static uint64_t const NotificationSizeThreshold = 131072;
 
-    LOG_TRACE("resizing index %s, target size: %llu", cb.c_str(),
-              (unsigned long long)targetSize);
+    LOG(TRACE) << "resizing index " << cb.c_str() << ", target size: " << targetSize;
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
@@ -250,7 +249,7 @@ class AssocUnique {
 
     delete[] oldTable;
 
-    LOG_TRACE("resizing index %s done", cb.c_str());
+    LOG(TRACE) << "resizing index " << cb.c_str() << " done";
 
     LOG_TIMER((TRI_microtime() - start), "index-resize %s, target size: %llu",
               cb.c_str(), (unsigned long long)targetSize);

@@ -22,15 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KeyGenerator.h"
-
 #include "Basics/conversions.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
-#include "Basics/voc-errors.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
-
+#include "Basics/voc-errors.h"
 #include "VocBase/vocbase.h"
 
 #include <array>

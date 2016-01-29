@@ -26,7 +26,7 @@
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 #include "Rest/Endpoint.h"
 
@@ -66,23 +66,21 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG_DEBUG("connecting to unix endpoint '%s'", _specification.c_str());
+  LOG(DEBUG) << "connecting to unix endpoint '" << _specification.c_str() << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
   TRI_ASSERT(!_connected);
 
   if (_type == ENDPOINT_SERVER && FileUtils::exists(_path)) {
     // socket file already exists
-    LOG_WARNING("socket file '%s' already exists.", _path.c_str());
+    LOG(WARNING) << "socket file '" << _path.c_str() << "' already exists.";
 
     int error = 0;
     // delete previously existing socket file
     if (FileUtils::remove(_path, &error)) {
-      LOG_WARNING("deleted previously existing socket file '%s'",
-                  _path.c_str());
+      LOG(WARNING) << "deleted previously existing socket file '" << _path.c_str() << "'";
     } else {
-      LOG_ERROR("unable to delete previously existing socket file '%s'",
-                _path.c_str());
+      LOG(ERROR) << "unable to delete previously existing socket file '" << _path.c_str() << "'";
 
       return listenSocket;
     }
@@ -90,7 +88,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
 
   listenSocket = TRI_socket(AF_UNIX, SOCK_STREAM, 0);
   if (!TRI_isvalidsocket(listenSocket)) {
-    LOG_ERROR("socket() failed with %d (%s)", errno, strerror(errno));
+    LOG(ERROR) << "socket() failed with " << errno << " (" << strerror(errno) << ")";
     return listenSocket;
   }
 
@@ -105,18 +103,18 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
         TRI_bind(listenSocket, (struct sockaddr*)&address, SUN_LEN(&address));
     if (result != 0) {
       // bind error
-      LOG_ERROR("bind() failed with %d (%s)", errno, strerror(errno));
+      LOG(ERROR) << "bind() failed with " << errno << " (" << strerror(errno) << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
     }
 
     // listen for new connection, executed for server endpoints only
-    LOG_TRACE("using backlog size %d", (int)_listenBacklog);
+    LOG(TRACE) << "using backlog size " << _listenBacklog;
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
-      LOG_ERROR("listen() failed with %d (%s)", errno, strerror(errno));
+      LOG(ERROR) << "listen() failed with " << errno << " (" << strerror(errno) << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -169,7 +167,7 @@ void EndpointUnixDomain::disconnect() {
     if (_type == ENDPOINT_SERVER) {
       int error = 0;
       if (!FileUtils::remove(_path, &error)) {
-        LOG_TRACE("unable to remove socket file '%s'", _path.c_str());
+        LOG(TRACE) << "unable to remove socket file '" << _path.c_str() << "'";
       }
     }
   }

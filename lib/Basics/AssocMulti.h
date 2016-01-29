@@ -31,7 +31,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -1081,8 +1081,7 @@ class AssocMulti {
   void resizeInternal(UserData* userData, Bucket& b, size_t size) {
     std::string const cb(_contextCallback());
 
-    LOG_TRACE("resizing index %s, target size: %llu", cb.c_str(),
-              (unsigned long long)size);
+    LOG(TRACE) << "resizing index " << cb.c_str() << ", target size: " << size;
 
     LOG_ACTION("index-resize %s, target size: %llu", cb.c_str(),
                (unsigned long long)size);
@@ -1158,7 +1157,7 @@ class AssocMulti {
 
     delete[] oldTable;
 
-    LOG_TRACE("resizing index %s done", cb.c_str());
+    LOG(TRACE) << "resizing index " << cb.c_str() << " done";
 
     LOG_TIMER((TRI_microtime() - start), "index-resize, %s, target size: %llu",
               cb.c_str(), (unsigned long long)size);

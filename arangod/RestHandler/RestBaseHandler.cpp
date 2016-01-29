@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestBaseHandler.h"
-
-#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"

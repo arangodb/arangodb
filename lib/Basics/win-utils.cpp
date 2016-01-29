@@ -32,7 +32,7 @@
 #include <malloc.h>
 #include <crtdbg.h>
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/files.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -131,7 +131,7 @@ static void InvalidParameterHandler(
     const wchar_t* file,        // file where code resides - NULL
     unsigned int line,          // line within file - NULL
     uintptr_t pReserved) {      // in case microsoft forget something
-  LOG_ERROR("Invalid handle parameter passed");
+  LOG(ERROR) << "Invalid handle parameter passed";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,16 +216,12 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG_ERROR(
-            "Could not find a usable Winsock DLL. WSAStartup returned an "
-            "error.");
+        LOG(ERROR) << "Could not find a usable Winsock DLL. WSAStartup returned an error.";
         return -1;
       }
 
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG_ERROR(
-            "Could not find a usable Winsock DLL. WSAStartup did not return "
-            "version 2.2.");
+        LOG(ERROR) << "Could not find a usable Winsock DLL. WSAStartup did not return version 2.2.";
         WSACleanup();
         return -1;
       }
@@ -233,7 +229,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
     }
 
     default: {
-      LOG_ERROR("Invalid windows initialization called");
+      LOG(ERROR) << "Invalid windows initialization called";
       return -1;
     }
   }

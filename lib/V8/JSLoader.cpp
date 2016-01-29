@@ -25,7 +25,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "V8/v8-utils.h"
@@ -57,7 +57,7 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOG_ERROR("unknown script '%s'", StringUtils::correctPath(name).c_str());
+    LOG(ERROR) << "unknown script '" << StringUtils::correctPath(name).c_str() << "'";
     return v8::Undefined(isolate);
   }
 
@@ -96,7 +96,7 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOG_ERROR("unknown script '%s'", StringUtils::correctPath(name).c_str());
+    LOG(ERROR) << "unknown script '" << StringUtils::correctPath(name).c_str() << "'";
     return eFailLoad;
   }
 

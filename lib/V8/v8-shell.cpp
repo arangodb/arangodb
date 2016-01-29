@@ -26,7 +26,6 @@
 #include "Basics/conversions.h"
 #include "Basics/csv.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
 #include "Basics/shell-colors.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"

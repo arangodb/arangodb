@@ -280,7 +280,7 @@ static int V8ToVPack(BuilderContext& context,
     int hash = o->GetIdentityHash();
 
     if (context.seenHashes.find(hash) != context.seenHashes.end()) {
-      // LOG_TRACE("found hash %d", hash);
+      // LOG(TRACE) << "found hash " << hash;
 
       for (auto& it : context.seenObjects) {
         if (parameter->StrictEquals(it)) {

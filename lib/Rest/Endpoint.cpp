@@ -23,7 +23,7 @@
 
 #include "Endpoint.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/socket-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -309,7 +309,7 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   bool ok = TRI_SetNonBlockingSocket(s);
 
   if (!ok) {
-    LOG_ERROR("cannot switch to non-blocking: %d (%s)", errno, strerror(errno));
+    LOG(ERROR) << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
 
     return false;
   }
@@ -318,7 +318,7 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   ok = TRI_SetCloseOnExecSocket(s);
 
   if (!ok) {
-    LOG_ERROR("cannot set close-on-exit: %d (%s)", errno, strerror(errno));
+    LOG(ERROR) << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
 
     return false;
   }

@@ -24,7 +24,7 @@
 #include "ScriptLoader.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 
@@ -122,8 +122,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
       char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, nullptr);
 
       if (result == nullptr && (i == parts.size() - 1)) {
-        LOG_ERROR("cannot locate file '%s': %s",
-                  StringUtils::correctPath(name).c_str(), TRI_last_error());
+        LOG(ERROR) << "cannot locate file '" << StringUtils::correctPath(name).c_str() << "': " << TRI_last_error();
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);

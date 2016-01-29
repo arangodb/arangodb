@@ -26,7 +26,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 #include "Rest/Endpoint.h"
 
@@ -101,7 +101,7 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
   if (::getnameinfo(aip->ai_addr, (socklen_t)aip->ai_addrlen, host,
                     sizeof(host), serv, sizeof(serv),
                     NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-    LOG_TRACE("bind to address '%s', port %d", host, (int)_port);
+    LOG(TRACE) << "bind to address '" << host << "', port " << _port;
   }
 
   TRI_socket_t listenSocket;
@@ -168,7 +168,7 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
     }
 
     // listen for new connection, executed for server endpoints only
-    LOG_TRACE("using backlog size %d", (int)_listenBacklog);
+    LOG(TRACE) << "using backlog size " << _listenBacklog;
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result != 0) {
@@ -235,7 +235,7 @@ TRI_socket_t EndpointIp::connect(double connectTimeout, double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG_DEBUG("connecting to ip endpoint '%s'", _specification.c_str());
+  LOG(DEBUG) << "connecting to ip endpoint '" << _specification.c_str() << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
   TRI_ASSERT(!_connected);
@@ -307,7 +307,7 @@ TRI_socket_t EndpointIp::connect(double connectTimeout, double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG_DEBUG("connecting to ip endpoint '%s'", _specification.c_str());
+  LOG(DEBUG) << "connecting to ip endpoint '" << _specification.c_str() << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
   TRI_ASSERT(!_connected);

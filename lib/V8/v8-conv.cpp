@@ -25,7 +25,7 @@
 
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -375,7 +375,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
-      // LOG_TRACE("found hash %d", hash);
+      // LOG(TRACE) << "found hash " << hash;
 
       for (auto it : seenObjects) {
         if (parameter->StrictEquals(it)) {

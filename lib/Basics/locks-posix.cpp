@@ -25,7 +25,7 @@
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 #define BUSY_LOCK_DELAY (10 * 1000)
 
@@ -80,7 +80,7 @@ void TRI_LockMutex(TRI_mutex_t* mutex) {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("mutex deadlock detected");
+      LOG(ERROR) << "mutex deadlock detected";
     }
     LOG_FATAL_AND_EXIT("could not lock the mutex: %s", strerror(rc));
   }
@@ -157,7 +157,7 @@ again:
       // concurrent read locks ("resource temporarily unavailable").
       // in this case we'll wait in a busy loop until we can acquire the lock
       if (!complained) {
-        LOG_WARNING("too many read-locks on read-write lock");
+        LOG(WARNING) << "too many read-locks on read-write lock";
         complained = true;
       }
       usleep(BUSY_LOCK_DELAY);
@@ -171,7 +171,7 @@ again:
     }
 
     if (rc == EDEADLK) {
-      LOG_ERROR("rw-lock deadlock detected");
+      LOG(ERROR) << "rw-lock deadlock detected";
     }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -243,7 +243,7 @@ void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("rw-lock deadlock detected");
+      LOG(ERROR) << "rw-lock deadlock detected";
     }
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
