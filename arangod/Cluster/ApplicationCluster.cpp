@@ -334,7 +334,7 @@ bool ApplicationCluster::start() {
 
     // no value set in agency. use default
     if (_heartbeatInterval == 0) {
-      _heartbeatInterval = 1000;  // 1/s
+      _heartbeatInterval = 5000; // 1/s
 
       LOG_WARNING(
           "unable to read heartbeat interval from agency. Using default value "

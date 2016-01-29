@@ -6,7 +6,7 @@ var agencyData = {
         "Problems" : {},
         "UserVersion" : "\"1\"",
         "ServerStates" : {},
-        "HeartbeatIntervalMs" : "1000",
+        "HeartbeatIntervalMs" : "5000",
         "Commands" : {}
      },
      "Current" : {

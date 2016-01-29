@@ -35,6 +35,7 @@
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
+#include "Cluster/ClusterInfo.h"
 
 #include <regex.h>
 
@@ -255,6 +256,11 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   // whether or not secondary indexes are filled
   bool _useSecondaryIndexes;
+
+  // the following contains in the cluster/DBserver case the information
+  // which other servers are in sync with this shard. It is unset in all
+  // other cases.
+  std::unique_ptr<arangodb::FollowerInfo> _followers;
 
  public:
   arangodb::DatafileStatistics _datafileStatistics;

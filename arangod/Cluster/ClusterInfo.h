@@ -68,7 +68,36 @@ class CollectionInfo {
 
   ~CollectionInfo();
 
- public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the replication factor
+  //////////////////////////////////////////////////////////////////////////////
+
+  int replicationFactor () const {
+    TRI_json_t* const node 
+        = arangodb::basics::JsonHelper::getObjectElement(_json,
+                                                         "replicationFactor");
+
+    if (TRI_IsNumberJson(node)) {
+      return (int) (node->_value._number);
+    }
+    return 1;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the replication quorum
+  //////////////////////////////////////////////////////////////////////////////
+
+  int replicationQuorum () const {
+    TRI_json_t* const node 
+        = arangodb::basics::JsonHelper::getObjectElement(_json,
+                                                         "replicationQuorum");
+
+    if (TRI_IsNumberJson(node)) {
+      return (int) (node->_value._number);
+    }
+    return 1;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether there is no info contained
   //////////////////////////////////////////////////////////////////////////////
@@ -498,7 +527,6 @@ class ClusterInfo {
       DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent>
       AllCollectionsCurrent;
-  typedef std::shared_ptr<std::vector<ServerID> const> FollowerInfo;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -822,49 +850,9 @@ class ClusterInfo {
   double getReloadServerListTimeout() const { return 60.0; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get information about current followers of a shard, the first
-  /// overloaded method is supposed to be very fast, whereas the second
-  /// needs a hash lookup, on the other hand one only needs the shardID.
-  /// Returns an empty shared_ptr if the follower information of the
-  /// shard has been dropped (see `dropFollowerInfo` below).
+  /// @brief object for agency communication
   //////////////////////////////////////////////////////////////////////////////
 
-  FollowerInfo getFollowerInfo(TRI_collection_t& coll);
-  FollowerInfo getFollowerInfo(ShardID& c);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add a follower to a shard, this is only done by the server side
-  /// of the "get-in-sync" capabilities. This reports to the agency under
-  /// `/Current` but in asynchronous "fire-and-forget" way. The method
-  /// fails silently, if the follower information has since been dropped
-  /// (see `dropFollowerInfo` below).
-  //////////////////////////////////////////////////////////////////////////////
-
-  void addFollower(ShardID& c, ServerID const& s);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief remove a follower from a shard, this is only done by the
-  /// server if a synchronous replication request fails. This reports to
-  /// the agency under `/Current` but in asynchronous "fire-and-forget"
-  /// way. The method fails silently, if the follower information has
-  /// since been dropped (see `dropFollowerInfo` below).
-  //////////////////////////////////////////////////////////////////////////////
-
-  void removeFollower(ShardID& c, ServerID const& s);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop information about current followers of a shard
-  //////////////////////////////////////////////////////////////////////////////
-
-  void dropFollowerInfo(ShardID& c);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal method to add a follower info entry
-  //////////////////////////////////////////////////////////////////////////////
-
-  FollowerInfo newFollowerInfo(ShardID& c, int64_t& index);
-
- private:
   AgencyComm _agency;
 
   // Cached data from the agency, we reload whenever necessary:
@@ -942,13 +930,6 @@ class ClusterInfo {
   std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>>
       _shardIds;  // from Current/Collections/
 
-  // The following is a special case, it is the current information
-  // about synchronous followers for each shard, for which we are
-  // responsible as a leader.
-  std::vector<FollowerInfo> _followerInfos;
-  std::unordered_map<ShardID, int64_t> _followerInfoTable;
-  std::mutex _followerInfoMutex;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
@@ -987,6 +968,48 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   static double const reloadServerListTimeout;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a class to track followers that are in sync for a shard
+////////////////////////////////////////////////////////////////////////////////
+
+class FollowerInfo {
+  std::shared_ptr<std::vector<ServerID> const> _followers;
+  std::mutex                                   _mutex;
+  TRI_document_collection_t*                   _docColl;
+
+ public:
+
+  FollowerInfo(TRI_document_collection_t* d) : _docColl(d) {
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get information about current followers of a shard.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<std::vector<ServerID> const> get();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief add a follower to a shard, this is only done by the server side
+  /// of the "get-in-sync" capabilities. This reports to the agency under
+  /// `/Current` but in asynchronous "fire-and-forget" way. The method
+  /// fails silently, if the follower information has since been dropped
+  /// (see `dropFollowerInfo` below).
+  //////////////////////////////////////////////////////////////////////////////
+
+  void add(ServerID const& s);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove a follower from a shard, this is only done by the
+  /// server if a synchronous replication request fails. This reports to
+  /// the agency under `/Current` but in asynchronous "fire-and-forget"
+  /// way. The method fails silently, if the follower information has
+  /// since been dropped (see `dropFollowerInfo` below).
+  //////////////////////////////////////////////////////////////////////////////
+
+  void remove(ServerID const& s);
+
 };
 
 }  // end namespace arangodb

@@ -489,7 +489,7 @@ Planner.prototype.makePlan = function() {
                   "Problems"           : {},
                   "LatestID"           : '"1"',
                   "Commands"           : {},
-                  "HeartbeatIntervalMs": '1000',
+                  "HeartbeatIntervalMs": '5000',
                   "UserVersion"        : '"1"' };
   tmp = prefix.Sync.Commands;
   for (i = 0; i < DBservers; i++) {

@@ -888,6 +888,8 @@ static void CreateCollectionCoordinator(
   bool allowUserKeys = true;
   uint64_t numberOfShards = 1;
   std::vector<std::string> shardKeys;
+  uint64_t replicationFactor = 1;
+  uint64_t replicationQuorum = 1;
 
   // default shard key
   shardKeys.push_back("_key");
@@ -962,10 +964,26 @@ static void CreateCollectionCoordinator(
     if (p->Has(idKey) && p->Get(idKey)->IsString()) {
       cid = TRI_ObjectToString(p->Get(idKey));
     }
+
+    if (p->Has(TRI_V8_ASCII_STRING("replicationFactor"))) {
+      replicationFactor = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("replicationFactor")), false);
+    }
+
+    if (p->Has(TRI_V8_ASCII_STRING("replicationQuorum"))) {
+      replicationQuorum = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("replicationQuorum")), false);
+    }
   }
 
   if (numberOfShards == 0 || numberOfShards > 1000) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("invalid number of shards");
+  }
+
+  if (replicationFactor == 0 || replicationFactor > 10) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid replicationFactor");
+  }
+
+  if (replicationQuorum == 0 || replicationQuorum > replicationFactor) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid replicationQuorum");
   }
 
   if (shardKeys.empty() || shardKeys.size() > 8) {
@@ -1006,21 +1024,39 @@ static void CreateCollectionCoordinator(
     for (auto const& s : *shardList) {
       auto it = shards->find(s);
       if (it != shards->end()) {
-        dbServers.push_back(it->second[0]);
+        for (auto const& s : it->second) {
+          dbServers.push_back(s);
+        }
       }
     }
   }
 
   // now create the shards
-  std::map<std::string, std::string> shards;
+  std::map<std::string, std::vector<std::string>> shards;
+  size_t count = 0;
   for (uint64_t i = 0; i < numberOfShards; ++i) {
-    // determine responsible server
-    std::string serverId = dbServers[i % dbServers.size()];
+    // determine responsible server(s)
+    std::vector<std::string> serverIds;
+    for (uint64_t j = 0; j < replicationFactor; ++j) {
+      std::string candidate;
+      size_t count2 = 0;
+      do {
+        candidate = dbServers[count++];
+        if (count >= dbServers.size()) {
+          count = 0;
+        }
+        if (++count2 == dbServers.size() + 1) {
+          TRI_V8_THROW_EXCEPTION_PARAMETER("replicationFactor too large");
+        }
+      } while (std::find(serverIds.begin(), serverIds.end(), candidate) != 
+               serverIds.end());
+      serverIds.push_back(candidate);
+    }
 
     // determine shard id
     std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
 
-    shards.insert(std::make_pair(shardId, serverId));
+    shards.insert(std::make_pair(shardId, serverIds));
   }
 
   // now create the VelocyPack for the collection
@@ -1032,18 +1068,23 @@ static void CreateCollectionCoordinator(
 
   {
     ObjectBuilder ob(&velocy);
-    velocy("id", Value(cid))("name", Value(name))("type",
-                                                  Value((int)collectionType))(
-        "status", Value((int)TRI_VOC_COL_STATUS_LOADED))(
-        "deleted", Value(parameters.deleted()))("doCompact",
-                                                Value(parameters.doCompact()))(
-        "isSystem", Value(parameters.isSystem()))(
-        "isVolatile", Value(parameters.isVolatile()))(
-        "waitForSync", Value(parameters.waitForSync()))(
-        "journalSize", Value(parameters.maximalSize()))(
-        "indexBuckets", Value(parameters.indexBuckets()))(
-        "keyOptions", Value(ValueType::Object))("type", Value("traditional"))(
-        "allowUserKeys", Value(allowUserKeys)).close();
+    velocy("id",           Value(cid))
+          ("name",         Value(name))
+          ("type",         Value((int) collectionType))
+          ("status",       Value((int) TRI_VOC_COL_STATUS_LOADED))
+          ("deleted",      Value(parameters.deleted()))
+          ("doCompact",    Value(parameters.doCompact()))
+          ("isSystem",     Value(parameters.isSystem()))
+          ("isVolatile",   Value(parameters.isVolatile()))
+          ("waitForSync",  Value(parameters.waitForSync()))
+          ("journalSize",  Value(parameters.maximalSize()))
+          ("indexBuckets", Value(parameters.indexBuckets()))
+          ("replicationFactor", Value(replicationFactor))
+          ("replicationQuorum", Value(replicationQuorum))
+          ("keyOptions",   Value(ValueType::Object))
+              ("type",          Value("traditional"))
+              ("allowUserKeys", Value(allowUserKeys))
+           .close();
 
     {
       ArrayBuilder ab(&velocy, "shardKeys");
@@ -1056,7 +1097,9 @@ static void CreateCollectionCoordinator(
       ObjectBuilder ob(&velocy, "shards");
       for (auto const& p : shards) {
         ArrayBuilder ab(&velocy, p.first);
-        velocy(Value(p.second));
+        for (auto const& s : p.second) {
+          velocy(Value(s));
+        }
       }
     }
 

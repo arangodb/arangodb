@@ -300,6 +300,14 @@ static void JS_SynchronizeReplication(
     }
   }
 
+  bool forSynchronousReplication = false;
+  if (object->Has(TRI_V8_ASCII_STRING("forSynchronousReplication"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("forSynchronousReplication"))->IsBoolean()) {
+      forSynchronousReplication =
+          TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("forSynchronousReplication")));
+    }
+  }
+
   std::string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,
                        verbose);
@@ -341,6 +349,9 @@ static void JS_SynchronizeReplication(
           res, "cannot sync from remote endpoint: " + errorMsg);
     }
   }
+
+  // Now check forSynchronousReplication flag and tell ClusterInfo
+  // about a new follower.
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

@@ -36,8 +36,9 @@ QueryEntry::QueryEntry(arangodb::aql::Query const* query, double started)
 
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
                                std::string const& queryString, double started,
-                               double runTime)
-    : id(id), queryString(queryString), started(started), runTime(runTime) {}
+                               double runTime, std::string const& queryState)
+    : id(id), queryString(queryString), started(started), runTime(runTime),
+      queryState(queryState) {}
 
 double const QueryList::DefaultSlowQueryThreshold = 10.0;
 size_t const QueryList::DefaultMaxSlowQueries = 64;
@@ -174,7 +175,8 @@ void QueryList::remove(Query const* query, double now) {
               entry->query->id(),
               std::string(queryString, length)
                   .append(originalLength > maxLength ? "..." : ""),
-              entry->started, now - entry->started));
+              entry->started, now - entry->started,
+              std::string(" (while finished)")));
 
           if (++_slowCount > _maxSlowQueries) {
             // free first element
@@ -267,12 +269,13 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
           }
         }
       }
-
+       
       result.emplace_back(
           QueryEntryCopy(entry->query->id(),
                          std::string(queryString, length)
                              .append(originalLength > maxLength ? "..." : ""),
-                         entry->started, now - entry->started));
+                         entry->started, now - entry->started,
+                         entry->query->getStateString()));
     }
   }
 
