@@ -1,4 +1,4 @@
-v2.8.1 (XXXX-XX-XX)
+v2.8.1 (2016-01-29)
 -------------------
 
 * Improved AQL Pattern matching by allowing to specify a different traversal

@@ -45,7 +45,7 @@ Indexes used:
 
 Traversals on graphs:
  Id   Depth   Vertex collections   Edge collections   Filter conditions
-  2   1..3    circles              edges              `Path`.`edges`[0] -&gt; e.`label` 25 "right_foo"
+  2   1..3    circles              edges              `Path`.`edges`[0] -&gt; e.`label` == "right_foo"
 
 Optimization rules applied:
  Id   RuleName
