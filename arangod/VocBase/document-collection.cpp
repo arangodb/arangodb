@@ -126,7 +126,6 @@ TRI_document_collection_t::TRI_document_collection_t ()
     _headersPtr(nullptr),
     _keyGenerator(nullptr),
     _uncollectedLogfileEntries(0),
-    _currentWriterThread(0),
     _cleanupIndexes(0) {
 
   _tickMax = 0;
@@ -192,6 +191,14 @@ int TRI_document_collection_t::beginRead () {
   // LOCKING-DEBUG
   // std::cout << "BeginRead: " << document->_info._name << std::endl;
   TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+ 
+  try { 
+    _vocbase->_deadlockDetector.addReader(this, false);
+  }
+  catch (...) {
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -211,6 +218,13 @@ int TRI_document_collection_t::endRead () {
       return TRI_ERROR_NO_ERROR;
     }
   }
+ 
+  try { 
+    _vocbase->_deadlockDetector.unsetReader(this);
+  }
+  catch (...) {
+  }
+
   // LOCKING-DEBUG
   // std::cout << "EndRead: " << document->_info._name << std::endl;
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
@@ -237,8 +251,14 @@ int TRI_document_collection_t::beginWrite () {
   // std::cout << "BeginWrite: " << document->_info._name << std::endl;
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
 
-  // register writer 
-  _currentWriterThread.store(TRI_CurrentThreadId());
+  // register writer
+  try { 
+    _vocbase->_deadlockDetector.addWriter(this, false);
+  }
+  catch (...) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -258,13 +278,19 @@ int TRI_document_collection_t::endWrite () {
       return TRI_ERROR_NO_ERROR;
     }
   }
+  
+  // unregister writer
+  try {
+    _vocbase->_deadlockDetector.unsetWriter(this);
+  }
+  catch (...) {
+    // must go on here to unlock the lock
+  }
+
   // LOCKING-DEBUG
   // std::cout << "EndWrite: " << document->_info._name << std::endl;
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
  
-  // unregister writer
-  _currentWriterThread.store(0);
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -299,7 +325,7 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
     try {
       if (! wasBlocked) {
         // insert reader
-        if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
+        if (_vocbase->_deadlockDetector.setReaderBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
           LOG_TRACE("deadlock detected while trying to acquire read-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
@@ -311,9 +337,9 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
         iterations = 0;
-        if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, false) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          _vocbase->_deadlockDetector.setReaderUnblocked(this);
+          _vocbase->_deadlockDetector.unsetReaderBlocked(this);
           LOG_TRACE("deadlock detected while trying to acquire read-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
         }
@@ -322,7 +348,7 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
     catch (...) {
       // clean up!
       if (wasBlocked) {
-        _vocbase->_deadlockDetector.setReaderUnblocked(this);
+        _vocbase->_deadlockDetector.unsetReaderBlocked(this);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
@@ -336,15 +362,19 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
     waited += sleepPeriod;
 
     if (waited > timeout) {
-      _vocbase->_deadlockDetector.setReaderUnblocked(this);
+      _vocbase->_deadlockDetector.unsetReaderBlocked(this);
       LOG_TRACE("timed out waiting for read-lock on collection '%s'", _info._name);
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
 
-  // when we are here, we've got the read lock
-  if (wasBlocked) {      
-    _vocbase->_deadlockDetector.setReaderUnblocked(this);
+  try { 
+    // when we are here, we've got the read lock
+    _vocbase->_deadlockDetector.addReader(this, wasBlocked);
+  }
+  catch (...) {
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -380,8 +410,8 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
   while (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
     try {
       if (! wasBlocked) {
-        // insert writer (with method named "setReaderBlocked"..., but it works) 
-        if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
+        // insert writer 
+        if (_vocbase->_deadlockDetector.setWriterBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
           LOG_TRACE("deadlock detected while trying to acquire write-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
@@ -393,9 +423,9 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
         iterations = 0;
-        if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, true) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          _vocbase->_deadlockDetector.setReaderUnblocked(this);
+          _vocbase->_deadlockDetector.unsetWriterBlocked(this);
           LOG_TRACE("deadlock detected while trying to acquire write-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
         }
@@ -404,7 +434,7 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
     catch (...) {
       // clean up!
       if (wasBlocked) {
-        _vocbase->_deadlockDetector.setReaderUnblocked(this);
+        _vocbase->_deadlockDetector.unsetWriterBlocked(this);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
@@ -418,20 +448,21 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
     waited += sleepPeriod;
 
     if (waited > timeout) {
-      _vocbase->_deadlockDetector.setReaderUnblocked(this);
+      _vocbase->_deadlockDetector.unsetWriterBlocked(this);
       LOG_TRACE("timed out waiting for write-lock on collection '%s'", _info._name);
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
-  
-  // when we are here, we've got the write lock
-  if (wasBlocked) {      
-    _vocbase->_deadlockDetector.setReaderUnblocked(this);
+ 
+  try { 
+    // register writer 
+    _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
+  }
+  catch (...) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
  
-  // register writer 
-  _currentWriterThread.store(TRI_CurrentThreadId());
-
   return TRI_ERROR_NO_ERROR;
 }
 

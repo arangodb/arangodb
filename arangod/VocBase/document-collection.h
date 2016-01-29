@@ -371,10 +371,6 @@ public:
   VocShaper* getShaper () const;
 #endif
 
-  inline TRI_tid_t getCurrentWriterThread () const {
-    return _currentWriterThread.load();
-  }
-
   void setNextCompactionStartIndex (size_t);
   size_t getNextCompactionStartIndex ();
   void setCompactionStatus (char const*);
@@ -419,8 +415,6 @@ public:
   int64_t                                _numberDocuments;
   TRI_read_write_lock_t                  _compactionLock;
   double                                 _lastCompaction;
-
-  std::atomic<TRI_tid_t>                 _currentWriterThread;
 
   // ...........................................................................
   // this condition variable protects the _journalsCondition
