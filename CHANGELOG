@@ -44,6 +44,8 @@ combine it with graph names.
 
 * fixed undefined behavior in AQL function `PARSE_IDENTIFIER`
 
+* added "engines" field to Foxx services generated in the admin interface
+
 * added AQL function `IS_SAME_COLLECTION`:
 
   *IS_SAME_COLLECTION(collection, document)*: Return true if *document* has the same
