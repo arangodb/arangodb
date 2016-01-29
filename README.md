@@ -61,7 +61,7 @@ Other features of ArangoDB include:
 For more in-depth information read the [design goals of ArangoDB](http://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
 
 
-Latest Release - ArangoDB 2.8
+Latest Release - ArangoDB 2.6
 -----------------
 
 The [What's new in ArangoDB 2.6](https://docs.arangodb.com/NewFeatures/NewFeatures26.html) can be found in the documentation.
