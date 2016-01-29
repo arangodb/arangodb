@@ -394,6 +394,10 @@ TRI_json_t* TRI_CreateStringJson(TRI_memory_zone_t* zone, char* value,
 
 TRI_json_t* TRI_CreateStringCopyJson(TRI_memory_zone_t* zone, char const* value,
                                      size_t length) {
+  if (value == nullptr) {
+    // initial string should be valid...
+    return nullptr;
+  }
   TRI_json_t* result =
       static_cast<TRI_json_t*>(TRI_Allocate(zone, sizeof(TRI_json_t), false));
 
@@ -425,6 +429,11 @@ void TRI_InitStringJson(TRI_json_t* result, char* value, size_t length) {
 
 int TRI_InitStringCopyJson(TRI_memory_zone_t* zone, TRI_json_t* result,
                            char const* value, size_t length) {
+  if (value == nullptr) {
+    // initial string should be valid...
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
   char* copy = TRI_DuplicateString(zone, value, length);
 
   if (copy == nullptr) {

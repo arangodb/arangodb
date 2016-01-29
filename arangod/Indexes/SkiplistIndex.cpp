@@ -115,8 +115,17 @@ static TRI_index_operator_t* buildRangeOperator(VPackSlice const& lowerBound,
                                                 VocShaper* shaper) {
   std::unique_ptr<TRI_index_operator_t> lowerOperator(buildBoundOperator(
       lowerBound, lowerBoundInclusive, false, parameters, shaper));
+
+  if (lowerOperator == nullptr && !lowerBound.isNone()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   std::unique_ptr<TRI_index_operator_t> upperOperator(buildBoundOperator(
       upperBound, upperBoundInclusive, true, parameters, shaper));
+  
+  if (upperOperator == nullptr && !upperBound.isNone()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   if (lowerOperator == nullptr) {
     return upperOperator.release();

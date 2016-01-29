@@ -1866,7 +1866,6 @@ static ExplicitTransaction* BeginTransaction(
   int res = trx->begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    trx->finish(res);
     THROW_ARANGO_EXCEPTION(res);
   }
 
