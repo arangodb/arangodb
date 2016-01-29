@@ -1,1 +1,59 @@
-run
+#!/bin/bash
+export PID=$$
+
+self=$0
+if test -f "${self}.js"; then 
+  export SCRIPT=${self}.js
+else
+  export SCRIPT=$1
+  shift
+fi
+
+if test -n "$ORIGINAL_PATH"; then
+# running in cygwin...
+  PS='\'
+  export EXT=".exe"
+else
+  export EXT=""
+  PS='/'
+fi;
+
+LOGFILE="out${PS}log-$PID"
+
+export PORT=`expr 1024 + $RANDOM`
+declare -a ARGS
+export VG=''
+export VXML=''
+
+for i in "$@"; do
+  # no valgrind on cygwin, don't care.
+  if test "$i" == valgrind; then
+    export VG='/usr/bin/valgrind --log-file=/tmp/valgrindlog.%p'
+  elif test "$i" == valgrindxml; then
+    export VG='/usr/bin/valgrind --xml=yes --xml-file=valgrind_testrunner'
+    export VXML="valgrind=\"${VG}\""
+    export VG=${VG}'.xml '
+  else
+    ARGS+=("$i")
+  fi
+done
+
+echo Logfile is in ${LOGFILE}
+
+$VG bin/arangosh \
+  -c etc${PS}relative${PS}arangosh.conf \
+  --server.endpoint tcp://127.0.0.1:${PORT} \
+  --javascript.execute UnitTests${PS}unittest.js \
+  -- \
+  "${ARGS[@]}" \
+  $VXML
+
+if test $? -eq 0; then
+  echo "removing ${LOGFILE}"
+  rm -rf ${LOGFILE}
+else
+  echo "failed - don't remove ${LOGFILE} - here's the logfile:"
+  cat ${LOGFILE}
+fi
+
+echo Server has terminated.
