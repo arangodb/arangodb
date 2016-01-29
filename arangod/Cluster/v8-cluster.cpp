@@ -86,9 +86,8 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const key = TRI_ObjectToString(args[0]);
 
-  int res = TRI_ERROR_NO_ERROR;
   VPackBuilder oldBuilder;
-  res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
+  int res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");

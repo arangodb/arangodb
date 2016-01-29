@@ -559,5 +559,5 @@ void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
 
   va_start(ap, fmt);
   TRI_LogWindowsEventlog(func, file, line, fmt, ap);
-  va_end(wva);
+  va_end(ap);
 }
