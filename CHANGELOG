@@ -31,16 +31,20 @@ v2.8.1 (XXXX-XX-XX)
 -------------------
 
 * Improved AQL Pattern matching by allowing to specify a different traversal
-direction for one or many of the edge collections.
+  direction for one or many of the edge collections.
 
-    FOR v, e, p IN OUTBOUND @start @@ec1, INBOUND @@ec2, @@ec3
+      FOR v, e, p IN OUTBOUND @start @@ec1, INBOUND @@ec2, @@ec3
 
-Will traverse *ec1* and *ec3* in the OUTBOUND direction and for *ec2* it will use
-the INBOUND direction. These directions can be combined in arbitrary ways, the
-direction defined after *IN [steps]* will we used as default direction and can
-be overriden for specific collections.
-This feature is only available for collection lists, it is not possible to
-combine it with graph names.
+  will traverse *ec1* and *ec3* in the OUTBOUND direction and for *ec2* it will use
+  the INBOUND direction. These directions can be combined in arbitrary ways, the
+  direction defined after *IN [steps]* will we used as default direction and can
+  be overriden for specific collections.
+  This feature is only available for collection lists, it is not possible to
+  combine it with graph names.
+
+* detect more types of transaction deadlocks early
+
+* fixed display of relational operators in traversal explain output 
 
 * fixed undefined behavior in AQL function `PARSE_IDENTIFIER`
 
@@ -484,6 +488,12 @@ v2.8.0-alpha1 (2015-12-03)
 * the `org/arangodb/request` module now returns response bodies for error responses
   by default. The old behaviour of not returning bodies for error responses can be
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
+
+
+v2.7.6 (XXXX-XX-XX)
+-------------------
+
+* detect more types of transaction deadlocks early
 
 
 v2.7.5 (2016-01-22)
