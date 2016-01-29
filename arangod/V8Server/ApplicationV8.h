@@ -346,17 +346,17 @@ class ApplicationV8 : public rest::ApplicationFeature {
   void prepareServer();
 
  public:
-  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&);
+  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&) override final;
 
-  bool prepare();
+  bool prepare() override final;
 
-  bool prepare2();
+  bool prepare2() override final;
 
-  bool start();
+  bool start() override final;
 
-  void close();
+  void close() override final;
 
-  void stop();
+  void stop() override final;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

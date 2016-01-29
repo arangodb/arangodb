@@ -27,11 +27,10 @@
 #include "Basics/Common.h"
 
 #include "ApplicationServer/ApplicationFeature.h"
+#include "HttpServer/HttpHandlerFactory.h"
+#include "Rest/EndpointList.h"
 
 #include <openssl/ssl.h>
-
-#include "Rest/EndpointList.h"
-#include "HttpServer/HttpHandlerFactory.h"
 
 namespace arangodb {
 namespace rest {
@@ -46,8 +45,8 @@ class HttpServer;
 
 class ApplicationEndpointServer : public ApplicationFeature {
  private:
-  ApplicationEndpointServer(ApplicationEndpointServer const&);
-  ApplicationEndpointServer& operator=(ApplicationEndpointServer const&);
+  ApplicationEndpointServer(ApplicationEndpointServer const&) = delete;
+  ApplicationEndpointServer& operator=(ApplicationEndpointServer const&) = delete;
 
  public:
   ApplicationEndpointServer(ApplicationServer*, ApplicationScheduler*,
@@ -76,9 +75,9 @@ class ApplicationEndpointServer : public ApplicationFeature {
 
   void setBasePath(std::string const& basePath) { _basePath = basePath; }
 
-  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&);
+  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&) override final;
 
-  bool afterOptionParsing(basics::ProgramOptions&);
+  bool afterOptionParsing(basics::ProgramOptions&) override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a list of all endpoints
@@ -98,13 +97,13 @@ class ApplicationEndpointServer : public ApplicationFeature {
 
   std::vector<std::string> const& getEndpointMapping(std::string const&);
 
-  bool prepare();
+  bool prepare() override final;
 
-  bool open();
+  bool open() override final;
 
-  void close();
+  void close() override final;
 
-  void stop();
+  void stop() override final;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

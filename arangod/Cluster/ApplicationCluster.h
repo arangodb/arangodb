@@ -25,7 +25,6 @@
 #define ARANGOD_CLUSTER_APPLICATION_CLUSTER_H 1
 
 #include "Basics/Common.h"
-
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 
@@ -45,8 +44,8 @@ class HeartbeatThread;
 
 class ApplicationCluster : public rest::ApplicationFeature {
  private:
-  ApplicationCluster(ApplicationCluster const&);
-  ApplicationCluster& operator=(ApplicationCluster const&);
+  ApplicationCluster(ApplicationCluster const&) = delete;
+  ApplicationCluster& operator=(ApplicationCluster const&) = delete;
 
  public:
   ApplicationCluster(TRI_server_t*, arangodb::rest::ApplicationDispatcher*,
@@ -68,17 +67,17 @@ class ApplicationCluster : public rest::ApplicationFeature {
   inline bool enabled() const { return _enableCluster; }
 
  public:
-  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&);
+  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&) override final;
 
-  bool prepare();
+  bool prepare() override final;
 
-  bool open();
+  bool open() override final;
 
-  bool start();
+  bool start() override final;
 
-  void close();
+  void close() override final;
 
-  void stop();
+  void stop() override final;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
