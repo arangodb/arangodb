@@ -1,6 +1,8 @@
 v2.8.1 (XXXX-XX-XX)
 -------------------
 
+* detect more types of transaction deadlocks early
+
 * fixed display of relational operators in traversal explain output 
 
 * fixed undefined behavior in AQL function `PARSE_IDENTIFIER`
@@ -449,6 +451,12 @@ v2.8.0-alpha1 (2015-12-03)
 * the `org/arangodb/request` module now returns response bodies for error responses
   by default. The old behaviour of not returning bodies for error responses can be
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
+
+
+v2.7.6 (XXXX-XX-XX)
+-------------------
+
+* detect more types of transaction deadlocks early
 
 
 v2.7.5 (2016-01-22)
