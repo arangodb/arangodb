@@ -24,7 +24,7 @@
 #include "ArangoClient.h"
 
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/messages.h"
 #include "Basics/tri-strings.h"
 #include "Basics/terminal-utils.h"
@@ -304,7 +304,7 @@ void ArangoClient::parse(ProgramOptions& options,
 
   if (!_configFile.empty()) {
     if (StringUtils::tolower(_configFile) == std::string("none")) {
-      LOG_DEBUG("using no init file at all");
+      LOG(DEBUG) << "using no init file at all";
     } else {
       configFile = _configFile;
     }
@@ -321,7 +321,7 @@ void ArangoClient::parse(ProgramOptions& options,
         configFile = sysDir;
         allowLocal = true;
       } else {
-        LOG_DEBUG("no system init file '%s'", sysDir.c_str());
+        LOG(DEBUG) << "no system init file '" << sysDir.c_str() << "'";
       }
     }
   }
@@ -331,7 +331,7 @@ void ArangoClient::parse(ProgramOptions& options,
       std::string localConfigFile = configFile + ".local";
 
       if (FileUtils::exists(localConfigFile)) {
-        LOG_DEBUG("using init override file '%s'", localConfigFile.c_str());
+        LOG(DEBUG) << "using init override file '" << localConfigFile.c_str() << "'";
 
         if (!options.parse(description, localConfigFile)) {
           LOG_FATAL_AND_EXIT("cannot parse config file '%s': %s",
@@ -341,7 +341,7 @@ void ArangoClient::parse(ProgramOptions& options,
       }
     }
 
-    LOG_DEBUG("using init file '%s'", configFile.c_str());
+    LOG(DEBUG) << "using init file '" << configFile.c_str() << "'";
 
     if (!options.parse(description, configFile)) {
       LOG_FATAL_AND_EXIT("cannot parse config file '%s': %s",

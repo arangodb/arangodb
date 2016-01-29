@@ -2296,7 +2296,7 @@ static int WarmupEnvironment(v8::Isolate* isolate,
         "no 'javascript.startup-directory' has been supplied, giving up");
   }
 
-  LOG_DEBUG("using JavaScript startup files at '%s'", StartupPath.c_str());
+  LOG(DEBUG) << "using JavaScript startup files at '" << StartupPath.c_str() << "'";
   StartupLoader.setDirectory(StartupPath);
 
   // load all init files
@@ -2329,7 +2329,7 @@ static int WarmupEnvironment(v8::Isolate* isolate,
   for (size_t i = 0; i < files.size(); ++i) {
     switch (StartupLoader.loadScript(isolate, context, files[i])) {
       case JSLoader::eSuccess:
-        LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
+        LOG(TRACE) << "loaded JavaScript file '" << files[i].c_str() << "'";
         break;
       case JSLoader::eFailLoad:
         LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'",
@@ -2568,11 +2568,10 @@ int main(int argc, char* args[]) {
         try {
           ret = Run(isolate, runMode, promptError);
         } catch (std::bad_alloc const&) {
-          LOG_ERROR("caught exception %s",
-                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+          LOG(ERROR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ret = EXIT_FAILURE;
         } catch (...) {
-          LOG_ERROR("caught unknown exception");
+          LOG(ERROR) << "caught unknown exception";
           ret = EXIT_FAILURE;
         }
       }
@@ -2580,9 +2579,9 @@ int main(int argc, char* args[]) {
       isolate->LowMemoryNotification();
 
       // spend at least 3 seconds in GC
-      LOG_DEBUG("entering final garbage collection");
+      LOG(DEBUG) << "entering final garbage collection";
       TRI_RunGarbageCollectionV8(isolate, 3000);
-      LOG_DEBUG("final garbage collection completed");
+      LOG(DEBUG) << "final garbage collection completed";
 
       localContext->Exit();
       context.Reset();

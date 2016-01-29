@@ -25,7 +25,7 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/conversions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/collection.h"
@@ -38,9 +38,8 @@
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
-#define LOG_TRX(trx, level, format, ...)                                \
-  LOG_TRACE("trx #%llu.%d (%s): " format, (unsigned long long)trx->_id, \
-            (int)level, StatusTransaction(trx->_status), __VA_ARGS__)
+#define LOG_TRX(trx, level)  \
+  LOG(TRACE) << "trx #" << trx->_id << "." << level << " (" << StatusTransaction(trx->_status) << "): " 
 
 #else
 
@@ -378,13 +377,11 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
 
   int res;
   if (type == TRI_TRANSACTION_READ) {
-    LOG_TRX(trx, nestingLevel, "read-locking collection %llu",
-            (unsigned long long)trxCollection->_cid);
+    LOG_TRX(trx, nestingLevel) << "read-locking collection " << trxCollection->_cid;
     res = document->beginReadTimed(timeout,
                                    TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
   } else {
-    LOG_TRX(trx, nestingLevel, "write-locking collection %llu",
-            (unsigned long long)trxCollection->_cid);
+    LOG_TRX(trx, nestingLevel) << "write-locking collection " << trxCollection->_cid;
     res = document->beginWriteTimed(timeout,
                                     TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
   }
@@ -440,20 +437,16 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
              trxCollection->_lockType == TRI_TRANSACTION_READ) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_ERROR("logic error in UnlockCollection");
+    LOG(ERROR) << "logic error in UnlockCollection";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }
 
   if (trxCollection->_lockType == TRI_TRANSACTION_READ) {
-    LOG_TRX(trxCollection->_transaction, nestingLevel,
-            "read-unlocking collection %llu",
-            (unsigned long long)trxCollection->_cid);
+    LOG_TRX(trxCollection->_transaction, nestingLevel) << "read-unlocking collection " << trxCollection->_cid;
     document->endRead();
   } else {
-    LOG_TRX(trxCollection->_transaction, nestingLevel,
-            "write-unlocking collection %llu",
-            (unsigned long long)trxCollection->_cid);
+    LOG_TRX(trxCollection->_transaction, nestingLevel) << "write-unlocking collection " << trxCollection->_cid;
     document->endWrite();
   }
 
@@ -485,8 +478,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
           !HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
         // use and usage-lock
         TRI_vocbase_col_status_e status;
-        LOG_TRX(trx, nestingLevel, "using collection %llu",
-                (unsigned long long)trxCollection->_cid);
+        LOG_TRX(trx, nestingLevel) << "using collection " << trxCollection->_cid;
         trxCollection->_collection = TRI_UseCollectionByIdVocBase(
             trx->_vocbase, trxCollection->_cid, status);
       } else {
@@ -616,8 +608,7 @@ static int ReleaseCollections(TRI_transaction_t* trx, int nestingLevel) {
     // the top level transaction releases all collections
     if (trxCollection->_collection != nullptr) {
       // unuse collection, remove usage-lock
-      LOG_TRX(trx, nestingLevel, "unusing collection %llu",
-              (unsigned long long)trxCollection->_cid);
+      LOG_TRX(trx, nestingLevel) << "unusing collection " << trxCollection->_cid;
 
       TRI_ReleaseCollectionVocBase(trx->_vocbase, trxCollection->_collection);
       trxCollection->_collection = nullptr;
@@ -660,8 +651,7 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("could not save transaction begin marker in log: %s",
-                TRI_errno_string(res));
+    LOG(WARNING) << "could not save transaction begin marker in log: " << TRI_errno_string(res);
   }
 
   return res;
@@ -696,8 +686,7 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("could not save transaction abort marker in log: %s",
-                TRI_errno_string(res));
+    LOG(WARNING) << "could not save transaction abort marker in log: " << TRI_errno_string(res);
   }
 
   return res;
@@ -728,8 +717,7 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("could not save transaction commit marker in log: %s",
-                TRI_errno_string(res));
+    LOG(WARNING) << "could not save transaction commit marker in log: " << TRI_errno_string(res);
   }
 
   return res;
@@ -902,7 +890,7 @@ int TRI_AddCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid,
                                  TRI_transaction_type_e accessType,
                                  int nestingLevel, bool force,
                                  bool allowImplicitCollections) {
-  LOG_TRX(trx, nestingLevel, "adding collection %llu", (unsigned long long)cid);
+  LOG_TRX(trx, nestingLevel) << "adding collection " << cid;
 
   // upgrade transaction type if required
   if (nestingLevel == 0) {
@@ -1038,7 +1026,7 @@ bool TRI_IsLockedCollectionTransaction(
   if (accessType == TRI_TRANSACTION_WRITE &&
       trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
     // wrong lock type
-    LOG_WARNING("logic error. checking wrong lock type");
+    LOG(WARNING) << "logic error. checking wrong lock type";
     return false;
   }
 
@@ -1277,8 +1265,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 
 int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
                          int nestingLevel) {
-  LOG_TRX(trx, nestingLevel, "%s %s transaction", "beginning",
-          (trx->_type == TRI_TRANSACTION_READ ? "read" : "write"));
+  LOG_TRX(trx, nestingLevel) << "beginning " << (trx->_type == TRI_TRANSACTION_READ ? "read" : "write") << " transaction";
 
   if (nestingLevel == 0) {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
@@ -1346,8 +1333,7 @@ int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
-  LOG_TRX(trx, nestingLevel, "%s %s transaction", "committing",
-          (trx->_type == TRI_TRANSACTION_READ ? "read" : "write"));
+  LOG_TRX(trx, nestingLevel) << "committing " << (trx->_type == TRI_TRANSACTION_READ ? "read" : "write") << " transaction";
 
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
 
@@ -1384,8 +1370,7 @@ int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AbortTransaction(TRI_transaction_t* trx, int nestingLevel) {
-  LOG_TRX(trx, nestingLevel, "%s %s transaction", "aborting",
-          (trx->_type == TRI_TRANSACTION_READ ? "read" : "write"));
+  LOG_TRX(trx, nestingLevel) << "aborting " << (trx->_type == TRI_TRANSACTION_READ ? "read" : "write") << " transaction";
 
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
 

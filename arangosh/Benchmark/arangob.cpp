@@ -29,7 +29,7 @@
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
 #include "Basics/init.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/random.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
@@ -376,7 +376,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (Progress && numOperations >= nextReportValue) {
-      LOG_INFO("number of operations: %d", (int)nextReportValue);
+      LOG(INFO) << "number of operations: " << nextReportValue;
       nextReportValue += stepValue;
     }
 
