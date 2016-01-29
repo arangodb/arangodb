@@ -485,12 +485,10 @@ bool ApplicationEndpointServer::createSslContext() {
                               ASN1_STRFLGS_UTF8_CONVERT) &
                                  ~ASN1_STRFLGS_ESC_MSB);
 
-#ifdef TRI_ENABLE_LOGGER
           char* r;
           long len = BIO_get_mem_data(bout._bio, &r);
 
           LOG(TRACE) << "name: " << std::string(r, len).c_str();
-#endif
         }
       }
     }

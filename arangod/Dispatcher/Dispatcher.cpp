@@ -201,8 +201,6 @@ void Dispatcher::shutdown() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::reportStatus() {
-#ifdef TRI_ENABLE_LOGGER
-
   for (size_t i = 0; i < _queues.size(); ++i) {
     DispatcherQueue* queue = _queues[i];
 
@@ -210,12 +208,10 @@ void Dispatcher::reportStatus() {
       LOG(INFO) << "dispatcher queue '" << i << "': initial = " << queue->_nrThreads << ", running = " << queue->_nrRunning.load() << ", waiting = " << queue->_nrWaiting.load() << ", blocked = " << queue->_nrBlocked.load();
     }
   }
-
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the process affinity
+/// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::setProcessorAffinity(size_t id,

@@ -35,13 +35,14 @@
 #endif
 
 #include "Basics/Exceptions.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
+#include "Basics/Logger.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/shell-colors.h"
+#include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 
@@ -969,7 +970,7 @@ void TRI_SetLogLevelLogging(char const* level) {
     IsWarning = 1;
     IsInfo = 1;
 
-    LOG_ERROR("strange log level '%s'. using log level 'info'", level);
+    LOG(ERROR) << "strange log level '" << level << "'. using log level 'info'";
   }
 }
 

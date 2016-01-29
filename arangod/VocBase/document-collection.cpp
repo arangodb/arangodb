@@ -1348,7 +1348,6 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
 
   SetRevision(document, d->_rid, false);
 
-#ifdef TRI_ENABLE_LOGGER
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
 #if 0
@@ -1363,7 +1362,6 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
   }
 #endif
 
-#endif
 #endif
 
   TRI_voc_key_t key = ((char*)d) + d->_offsetKey;
