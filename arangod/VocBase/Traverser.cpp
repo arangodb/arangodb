@@ -59,6 +59,46 @@ triagens::arango::traverser::VertexId triagens::arango::traverser::IdStringToVer
   return VertexId(cid, const_cast<char *>(str + split + 1));
 }
 
+void triagens::arango::traverser::TraverserOptions::setCollections(
+    std::vector<std::string> const& colls, TRI_edge_direction_e dir) {
+  // We do not allow to reset the collections.
+  TRI_ASSERT(_collections.empty());
+  TRI_ASSERT(_directions.empty());
+  TRI_ASSERT(!colls.empty());
+  _collections = colls;
+  _directions.emplace_back(dir);
+}
+
+void triagens::arango::traverser::TraverserOptions::setCollections(
+    std::vector<std::string> const& colls,
+    std::vector<TRI_edge_direction_e> const& dirs) {
+  // We do not allow to reset the collections.
+  TRI_ASSERT(_collections.empty());
+  TRI_ASSERT(_directions.empty());
+  TRI_ASSERT(!colls.empty());
+  TRI_ASSERT(colls.size() == dirs.size());
+  _collections = colls;
+  _directions = dirs;
+}
+
+size_t triagens::arango::traverser::TraverserOptions::collectionCount () const {
+  return _collections.size();
+}
+
+bool triagens::arango::traverser::TraverserOptions::getCollection(
+    size_t const index, std::string& name, TRI_edge_direction_e& dir) const {
+  if (index >= _collections.size()) {
+    // No more collections stop now
+    return false;
+  }
+  if (_directions.size() == 1) {
+    dir = _directions.at(0);
+  } else {
+    dir = _directions.at(index);
+  }
+  name = _collections.at(index);
+  return true;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates an expression from a TRI_json_t*
 ////////////////////////////////////////////////////////////////////////////////

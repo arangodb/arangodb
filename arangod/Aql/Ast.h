@@ -607,6 +607,12 @@ namespace triagens {
 
         AstNode* createNodeDirection (uint64_t,
                                       AstNode const*);
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST direction node for specific collection
+//////////////////////////////////////////////////////////////////////////////
+   
+        AstNode* createNodeCollectionDirection(uint64_t,
+                                               AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST traversal node with only vertex variable

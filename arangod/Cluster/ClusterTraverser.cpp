@@ -123,7 +123,9 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
                                                size_t*& last,
                                                size_t& eColIdx,
                                                bool& unused) {
-  if (eColIdx >= _traverser->_edgeCols.size()) {
+  std::string collName;
+  TRI_edge_direction_e dir;
+  if (!_traverser->_opts.getCollection(eColIdx, collName, dir)) {
     // Nothing to do, caller has set a defined state already.
     return;
   }
@@ -134,7 +136,6 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     triagens::basics::Json resultEdges(triagens::basics::Json::Object);
     triagens::rest::HttpResponse::HttpResponseCode responseCode;
     std::string contentType;
-    std::string collName = _traverser->_edgeCols[eColIdx];
     std::vector<TraverserExpression*> expEdges;
     auto found = _traverser->_expressions->find(depth);
     if (found != _traverser->_expressions->end()) {
@@ -144,7 +145,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     int res = getFilteredEdgesOnCoordinator(_traverser->_dbname,
                                             collName,
                                             startVertex,
-                                            _traverser->_opts.direction,
+                                            dir,
                                             expEdges,
                                             responseCode,
                                             contentType,
@@ -315,10 +316,6 @@ triagens::arango::traverser::TraversalPath* ClusterTraverser::next () {
   }
 
   std::unique_ptr<ClusterTraversalPath> p(new ClusterTraversalPath(this, path));
-  if (_opts.shouldPrunePath(p.get())) {
-    _enumerator->prune();
-    return next();
-  }
   if (countEdges >= _opts.maxDepth) {
     _pruneNext = true;
   }

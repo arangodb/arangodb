@@ -46,6 +46,24 @@ static uint64_t checkTraversalDepthValue (AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
+static TRI_edge_direction_e parseDirection (AstNode const* node) {
+  TRI_ASSERT(node->isIntValue());
+  auto dirNum = node->getIntValue();
+
+  switch (dirNum) {
+    case 0:
+      return TRI_EDGE_ANY;
+    case 1:
+      return TRI_EDGE_IN;
+    case 2:
+      return TRI_EDGE_OUT;
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          "direction can only be INBOUND, OUTBOUND or ANY");
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                  struct SimpleTraverserExpression
 // -----------------------------------------------------------------------------
@@ -105,12 +123,50 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
 
   std::unique_ptr<arango::CollectionNameResolver> resolver(new arango::CollectionNameResolver(vocbase));
 
+  // Parse Steps and direction
+  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
+  TRI_ASSERT(direction->numMembers() == 2);
+  // Member 0 is the direction. Already the correct Integer.
+  // Is not inserted by user but by enum.
+  TRI_edge_direction_e baseDirection = parseDirection(direction->getMember(0));
+  auto steps = direction->getMember(1);
+
+  if (steps->isNumericValue()) {
+    // Check if a double value is integer
+    _minDepth = checkTraversalDepthValue(steps);
+    _maxDepth = _minDepth;
+  } else if (steps->type == NODE_TYPE_RANGE) {
+    // Range depth
+    _minDepth = checkTraversalDepthValue(steps->getMember(0));
+    _maxDepth = checkTraversalDepthValue(steps->getMember(1));
+
+    if (_maxDepth < _minDepth) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
+  }
+
+
+
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     _graphJson = triagens::basics::Json(triagens::basics::Json::Array, edgeCollectionCount);
+    _edgeColls.reserve(edgeCollectionCount);
+    _directions.reserve(edgeCollectionCount);
     // List of edge collection names
     for (size_t i = 0; i <  edgeCollectionCount; ++i) {
-      auto eColName = graph->getMember(i)->getStringValue();
+      auto col = graph->getMember(i);
+      if (col->type == NODE_TYPE_DIRECTION) {
+        // We have a collection with special direction.
+        TRI_edge_direction_e dir = parseDirection(col->getMember(0));
+        _directions.emplace_back(dir);
+        col = col->getMember(1);
+      } else {
+        _directions.emplace_back(baseDirection);
+      }
+
+      std::string eColName = col->getStringValue();
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
@@ -130,8 +186,12 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
         }
 
         auto eColls = _graphObj->edgeCollections();
+        size_t length = eColls.size();
+        _edgeColls.reserve(length);
+        _directions.reserve(length);
         for (const auto& n: eColls) {
           _edgeColls.push_back(n);
+          _directions.emplace_back(baseDirection);
         }
       }
     }
@@ -153,48 +213,6 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid start vertex. Must either be an _id string or an object with _id.");
   }
-
-  // Parse Steps and direction
-  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
-  TRI_ASSERT(direction->numMembers() == 2);
-  // Member 0 is the direction. Already the correct Integer.
-  // Is not inserted by user but by enum.
-  auto dir = direction->getMember(0);
-  auto steps = direction->getMember(1);
-  TRI_ASSERT(dir->isIntValue());
-  auto dirNum = dir->getIntValue();
-
-  switch (dirNum) {
-    case 0:
-      _direction = TRI_EDGE_ANY;
-      break;
-    case 1:
-      _direction = TRI_EDGE_IN;
-      break;
-    case 2:
-      _direction = TRI_EDGE_OUT;
-      break;
-    default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "direction can only be INBOUND, OUTBOUND or ANY");
-      break;
-  }
-
-  if (steps->isNumericValue()) {
-    // Check if a double value is integer
-    _minDepth = checkTraversalDepthValue(steps);
-    _maxDepth = _minDepth;
-  } else if (steps->type == NODE_TYPE_RANGE) {
-    // Range depth
-    _minDepth = checkTraversalDepthValue(steps->getMember(0));
-    _maxDepth = checkTraversalDepthValue(steps->getMember(1));
-
-    if (_maxDepth < _minDepth) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
-  }
-
 }
 
 
@@ -204,7 +222,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
                        std::vector<std::string> const& edgeColls,
                        Variable const* inVariable,
                        std::string const& vertexId,
-                       TRI_edge_direction_e direction,
+                       std::vector<TRI_edge_direction_e> directions,
                        uint64_t minDepth,
                        uint64_t maxDepth)
   : ExecutionNode(plan, id),
@@ -216,7 +234,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _vertexId(vertexId),
     _minDepth(minDepth),
     _maxDepth(maxDepth),
-    _direction(direction),
+    _directions(directions),
     _CalculationNodeId(0),
    _condition(nullptr) {
 
@@ -235,141 +253,149 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _inVariable(nullptr),
     _condition(nullptr) {
 
-  _minDepth = triagens::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
-  _maxDepth = triagens::basics::JsonHelper::stringUInt64(base.json(), "maxDepth");
-  uint64_t dir = triagens::basics::JsonHelper::stringUInt64(base.json(), "direction");
-  switch (dir) {
-    case 0:
-      _direction = TRI_EDGE_ANY;
-      break;
-    case 1:
-      _direction = TRI_EDGE_IN;
-      break;
-    case 2:
-      _direction = TRI_EDGE_OUT;
-      break;
-    default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Invalid direction value");
-      break;
-  }
-
-  // In Vertex
-  if (base.has("inVariable")) {
-    _inVariable = varFromJson(plan->getAst(), base, "inVariable");
-  }
-  else {
-    _vertexId = triagens::basics::JsonHelper::getStringValue(base.json(), "vertexId", "");  
-    if (_vertexId.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "start vertex mustn't be empty.");
-    }
-  }
-
-  if (base.has("condition")) {
-    TRI_json_t const* condition = JsonHelper::checkAndGetObjectValue(base.json(), "condition");
-
-    if (condition != nullptr) {
-      triagens::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition, triagens::basics::Json::NOFREE);
-      _condition = Condition::fromJson(plan, conditionJson);
-    }
-  }
-
-  std::string graphName;
-  if (base.has("graph") && (base.get("graph").isString())) {
-    graphName = JsonHelper::checkAndGetStringValue(base.json(), "graph");
-    if (base.has("graphDefinition")) {
-      _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
-
-      if (_graphObj == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+      _minDepth = triagens::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
+      _maxDepth = triagens::basics::JsonHelper::stringUInt64(base.json(), "maxDepth");
+      auto dirList = base.get("directions");
+      TRI_ASSERT(dirList.json() != nullptr);
+      for (size_t i = 0; i < dirList.size(); ++i) {
+        auto dirJson = dirList.at(i);
+        uint64_t dir = triagens::basics::JsonHelper::stringUInt64(dirJson.json());
+        TRI_edge_direction_e d;
+        switch (dir) {
+          case 0:
+            d = TRI_EDGE_ANY;
+            break;
+          case 1:
+            d = TRI_EDGE_IN;
+            break;
+          case 2:
+            d = TRI_EDGE_OUT;
+            break;
+          default:
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                "Invalid direction value");
+            break;
+        }
+        _directions.emplace_back(d);
       }
 
-      auto eColls = _graphObj->edgeCollections();
-      for (const auto& n: eColls) {
-        _edgeColls.push_back(n);
+      // In Vertex
+      if (base.has("inVariable")) {
+        _inVariable = varFromJson(plan->getAst(), base, "inVariable");
       }
-    }
-    else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "missing graphDefinition.");
-    }
-  }
-  else {
-    _graphJson = base.get("graph").copy(); 
-    if (!_graphJson.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array.");
-    }
-    size_t edgeCollectionCount = _graphJson.size();
-    // List of edge collection names
-    for (size_t i = 0; i < edgeCollectionCount; ++i) {
-      auto at = _graphJson.at(i);
-      if (!at.isString()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array of strings.");
-      }
-      _edgeColls.push_back(at.json()->_value._string.data);
-    }
-    if (_edgeColls.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be a non empty array of strings.");
-    }
-  }
-
-  if (base.has("simpleExpressions")) {
-    auto simpleExpSet = base.get("simpleExpressions");
-    
-    if (!simpleExpSet.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions has to be an array.");
-    }
-    size_t nExpressionSets = simpleExpSet.members();
-    // List of edge collection names
-    for (size_t i = 0; i < nExpressionSets; i += 2) {
-      auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&simpleExpSet.json()->_value._objects, i));
-
-      if (! TRI_IsStringJson(key)) {
-        // no string, should not happen
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions object: key wrong.");
+      else {
+        _vertexId = triagens::basics::JsonHelper::getStringValue(base.json(), "vertexId", "");  
+        if (_vertexId.empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "start vertex mustn't be empty.");
+        }
       }
 
-      std::string const k(key->_value._string.data, key->_value._string.length - 1);
+      if (base.has("condition")) {
+        TRI_json_t const* condition = JsonHelper::checkAndGetObjectValue(base.json(), "condition");
 
-      auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&simpleExpSet.json()->_value._objects, i + 1));
-
-      if (value == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions object: value wrong.");
+        if (condition != nullptr) {
+          triagens::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition, triagens::basics::Json::NOFREE);
+          _condition = Condition::fromJson(plan, conditionJson);
+        }
       }
 
-      Json oneExpressionSetJson(TRI_UNKNOWN_MEM_ZONE, value);
-      size_t oneSetLength = oneExpressionSetJson.size();
-      if (oneSetLength == 0) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions one expression set has to be an array.");
-      }
-      
-      std::vector<triagens::arango::traverser::TraverserExpression*> oneExpressionSet;
-      oneExpressionSet.reserve(oneSetLength);
-      size_t n = std::stoull(k);
-      _expressions.emplace(n, oneExpressionSet);
-      auto it = _expressions.find(n);
+      std::string graphName;
+      if (base.has("graph") && (base.get("graph").isString())) {
+        graphName = JsonHelper::checkAndGetStringValue(base.json(), "graph");
+        if (base.has("graphDefinition")) {
+          _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
-      for (size_t j = 0; j < oneSetLength; j++) {
-        auto sx = oneExpressionSetJson.at(j);
-        std::unique_ptr<SimpleTraverserExpression> oneX(new SimpleTraverserExpression(plan->getAst(), sx));
-        it->second.emplace_back(oneX.get());
-        oneX.release();
+          if (_graphObj == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+          }
+
+          auto eColls = _graphObj->edgeCollections();
+          for (const auto& n: eColls) {
+            _edgeColls.push_back(n);
+          }
+        }
+        else {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "missing graphDefinition.");
+        }
+      }
+      else {
+        _graphJson = base.get("graph").copy(); 
+        if (!_graphJson.isArray()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array.");
+        }
+        size_t edgeCollectionCount = _graphJson.size();
+        // List of edge collection names
+        for (size_t i = 0; i < edgeCollectionCount; ++i) {
+          auto at = _graphJson.at(i);
+          if (!at.isString()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array of strings.");
+          }
+          _edgeColls.push_back(at.json()->_value._string.data);
+        }
+        if (_edgeColls.empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be a non empty array of strings.");
+        }
+      }
+
+      if (base.has("simpleExpressions")) {
+        auto simpleExpSet = base.get("simpleExpressions");
+
+        if (!simpleExpSet.isObject()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions has to be an array.");
+        }
+        size_t nExpressionSets = simpleExpSet.members();
+        // List of edge collection names
+        for (size_t i = 0; i < nExpressionSets; i += 2) {
+          auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&simpleExpSet.json()->_value._objects, i));
+
+          if (! TRI_IsStringJson(key)) {
+            // no string, should not happen
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions object: key wrong.");
+          }
+
+          std::string const k(key->_value._string.data, key->_value._string.length - 1);
+
+          auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&simpleExpSet.json()->_value._objects, i + 1));
+
+          if (value == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions object: value wrong.");
+          }
+
+          Json oneExpressionSetJson(TRI_UNKNOWN_MEM_ZONE, value);
+          size_t oneSetLength = oneExpressionSetJson.size();
+          if (oneSetLength == 0) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions one expression set has to be an array.");
+          }
+
+          std::vector<triagens::arango::traverser::TraverserExpression*> oneExpressionSet;
+          oneExpressionSet.reserve(oneSetLength);
+          size_t n = std::stoull(k);
+          _expressions.emplace(n, oneExpressionSet);
+          auto it = _expressions.find(n);
+
+          for (size_t j = 0; j < oneSetLength; j++) {
+            auto sx = oneExpressionSetJson.at(j);
+            std::unique_ptr<SimpleTraverserExpression> oneX(new SimpleTraverserExpression(plan->getAst(), sx));
+            it->second.emplace_back(oneX.get());
+            oneX.release();
+          }
+        }
+        if (_expressions.empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions has to be non empty.");
+        }
+      }
+
+      // Out variables
+      if (base.has("vertexOutVariable")) {
+        _vertexOutVariable = varFromJson(plan->getAst(), base, "vertexOutVariable");
+      }
+      if (base.has("edgeOutVariable")) {
+        _edgeOutVariable = varFromJson(plan->getAst(), base, "edgeOutVariable");
+      }
+      if (base.has("pathOutVariable")) {
+        _pathOutVariable = varFromJson(plan->getAst(), base, "pathOutVariable");
       }
     }
-    if (_expressions.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions has to be non empty.");
-    }
-  }
-
-  // Out variables
-  if (base.has("vertexOutVariable")) {
-    _vertexOutVariable = varFromJson(plan->getAst(), base, "vertexOutVariable");
-  }
-  if (base.has("edgeOutVariable")) {
-    _edgeOutVariable = varFromJson(plan->getAst(), base, "edgeOutVariable");
-  }
-  if (base.has("pathOutVariable")) {
-    _pathOutVariable = varFromJson(plan->getAst(), base, "pathOutVariable");
-  }
-}
 
 int TraversalNode::checkIsOutVariable (size_t variableId) const {
   if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
@@ -400,8 +426,13 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
   json("database", triagens::basics::Json(_vocbase->_name))
       ("minDepth", triagens::basics::Json(static_cast<double>(_minDepth)))
       ("maxDepth", triagens::basics::Json(static_cast<double>(_maxDepth)))
-      ("direction", triagens::basics::Json(static_cast<int32_t>(_direction)))
       ("graph" , _graphJson.copy());
+
+  triagens::basics::Json dirJson = triagens::basics::Json(triagens::basics::Json::Array, _directions.size());
+  for (auto const& d : _directions) {
+    dirJson.add(triagens::basics::Json(static_cast<int32_t>(d)));
+  }
+  json("directions", dirJson);
 
   // In variable
   if (usesInVariable()) {
@@ -460,7 +491,7 @@ ExecutionNode* TraversalNode::clone (ExecutionPlan* plan,
                                      bool withDependencies,
                                      bool withProperties) const {
   auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
-                             _vertexId, _direction, _minDepth, _maxDepth);
+                             _vertexId, _directions, _minDepth, _maxDepth);
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -531,9 +562,9 @@ double TraversalNode::estimateCost (size_t& nrItems) const {
 }
 
 void TraversalNode::fillTraversalOptions (triagens::arango::traverser::TraverserOptions& opts) const {
-  opts.direction = _direction;
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
+  opts.setCollections(_edgeColls, _directions);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

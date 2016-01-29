@@ -1144,7 +1144,13 @@ AstNode* Ast::createNodeCollectionList (AstNode const* edgeCollections) {
 
     if (eC->isStringValue()) {
       _query->collections()->add(eC->getStringValue(), TRI_TRANSACTION_READ);
-    } // else bindParameter use default for collection bindVar
+    } else if (eC->type == NODE_TYPE_DIRECTION) {
+      TRI_ASSERT(eC->numMembers() == 2);
+      auto eCSub = eC->getMember(1);
+      if (eCSub->isStringValue()) {
+        _query->collections()->add(eCSub->getStringValue(), TRI_TRANSACTION_READ);
+      }
+    }// else bindParameter use default for collection bindVar
     // We do not need to propagate these members
     node->addMember(eC);
   }
@@ -1180,6 +1186,16 @@ AstNode* Ast::createNodeDirection (uint64_t direction,
   return node;
 }
 
+AstNode* Ast::createNodeCollectionDirection(uint64_t direction, AstNode const* collection) {
+  AstNode* node = createNode(NODE_TYPE_DIRECTION);
+  AstNode* dir = createNodeValueInt(direction);
+
+  node->addMember(dir);
+  node->addMember(collection);
+
+  TRI_ASSERT(node->numMembers() == 2);
+  return node;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST traversal node with only vertex variable
 ////////////////////////////////////////////////////////////////////////////////

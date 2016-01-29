@@ -1194,6 +1194,18 @@ graph_collection:
       }
       $$ = $1;
     }
+  | graph_direction T_STRING {
+      auto tmp = parser->ast()->createNodeValueString($2.value, $2.length);
+      $$ = parser->ast()->createNodeCollectionDirection($1, tmp);
+    }
+  | graph_direction bind_parameter {
+      char const* p = $2->getStringValue();
+      size_t const len = $2->getStringLength();
+      if (len < 1 || *p != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
+      }
+      $$ = parser->ast()->createNodeCollectionDirection($1, $2);
+    }
   ;
 
 graph_collection_list:
