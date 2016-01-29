@@ -52,6 +52,8 @@ make
 make examples
 make swagger
 
+make jslint
+
 (
   cd js/apps/system/_admin/aardvark/APP
   npm install --only=dev
