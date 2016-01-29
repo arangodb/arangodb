@@ -1212,8 +1212,7 @@ int ArangoServer::startupServer() {
     LOG_INFO("Authentication is turned off");
   }
 
-  LOG_INFO("ArangoDB (version " TRI_VERSION_FULL
-           ") is ready for business. Have fun!");
+  LOG_INFO("ArangoDB (version %s) is ready for business. Have fun!", TRI_VERSION_FULL);
 
   startupFinished();
 
