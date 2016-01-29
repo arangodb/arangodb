@@ -30,6 +30,9 @@
 #include "V8Server/v8-wrapshapedjson.h"
 #include "VocBase/VocShaper.h"
 
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
@@ -718,6 +721,78 @@ Json AqlValue::toJson(arangodb::AqlTransaction* trx,
   }
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+// NOTE IMPORTANT: During the moving Process of shaped => VPACK
+// This function is slower than toJson().
+// It is just used for validation purposes of the callers
+std::shared_ptr<VPackBuffer<uint8_t>> AqlValue::toVelocyPack(
+    arangodb::AqlTransaction* trx, TRI_document_collection_t const* document,
+    bool copy) const {
+  VPackBuilder builder;
+  toVelocyPack(trx, document, copy, builder);
+  return builder.steal();
+}
+
+void AqlValue::toVelocyPack(arangodb::AqlTransaction* trx,
+                            TRI_document_collection_t const* document,
+                            bool copy, VPackBuilder& builder) const {
+  switch (_type) {
+    case JSON: {
+      TRI_ASSERT(_json != nullptr);
+      // TODO: Internal is still JSON. We always copy.
+      int res = arangodb::basics::JsonHelper::toVelocyPack(_json->json(), builder);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    case SHAPED: {
+      TRI_ASSERT(document != nullptr);
+      TRI_ASSERT(_marker != nullptr);
+      auto shaper = document->getShaper();
+      Json tmp = TRI_ExpandShapedJson(shaper, trx->resolver(),
+                                                document->_info.id(), _marker);
+      int res = arangodb::basics::JsonHelper::toVelocyPack(tmp.json(), builder);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    case DOCVEC: {
+      TRI_ASSERT(_vector != nullptr);
+      try {
+        VPackArrayBuilder b(&builder);
+        for (auto const& current : *_vector) {
+          size_t const n = current->size();
+          auto vecCollection = current->getDocumentCollection(0);
+          for (size_t i = 0; i < n; ++i) {
+            current->getValueReference(i, 0)
+                .toVelocyPack(trx, vecCollection, true, builder);
+          }
+        }
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+    }
+    case RANGE: {
+      TRI_ASSERT(_range != nullptr);
+      try {
+        VPackArrayBuilder b(&builder);
+        size_t const n = _range->size();
+        for (size_t i = 0; i < n; ++i) {
+          builder.add(VPackValue(_range->at(i)));
+        }
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+    }
+    case EMPTY: {
+      builder.add(VPackValue(VPackValueType::Null));
+    }
+    default: {
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

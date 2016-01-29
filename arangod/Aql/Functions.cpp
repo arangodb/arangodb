@@ -42,6 +42,9 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using CollectionNameResolver = arangodb::CollectionNameResolver;
@@ -148,6 +151,26 @@ static Json ExtractFunctionParameter(arangodb::AqlTransaction* trx,
 
   auto const& parameter = parameters[position];
   return parameter.first.toJson(trx, parameter.second, copy);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a function parameter from the arguments list
+///        VelocyPack variant
+///        TODO: I think this could return a Slice instead.
+///              Iff the AQLValue is repsonsible for the data
+////////////////////////////////////////////////////////////////////////////////
+
+static std::shared_ptr<VPackBuffer<uint8_t>> ExtractFunctionParameterVPack(
+    arangodb::AqlTransaction* trx, FunctionParameters const& parameters,
+    size_t position, bool copy) {
+  if (position >= parameters.size()) {
+    // parameter out of range
+    VPackBuilder b;
+    b.add(VPackValue(VPackValueType::Null));
+    return b.steal();
+  }
+  auto const& parameter = parameters[position];
+  return parameter.first.toVelocyPack(trx, parameter.second, copy);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,6 +294,53 @@ static double ValueToNumber(TRI_json_t const* json, bool& isValid) {
   return 0.0;
 }
 
+static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
+  if (slice.isNull()) {
+    isValid = true;
+    return 0.0;
+  }
+  if (slice.isBoolean()) {
+    isValid = true;
+    return (slice.getBoolean() ? 1.0 : 0.0);
+  }
+  if (slice.isNumber()) {
+    isValid = true;
+    return slice.getNumericValue<double>();
+  }
+  if (slice.isString()) {
+    try {
+      std::string const str = slice.copyString();
+      size_t behind = 0;
+      double value = std::stod(str, &behind);
+      while (behind < str.size()) {
+        char c = str[behind];
+        if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
+          isValid = false;
+          return 0.0;
+        }
+        ++behind;
+      }
+      isValid = true;
+      return value;
+    } catch (...) {
+    }
+  }
+  if (slice.isArray()) {
+    VPackValueLength const n = slice.length();
+    if (n == 0) {
+      isValid = true;
+      return 0.0;
+    }
+    if (n == 1) {
+      return ValueToNumber(slice.at(0), isValid);
+    }
+  }
+
+  // All other values are invalid
+  isValid = false;
+  return 0.0;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a value into a boolean value
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,6 +361,22 @@ static bool ValueToBoolean(TRI_json_t const* json) {
   }
 
   return boolValue;
+}
+
+static bool ValueToBoolean(VPackSlice const& slice) {
+  if (slice.isBoolean()) {
+    return slice.getBoolean();
+  }
+  if (slice.isNumber()) {
+    return slice.getNumericValue<double>() != 0.0;
+  }
+  if (slice.isString()) {
+    return slice.length() != 0;
+  }
+  if (slice.isArray() || slice.isObject()) {
+    return true;
+  }
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -426,6 +512,24 @@ static bool ListContainsElement(Json const& list, Json const& testee) {
   return ListContainsElement(list, testee, unused);
 }
 
+static bool ListContainsElement(VPackSlice const& list,
+                                VPackSlice const& testee, size_t& index) {
+  TRI_ASSERT(list.isArray());
+  for (size_t i = 0; i < static_cast<size_t>(list.length()); ++i) {
+    if (arangodb::basics::VelocyPackHelper::compare(testee, list.at(i),
+                                                    false) == 0) {
+      index = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool ListContainsElement(VPackSlice const& list, VPackSlice const& testee) {
+  size_t unused;
+  return ListContainsElement(list, testee, unused);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Computes the Variance of the given list.
 ///        If successful value will contain the variance and count
@@ -456,6 +560,29 @@ static bool Variance(Json const& values, double& value, size_t& count) {
   return true;
 }
 
+static bool Variance(VPackSlice const& values, double& value, size_t& count) {
+  TRI_ASSERT(values.isArray());
+  value = 0.0;
+  count = 0;
+  bool unused = false;
+  double mean = 0;
+  for (auto const& element : VPackArrayIterator(values)) {
+    if (!element.isNull()) {
+      if (!element.isNumber()) {
+        return false;
+      }
+      double current = ValueToNumber(element, unused);
+      count++;
+      double delta = current - mean;
+      mean += delta / count;
+      value += delta * (current - mean);
+    }
+  }
+  return true;
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Sorts the given list of Numbers in ASC order.
 ///        Removes all null entries.
@@ -473,6 +600,29 @@ static bool SortNumberList(Json const& values, std::vector<double>& result) {
         return false;
       }
       result.emplace_back(ValueToNumber(element.json(), unused));
+    }
+  }
+  std::sort(result.begin(), result.end());
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Sorts the given list of Numbers in ASC order.
+///        Removes all null entries.
+///        Returns false if the list contains non-number values.
+////////////////////////////////////////////////////////////////////////////////
+
+static bool SortNumberList(VPackSlice const& values,
+                           std::vector<double>& result) {
+  TRI_ASSERT(values.isArray());
+  TRI_ASSERT(result.empty());
+  bool unused;
+  for (auto const& element : VPackArrayIterator(values)) {
+    if (!element.isNull()) {
+      if (!element.isNumber()) {
+        return false;
+      }
+      result.emplace_back(ValueToNumber(element, unused));
     }
   }
   std::sort(result.begin(), result.end());
@@ -689,6 +839,14 @@ AqlValue Functions::IsNull(arangodb::aql::Query*,
   return AqlValue(new Json(value.isNull()));
 }
 
+AqlValue Functions::IsNullVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction* trx,
+                                FunctionParameters const& parameters) {
+  auto const buffer = ExtractFunctionParameterVPack(trx, parameters, 0, false);
+  VPackSlice s(buffer->data());
+  return AqlValue(new Json(s.isNull()));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function IS_BOOL
 ////////////////////////////////////////////////////////////////////////////////
@@ -698,6 +856,14 @@ AqlValue Functions::IsBool(arangodb::aql::Query*,
                            FunctionParameters const& parameters) {
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isBoolean()));
+}
+
+AqlValue Functions::IsBoolVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction* trx,
+                                FunctionParameters const& parameters) {
+  auto const buffer = ExtractFunctionParameterVPack(trx, parameters, 0, false);
+  VPackSlice s(buffer->data());
+  return AqlValue(new Json(s.isBoolean()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

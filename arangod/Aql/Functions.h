@@ -62,13 +62,14 @@ struct Functions {
 
   static void DestroyThreadContext();
 
-  
-  static AqlValue IsNull(arangodb::aql::Query*,
-                         arangodb::AqlTransaction*,
+  static AqlValue IsNull(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
-  static AqlValue IsBool(arangodb::aql::Query*,
-                         arangodb::AqlTransaction*,
+  static AqlValue IsNullVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              FunctionParameters const&);
+  static AqlValue IsBool(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
+  static AqlValue IsBoolVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              FunctionParameters const&);
   static AqlValue IsNumber(arangodb::aql::Query*,
                            arangodb::AqlTransaction*,
                            FunctionParameters const&);
