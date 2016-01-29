@@ -736,7 +736,14 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
       auto shaper = document->getShaper();
       TRI_shaped_json_t shaped;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
-      Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
+      
+      auto v = TRI_JsonShapedJson(shaper, &shaped);
+
+      if (v == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      Json json(shaper->memoryZone(), v);
 
       // append the internal attributes
 
@@ -914,7 +921,13 @@ Json AqlValue::extractObjectMember (triagens::arango::AqlTransaction* trx,
         bool ok = shaper->extractShapedJson(&document, 0, pid, &json, &shape);
 
         if (ok && shape != nullptr) {
-          return Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &json));
+          auto v = TRI_JsonShapedJson(shaper, &json);
+
+          if (v == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          return Json(TRI_UNKNOWN_MEM_ZONE, v);
         }
       }
 

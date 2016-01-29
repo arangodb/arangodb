@@ -1929,7 +1929,6 @@ static ExplicitTransaction* BeginTransaction (TRI_vocbase_t* vocbase,
   int res = trx->begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    trx->finish(res);
     THROW_ARANGO_EXCEPTION(res);
   }
 

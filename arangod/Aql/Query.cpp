@@ -318,6 +318,10 @@ Query* Query::clone (QueryPart part,
 
   if (_options != nullptr) {
     options.reset(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _options));
+
+    if (options == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   }
 
   std::unique_ptr<Query> clone;
@@ -658,6 +662,10 @@ QueryResult Query::execute (QueryRegistry* registry) {
         res.stats    = nullptr;
         res.cached   = true;
 
+        if (res.json == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
         return res;
       } 
     }
@@ -703,14 +711,25 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
-          QueryCache::instance()->store(
+          std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()));
+
+          if (copy == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          auto result = QueryCache::instance()->store(
             _vocbase, 
             queryStringHash, 
             _queryString, 
             _queryLength, 
-            TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()), 
+            copy.get(),
             _trx->collectionNames()
           );
+
+          if (result != nullptr) {
+            // result now belongs to cache
+            copy.release();
+          }
         }
       }
       else {

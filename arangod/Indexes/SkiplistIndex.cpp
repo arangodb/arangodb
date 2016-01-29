@@ -73,9 +73,8 @@ static TRI_index_operator_t* buildBoundOperator (TRI_json_t const* bound,
                                                  bool upper,
                                                  TRI_json_t const* parameters,
                                                  VocShaper* shaper) {
-  if (bound == nullptr) {
-    return nullptr;
-  }
+  TRI_ASSERT(bound != nullptr);
+  
   std::unique_ptr<TRI_index_operator_t> boundOperator;
   TRI_index_operator_type_e type;
   if (includeEqual) {
@@ -103,6 +102,7 @@ static TRI_index_operator_t* buildBoundOperator (TRI_json_t const* bound,
     paramCopy.reset(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters));
   }
   if (paramCopy == nullptr) {
+    // out of memory
     return nullptr;
   }
 
@@ -130,8 +130,23 @@ static TRI_index_operator_t* buildRangeOperator (TRI_json_t const* lowerBound,
                                                  bool upperBoundInclusive,
                                                  TRI_json_t const* parameters,
                                                  VocShaper* shaper) {
-  std::unique_ptr<TRI_index_operator_t> lowerOperator(buildBoundOperator(lowerBound, lowerBoundInclusive, false, parameters, shaper));
-  std::unique_ptr<TRI_index_operator_t> upperOperator(buildBoundOperator(upperBound, upperBoundInclusive, true, parameters, shaper));
+  std::unique_ptr<TRI_index_operator_t> lowerOperator;
+  if (lowerBound != nullptr) {
+    lowerOperator.reset(buildBoundOperator(lowerBound, lowerBoundInclusive, false, parameters, shaper));
+
+    if (lowerOperator == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  }
+
+  std::unique_ptr<TRI_index_operator_t> upperOperator;
+  if (upperBound != nullptr) {
+    upperOperator.reset(buildBoundOperator(upperBound, upperBoundInclusive, true, parameters, shaper));
+
+    if (upperOperator == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  }
 
   /*
   std::cout << "LOWER BOUND: " << lowerBound << ", LOWER INCLUSIVE: " << lowerBoundInclusive << "\n";
@@ -1500,6 +1515,10 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       // create all permutations
       while (! done) {
         std::unique_ptr<TRI_json_t> parameter(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, usedFields));
+
+        if (parameter == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
 
         bool valid = true;
         for (size_t i = 0; i < usedFields; ++i) {

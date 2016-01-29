@@ -2127,6 +2127,9 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (VocShaper* shaper,
 
 TRI_json_t* TRI_JsonShapedJson (VocShaper* shaper,
                                 TRI_shaped_json_t const* shaped) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(shaped != nullptr);
+#endif
   TRI_shape_t const* shape = shaper->lookupShapeId(shaped->_sid);
 
   if (shape == nullptr) {

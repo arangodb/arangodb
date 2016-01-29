@@ -78,6 +78,9 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
             return nullptr;
           }
 
+          TRI_Insert3ObjectJson(zone, r, key->_value._string.data, merged);
+        }
+        else {
           TRI_json_t* copy = TRI_CopyJson(zone, value);
 
           if (copy == nullptr) {
@@ -85,9 +88,6 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
           }
 
           TRI_Insert3ObjectJson(zone, r, key->_value._string.data, copy);
-        }
-        else {
-          TRI_Insert3ObjectJson(zone, r, key->_value._string.data, TRI_CopyJson(zone, value));
         }
       }
       else {
