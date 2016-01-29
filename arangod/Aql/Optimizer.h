@@ -95,6 +95,8 @@ class Optimizer {
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule_pass1 = 105,
+    
+    inlineSubqueriesRule_pass1 = 106,
 
     // split and-combined filters into multiple smaller filters
     splitFiltersRule_pass1 = 110,

@@ -380,7 +380,11 @@ QueryCache::QueryCache() : _propertiesLock(), _entriesLock(), _entries() {}
 /// @brief destroy the query cache
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryCache::~QueryCache() { invalidate(); }
+QueryCache::~QueryCache() { 
+  for (unsigned int i = 0; i < NumberOfParts; ++i) {
+    invalidate(i);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the query cache properties

@@ -238,19 +238,14 @@ bool ServerState::isRunningInCluster() {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState::RoleEnum ServerState::getRole() {
-  std::string id;
-  std::string info;
+  auto role = loadRole();
 
-  {
-    auto role = loadRole();
-
-    if (role != ServerState::ROLE_UNDEFINED || !_clusterEnabled) {
-      return role;
-    }
-
-    info = _localInfo;
-    id = _id;
+  if (role != ServerState::ROLE_UNDEFINED || !_clusterEnabled) {
+    return role;
   }
+
+  std::string info = _localInfo;
+  std::string id = _id;
 
   if (id.empty()) {
     // We need to announce ourselves in the agency to get a role configured:
@@ -275,7 +270,7 @@ ServerState::RoleEnum ServerState::getRole() {
   }
 
   // role not yet set
-  RoleEnum role = determineRole(info, id);
+  role = determineRole(info, id);
   std::string roleString = roleToString(role);
 
   LOG_DEBUG("Found my role: %s", roleString.c_str());

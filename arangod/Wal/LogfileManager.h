@@ -108,17 +108,17 @@ class LogfileManager : public rest::ApplicationFeature {
 
  public:
   void setupOptions(
-      std::map<std::string, arangodb::basics::ProgramOptionsDescription>&);
+      std::map<std::string, arangodb::basics::ProgramOptionsDescription>&) override final;
 
-  bool prepare();
+  bool prepare() override final;
 
-  bool open();
+  bool open() override final;
 
-  bool start();
+  bool start() override final;
 
-  void close();
+  void close() override final;
 
-  void stop();
+  void stop() override final;
 
  public:
   //////////////////////////////////////////////////////////////////////////////

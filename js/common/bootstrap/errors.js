@@ -247,6 +247,7 @@
     "ERROR_GRAPH_INVALID_ID"       : { "code" : 1937, "message" : "Invalid id" },
     "ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS" : { "code" : 1938, "message" : "collection used in orphans" },
     "ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST" : { "code" : 1939, "message" : "edge collection does not exist or is not part of the graph" },
+    "ERROR_GRAPH_EMPTY"            : { "code" : 1940, "message" : "empty graph" },
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" },
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" },
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" },

@@ -61,8 +61,7 @@
 ///   and some sids are in the data object (inhomogeneous lists).
 /// - 25: @LIT{IP address is invalid}
 ///   Will be raised when the structure of an IP address is invalid.
-/// - 26: @LIT{internal error if a legend for a marker does not yet exist in the
-/// same WAL file}
+/// - 26: @LIT{internal error if a legend for a marker does not yet exist in the same WAL file}
 ///   Will be raised internally, then fixed internally, and never come out to
 ///   the user.
 /// - 27: @LIT{file exists}
@@ -131,8 +130,7 @@
 /// - 1107: @LIT{database directory is locked}
 ///   Will be raised when the database directory is locked by a different
 ///   process.
-/// - 1108: @LIT{cannot create/rename collection because directory already
-/// exists}
+/// - 1108: @LIT{cannot create/rename collection because directory already exists}
 ///   Will be raised when the collection cannot be created because a directory
 ///   of the same name already exists.
 /// - 1109: @LIT{msync failed}
@@ -388,8 +386,7 @@
 ///   Will be raised when a document attribute is re-assigned.
 /// - 1540: @LIT{usage of unknown function '\%s()'}
 ///   Will be raised when an undefined function is called.
-/// - 1541: @LIT{invalid number of arguments for function '\%s()', expected
-/// number of arguments: minimum: \%d, maximum: \%d}
+/// - 1541: @LIT{invalid number of arguments for function '\%s()', expected number of arguments: minimum: \%d, maximum: \%d}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
 /// - 1542: @LIT{invalid argument type in call to function '\%s()'}
@@ -541,8 +538,7 @@
 ///   Will be raised when the edge could not be created.
 /// - 1908: @LIT{could not change edge}
 ///   Will be raised when the edge could not be changed.
-/// - 1909: @LIT{too many iterations - try increasing the value of
-/// 'maxIterations'}
+/// - 1909: @LIT{too many iterations - try increasing the value of 'maxIterations'}
 ///   Will be raised when too many iterations are done in a graph traversal.
 /// - 1910: @LIT{invalid filter result}
 ///   Will be raised when an invalid filter result is returned in a graph
@@ -580,7 +576,7 @@
 /// - 1934: @LIT{Invalid example type. Has to be Array or Object}
 ///   Invalid example type. Has to be Array or Object.
 /// - 1935: @LIT{Invalid number of arguments. Expected: }
-///   Invalid number of arguments. Expected:
+///   Invalid number of arguments. Expected: 
 /// - 1936: @LIT{Invalid parameter type.}
 ///   Invalid parameter type.
 /// - 1937: @LIT{Invalid id}
@@ -589,6 +585,8 @@
 ///   The collection is already used in the orphans of the graph.
 /// - 1939: @LIT{edge collection does not exist or is not part of the graph}
 ///   the specified edge collection does not exist or is not part of the graph.
+/// - 1940: @LIT{empty graph}
+///   The requested graph has no edge collections.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -614,7 +612,7 @@
 /// - 3005: @LIT{failed to execute script}
 ///   The script provided contains errors.
 /// - 3006: @LIT{syntax error in script}
-///    contains a syntax error:
+///    contains a syntax error: 
 /// - 3007: @LIT{mountpoint is invalid}
 ///   mountpoint is invalid
 /// - 3008: @LIT{No foxx found at this location}
@@ -650,8 +648,7 @@
 ///   The module's main file is not readable.
 /// - 3131: @LIT{main file is not of type 'js'}
 ///   The module's main file is not a JavaScript file.
-/// - 10000: @LIT{element not inserted into structure, because it already
-/// exists}
+/// - 10000: @LIT{element not inserted into structure, because it already exists}
 ///   Will be returned if the element was not insert because it already exists.
 /// - 10001: @LIT{element not found in structure}
 ///   Will be returned if the element was not found in the structure.
@@ -671,13 +668,13 @@
 /// @brief helper macro to define an error string
 ////////////////////////////////////////////////////////////////////////////////
 
-#define REG_ERROR(id, label) TRI_set_errno_string(TRI_##id, label);
+#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register all errors for ArangoDB
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeErrorMessages();
+void TRI_InitializeErrorMessages ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 0: ERROR_NO_ERROR
@@ -687,7 +684,7 @@ void TRI_InitializeErrorMessages();
 /// No error has occurred.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_NO_ERROR (0)
+#define TRI_ERROR_NO_ERROR                                                (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1: ERROR_FAILED
@@ -697,7 +694,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a general error occurred.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_FAILED (1)
+#define TRI_ERROR_FAILED                                                  (1)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2: ERROR_SYS_ERROR
@@ -707,7 +704,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when operating system error occurred.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SYS_ERROR (2)
+#define TRI_ERROR_SYS_ERROR                                               (2)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3: ERROR_OUT_OF_MEMORY
@@ -717,7 +714,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when there is a memory shortage.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_OUT_OF_MEMORY (3)
+#define TRI_ERROR_OUT_OF_MEMORY                                           (3)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 4: ERROR_INTERNAL
@@ -727,7 +724,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an internal error occurred.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_INTERNAL (4)
+#define TRI_ERROR_INTERNAL                                                (4)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 5: ERROR_ILLEGAL_NUMBER
@@ -737,7 +734,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an illegal representation of a number was given.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ILLEGAL_NUMBER (5)
+#define TRI_ERROR_ILLEGAL_NUMBER                                          (5)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 6: ERROR_NUMERIC_OVERFLOW
@@ -747,7 +744,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a numeric overflow occurred.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_NUMERIC_OVERFLOW (6)
+#define TRI_ERROR_NUMERIC_OVERFLOW                                        (6)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 7: ERROR_ILLEGAL_OPTION
@@ -757,7 +754,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an unknown option was supplied by the user.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ILLEGAL_OPTION (7)
+#define TRI_ERROR_ILLEGAL_OPTION                                          (7)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 8: ERROR_DEAD_PID
@@ -767,7 +764,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a PID without a living process was found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_DEAD_PID (8)
+#define TRI_ERROR_DEAD_PID                                                (8)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 9: ERROR_NOT_IMPLEMENTED
@@ -777,7 +774,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when hitting an unimplemented feature.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_NOT_IMPLEMENTED (9)
+#define TRI_ERROR_NOT_IMPLEMENTED                                         (9)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10: ERROR_BAD_PARAMETER
@@ -787,7 +784,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the parameter does not fulfill the requirements.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_BAD_PARAMETER (10)
+#define TRI_ERROR_BAD_PARAMETER                                           (10)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 11: ERROR_FORBIDDEN
@@ -797,7 +794,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when you are missing permission for the operation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_FORBIDDEN (11)
+#define TRI_ERROR_FORBIDDEN                                               (11)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 12: ERROR_OUT_OF_MEMORY_MMAP
@@ -807,7 +804,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when there is a memory shortage.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_OUT_OF_MEMORY_MMAP (12)
+#define TRI_ERROR_OUT_OF_MEMORY_MMAP                                      (12)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 13: ERROR_CORRUPTED_CSV
@@ -817,7 +814,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when encountering a corrupt csv line.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CORRUPTED_CSV (13)
+#define TRI_ERROR_CORRUPTED_CSV                                           (13)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 14: ERROR_FILE_NOT_FOUND
@@ -827,7 +824,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a file is not found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_FILE_NOT_FOUND (14)
+#define TRI_ERROR_FILE_NOT_FOUND                                          (14)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 15: ERROR_CANNOT_WRITE_FILE
@@ -837,7 +834,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a file cannot be written.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CANNOT_WRITE_FILE (15)
+#define TRI_ERROR_CANNOT_WRITE_FILE                                       (15)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 16: ERROR_CANNOT_OVERWRITE_FILE
@@ -847,7 +844,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an attempt is made to overwrite an existing file.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CANNOT_OVERWRITE_FILE (16)
+#define TRI_ERROR_CANNOT_OVERWRITE_FILE                                   (16)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 17: ERROR_TYPE_ERROR
@@ -857,7 +854,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a type error is unencountered.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TYPE_ERROR (17)
+#define TRI_ERROR_TYPE_ERROR                                              (17)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 18: ERROR_LOCK_TIMEOUT
@@ -867,7 +864,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when there's a timeout waiting for a lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_LOCK_TIMEOUT (18)
+#define TRI_ERROR_LOCK_TIMEOUT                                            (18)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 19: ERROR_CANNOT_CREATE_DIRECTORY
@@ -877,7 +874,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an attempt to create a directory fails.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CANNOT_CREATE_DIRECTORY (19)
+#define TRI_ERROR_CANNOT_CREATE_DIRECTORY                                 (19)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20: ERROR_CANNOT_CREATE_TEMP_FILE
@@ -887,7 +884,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an attempt to create a temporary file fails.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CANNOT_CREATE_TEMP_FILE (20)
+#define TRI_ERROR_CANNOT_CREATE_TEMP_FILE                                 (20)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21: ERROR_REQUEST_CANCELED
@@ -897,7 +894,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a request is canceled by the user.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REQUEST_CANCELED (21)
+#define TRI_ERROR_REQUEST_CANCELED                                        (21)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 22: ERROR_DEBUG
@@ -907,7 +904,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised intentionally during debugging.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_DEBUG (22)
+#define TRI_ERROR_DEBUG                                                   (22)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 23: ERROR_AID_NOT_FOUND
@@ -918,7 +915,7 @@ void TRI_InitializeErrorMessages();
 /// have been.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_AID_NOT_FOUND (23)
+#define TRI_ERROR_AID_NOT_FOUND                                           (23)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 24: ERROR_LEGEND_INCOMPLETE
@@ -929,7 +926,7 @@ void TRI_InitializeErrorMessages();
 /// and some sids are in the data object (inhomogeneous lists).
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_LEGEND_INCOMPLETE (24)
+#define TRI_ERROR_LEGEND_INCOMPLETE                                       (24)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 25: ERROR_IP_ADDRESS_INVALID
@@ -939,7 +936,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the structure of an IP address is invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_IP_ADDRESS_INVALID (25)
+#define TRI_ERROR_IP_ADDRESS_INVALID                                      (25)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 26: ERROR_LEGEND_NOT_IN_WAL_FILE
@@ -951,7 +948,7 @@ void TRI_InitializeErrorMessages();
 /// user.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_LEGEND_NOT_IN_WAL_FILE (26)
+#define TRI_ERROR_LEGEND_NOT_IN_WAL_FILE                                  (26)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 27: ERROR_FILE_EXISTS
@@ -961,7 +958,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a file already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_FILE_EXISTS (27)
+#define TRI_ERROR_FILE_EXISTS                                             (27)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 28: ERROR_LOCKED
@@ -971,7 +968,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a resource or an operation is locked.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_LOCKED (28)
+#define TRI_ERROR_LOCKED                                                  (28)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 29: ERROR_DEADLOCK
@@ -981,7 +978,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a deadlock is detected when accessing collections.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_DEADLOCK (29)
+#define TRI_ERROR_DEADLOCK                                                (29)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -991,7 +988,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the HTTP request does not fulfill the requirements.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_HTTP_BAD_PARAMETER (400)
+#define TRI_ERROR_HTTP_BAD_PARAMETER                                      (400)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 401: ERROR_HTTP_UNAUTHORIZED
@@ -1002,7 +999,7 @@ void TRI_InitializeErrorMessages();
 /// authorized.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_HTTP_UNAUTHORIZED (401)
+#define TRI_ERROR_HTTP_UNAUTHORIZED                                       (401)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 403: ERROR_HTTP_FORBIDDEN
@@ -1012,7 +1009,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the operation is forbidden.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_HTTP_FORBIDDEN (403)
+#define TRI_ERROR_HTTP_FORBIDDEN                                          (403)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 404: ERROR_HTTP_NOT_FOUND
@@ -1022,7 +1019,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an URI is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_HTTP_NOT_FOUND (404)
+#define TRI_ERROR_HTTP_NOT_FOUND                                          (404)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 405: ERROR_HTTP_METHOD_NOT_ALLOWED
@@ -1032,7 +1029,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an unsupported HTTP method is used for an operation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_HTTP_METHOD_NOT_ALLOWED (405)
+#define TRI_ERROR_HTTP_METHOD_NOT_ALLOWED                                 (405)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 412: ERROR_HTTP_PRECONDITION_FAILED
@@ -1042,7 +1039,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a precondition for an HTTP request is not met.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_HTTP_PRECONDITION_FAILED (412)
+#define TRI_ERROR_HTTP_PRECONDITION_FAILED                                (412)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 500: ERROR_HTTP_SERVER_ERROR
@@ -1052,7 +1049,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an internal server is encountered.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_HTTP_SERVER_ERROR (500)
+#define TRI_ERROR_HTTP_SERVER_ERROR                                       (500)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 600: ERROR_HTTP_CORRUPTED_JSON
@@ -1062,7 +1059,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a string representation of a JSON object is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_HTTP_CORRUPTED_JSON (600)
+#define TRI_ERROR_HTTP_CORRUPTED_JSON                                     (600)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 601: ERROR_HTTP_SUPERFLUOUS_SUFFICES
@@ -1072,7 +1069,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the URL contains superfluous suffices.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES (601)
+#define TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES                               (601)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1000: ERROR_ARANGO_ILLEGAL_STATE
@@ -1083,7 +1080,7 @@ void TRI_InitializeErrorMessages();
 /// state.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_ILLEGAL_STATE (1000)
+#define TRI_ERROR_ARANGO_ILLEGAL_STATE                                    (1000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1001: ERROR_ARANGO_SHAPER_FAILED
@@ -1093,7 +1090,7 @@ void TRI_InitializeErrorMessages();
 /// Internal error that will be raised when the shaper encountered a problem.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_SHAPER_FAILED (1001)
+#define TRI_ERROR_ARANGO_SHAPER_FAILED                                    (1001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1002: ERROR_ARANGO_DATAFILE_SEALED
@@ -1103,7 +1100,7 @@ void TRI_InitializeErrorMessages();
 /// Internal error that will be raised when trying to write to a datafile.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATAFILE_SEALED (1002)
+#define TRI_ERROR_ARANGO_DATAFILE_SEALED                                  (1002)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1003: ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE
@@ -1114,7 +1111,7 @@ void TRI_InitializeErrorMessages();
 /// encountered.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE (1003)
+#define TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE                          (1003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1004: ERROR_ARANGO_READ_ONLY
@@ -1125,7 +1122,7 @@ void TRI_InitializeErrorMessages();
 /// datafile or collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_READ_ONLY (1004)
+#define TRI_ERROR_ARANGO_READ_ONLY                                        (1004)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1005: ERROR_ARANGO_DUPLICATE_IDENTIFIER
@@ -1135,7 +1132,7 @@ void TRI_InitializeErrorMessages();
 /// Internal error that will be raised when a identifier duplicate is detected.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER (1005)
+#define TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER                             (1005)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1006: ERROR_ARANGO_DATAFILE_UNREADABLE
@@ -1145,7 +1142,7 @@ void TRI_InitializeErrorMessages();
 /// Internal error that will be raised when a datafile is unreadable.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATAFILE_UNREADABLE (1006)
+#define TRI_ERROR_ARANGO_DATAFILE_UNREADABLE                              (1006)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1007: ERROR_ARANGO_DATAFILE_EMPTY
@@ -1155,7 +1152,7 @@ void TRI_InitializeErrorMessages();
 /// Internal error that will be raised when a datafile is empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATAFILE_EMPTY (1007)
+#define TRI_ERROR_ARANGO_DATAFILE_EMPTY                                   (1007)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1008: ERROR_ARANGO_RECOVERY
@@ -1165,7 +1162,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an error occurred during WAL log file recovery.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_RECOVERY (1008)
+#define TRI_ERROR_ARANGO_RECOVERY                                         (1008)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1100: ERROR_ARANGO_CORRUPTED_DATAFILE
@@ -1175,7 +1172,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a corruption is detected in a datafile.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CORRUPTED_DATAFILE (1100)
+#define TRI_ERROR_ARANGO_CORRUPTED_DATAFILE                               (1100)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1101: ERROR_ARANGO_ILLEGAL_PARAMETER_FILE
@@ -1185,7 +1182,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised if a parameter file is corrupted or cannot be read.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE (1101)
+#define TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE                           (1101)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1102: ERROR_ARANGO_CORRUPTED_COLLECTION
@@ -1195,7 +1192,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a collection contains one or more corrupted data files.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CORRUPTED_COLLECTION (1102)
+#define TRI_ERROR_ARANGO_CORRUPTED_COLLECTION                             (1102)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1103: ERROR_ARANGO_MMAP_FAILED
@@ -1205,7 +1202,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the system call mmap failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_MMAP_FAILED (1103)
+#define TRI_ERROR_ARANGO_MMAP_FAILED                                      (1103)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1104: ERROR_ARANGO_FILESYSTEM_FULL
@@ -1215,7 +1212,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the filesystem is full.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_FILESYSTEM_FULL (1104)
+#define TRI_ERROR_ARANGO_FILESYSTEM_FULL                                  (1104)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1105: ERROR_ARANGO_NO_JOURNAL
@@ -1225,7 +1222,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a journal cannot be created.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_NO_JOURNAL (1105)
+#define TRI_ERROR_ARANGO_NO_JOURNAL                                       (1105)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1106: ERROR_ARANGO_DATAFILE_ALREADY_EXISTS
@@ -1236,7 +1233,7 @@ void TRI_InitializeErrorMessages();
 /// file of the same name already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS (1106)
+#define TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS                          (1106)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1107: ERROR_ARANGO_DATADIR_LOCKED
@@ -1246,7 +1243,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the database directory is locked by a different process.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATADIR_LOCKED (1107)
+#define TRI_ERROR_ARANGO_DATADIR_LOCKED                                   (1107)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1108: ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS
@@ -1257,7 +1254,7 @@ void TRI_InitializeErrorMessages();
 /// the same name already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS (1108)
+#define TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS              (1108)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1109: ERROR_ARANGO_MSYNC_FAILED
@@ -1267,7 +1264,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the system call msync failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_MSYNC_FAILED (1109)
+#define TRI_ERROR_ARANGO_MSYNC_FAILED                                     (1109)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1110: ERROR_ARANGO_DATADIR_UNLOCKABLE
@@ -1278,7 +1275,7 @@ void TRI_InitializeErrorMessages();
 /// startup.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE (1110)
+#define TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE                               (1110)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1111: ERROR_ARANGO_SYNC_TIMEOUT
@@ -1289,7 +1286,7 @@ void TRI_InitializeErrorMessages();
 /// to disk.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_SYNC_TIMEOUT (1111)
+#define TRI_ERROR_ARANGO_SYNC_TIMEOUT                                     (1111)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_ARANGO_CONFLICT
@@ -1300,7 +1297,7 @@ void TRI_InitializeErrorMessages();
 /// detected.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CONFLICT (1200)
+#define TRI_ERROR_ARANGO_CONFLICT                                         (1200)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1201: ERROR_ARANGO_DATADIR_INVALID
@@ -1311,7 +1308,7 @@ void TRI_InitializeErrorMessages();
 /// starting the database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATADIR_INVALID (1201)
+#define TRI_ERROR_ARANGO_DATADIR_INVALID                                  (1201)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1202: ERROR_ARANGO_DOCUMENT_NOT_FOUND
@@ -1321,7 +1318,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a document with a given identifier or handle is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND (1202)
+#define TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               (1202)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1203: ERROR_ARANGO_COLLECTION_NOT_FOUND
@@ -1331,7 +1328,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a collection with a given identifier or name is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND (1203)
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                             (1203)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1204: ERROR_ARANGO_COLLECTION_PARAMETER_MISSING
@@ -1341,7 +1338,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the collection parameter is missing.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING (1204)
+#define TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING                     (1204)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1205: ERROR_ARANGO_DOCUMENT_HANDLE_BAD
@@ -1351,7 +1348,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a document handle is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD (1205)
+#define TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD                              (1205)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1206: ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL
@@ -1361,7 +1358,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the maximal size of the journal is too small.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL (1206)
+#define TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL                           (1206)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1207: ERROR_ARANGO_DUPLICATE_NAME
@@ -1371,7 +1368,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a name duplicate is detected.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DUPLICATE_NAME (1207)
+#define TRI_ERROR_ARANGO_DUPLICATE_NAME                                   (1207)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1208: ERROR_ARANGO_ILLEGAL_NAME
@@ -1381,7 +1378,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an illegal name is detected.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_ILLEGAL_NAME (1208)
+#define TRI_ERROR_ARANGO_ILLEGAL_NAME                                     (1208)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1209: ERROR_ARANGO_NO_INDEX
@@ -1391,7 +1388,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when no suitable index for the query is known.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_NO_INDEX (1209)
+#define TRI_ERROR_ARANGO_NO_INDEX                                         (1209)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1210: ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED
@@ -1401,7 +1398,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when there is a unique constraint violation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED (1210)
+#define TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       (1210)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1212: ERROR_ARANGO_INDEX_NOT_FOUND
@@ -1411,7 +1408,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an index with a given identifier is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_NOT_FOUND (1212)
+#define TRI_ERROR_ARANGO_INDEX_NOT_FOUND                                  (1212)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1213: ERROR_ARANGO_CROSS_COLLECTION_REQUEST
@@ -1421,7 +1418,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a cross-collection is requested.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST (1213)
+#define TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST                         (1213)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1214: ERROR_ARANGO_INDEX_HANDLE_BAD
@@ -1431,7 +1428,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a index handle is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_HANDLE_BAD (1214)
+#define TRI_ERROR_ARANGO_INDEX_HANDLE_BAD                                 (1214)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1215: ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED
@@ -1441,7 +1438,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a cap constraint was already defined.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED (1215)
+#define TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED                   (1215)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1216: ERROR_ARANGO_DOCUMENT_TOO_LARGE
@@ -1452,7 +1449,7 @@ void TRI_InitializeErrorMessages();
 /// is too large.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE (1216)
+#define TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE                               (1216)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1217: ERROR_ARANGO_COLLECTION_NOT_UNLOADED
@@ -1463,7 +1460,7 @@ void TRI_InitializeErrorMessages();
 /// status.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED (1217)
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED                          (1217)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1218: ERROR_ARANGO_COLLECTION_TYPE_INVALID
@@ -1473,7 +1470,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid collection type is used in a request.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID (1218)
+#define TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID                          (1218)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1219: ERROR_ARANGO_VALIDATION_FAILED
@@ -1483,7 +1480,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the validation of an attribute of a structure failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_VALIDATION_FAILED (1219)
+#define TRI_ERROR_ARANGO_VALIDATION_FAILED                                (1219)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1220: ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED
@@ -1493,7 +1490,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when parsing an attribute name definition failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED (1220)
+#define TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED                          (1220)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1221: ERROR_ARANGO_DOCUMENT_KEY_BAD
@@ -1503,7 +1500,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a document key is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD (1221)
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD                                 (1221)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1222: ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED
@@ -1514,7 +1511,7 @@ void TRI_InitializeErrorMessages();
 /// with auto key generation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED (1222)
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED                          (1222)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1224: ERROR_ARANGO_DATADIR_NOT_WRITABLE
@@ -1525,7 +1522,7 @@ void TRI_InitializeErrorMessages();
 /// current user.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE (1224)
+#define TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE                             (1224)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1225: ERROR_ARANGO_OUT_OF_KEYS
@@ -1535,7 +1532,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a key generator runs out of keys.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_OUT_OF_KEYS (1225)
+#define TRI_ERROR_ARANGO_OUT_OF_KEYS                                      (1225)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1226: ERROR_ARANGO_DOCUMENT_KEY_MISSING
@@ -1545,7 +1542,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a document key is missing.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING (1226)
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING                             (1226)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1227: ERROR_ARANGO_DOCUMENT_TYPE_INVALID
@@ -1556,7 +1553,7 @@ void TRI_InitializeErrorMessages();
 /// invalid type.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID (1227)
+#define TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID                            (1227)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1228: ERROR_ARANGO_DATABASE_NOT_FOUND
@@ -1566,7 +1563,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a non-existing database is accessed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATABASE_NOT_FOUND (1228)
+#define TRI_ERROR_ARANGO_DATABASE_NOT_FOUND                               (1228)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1229: ERROR_ARANGO_DATABASE_NAME_INVALID
@@ -1576,7 +1573,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid database name is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID (1229)
+#define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            (1229)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1230: ERROR_ARANGO_USE_SYSTEM_DATABASE
@@ -1587,7 +1584,7 @@ void TRI_InitializeErrorMessages();
 /// system database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE (1230)
+#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1230)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1231: ERROR_ARANGO_ENDPOINT_NOT_FOUND
@@ -1597,7 +1594,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when there is an attempt to delete a non-existing endpoint.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND (1231)
+#define TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND                               (1231)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1232: ERROR_ARANGO_INVALID_KEY_GENERATOR
@@ -1607,7 +1604,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid key generator description is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR (1232)
+#define TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR                            (1232)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1233: ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE
@@ -1618,7 +1615,7 @@ void TRI_InitializeErrorMessages();
 /// contain an invalid value.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE (1233)
+#define TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE                           (1233)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1234: ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING
@@ -1630,7 +1627,7 @@ void TRI_InitializeErrorMessages();
 /// built on.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING (1234)
+#define TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING                 (1234)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1235: ERROR_ARANGO_INDEX_CREATION_FAILED
@@ -1640,7 +1637,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an attempt to create an index has failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_CREATION_FAILED (1235)
+#define TRI_ERROR_ARANGO_INDEX_CREATION_FAILED                            (1235)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1236: ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT
@@ -1651,7 +1648,7 @@ void TRI_InitializeErrorMessages();
 /// waited too long for the server to process queued operations.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT (1236)
+#define TRI_ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT                           (1236)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1237: ERROR_ARANGO_COLLECTION_TYPE_MISMATCH
@@ -1662,7 +1659,7 @@ void TRI_InitializeErrorMessages();
 /// expected.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH (1237)
+#define TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH                         (1237)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1238: ERROR_ARANGO_COLLECTION_NOT_LOADED
@@ -1672,7 +1669,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a collection is accessed that is not yet loaded.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED (1238)
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            (1238)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
@@ -1682,7 +1679,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the datafile reaches its limit.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DATAFILE_FULL (1300)
+#define TRI_ERROR_ARANGO_DATAFILE_FULL                                    (1300)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1301: ERROR_ARANGO_EMPTY_DATADIR
@@ -1692,7 +1689,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when encountering an empty server database directory.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_EMPTY_DATADIR (1301)
+#define TRI_ERROR_ARANGO_EMPTY_DATADIR                                    (1301)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1400: ERROR_REPLICATION_NO_RESPONSE
@@ -1703,7 +1700,7 @@ void TRI_InitializeErrorMessages();
 /// incomplete response from the master.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_NO_RESPONSE (1400)
+#define TRI_ERROR_REPLICATION_NO_RESPONSE                                 (1400)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1401: ERROR_REPLICATION_INVALID_RESPONSE
@@ -1714,7 +1711,7 @@ void TRI_InitializeErrorMessages();
 /// from the master.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_INVALID_RESPONSE (1401)
+#define TRI_ERROR_REPLICATION_INVALID_RESPONSE                            (1401)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1402: ERROR_REPLICATION_MASTER_ERROR
@@ -1725,7 +1722,7 @@ void TRI_InitializeErrorMessages();
 /// the master.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_MASTER_ERROR (1402)
+#define TRI_ERROR_REPLICATION_MASTER_ERROR                                (1402)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1403: ERROR_REPLICATION_MASTER_INCOMPATIBLE
@@ -1736,7 +1733,7 @@ void TRI_InitializeErrorMessages();
 /// an incompatible version.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE (1403)
+#define TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE                         (1403)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1404: ERROR_REPLICATION_MASTER_CHANGE
@@ -1747,7 +1744,7 @@ void TRI_InitializeErrorMessages();
 /// than before.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_MASTER_CHANGE (1404)
+#define TRI_ERROR_REPLICATION_MASTER_CHANGE                               (1404)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1405: ERROR_REPLICATION_LOOP
@@ -1758,7 +1755,7 @@ void TRI_InitializeErrorMessages();
 /// for replication.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_LOOP (1405)
+#define TRI_ERROR_REPLICATION_LOOP                                        (1405)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1406: ERROR_REPLICATION_UNEXPECTED_MARKER
@@ -1769,7 +1766,7 @@ void TRI_InitializeErrorMessages();
 /// stream.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_UNEXPECTED_MARKER (1406)
+#define TRI_ERROR_REPLICATION_UNEXPECTED_MARKER                           (1406)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1407: ERROR_REPLICATION_INVALID_APPLIER_STATE
@@ -1779,7 +1776,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid replication applier state file is found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE (1407)
+#define TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE                       (1407)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1408: ERROR_REPLICATION_UNEXPECTED_TRANSACTION
@@ -1789,7 +1786,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an unexpected transaction id is found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION (1408)
+#define TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION                      (1408)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1410: ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION
@@ -1800,7 +1797,7 @@ void TRI_InitializeErrorMessages();
 /// invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION (1410)
+#define TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION               (1410)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1411: ERROR_REPLICATION_RUNNING
@@ -1811,7 +1808,7 @@ void TRI_InitializeErrorMessages();
 /// replication applier is running.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_RUNNING (1411)
+#define TRI_ERROR_REPLICATION_RUNNING                                     (1411)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1412: ERROR_REPLICATION_APPLIER_STOPPED
@@ -1822,7 +1819,7 @@ void TRI_InitializeErrorMessages();
 /// a user.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_APPLIER_STOPPED (1412)
+#define TRI_ERROR_REPLICATION_APPLIER_STOPPED                             (1412)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1413: ERROR_REPLICATION_NO_START_TICK
@@ -1833,7 +1830,7 @@ void TRI_InitializeErrorMessages();
 /// start tick value.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_NO_START_TICK (1413)
+#define TRI_ERROR_REPLICATION_NO_START_TICK                               (1413)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1414: ERROR_REPLICATION_START_TICK_NOT_PRESENT
@@ -1844,7 +1841,7 @@ void TRI_InitializeErrorMessages();
 /// tick, but that start tick is not present on the logger server anymore.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT (1414)
+#define TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      (1414)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1450: ERROR_CLUSTER_NO_AGENCY
@@ -1854,7 +1851,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when none of the agency servers can be connected to.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_NO_AGENCY (1450)
+#define TRI_ERROR_CLUSTER_NO_AGENCY                                       (1450)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1451: ERROR_CLUSTER_NO_COORDINATOR_HEADER
@@ -1865,7 +1862,7 @@ void TRI_InitializeErrorMessages();
 /// without a coordinator header.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_NO_COORDINATOR_HEADER (1451)
+#define TRI_ERROR_CLUSTER_NO_COORDINATOR_HEADER                           (1451)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1452: ERROR_CLUSTER_COULD_NOT_LOCK_PLAN
@@ -1876,7 +1873,7 @@ void TRI_InitializeErrorMessages();
 /// hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN (1452)
+#define TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN                             (1452)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
@@ -1887,7 +1884,7 @@ void TRI_InitializeErrorMessages();
 /// and the collection ID already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS (1453)
+#define TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS                            (1453)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1454: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN
@@ -1898,7 +1895,7 @@ void TRI_InitializeErrorMessages();
 /// new collection in the Plan hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN (1454)
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN             (1454)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1455: ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION
@@ -1909,7 +1906,7 @@ void TRI_InitializeErrorMessages();
 /// entry in the Current hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION (1455)
+#define TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION                  (1455)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1456: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION
@@ -1920,7 +1917,7 @@ void TRI_InitializeErrorMessages();
 /// report problems when creating shards for a new collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION (1456)
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION                     (1456)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1457: ERROR_CLUSTER_TIMEOUT
@@ -1931,7 +1928,7 @@ void TRI_InitializeErrorMessages();
 /// cluster wide operation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_TIMEOUT (1457)
+#define TRI_ERROR_CLUSTER_TIMEOUT                                         (1457)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1458: ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN
@@ -1942,7 +1939,7 @@ void TRI_InitializeErrorMessages();
 /// collection in the Plan hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN (1458)
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN             (1458)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1459: ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT
@@ -1953,7 +1950,7 @@ void TRI_InitializeErrorMessages();
 /// collection in the Current hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT (1459)
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT          (1459)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1460: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN
@@ -1964,7 +1961,7 @@ void TRI_InitializeErrorMessages();
 /// new database in the Plan hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN (1460)
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN               (1460)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1461: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE
@@ -1975,7 +1972,7 @@ void TRI_InitializeErrorMessages();
 /// report problems when creating databases for a new cluster wide database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE (1461)
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE                       (1461)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1462: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN
@@ -1986,7 +1983,7 @@ void TRI_InitializeErrorMessages();
 /// database in the Plan hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN (1462)
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN               (1462)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1463: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT
@@ -1997,7 +1994,7 @@ void TRI_InitializeErrorMessages();
 /// database in the Current hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT (1463)
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT            (1463)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1464: ERROR_CLUSTER_SHARD_GONE
@@ -2008,7 +2005,7 @@ void TRI_InitializeErrorMessages();
 /// that is responsible for a given document.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_SHARD_GONE (1464)
+#define TRI_ERROR_CLUSTER_SHARD_GONE                                      (1464)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1465: ERROR_CLUSTER_CONNECTION_LOST
@@ -2019,7 +2016,7 @@ void TRI_InitializeErrorMessages();
 /// a DBserver in the cluster whilst transferring data.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_CONNECTION_LOST (1465)
+#define TRI_ERROR_CLUSTER_CONNECTION_LOST                                 (1465)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1466: ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY
@@ -2031,7 +2028,7 @@ void TRI_InitializeErrorMessages();
 /// sharding attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY (1466)
+#define TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY                            (1466)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1467: ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS
@@ -2042,7 +2039,7 @@ void TRI_InitializeErrorMessages();
 /// different shards, which should never happen.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS (1467)
+#define TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS                       (1467)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1468: ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN
@@ -2054,7 +2051,7 @@ void TRI_InitializeErrorMessages();
 /// sharding attributes are specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN (1468)
+#define TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               (1468)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1469: ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES
@@ -2065,7 +2062,7 @@ void TRI_InitializeErrorMessages();
 /// attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES (1469)
+#define TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             (1469)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1470: ERROR_CLUSTER_UNSUPPORTED
@@ -2076,7 +2073,7 @@ void TRI_InitializeErrorMessages();
 /// not supported in the context of a sharded collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_UNSUPPORTED (1470)
+#define TRI_ERROR_CLUSTER_UNSUPPORTED                                     (1470)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1471: ERROR_CLUSTER_ONLY_ON_COORDINATOR
@@ -2087,7 +2084,7 @@ void TRI_InitializeErrorMessages();
 /// on a different type of node.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR (1471)
+#define TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR                             (1471)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1472: ERROR_CLUSTER_READING_PLAN_AGENCY
@@ -2098,7 +2095,7 @@ void TRI_InitializeErrorMessages();
 /// agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_READING_PLAN_AGENCY (1472)
+#define TRI_ERROR_CLUSTER_READING_PLAN_AGENCY                             (1472)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1473: ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION
@@ -2109,7 +2106,7 @@ void TRI_InitializeErrorMessages();
 /// collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION (1473)
+#define TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION                   (1473)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1474: ERROR_CLUSTER_AQL_COMMUNICATION
@@ -2120,7 +2117,7 @@ void TRI_InitializeErrorMessages();
 /// produces an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_AQL_COMMUNICATION (1474)
+#define TRI_ERROR_CLUSTER_AQL_COMMUNICATION                               (1474)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1475: ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED
@@ -2132,8 +2129,7 @@ void TRI_InitializeErrorMessages();
 /// operation in the cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED \
-  (1475)
+#define TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED (1475)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1476: ERROR_CLUSTER_COULD_NOT_DETERMINE_ID
@@ -2144,7 +2140,7 @@ void TRI_InitializeErrorMessages();
 /// ID from the local info provided.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID (1476)
+#define TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID                          (1476)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
@@ -2154,7 +2150,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a running query is killed by an explicit admin command.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_KILLED (1500)
+#define TRI_ERROR_QUERY_KILLED                                            (1500)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1501: ERROR_QUERY_PARSE
@@ -2165,7 +2161,7 @@ void TRI_InitializeErrorMessages();
 /// invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_PARSE (1501)
+#define TRI_ERROR_QUERY_PARSE                                             (1501)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1502: ERROR_QUERY_EMPTY
@@ -2175,7 +2171,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an empty query is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_EMPTY (1502)
+#define TRI_ERROR_QUERY_EMPTY                                             (1502)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1503: ERROR_QUERY_SCRIPT
@@ -2185,7 +2181,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a runtime error is caused by the query.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_SCRIPT (1503)
+#define TRI_ERROR_QUERY_SCRIPT                                            (1503)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1504: ERROR_QUERY_NUMBER_OUT_OF_RANGE
@@ -2195,7 +2191,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a number is outside the expected range.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE (1504)
+#define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                               (1504)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1510: ERROR_QUERY_VARIABLE_NAME_INVALID
@@ -2205,7 +2201,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid variable name is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_VARIABLE_NAME_INVALID (1510)
+#define TRI_ERROR_QUERY_VARIABLE_NAME_INVALID                             (1510)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1511: ERROR_QUERY_VARIABLE_REDECLARED
@@ -2215,7 +2211,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a variable gets re-assigned in a query.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_VARIABLE_REDECLARED (1511)
+#define TRI_ERROR_QUERY_VARIABLE_REDECLARED                               (1511)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1512: ERROR_QUERY_VARIABLE_NAME_UNKNOWN
@@ -2226,7 +2222,7 @@ void TRI_InitializeErrorMessages();
 /// undefined the context it is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN (1512)
+#define TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN                             (1512)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1521: ERROR_QUERY_COLLECTION_LOCK_FAILED
@@ -2236,7 +2232,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a read lock on the collection cannot be acquired.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED (1521)
+#define TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                            (1521)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1522: ERROR_QUERY_TOO_MANY_COLLECTIONS
@@ -2247,7 +2243,7 @@ void TRI_InitializeErrorMessages();
 /// allowed value.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS (1522)
+#define TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              (1522)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1530: ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED
@@ -2257,7 +2253,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a document attribute is re-assigned.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED (1530)
+#define TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED                     (1530)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1540: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
@@ -2267,7 +2263,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an undefined function is called.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN (1540)
+#define TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN                             (1540)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1541: ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH
@@ -2279,7 +2275,7 @@ void TRI_InitializeErrorMessages();
 /// not match the expected number of arguments for the function.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH (1541)
+#define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH                 (1541)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1542: ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH
@@ -2290,7 +2286,7 @@ void TRI_InitializeErrorMessages();
 /// not match the expected argument type.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH (1542)
+#define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH                   (1542)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1543: ERROR_QUERY_INVALID_REGEX
@@ -2301,7 +2297,7 @@ void TRI_InitializeErrorMessages();
 /// function that expects a regex.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_INVALID_REGEX (1543)
+#define TRI_ERROR_QUERY_INVALID_REGEX                                     (1543)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1550: ERROR_QUERY_BIND_PARAMETERS_INVALID
@@ -2312,7 +2308,7 @@ void TRI_InitializeErrorMessages();
 /// unexpected format.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID (1550)
+#define TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID                           (1550)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1551: ERROR_QUERY_BIND_PARAMETER_MISSING
@@ -2323,7 +2319,7 @@ void TRI_InitializeErrorMessages();
 /// query is being executed with no value for that parameter.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BIND_PARAMETER_MISSING (1551)
+#define TRI_ERROR_QUERY_BIND_PARAMETER_MISSING                            (1551)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1552: ERROR_QUERY_BIND_PARAMETER_UNDECLARED
@@ -2333,7 +2329,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a value gets specified for an undeclared bind parameter.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED (1552)
+#define TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED                         (1552)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1553: ERROR_QUERY_BIND_PARAMETER_TYPE
@@ -2343,7 +2339,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a bind parameter has an invalid value or type.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BIND_PARAMETER_TYPE (1553)
+#define TRI_ERROR_QUERY_BIND_PARAMETER_TYPE                               (1553)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1560: ERROR_QUERY_INVALID_LOGICAL_VALUE
@@ -2353,7 +2349,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a non-boolean value is used in a logical operation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE (1560)
+#define TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE                             (1560)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1561: ERROR_QUERY_INVALID_ARITHMETIC_VALUE
@@ -2363,7 +2359,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a non-numeric value is used in an arithmetic operation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE (1561)
+#define TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE                          (1561)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1562: ERROR_QUERY_DIVISION_BY_ZERO
@@ -2373,7 +2369,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when there is an attempt to divide by zero.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_DIVISION_BY_ZERO (1562)
+#define TRI_ERROR_QUERY_DIVISION_BY_ZERO                                  (1562)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1563: ERROR_QUERY_ARRAY_EXPECTED
@@ -2384,7 +2380,7 @@ void TRI_InitializeErrorMessages();
 /// expects an array argument operand.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_ARRAY_EXPECTED (1563)
+#define TRI_ERROR_QUERY_ARRAY_EXPECTED                                    (1563)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1569: ERROR_QUERY_FAIL_CALLED
@@ -2394,7 +2390,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the function FAIL() is called from inside a query.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_FAIL_CALLED (1569)
+#define TRI_ERROR_QUERY_FAIL_CALLED                                       (1569)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1570: ERROR_QUERY_GEO_INDEX_MISSING
@@ -2405,7 +2401,7 @@ void TRI_InitializeErrorMessages();
 /// index is found to resolve it.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_GEO_INDEX_MISSING (1570)
+#define TRI_ERROR_QUERY_GEO_INDEX_MISSING                                 (1570)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1571: ERROR_QUERY_FULLTEXT_INDEX_MISSING
@@ -2416,7 +2412,7 @@ void TRI_InitializeErrorMessages();
 /// suitable fulltext index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING (1571)
+#define TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING                            (1571)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1572: ERROR_QUERY_INVALID_DATE_VALUE
@@ -2426,7 +2422,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a value cannot be converted to a date.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_INVALID_DATE_VALUE (1572)
+#define TRI_ERROR_QUERY_INVALID_DATE_VALUE                                (1572)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1573: ERROR_QUERY_MULTI_MODIFY
@@ -2437,7 +2433,7 @@ void TRI_InitializeErrorMessages();
 /// operation."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_MULTI_MODIFY (1573)
+#define TRI_ERROR_QUERY_MULTI_MODIFY                                      (1573)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1574: ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION
@@ -2448,7 +2444,7 @@ void TRI_InitializeErrorMessages();
 /// expression."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION (1574)
+#define TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION                      (1574)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1575: ERROR_QUERY_COMPILE_TIME_OPTIONS
@@ -2459,7 +2455,7 @@ void TRI_InitializeErrorMessages();
 /// cannot be figured out at query compile time."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS (1575)
+#define TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              (1575)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1576: ERROR_QUERY_EXCEPTION_OPTIONS
@@ -2470,7 +2466,7 @@ void TRI_InitializeErrorMessages();
 /// options specification."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_EXCEPTION_OPTIONS (1576)
+#define TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 (1576)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1577: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
@@ -2481,7 +2477,7 @@ void TRI_InitializeErrorMessages();
 /// expression."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION (1577)
+#define TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     (1577)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1578: ERROR_QUERY_DISALLOWED_DYNAMIC_CALL
@@ -2492,7 +2488,7 @@ void TRI_InitializeErrorMessages();
 /// cannot be called dynamically."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL (1578)
+#define TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL                           (1578)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1579: ERROR_QUERY_ACCESS_AFTER_MODIFICATION
@@ -2503,7 +2499,7 @@ void TRI_InitializeErrorMessages();
 /// data-modification operation."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION (1579)
+#define TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION                         (1579)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
@@ -2513,7 +2509,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a user function with an invalid name is registered.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_FUNCTION_INVALID_NAME (1580)
+#define TRI_ERROR_QUERY_FUNCTION_INVALID_NAME                             (1580)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1581: ERROR_QUERY_FUNCTION_INVALID_CODE
@@ -2523,7 +2519,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a user function is registered with invalid code.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_FUNCTION_INVALID_CODE (1581)
+#define TRI_ERROR_QUERY_FUNCTION_INVALID_CODE                             (1581)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1582: ERROR_QUERY_FUNCTION_NOT_FOUND
@@ -2533,7 +2529,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a user function is accessed but not found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_FUNCTION_NOT_FOUND (1582)
+#define TRI_ERROR_QUERY_FUNCTION_NOT_FOUND                                (1582)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1583: ERROR_QUERY_FUNCTION_RUNTIME_ERROR
@@ -2543,7 +2539,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a user function throws a runtime exception.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_FUNCTION_RUNTIME_ERROR (1583)
+#define TRI_ERROR_QUERY_FUNCTION_RUNTIME_ERROR                            (1583)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1590: ERROR_QUERY_BAD_JSON_PLAN
@@ -2553,7 +2549,7 @@ void TRI_InitializeErrorMessages();
 ///  "Will be raised when an HTTP API for a query got an invalid JSON object."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BAD_JSON_PLAN (1590)
+#define TRI_ERROR_QUERY_BAD_JSON_PLAN                                     (1590)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1591: ERROR_QUERY_NOT_FOUND
@@ -2563,7 +2559,7 @@ void TRI_InitializeErrorMessages();
 ///  "Will be raised when an Id of a query is not found by the HTTP API."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_NOT_FOUND (1591)
+#define TRI_ERROR_QUERY_NOT_FOUND                                         (1591)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1592: ERROR_QUERY_IN_USE
@@ -2574,7 +2570,7 @@ void TRI_InitializeErrorMessages();
 /// query is in use."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_IN_USE (1592)
+#define TRI_ERROR_QUERY_IN_USE                                            (1592)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND
@@ -2585,7 +2581,7 @@ void TRI_InitializeErrorMessages();
 /// id cannot be found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CURSOR_NOT_FOUND (1600)
+#define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1601: ERROR_CURSOR_BUSY
@@ -2596,7 +2592,7 @@ void TRI_InitializeErrorMessages();
 /// request is still using the cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CURSOR_BUSY (1601)
+#define TRI_ERROR_CURSOR_BUSY                                             (1601)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1650: ERROR_TRANSACTION_INTERNAL
@@ -2607,7 +2603,7 @@ void TRI_InitializeErrorMessages();
 /// internal error and indicates a bug in ArangoDB.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_INTERNAL (1650)
+#define TRI_ERROR_TRANSACTION_INTERNAL                                    (1650)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1651: ERROR_TRANSACTION_NESTED
@@ -2617,7 +2613,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when transactions are nested.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_NESTED (1651)
+#define TRI_ERROR_TRANSACTION_NESTED                                      (1651)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1652: ERROR_TRANSACTION_UNREGISTERED_COLLECTION
@@ -2628,7 +2624,7 @@ void TRI_InitializeErrorMessages();
 /// was not registered at transaction start.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION (1652)
+#define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1652)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1653: ERROR_TRANSACTION_DISALLOWED_OPERATION
@@ -2638,7 +2634,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a disallowed operation is carried out in a transaction.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION (1653)
+#define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1653)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1654: ERROR_TRANSACTION_ABORTED
@@ -2648,7 +2644,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a transaction was aborted.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_ABORTED (1654)
+#define TRI_ERROR_TRANSACTION_ABORTED                                     (1654)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1700: ERROR_USER_INVALID_NAME
@@ -2658,7 +2654,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid user name is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_USER_INVALID_NAME (1700)
+#define TRI_ERROR_USER_INVALID_NAME                                       (1700)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1701: ERROR_USER_INVALID_PASSWORD
@@ -2668,7 +2664,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid password is used.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_USER_INVALID_PASSWORD (1701)
+#define TRI_ERROR_USER_INVALID_PASSWORD                                   (1701)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1702: ERROR_USER_DUPLICATE
@@ -2678,7 +2674,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a user name already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_USER_DUPLICATE (1702)
+#define TRI_ERROR_USER_DUPLICATE                                          (1702)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1703: ERROR_USER_NOT_FOUND
@@ -2688,7 +2684,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a user name is updated that does not exist.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_USER_NOT_FOUND (1703)
+#define TRI_ERROR_USER_NOT_FOUND                                          (1703)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1704: ERROR_USER_CHANGE_PASSWORD
@@ -2698,7 +2694,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the user must change his password.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_USER_CHANGE_PASSWORD (1704)
+#define TRI_ERROR_USER_CHANGE_PASSWORD                                    (1704)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1750: ERROR_APPLICATION_INVALID_NAME
@@ -2708,7 +2704,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid application name is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_INVALID_NAME (1750)
+#define TRI_ERROR_APPLICATION_INVALID_NAME                                (1750)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1751: ERROR_APPLICATION_INVALID_MOUNT
@@ -2718,7 +2714,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid mount is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_INVALID_MOUNT (1751)
+#define TRI_ERROR_APPLICATION_INVALID_MOUNT                               (1751)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1752: ERROR_APPLICATION_DOWNLOAD_FAILED
@@ -2729,7 +2725,7 @@ void TRI_InitializeErrorMessages();
 /// failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED (1752)
+#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1752)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1753: ERROR_APPLICATION_UPLOAD_FAILED
@@ -2740,7 +2736,7 @@ void TRI_InitializeErrorMessages();
 /// server failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_UPLOAD_FAILED (1753)
+#define TRI_ERROR_APPLICATION_UPLOAD_FAILED                               (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY
@@ -2750,7 +2746,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid key specification is passed to the server
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_KEYVALUE_INVALID_KEY (1800)
+#define TRI_ERROR_KEYVALUE_INVALID_KEY                                    (1800)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1801: ERROR_KEYVALUE_KEY_EXISTS
@@ -2760,7 +2756,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a key is to be created that already exists
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_KEYVALUE_KEY_EXISTS (1801)
+#define TRI_ERROR_KEYVALUE_KEY_EXISTS                                     (1801)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1802: ERROR_KEYVALUE_KEY_NOT_FOUND
@@ -2770,7 +2766,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the specified key is not found
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_KEYVALUE_KEY_NOT_FOUND (1802)
+#define TRI_ERROR_KEYVALUE_KEY_NOT_FOUND                                  (1802)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1803: ERROR_KEYVALUE_KEY_NOT_UNIQUE
@@ -2780,7 +2776,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the specified key is not unique
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_KEYVALUE_KEY_NOT_UNIQUE (1803)
+#define TRI_ERROR_KEYVALUE_KEY_NOT_UNIQUE                                 (1803)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1804: ERROR_KEYVALUE_KEY_NOT_CHANGED
@@ -2790,7 +2786,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when updating the value for a key does not work
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_KEYVALUE_KEY_NOT_CHANGED (1804)
+#define TRI_ERROR_KEYVALUE_KEY_NOT_CHANGED                                (1804)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1805: ERROR_KEYVALUE_KEY_NOT_REMOVED
@@ -2800,7 +2796,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when deleting a key/value pair does not work
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_KEYVALUE_KEY_NOT_REMOVED (1805)
+#define TRI_ERROR_KEYVALUE_KEY_NOT_REMOVED                                (1805)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1806: ERROR_KEYVALUE_NO_VALUE
@@ -2810,7 +2806,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the value is missing
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_KEYVALUE_NO_VALUE (1806)
+#define TRI_ERROR_KEYVALUE_NO_VALUE                                       (1806)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1850: ERROR_TASK_INVALID_ID
@@ -2820,7 +2816,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a task is created with an invalid id.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TASK_INVALID_ID (1850)
+#define TRI_ERROR_TASK_INVALID_ID                                         (1850)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1851: ERROR_TASK_DUPLICATE_ID
@@ -2830,7 +2826,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a task id is created with a duplicate id.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TASK_DUPLICATE_ID (1851)
+#define TRI_ERROR_TASK_DUPLICATE_ID                                       (1851)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1852: ERROR_TASK_NOT_FOUND
@@ -2840,7 +2836,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a task with the specified id could not be found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TASK_NOT_FOUND (1852)
+#define TRI_ERROR_TASK_NOT_FOUND                                          (1852)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1901: ERROR_GRAPH_INVALID_GRAPH
@@ -2850,7 +2846,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid name is passed to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_GRAPH (1901)
+#define TRI_ERROR_GRAPH_INVALID_GRAPH                                     (1901)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1902: ERROR_GRAPH_COULD_NOT_CREATE_GRAPH
@@ -2861,7 +2857,7 @@ void TRI_InitializeErrorMessages();
 /// server.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_GRAPH (1902)
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_GRAPH                            (1902)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1903: ERROR_GRAPH_INVALID_VERTEX
@@ -2871,7 +2867,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid vertex id is passed to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_VERTEX (1903)
+#define TRI_ERROR_GRAPH_INVALID_VERTEX                                    (1903)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1904: ERROR_GRAPH_COULD_NOT_CREATE_VERTEX
@@ -2881,7 +2877,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the vertex could not be created.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX (1904)
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX                           (1904)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1905: ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX
@@ -2891,7 +2887,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the vertex could not be changed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX (1905)
+#define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX                           (1905)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1906: ERROR_GRAPH_INVALID_EDGE
@@ -2901,7 +2897,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid edge id is passed to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_EDGE (1906)
+#define TRI_ERROR_GRAPH_INVALID_EDGE                                      (1906)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1907: ERROR_GRAPH_COULD_NOT_CREATE_EDGE
@@ -2911,7 +2907,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the edge could not be created.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE (1907)
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE                             (1907)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1908: ERROR_GRAPH_COULD_NOT_CHANGE_EDGE
@@ -2921,7 +2917,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the edge could not be changed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE (1908)
+#define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE                             (1908)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1909: ERROR_GRAPH_TOO_MANY_ITERATIONS
@@ -2931,7 +2927,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when too many iterations are done in a graph traversal.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_TOO_MANY_ITERATIONS (1909)
+#define TRI_ERROR_GRAPH_TOO_MANY_ITERATIONS                               (1909)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1910: ERROR_GRAPH_INVALID_FILTER_RESULT
@@ -2942,7 +2938,7 @@ void TRI_InitializeErrorMessages();
 /// traversal.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_FILTER_RESULT (1910)
+#define TRI_ERROR_GRAPH_INVALID_FILTER_RESULT                             (1910)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1920: ERROR_GRAPH_COLLECTION_MULTI_USE
@@ -2952,7 +2948,7 @@ void TRI_InitializeErrorMessages();
 /// an edge collection may only be used once in one edge definition of a graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COLLECTION_MULTI_USE (1920)
+#define TRI_ERROR_GRAPH_COLLECTION_MULTI_USE                              (1920)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1921: ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS
@@ -2962,7 +2958,7 @@ void TRI_InitializeErrorMessages();
 ///  is already used by another graph in a different edge definition.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS (1921)
+#define TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS                    (1921)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1922: ERROR_GRAPH_CREATE_MISSING_NAME
@@ -2972,7 +2968,7 @@ void TRI_InitializeErrorMessages();
 /// a graph name is required to create a graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_CREATE_MISSING_NAME (1922)
+#define TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               (1922)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION
@@ -2982,7 +2978,7 @@ void TRI_InitializeErrorMessages();
 /// the edge definition is malformed. It has to be an array of objects.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION (1923)
+#define TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION                  (1923)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1924: ERROR_GRAPH_NOT_FOUND
@@ -2992,7 +2988,7 @@ void TRI_InitializeErrorMessages();
 /// a graph with this name could not be found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_NOT_FOUND (1924)
+#define TRI_ERROR_GRAPH_NOT_FOUND                                         (1924)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1925: ERROR_GRAPH_DUPLICATE
@@ -3002,7 +2998,7 @@ void TRI_InitializeErrorMessages();
 /// a graph with this name already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_DUPLICATE (1925)
+#define TRI_ERROR_GRAPH_DUPLICATE                                         (1925)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1926: ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST
@@ -3012,7 +3008,7 @@ void TRI_InitializeErrorMessages();
 /// the specified vertex collection does not exist or is not part of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST (1926)
+#define TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         (1926)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1927: ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX
@@ -3022,7 +3018,7 @@ void TRI_InitializeErrorMessages();
 /// the collection is not a vertex collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX (1927)
+#define TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX                      (1927)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1928: ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION
@@ -3032,7 +3028,7 @@ void TRI_InitializeErrorMessages();
 /// Vertex collection not in orphan collection of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION (1928)
+#define TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION                          (1928)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
@@ -3042,7 +3038,7 @@ void TRI_InitializeErrorMessages();
 /// The collection is already used in an edge definition of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF (1929)
+#define TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF                       (1929)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1930: ERROR_GRAPH_EDGE_COLLECTION_NOT_USED
@@ -3052,7 +3048,7 @@ void TRI_InitializeErrorMessages();
 /// The edge collection is not used in any edge definition of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED (1930)
+#define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          (1930)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1931: ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION
@@ -3062,7 +3058,7 @@ void TRI_InitializeErrorMessages();
 /// The collection is not an ArangoCollection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION (1931)
+#define TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION                          (1931)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION
@@ -3072,7 +3068,7 @@ void TRI_InitializeErrorMessages();
 /// collection _graphs does not exist.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION (1932)
+#define TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION                               (1932)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1933: ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING
@@ -3082,7 +3078,7 @@ void TRI_InitializeErrorMessages();
 /// Invalid example type. Has to be String, Array or Object.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING (1933)
+#define TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING               (1933)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1934: ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT
@@ -3092,17 +3088,17 @@ void TRI_InitializeErrorMessages();
 /// Invalid example type. Has to be Array or Object.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT (1934)
+#define TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT                      (1934)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
 ///
-/// Invalid number of arguments. Expected:
+/// Invalid number of arguments. Expected: 
 ///
-/// Invalid number of arguments. Expected:
+/// Invalid number of arguments. Expected: 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS (1935)
+#define TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                       (1935)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1936: ERROR_GRAPH_INVALID_PARAMETER
@@ -3112,7 +3108,7 @@ void TRI_InitializeErrorMessages();
 /// Invalid parameter type.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_PARAMETER (1936)
+#define TRI_ERROR_GRAPH_INVALID_PARAMETER                                 (1936)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1937: ERROR_GRAPH_INVALID_ID
@@ -3122,7 +3118,7 @@ void TRI_InitializeErrorMessages();
 /// Invalid id
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_INVALID_ID (1937)
+#define TRI_ERROR_GRAPH_INVALID_ID                                        (1937)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1938: ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS
@@ -3132,7 +3128,7 @@ void TRI_InitializeErrorMessages();
 /// The collection is already used in the orphans of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS (1938)
+#define TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS                        (1938)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1939: ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST
@@ -3142,7 +3138,17 @@ void TRI_InitializeErrorMessages();
 /// the specified edge collection does not exist or is not part of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST (1939)
+#define TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST                           (1939)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1940: ERROR_GRAPH_EMPTY
+///
+/// empty graph
+///
+/// The requested graph has no edge collections.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_EMPTY                                             (1940)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN
@@ -3152,7 +3158,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when an invalid/unknown session id is passed to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SESSION_UNKNOWN (1950)
+#define TRI_ERROR_SESSION_UNKNOWN                                         (1950)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1951: ERROR_SESSION_EXPIRED
@@ -3162,7 +3168,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when a session is expired.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SESSION_EXPIRED (1951)
+#define TRI_ERROR_SESSION_EXPIRED                                         (1951)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
@@ -3172,7 +3178,7 @@ void TRI_InitializeErrorMessages();
 /// This error should not happen.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SIMPLE_CLIENT_UNKNOWN_ERROR (2000)
+#define TRI_SIMPLE_CLIENT_UNKNOWN_ERROR                                   (2000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2001: SIMPLE_CLIENT_COULD_NOT_CONNECT
@@ -3182,7 +3188,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the client could not connect to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT (2001)
+#define TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT                               (2001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2002: SIMPLE_CLIENT_COULD_NOT_WRITE
@@ -3192,7 +3198,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the client could not write data.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SIMPLE_CLIENT_COULD_NOT_WRITE (2002)
+#define TRI_SIMPLE_CLIENT_COULD_NOT_WRITE                                 (2002)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2003: SIMPLE_CLIENT_COULD_NOT_READ
@@ -3202,7 +3208,7 @@ void TRI_InitializeErrorMessages();
 /// Will be raised when the client could not read data.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SIMPLE_CLIENT_COULD_NOT_READ (2003)
+#define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3000: ERROR_MALFORMED_MANIFEST_FILE
@@ -3212,7 +3218,7 @@ void TRI_InitializeErrorMessages();
 /// The manifest file is malformed. It is not in a valid JSON format.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MALFORMED_MANIFEST_FILE (3000)
+#define TRI_ERROR_MALFORMED_MANIFEST_FILE                                 (3000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3001: ERROR_INVALID_APPLICATION_MANIFEST
@@ -3222,7 +3228,7 @@ void TRI_InitializeErrorMessages();
 /// The manifest file of this application is invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_INVALID_APPLICATION_MANIFEST (3001)
+#define TRI_ERROR_INVALID_APPLICATION_MANIFEST                            (3001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3002: ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING
@@ -3232,7 +3238,7 @@ void TRI_InitializeErrorMessages();
 /// The manifest file is incomplete. A required attribute is missing.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING (3002)
+#define TRI_ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING                         (3002)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3003: ERROR_CANNOT_EXTRACT_APPLICATION_ROOT
@@ -3242,7 +3248,7 @@ void TRI_InitializeErrorMessages();
 /// The root path of the application could not be found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CANNOT_EXTRACT_APPLICATION_ROOT (3003)
+#define TRI_ERROR_CANNOT_EXTRACT_APPLICATION_ROOT                         (3003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3004: ERROR_INVALID_FOXX_OPTIONS
@@ -3252,7 +3258,7 @@ void TRI_InitializeErrorMessages();
 /// The options used to configure the foxx are invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_INVALID_FOXX_OPTIONS (3004)
+#define TRI_ERROR_INVALID_FOXX_OPTIONS                                    (3004)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3005: ERROR_FAILED_TO_EXECUTE_SCRIPT
@@ -3262,17 +3268,17 @@ void TRI_InitializeErrorMessages();
 /// The script provided contains errors.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_FAILED_TO_EXECUTE_SCRIPT (3005)
+#define TRI_ERROR_FAILED_TO_EXECUTE_SCRIPT                                (3005)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3006: ERROR_SYNTAX_ERROR_IN_SCRIPT
 ///
 /// syntax error in script
 ///
-///  contains a syntax error:
+///  contains a syntax error: 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SYNTAX_ERROR_IN_SCRIPT (3006)
+#define TRI_ERROR_SYNTAX_ERROR_IN_SCRIPT                                  (3006)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3007: ERROR_INVALID_MOUNTPOINT
@@ -3282,7 +3288,7 @@ void TRI_InitializeErrorMessages();
 /// mountpoint is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_INVALID_MOUNTPOINT (3007)
+#define TRI_ERROR_INVALID_MOUNTPOINT                                      (3007)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3008: ERROR_NO_FOXX_FOUND
@@ -3292,7 +3298,7 @@ void TRI_InitializeErrorMessages();
 /// No foxx found at this location
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_NO_FOXX_FOUND (3008)
+#define TRI_ERROR_NO_FOXX_FOUND                                           (3008)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3009: ERROR_APP_NOT_FOUND
@@ -3302,7 +3308,7 @@ void TRI_InitializeErrorMessages();
 /// No app found at this mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APP_NOT_FOUND (3009)
+#define TRI_ERROR_APP_NOT_FOUND                                           (3009)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3010: ERROR_APP_NEEDS_CONFIGURATION
@@ -3312,7 +3318,7 @@ void TRI_InitializeErrorMessages();
 /// The app has to be configured before it can be used
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APP_NEEDS_CONFIGURATION (3010)
+#define TRI_ERROR_APP_NEEDS_CONFIGURATION                                 (3010)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3100: ERROR_MODULE_NOT_FOUND
@@ -3322,7 +3328,7 @@ void TRI_InitializeErrorMessages();
 /// The module path could not be resolved.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_NOT_FOUND (3100)
+#define TRI_ERROR_MODULE_NOT_FOUND                                        (3100)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3101: ERROR_MODULE_SYNTAX_ERROR
@@ -3332,7 +3338,7 @@ void TRI_InitializeErrorMessages();
 /// The module could not be parsed because of a syntax error.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_SYNTAX_ERROR (3101)
+#define TRI_ERROR_MODULE_SYNTAX_ERROR                                     (3101)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3102: ERROR_MODULE_BAD_WRAPPER
@@ -3343,7 +3349,7 @@ void TRI_InitializeErrorMessages();
 /// some of the names of the module's context variables.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_BAD_WRAPPER (3102)
+#define TRI_ERROR_MODULE_BAD_WRAPPER                                      (3102)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3103: ERROR_MODULE_FAILURE
@@ -3353,7 +3359,7 @@ void TRI_InitializeErrorMessages();
 /// Failed to invoke the module in its context.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_FAILURE (3103)
+#define TRI_ERROR_MODULE_FAILURE                                          (3103)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3110: ERROR_MODULE_UNKNOWN_FILE_TYPE
@@ -3363,7 +3369,7 @@ void TRI_InitializeErrorMessages();
 /// The module path resolves to a file of an unknown type.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_UNKNOWN_FILE_TYPE (3110)
+#define TRI_ERROR_MODULE_UNKNOWN_FILE_TYPE                                (3110)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3111: ERROR_MODULE_PATH_MUST_BE_ABSOLUTE
@@ -3373,7 +3379,7 @@ void TRI_InitializeErrorMessages();
 /// The module path must be absolute.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_PATH_MUST_BE_ABSOLUTE (3111)
+#define TRI_ERROR_MODULE_PATH_MUST_BE_ABSOLUTE                            (3111)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3112: ERROR_MODULE_CAN_NOT_ESCAPE
@@ -3383,7 +3389,7 @@ void TRI_InitializeErrorMessages();
 /// The relative module path can not escape the module's top-level directory.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_CAN_NOT_ESCAPE (3112)
+#define TRI_ERROR_MODULE_CAN_NOT_ESCAPE                                   (3112)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3113: ERROR_MODULE_DRIVE_LETTER
@@ -3393,7 +3399,7 @@ void TRI_InitializeErrorMessages();
 /// The module path contains a Windows drive letter, which is not supported.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_DRIVE_LETTER (3113)
+#define TRI_ERROR_MODULE_DRIVE_LETTER                                     (3113)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3120: ERROR_MODULE_BAD_MODULE_ORIGIN
@@ -3403,7 +3409,7 @@ void TRI_InitializeErrorMessages();
 /// The module origin is invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_BAD_MODULE_ORIGIN (3120)
+#define TRI_ERROR_MODULE_BAD_MODULE_ORIGIN                                (3120)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3121: ERROR_MODULE_BAD_PACKAGE_ORIGIN
@@ -3413,7 +3419,7 @@ void TRI_InitializeErrorMessages();
 /// The package origin is invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_BAD_PACKAGE_ORIGIN (3121)
+#define TRI_ERROR_MODULE_BAD_PACKAGE_ORIGIN                               (3121)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3125: ERROR_MODULE_DOCUMENT_IS_EMPTY
@@ -3423,7 +3429,7 @@ void TRI_InitializeErrorMessages();
 /// The module resolves to a document which is empty or malformed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_DOCUMENT_IS_EMPTY (3125)
+#define TRI_ERROR_MODULE_DOCUMENT_IS_EMPTY                                (3125)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3130: ERROR_MODULE_MAIN_NOT_READABLE
@@ -3433,7 +3439,7 @@ void TRI_InitializeErrorMessages();
 /// The module's main file is not readable.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_MAIN_NOT_READABLE (3130)
+#define TRI_ERROR_MODULE_MAIN_NOT_READABLE                                (3130)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3131: ERROR_MODULE_MAIN_NOT_JS
@@ -3443,7 +3449,7 @@ void TRI_InitializeErrorMessages();
 /// The module's main file is not a JavaScript file.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_MODULE_MAIN_NOT_JS (3131)
+#define TRI_ERROR_MODULE_MAIN_NOT_JS                                      (3131)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10000: RESULT_ELEMENT_EXISTS
@@ -3453,7 +3459,7 @@ void TRI_InitializeErrorMessages();
 /// Will be returned if the element was not insert because it already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_RESULT_ELEMENT_EXISTS (10000)
+#define TRI_RESULT_ELEMENT_EXISTS                                         (10000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10001: RESULT_ELEMENT_NOT_FOUND
@@ -3463,7 +3469,7 @@ void TRI_InitializeErrorMessages();
 /// Will be returned if the element was not found in the structure.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_RESULT_ELEMENT_NOT_FOUND (10001)
+#define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20000: ERROR_APP_ALREADY_EXISTS
@@ -3473,7 +3479,7 @@ void TRI_InitializeErrorMessages();
 /// newest version of app already installed
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APP_ALREADY_EXISTS (20000)
+#define TRI_ERROR_APP_ALREADY_EXISTS                                      (20000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21000: ERROR_QUEUE_ALREADY_EXISTS
@@ -3483,7 +3489,7 @@ void TRI_InitializeErrorMessages();
 ///  "Will be returned if a queue with this name already exists."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUEUE_ALREADY_EXISTS (21000)
+#define TRI_ERROR_QUEUE_ALREADY_EXISTS                                    (21000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING
@@ -3493,7 +3499,7 @@ void TRI_InitializeErrorMessages();
 /// Will be returned if a shutdown is in progress.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_DISPATCHER_IS_STOPPING (21001)
+#define TRI_ERROR_DISPATCHER_IS_STOPPING                                  (21001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21002: ERROR_QUEUE_UNKNOWN
@@ -3503,7 +3509,7 @@ void TRI_InitializeErrorMessages();
 /// Will be returned if a queue with this name does not exist.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUEUE_UNKNOWN (21002)
+#define TRI_ERROR_QUEUE_UNKNOWN                                           (21002)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21003: ERROR_QUEUE_FULL
@@ -3513,6 +3519,7 @@ void TRI_InitializeErrorMessages();
 /// Will be returned if a queue with this name is full.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUEUE_FULL (21003)
+#define TRI_ERROR_QUEUE_FULL                                              (21003)
 
 #endif
+
