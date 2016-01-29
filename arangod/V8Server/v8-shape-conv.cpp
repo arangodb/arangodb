@@ -24,7 +24,7 @@
 #include "v8-shape-conv.h"
 
 #include "Basics/conversions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -370,8 +370,7 @@ static int FillShapeValueList(v8::Isolate* isolate, VocShaper* shaper,
       TRI_Free(shaper->memoryZone(), values);
       TRI_Free(shaper->memoryZone(), shape);
 
-      LOG_TRACE("shaper failed to find shape of type %d",
-                (int)shape->base._type);
+      LOG(TRACE) << "shaper failed to find shape of type " << shape->base._type;
 
       if (!create) {
         return TRI_RESULT_ELEMENT_NOT_FOUND;
@@ -444,7 +443,7 @@ static int FillShapeValueList(v8::Isolate* isolate, VocShaper* shaper,
         }
       }
 
-      LOG_TRACE("shaper failed to find shape %d", (int)shape->base._type);
+      LOG(TRACE) << "shaper failed to find shape " << shape->base._type;
 
       TRI_Free(shaper->memoryZone(), values);
       TRI_Free(shaper->memoryZone(), shape);
@@ -790,7 +789,7 @@ static int FillShapeValueArray(v8::Isolate* isolate, VocShaper* shaper,
   found = shaper->findShape(&a->base, create);
 
   if (found == nullptr) {
-    LOG_TRACE("shaper failed to find shape %d", (int)a->base._type);
+    LOG(TRACE) << "shaper failed to find shape " << a->base._type;
     TRI_Free(shaper->memoryZone(), dst->_value);
     TRI_Free(shaper->memoryZone(), a);
 
@@ -819,9 +818,7 @@ static int FillShapeValueJson(v8::Isolate* isolate, VocShaper* shaper,
   v8::HandleScope scope(isolate);
 
   if (json->IsRegExp() || json->IsFunction() || json->IsExternal()) {
-    LOG_TRACE(
-        "shaper failed because regexp/function/external/date object cannot be "
-        "converted");
+    LOG(TRACE) << "shaper failed because regexp/function/external/date object cannot be converted";
     return TRI_ERROR_BAD_PARAMETER;
   }
 
@@ -904,7 +901,7 @@ static int FillShapeValueJson(v8::Isolate* isolate, VocShaper* shaper,
     return res;
   }
 
-  LOG_TRACE("shaper failed to convert object");
+  LOG(TRACE) << "shaper failed to convert object";
   return TRI_ERROR_BAD_PARAMETER;
 }
 
@@ -1034,7 +1031,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
       continue;
     }
 
@@ -1042,7 +1039,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARNING) << "cannot find attribute #" << (unsigned int)aid;
       continue;
     }
 
@@ -1067,7 +1064,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
       continue;
     }
 
@@ -1075,7 +1072,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARNING) << "cannot find attribute #" << (unsigned int)aid;
       continue;
     }
 
@@ -1144,7 +1141,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
       continue;
     }
 
@@ -1152,7 +1149,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARNING) << "cannot find attribute #" << (unsigned int)aid;
       continue;
     }
 
@@ -1177,7 +1174,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
       continue;
     }
 
@@ -1185,7 +1182,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARNING) << "cannot find attribute #" << (unsigned int)aid;
       continue;
     }
 
@@ -1244,7 +1241,7 @@ static v8::Handle<v8::Value> JsonShapeDataList(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
       continue;
     }
 
@@ -1286,7 +1283,7 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousList(
   subshape = shaper->lookupShapeId(sid);
 
   if (subshape == nullptr) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+    LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
     return scope.Escape<v8::Value>(v8::Array::New(isolate));
   }
 
@@ -1335,7 +1332,7 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList(
   subshape = shaper->lookupShapeId(sid);
 
   if (subshape == nullptr) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+    LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
     return scope.Escape<v8::Value>(v8::Array::New(isolate));
   }
 

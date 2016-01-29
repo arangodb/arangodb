@@ -25,7 +25,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
@@ -2286,7 +2286,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
             parsedAnswer = result.answer->toVelocyPack(&options);
           } catch (VPackException const& e) {
             // Only log this error and try the next doc
-            LOG_DEBUG("failed to parse json object: '%s'", e.what());
+            LOG(DEBUG) << "failed to parse json object: '" << e.what() << "'";
             continue;
           }
 
@@ -2297,7 +2297,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
               if (result.getBoolean()) {
                 nrok++;
               } else {
-                LOG_ERROR("some shard result not OK");
+                LOG(ERROR) << "some shard result not OK";
               }
             } else {
               VPackSlice const errorMessage = answer.get("errorMessage");
@@ -2307,7 +2307,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
               }
             }
           } else {
-            LOG_ERROR("result body is no object");
+            LOG(ERROR) << "result body is no object";
           }
         } else if (result.answer_code ==
                    arangodb::rest::HttpResponse::SERVER_ERROR) {
@@ -2318,7 +2318,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
             parsedAnswer = result.answer->toVelocyPack(&options);
           } catch (VPackException const& e) {
             // Only log this error and try the next doc
-            LOG_DEBUG("failed to parse json object: '%s'", e.what());
+            LOG(DEBUG) << "failed to parse json object: '" << e.what() << "'";
             continue;
           }
 
@@ -2331,22 +2331,19 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
             }
           }
         } else {
-          LOG_ERROR("Bad answer code from shard: %d", result.answer_code);
+          LOG(ERROR) << "Bad answer code from shard: " << result.answer_code;
         }
       } else {
-        LOG_ERROR("Bad status from DBServer: %d, msg: %s, shard: %s",
-                  result.status, result.errorMessage.c_str(),
-                  result.shardID.c_str());
+        LOG(ERROR) << "Bad status from DBServer: " << result.status << ", msg: " << result.errorMessage.c_str() << ", shard: " << result.shardID.c_str();
         if (result.status >= CL_COMM_SENT) {
           if (result.result.get() == nullptr) {
-            LOG_ERROR("result.result is nullptr");
+            LOG(ERROR) << "result.result is nullptr";
           } else {
             auto msg = result.result->getResultTypeMessage();
-            LOG_ERROR("Bad HTTP return code: %d, msg: %s",
-                      result.result->getHttpReturnCode(), msg.c_str());
+            LOG(ERROR) << "Bad HTTP return code: " << result.result->getHttpReturnCode() << ", msg: " << msg.c_str();
             auto body = result.result->getBodyVelocyPack();
             msg = body->toString();
-            LOG_ERROR("Body: %s", msg.c_str());
+            LOG(ERROR) << "Body: " << msg.c_str();
           }
         }
       }
@@ -2792,10 +2789,7 @@ void RestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  LOG_TRACE(
-      "requested collection dump for collection '%s', tickStart: %llu, "
-      "tickEnd: %llu",
-      collection, (unsigned long long)tickStart, (unsigned long long)tickEnd);
+  LOG(TRACE) << "requested collection dump for collection '" << collection << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 
   int res = TRI_ERROR_NO_ERROR;
 

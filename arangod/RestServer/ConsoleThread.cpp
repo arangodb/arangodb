@@ -26,7 +26,7 @@
 #include <iostream>
 
 #include "ApplicationServer/ApplicationServer.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/MutexLocker.h"
 #include "Rest/Version.h"
@@ -163,7 +163,7 @@ start_pretty_print();
     sigaddset(&set, SIGINT);
 
     if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
-      LOG_ERROR("unable to install signal handler");
+      LOG(ERROR) << "unable to install signal handler";
     }
 #endif
 

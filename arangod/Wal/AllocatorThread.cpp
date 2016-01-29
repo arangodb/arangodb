@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AllocatorThread.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
@@ -140,9 +140,7 @@ void AllocatorThread::run() {
           continue;
         }
 
-        LOG_ERROR(
-            "unable to create new WAL reserve logfile for sized marker: %s",
-            TRI_errno_string(res));
+        LOG(ERROR) << "unable to create new WAL reserve logfile for sized marker: " << TRI_errno_string(res);
       } else if (requestedSize > 0 &&
                  _logfileManager->logfileCreationAllowed(requestedSize)) {
         res = createReserveLogfile(requestedSize);
@@ -151,15 +149,13 @@ void AllocatorThread::run() {
           continue;
         }
 
-        LOG_ERROR("unable to create new WAL reserve logfile: %s",
-                  TRI_errno_string(res));
+        LOG(ERROR) << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
       }
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-      LOG_ERROR("got unexpected error in allocatorThread: %s",
-                TRI_errno_string(res));
+      LOG(ERROR) << "got unexpected error in allocatorThread: " << TRI_errno_string(res);
     } catch (...) {
-      LOG_ERROR("got unspecific error in allocatorThread");
+      LOG(ERROR) << "got unspecific error in allocatorThread";
     }
 
     // reset allocator status

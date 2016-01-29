@@ -33,7 +33,7 @@
 #include "Basics/Thread.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 
@@ -65,10 +65,9 @@ Scheduler::Scheduler(size_t nrThreads)
 
   // report status
   if (multiThreading) {
-    LOG_TRACE("scheduler is multi-threaded, number of threads: %d",
-              (int)nrThreads);
+    LOG(TRACE) << "scheduler is multi-threaded, number of threads: " << nrThreads;
   } else {
-    LOG_TRACE("scheduler is single-threaded");
+    LOG(TRACE) << "scheduler is single-threaded";
   }
 
   // setup signal handlers
@@ -106,12 +105,12 @@ bool Scheduler::start(ConditionVariable* cv) {
     for (size_t i = 0; i < nrThreads; ++i) {
       if (!threads[i]->isRunning()) {
         waiting = true;
-        LOG_TRACE("waiting for thread #%d to start", (int)i);
+        LOG(TRACE) << "waiting for thread #" << i << " to start";
       }
     }
   }
 
-  LOG_TRACE("all scheduler threads are up and running");
+  LOG(TRACE) << "all scheduler threads are up and running";
   return true;
 }
 
@@ -174,7 +173,7 @@ void Scheduler::beginShutdown() {
 
   MUTEX_LOCKER(mutexLocker, schedulerLock);
 
-  LOG_DEBUG("beginning shutdown sequence of scheduler");
+  LOG(DEBUG) << "beginning shutdown sequence of scheduler";
 
   for (size_t i = 0; i < nrThreads; ++i) {
     threads[i]->beginShutdown();
@@ -197,7 +196,7 @@ bool Scheduler::isShutdownInProgress() { return stopping != 0; }
 void Scheduler::shutdown() {
   for (auto& it : taskRegistered) {
     std::string const name = it.second->name();
-    LOG_DEBUG("forcefully removing task '%s'", name.c_str());
+    LOG(DEBUG) << "forcefully removing task '" << name.c_str() << "'";
 
     deleteTask(it.second);
   }
@@ -346,13 +345,12 @@ int Scheduler::unregisterTask(Task* task) {
         task);  // TODO(fc) XXX remove this! This should be in the Task
 
     if (it == task2thread.end()) {
-      LOG_WARNING("unregisterTask called for an unknown task %p (%s)",
-                  (void*)task, taskName.c_str());
+      LOG(WARNING) << "unregisterTask called for an unknown task " << (void*)task << " (" << taskName.c_str() << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG_TRACE("unregisterTask for task %p (%s)", (void*)task, taskName.c_str());
+    LOG(TRACE) << "unregisterTask for task " << (void*)task << " (" << taskName.c_str() << ")";
 
     thread = (*it).second;
 
@@ -379,13 +377,12 @@ int Scheduler::destroyTask(Task* task) {
     auto it = task2thread.find(task);
 
     if (it == task2thread.end()) {
-      LOG_WARNING("destroyTask called for an unknown task %p (%s)", (void*)task,
-                  taskName.c_str());
+      LOG(WARNING) << "destroyTask called for an unknown task " << (void*)task << " (" << taskName.c_str() << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG_TRACE("destroyTask for task %p (%s)", (void*)task, taskName.c_str());
+    LOG(TRACE) << "destroyTask for task " << (void*)task << " (" << taskName.c_str() << ")";
 
     thread = (*it).second;
 
@@ -462,7 +459,7 @@ int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
   }
 
   std::string const& name = task->name();
-  LOG_TRACE("registerTask for task %p (%s)", (void*)task, name.c_str());
+  LOG(TRACE) << "registerTask for task " << (void*)task << " (" << name.c_str() << ")";
 
   // determine thread
   SchedulerThread* thread = nullptr;
@@ -556,7 +553,7 @@ void Scheduler::initializeSignalHandlers() {
   int res = sigaction(SIGPIPE, &action, 0);
 
   if (res < 0) {
-    LOG_ERROR("cannot initialize signal handlers for pipe");
+    LOG(ERROR) << "cannot initialize signal handlers for pipe";
   }
 #endif
 }

@@ -3875,7 +3875,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
 
   v8::Handle<v8::Object> v = WrapVocBase(isolate, vocbase);
   if (v.IsEmpty()) {
-    LOG_ERROR("out of memory when initializing VocBase");
+    LOG(ERROR) << "out of memory when initializing VocBase";
   } else {
     TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("db"),
                                  v);

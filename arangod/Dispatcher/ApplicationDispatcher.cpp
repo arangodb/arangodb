@@ -27,7 +27,7 @@
 
 #include "ApplicationDispatcher.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/PeriodicTask.h"
@@ -96,7 +96,7 @@ void ApplicationDispatcher::buildStandardQueue(size_t nrThreads,
         "no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOG_TRACE("setting up a standard queue with %d threads", (int)nrThreads);
+  LOG(TRACE) << "setting up a standard queue with " << nrThreads << " threads";
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addStandardQueue(nrThreads, maxSize);
@@ -114,8 +114,7 @@ void ApplicationDispatcher::buildAQLQueue(size_t nrThreads, size_t maxSize) {
         "no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOG_TRACE("setting up the AQL standard queue with %d threads",
-            (int)nrThreads);
+  LOG(TRACE) << "setting up the AQL standard queue with " << nrThreads << " threads";
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addAQLQueue(nrThreads, maxSize);
@@ -134,7 +133,7 @@ void ApplicationDispatcher::buildExtraQueue(size_t identifier, size_t nrThreads,
         "no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOG_TRACE("setting up a standard queue with %d threads", (int)nrThreads);
+  LOG(TRACE) << "setting up a standard queue with " << nrThreads << " threads";
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addExtraQueue(identifier, nrThreads, maxSize);

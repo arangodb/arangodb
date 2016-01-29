@@ -39,7 +39,7 @@
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/locks.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/random.h"
@@ -158,7 +158,7 @@ static int ReadServerId(char const* filename) {
     return TRI_ERROR_INTERNAL;
   }
 
-  LOG_TRACE("using existing server id: %llu", (unsigned long long)foundId);
+  LOG(TRACE) << "using existing server id: " << foundId;
 
   if (foundId == 0) {
     return TRI_ERROR_INTERNAL;
@@ -193,18 +193,17 @@ static int WriteServerId(char const* filename) {
     builder.close();
   } catch (...) {
     // out of memory
-    LOG_ERROR("cannot save server id in file '%s': out of memory", filename);
+    LOG(ERROR) << "cannot save server id in file '" << filename << "': out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // save json info to file
-  LOG_DEBUG("Writing server id to file '%s'", filename);
+  LOG(DEBUG) << "Writing server id to file '" << filename << "'";
   bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
       filename, builder.slice(), true);
 
   if (!ok) {
-    LOG_ERROR("could not save server id in file '%s': %s", filename,
-              TRI_last_error());
+    LOG(ERROR) << "could not save server id in file '" << filename << "': " << TRI_last_error();
 
     return TRI_ERROR_INTERNAL;
   }
@@ -305,13 +304,12 @@ static int CreateBaseApplicationDirectory(char const* basePath,
       res = TRI_CreateDirectory(path, systemError, errorMessage);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        LOG_INFO("created base application directory '%s'", path);
+        LOG(INFO) << "created base application directory '" << path << "'";
       } else {
         if ((res != TRI_ERROR_FILE_EXISTS) || (!TRI_IsDirectory(path))) {
-          LOG_ERROR("unable to create base application directory %s",
-                    errorMessage.c_str());
+          LOG(ERROR) << "unable to create base application directory " << errorMessage.c_str();
         } else {
-          LOG_INFO("otherone created base application directory '%s'", path);
+          LOG(INFO) << "otherone created base application directory '" << path << "'";
           res = TRI_ERROR_NO_ERROR;
         }
       }
@@ -343,21 +341,15 @@ static int CreateApplicationDirectory(char const* name, char const* basePath) {
 
       if (res == TRI_ERROR_NO_ERROR) {
         if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-          LOG_TRACE("created application directory '%s' for database '%s'",
-                    path, name);
+          LOG(TRACE) << "created application directory '" << path << "' for database '" << name << "'";
         } else {
-          LOG_INFO("created application directory '%s' for database '%s'", path,
-                   name);
+          LOG(INFO) << "created application directory '" << path << "' for database '" << name << "'";
         }
       } else if (res == TRI_ERROR_FILE_EXISTS) {
-        LOG_INFO(
-            "unable to create application directory '%s' for database '%s': %s",
-            path, name, errorMessage.c_str());
+        LOG(INFO) << "unable to create application directory '" << path << "' for database '" << name << "': " << errorMessage.c_str();
         res = TRI_ERROR_NO_ERROR;
       } else {
-        LOG_ERROR(
-            "unable to create application directory '%s' for database '%s': %s",
-            path, name, errorMessage.c_str());
+        LOG(ERROR) << "unable to create application directory '" << path << "' for database '" << name << "': " << errorMessage.c_str();
       }
     }
 
@@ -375,7 +367,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
   regmatch_t matches[2];
 
   if (server->_iterateMarkersOnOpen && !server->_hasCreatedSystemDatabase) {
-    LOG_WARNING("no shutdown info found. scanning datafiles for last tick...");
+    LOG(WARNING) << "no shutdown info found. scanning datafiles for last tick...";
   }
 
   std::vector<std::string> files = TRI_FilesDirectory(server->_databasePath);
@@ -419,8 +411,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
       // the database directory we found is not writable for the current user
       // this can cause serious trouble so we will abort the server start if we
       // encounter this situation
-      LOG_ERROR("database directory '%s' is not writable for current user",
-                databaseDirectory.c_str());
+      LOG(ERROR) << "database directory '" << databaseDirectory.c_str() << "' is not writable for current user";
 
       res = TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
       break;
@@ -431,7 +422,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 
     if (TRI_ExistsFile(tmpfile.c_str())) {
       // still a temporary... must ignore
-      LOG_TRACE("ignoring temporary directory '%s'", tmpfile.c_str());
+      LOG(TRACE) << "ignoring temporary directory '" << tmpfile.c_str() << "'";
       continue;
     }
 
@@ -446,25 +437,20 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
 
     if (!TRI_ExistsFile(parametersFile.c_str())) {
       // no parameter.json file
-      LOG_ERROR(
-          "database directory '%s' does not contain parameters file or "
-          "parameters file cannot be read",
-          databaseDirectory.c_str());
+      LOG(ERROR) << "database directory '" << databaseDirectory.c_str() << "' does not contain parameters file or parameters file cannot be read";
 
       // abort
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
 
-    LOG_DEBUG("reading database parameters from file '%s'", parametersFile.c_str());
+    LOG(DEBUG) << "reading database parameters from file '" << parametersFile.c_str() << "'";
     std::shared_ptr<VPackBuilder> builder;
     try {
       builder =
           arangodb::basics::VelocyPackHelper::velocyPackFromFile(parametersFile);
     } catch (...) {
-      LOG_ERROR(
-          "database directory '%s' does not contain a valid parameters file",
-          databaseDirectory.c_str());
+      LOG(ERROR) << "database directory '" << databaseDirectory.c_str() << "' does not contain a valid parameters file";
 
       // abort
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
@@ -473,15 +459,14 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     VPackSlice parameters = builder->slice();
     std::string parametersString = parameters.toJson();
 
-    LOG_DEBUG("database parameters: %s", parametersString.c_str());
+    LOG(DEBUG) << "database parameters: " << parametersString.c_str();
 
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters,
                                                             "deleted", false)) {
       // database is deleted, skip it!
-      LOG_INFO("found dropped database in directory '%s'", databaseDirectory.c_str());
+      LOG(INFO) << "found dropped database in directory '" << databaseDirectory.c_str() << "'";
 
-      LOG_INFO("removing superfluous database directory '%s'",
-               databaseDirectory.c_str());
+      LOG(INFO) << "removing superfluous database directory '" << databaseDirectory.c_str() << "'";
 
       TRI_RemoveDirectory(databaseDirectory.c_str());
       continue;
@@ -489,9 +474,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     VPackSlice idSlice = parameters.get("id");
 
     if (!idSlice.isString()) {
-      LOG_ERROR(
-          "database directory '%s' does not contain a valid parameters file",
-          databaseDirectory.c_str());
+      LOG(ERROR) << "database directory '" << databaseDirectory.c_str() << "' does not contain a valid parameters file";
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
@@ -502,9 +485,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
     VPackSlice nameSlice = parameters.get("name");
 
     if (!nameSlice.isString()) {
-      LOG_ERROR(
-          "database directory '%s' does not contain a valid parameters file",
-          databaseDirectory.c_str());
+      LOG(ERROR) << "database directory '" << databaseDirectory.c_str() << "' does not contain a valid parameters file";
 
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
@@ -544,9 +525,7 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
         res = TRI_ERROR_INTERNAL;
       }
 
-      LOG_ERROR(
-          "could not process database directory '%s' for database '%s': %s",
-          databaseDirectory.c_str(), name.c_str(), TRI_errno_string(res));
+      LOG(ERROR) << "could not process database directory '" << databaseDirectory.c_str() << "' for database '" << name.c_str() << "': " << TRI_errno_string(res);
       break;
     }
 
@@ -561,13 +540,13 @@ static int OpenDatabases(TRI_server_t* server, regex_t* regex, bool isUpgrade) {
       }
     } catch (...) {
       res = TRI_ERROR_OUT_OF_MEMORY;
-      LOG_ERROR("could not add database '%s': out of memory", name.c_str());
+      LOG(ERROR) << "could not add database '" << name.c_str() << "': out of memory";
       break;
     }
 
     TRI_ASSERT(found == nullptr);
 
-    LOG_INFO("loaded database '%s' from '%s'", vocbase->_name, vocbase->_path);
+    LOG(INFO) << "loaded database '" << vocbase->_name << "' from '" << vocbase->_path << "'";
   }
 
   server->_databasesLists = newLists;
@@ -669,8 +648,7 @@ static int CloseDroppedDatabases(TRI_server_t* server) {
     } else if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
       delete vocbase;
     } else {
-      LOG_ERROR("unknown database type %d %s - close doing nothing.",
-                vocbase->_type, vocbase->_name);
+      LOG(ERROR) << "unknown database type " << vocbase->_type << " " << vocbase->_name << " - close doing nothing.";
     }
   }
 
@@ -692,7 +670,7 @@ static int GetDatabases(TRI_server_t* server, std::vector<std::string>& database
   int res = regcomp(&re, "^database-([0-9][0-9]*)$", REG_EXTENDED);
 
   if (res != 0) {
-    LOG_ERROR("unable to compile regular expression");
+    LOG(ERROR) << "unable to compile regular expression";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -737,7 +715,7 @@ static bool HasOldCollections(TRI_server_t* server) {
   TRI_ASSERT(server != nullptr);
 
   if (regcomp(&re, "^collection-([0-9][0-9]*)(-[0-9]+)?$", REG_EXTENDED) != 0) {
-    LOG_ERROR("unable to compile regular expression");
+    LOG(ERROR) << "unable to compile regular expression";
 
     return false;
   }
@@ -804,7 +782,7 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
 
   if (!arangodb::basics::VelocyPackHelper::velocyPackToFile(
           file, builder.slice(), true)) {
-    LOG_ERROR("cannot save database information in file '%s'", file);
+    LOG(ERROR) << "cannot save database information in file '" << file << "'";
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
@@ -846,8 +824,7 @@ static int CreateDatabaseDirectory(TRI_server_t* server, TRI_voc_tick_t tick,
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res != TRI_ERROR_FILE_EXISTS) {
-      LOG_ERROR("failed to create database directory: %s",
-                errorMessage.c_str());
+      LOG(ERROR) << "failed to create database directory: " << errorMessage.c_str();
     }
     return res;
   }
@@ -914,9 +891,7 @@ static int InitDatabases(TRI_server_t* server, bool checkVersion,
   if (res == TRI_ERROR_NO_ERROR) {
     if (names.empty()) {
       if (!performUpgrade && HasOldCollections(server)) {
-        LOG_ERROR(
-            "no databases found. Please start the server with the --upgrade "
-            "option");
+        LOG(ERROR) << "no databases found. Please start the server with the --upgrade option";
 
         return TRI_ERROR_ARANGO_DATADIR_INVALID;
       }
@@ -959,8 +934,7 @@ static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("could not save create database marker in log: %s",
-                TRI_errno_string(res));
+    LOG(WARNING) << "could not save create database marker in log: " << TRI_errno_string(res);
   }
 
   return res;
@@ -990,8 +964,7 @@ static int WriteDropMarker(TRI_voc_tick_t id) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("could not save drop database marker in log: %s",
-                TRI_errno_string(res));
+    LOG(WARNING) << "could not save drop database marker in log: " << TRI_errno_string(res);
   }
 
   return res;
@@ -1069,9 +1042,7 @@ static void DatabaseManager(void* data) {
         // remember the database path
         char* path;
 
-        LOG_TRACE(
-            "physically removing database directory '%s' of database '%s'",
-            database->_path, database->_name);
+        LOG(TRACE) << "physically removing database directory '" << database->_path << "' of database '" << database->_name << "'";
 
         // remove apps directory for database
         if (database->_isOwnAppsDirectory && strlen(server->_appPath) > 0) {
@@ -1079,8 +1050,7 @@ static void DatabaseManager(void* data) {
 
           if (path != nullptr) {
             if (TRI_IsDirectory(path)) {
-              LOG_TRACE("removing app directory '%s' of database '%s'", path,
-                        database->_name);
+              LOG(TRACE) << "removing app directory '" << path << "' of database '" << database->_name << "'";
 
               TRI_RemoveDirectory(path);
             }
@@ -1261,15 +1231,14 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   int res;
 
   if (!TRI_IsDirectory(server->_basePath)) {
-    LOG_ERROR("database path '%s' is not a directory", server->_basePath);
+    LOG(ERROR) << "database path '" << server->_basePath << "' is not a directory";
 
     return TRI_ERROR_ARANGO_DATADIR_INVALID;
   }
 
   if (!TRI_IsWritable(server->_basePath)) {
     // database directory is not writable for the current user... bad luck
-    LOG_ERROR("database directory '%s' is not writable for current user",
-              server->_basePath);
+    LOG(ERROR) << "database directory '" << server->_basePath << "' is not writable for current user";
 
     return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
   }
@@ -1281,8 +1250,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   res = TRI_VerifyLockFile(server->_lockFilename);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("database is locked, please check the lock file '%s'",
-              server->_lockFilename);
+    LOG(ERROR) << "database is locked, please check the lock file '" << server->_lockFilename << "'";
 
     return TRI_ERROR_ARANGO_DATADIR_LOCKED;
   }
@@ -1294,10 +1262,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   res = TRI_CreateLockFile(server->_lockFilename);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR(
-        "cannot lock the database directory, please check the lock file '%s': "
-        "%s",
-        server->_lockFilename, TRI_errno_string(res));
+    LOG(ERROR) << "cannot lock the database directory, please check the lock file '" << server->_lockFilename << "': " << TRI_errno_string(res);
 
     return TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE;
   }
@@ -1313,7 +1278,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("reading/creating server file failed: %s", TRI_errno_string(res));
+    LOG(ERROR) << "reading/creating server file failed: " << TRI_errno_string(res);
 
     return res;
   }
@@ -1328,8 +1293,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
     res = TRI_CreateDirectory(server->_databasePath, systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to create database directory '%s': %s",
-                server->_databasePath, errorMessage.c_str());
+      LOG(ERROR) << "unable to create database directory '" << server->_databasePath << "': " << errorMessage.c_str();
 
       return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
     }
@@ -1338,7 +1302,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   }
 
   if (!TRI_IsWritable(server->_databasePath)) {
-    LOG_ERROR("database directory '%s' is not writable", server->_databasePath);
+    LOG(ERROR) << "database directory '" << server->_databasePath << "' is not writable";
 
     return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
   }
@@ -1354,7 +1318,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to initialize databases: %s", TRI_errno_string(res));
+    LOG(ERROR) << "unable to initialize databases: " << TRI_errno_string(res);
     return res;
   }
 
@@ -1370,11 +1334,9 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
                                             errorMessage);
 
     if (res) {
-      LOG_INFO("created --javascript.app-path directory '%s'.",
-               server->_appPath);
+      LOG(INFO) << "created --javascript.app-path directory '" << server->_appPath << "'.";
     } else {
-      LOG_ERROR("unable to create --javascript.app-path directory '%s': %s",
-                server->_appPath, errorMessage.c_str());
+      LOG(ERROR) << "unable to create --javascript.app-path directory '" << server->_appPath << "': " << errorMessage.c_str();
       return TRI_ERROR_SYS_ERROR;
     }
   }
@@ -1390,7 +1352,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
 #endif
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to initialize databases: %s", TRI_errno_string(res));
+    LOG(ERROR) << "unable to initialize databases: " << TRI_errno_string(res);
     return res;
   }
 
@@ -1402,7 +1364,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   res = regcomp(&regex, "^database-([0-9][0-9]*)$", REG_EXTENDED);
 
   if (res != 0) {
-    LOG_ERROR("unable to compile regular expression");
+    LOG(ERROR) << "unable to compile regular expression";
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1413,8 +1375,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   regfree(&regex);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not iterate over all databases: %s",
-              TRI_errno_string(res));
+    LOG(ERROR) << "could not iterate over all databases: " << TRI_errno_string(res);
 
     return res;
   }
@@ -1452,15 +1413,12 @@ int TRI_InitDatabasesServer(TRI_server_t* server) {
 
     if (vocbase->_replicationApplier->_configuration._autoStart) {
       if (server->_disableReplicationAppliers) {
-        LOG_INFO("replication applier explicitly deactivated for database '%s'",
-                 vocbase->_name);
+        LOG(INFO) << "replication applier explicitly deactivated for database '" << vocbase->_name << "'";
       } else {
         int res = vocbase->_replicationApplier->start(0, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_WARNING(
-              "unable to start replication applier for database '%s': %s",
-              vocbase->_name, TRI_errno_string(res));
+          LOG(WARNING) << "unable to start replication applier for database '" << vocbase->_name << "': " << TRI_errno_string(res);
         }
       }
     }
@@ -1545,8 +1503,7 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
       res = TRI_ERROR_INTERNAL;
     }
 
-    LOG_ERROR("could not create database '%s': %s", name,
-              TRI_errno_string(res));
+    LOG(ERROR) << "could not create database '" << name << "': " << TRI_errno_string(res);
 
     return res;
   }
@@ -1645,9 +1602,9 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     std::string const path(arangodb::basics::FileUtils::buildFilename(server->_databasePath, dirname.c_str()));
 
     if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-      LOG_TRACE("creating database '%s', directory '%s'", name, path.c_str());
+      LOG(TRACE) << "creating database '" << name << "', directory '" << path.c_str() << "'";
     } else {
-      LOG_INFO("creating database '%s', directory '%s'", name, path.c_str());
+      LOG(INFO) << "creating database '" << name << "', directory '" << path.c_str() << "'";
     }
 
     vocbase =
@@ -1662,8 +1619,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
         res = TRI_ERROR_INTERNAL;
       }
 
-      LOG_ERROR("could not create database '%s': %s", name,
-                TRI_errno_string(res));
+      LOG(ERROR) << "could not create database '" << name << "': " << TRI_errno_string(res);
 
       return res;
     }
@@ -1691,16 +1647,12 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
       // start the replication applier
       if (vocbase->_replicationApplier->_configuration._autoStart) {
         if (server->_disableReplicationAppliers) {
-          LOG_INFO(
-              "replication applier explicitly deactivated for database '%s'",
-              name);
+          LOG(INFO) << "replication applier explicitly deactivated for database '" << name << "'";
         } else {
           res = vocbase->_replicationApplier->start(0, false);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_WARNING(
-                "unable to start replication applier for database '%s': %s",
-                name, TRI_errno_string(res));
+            LOG(WARNING) << "unable to start replication applier for database '" << name << "': " << TRI_errno_string(res);
           }
         }
       }
@@ -1718,7 +1670,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
         newLists->_databases.insert(
             std::make_pair(std::string(vocbase->_name), vocbase));
       } catch (...) {
-        LOG_ERROR("Out of memory for putting new database into list!");
+        LOG(ERROR) << "Out of memory for putting new database into list!";
         // This is bad, but at least we do not crash!
       }
       if (newLists != nullptr) {
@@ -1803,7 +1755,7 @@ int TRI_DropByIdCoordinatorDatabaseServer(TRI_server_t* server,
     delete oldLists;
 
     if (TRI_DropVocBase(vocbase)) {
-      LOG_INFO("dropping coordinator database '%s'", vocbase->_name);
+      LOG(INFO) << "dropping coordinator database '" << vocbase->_name << "'";
       res = TRI_ERROR_NO_ERROR;
     }
   } else {
@@ -1862,11 +1814,9 @@ int TRI_DropDatabaseServer(TRI_server_t* server, char const* name,
 
   if (TRI_DropVocBase(vocbase)) {
     if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-      LOG_TRACE("dropping database '%s', directory '%s'", vocbase->_name,
-                vocbase->_path);
+      LOG(TRACE) << "dropping database '" << vocbase->_name << "', directory '" << vocbase->_path << "'";
     } else {
-      LOG_INFO("dropping database '%s', directory '%s'", vocbase->_name,
-               vocbase->_path);
+      LOG(INFO) << "dropping database '" << vocbase->_name << "', directory '" << vocbase->_path << "'";
     }
 
     res = SaveDatabaseParameters(vocbase->_id, vocbase->_name, true,

@@ -23,19 +23,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DispatcherQueue.h"
-
 #include "Basics/ConditionLocker.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/logging.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"
 
 using namespace std;
 using namespace arangodb::rest;
-
-// -----------------------------------------------------------------------------
-// constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new dispatcher queue
@@ -95,8 +90,7 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   size_t pos;
 
   if (!_jobPositions.pop(pos)) {
-    LOG_TRACE("cannot add job %p to queue %p. queue is full", (void*)job.get(),
-              (void*)this);
+    LOG(TRACE) << "cannot add job " << (void*)job.get() << " to queue " << (void*)this << ". queue is full";
     return TRI_ERROR_QUEUE_FULL;
   }
 
@@ -117,7 +111,7 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   if (ok) {
     ++_numberJobs;
   } else {
-    LOG_WARNING("cannot insert job into ready queue, giving up");
+    LOG(WARNING) << "cannot insert job into ready queue, giving up";
 
     removeJob(raw);
     delete raw;
@@ -219,7 +213,7 @@ void DispatcherQueue::blockThread() { ++_nrBlocked; }
 
 void DispatcherQueue::unblockThread() {
   if (--_nrBlocked < 0) {
-    LOG_ERROR("internal error, unblocking too many threads");
+    LOG(ERROR) << "internal error, unblocking too many threads";
   }
 }
 
@@ -232,8 +226,7 @@ void DispatcherQueue::beginShutdown() {
     return;
   }
 
-  LOG_DEBUG("beginning shutdown sequence of dispatcher queue '%lu'",
-            (unsigned long)_id);
+  LOG(DEBUG) << "beginning shutdown sequence of dispatcher queue '" << _id << "'";
 
   // broadcast the we want to stop
   size_t const MAX_TRIES = 10;
@@ -291,10 +284,7 @@ void DispatcherQueue::beginShutdown() {
 
   // wait for threads to shutdown
   for (size_t count = 0; count < MAX_TRIES; ++count) {
-    LOG_TRACE(
-        "shutdown sequence dispatcher queue '%lu', status: %d running threads, "
-        "%d waiting threads",
-        (unsigned long)_id, (int)_nrRunning, (int)_nrWaiting);
+    LOG(TRACE) << "shutdown sequence dispatcher queue '" << _id << "', status: " << _nrRunning.load() << " running threads, " << _nrWaiting.load() << " waiting threads";
 
     if (0 == _nrRunning + _nrWaiting) {
       break;
@@ -308,10 +298,7 @@ void DispatcherQueue::beginShutdown() {
     usleep(10 * 1000);
   }
 
-  LOG_DEBUG(
-      "shutdown sequence dispatcher queue '%lu', status: %d running threads, "
-      "%d waiting threads",
-      (unsigned long)_id, (int)_nrRunning, (int)_nrWaiting);
+  LOG(DEBUG) << "shutdown sequence dispatcher queue '" << _id << "', status: " << _nrRunning.load() << " running threads, " << _nrWaiting.load() << " waiting threads";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,7 +306,7 @@ void DispatcherQueue::beginShutdown() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherQueue::shutdown() {
-  LOG_DEBUG("shutting down the dispatcher queue '%lu'", (unsigned long)_id);
+  LOG(DEBUG) << "shutting down the dispatcher queue '" << _id << "'";
 
   // try to stop threads forcefully
   {
@@ -365,7 +352,7 @@ void DispatcherQueue::startQueueThread() {
   if (!_affinityCores.empty()) {
     size_t c = _affinityCores[_affinityPos];
 
-    LOG_DEBUG("using core %d for standard dispatcher thread", (int)c);
+    LOG(DEBUG) << "using core " << c << " for standard dispatcher thread";
 
     thread->setProcessorAffinity(c);
 

@@ -24,7 +24,7 @@
 #include "fulltext-index.h"
 
 #include "Basics/locks.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 #include "fulltext-handles.h"
 #include "fulltext-list.h"
@@ -1357,7 +1357,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
     size_t start;
     size_t i;
 
-    // LOG_DEBUG("checking word %s", wordlist->_words[w]);
+    // LOG(DEBUG) << "checking word " << wordlist->_words[w];
 
     if (w > 0) {
       // check if current word has a shared/common prefix with the previous word
@@ -1503,7 +1503,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
     match = query->_matches[i];
     operation = query->_operations[i];
 
-    LOG_DEBUG("searching for word: '%s'", word);
+    LOG(DEBUG) << "searching for word: '" << word << "'";
 
     if ((operation == TRI_FULLTEXT_AND || operation == TRI_FULLTEXT_EXCLUDE) &&
         i > 0 && TRI_NumEntriesListFulltextIndex(result) == 0) {
@@ -1522,7 +1522,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
         // prefix matching
         list = GetSubNodeHandles(node);
       } else {
-        LOG_WARNING("invalid matching option for fulltext index query");
+        LOG(WARNING) << "invalid matching option for fulltext index query";
         list = TRI_CreateListFulltextIndex(0);
       }
     } else {

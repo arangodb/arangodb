@@ -23,7 +23,7 @@
 
 #include "CursorRepository.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Utils/CollectionExport.h"
 #include "VocBase/server.h"
@@ -64,9 +64,9 @@ CursorRepository::~CursorRepository() {
     }
 
     if (tries == 0) {
-      LOG_INFO("waiting for used cursors to become unused");
+      LOG(INFO) << "waiting for used cursors to become unused";
     } else if (tries == 120) {
-      LOG_WARNING("giving up waiting for unused cursors");
+      LOG(WARNING) << "giving up waiting for unused cursors";
     }
 
     usleep(500000);

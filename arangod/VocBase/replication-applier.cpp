@@ -25,7 +25,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
@@ -97,8 +97,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
       TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
 
   if (!TRI_IsObjectJson(json.get())) {
-    LOG_ERROR("unable to read replication applier configuration from file '%s'",
-              filename);
+    LOG(ERROR) << "unable to read replication applier configuration from file '" << filename << "'";
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
@@ -797,7 +796,7 @@ int TRI_RemoveStateReplicationApplier(TRI_vocbase_t* vocbase) {
 
   int res;
   if (TRI_ExistsFile(filename)) {
-    LOG_TRACE("removing replication state file '%s'", filename);
+    LOG(TRACE) << "removing replication state file '" << filename << "'";
     res = TRI_UnlinkFile(filename);
   } else {
     res = TRI_ERROR_NO_ERROR;
@@ -826,7 +825,7 @@ int TRI_SaveStateReplicationApplier(
   }
 
   char* filename = GetStateFilename(vocbase);
-  LOG_TRACE("saving replication applier state to file '%s'", filename);
+  LOG(TRACE) << "saving replication applier state to file '" << filename << "'";
 
   if (!TRI_SaveJson(filename, json.get(), doSync)) {
     int res = TRI_errno();
@@ -857,7 +856,7 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  LOG_TRACE("looking for replication state file '%s'", filename);
+  LOG(TRACE) << "looking for replication state file '" << filename << "'";
 
   if (!TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -865,7 +864,7 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  LOG_TRACE("replication state file '%s' found", filename);
+  LOG(TRACE) << "replication state file '" << filename << "' found";
 
   std::unique_ptr<TRI_json_t> json(
       TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
@@ -903,7 +902,7 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
     ReadTick(json.get(), "safeResumeTick", &state->_safeResumeTick, true);
   }
 
-  LOG_TRACE("replication state file read successfully");
+  LOG(TRACE) << "replication state file read successfully";
 
   return res;
 }
@@ -1082,9 +1081,7 @@ TRI_replication_applier_t::~TRI_replication_applier_t() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
-  LOG_TRACE(
-      "requesting replication applier start. initialTick: %llu, useTick: %d",
-      (unsigned long long)initialTick, (int)useTick);
+  LOG(TRACE) << "requesting replication applier start. initialTick: " << initialTick << ", useTick: " << useTick;
 
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
@@ -1141,14 +1138,9 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
   syncer.release();
 
   if (useTick) {
-    LOG_INFO(
-        "started replication applier for database '%s', endpoint '%s' from "
-        "tick %llu",
-        _databaseName.c_str(), _configuration._endpoint,
-        (unsigned long long)initialTick);
+    LOG(INFO) << "started replication applier for database '" << _databaseName.c_str() << "', endpoint '" << _configuration._endpoint << "' from tick " << initialTick;
   } else {
-    LOG_INFO("re-started replication applier for database '%s', endpoint '%s'",
-             _databaseName.c_str(), _configuration._endpoint);
+    LOG(INFO) << "re-started replication applier for database '" << _databaseName.c_str() << "', endpoint '" << _configuration._endpoint << "'";
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1228,7 +1220,7 @@ void TRI_replication_applier_t::stopInitialSynchronization(bool value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::stop(bool resetError) {
-  LOG_TRACE("requesting replication applier stop");
+  LOG(TRACE) << "requesting replication applier stop";
 
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
@@ -1267,8 +1259,7 @@ int TRI_replication_applier_t::stop(bool resetError) {
 
   setTermination(false);
 
-  LOG_INFO("stopped replication applier for database '%s'",
-           _databaseName.c_str());
+  LOG(INFO) << "stopped replication applier for database '" << _databaseName.c_str() << "'";
 
   return res;
 }
@@ -1299,7 +1290,7 @@ int TRI_replication_applier_t::forget() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::shutdown() {
-  LOG_TRACE("requesting replication applier shutdown");
+  LOG(TRACE) << "requesting replication applier shutdown";
 
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
@@ -1334,8 +1325,7 @@ int TRI_replication_applier_t::shutdown() {
 
   setTermination(false);
 
-  LOG_INFO("stopped replication applier for database '%s'",
-           _databaseName.c_str());
+  LOG(INFO) << "stopped replication applier for database '" << _databaseName.c_str() << "'";
 
   return res;
 }
@@ -1350,8 +1340,7 @@ bool TRI_replication_applier_t::wait(uint64_t sleepTime) {
   }
 
   if (sleepTime > 0) {
-    LOG_TRACE("replication applier going to sleep for %llu ns",
-              (unsigned long long)sleepTime);
+    LOG(TRACE) << "replication applier going to sleep for " << sleepTime << " ns";
 
     static uint64_t const SleepChunk = 500 * 1000;
 
@@ -1509,8 +1498,7 @@ int TRI_replication_applier_t::doSetError(int errorCode, char const* msg) {
 
   // log error message
   if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
-    LOG_ERROR("replication applier error for database '%s': %s",
-              _databaseName.c_str(), realMsg);
+    LOG(ERROR) << "replication applier error for database '" << _databaseName.c_str() << "': " << realMsg;
   }
 
   _state._lastError._code = errorCode;

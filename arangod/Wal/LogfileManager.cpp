@@ -25,7 +25,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"
@@ -141,7 +141,7 @@ LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
       _writeThrottled(0),
       _filenameRegex(),
       _shutdown(0) {
-  LOG_TRACE("creating WAL logfile manager");
+  LOG(TRACE) << "creating WAL logfile manager";
   TRI_ASSERT(!_allowWrites);
 
   int res =
@@ -161,7 +161,7 @@ LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
 ////////////////////////////////////////////////////////////////////////////////
 
 LogfileManager::~LogfileManager() {
-  LOG_TRACE("shutting down WAL logfile manager");
+  LOG(TRACE) << "shutting down WAL logfile manager";
 
   stop();
 
@@ -253,7 +253,7 @@ bool LogfileManager::prepare() {
                                               systemErrorStr);
 
       if (res) {
-        LOG_INFO("created database directory '%s'.", _directory.c_str());
+        LOG(INFO) << "created database directory '" << _directory.c_str() << "'.";
       } else {
         LOG_FATAL_AND_EXIT("unable to create database directory: %s",
                            systemErrorStr.c_str());
@@ -335,8 +335,7 @@ bool LogfileManager::start() {
   int res = inventory();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not create WAL logfile inventory: %s",
-              TRI_errno_string(res));
+    LOG(ERROR) << "could not create WAL logfile inventory: " << TRI_errno_string(res);
     return false;
   }
 
@@ -344,33 +343,28 @@ bool LogfileManager::start() {
   bool const shutdownFileExists = basics::FileUtils::exists(shutdownFile);
 
   if (shutdownFileExists) {
-    LOG_TRACE("shutdown file found");
+    LOG(TRACE) << "shutdown file found";
 
     res = readShutdownInfo();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("could not open shutdown file '%s': %s", shutdownFile.c_str(),
-                TRI_errno_string(res));
+      LOG(ERROR) << "could not open shutdown file '" << shutdownFile.c_str() << "': " << TRI_errno_string(res);
       return false;
     }
   } else {
-    LOG_TRACE("no shutdown file found");
+    LOG(TRACE) << "no shutdown file found";
   }
 
   res = inspectLogfiles();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not inspect WAL logfiles: %s", TRI_errno_string(res));
+    LOG(ERROR) << "could not inspect WAL logfiles: " << TRI_errno_string(res);
     return false;
   }
 
   started = true;
 
-  LOG_TRACE(
-      "WAL logfile manager configuration: historic logfiles: %lu, reserve "
-      "logfiles: %lu, filesize: %lu, sync interval: %lu",
-      (unsigned long)_historicLogfiles, (unsigned long)_reserveLogfiles,
-      (unsigned long)_filesize, (unsigned long)_syncInterval);
+  LOG(TRACE) << "WAL logfile manager configuration: historic logfiles: " << _historicLogfiles << ", reserve logfiles: " << _reserveLogfiles << ", filesize: " << _filesize << ", sync interval: " << _syncInterval;
 
   return true;
 }
@@ -389,7 +383,7 @@ bool LogfileManager::open() {
   int res = runRecovery();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to finish WAL recovery: %s", TRI_errno_string(res));
+    LOG(ERROR) << "unable to finish WAL recovery: " << TRI_errno_string(res);
     return false;
   }
 
@@ -440,16 +434,14 @@ bool LogfileManager::open() {
   res = startAllocatorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start WAL allocator thread: %s",
-              TRI_errno_string(res));
+    LOG(ERROR) << "could not start WAL allocator thread: " << TRI_errno_string(res);
     return false;
   }
 
   res = startSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start WAL synchronizer thread: %s",
-              TRI_errno_string(res));
+    LOG(ERROR) << "could not start WAL synchronizer thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -460,7 +452,7 @@ bool LogfileManager::open() {
   res = _recoverState->abortOpenTransactions();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not abort open transactions: %s", TRI_errno_string(res));
+    LOG(ERROR) << "could not abort open transactions: " << TRI_errno_string(res);
     return false;
   }
 
@@ -482,8 +474,7 @@ bool LogfileManager::open() {
   res = startCollectorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start WAL collector thread: %s",
-              TRI_errno_string(res));
+    LOG(ERROR) << "could not start WAL collector thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -492,7 +483,7 @@ bool LogfileManager::open() {
   res = startRemoverThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start WAL remover thread: %s", TRI_errno_string(res));
+    LOG(ERROR) << "could not start WAL remover thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -503,7 +494,7 @@ bool LogfileManager::open() {
   res = TRI_InitDatabasesServer(_server);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not initialize databases: %s", TRI_errno_string(res));
+    LOG(ERROR) << "could not initialize databases: " << TRI_errno_string(res);
     return false;
   }
 
@@ -523,7 +514,7 @@ void LogfileManager::stop() {
 
   _shutdown = 1;
 
-  LOG_TRACE("shutting down WAL");
+  LOG(TRACE) << "shutting down WAL";
 
   // set WAL to read-only mode
   allowWrites(false);
@@ -532,20 +523,20 @@ void LogfileManager::stop() {
   this->flush(true, true, false);
 
   // stop threads
-  LOG_TRACE("stopping remover thread");
+  LOG(TRACE) << "stopping remover thread";
   stopRemoverThread();
 
-  LOG_TRACE("stopping collector thread");
+  LOG(TRACE) << "stopping collector thread";
   stopCollectorThread();
 
-  LOG_TRACE("stopping allocator thread");
+  LOG(TRACE) << "stopping allocator thread";
   stopAllocatorThread();
 
-  LOG_TRACE("stopping synchronizer thread");
+  LOG(TRACE) << "stopping synchronizer thread";
   stopSynchronizerThread();
 
   // close all open logfiles
-  LOG_TRACE("closing logfiles");
+  LOG(TRACE) << "closing logfiles";
   closeLogfiles();
 
   TRI_IF_FAILURE("LogfileManagerStop") {
@@ -556,7 +547,7 @@ void LogfileManager::stop() {
   int res = writeShutdownInfo(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not write WAL shutdown info: %s", TRI_errno_string(res));
+    LOG(ERROR) << "could not write WAL shutdown info: " << TRI_errno_string(res);
   }
 }
 
@@ -918,17 +909,12 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TRACE(
-      "about to flush active WAL logfile. currentLogfileId: %llu, waitForSync: "
-      "%d, waitForCollector: %d",
-      (unsigned long long)lastOpenLogfileId, (int)waitForSync,
-      (int)waitForCollector);
+  LOG(TRACE) << "about to flush active WAL logfile. currentLogfileId: " << lastOpenLogfileId << ", waitForSync: " << waitForSync << ", waitForCollector: " << waitForCollector;
 
   int res = _slots->flush(waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
-    LOG_ERROR("unexpected error in WAL flush request: %s",
-              TRI_errno_string(res));
+    LOG(ERROR) << "unexpected error in WAL flush request: " << TRI_errno_string(res);
     return res;
   }
 
@@ -940,8 +926,7 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
 
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
-      // LOG_TRACE("entering waitForCollector with lastOpenLogfileId %llu",
-      // (unsigned long long) lastOpenLogfileId);
+      // LOG(TRACE) << "entering waitForCollector with lastOpenLogfileId " << // (unsigned long long) lastOpenLogfileId;
       res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
     } else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
@@ -1118,7 +1103,7 @@ int LogfileManager::getLogfileDescriptor(Logfile::IdType id) {
 
   if (it == _logfiles.end()) {
     // error
-    LOG_ERROR("could not find logfile %llu", (unsigned long long)id);
+    LOG(ERROR) << "could not find logfile " << id;
     return -1;
   }
 
@@ -1285,8 +1270,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
           // found a logfile, update the status variable and return the logfile
 
           {
-            // LOG_TRACE("setting lastOpenedId %llu", (unsigned long long)
-            // logfile->id());
+            // LOG(TRACE) << "setting lastOpenedId " << // logfile->id();
             MUTEX_LOCKER(mutexLocker, _idLock);
             _lastOpenedId = logfile->id();
           }
@@ -1330,8 +1314,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
   }
 
   TRI_ASSERT(result == nullptr);
-  LOG_WARNING("unable to acquire writeable WAL logfile after %llu ms",
-              (unsigned long long)(MaxIterations * SleepTime) / 1000);
+  LOG(WARNING) << "unable to acquire writeable WAL logfile after " << (MaxIterations * SleepTime) / 1000 << " ms";
 
   return TRI_ERROR_LOCK_TIMEOUT;
 }
@@ -1491,8 +1474,8 @@ void LogfileManager::setCollectionDone(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
   Logfile::IdType id = logfile->id();
 
-  // LOG_ERROR("setCollectionDone setting lastCollectedId to %llu", (unsigned
-  // long long) id);
+  // LOG(ERROR) << "setCollectionDone setting lastCollectedId to " << (unsigned
+  // long long) id;
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
     logfile->setStatus(Logfile::StatusType::COLLECTED);
@@ -1608,7 +1591,7 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
   Logfile::IdType const id = logfile->id();
   std::string const filename = logfileName(id);
 
-  LOG_TRACE("removing logfile '%s'", filename.c_str());
+  LOG(TRACE) << "removing logfile '" << filename.c_str() << "'";
 
   // now close the logfile
   delete logfile;
@@ -1617,8 +1600,7 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
   // now physically remove the file
 
   if (!basics::FileUtils::remove(filename, &res)) {
-    LOG_ERROR("unable to remove logfile '%s': %s", filename.c_str(),
-              TRI_errno_string(res));
+    LOG(ERROR) << "unable to remove logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
   }
 }
 
@@ -1635,12 +1617,10 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
     // if specified, wait for a shorter period of time
     maxIterations = static_cast<int64_t>(maxWaitTime * 1000000.0 /
                                          (double)SingleWaitPeriod);
-    LOG_TRACE("will wait for max. %f seconds for collector to finish",
-              maxWaitTime);
+    LOG(TRACE) << "will wait for max. " << maxWaitTime << " seconds for collector to finish";
   }
 
-  LOG_TRACE("waiting for collector thread to collect logfile %llu",
-            (unsigned long long)logfileId);
+  LOG(TRACE) << "waiting for collector thread to collect logfile " << logfileId;
 
   // wait for the collector thread to finish the collection
   int64_t iterations = 0;
@@ -1652,9 +1632,8 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
 
     int res = _collectorThread->waitForResult(SingleWaitPeriod);
 
-    // LOG_TRACE("still waiting for collector. logfileId: %llu lastCollected:
-    // %llu, result: %d", (unsigned long long) logfileId, (unsigned long long)
-    // _lastCollectedId, (int) res);
+    // LOG(TRACE) << "still waiting for collector. logfileId: " << logfileId << " lastCollected:
+    // " << // _lastCollectedId << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -1684,11 +1663,9 @@ int LogfileManager::runRecovery() {
   }
 
   if (_ignoreRecoveryErrors) {
-    LOG_INFO("running WAL recovery (%d logfiles), ignoring recovery errors",
-             (int)_recoverState->logfilesToProcess.size());
+    LOG(INFO) << "running WAL recovery (" << _recoverState->logfilesToProcess.size() << " logfiles), ignoring recovery errors";
   } else {
-    LOG_INFO("running WAL recovery (%d logfiles)",
-             (int)_recoverState->logfilesToProcess.size());
+    LOG(INFO) << "running WAL recovery (" << _recoverState->logfilesToProcess.size() << " logfiles)";
   }
 
   // now iterate over all logfiles that we found during recovery
@@ -1704,9 +1681,9 @@ int LogfileManager::runRecovery() {
   }
 
   if (_recoverState->errorCount == 0) {
-    LOG_INFO("WAL recovery finished successfully");
+    LOG(INFO) << "WAL recovery finished successfully";
   } else {
-    LOG_WARNING("WAL recovery finished, some errors ignored due to settings");
+    LOG(WARNING) << "WAL recovery finished, some errors ignored due to settings";
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1773,9 +1750,9 @@ int LogfileManager::readShutdownInfo() {
       arangodb::basics::VelocyPackHelper::getStringValue(slice, "shutdownTime",
                                                          "");
   if (shutdownTime.empty()) {
-    LOG_TRACE("no previous shutdown time found");
+    LOG(TRACE) << "no previous shutdown time found";
   } else {
-    LOG_TRACE("previous shutdown was at '%s'", shutdownTime.c_str());
+    LOG(TRACE) << "previous shutdown was at '" << shutdownTime.c_str() << "'";
   }
 
   {
@@ -1783,11 +1760,7 @@ int LogfileManager::readShutdownInfo() {
     _lastCollectedId = static_cast<Logfile::IdType>(lastCollectedId);
     _lastSealedId = static_cast<Logfile::IdType>(lastSealedId);
 
-    LOG_TRACE(
-        "initial values for WAL logfile manager: tick: %llu, lastCollected: "
-        "%llu, lastSealed: %llu",
-        (unsigned long long)lastTick, (unsigned long long)_lastCollectedId,
-        (unsigned long long)_lastSealedId);
+    LOG(TRACE) << "initial values for WAL logfile manager: tick: " << lastTick << ", lastCollected: " << _lastCollectedId.load() << ", lastSealed: " << _lastSealedId.load();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1844,11 +1817,11 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
     }
 
     if (!ok) {
-      LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
+      LOG(ERROR) << "unable to write WAL state file '" << filename.c_str() << "'";
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
   } catch (...) {
-    LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
+    LOG(ERROR) << "unable to write WAL state file '" << filename.c_str() << "'";
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1881,7 +1854,7 @@ int LogfileManager::startSynchronizerThread() {
 
 void LogfileManager::stopSynchronizerThread() {
   if (_synchronizerThread != nullptr) {
-    LOG_TRACE("stopping WAL synchronizer thread");
+    LOG(TRACE) << "stopping WAL synchronizer thread";
 
     _synchronizerThread->stop();
     _synchronizerThread->shutdown();
@@ -1916,7 +1889,7 @@ int LogfileManager::startAllocatorThread() {
 
 void LogfileManager::stopAllocatorThread() {
   if (_allocatorThread != nullptr) {
-    LOG_TRACE("stopping WAL allocator thread");
+    LOG(TRACE) << "stopping WAL allocator thread";
 
     _allocatorThread->stop();
     _allocatorThread->shutdown();
@@ -1951,7 +1924,7 @@ int LogfileManager::startCollectorThread() {
 
 void LogfileManager::stopCollectorThread() {
   if (_collectorThread != nullptr) {
-    LOG_TRACE("stopping WAL collector thread");
+    LOG(TRACE) << "stopping WAL collector thread";
 
     _collectorThread->stop();
     _collectorThread->shutdown();
@@ -1986,7 +1959,7 @@ int LogfileManager::startRemoverThread() {
 
 void LogfileManager::stopRemoverThread() {
   if (_removerThread != nullptr) {
-    LOG_TRACE("stopping WAL remover thread");
+    LOG(TRACE) << "stopping WAL remover thread";
 
     _removerThread->stop();
     _removerThread->shutdown();
@@ -2007,7 +1980,7 @@ int LogfileManager::inventory() {
     return res;
   }
 
-  LOG_TRACE("scanning WAL directory: '%s'", _directory.c_str());
+  LOG(TRACE) << "scanning WAL directory: '" << _directory.c_str() << "'";
 
   std::vector<std::string> files = basics::FileUtils::listFiles(_directory);
 
@@ -2022,8 +1995,7 @@ int LogfileManager::inventory() {
           s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
 
       if (id == 0) {
-        LOG_WARNING("encountered invalid id for logfile '%s'. ids must be > 0",
-                    file.c_str());
+        LOG(WARNING) << "encountered invalid id for logfile '" << file.c_str() << "'. ids must be > 0";
       } else {
         // update global tick
         TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
@@ -2042,7 +2014,7 @@ int LogfileManager::inventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::inspectLogfiles() {
-  LOG_TRACE("inspecting WAL logfiles");
+  LOG(TRACE) << "inspecting WAL logfiles";
 
   WRITE_LOCKER(writeLocker, _logfilesLock);
 
@@ -2053,9 +2025,7 @@ int LogfileManager::inspectLogfiles() {
 
     if (logfile != nullptr) {
       std::string const logfileName = logfile->filename();
-      LOG_DEBUG("logfile %llu, filename '%s', status %s",
-                (unsigned long long)logfile->id(), logfileName.c_str(),
-                logfile->statusText().c_str());
+      LOG(DEBUG) << "logfile " << logfile->id() << ", filename '" << logfileName.c_str() << "', status " << logfile->statusText().c_str();
     }
   }
 #endif
@@ -2100,22 +2070,17 @@ int LogfileManager::inspectLogfiles() {
       _recoverState->logfilesToProcess.push_back(logfile);
     }
 
-    LOG_TRACE("inspecting logfile %llu (%s)", (unsigned long long)logfile->id(),
-              logfile->statusText().c_str());
+    LOG(TRACE) << "inspecting logfile " << logfile->id() << " (" << logfile->statusText().c_str() << ")";
 
     // update the tick statistics
     if (!TRI_IterateDatafile(logfile->df(), &RecoverState::InitialScanMarker,
                              static_cast<void*>(_recoverState))) {
       std::string const logfileName = logfile->filename();
-      LOG_WARNING("WAL inspection failed when scanning logfile '%s'",
-                  logfileName.c_str());
+      LOG(WARNING) << "WAL inspection failed when scanning logfile '" << logfileName.c_str() << "'";
       return TRI_ERROR_ARANGO_RECOVERY;
     }
 
-    LOG_TRACE("inspected logfile %llu (%s), tickMin: %llu, tickMax: %llu",
-              (unsigned long long)logfile->id(), logfile->statusText().c_str(),
-              (unsigned long long)logfile->df()->_tickMin,
-              (unsigned long long)logfile->df()->_tickMax);
+    LOG(TRACE) << "inspected logfile " << logfile->id() << " (" << logfile->statusText().c_str() << "), tickMin: " << logfile->df()->_tickMin << ", tickMax: " << logfile->df()->_tickMax;
 
     if (logfile->status() == Logfile::StatusType::SEALED) {
       // If it is sealed, switch to random access:
@@ -2155,8 +2120,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
   Logfile::IdType const id = nextId();
   std::string const filename = logfileName(id);
 
-  LOG_TRACE("creating empty logfile '%s' with size %lu", filename.c_str(),
-            (unsigned long)size);
+  LOG(TRACE) << "creating empty logfile '" << filename.c_str() << "' with size " << size;
 
   uint32_t realsize;
   if (size > 0 && size > filesize()) {
@@ -2172,7 +2136,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
   if (logfile == nullptr) {
     int res = TRI_errno();
 
-    LOG_ERROR("unable to create logfile: %s", TRI_errno_string(res));
+    LOG(ERROR) << "unable to create logfile: " << TRI_errno_string(res);
     return res;
   }
 
@@ -2206,19 +2170,17 @@ int LogfileManager::ensureDirectory() {
   }
 
   if (!basics::FileUtils::isDirectory(directory)) {
-    LOG_INFO("WAL directory '%s' does not exist. creating it...",
-             directory.c_str());
+    LOG(INFO) << "WAL directory '" << directory.c_str() << "' does not exist. creating it...";
 
     int res;
     if (!basics::FileUtils::createDirectory(directory, &res)) {
-      LOG_ERROR("could not create WAL directory: '%s': %s", directory.c_str(),
-                TRI_last_error());
+      LOG(ERROR) << "could not create WAL directory: '" << directory.c_str() << "': " << TRI_last_error();
       return TRI_ERROR_SYS_ERROR;
     }
   }
 
   if (!basics::FileUtils::isDirectory(directory)) {
-    LOG_ERROR("WAL directory '%s' does not exist", directory.c_str());
+    LOG(ERROR) << "WAL directory '" << directory.c_str() << "' does not exist";
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 

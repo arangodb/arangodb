@@ -24,7 +24,7 @@
 #include "HttpHandlerFactory.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "HttpServer/HttpHandler.h"
 #include "Rest/HttpRequest.h"
@@ -204,7 +204,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
-    LOG_TRACE("no direct handler found, trying prefixes");
+    LOG(TRACE) << "no direct handler found, trying prefixes";
 
     // find longest match
     std::string prefix;
@@ -223,11 +223,11 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     }
 
     if (prefix.empty()) {
-      LOG_TRACE("no prefix handler found, trying catch all");
+      LOG(TRACE) << "no prefix handler found, trying catch all";
 
       i = ii.find("/");
       if (i != ii.end()) {
-        LOG_TRACE("found catch all handler '/'");
+        LOG(TRACE) << "found catch all handler '/'";
 
         size_t l = 1;
         size_t n = path.find_first_of('/', l);
@@ -248,7 +248,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     }
 
     else {
-      LOG_TRACE("found prefix match '%s'", prefix.c_str());
+      LOG(TRACE) << "found prefix match '" << prefix.c_str() << "'";
 
       size_t l = prefix.size() + 1;
       size_t n = path.find_first_of('/', l);
@@ -278,7 +278,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
 
       return notFoundHandler;
     } else {
-      LOG_TRACE("no not-found handler, giving up");
+      LOG(TRACE) << "no not-found handler, giving up";
       return nullptr;
     }
   }
@@ -292,7 +292,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     }
   }
 
-  LOG_TRACE("found handler for path '%s'", path.c_str());
+  LOG(TRACE) << "found handler for path '" << path.c_str() << "'";
   HttpHandler* handler = i->second(request, data);
 
   handler->setServer(this);

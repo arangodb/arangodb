@@ -35,7 +35,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
@@ -217,8 +217,7 @@ static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("could not save collection drop marker in log: %s",
-                TRI_errno_string(res));
+    LOG(WARNING) << "could not save collection drop marker in log: " << TRI_errno_string(res);
   }
 
   return res;
@@ -307,8 +306,7 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const colName(collection->name());
-    LOG_ERROR("failed to close collection '%s': %s", colName.c_str(),
-              TRI_last_error());
+    LOG(ERROR) << "failed to close collection '" << colName.c_str() << "': " << TRI_last_error();
 
     collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
 
@@ -351,7 +349,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
 #endif
 
   if (res != 0) {
-    LOG_ERROR("unable to complile regular expression");
+    LOG(ERROR) << "unable to complile regular expression";
 
     return false;
   }
@@ -359,7 +357,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   if (collection->_status != TRI_VOC_COL_STATUS_DELETED) {
-    LOG_ERROR("someone resurrected the collection '%s'", name.c_str());
+    LOG(ERROR) << "someone resurrected the collection '" << name.c_str() << "'";
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     regfree(&re);
@@ -377,8 +375,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
     res = TRI_CloseDocumentCollection(document, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("failed to close collection '%s': %s", name.c_str(),
-                TRI_last_error());
+      LOG(ERROR) << "failed to close collection '" << name.c_str() << "': " << TRI_last_error();
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -457,28 +454,23 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
       // perform the rename
       res = TRI_RenameFile(collection->pathc_str(), newFilename);
 
-      LOG_TRACE("renaming collection directory from '%s' to '%s'",
-                collection->pathc_str(), newFilename);
+      LOG(TRACE) << "renaming collection directory from '" << collection->pathc_str() << "' to '" << newFilename << "'";
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_ERROR("cannot rename dropped collection '%s' from '%s' to '%s': %s",
-                  name.c_str(), collection->pathc_str(), newFilename,
-                  TRI_errno_string(res));
+        LOG(ERROR) << "cannot rename dropped collection '" << name.c_str() << "' from '" << collection->pathc_str() << "' to '" << newFilename << "': " << TRI_errno_string(res);
       } else {
-        LOG_DEBUG("wiping dropped collection '%s' from disk", name.c_str());
+        LOG(DEBUG) << "wiping dropped collection '" << name.c_str() << "' from disk";
 
         res = TRI_RemoveDirectory(newFilename);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_ERROR("cannot wipe dropped collection '%s' from disk: %s",
-                    name.c_str(), TRI_errno_string(res));
+          LOG(ERROR) << "cannot wipe dropped collection '" << name.c_str() << "' from disk: " << TRI_errno_string(res);
         }
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, newFilename);
     } else {
-      LOG_ERROR("cannot rename dropped collection '%s': unknown path '%s'",
-                name.c_str(), collection->pathc_str());
+      LOG(ERROR) << "cannot rename dropped collection '" << name.c_str() << "': unknown path '" << collection->pathc_str() << "'";
     }
   }
 
@@ -508,11 +500,8 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
                                              collection.get(), &found);
 
   if (found != nullptr) {
-    LOG_ERROR("duplicate entry for collection name '%s'", name);
-    LOG_ERROR(
-        "collection id %llu has same name as already added collection %llu",
-        (unsigned long long)cid,
-        (unsigned long long)static_cast<TRI_vocbase_col_t const*>(found)->_cid);
+    LOG(ERROR) << "duplicate entry for collection name '" << name << "'";
+    LOG(ERROR) << "collection id " << cid << " has same name as already added collection " << static_cast<TRI_vocbase_col_t const*>(found)->_cid;
 
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
 
@@ -535,8 +524,7 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
   if (found != nullptr) {
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
 
-    LOG_ERROR("duplicate collection identifier %llu for name '%s'",
-              (unsigned long long)collection->_cid, name);
+    LOG(ERROR) << "duplicate collection identifier " << collection->_cid << " for name '" << name << "'";
 
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
 
@@ -781,7 +769,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
   int res = regcomp(&re, "^collection-([0-9][0-9]*)(-[0-9]+)?$", REG_EXTENDED | REG_NOSUB);
 
   if (res != 0) {
-    LOG_ERROR("unable to compile regular expression");
+    LOG(ERROR) << "unable to compile regular expression";
 
     return res;
   }
@@ -789,8 +777,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
   if (iterateMarkers) {
-    LOG_TRACE("scanning all collection markers in database '%s",
-              vocbase->_name);
+    LOG(TRACE) << "scanning all collection markers in database '" << vocbase->_name;
   }
 
   for (auto const& name : files) {
@@ -818,8 +805,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
         // this can cause serious trouble so we will abort the server start if
         // we
         // encounter this situation
-        LOG_ERROR("database subdirectory '%s' is not writable for current user",
-                  file.c_str());
+        LOG(ERROR) << "database subdirectory '" << file.c_str() << "' is not writable for current user";
 
         regfree(&re);
 
@@ -839,12 +825,12 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
           // we found a collection that is marked as deleted.
           // deleted collections should be removed on startup. this is the
           // default
-          LOG_DEBUG("collection '%s' was deleted, wiping it", name.c_str());
+          LOG(DEBUG) << "collection '" << name.c_str() << "' was deleted, wiping it";
 
           res = TRI_RemoveDirectory(file.c_str());
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_WARNING("cannot wipe deleted collection: %s", TRI_last_error());
+            LOG(WARNING) << "cannot wipe deleted collection: " << TRI_last_error();
           }
         } else {
           // we found a collection that is still active
@@ -854,30 +840,23 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             // collection is too "old"
 
             if (!isUpgrade) {
-              LOG_ERROR(
-                  "collection '%s' has a too old version. Please start the "
-                  "server with the --upgrade option.",
-                  info.namec_str());
+              LOG(ERROR) << "collection '" << info.namec_str() << "' has a too old version. Please start the server with the --upgrade option.";
 
               regfree(&re);
 
               return TRI_set_errno(res);
             } else {
               if (info.version() < TRI_COL_VERSION_13) {
-                LOG_ERROR(
-                    "collection '%s' is too old to be upgraded with this "
-                    "ArangoDB version.",
-                    info.namec_str());
+                LOG(ERROR) << "collection '" << info.namec_str() << "' is too old to be upgraded with this ArangoDB version.";
                 res = TRI_ERROR_ARANGO_ILLEGAL_STATE;
               } else {
-                LOG_INFO("upgrading collection '%s'", info.namec_str());
+                LOG(INFO) << "upgrading collection '" << info.namec_str() << "'";
                 res = TRI_ERROR_NO_ERROR;
               }
 
               if (res == TRI_ERROR_NO_ERROR &&
                   info.version() < TRI_COL_VERSION_20) {
-                LOG_ERROR("format of collection '%s' is too old",
-                          info.namec_str());
+                LOG(ERROR) << "format of collection '" << info.namec_str() << "' is too old";
 
                 regfree(&re);
 
@@ -896,8 +875,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
           }
 
           if (c == nullptr) {
-            LOG_ERROR("failed to add document collection from '%s'",
-                      file.c_str());
+            LOG(ERROR) << "failed to add document collection from '" << file.c_str() << "'";
 
             regfree(&re);
 
@@ -917,14 +895,14 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             TRI_UpdateTickServer(tick);
           }
 
-          LOG_DEBUG("added document collection '%s' from '%s'", info.namec_str(), file.c_str());
+          LOG(DEBUG) << "added document collection '" << info.namec_str() << "' from '" << file.c_str() << "'";
         }
 
       } catch (arangodb::basics::Exception const& e) {
         char* tmpfile = TRI_Concatenate2File(file.c_str(), ".tmp");
 
         if (TRI_ExistsFile(tmpfile)) {
-          LOG_TRACE("ignoring temporary directory '%s'", tmpfile);
+          LOG(TRACE) << "ignoring temporary directory '" << tmpfile << "'";
           TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
           // temp file still exists. this means the collection was not created
           // fully
@@ -935,13 +913,12 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
         TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
         res = e.code();
 
-        LOG_ERROR("cannot read collection info file in directory '%s': %s",
-                  file.c_str(), TRI_errno_string(res));
+        LOG(ERROR) << "cannot read collection info file in directory '" << file.c_str() << "': " << TRI_errno_string(res);
         regfree(&re);
         return TRI_set_errno(res);
       }
     } else {
-      LOG_DEBUG("ignoring non-directory '%s'", file.c_str());
+      LOG(DEBUG) << "ignoring non-directory '" << file.c_str() << "'";
     }
   }
 
@@ -1101,8 +1078,7 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
   }
 
   std::string const colName(collection->name());
-  LOG_ERROR("unknown collection status %d for '%s'", (int)collection->_status,
-            colName.c_str());
+  LOG(ERROR) << "unknown collection status " << collection->_status << " for '" << colName.c_str() << "'";
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   return TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -1234,7 +1210,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
   else {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    LOG_WARNING("internal error in TRI_DropCollectionVocBase");
+    LOG(WARNING) << "internal error in TRI_DropCollectionVocBase";
 
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
@@ -1370,7 +1346,7 @@ void TRI_vocbase_col_t::toVelocyPackIndexes(VPackBuilder& builder,
 
   if (regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB) !=
       0) {
-    LOG_ERROR("unable to compile regular expression");
+    LOG(ERROR) << "unable to compile regular expression";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
@@ -1563,7 +1539,7 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
     int res = TRI_JoinThread(&vocbase->_compactor);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to join compactor thread: %s", TRI_errno_string(res));
+      LOG(ERROR) << "unable to join compactor thread: " << TRI_errno_string(res);
     }
   }
 
@@ -1577,7 +1553,7 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
   int res = TRI_JoinThread(&vocbase->_cleanup);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to join cleanup thread: %s", TRI_errno_string(res));
+    LOG(ERROR) << "unable to join cleanup thread: " << TRI_errno_string(res);
   }
 
   // free dead collections (already dropped but pointers still around)
@@ -1600,7 +1576,7 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
 void TRI_StartCompactorVocBase(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(!vocbase->_hasCompactor);
 
-  LOG_TRACE("starting compactor for database '%s'", vocbase->_name);
+  LOG(TRACE) << "starting compactor for database '" << vocbase->_name << "'";
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
   TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
@@ -1616,7 +1592,7 @@ int TRI_StopCompactorVocBase(TRI_vocbase_t* vocbase) {
   if (vocbase->_hasCompactor) {
     vocbase->_hasCompactor = false;
 
-    LOG_TRACE("stopping compactor for database '%s'", vocbase->_name);
+    LOG(TRACE) << "stopping compactor for database '" << vocbase->_name << "'";
     int res = TRI_JoinThread(&vocbase->_compactor);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1915,8 +1891,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
     res = TRI_ERROR_INTERNAL;
   }
 
-  LOG_WARNING("could not save collection create marker in log: %s",
-              TRI_errno_string(res));
+  LOG(WARNING) << "could not save collection create marker in log: " << TRI_errno_string(res);
 
   // TODO: what to do here?
   return collection;
@@ -2123,8 +2098,7 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("could not save collection rename marker in log: %s",
-                  TRI_errno_string(res));
+      LOG(WARNING) << "could not save collection rename marker in log: " << TRI_errno_string(res);
     }
   }
 
@@ -2200,7 +2174,7 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase(
   }
 
   if (collection == nullptr) {
-    LOG_DEBUG("unknown collection '%s'", name);
+    LOG(DEBUG) << "unknown collection '" << name << "'";
 
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return nullptr;

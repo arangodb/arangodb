@@ -38,7 +38,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -265,8 +265,7 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
     }
 
     if (daemon && _logFile != "+" && _logFile != "-") {
-      LOG_INFO("using logfiles: supervisor process: '%s', child process: '%s'",
-               filename.c_str(), _logFile.c_str());
+      LOG(INFO) << "using logfiles: supervisor process: '" << filename.c_str() << "', child process: '" << _logFile.c_str() << "'";
     }
   }
 }
@@ -339,7 +338,7 @@ bool ApplicationServer::parse(
   bool ok = _options.parse(_description, argc, argv);
 
   if (!ok) {
-    LOG_ERROR("cannot parse command line: %s", _options.lastError().c_str());
+    LOG(ERROR) << "cannot parse command line: " << _options.lastError().c_str();
     return false;
   }
 
@@ -458,7 +457,7 @@ void ApplicationServer::prepare() {
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
-    LOG_DEBUG("preparing server feature '%s'", feature->getName().c_str());
+    LOG(DEBUG) << "preparing server feature '" << feature->getName().c_str() << "'";
 
     bool ok = feature->prepare();
 
@@ -467,7 +466,7 @@ void ApplicationServer::prepare() {
                          feature->getName().c_str());
     }
 
-    LOG_TRACE("prepared server feature '%s'", feature->getName().c_str());
+    LOG(TRACE) << "prepared server feature '" << feature->getName().c_str() << "'";
   }
 }
 
@@ -482,7 +481,7 @@ void ApplicationServer::prepare2() {
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
-    LOG_DEBUG("preparing(2) server feature '%s'", feature->getName().c_str());
+    LOG(DEBUG) << "preparing(2) server feature '" << feature->getName().c_str() << "'";
 
     bool ok = feature->prepare2();
 
@@ -491,7 +490,7 @@ void ApplicationServer::prepare2() {
                          feature->getName().c_str());
     }
 
-    LOG_TRACE("prepared(2) server feature '%s'", feature->getName().c_str());
+    LOG(TRACE) << "prepared(2) server feature '" << feature->getName().c_str() << "'";
   }
 }
 
@@ -518,7 +517,7 @@ void ApplicationServer::start() {
                          feature->getName().c_str());
     }
 
-    LOG_DEBUG("started server feature '%s'", feature->getName().c_str());
+    LOG(DEBUG) << "started server feature '" << feature->getName().c_str() << "'";
   }
 
   // now open all features
@@ -527,7 +526,7 @@ void ApplicationServer::start() {
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
-    LOG_DEBUG("opening server feature '%s'", feature->getName().c_str());
+    LOG(DEBUG) << "opening server feature '" << feature->getName().c_str() << "'";
 
     bool ok = feature->open();
 
@@ -536,7 +535,7 @@ void ApplicationServer::start() {
                          feature->getName().c_str());
     }
 
-    LOG_TRACE("opened server feature '%s'", feature->getName().c_str());
+    LOG(TRACE) << "opened server feature '" << feature->getName().c_str() << "'";
   }
 }
 
@@ -585,7 +584,7 @@ void ApplicationServer::stop() {
 
     feature->close();
 
-    LOG_TRACE("closed server feature '%s'", feature->getName().c_str());
+    LOG(TRACE) << "closed server feature '" << feature->getName().c_str() << "'";
   }
 
   // stop all features
@@ -594,9 +593,9 @@ void ApplicationServer::stop() {
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
-    LOG_DEBUG("shutting down server feature '%s'", feature->getName().c_str());
+    LOG(DEBUG) << "shutting down server feature '" << feature->getName().c_str() << "'";
     feature->stop();
-    LOG_TRACE("shut down server feature '%s'", feature->getName().c_str());
+    LOG(TRACE) << "shut down server feature '" << feature->getName().c_str() << "'";
   }
 }
 
@@ -703,7 +702,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
 #ifdef TRI_HAVE_SETGID
 
   if (!_gid.empty()) {
-    LOG_DEBUG("permanently changing the gid to %d", (int)_numericGid);
+    LOG(DEBUG) << "permanently changing the gid to " << _numericGid;
 
     int res = setgid(_numericGid);
 
@@ -719,7 +718,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
 #ifdef TRI_HAVE_SETUID
 
   if (!_uid.empty()) {
-    LOG_DEBUG("permanently changing the uid to %d", (int)_numericUid);
+    LOG(DEBUG) << "permanently changing the uid to " << _numericUid;
 
     int res = setuid(_numericUid);
 
@@ -813,7 +812,7 @@ bool ApplicationServer::checkParent() {
 // check our parent, if it died given up
 #ifdef TRI_HAVE_GETPPID
   if (_exitOnParentDeath && getppid() == 1) {
-    LOG_INFO("parent has died");
+    LOG(INFO) << "parent has died";
     return false;
   }
 #endif
@@ -829,7 +828,7 @@ bool ApplicationServer::checkParent() {
     int res = -1;
 #endif
     if (res != 0) {
-      LOG_INFO("parent %d has died", (int)_watchParent);
+      LOG(INFO) << "parent " << _watchParent << " has died";
       return false;
     }
   }
@@ -848,11 +847,11 @@ bool ApplicationServer::readConfigurationFile() {
   if (!_configFile.empty()) {
     // do not use init files
     if (StringUtils::tolower(_configFile) == std::string("none")) {
-      LOG_INFO("using no init file at all");
+      LOG(INFO) << "using no init file at all";
       return true;
     }
 
-    LOG_DEBUG("using init file '%s'", _configFile.c_str());
+    LOG(DEBUG) << "using init file '" << _configFile.c_str() << "'";
 
     bool ok = _options.parse(_descriptionFile, _configFile);
 
@@ -860,13 +859,12 @@ bool ApplicationServer::readConfigurationFile() {
     // but for some reason can not be parsed. Best to report an error.
 
     if (!ok) {
-      LOG_ERROR("cannot parse config file '%s': %s", _configFile.c_str(),
-                _options.lastError().c_str());
+      LOG(ERROR) << "cannot parse config file '" << _configFile.c_str() << "': " << _options.lastError().c_str();
     }
 
     return ok;
   } else {
-    LOG_DEBUG("no init file has been specified");
+    LOG(DEBUG) << "no init file has been specified";
   }
 
   // nothing has been specified on the command line regarding the user's
@@ -894,7 +892,7 @@ bool ApplicationServer::readConfigurationFile() {
 
       // check and see if file exists
       if (FileUtils::exists(homeDir)) {
-        LOG_DEBUG("using user init file '%s'", homeDir.c_str());
+        LOG(DEBUG) << "using user init file '" << homeDir.c_str() << "'";
 
         bool ok = _options.parse(_descriptionFile, homeDir);
 
@@ -903,16 +901,15 @@ bool ApplicationServer::readConfigurationFile() {
         // but for some reason can not be parsed. Best to report an error.
 
         if (!ok) {
-          LOG_ERROR("cannot parse config file '%s': %s", homeDir.c_str(),
-                    _options.lastError().c_str());
+          LOG(ERROR) << "cannot parse config file '" << homeDir.c_str() << "': " << _options.lastError().c_str();
         }
 
         return ok;
       } else {
-        LOG_DEBUG("no user init file '%s' found", homeDir.c_str());
+        LOG(DEBUG) << "no user init file '" << homeDir.c_str() << "' found";
       }
     } else {
-      LOG_DEBUG("no home directory found");
+      LOG(DEBUG) << "no home directory found";
     }
   }
 
@@ -938,7 +935,7 @@ bool ApplicationServer::readConfigurationFile() {
 
       // check and see if a local override file exists
       if (FileUtils::exists(localSysDir)) {
-        LOG_DEBUG("using init override file '%s'", localSysDir.c_str());
+        LOG(DEBUG) << "using init override file '" << localSysDir.c_str() << "'";
 
         bool ok = _options.parse(_descriptionFile, localSysDir);
 
@@ -946,18 +943,16 @@ bool ApplicationServer::readConfigurationFile() {
         // exists
         // but for some reason can not be parsed. Best to report an error.
         if (!ok) {
-          LOG_ERROR("cannot parse config file '%s': %s", localSysDir.c_str(),
-                    _options.lastError().c_str());
+          LOG(ERROR) << "cannot parse config file '" << localSysDir.c_str() << "': " << _options.lastError().c_str();
           return ok;
         }
       } else {
-        LOG_DEBUG("no system init override file '%s' found",
-                  localSysDir.c_str());
+        LOG(DEBUG) << "no system init override file '" << localSysDir.c_str() << "' found";
       }
 
       // check and see if file exists
       if (FileUtils::exists(sysDir)) {
-        LOG_DEBUG("using init file '%s'", sysDir.c_str());
+        LOG(DEBUG) << "using init file '" << sysDir.c_str() << "'";
 
         bool ok = _options.parse(_descriptionFile, sysDir);
 
@@ -965,16 +960,15 @@ bool ApplicationServer::readConfigurationFile() {
         // exists
         // but for some reason can not be parsed. Best to report an error.
         if (!ok) {
-          LOG_ERROR("cannot parse config file '%s': %s", sysDir.c_str(),
-                    _options.lastError().c_str());
+          LOG(ERROR) << "cannot parse config file '" << sysDir.c_str() << "': " << _options.lastError().c_str();
         }
 
         return ok;
       } else {
-        LOG_INFO("no system init file '%s' found", sysDir.c_str());
+        LOG(INFO) << "no system init file '" << sysDir.c_str() << "' found";
       }
     } else {
-      LOG_DEBUG("no system init file specified");
+      LOG(DEBUG) << "no system init file specified";
     }
   }
 

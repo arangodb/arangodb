@@ -74,8 +74,7 @@ static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetFromKey;
 
-      // LOG_TRACE("HASH FROM: COLLECTION: %llu, KEY: %s", (unsigned long long)
-      // edge->_fromCid, key);
+      // LOG(TRACE) << "HASH FROM: COLLECTION: " << // edge->_fromCid << ", KEY: " << key;
 
       hash = edge->_fromCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
@@ -85,8 +84,7 @@ static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetFromKey;
 
-      // LOG_TRACE("HASH FROM: COLLECTION: %llu, KEY: %s", (unsigned long long)
-      // edge->_fromCid, key);
+      // LOG(TRACE) << "HASH FROM: COLLECTION: " << // edge->_fromCid << ", KEY: " << key;
 
       hash = edge->_fromCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
@@ -119,8 +117,7 @@ static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetToKey;
 
-      // LOG_TRACE("HASH TO: COLLECTION: %llu, KEY: %s", (unsigned long long)
-      // edge->_toCid, key);
+      // LOG(TRACE) << "HASH TO: COLLECTION: " << // edge->_toCid << ", KEY: " << key;
 
       hash = edge->_toCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
@@ -130,8 +127,7 @@ static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetToKey;
 
-      // LOG_TRACE("HASH TO: COLLECTION: %llu, KEY: %s", (unsigned long long)
-      // edge->_toCid, key);
+      // LOG(TRACE) << "HASH TO: COLLECTION: " << // edge->_toCid << ", KEY: " << key;
 
       hash = edge->_toCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
@@ -165,9 +161,8 @@ static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetFromKey;
 
-    // LOG_TRACE("ISEQUAL FROM: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu,
-    // RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long)
-    // rEdge->_fromCid, rKey);
+    // LOG(TRACE) << "ISEQUAL FROM: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_fromCid << ",
+    // RKEY: " << rKey;
     return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
     arangodb::wal::edge_marker_t const* rEdge =
@@ -175,9 +170,8 @@ static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetFromKey;
 
-    // LOG_TRACE("ISEQUAL FROM: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu,
-    // RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long)
-    // rEdge->_fromCid, rKey);
+    // LOG(TRACE) << "ISEQUAL FROM: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_fromCid << ",
+    // RKEY: " << rKey;
 
     return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
   }
@@ -209,9 +203,8 @@ static bool IsEqualKeyEdgeTo(void* userData, TRI_edge_header_t const* left,
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetToKey;
 
-    // LOG_TRACE("ISEQUAL TO: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu,
-    // RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long)
-    // rEdge->_toCid, rKey);
+    // LOG(TRACE) << "ISEQUAL TO: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_toCid << ",
+    // RKEY: " << rKey;
 
     return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
@@ -220,9 +213,8 @@ static bool IsEqualKeyEdgeTo(void* userData, TRI_edge_header_t const* left,
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetToKey;
 
-    // LOG_TRACE("ISEQUAL TO: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu,
-    // RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long)
-    // rEdge->_toCid, rKey);
+    // LOG(TRACE) << "ISEQUAL TO: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_toCid << ",
+    // RKEY: " << rKey;
 
     return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
   }
@@ -297,9 +289,8 @@ static bool IsEqualElementEdgeFromByKey(void* userData,
     return false;
   }
 
-  // LOG_TRACE("ISEQUALELEMENT FROM: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION:
-  // %llu, RKEY: %s", (unsigned long long) lCid, lKey, (unsigned long long)
-  // rCid, rKey);
+  // LOG(TRACE) << "ISEQUALELEMENT FROM: LCOLLECTION: " << lCid << ", LKEY: " << lKey << ", RCOLLECTION:
+  // " << // rCid << ", RKEY: " << rKey;
 
   return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
 }
@@ -362,9 +353,8 @@ static bool IsEqualElementEdgeToByKey(void* userData,
     return false;
   }
 
-  // LOG_TRACE("ISEQUALELEMENT TO: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION:
-  // %llu, RKEY: %s", (unsigned long long) lCid, lKey, (unsigned long long)
-  // rCid, rKey);
+  // LOG(TRACE) << "ISEQUALELEMENT TO: LCOLLECTION: " << lCid << ", LKEY: " << lKey << ", RCOLLECTION:
+  // " << // rCid << ", RKEY: " << rKey;
 
   return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
 }

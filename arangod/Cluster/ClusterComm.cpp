@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterComm.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
@@ -66,16 +66,14 @@ void ClusterCommResult::setDestination(std::string const& dest,
         serverID = "";
         status = CL_COMM_ERROR;
         if (logConnectionErrors) {
-          LOG_ERROR("cannot find responsible server for shard '%s'",
-                    shardID.c_str());
+          LOG(ERROR) << "cannot find responsible server for shard '" << shardID.c_str() << "'";
         } else {
-          LOG_INFO("cannot find responsible server for shard '%s'",
-                   shardID.c_str());
+          LOG(INFO) << "cannot find responsible server for shard '" << shardID.c_str() << "'";
         }
         return;
       }
     }
-    LOG_DEBUG("Responsible server: %s", serverID.c_str());
+    LOG(DEBUG) << "Responsible server: " << serverID.c_str();
   } else if (dest.substr(0, 7) == "server:") {
     shardID = "";
     serverID = dest.substr(7);
@@ -91,9 +89,9 @@ void ClusterCommResult::setDestination(std::string const& dest,
     status = CL_COMM_ERROR;
     errorMessage = "did not understand destination'" + dest + "'";
     if (logConnectionErrors) {
-      LOG_ERROR("did not understand destination '%s'", dest.c_str());
+      LOG(ERROR) << "did not understand destination '" << dest.c_str() << "'";
     } else {
-      LOG_INFO("did not understand destination '%s'", dest.c_str());
+      LOG(INFO) << "did not understand destination '" << dest.c_str() << "'";
     }
     return;
   }
@@ -104,9 +102,9 @@ void ClusterCommResult::setDestination(std::string const& dest,
     status = CL_COMM_ERROR;
     errorMessage = "did not find endpoint of server '" + serverID + "'";
     if (logConnectionErrors) {
-      LOG_ERROR("did not find endpoint of server '%s'", serverID.c_str());
+      LOG(ERROR) << "did not find endpoint of server '" << serverID.c_str() << "'";
     } else {
-      LOG_INFO("did not find endpoint of server '%s'", serverID.c_str());
+      LOG(INFO) << "did not find endpoint of server '" << serverID.c_str() << "'";
     }
   }
 }
@@ -252,10 +250,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
     // queue right away for backward compatibility:
     ClusterCommResult const resCopy(op->result);
     if (!singleRequest) {
-      LOG_DEBUG(
-          "In asyncRequest, putting failed request %llu directly into"
-          " received queue.",
-          (unsigned long long)resCopy.operationID);
+      LOG(DEBUG) << "In asyncRequest, putting failed request " << resCopy.operationID << " directly into received queue.";
       CONDITION_LOCKER(locker, somethingReceived);
       received.push_back(op.get());
       op.release();
@@ -322,8 +317,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
     std::list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[res.operationID] = --i;
   }
-  LOG_DEBUG("In asyncRequest, put into queue %llu",
-            (unsigned long long)res.operationID);
+  LOG(DEBUG) << "In asyncRequest, put into queue " << res.operationID;
   somethingToSend.signal();
 
   return res;
@@ -398,16 +392,12 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     res->errorMessage =
         "cannot create connection to server '" + res->serverID + "'";
     if (logConnectionErrors()) {
-      LOG_ERROR("cannot create connection to server '%s'",
-                res->serverID.c_str());
+      LOG(ERROR) << "cannot create connection to server '" << res->serverID.c_str() << "'";
     } else {
-      LOG_INFO("cannot create connection to server '%s'",
-               res->serverID.c_str());
+      LOG(INFO) << "cannot create connection to server '" << res->serverID.c_str() << "'";
     }
   } else {
-    LOG_DEBUG("sending %s request to DB server '%s': %s",
-              arangodb::rest::HttpRequest::translateMethod(reqtype).c_str(),
-              res->serverID.c_str(), body.c_str());
+    LOG(DEBUG) << "sending " << arangodb::rest::HttpRequest::translateMethod(reqtype).c_str() << " request to DB server '" << res->serverID.c_str() << "': " << body.c_str();
     // LOCKING-DEBUG
     // std::cout << "syncRequest: sending " <<
     // arangodb::rest::HttpRequest::translateMethod(reqtype) << " request to
@@ -782,10 +772,10 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   size_t start = 0;
   size_t pos;
 
-  LOG_DEBUG("In asyncAnswer, seeing %s", coordinatorHeader.c_str());
+  LOG(DEBUG) << "In asyncAnswer, seeing " << coordinatorHeader.c_str();
   pos = coordinatorHeader.find(":", start);
   if (pos == std::string::npos) {
-    LOG_ERROR("Could not find coordinator ID in X-Arango-Coordinator");
+    LOG(ERROR) << "Could not find coordinator ID in X-Arango-Coordinator";
     return;
   }
   coordinatorID = coordinatorHeader.substr(start, pos - start);
@@ -796,11 +786,9 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
       ClusterInfo::instance()->getServerEndpoint(coordinatorID);
   if (endpoint == "") {
     if (logConnectionErrors()) {
-      LOG_ERROR("asyncAnswer: cannot find endpoint for server '%s'",
-                coordinatorID.c_str());
+      LOG(ERROR) << "asyncAnswer: cannot find endpoint for server '" << coordinatorID.c_str() << "'";
     } else {
-      LOG_INFO("asyncAnswer: cannot find endpoint for server '%s'",
-               coordinatorID.c_str());
+      LOG(INFO) << "asyncAnswer: cannot find endpoint for server '" << coordinatorID.c_str() << "'";
     }
     return;
   }
@@ -808,8 +796,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   httpclient::ConnectionManager::SingleServerConnection* connection =
       cm->leaseConnection(endpoint);
   if (nullptr == connection) {
-    LOG_ERROR("asyncAnswer: cannot create connection to server '%s'",
-              coordinatorID.c_str());
+    LOG(ERROR) << "asyncAnswer: cannot create connection to server '" << coordinatorID.c_str() << "'";
     return;
   }
 
@@ -822,8 +809,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
 
-  LOG_DEBUG("asyncAnswer: sending PUT request to DB server '%s'",
-            coordinatorID.c_str());
+  LOG(DEBUG) << "asyncAnswer: sending PUT request to DB server '" << coordinatorID.c_str() << "'";
 
   auto client = std::make_unique<arangodb::httpclient::SimpleHttpClient>(
       connection->_connection, 3600.0, false);
@@ -859,7 +845,7 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
   size_t start = 0;
   size_t pos;
 
-  LOG_DEBUG("In processAnswer, seeing %s", coordinatorHeader.c_str());
+  LOG(DEBUG) << "In processAnswer, seeing " << coordinatorHeader.c_str();
 
   pos = coordinatorHeader.find(":", start);
   if (pos == std::string::npos) {
@@ -936,7 +922,7 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClusterComm::moveFromSendToReceived(OperationID operationID) {
-  LOG_DEBUG("In moveFromSendToReceived %llu", (unsigned long long)operationID);
+  LOG(DEBUG) << "In moveFromSendToReceived " << operationID;
 
   CONDITION_LOCKER(locker, somethingReceived);
   CONDITION_LOCKER(sendLocker, somethingToSend);
@@ -1019,7 +1005,7 @@ void ClusterCommThread::run() {
   ClusterCommOperation* op;
   ClusterComm* cc = ClusterComm::instance();
 
-  LOG_DEBUG("starting ClusterComm thread");
+  LOG(DEBUG) << "starting ClusterComm thread";
 
   while (0 == _stop) {
     // First check the sending queue, as long as it is not empty, we send
@@ -1035,7 +1021,7 @@ void ClusterCommThread::run() {
         if (cc->toSend.empty()) {
           break;
         } else {
-          LOG_DEBUG("Noticed something to send");
+          LOG(DEBUG) << "Noticed something to send";
           op = cc->toSend.front();
           TRI_ASSERT(op->result.status == CL_COMM_SUBMITTED);
           op->result.status = CL_COMM_SENDING;
@@ -1062,23 +1048,17 @@ void ClusterCommThread::run() {
           op->result.errorMessage = "cannot create connection to server: ";
           op->result.errorMessage += op->result.serverID;
           if (cc->logConnectionErrors()) {
-            LOG_ERROR("cannot create connection to server '%s'",
-                      op->result.serverID.c_str());
+            LOG(ERROR) << "cannot create connection to server '" << op->result.serverID.c_str() << "'";
           } else {
-            LOG_INFO("cannot create connection to server '%s'",
-                     op->result.serverID.c_str());
+            LOG(INFO) << "cannot create connection to server '" << op->result.serverID.c_str() << "'";
           }
         } else {
           if (nullptr != op->body.get()) {
-            LOG_DEBUG("sending %s request to DB server '%s': %s",
-                      arangodb::rest::HttpRequest::translateMethod(op->reqtype)
-                          .c_str(),
-                      op->result.serverID.c_str(), op->body->c_str());
+            LOG(DEBUG) << "sending " << arangodb::rest::HttpRequest::translateMethod(op->reqtype)
+                          .c_str() << " request to DB server '" << op->result.serverID.c_str() << "': " << op->body->c_str();
           } else {
-            LOG_DEBUG("sending %s request to DB server '%s'",
-                      arangodb::rest::HttpRequest::translateMethod(op->reqtype)
-                          .c_str(),
-                      op->result.serverID.c_str());
+            LOG(DEBUG) << "sending " << arangodb::rest::HttpRequest::translateMethod(op->reqtype)
+                          .c_str() << " request to DB server '" << op->result.serverID.c_str() << "'";
           }
 
           auto client =
@@ -1153,7 +1133,7 @@ void ClusterCommThread::run() {
   // another thread is waiting for this value to shut down properly
   _stop = 2;
 
-  LOG_DEBUG("stopped ClusterComm thread");
+  LOG(DEBUG) << "stopped ClusterComm thread";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

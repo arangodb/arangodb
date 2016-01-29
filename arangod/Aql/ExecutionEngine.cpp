@@ -41,7 +41,7 @@
 #include "Aql/TraversalBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Cluster/ClusterComm.h"
 #include "VocBase/server.h"
 
@@ -996,7 +996,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               std::string msg("while trying to unregister query ");
               msg += queryId + std::string("from shard: ") + shardId +
                      std::string("communication failed: ") + res->errorMessage;
-              LOG_WARNING("%s", msg.c_str());
+              LOG(WARNING) << "" << msg.c_str();
             }
           } else {
             // Remove query from registry:

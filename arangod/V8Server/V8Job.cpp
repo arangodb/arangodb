@@ -23,7 +23,7 @@
 
 #include "V8Job.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -112,18 +112,15 @@ void V8Job::work() {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG_WARNING(
-                "caught non-catchable exception (aka termination) in job");
+            LOG(WARNING) << "caught non-catchable exception (aka termination) in job";
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG_ERROR("caught exception in V8 job: %s %s",
-                  TRI_errno_string(ex.code()), ex.what());
+        LOG(ERROR) << "caught exception in V8 job: " << TRI_errno_string(ex.code()) << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG_ERROR("caught exception in V8 job: %s",
-                  TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+        LOG(ERROR) << "caught exception in V8 job: " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
-        LOG_ERROR("caught unknown exception in V8 job");
+        LOG(ERROR) << "caught unknown exception in V8 job";
       }
     }
   }

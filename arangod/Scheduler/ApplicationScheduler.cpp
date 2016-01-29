@@ -29,7 +29,7 @@
 #include "ApplicationScheduler.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/process-utils.h"
 #include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"
@@ -70,7 +70,7 @@ class ControlCTask : public SignalTask {
     int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
     if (result == 0) {
-      LOG_WARNING("unable to install control-c handler");
+      LOG(WARNING) << "unable to install control-c handler";
     }
   }
 
@@ -100,10 +100,10 @@ class ControlCTask : public SignalTask {
     TRI_SetProcessTitle(msg.c_str());
 
     if (_seen == 0) {
-      LOG_INFO("control-c received, beginning shut down sequence");
+      LOG(INFO) << "control-c received, beginning shut down sequence";
       _server->beginShutdown();
     } else {
-      LOG_ERROR("control-c received (again!), terminating");
+      LOG(ERROR) << "control-c received (again!), terminating";
       _exit(1);
       // TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
@@ -132,9 +132,9 @@ class HangupTask : public SignalTask {
 
  public:
   bool handleSignal() {
-    LOG_INFO("hangup received, about to reopen logfile");
+    LOG(INFO) << "hangup received, about to reopen logfile";
     TRI_ReopenLogging();
-    LOG_INFO("hangup received, reopened logfile");
+    LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }
 };
@@ -147,9 +147,9 @@ class HangupTask : public SignalTask {
 
  public:
   bool handleSignal() {
-    LOG_INFO("hangup received, about to reopen logfile");
+    LOG(INFO) << "hangup received, about to reopen logfile";
     TRI_ReopenLogging();
-    LOG_INFO("hangup received, reopened logfile");
+    LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }
 };
@@ -176,8 +176,7 @@ class Sigusr1Task : public SignalTask {
     if (scheduler != nullptr) {
       bool isActive = scheduler->isActive();
 
-      LOG_INFO("sigusr1 received - setting active flag to %d",
-               (int)(!isActive));
+      LOG(INFO) << "sigusr1 received - setting active flag to " << (!isActive);
 
       scheduler->setActive(!isActive);
     }
@@ -261,12 +260,12 @@ bool CtrlHandler(DWORD eventType) {
   }  // end of switch statement
 
   if (shutdown == false) {
-    LOG_ERROR("Invalid CTRL HANDLER event received - ignoring event");
+    LOG(ERROR) << "Invalid CTRL HANDLER event received - ignoring event";
     return true;
   }
 
   if (ccTask->_seen == 0) {
-    LOG_INFO("%s, beginning shut down sequence", shutdownMessage.c_str());
+    LOG(INFO) << "" << shutdownMessage.c_str() << ", beginning shut down sequence";
     ccTask->_server->beginShutdown();
     ++ccTask->_seen;
     return true;
@@ -276,7 +275,7 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG_INFO("%s, terminating", shutdownMessage.c_str());
+  LOG(INFO) << "" << shutdownMessage.c_str() << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
@@ -333,7 +332,7 @@ void ApplicationScheduler::setProcessorAffinity(
   for (uint32_t i = 0; i < _nrSchedulerThreads; ++i) {
     size_t c = cores[j];
 
-    LOG_DEBUG("using core %d for scheduler thread %d", (int)c, (int)i);
+    LOG(DEBUG) << "using core " << c << " for scheduler thread " << i;
 
     _scheduler->setProcessorAffinity(i, c);
 
@@ -431,8 +430,7 @@ bool ApplicationScheduler::start() {
   int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
   if (res == 0) {
-    LOG_INFO("file-descriptors (nofiles) hard limit is %d, soft limit is %d",
-             (int)rlim.rlim_max, (int)rlim.rlim_cur);
+    LOG(INFO) << "file-descriptors (nofiles) hard limit is " << rlim.rlim_max << ", soft limit is " << rlim.rlim_cur;
   }
 #endif
 
@@ -443,7 +441,7 @@ bool ApplicationScheduler::start() {
   }
 
   while (!_scheduler->isStarted()) {
-    LOG_DEBUG("waiting for scheduler to start");
+    LOG(DEBUG) << "waiting for scheduler to start";
     usleep(500 * 1000);
   }
 
@@ -482,7 +480,7 @@ void ApplicationScheduler::stop() {
 
     for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
          ++count) {
-      LOG_TRACE("waiting for scheduler to stop");
+      LOG(TRACE) << "waiting for scheduler to stop";
       usleep(100000);
     }
 
@@ -583,14 +581,12 @@ void ApplicationScheduler::adjustFileDescriptors() {
                          strerror(errno));
     }
 
-    LOG_DEBUG("file-descriptors (nofiles) hard limit is %d, soft limit is %d",
-              (int)rlim.rlim_max, (int)rlim.rlim_cur);
+    LOG(DEBUG) << "file-descriptors (nofiles) hard limit is " << rlim.rlim_max << ", soft limit is " << rlim.rlim_cur;
 
     bool changed = false;
 
     if (rlim.rlim_max < _descriptorMinimum) {
-      LOG_DEBUG("hard limit %d is too small, trying to raise",
-                (int)rlim.rlim_max);
+      LOG(DEBUG) << "hard limit " << rlim.rlim_max << " is too small, trying to raise";
 
       rlim.rlim_max = _descriptorMinimum;
       rlim.rlim_cur = _descriptorMinimum;
@@ -604,8 +600,7 @@ void ApplicationScheduler::adjustFileDescriptors() {
 
       changed = true;
     } else if (rlim.rlim_cur < _descriptorMinimum) {
-      LOG_DEBUG("soft limit %d is too small, trying to raise",
-                (int)rlim.rlim_cur);
+      LOG(DEBUG) << "soft limit " << rlim.rlim_cur << " is too small, trying to raise";
 
       rlim.rlim_cur = _descriptorMinimum;
 
@@ -627,10 +622,7 @@ void ApplicationScheduler::adjustFileDescriptors() {
                            strerror(errno));
       }
 
-      LOG_INFO(
-          "file-descriptors (nofiles) new hard limit is %d, new soft limit is "
-          "%d",
-          (int)rlim.rlim_max, (int)rlim.rlim_cur);
+      LOG(INFO) << "file-descriptors (nofiles) new hard limit is " << rlim.rlim_max << ", new soft limit is " << rlim.rlim_cur;
     }
 
     // the select backend has more restrictions

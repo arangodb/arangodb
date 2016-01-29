@@ -23,7 +23,7 @@
 
 #include "DatafileStatistics.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "VocBase/datafile.h"
@@ -115,7 +115,7 @@ void DatafileStatistics::create(TRI_voc_fid_t fid) {
     return;
   }
 
-  LOG_TRACE("creating statistics for datafile %llu", (unsigned long long)fid);
+  LOG(TRACE) << "creating statistics for datafile " << fid;
   _stats.emplace(fid, stats.get());
   stats.release();
 }
@@ -138,8 +138,7 @@ void DatafileStatistics::create(TRI_voc_fid_t fid,
     return;
   }
 
-  LOG_TRACE("creating statistics for datafile %llu from initial data",
-            (unsigned long long)fid);
+  LOG(TRACE) << "creating statistics for datafile " << fid << " from initial data";
 
   _stats.emplace(fid, stats.get());
   stats.release();
@@ -150,7 +149,7 @@ void DatafileStatistics::create(TRI_voc_fid_t fid,
 ////////////////////////////////////////////////////////////////////////////////
 
 void DatafileStatistics::remove(TRI_voc_fid_t fid) {
-  LOG_TRACE("removing statistics for datafile %llu", (unsigned long long)fid);
+  LOG(TRACE) << "removing statistics for datafile " << fid;
 
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -168,15 +167,14 @@ void DatafileStatistics::update(TRI_voc_fid_t fid,
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG_WARNING("did not find required statistics for datafile %llu",
-                (unsigned long long)fid);
+    LOG(WARNING) << "did not find required statistics for datafile " << fid;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "required datafile statistics not found");
   }
 
   auto& dst = (*it).second;
 
-  LOG_TRACE("updating statistics for datafile %llu", (unsigned long long)fid);
+  LOG(TRACE) << "updating statistics for datafile " << fid;
   dst->update(src);
 }
 
@@ -190,8 +188,7 @@ void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG_WARNING("did not find required statistics for datafile %llu",
-                (unsigned long long)fid);
+    LOG(WARNING) << "did not find required statistics for datafile " << fid;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "required datafile statistics not found");
   }
@@ -201,13 +198,12 @@ void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   it = _stats.find(src);
 
   if (it == _stats.end()) {
-    LOG_WARNING("did not find required statistics for source datafile %llu",
-                (unsigned long long)src);
+    LOG(WARNING) << "did not find required statistics for source datafile " << src;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "required datafile statistics not found");
   }
 
-  LOG_TRACE("updating statistics for datafile %llu", (unsigned long long)fid);
+  LOG(TRACE) << "updating statistics for datafile " << fid;
   dst->update(*(*it).second);
 }
 
@@ -222,8 +218,7 @@ void DatafileStatistics::replace(TRI_voc_fid_t fid,
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG_WARNING("did not find required statistics for datafile %llu",
-                (unsigned long long)fid);
+    LOG(WARNING) << "did not find required statistics for datafile " << fid;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "required datafile statistics not found");
   }
@@ -231,7 +226,7 @@ void DatafileStatistics::replace(TRI_voc_fid_t fid,
   auto& dst = (*it).second;
   *dst = src;
 
-  LOG_TRACE("replacing statistics for datafile %llu", (unsigned long long)fid);
+  LOG(TRACE) << "replacing statistics for datafile " << fid;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -274,8 +269,7 @@ void DatafileStatistics::increaseUncollected(TRI_voc_fid_t fid,
   auto& dst = (*it).second;
   dst->numberUncollected += number;
 
-  LOG_TRACE("increasing uncollected count for datafile %llu",
-            (unsigned long long)fid);
+  LOG(TRACE) << "increasing uncollected count for datafile " << fid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,8 +284,7 @@ DatafileStatisticsContainer DatafileStatistics::get(TRI_voc_fid_t fid) {
     auto it = _stats.find(fid);
 
     if (it == _stats.end()) {
-      LOG_WARNING("did not find required statistics for datafile %llu",
-                  (unsigned long long)fid);
+      LOG(WARNING) << "did not find required statistics for datafile " << fid;
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "required datafile statistics not found");
     }

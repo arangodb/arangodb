@@ -22,8 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/QueryRegistry.h"
-#include "Basics/WriteLocker.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Aql/ExecutionEngine.h"
 
 using namespace arangodb::aql;
@@ -139,7 +140,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
       // std::cout << "Setting _makeNolockHeaders\n";
       Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
     } else {
-      LOG_WARNING("Found strange lockedShards in thread, not overwriting!");
+      LOG(WARNING) << "Found strange lockedShards in thread, not overwriting!";
     }
   }
 
@@ -223,7 +224,7 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
       if (Transaction::_makeNolockHeaders == nullptr) {
         Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
       } else {
-        LOG_WARNING("Found strange lockedShards in thread, not overwriting!");
+        LOG(WARNING) << "Found strange lockedShards in thread, not overwriting!";
       }
     }
   }

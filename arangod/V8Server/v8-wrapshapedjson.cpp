@@ -23,6 +23,7 @@
 
 #include "v8-wrapshapedjson.h"
 #include "Basics/conversions.h"
+#include "Basics/Logger.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
@@ -247,7 +248,7 @@ static void WeakDocumentDitchCallback(const v8::WeakCallbackData<
 
   v8g->decreaseActiveExternals();
 
-  LOG_TRACE("weak-callback for document ditch called");
+  LOG(TRACE) << "weak-callback for document ditch called";
 
   // find the persistent handle
   v8g->JSDitches[ditch].Reset();
@@ -293,7 +294,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson(
     TRI_shape_t const* shape = shaper->lookupShapeId(json._sid);
 
     if (shape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)json._sid);
+      LOG(WARNING) << "cannot find shape #" << (unsigned int)json._sid;
       return scope.Escape<v8::Value>(v8::Object::New(isolate));
     }
 
@@ -389,7 +390,7 @@ static void KeysOfShapedJson(const v8::PropertyCallbackInfo<v8::Array>& args) {
   if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
     n = 0;
     aids = nullptr;
-    LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+    LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
   } else {
     // shape is an array
     TRI_array_shape_t const* s = (TRI_array_shape_t const*)shape;
@@ -493,7 +494,7 @@ static void CopyAttributes(v8::Isolate* isolate, v8::Handle<v8::Object> self,
   TRI_shape_t const* shape = shaper->lookupShapeId(sid);
 
   if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+    LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
     return;
   }
 
@@ -796,8 +797,7 @@ static void PropertyQueryShapedJson(
     if (sid == TRI_SHAPE_ILLEGAL) {
 // invalid shape
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-      LOG_WARNING("invalid shape id '%llu' found for key '%s'",
-                  (unsigned long long)sid, key.c_str());
+      LOG(WARNING) << "invalid shape id '" << sid << "' found for key '" << key.c_str() << "'";
 #endif
       TRI_V8_RETURN(v8::Handle<v8::Integer>());
     }

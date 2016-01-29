@@ -24,7 +24,7 @@
 #include "AsyncJobManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServerJob.h"
 
@@ -261,7 +261,7 @@ void AsyncJobManager::initAsyncJob(HttpServerJob* job, char const* hdr) {
   AsyncCallbackContext* ctx = nullptr;
 
   if (hdr != nullptr) {
-    LOG_DEBUG("Found header X-Arango-Coordinator in async request");
+    LOG(DEBUG) << "Found header X-Arango-Coordinator in async request";
     ctx = new AsyncCallbackContext(std::string(hdr));
   }
 

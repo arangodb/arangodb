@@ -28,7 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/random.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
@@ -504,7 +504,7 @@ bool AgencyComm::tryConnect() {
     
     // mop: not sure if a timeout makes sense here
     while (true) {
-      LOG_INFO("Trying to find an active agency. Checking %s", endpointsStr.c_str());
+      LOG(INFO) << "Trying to find an active agency. Checking " << endpointsStr.c_str();
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
       while (it != _globalEndpoints.end()) {
@@ -565,8 +565,7 @@ void AgencyComm::disconnect() {
 
 bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
                              bool toFront) {
-  LOG_TRACE("adding global agency-endpoint '%s'",
-            endpointSpecification.c_str());
+  LOG(TRACE) << "adding global agency-endpoint '" << endpointSpecification.c_str() << "'";
 
   {
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
@@ -754,7 +753,7 @@ bool AgencyComm::setPrefix(std::string const& prefix) {
     }
   }
 
-  LOG_TRACE("setting agency-prefix to '%s'", prefix.c_str());
+  LOG(TRACE) << "setting agency-prefix to '" << prefix.c_str() << "'";
   return true;
 }
 
@@ -930,8 +929,7 @@ void AgencyComm::increaseVersionRepeated(std::string const& key) {
       return;
     }
     uint32_t val = 300 + TRI_UInt32Random() % 400;
-    LOG_INFO("Could not increase %s in agency, retrying in %dms!", key.c_str(),
-             val);
+    LOG(INFO) << "Could not increase " << key.c_str() << " in agency, retrying in " << val << "!";
     usleep(val * 1000);
   }
 }
@@ -1534,7 +1532,7 @@ bool AgencyComm::sendWithFailover(
         if (_addNewEndpoints) {
           AgencyComm::addEndpoint(endpoint, true);
 
-          LOG_INFO("adding agency-endpoint '%s'", endpoint.c_str());
+          LOG(INFO) << "adding agency-endpoint '" << endpoint.c_str() << "'";
 
           // re-check the new endpoint
           if (AgencyComm::hasEndpoint(endpoint)) {
@@ -1543,9 +1541,7 @@ bool AgencyComm::sendWithFailover(
           }
         }
 
-        LOG_ERROR(
-            "found redirection to unknown endpoint '%s'. Will not follow!",
-            endpoint.c_str());
+        LOG(ERROR) << "found redirection to unknown endpoint '" << endpoint.c_str() << "'. Will not follow!";
 
         // this is an error
         return false;
@@ -1601,10 +1597,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   result._connected = false;
   result._statusCode = 0;
 
-  LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s",
-            arangodb::rest::HttpRequest::translateMethod(method).c_str(),
-            connection->getEndpoint()->getSpecification().c_str(), url.c_str(),
-            body.c_str());
+  LOG(TRACE) << "sending " << arangodb::rest::HttpRequest::translateMethod(method).c_str() << " request to agency at endpoint '" << connection->getEndpoint()->getSpecification().c_str() << "', url '" << url.c_str() << "': " << body.c_str();
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
 
@@ -1625,7 +1618,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   if (response == nullptr) {
     connection->disconnect();
     result._message = "could not send request to agency";
-    LOG_TRACE("sending request to agency failed");
+    LOG(TRACE) << "sending request to agency failed";
 
     return false;
   }
@@ -1633,7 +1626,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   if (!response->isComplete()) {
     connection->disconnect();
     result._message = "sending request to agency failed";
-    LOG_TRACE("sending request to agency failed");
+    LOG(TRACE) << "sending request to agency failed";
 
     return false;
   }
@@ -1647,7 +1640,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
     bool found = false;
     result._location = response->getHeaderField("location", found);
 
-    LOG_TRACE("redirecting to location: '%s'", result._location.c_str());
+    LOG(TRACE) << "redirecting to location: '" << result._location.c_str() << "'";
 
     if (!found) {
       // a 307 without a location header does not make any sense
@@ -1670,9 +1663,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
     result._index = arangodb::basics::StringUtils::uint64(lastIndex);
   }
 
-  LOG_TRACE(
-      "request to agency returned status code %d, message: '%s', body: '%s'",
-      result._statusCode, result._message.c_str(), result._body.c_str());
+  LOG(TRACE) << "request to agency returned status code " << result._statusCode << ", message: '" << result._message.c_str() << "', body: '" << result._body.c_str() << "'";
 
   if (result.successful()) {
     return true;

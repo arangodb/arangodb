@@ -2419,8 +2419,7 @@ static void JS_PropertiesVocbaseCol(
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: what to do here
-        LOG_WARNING("could not save collection change marker in log: %s",
-                    TRI_errno_string(res));
+        LOG(WARNING) << "could not save collection change marker in log: " << TRI_errno_string(res);
       }
 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);

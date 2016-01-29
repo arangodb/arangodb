@@ -23,7 +23,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/Query.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/Exceptions.h"
@@ -217,8 +217,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   }
 
   // log outside the lock
-  LOG_WARNING("killing AQL query %llu '%s'", (unsigned long long)id,
-              queryString.c_str());
+  LOG(WARNING) << "killing AQL query " << id << " '" << queryString.c_str() << "'";
 
   return TRI_ERROR_NO_ERROR;
 }

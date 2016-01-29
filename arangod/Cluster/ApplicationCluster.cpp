@@ -26,7 +26,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
@@ -255,11 +255,11 @@ bool ApplicationCluster::prepare() {
   if (role == ServerState::ROLE_COORDINATOR) {
     ClusterInfo* ci = ClusterInfo::instance();
     do {
-      LOG_INFO("Waiting for a DBserver to show up...");
+      LOG(INFO) << "Waiting for a DBserver to show up...";
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
       if (DBServers.size() > 0) {
-        LOG_INFO("Found a DBserver.");
+        LOG(INFO) << "Found a DBserver.";
         break;
       }
       sleep(1);
@@ -306,12 +306,7 @@ bool ApplicationCluster::start() {
 
   ServerState::instance()->setInitialized();
 
-  LOG_INFO(
-      "Cluster feature is turned on. "
-      "Agency version: %s, Agency endpoints: %s, "
-      "server id: '%s', internal address: %s, role: %s",
-      version.c_str(), endpoints.c_str(), _myId.c_str(), _myAddress.c_str(),
-      ServerState::roleToString(role).c_str());
+  LOG(INFO) << "Cluster feature is turned on. Agency version: " << version.c_str() << ", Agency endpoints: " << endpoints.c_str() << ", server id: '" << _myId.c_str() << "', internal address: " << _myAddress.c_str() << ", role: " << ServerState::roleToString(role).c_str();
 
   if (!_disableHeartbeat) {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
@@ -327,8 +322,7 @@ bool ApplicationCluster::start() {
         _heartbeatInterval =
             arangodb::basics::VelocyPackHelper::stringUInt64(slice);
 
-        LOG_INFO("using heartbeat interval value '%llu ms' from agency",
-                 (unsigned long long)_heartbeatInterval);
+        LOG(INFO) << "using heartbeat interval value '" << _heartbeatInterval << " ms' from agency";
       }
     }
 
@@ -336,10 +330,7 @@ bool ApplicationCluster::start() {
     if (_heartbeatInterval == 0) {
       _heartbeatInterval = 5000; // 1/s
 
-      LOG_WARNING(
-          "unable to read heartbeat interval from agency. Using default value "
-          "'%llu ms'",
-          (unsigned long long)_heartbeatInterval);
+      LOG(WARNING) << "unable to read heartbeat interval from agency. Using default value '" << _heartbeatInterval << " ms'";
     }
 
     // start heartbeat thread

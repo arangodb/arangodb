@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/WriteLocker.h"
 #include "Replication/InitialSyncer.h"
@@ -144,9 +145,7 @@ retry:
         (_masterInfo._majorVersion > 2 ||
          (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion >= 7));
     if (_requireFromPresent && !_masterIs27OrHigher) {
-      LOG_WARNING(
-          "requireFromPresent feature is not supported on master server < "
-          "ArangoDB 2.7");
+      LOG(WARNING) << "requireFromPresent feature is not supported on master server < ArangoDB 2.7";
     }
 
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
@@ -176,10 +175,7 @@ retry:
     if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT ||
         res == TRI_ERROR_REPLICATION_NO_START_TICK) {
       if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) {
-        LOG_WARNING(
-            "replication applier stopped for database '%s' because required "
-            "tick is not present on master",
-            _vocbase->_name);
+        LOG(WARNING) << "replication applier stopped for database '" << _vocbase->_name << "' because required tick is not present on master";
       }
 
       // remove previous applier state
@@ -190,14 +186,7 @@ retry:
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
-        LOG_TRACE(
-            "stopped replication applier for database '%s' with "
-            "lastProcessedContinuousTick: %llu, lastAppliedContinuousTick: "
-            "%llu, safeResumeTick: %llu",
-            _vocbase->_name,
-            (unsigned long long)_applier->_state._lastProcessedContinuousTick,
-            (unsigned long long)_applier->_state._lastAppliedContinuousTick,
-            (unsigned long long)_applier->_state._safeResumeTick);
+        LOG(TRACE) << "stopped replication applier for database '" << _vocbase->_name << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
 
         _applier->_state._lastProcessedContinuousTick = 0;
         _applier->_state._lastAppliedContinuousTick = 0;
@@ -225,15 +214,10 @@ retry:
       if (shortTermFailsInRow > _configuration._autoResyncRetries) {
         if (_configuration._autoResyncRetries > 0) {
           // message only makes sense if there's at least one retry
-          LOG_WARNING(
-              "aborting automatic resynchronization for database '%s' after %d "
-              "retries",
-              _vocbase->_name, (int)_configuration._autoResyncRetries);
+          LOG(WARNING) << "aborting automatic resynchronization for database '" << _vocbase->_name << "' after " << _configuration._autoResyncRetries << " retries";
         }
         else {
-          LOG_WARNING(
-              "aborting automatic resynchronization for database '%s' because autoResyncRetries is 0",
-              _vocbase->_name);
+          LOG(WARNING) << "aborting automatic resynchronization for database '" << _vocbase->_name << "' because autoResyncRetries is 0";
         }
 
         // always abort if we get here
@@ -241,10 +225,7 @@ retry:
       }
 
       // do an automatic full resync
-      LOG_WARNING(
-          "restarting initial synchronization for database '%s' because "
-          "autoResync option is set. retry #%d",
-          _vocbase->_name, (int)shortTermFailsInRow);
+      LOG(WARNING) << "restarting initial synchronization for database '" << _vocbase->_name << "' because autoResync option is set. retry #" << shortTermFailsInRow;
 
       // start initial synchronization
       errorMsg = "";
@@ -258,10 +239,7 @@ retry:
 
         if (res == TRI_ERROR_NO_ERROR) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
-          LOG_INFO(
-              "automatic resynchronization for database '%s' finished. "
-              "restarting continuous replication applier from tick %llu",
-              _vocbase->_name, (unsigned long long)lastLogTick);
+          LOG(INFO) << "automatic resynchronization for database '" << _vocbase->_name << "' finished. restarting continuous replication applier from tick " << lastLogTick;
           _initialTick = lastLogTick;
           _useTick = true;
           goto retry;
@@ -309,7 +287,7 @@ void ContinuousSyncer::setProgress(char const* msg) {
   _applier->setProgress(msg, true);
 
   if (_verbose) {
-    LOG_INFO("applier progress: %s", msg);
+    LOG(INFO) << "applier progress: " << msg;
   }
 }
 
@@ -326,17 +304,12 @@ void ContinuousSyncer::setProgress(std::string const& msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::saveApplierState() {
-  LOG_TRACE(
-      "saving replication applier state. last applied continuous tick: %llu, "
-      "safe resume tick: %llu",
-      (unsigned long long)_applier->_state._lastAppliedContinuousTick,
-      (unsigned long long)_applier->_state._safeResumeTick);
+  LOG(TRACE) << "saving replication applier state. last applied continuous tick: " << _applier->_state._lastAppliedContinuousTick << ", safe resume tick: " << _applier->_state._safeResumeTick;
 
   int res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_WARNING("unable to save replication applier state: %s",
-                TRI_errno_string(res));
+    LOG(WARNING) << "unable to save replication applier state: " << TRI_errno_string(res);
   }
 
   return res;
@@ -645,7 +618,7 @@ int ContinuousSyncer::startTransaction(TRI_json_t const* json) {
 
   TRI_ASSERT(tid > 0);
 
-  LOG_TRACE("starting transaction %llu", (unsigned long long)tid);
+  LOG(TRACE) << "starting transaction " << tid;
 
   auto trx = std::make_unique<ReplicationTransaction>(_server, _vocbase, tid);
 
@@ -687,7 +660,7 @@ int ContinuousSyncer::abortTransaction(TRI_json_t const* json) {
 
   TRI_ASSERT(tid > 0);
 
-  LOG_TRACE("abort replication transaction %llu", (unsigned long long)tid);
+  LOG(TRACE) << "abort replication transaction " << tid;
 
   auto trx = (*it).second;
   _ongoingTransactions.erase(tid);
@@ -728,7 +701,7 @@ int ContinuousSyncer::commitTransaction(TRI_json_t const* json) {
 
   TRI_ASSERT(tid > 0);
 
-  LOG_TRACE("committing replication transaction %llu", (unsigned long long)tid);
+  LOG(TRACE) << "committing replication transaction " << tid;
 
   auto trx = (*it).second;
   _ongoingTransactions.erase(tid);
@@ -965,8 +938,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
       }
 
       ignoreCount--;
-      LOG_WARNING("ignoring replication error for database '%s': %s",
-                  _applier->databaseName(), errorMsg.c_str());
+      LOG(WARNING) << "ignoring replication error for database '" << _applier->databaseName() << "': " << errorMsg.c_str();
       errorMsg = "";
     }
 
@@ -1052,10 +1024,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
-  LOG_TRACE(
-      "starting with from tick %llu, fetch tick %llu, open transactions: %d",
-      (unsigned long long)fromTick, (unsigned long long)fetchTick,
-      (int)_ongoingTransactions.size());
+  LOG(TRACE) << "starting with from tick " << fromTick << ", fetch tick " << fetchTick << ", open transactions: " << _ongoingTransactions.size();
 
   std::string const progress =
       "starting with from tick " + StringUtils::itoa(fromTick) +
@@ -1152,8 +1121,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       }
     }
 
-    LOG_TRACE("master active: %d, worked: %d, sleepTime: %llu",
-              (int)masterActive, (int)worked, (unsigned long long)sleepTime);
+    LOG(TRACE) << "master active: " << masterActive << ", worked: " << worked << ", sleepTime: " << sleepTime;
 
     // this will make the applier thread sleep if there is nothing to do,
     // but will also check for cancelation
@@ -1185,9 +1153,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
 
   setProgress(progress);
 
-  LOG_TRACE(
-      "fetching initial master state with from tick %llu, to tick %llu, url %s",
-      (unsigned long long)fromTick, (unsigned long long)toTick, url.c_str());
+  LOG(TRACE) << "fetching initial master state with from tick " << fromTick << ", to tick " << toTick << ", url " << url.c_str();
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(
@@ -1316,11 +1282,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
                           _localServerIdString + "&includeSystem=" +
                           (_includeSystem ? "true" : "false");
 
-  LOG_TRACE(
-      "running continuous replication request with from tick %llu, first "
-      "regular tick %llu, url %s",
-      (unsigned long long)fetchTick, (unsigned long long)firstRegularTick,
-      url.c_str());
+  LOG(TRACE) << "running continuous replication request with from tick " << fetchTick << ", first regular tick " << firstRegularTick << ", url " << url.c_str();
 
   // send request
   std::string const progress =

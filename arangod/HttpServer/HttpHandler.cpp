@@ -24,7 +24,7 @@
 #include "HttpHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/HttpServerJob.h"
 #include "Rest/HttpRequest.h"
@@ -167,15 +167,15 @@ HttpHandler::status_t HttpHandler::executeFull() {
   } catch (Exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
+    LOG(ERROR) << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
   } catch (std::exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", ex.what());
+    LOG(ERROR) << "caught exception: " << ex.what();
   } catch (...) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception");
+    LOG(ERROR) << "caught exception";
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {

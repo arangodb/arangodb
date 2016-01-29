@@ -30,7 +30,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
@@ -126,8 +126,7 @@ class v8_action_t : public TRI_action_t {
           _callbacks.find(context->isolate);
 
       if (i == _callbacks.end()) {
-        LOG_WARNING("no callback function for JavaScript action '%s'",
-                    _url.c_str());
+        LOG(WARNING) << "no callback function for JavaScript action '" << _url.c_str() << "'";
 
         GlobalV8Dealer->exitContext(context);
 
@@ -829,10 +828,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (action != nullptr) {
       action->createCallback(isolate, callback);
     } else {
-      LOG_ERROR("cannot create callback for V8 action");
+      LOG(ERROR) << "cannot create callback for V8 action";
     }
   } else {
-    LOG_ERROR("cannot define V8 action");
+    LOG(ERROR) << "cannot define V8 action";
   }
 
   TRI_V8_RETURN_UNDEFINED();

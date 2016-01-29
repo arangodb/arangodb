@@ -33,7 +33,7 @@
 
 #include "ApplicationServer/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/process-utils.h"
 
 #include <fstream>
@@ -67,7 +67,7 @@ static void CheckPidFile(std::string const& pidFile) {
     if (FileUtils::isDirectory(pidFile)) {
       LOG_FATAL_AND_EXIT("pid-file '%s' is a directory", pidFile.c_str());
     } else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
-      LOG_INFO("pid-file '%s' already exists, verifying pid", pidFile.c_str());
+      LOG(INFO) << "pid-file '" << pidFile.c_str() << "' already exists, verifying pid";
 
       ifstream f(pidFile.c_str());
 
@@ -81,7 +81,7 @@ static void CheckPidFile(std::string const& pidFile) {
           LOG_FATAL_AND_EXIT("pid-file '%s' is unreadable", pidFile.c_str());
         }
 
-        LOG_DEBUG("found old pid: %d", (int)oldPid);
+        LOG(DEBUG) << "found old pid: " << oldPid;
 
 #ifdef TRI_HAVE_FORK
         int r = kill(oldPid, 0);
@@ -98,8 +98,7 @@ static void CheckPidFile(std::string const& pidFile) {
               "pid-file '%s' exists and process with pid %d is still running",
               pidFile.c_str(), (int)oldPid);
         } else if (errno == ESRCH) {
-          LOG_ERROR("pid-file '%s exists, but no process with pid %d exists",
-                    pidFile.c_str(), (int)oldPid);
+          LOG(ERROR) << "pid-file '" << pidFile.c_str() << " exists, but no process with pid " << oldPid << " exists";
 
           if (!FileUtils::remove(pidFile)) {
             LOG_FATAL_AND_EXIT(
@@ -108,7 +107,7 @@ static void CheckPidFile(std::string const& pidFile) {
                 pidFile.c_str(), (int)oldPid);
           }
 
-          LOG_INFO("removed stale pid-file '%s'", pidFile.c_str());
+          LOG(INFO) << "removed stale pid-file '" << pidFile.c_str() << "'";
         } else {
           LOG_FATAL_AND_EXIT("pid-file '%s' exists and kill %d failed",
                              pidFile.c_str(), (int)oldPid);
@@ -122,7 +121,7 @@ static void CheckPidFile(std::string const& pidFile) {
       }
     }
 
-    LOG_DEBUG("using pid-file '%s'", pidFile.c_str());
+    LOG(DEBUG) << "using pid-file '" << pidFile.c_str() << "'";
   }
 }
 
@@ -146,7 +145,7 @@ static int ForkProcess(std::string const& workingDirectory,
 
   // if we got a good PID, then we can exit the parent process
   if (pid > 0) {
-    LOG_DEBUG("started child process with pid %d", (int)pid);
+    LOG(DEBUG) << "started child process with pid " << pid;
     return pid;
   }
 
@@ -174,8 +173,7 @@ static int ForkProcess(std::string const& workingDirectory,
       LOG_FATAL_AND_EXIT("cannot change into working directory '%s'",
                          workingDirectory.c_str());
     } else {
-      LOG_INFO("changed working directory for child process to '%s'",
-               workingDirectory.c_str());
+      LOG(INFO) << "changed working directory for child process to '" << workingDirectory.c_str() << "'";
     }
   }
 
@@ -248,8 +246,7 @@ int WaitForSupervisor(int pid) {
       }
 
       // failure!
-      LOG_ERROR(
-          "unable to start arangod. please check the logfiles for errors");
+      LOG(ERROR) << "unable to start arangod. please check the logfiles for errors";
       return EXIT_FAILURE;
     }
 
@@ -324,7 +321,7 @@ int AnyServer::start() {
 
     if (!_pidFile.empty()) {
       if (!FileUtils::remove(_pidFile)) {
-        LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
+        LOG(DEBUG) << "cannot remove pid file '" << _pidFile.c_str() << "'";
       }
     }
     startupProgress();
@@ -352,7 +349,7 @@ void AnyServer::beginShutdown() {
 int AnyServer::startupSupervisor() {
   static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
 
-  LOG_INFO("starting up in supervisor mode");
+  LOG(INFO) << "starting up in supervisor mode";
 
   CheckPidFile(_pidFile);
 
@@ -390,7 +387,7 @@ int AnyServer::startupSupervisor() {
       if (0 < pid) {
         _applicationServer->setupLogging(false, true, true);
         TRI_SetProcessTitle("arangodb [supervisor]");
-        LOG_DEBUG("supervisor mode: within parent");
+        LOG(DEBUG) << "supervisor mode: within parent";
 
         int status;
         waitpid(pid, &status, 0);
@@ -399,20 +396,16 @@ int AnyServer::startupSupervisor() {
         if (WIFEXITED(status)) {
           // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
-            LOG_INFO("child %d died of natural causes", (int)pid);
+            LOG(INFO) << "child " << pid << " died of natural causes";
             done = true;
             horrible = false;
           } else {
             t = time(0) - startTime;
 
-            LOG_ERROR("child %d died a horrible death, exit status %d",
-                      (int)pid, (int)WEXITSTATUS(status));
+            LOG(ERROR) << "child " << pid << " died a horrible death, exit status " << WEXITSTATUS(status);
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
-              LOG_ERROR(
-                  "child only survived for %d seconds, this will not work - "
-                  "please fix the error first",
-                  (int)t);
+              LOG(ERROR) << "child only survived for " << t << " seconds, this will not work - please fix the error first";
               done = true;
             } else {
               done = false;
@@ -423,8 +416,7 @@ int AnyServer::startupSupervisor() {
             case 2:
             case 9:
             case 15:
-              LOG_INFO("child %d died of natural causes, exit status %d",
-                       (int)pid, (int)WTERMSIG(status));
+              LOG(INFO) << "child " << pid << " died of natural causes, exit status " << WTERMSIG(status);
               done = true;
               horrible = false;
               break;
@@ -432,20 +424,15 @@ int AnyServer::startupSupervisor() {
             default:
               t = time(0) - startTime;
 
-              LOG_ERROR("child %d died a horrible death, signal %d", (int)pid,
-                        (int)WTERMSIG(status));
+              LOG(ERROR) << "child " << pid << " died a horrible death, signal " << WTERMSIG(status);
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
-                LOG_ERROR(
-                    "child only survived for %d seconds, this will not work - "
-                    "please fix the error first",
-                    (int)t);
+                LOG(ERROR) << "child only survived for " << t << " seconds, this will not work - please fix the error first";
                 done = true;
 
 #ifdef WCOREDUMP
                 if (WCOREDUMP(status)) {
-                  LOG_WARNING("child process %d produced a core dump",
-                              (int)pid);
+                  LOG(WARNING) << "child process " << pid << " produced a core dump";
                 }
 #endif
               } else {
@@ -455,14 +442,14 @@ int AnyServer::startupSupervisor() {
               break;
           }
         } else {
-          LOG_ERROR("child %d died a horrible death, unknown cause", (int)pid);
+          LOG(ERROR) << "child " << pid << " died a horrible death, unknown cause";
           done = false;
         }
 
         // remove pid file
         if (horrible) {
           if (!FileUtils::remove(_pidFile)) {
-            LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
+            LOG(DEBUG) << "cannot remove pid file '" << _pidFile.c_str() << "'";
           }
 
           result = EXIT_FAILURE;
@@ -472,7 +459,7 @@ int AnyServer::startupSupervisor() {
       // child
       else {
         _applicationServer->setupLogging(true, false, true);
-        LOG_DEBUG("supervisor mode: within child");
+        LOG(DEBUG) << "supervisor mode: within child";
 
         // write the pid file
         WritePidFile(_pidFile, TRI_CurrentProcessId());
@@ -487,7 +474,7 @@ int AnyServer::startupSupervisor() {
 
         // remove pid file
         if (!FileUtils::remove(_pidFile)) {
-          LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
+          LOG(DEBUG) << "cannot remove pid file '" << _pidFile.c_str() << "'";
         }
 
         // and stop
@@ -504,7 +491,7 @@ int AnyServer::startupSupervisor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::startupDaemon() {
-  LOG_INFO("starting up in daemon mode");
+  LOG(INFO) << "starting up in daemon mode";
 
   CheckPidFile(_pidFile);
 
@@ -526,14 +513,14 @@ int AnyServer::startupDaemon() {
   else {
     setMode(ServerMode::MODE_SERVICE);
     _applicationServer->setupLogging(true, false, true);
-    LOG_DEBUG("daemon mode: within child");
+    LOG(DEBUG) << "daemon mode: within child";
 
     // and startup server
     result = startupServer();
 
     // remove pid file
     if (!FileUtils::remove(_pidFile)) {
-      LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
+      LOG(DEBUG) << "cannot remove pid file '" << _pidFile.c_str() << "'";
     }
   }
 

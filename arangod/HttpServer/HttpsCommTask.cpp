@@ -26,7 +26,7 @@
 
 #include <openssl/err.h>
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/socket-utils.h"
 #include "Basics/ssl-helper.h"
 #include "Basics/StringBuffer.h"
@@ -84,8 +84,7 @@ bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   _connectionInfo.sslContext = _ssl;
 
   if (_ssl == nullptr) {
-    LOG_DEBUG("cannot build new SSL connection: %s",
-              arangodb::basics::lastSSLError().c_str());
+    LOG(DEBUG) << "cannot build new SSL connection: " << arangodb::basics::lastSSLError().c_str();
 
     shutdownSsl(false);
     return false;  // terminate ourselves, ssl is nullptr
@@ -197,7 +196,7 @@ bool HttpsCommTask::trySSLAccept() {
 
   // accept successful
   if (res == 1) {
-    LOG_DEBUG("established SSL connection");
+    LOG(DEBUG) << "established SSL connection";
     _accepted = true;
 
     // accept done, remove write events
@@ -208,8 +207,7 @@ bool HttpsCommTask::trySSLAccept() {
 
   // shutdown of connection
   if (res == 0) {
-    LOG_DEBUG("SSL_accept failed: %s",
-              arangodb::basics::lastSSLError().c_str());
+    LOG(DEBUG) << "SSL_accept failed: " << arangodb::basics::lastSSLError().c_str();
 
     shutdownSsl(false);
     return false;
@@ -224,8 +222,7 @@ bool HttpsCommTask::trySSLAccept() {
     return true;
   }
 
-  LOG_TRACE("error in SSL handshake: %s",
-            arangodb::basics::lastSSLError().c_str());
+  LOG(TRACE) << "error in SSL handshake: " << arangodb::basics::lastSSLError().c_str();
 
   shutdownSsl(false);
   return false;
@@ -250,9 +247,7 @@ again:
         return true;
 
       case SSL_ERROR_SSL:
-        LOG_DEBUG("received SSL error (bytes read %d, socket %d): %s", nr,
-                  (int)TRI_get_fd_or_handle_of_socket(_commSocket),
-                  arangodb::basics::lastSSLError().c_str());
+        LOG(DEBUG) << "received SSL error (bytes read " << nr << ", socket " << TRI_get_fd_or_handle_of_socket(_commSocket) << "): " << arangodb::basics::lastSSLError().c_str();
 
         shutdownSsl(false);
         return false;
@@ -271,31 +266,27 @@ again:
         return true;
 
       case SSL_ERROR_WANT_CONNECT:
-        LOG_DEBUG("received SSL_ERROR_WANT_CONNECT");
+        LOG(DEBUG) << "received SSL_ERROR_WANT_CONNECT";
         break;
 
       case SSL_ERROR_WANT_ACCEPT:
-        LOG_DEBUG("received SSL_ERROR_WANT_ACCEPT");
+        LOG(DEBUG) << "received SSL_ERROR_WANT_ACCEPT";
         break;
 
       case SSL_ERROR_SYSCALL:
         if (res != 0) {
-          LOG_DEBUG("SSL_read returned syscall error with: %s",
-                    arangodb::basics::lastSSLError().c_str());
+          LOG(DEBUG) << "SSL_read returned syscall error with: " << arangodb::basics::lastSSLError().c_str();
         } else if (nr == 0) {
-          LOG_DEBUG(
-              "SSL_read returned syscall error because an EOF was received");
+          LOG(DEBUG) << "SSL_read returned syscall error because an EOF was received";
         } else {
-          LOG_DEBUG("SSL_read return syscall error: %d: %s", (int)errno,
-                    strerror(errno));
+          LOG(DEBUG) << "SSL_read return syscall error: " << errno << ": " << strerror(errno);
         }
 
         shutdownSsl(false);
         return false;
 
       default:
-        LOG_DEBUG("received error with %d and %d: %s", res, nr,
-                  arangodb::basics::lastSSLError().c_str());
+        LOG(DEBUG) << "received error with " << res << " and " << nr << ": " << arangodb::basics::lastSSLError().c_str();
 
         shutdownSsl(false);
         return false;
@@ -348,11 +339,11 @@ bool HttpsCommTask::trySSLWrite() {
           return false;
 
         case SSL_ERROR_WANT_CONNECT:
-          LOG_DEBUG("received SSL_ERROR_WANT_CONNECT");
+          LOG(DEBUG) << "received SSL_ERROR_WANT_CONNECT";
           break;
 
         case SSL_ERROR_WANT_ACCEPT:
-          LOG_DEBUG("received SSL_ERROR_WANT_ACCEPT");
+          LOG(DEBUG) << "received SSL_ERROR_WANT_ACCEPT";
           break;
 
         case SSL_ERROR_WANT_WRITE:
@@ -365,22 +356,18 @@ bool HttpsCommTask::trySSLWrite() {
 
         case SSL_ERROR_SYSCALL:
           if (res != 0) {
-            LOG_DEBUG("SSL_write returned syscall error with: %s",
-                      arangodb::basics::lastSSLError().c_str());
+            LOG(DEBUG) << "SSL_write returned syscall error with: " << arangodb::basics::lastSSLError().c_str();
           } else if (nr == 0) {
-            LOG_DEBUG(
-                "SSL_write returned syscall error because an EOF was received");
+            LOG(DEBUG) << "SSL_write returned syscall error because an EOF was received";
           } else {
-            LOG_DEBUG("SSL_write return syscall error: %d: %s", errno,
-                      strerror(errno));
+            LOG(DEBUG) << "SSL_write return syscall error: " << errno << ": " << strerror(errno);
           }
 
           shutdownSsl(false);
           return false;
 
         default:
-          LOG_DEBUG("received error with %d and %d: %s", res, nr,
-                    arangodb::basics::lastSSLError().c_str());
+          LOG(DEBUG) << "received error with " << res << " and " << nr << ": " << arangodb::basics::lastSSLError().c_str();
 
           shutdownSsl(false);
           return false;
@@ -433,16 +420,14 @@ void HttpsCommTask::shutdownSsl(bool initShutdown) {
           int err = SSL_get_error(_ssl, res);
 
           if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
-            LOG_DEBUG("received shutdown error with %d, %d: %s", res, err,
-                      arangodb::basics::lastSSLError().c_str());
+            LOG(DEBUG) << "received shutdown error with " << res << ", " << err << ": " << arangodb::basics::lastSSLError().c_str();
             break;
           }
         }
       }
 
       if (!ok) {
-        LOG_DEBUG("cannot complete SSL shutdown in socket %d",
-                  (int)TRI_get_fd_or_handle_of_socket(_commSocket));
+        LOG(DEBUG) << "cannot complete SSL shutdown in socket " << TRI_get_fd_or_handle_of_socket(_commSocket);
       }
     } else {
       ERR_clear_error();

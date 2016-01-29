@@ -25,13 +25,14 @@
 #define ARANGOD_CLUSTER_CLUSTER_COMM_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Logger.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "VocBase/voc-types.h"
 #include "Cluster/AgencyComm.h"
 #include "Utils/Transaction.h"
@@ -427,7 +428,7 @@ class ClusterCommThread : public basics::Thread {
       return;
     }
 
-    LOG_TRACE("stopping ClusterCommThread");
+    LOG(TRACE) << "stopping ClusterCommThread";
 
     _stop = 1;
     _condition.signal();
