@@ -1891,4 +1891,3 @@ bool TRI_IsAllowedNameCollection(bool allowSystem, char const* name) {
   return true;
 }
 
-

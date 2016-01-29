@@ -31,6 +31,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ThreadPool.h"
+#include "Cluster/ServerState.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/CapConstraint.h"
 #include "Indexes/EdgeIndex.h"
@@ -84,6 +85,9 @@ TRI_document_collection_t::TRI_document_collection_t()
   _tickMax = 0;
 
   setCompactionStatus("compaction not yet started");
+  if (ServerState::instance()->isDBServer()) {
+    _followers.reset(new FollowerInfo(this));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
