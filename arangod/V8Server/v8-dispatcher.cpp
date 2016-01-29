@@ -64,7 +64,6 @@ static Scheduler* GlobalScheduler = nullptr;
 
 static Dispatcher* GlobalDispatcher = nullptr;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to compile the command
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +102,6 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
 
   return TRI_ObjectToString(arg);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a task
@@ -312,7 +310,6 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 dispatcher function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
@@ -347,5 +344,3 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
     LOG_ERROR("cannot initialize tasks, scheduler or dispatcher unknown");
   }
 }
-
-

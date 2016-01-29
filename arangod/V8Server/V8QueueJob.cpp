@@ -42,26 +42,22 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8QueueJob::V8QueueJob(size_t queue, TRI_vocbase_t* vocbase,
-                       ApplicationV8* v8Dealer, std::shared_ptr<VPackBuilder> parameters)
+                       ApplicationV8* v8Dealer,
+                       std::shared_ptr<VPackBuilder> parameters)
     : Job("V8 Queue Job"),
       _queue(queue),
       _vocbase(vocbase),
       _v8Dealer(v8Dealer),
       _parameters(parameters),
-      _canceled(false) {
-}
+      _canceled(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8QueueJob::~V8QueueJob() {
-}
-
-
+V8QueueJob::~V8QueueJob() {}
 
 size_t V8QueueJob::queue() const { return _queue; }
-
 
 void V8QueueJob::work() {
   if (_canceled) {
@@ -127,19 +123,14 @@ void V8QueueJob::work() {
   _v8Dealer->exitContext(context);
 }
 
-
 bool V8QueueJob::cancel() {
   _canceled = true;
   return true;
 }
-
 
 void V8QueueJob::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
 
-
 void V8QueueJob::handleError(Exception const& ex) {}
-
-

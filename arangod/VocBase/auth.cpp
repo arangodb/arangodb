@@ -24,14 +24,15 @@
 #include "auth.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Basics/WriteLocker.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Rest/SslInterface.h"
+#include "Utils/transactions.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shape-accessor.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
-#include "Utils/transactions.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -250,7 +251,6 @@ static void ClearAuthInfo(TRI_vocbase_t* vocbase) {
   vocbase->_authCache._nrUsed = 0;
 }
 
-
 uint64_t VocbaseAuthInfo::hash() const {
   return TRI_FnvHashString(_username.c_str());
 }
@@ -288,8 +288,6 @@ int TRI_InitAuthInfo(TRI_vocbase_t* vocbase) {
   TRI_InitAssociativePointer(&vocbase->_authCache, TRI_CORE_MEM_ZONE, HashKey,
                              HashElementAuthCache, EqualKeyAuthCache, nullptr);
 
-  TRI_InitReadWriteLock(&vocbase->_authInfoLock);
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -300,7 +298,6 @@ int TRI_InitAuthInfo(TRI_vocbase_t* vocbase) {
 void TRI_DestroyAuthInfo(TRI_vocbase_t* vocbase) {
   TRI_ClearAuthInfo(vocbase);
 
-  TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
   TRI_DestroyAssociativePointer(&vocbase->_authCache);
   TRI_DestroyAssociativePointer(&vocbase->_authInfo);
 }
@@ -367,25 +364,27 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
 
   TRI_document_collection_t* document = trx.documentCollection();
 
-  TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
-  ClearAuthInfo(vocbase);
-  auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
-    std::unique_ptr<VocbaseAuthInfo> auth(
-        ConvertAuthInfo(vocbase, document, ptr));
-    if (auth != nullptr) {
-      VocbaseAuthInfo* old =
-          static_cast<VocbaseAuthInfo*>(TRI_InsertKeyAssociativePointer(
-              &vocbase->_authInfo, auth->username(), auth.get(), true));
-      auth.release();
+  {
+    WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
 
-      if (old != nullptr) {
-        delete old;
+    ClearAuthInfo(vocbase);
+    auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
+      std::unique_ptr<VocbaseAuthInfo> auth(
+          ConvertAuthInfo(vocbase, document, ptr));
+      if (auth != nullptr) {
+        VocbaseAuthInfo* old =
+            static_cast<VocbaseAuthInfo*>(TRI_InsertKeyAssociativePointer(
+                &vocbase->_authInfo, auth->username(), auth.get(), true));
+        auth.release();
+
+        if (old != nullptr) {
+          delete old;
+        }
       }
-    }
-  };
-  document->primaryIndex()->invokeOnAllElements(work);
+    };
 
-  TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
+    document->primaryIndex()->invokeOnAllElements(work);
+  }
 
   trx.finish(TRI_ERROR_NO_ERROR);
 
@@ -399,7 +398,8 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
 bool TRI_PopulateAuthInfo(TRI_vocbase_t* vocbase, VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
-  TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
+  WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
+
   ClearAuthInfo(vocbase);
 
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
@@ -411,8 +411,6 @@ bool TRI_PopulateAuthInfo(TRI_vocbase_t* vocbase, VPackSlice const& slice) {
       auth.release();
     }
   }
-
-  TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   return true;
 }
@@ -434,9 +432,8 @@ bool TRI_ReloadAuthInfo(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearAuthInfo(TRI_vocbase_t* vocbase) {
-  TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
+  WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
-  TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -447,7 +444,8 @@ char* TRI_CheckCacheAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
                              bool* mustChange) {
   char* username = nullptr;
 
-  TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
+  READ_LOCKER(readLocker, vocbase->_authInfoLock);
+
   TRI_vocbase_auth_cache_t* cached = static_cast<TRI_vocbase_auth_cache_t*>(
       TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash));
 
@@ -455,8 +453,6 @@ char* TRI_CheckCacheAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
     username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, cached->_username);
     *mustChange = cached->_mustChange;
   }
-
-  TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   // might be NULL
   return username;
@@ -471,16 +467,13 @@ bool TRI_ExistsAuthenticationAuthInfo(TRI_vocbase_t* vocbase,
   TRI_ASSERT(vocbase != nullptr);
 
   // look up username
-  TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
+  READ_LOCKER(readLocker, vocbase->_authInfoLock);
 
   // We do not take responsiblity for the data
   VocbaseAuthInfo* auth = static_cast<VocbaseAuthInfo*>(
       TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
 
-  bool result = (auth != nullptr && auth->isActive());
-  TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
-
-  return result;
+  return (auth != nullptr && auth->isActive());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,90 +484,90 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
                                      char const* username, char const* password,
                                      bool* mustChange) {
   TRI_ASSERT(vocbase != nullptr);
-
-  // look up username
-  TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
-  // We do not take responsibilty for the data
-  VocbaseAuthInfo* auth = static_cast<VocbaseAuthInfo*>(
-      TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
-
-  if (auth == nullptr || !auth->isActive()) {
-    TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
-    return false;
-  }
-
-  *mustChange = auth->mustChange();
-
-  size_t const n = strlen(auth->passwordSalt());
-  size_t const p = strlen(password);
-
-  char* salted =
-      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + p + 1, false));
-
-  if (salted == nullptr) {
-    TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
-    return false;
-  }
-
-  memcpy(salted, auth->passwordSalt(), n);
-  memcpy(salted + n, password, p);
-  salted[n + p] = '\0';
-
-  // default value is false
   bool res = false;
-  char* crypted = nullptr;
-  size_t cryptedLength;
+  VocbaseAuthInfo* auth = nullptr;
 
-  char const* passwordMethod = auth->passwordMethod();
+  {
+    // look up username
+    READ_LOCKER(readLocker, vocbase->_authInfoLock);
 
-  TRI_ASSERT(passwordMethod != nullptr);
+    // We do not take responsibilty for the data
+    auth = static_cast<VocbaseAuthInfo*>(
+        TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
 
-  try {
-    if (strcmp(passwordMethod, "sha1") == 0) {
-      arangodb::rest::SslInterface::sslSHA1(salted, n + p, crypted,
-                                            cryptedLength);
-    } else if (strcmp(passwordMethod, "sha512") == 0) {
-      arangodb::rest::SslInterface::sslSHA512(salted, n + p, crypted,
-                                              cryptedLength);
-    } else if (strcmp(passwordMethod, "sha384") == 0) {
-      arangodb::rest::SslInterface::sslSHA384(salted, n + p, crypted,
-                                              cryptedLength);
-    } else if (strcmp(passwordMethod, "sha256") == 0) {
-      arangodb::rest::SslInterface::sslSHA256(salted, n + p, crypted,
-                                              cryptedLength);
-    } else if (strcmp(passwordMethod, "sha224") == 0) {
-      arangodb::rest::SslInterface::sslSHA224(salted, n + p, crypted,
-                                              cryptedLength);
-    } else if (strcmp(passwordMethod, "md5") == 0) {
-      arangodb::rest::SslInterface::sslMD5(salted, n + p, crypted,
-                                           cryptedLength);
-    } else {
-      // invalid algorithm...
-      res = false;
-    }
-  } catch (...) {
-    // SslInterface::ssl....() allocate strings with new, which might throw
-    // exceptions
-    // if we get one, we can ignore it because res is set to false anyway
-  }
-
-  if (crypted != nullptr) {
-    TRI_ASSERT(cryptedLength > 0);
-
-    size_t hexLen;
-    char* hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
-
-    if (hex != nullptr) {
-      res = auth->isEqualPasswordHash(hex);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
+    if (auth == nullptr || !auth->isActive()) {
+      return false;
     }
 
-    delete[] crypted;
+    *mustChange = auth->mustChange();
+
+    size_t const n = strlen(auth->passwordSalt());
+    size_t const p = strlen(password);
+
+    char* salted = static_cast<char*>(
+        TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + p + 1, false));
+
+    if (salted == nullptr) {
+      return false;
+    }
+
+    memcpy(salted, auth->passwordSalt(), n);
+    memcpy(salted + n, password, p);
+    salted[n + p] = '\0';
+
+    // default value is false
+    char* crypted = nullptr;
+    size_t cryptedLength;
+
+    char const* passwordMethod = auth->passwordMethod();
+
+    TRI_ASSERT(passwordMethod != nullptr);
+
+    try {
+      if (strcmp(passwordMethod, "sha1") == 0) {
+        arangodb::rest::SslInterface::sslSHA1(salted, n + p, crypted,
+                                              cryptedLength);
+      } else if (strcmp(passwordMethod, "sha512") == 0) {
+        arangodb::rest::SslInterface::sslSHA512(salted, n + p, crypted,
+                                                cryptedLength);
+      } else if (strcmp(passwordMethod, "sha384") == 0) {
+        arangodb::rest::SslInterface::sslSHA384(salted, n + p, crypted,
+                                                cryptedLength);
+      } else if (strcmp(passwordMethod, "sha256") == 0) {
+        arangodb::rest::SslInterface::sslSHA256(salted, n + p, crypted,
+                                                cryptedLength);
+      } else if (strcmp(passwordMethod, "sha224") == 0) {
+        arangodb::rest::SslInterface::sslSHA224(salted, n + p, crypted,
+                                                cryptedLength);
+      } else if (strcmp(passwordMethod, "md5") == 0) {
+        arangodb::rest::SslInterface::sslMD5(salted, n + p, crypted,
+                                             cryptedLength);
+      } else {
+        // invalid algorithm...
+        res = false;
+      }
+    } catch (...) {
+      // SslInterface::ssl....() allocate strings with new, which might throw
+      // exceptions
+      // if we get one, we can ignore it because res is set to false anyway
+    }
+
+    if (crypted != nullptr) {
+      TRI_ASSERT(cryptedLength > 0);
+
+      size_t hexLen;
+      char* hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
+
+      if (hex != nullptr) {
+        res = auth->isEqualPasswordHash(hex);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
+      }
+
+      delete[] crypted;
+    }
+
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, salted);
   }
-
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, salted);
-
-  TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   if (res && hash != nullptr) {
     // insert item into the cache
@@ -592,7 +585,8 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
         return res;
       }
 
-      TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
+      WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
+
       void* old = TRI_InsertKeyAssociativePointer(&vocbase->_authCache,
                                                   cached->_hash, cached, false);
 
@@ -600,12 +594,8 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
       if (old != nullptr) {
         FreeAuthCacheInfo(cached);
       }
-
-      TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
     }
   }
 
   return res;
 }
-
-

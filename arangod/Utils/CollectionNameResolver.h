@@ -35,7 +35,6 @@
 namespace arangodb {
 
 class CollectionNameResolver {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the resolver
@@ -50,7 +49,6 @@ class CollectionNameResolver {
 
   ~CollectionNameResolver() {}
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name (local case)
@@ -177,7 +175,7 @@ class CollectionNameResolver {
 
     std::string name;
     if (ServerState::instance()->isDBServer()) {
-      READ_LOCKER(_vocbase->_collectionsLock);
+      READ_LOCKER(readLocker, _vocbase->_collectionsLock);
 
       TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(
           TRI_LookupByKeyAssociativePointer(&_vocbase->_collectionsById, &cid));
@@ -354,7 +352,6 @@ class CollectionNameResolver {
     buffer.appendText("_unknown");
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
@@ -378,4 +375,3 @@ class CollectionNameResolver {
 }
 
 #endif
-

@@ -33,7 +33,6 @@
 
 #endif
 
-
 #define TRI_WITHIN_COMMON 1
 #include "Basics/operating-system.h"
 #ifdef _WIN32
@@ -52,7 +51,6 @@
 #endif
 
 #undef TRI_WITHIN_COMMON
-
 
 #include <assert.h>
 #include <ctype.h>
@@ -122,7 +120,6 @@
 typedef long suseconds_t;
 #endif
 
-
 #include <algorithm>
 #include <map>
 #include <set>
@@ -134,7 +131,6 @@ typedef long suseconds_t;
 #include <memory>
 #include <atomic>
 
-
 #define TRI_WITHIN_COMMON 1
 #include "Basics/voc-errors.h"
 #include "Basics/error.h"
@@ -145,7 +141,6 @@ typedef long suseconds_t;
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementing a uint64_t modulo a number with wraparound
@@ -298,5 +293,3 @@ typedef TRI_seconds_t seconds_t;
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199
 
 #endif
-
-

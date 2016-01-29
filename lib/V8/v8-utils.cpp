@@ -87,8 +87,8 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone,
     : _str(nullptr), _length(0), _memoryZone(memoryZone) {
   v8::String::Value str(obj);
 
-  _str =
-      TRI_normalize_utf16_to_NFC(_memoryZone, *str, (size_t)str.length(), &_length);
+  _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, (size_t)str.length(),
+                                    &_length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2582,8 +2582,7 @@ static void JS_RemoveRecursiveDirectory(
     std::string const path(*name);
 #ifdef _WIN32
     // windows paths are case-insensitive
-    if (!TRI_CaseEqualString(path.c_str(), tempPath.c_str(),
-                              tempPath.size())) {
+    if (!TRI_CaseEqualString(path.c_str(), tempPath.c_str(), tempPath.size())) {
 #else
     if (!TRI_EqualString(path.c_str(), tempPath.c_str(), tempPath.size())) {
 #endif

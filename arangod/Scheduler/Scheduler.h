@@ -135,7 +135,8 @@ class Scheduler : private TaskManager {
   /// @brief get a single user task
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Builder> getUserTask(std::string const&);
+  std::shared_ptr<arangodb::velocypack::Builder> getUserTask(
+      std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister and delete a user task by id
@@ -357,7 +358,7 @@ class Scheduler : private TaskManager {
   /// @brief lock for scheduler threads
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::Mutex schedulerLock;
+  Mutex schedulerLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief tasks to thread

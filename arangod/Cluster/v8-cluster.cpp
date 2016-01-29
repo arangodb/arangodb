@@ -117,7 +117,8 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
+  AgencyCommResult result =
+      comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
 
   if (!result.successful()) {
     if (!shouldThrow) {
@@ -745,7 +746,6 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a specific database exists
 ////////////////////////////////////////////////////////////////////////////////
@@ -1159,7 +1159,6 @@ static void JS_UniqidClusterInfo(
   TRI_V8_RETURN_STD_STRING(id);
   TRI_V8_TRY_CATCH_END
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the servers address
@@ -1640,7 +1639,6 @@ static void PrepareClusterCommRequest(
     ClientTransactionID& clientTransactionID,
     CoordTransactionID& coordTransactionID, double& timeout,
     bool& singleRequest) {
-
   v8::Isolate* isolate = args.GetIsolate();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
@@ -1894,10 +1892,9 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                             *headerFields, clientTransactionID,
                             coordTransactionID, timeout, singleRequest);
 
-  ClusterCommResult const res =
-      cc->asyncRequest(clientTransactionID, coordTransactionID, destination,
-                       reqType, path, body, headerFields, 0, timeout,
-                       singleRequest);
+  ClusterCommResult const res = cc->asyncRequest(
+      clientTransactionID, coordTransactionID, destination, reqType, path, body,
+      headerFields, 0, timeout, singleRequest);
 
   if (res.invalid) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2140,7 +2137,6 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global cluster context
 ////////////////////////////////////////////////////////////////////////////////
@@ -2363,5 +2359,3 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                                  TRI_V8_ASCII_STRING("ArangoClusterComm"), ss);
   }
 }
-
-

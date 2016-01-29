@@ -27,8 +27,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a json object
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,7 +305,6 @@ static inline bool IsString(TRI_json_t const* json) {
           json->_value._string.data != nullptr);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a null object
 ////////////////////////////////////////////////////////////////////////////////
@@ -556,7 +553,6 @@ void TRI_FreeJson(TRI_memory_zone_t* zone, TRI_json_t* object) {
   TRI_DestroyJson(zone, object);
   TRI_Free(zone, object);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a user printable string
@@ -1241,5 +1237,3 @@ double TRI_ToDoubleJson(TRI_json_t const* json, bool& failed) {
   failed = true;
   return 0.0;
 }
-
-

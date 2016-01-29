@@ -34,7 +34,6 @@ namespace wal {
 
 class LogfileManager;
 
-
 class RemoverThread : public basics::Thread {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief RemoverThread
@@ -44,7 +43,6 @@ class RemoverThread : public basics::Thread {
   RemoverThread(RemoverThread const&) = delete;
   RemoverThread& operator=(RemoverThread const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the remover thread
@@ -58,7 +56,6 @@ class RemoverThread : public basics::Thread {
 
   ~RemoverThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stops the remover thread
@@ -66,7 +63,6 @@ class RemoverThread : public basics::Thread {
 
   void stop();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
@@ -74,7 +70,6 @@ class RemoverThread : public basics::Thread {
 
   void run();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -104,5 +99,3 @@ class RemoverThread : public basics::Thread {
 }
 
 #endif
-
-

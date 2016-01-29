@@ -33,7 +33,6 @@ extern "C" {
 using namespace std;
 using namespace arangodb;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief active completer
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,9 +55,6 @@ static void LinenoiseCompletionGenerator(char const* text,
   }
 }
 
-
-
-
 LinenoiseShell::LinenoiseShell(std::string const& history, Completer* completer)
     : ShellBase(history, completer) {
   COMPLETER = completer;
@@ -66,17 +62,13 @@ LinenoiseShell::LinenoiseShell(std::string const& history, Completer* completer)
   linenoiseInstallWindowChangeHandler();
 }
 
-
 LinenoiseShell::~LinenoiseShell() { COMPLETER = nullptr; }
-
-
 
 bool LinenoiseShell::open(bool) {
   linenoiseHistoryLoad(_historyFilename.c_str());
   _state = STATE_OPENED;
   return true;
 }
-
 
 bool LinenoiseShell::close() {
   // avoid duplicate saving of history
@@ -90,7 +82,6 @@ bool LinenoiseShell::close() {
   return result;
 }
 
-
 void LinenoiseShell::addHistory(std::string const& str) {
   if (str.empty()) {
     return;
@@ -99,13 +90,11 @@ void LinenoiseShell::addHistory(std::string const& str) {
   linenoiseHistoryAdd(str.c_str());
 }
 
-
 bool LinenoiseShell::writeHistory() {
   linenoiseHistorySave(_historyFilename.c_str());
 
   return true;
 }
-
 
 std::string LinenoiseShell::getLine(std::string const& prompt, bool& eof) {
   char* line = linenoise(prompt.c_str());
@@ -120,5 +109,3 @@ std::string LinenoiseShell::getLine(std::string const& prompt, bool& eof) {
   eof = true;
   return "";
 }
-
-

@@ -14,7 +14,7 @@ function runSetup () {
   var c = db._create("UnitTestsRecovery");
   var i, num = 9999999999;
   for (i = 0; i < 4; ++i) {
-    var filename = fs.join(db._path(), "collection-" + c._id + "/datafile-" + num + ".db");
+    var filename = fs.join(c.path(), "datafile-" + num + ".db");
     num++;
 
     // save an empty file 

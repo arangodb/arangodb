@@ -32,13 +32,10 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 namespace {
 std::atomic_uint_fast64_t NEXT_HANDLER_ID(
     static_cast<uint64_t>(TRI_microtime() * 100000.0));
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler
@@ -59,7 +56,6 @@ HttpHandler::~HttpHandler() {
   delete _request;
   delete _response;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name
@@ -230,7 +226,6 @@ HttpResponse* HttpHandler::stealResponse() {
   return tmp;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new HTTP response
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,5 +248,3 @@ void HttpHandler::createResponse(HttpResponse::HttpResponseCode code) {
   // create a "standard" (standalone) Http response
   _response = new HttpResponse(code, apiCompatibility);
 }
-
-

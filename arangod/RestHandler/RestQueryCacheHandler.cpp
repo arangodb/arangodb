@@ -30,12 +30,10 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 RestQueryCacheHandler::RestQueryCacheHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 bool RestQueryCacheHandler::isDirect() const { return false; }
-
 
 HttpHandler::status_t RestQueryCacheHandler::execute() {
   // extract the sub-request type
@@ -65,7 +63,6 @@ HttpHandler::status_t RestQueryCacheHandler::execute() {
   // this handler is done
   return status_t(HANDLER_DONE);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock DeleteApiQueryCache
@@ -175,5 +172,3 @@ bool RestQueryCacheHandler::replaceProperties() {
 
   return true;
 }
-
-

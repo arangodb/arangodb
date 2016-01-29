@@ -35,12 +35,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static arangodb::basics::Mutex SidLock;
+static arangodb::Mutex SidLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid cache
@@ -57,14 +56,12 @@ typedef std::unordered_map<std::string, std::pair<std::string, double>>
 
 static std::unordered_map<std::string, DatabaseSessionsType> SidCache;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time-to-live for aardvark server sessions
 ////////////////////////////////////////////////////////////////////////////////
 
 double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 2;  // 2 hours session timeout
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a sid
@@ -73,7 +70,7 @@ double VocbaseContext::ServerSessionTtl =
 void VocbaseContext::createSid(std::string const& database,
                                std::string const& sid,
                                std::string const& username) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   // find entries for database first
   auto it = SidCache.find(database);
@@ -92,7 +89,7 @@ void VocbaseContext::createSid(std::string const& database,
 ////////////////////////////////////////////////////////////////////////////////
 
 void VocbaseContext::clearSid(std::string const& database) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   SidCache.erase(database);
 }
@@ -103,7 +100,7 @@ void VocbaseContext::clearSid(std::string const& database) {
 
 void VocbaseContext::clearSid(std::string const& database,
                               std::string const& sid) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   auto it = SidCache.find(database);
 
@@ -121,7 +118,7 @@ void VocbaseContext::clearSid(std::string const& database,
 
 double VocbaseContext::accessSid(std::string const& database,
                                  std::string const& sid) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   auto it = SidCache.find(database);
 
@@ -140,9 +137,6 @@ double VocbaseContext::accessSid(std::string const& database,
   return (*it2).second.second;
 }
 
-
-
-
 VocbaseContext::VocbaseContext(HttpRequest* request, TRI_server_t* server,
                                TRI_vocbase_t* vocbase)
     : RequestContext(request), _server(server), _vocbase(vocbase) {
@@ -150,9 +144,7 @@ VocbaseContext::VocbaseContext(HttpRequest* request, TRI_server_t* server,
   TRI_ASSERT(_vocbase != nullptr);
 }
 
-
 VocbaseContext::~VocbaseContext() { TRI_ReleaseVocBase(_vocbase); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use special cluster authentication
@@ -249,7 +241,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   char const* sid = _request->cookieValue(cn, found);
 
   if (found) {
-    MUTEX_LOCKER(SidLock);
+    MUTEX_LOCKER(mutexLocker, SidLock);
 
     auto it = SidCache.find(_vocbase->_name);
 
@@ -365,5 +357,3 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
 
   return HttpResponse::OK;
 }
-
-

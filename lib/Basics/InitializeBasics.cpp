@@ -52,5 +52,3 @@ void InitializeBasics(int argv, char* argc[]) {
 void ShutdownBasics() { TRIAGENS_C_SHUTDOWN; }
 }
 }
-
-

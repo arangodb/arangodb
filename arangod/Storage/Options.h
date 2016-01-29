@@ -51,7 +51,8 @@ class StorageOptions {
 
  private:
   std::unique_ptr<arangodb::velocypack::AttributeTranslator> _translator;
-  std::unique_ptr<arangodb::velocypack::AttributeExcludeHandler> _excludeHandler;
+  std::unique_ptr<arangodb::velocypack::AttributeExcludeHandler>
+      _excludeHandler;
 
   static arangodb::velocypack::Options JsonToDocumentTemplate;
   static arangodb::velocypack::Options DocumentToJsonTemplate;
@@ -60,5 +61,3 @@ class StorageOptions {
 }
 
 #endif
-
-

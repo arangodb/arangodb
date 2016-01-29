@@ -96,7 +96,6 @@ typedef struct TRI_vocbase_auth_cache_s {
   bool _mustChange;
 } TRI_vocbase_auth_cache_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the authentication info
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,5 +161,3 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t*, char const* hash,
                                      bool* mustChange);
 
 #endif
-
-

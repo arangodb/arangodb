@@ -100,41 +100,40 @@ const optionsDocumentation = [
   '   - `extraargs`: list of extra commandline arguments to add to arangod',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
-  '   - `portOffset`: move our base port by n ports up',
   ''
 ];
 
 const optionsDefaults = {
+  "cleanup": true,
   "cluster": false,
-  "valgrind": false,
+  "coreDirectory": "/var/tmp",
+  "duration": 240,
+  "extraargs": [],
+  "extremeVerbosity": false,
   "force": true,
-  "skipBoost": false,
-  "skipGeo": false,
-  "skipTimeCritical": false,
-  "skipNightly": true,
+  "jsonReply": false,
+  "loopEternal": false,
+  "loopSleepSec": 1,
+  "loopSleepWhen": 1,
   "onlyNightly": false,
-  "skipMemoryIntense": false,
+  "password": "",
   "skipAql": false,
   "skipArangoB": false,
   "skipArangoBNonConnKeepAlive": false,
-  "skipRanges": false,
+  "skipBoost": false,
+  "skipGeo": false,
   "skipLogAnalysis": false,
+  "skipMemoryIntense": false,
+  "skipNightly": true,
   "skipNondeterministic": false,
-  "username": "root",
-  "password": "",
+  "skipRanges": false,
+  "skipTimeCritical": false,
   "test": undefined,
-  "cleanup": true,
-  "jsonReply": false,
-  "portOffset": 0,
-  "valgrindargs": [],
+  "username": "root",
+  "valgrind": false,
   "valgrindXmlFileBase": "",
-  "extraargs": [],
-  "coreDirectory": "/var/tmp",
+  "valgrindargs": [],
   "writeXmlReport": true,
-  "extremeVerbosity": false,
-  "loopEternal": false,
-  "loopSleepWhen": 1,
-  "loopSleepSec": 1
 };
 
 const _ = require("lodash");
@@ -178,7 +177,7 @@ function findTopDir() {
 /// @brief arguments for testing (server)
 ////////////////////////////////////////////////////////////////////////////////
 
-function makeTestingArgs(appDir) {
+function makeArgsArangod(appDir) {
   const topDir = findTopDir();
   fs.makeDirectoryRecursive(appDir, true);
 
@@ -200,7 +199,7 @@ function makeTestingArgs(appDir) {
 /// @brief arguments for testing (client)
 ////////////////////////////////////////////////////////////////////////////////
 
-function makeTestingArgsClient(options) {
+function makeArgsArangosh(options) {
   const topDir = findTopDir();
 
   return {
@@ -772,7 +771,7 @@ function executeAndWait(cmd, args) {
 function runInArangosh(options, instanceInfo, file, addArgs) {
   const topDir = findTopDir();
 
-  let args = makeTestingArgsClient(options);
+  let args = makeArgsArangosh(options);
   args["server.endpoint"] = instanceInfo.endpoint;
   args["javascript.unit-tests"] = fs.join(topDir, file);
 
@@ -803,7 +802,7 @@ function runInArangosh(options, instanceInfo, file, addArgs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function runArangoshCmd(options, instanceInfo, addArgs, cmds) {
-  let args = makeTestingArgsClient(options);
+  let args = makeArgsArangosh(options);
   args["server.endpoint"] = instanceInfo.endpoint;
 
   if (addArgs !== undefined) {
@@ -1060,7 +1059,7 @@ function startDispatcher(instanceInfo) {
   instanceInfo.dispatcherPid = executeExternal(cmd, toArgv(args));
 
   while (arango.GET("/_admin/version").error === true) {
-    print("Waiting to dispatcher to appear");
+    print("Waiting for dispatcher to appear");
     sleep(1);
   }
 
@@ -1082,7 +1081,6 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
   instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
 
   const tmpDataDir = fs.join(instanceInfo.flatTmpDataDir, testname);
-
   const appDir = fs.join(tmpDataDir, "apps");
 
   fs.makeDirectoryRecursive(tmpDataDir);
@@ -1125,7 +1123,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
       clusterNodes = options.clusterNodes;
     }
 
-    let extraargs = makeTestingArgs(appDir);
+    let extraargs = makeArgsArangod(appDir);
     extraargs = _.extend(extraargs, optionsExtraArgs);
 
     if (addArgs !== undefined) {
@@ -1204,7 +1202,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
     let td = fs.join(tmpDataDir, "data");
     fs.makeDirectoryRecursive(td);
 
-    let args = makeTestingArgs(appDir);
+    let args = makeArgsArangod(appDir);
     args["server.endpoint"] = endpoint;
     args["database.directory"] = td;
     args["log.file"] = fs.join(tmpDataDir, "log");
@@ -1364,8 +1362,8 @@ function rubyTests(options, ssl) {
     res.total++;
 
     if (!status) {
-      var msg = yaml.safeDump(testCase);
-      print("RSpec test case falied: \n" + msg);
+      var msg = yaml.safeDump(testCase).replace(/.*rspec\/core.*\n/gm, "").replace(/.*rspec\\core.*\n/gm, "");
+      print("RSpec test case falied: \n" + msg); 
       res[tName].message += "\n" + msg;
     }
   };
@@ -1657,7 +1655,7 @@ testFuncs.arangosh = function(options) {
   const arangosh = fs.join("bin", "arangosh");
 
   let failed = 0;
-  let args = makeTestingArgsClient(options);
+  let args = makeArgsArangosh(options);
 
   let ret = {
     "ArangoshExitCodeTest": {
@@ -2765,7 +2763,7 @@ testFuncs.upgrade = function(options) {
   const appDir = fs.join(tmpDataDir, "app");
   const port = findFreePort();
 
-  let args = makeTestingArgs(appDir);
+  let args = makeArgsArangod(appDir);
   args["server.endpoint"] = "tcp://127.0.0.1:" + port;
   args["database.directory"] = fs.join(tmpDataDir, "data");
 
@@ -2786,6 +2784,65 @@ testFuncs.upgrade = function(options) {
   cleanupDirectories.push(tmpDataDir);
 
   return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief STRESS TEST: stress_crud
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.stress_crud = function(options) {
+  const testname = "stress_crud";
+
+  const topDir = findTopDir();
+
+  let instanceInfo = {};
+  instanceInfo.topDir = topDir;
+  instanceInfo.flatTmpDataDir = fs.getTempFile();
+
+  const port = findFreePort();
+  instanceInfo.port = port;
+  const endpoint = "tcp://127.0.0.1:" + port;
+
+  const tmpDataDir = fs.join(instanceInfo.flatTmpDataDir, testname);
+
+  fs.makeDirectoryRecursive(tmpDataDir);
+  instanceInfo.tmpDataDir = tmpDataDir;
+
+  let td = fs.join(tmpDataDir, "data");
+  fs.makeDirectoryRecursive(td);
+
+  const duration = options.duration;
+  const concurrency = 3;
+
+  let args = makeArgsArangod(options);
+
+  args["database.directory"] = td;
+  args["javascript.v8-contexts"] = concurrency + 1;
+  args["log.file"] = fs.join(tmpDataDir, "log");
+  args["server.endpoint"] = endpoint;
+  args["server.threads"] = concurrency + 1;
+
+  const js = fs.getTempFile();
+
+  fs.write(js, `
+  function main() {
+    const stressCrud = require("./js/server/tests/stress/crud");
+
+    stressCrud.createDeleteUpdateParallel({
+      concurrency: ${concurrency},
+      duration: ${duration},
+      gnuplot: true,
+      pauseFor: 60
+    });
+  }
+`);
+
+  args["javascript.script"] = js;
+
+  executeExternalAndWait(fs.join("bin", "arangod"), toArgv(args));
+
+  return {
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////

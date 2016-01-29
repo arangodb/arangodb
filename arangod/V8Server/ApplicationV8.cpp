@@ -164,7 +164,7 @@ bool ApplicationV8::V8Context::addGlobalContextMethod(
     return false;
   }
 
-  MUTEX_LOCKER(_globalMethodsLock);
+  MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
 
   for (auto& it : _globalMethods) {
     if (it == type) {
@@ -191,7 +191,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods() {
     // this avoids potential deadlocks when one of the executed functions itself
     // registers a context method
 
-    MUTEX_LOCKER(_globalMethodsLock);
+    MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
     copy.swap(_globalMethods);
   } catch (...) {
     // if we failed, we shouldn't have modified _globalMethods yet, so we can
@@ -466,7 +466,7 @@ void ApplicationV8::exitContext(V8Context* context) {
   bool runGlobal = false;
 
   {
-    MUTEX_LOCKER(context->_globalMethodsLock);
+    MUTEX_LOCKER(mutexLocker, context->_globalMethodsLock);
     runGlobal = !context->_globalMethods.empty();
   }
 
@@ -917,7 +917,7 @@ void ApplicationV8::setupOptions(
       "javascript.gc-frequency", &_gcFrequency,
       "JavaScript time-based garbage collection frequency (each x seconds)")(
       "javascript.app-path", &_appPath,
-      "directory for Foxx applications (normal mode)")(
+      "directory for Foxx applications")(
       "javascript.startup-directory", &_startupPath,
       "path to the directory containing JavaScript startup scripts")(
       "javascript.v8-options", &_v8Options, "options to pass to v8");
@@ -1007,7 +1007,7 @@ bool ApplicationV8::prepare2() {
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts = new V8Context*[nrInstances];
+    _contexts = new V8Context* [nrInstances];
   }
 
   std::vector<std::thread> threads;

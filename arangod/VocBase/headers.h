@@ -27,9 +27,7 @@
 #include "Basics/Common.h"
 #include "VocBase/document-collection.h"
 
-
 class TRI_headers_t {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the headers
@@ -43,7 +41,6 @@ class TRI_headers_t {
 
   ~TRI_headers_t();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the number of allocated headers
@@ -129,7 +126,6 @@ class TRI_headers_t {
 
   inline int64_t size() const { return _totalSize; }
 
-  
  private:
   TRI_doc_mptr_t const* _freelist;  // free headers
 
@@ -143,5 +139,3 @@ class TRI_headers_t {
 };
 
 #endif
-
-

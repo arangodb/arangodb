@@ -36,8 +36,6 @@ using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a shell
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,8 +68,6 @@ void ShellBase::sortAlternatives(std::vector<std::string>& completions) {
             });
 }
 
-
-
 ShellBase::ShellBase(std::string const& history, Completer* completer)
     : _current(),
       _historyFilename(),
@@ -95,9 +91,7 @@ ShellBase::ShellBase(std::string const& history, Completer* completer)
   _historyFilename = path;
 }
 
-
 ShellBase::~ShellBase() { delete _completer; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a signal
@@ -107,12 +101,12 @@ void ShellBase::signal() {
   // do nothing special
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shell prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string ShellBase::prompt(std::string const& prompt, std::string const& plain, bool& eof) {
+std::string ShellBase::prompt(std::string const& prompt,
+                              std::string const& plain, bool& eof) {
   size_t lineno = 0;
   std::string dotdot = "...> ";
   std::string p = prompt;
@@ -178,5 +172,3 @@ std::string ShellBase::prompt(std::string const& prompt, std::string const& plai
 
   return line;
 }
-
-

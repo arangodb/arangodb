@@ -34,6 +34,8 @@
 #include "Utils/AqlTransaction.h"
 #include "VocBase/document-collection.h"
 
+#include <v8.h>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -50,7 +52,6 @@ class AqlItemBlock;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct AqlValue {
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AqlValueType, indicates what sort of value we have
   //////////////////////////////////////////////////////////////////////////////
@@ -63,7 +64,6 @@ struct AqlValue {
     RANGE    // a pointer to a range remembering lower and upper bound
   };
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructors for the various value types, note that they all take
   /// ownership of the corresponding pointers
@@ -228,7 +228,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isNull(bool emptyIsNull) const;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the array member at position i
   //////////////////////////////////////////////////////////////////////////////
@@ -264,8 +264,7 @@ struct AqlValue {
   /// @brief construct a V8 value as input for the expression execution in V8
   //////////////////////////////////////////////////////////////////////////////
 
-  v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
-                             arangodb::AqlTransaction*,
+  v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::AqlTransaction*,
                              TRI_document_collection_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -308,8 +307,8 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::basics::Json extractObjectMember(
-      arangodb::AqlTransaction*, TRI_document_collection_t const*,
-      char const*, bool, arangodb::basics::StringBuffer&) const;
+      arangodb::AqlTransaction*, TRI_document_collection_t const*, char const*,
+      bool, arangodb::basics::StringBuffer&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract a value from an array AqlValue
@@ -346,7 +345,7 @@ struct AqlValue {
   static int Compare(arangodb::AqlTransaction*, AqlValue const&,
                      TRI_document_collection_t const*, AqlValue const&,
                      TRI_document_collection_t const*, bool compareUtf8);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual data
   //////////////////////////////////////////////////////////////////////////////
@@ -367,7 +366,6 @@ struct AqlValue {
 
 }  // closes namespace arangodb::aql
 }  // closes namespace arangodb
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash function for AqlValue objects
@@ -438,4 +436,3 @@ struct equal_to<arangodb::aql::AqlValue> {
 }  // closes namespace std
 
 #endif
-

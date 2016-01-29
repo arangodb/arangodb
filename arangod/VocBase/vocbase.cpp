@@ -63,18 +63,15 @@
 
 using namespace std;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sleep interval used when polling for a loading collection's status
 ////////////////////////////////////////////////////////////////////////////////
 
 #define COLLECTION_STATUS_POLL_INTERVAL (1000 * 10)
 
-
 static std::atomic<TRI_voc_tick_t> QueryId(1);
 
 static std::atomic<bool> ThrowCollectionNotLoaded(false);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief states for TRI_DropCollectionVocBase()
@@ -86,7 +83,46 @@ enum DropState {
   DROP_PERFORM  // drop done, must perform actual cleanup routine
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection constructor
+////////////////////////////////////////////////////////////////////////////////
 
+TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase,
+                                     TRI_col_type_e type,
+                                     std::string const& name, TRI_voc_cid_t cid,
+                                     std::string const& path)
+    : _vocbase(vocbase),
+      _cid(cid),
+      _planId(0),
+      _type(static_cast<TRI_col_type_t>(type)),
+      _lock(),
+      _internalVersion(0),
+      _status(TRI_VOC_COL_STATUS_CORRUPTED),
+      _collection(nullptr),
+      _path(path),
+      _dbName(vocbase->_name),
+      _name(name),
+      _isLocal(true),
+      _canDrop(true),
+      _canUnload(true),
+      _canRename(true) {
+  // check for special system collection names
+  if (TRI_IsSystemNameCollection(name.c_str())) {
+    // a few system collections have special behavior
+    if (TRI_EqualString(name.c_str(), TRI_COL_NAME_USERS) ||
+        TRI_IsPrefixString(name.c_str(), TRI_COL_NAME_STATISTICS)) {
+      // these collections cannot be dropped or renamed
+      _canDrop = false;
+      _canRename = false;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection destructor
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t::~TRI_vocbase_col_t() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the collection id
@@ -139,9 +175,9 @@ static uint64_t HashKeyCollectionName(TRI_associative_pointer_t* array,
 static uint64_t HashElementCollectionName(TRI_associative_pointer_t* array,
                                           void const* element) {
   TRI_vocbase_col_t const* e = static_cast<TRI_vocbase_col_t const*>(element);
-  char const* name = e->_name;
+  std::string const colName(e->name());
 
-  return TRI_FnvHashString(name);
+  return TRI_FnvHashString(colName.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,10 +189,9 @@ static bool EqualKeyCollectionName(TRI_associative_pointer_t* array,
   char const* k = static_cast<char const*>(key);
   TRI_vocbase_col_t const* e = static_cast<TRI_vocbase_col_t const*>(element);
 
-  return TRI_EqualString(k, e->_name);
+  std::string const colName(e->name());
+  return TRI_EqualString(k, colName.c_str());
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write a drop collection marker into the log
@@ -199,8 +234,9 @@ static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
 static bool UnregisterCollection(TRI_vocbase_t* vocbase,
                                  TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
+  std::string const colName(collection->name());
 
-  WRITE_LOCKER(vocbase->_collectionsLock);
+  WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
 
   // pre-condition
   TRI_ASSERT(vocbase->_collectionsByName._nrUsed ==
@@ -213,7 +249,7 @@ static bool UnregisterCollection(TRI_vocbase_t* vocbase,
     // same name,
     // but with a different id
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName,
-                                    collection->_name);
+                                    colName.c_str());
   }
 
   // post-condition
@@ -270,7 +306,8 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
   int res = TRI_CloseDocumentCollection(document, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to close collection '%s': %s", collection->_name,
+    std::string const colName(collection->name());
+    LOG_ERROR("failed to close collection '%s': %s", colName.c_str(),
               TRI_last_error());
 
     collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -295,21 +332,22 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
 
 static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   TRI_vocbase_t* vocbase;
-  regmatch_t matches[3];
+  regmatch_t matches[4];
   regex_t re;
   int res;
 
   TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(data);
+  std::string const name(collection->name());
 
 #ifdef _WIN32
   // .........................................................................
   // Just thank your lucky stars that there are only 4 backslashes
   // .........................................................................
-  res = regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)$",
+  res = regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)(-[0-9]+)?$",
                 REG_ICASE | REG_EXTENDED);
 #else
   res =
-      regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+      regcomp(&re, "^(.*)/collection-([0-9][0-9]*)(-[0-9]+)?$", REG_ICASE | REG_EXTENDED);
 #endif
 
   if (res != 0) {
@@ -321,7 +359,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   if (collection->_status != TRI_VOC_COL_STATUS_DELETED) {
-    LOG_ERROR("someone resurrected the collection '%s'", collection->_name);
+    LOG_ERROR("someone resurrected the collection '%s'", name.c_str());
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     regfree(&re);
@@ -339,7 +377,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
     res = TRI_CloseDocumentCollection(document, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("failed to close collection '%s': %s", collection->_name,
+      LOG_ERROR("failed to close collection '%s': %s", name.c_str(),
                 TRI_last_error());
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -363,7 +401,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   vocbase = collection->_vocbase;
 
   {
-    WRITE_LOCKER(vocbase->_collectionsLock);
+    WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
 
     auto it = std::find(vocbase->_collections.begin(),
                         vocbase->_collections.end(), collection);
@@ -380,17 +418,17 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   // rename collection directory
   // .............................................................................
 
-  if (*collection->_path != '\0') {
+  if (!collection->path().empty()) {
     int regExpResult;
 
-    regExpResult = regexec(&re, collection->_path,
+    regExpResult = regexec(&re, collection->pathc_str(),
                            sizeof(matches) / sizeof(matches[0]), matches, 0);
 
     if (regExpResult == 0) {
-      char const* first = collection->_path + matches[1].rm_so;
+      char const* first = collection->pathc_str() + matches[1].rm_so;
       size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
 
-      char const* second = collection->_path + matches[2].rm_so;
+      char const* second = collection->pathc_str() + matches[2].rm_so;
       size_t secondLen = matches[2].rm_eo - matches[2].rm_so;
 
       char* tmp1;
@@ -417,31 +455,30 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
       }
 
       // perform the rename
-      res = TRI_RenameFile(collection->_path, newFilename);
+      res = TRI_RenameFile(collection->pathc_str(), newFilename);
 
       LOG_TRACE("renaming collection directory from '%s' to '%s'",
-                collection->_path, newFilename);
+                collection->pathc_str(), newFilename);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_ERROR("cannot rename dropped collection '%s' from '%s' to '%s': %s",
-                  collection->_name, collection->_path, newFilename,
+                  name.c_str(), collection->pathc_str(), newFilename,
                   TRI_errno_string(res));
       } else {
-        LOG_DEBUG("wiping dropped collection '%s' from disk",
-                  collection->_name);
+        LOG_DEBUG("wiping dropped collection '%s' from disk", name.c_str());
 
         res = TRI_RemoveDirectory(newFilename);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_ERROR("cannot wipe dropped collection '%s' from disk: %s",
-                    collection->_name, TRI_errno_string(res));
+                    name.c_str(), TRI_errno_string(res));
         }
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, newFilename);
     } else {
       LOG_ERROR("cannot rename dropped collection '%s': unknown path '%s'",
-                collection->_name, collection->_path);
+                name.c_str(), collection->pathc_str());
     }
   }
 
@@ -459,60 +496,16 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
 static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
                                         TRI_col_type_e type, char const* name,
                                         TRI_voc_cid_t cid, char const* path) {
-  // create the init object
-  TRI_vocbase_col_t init;
-
-  init._vocbase = vocbase;
-  init._cid = cid;
-  init._planId = 0;
-  init._type = static_cast<TRI_col_type_t>(type);
-  init._internalVersion = 0;
-
-  init._status = TRI_VOC_COL_STATUS_CORRUPTED;
-  init._collection = nullptr;
-
-  // default flags: everything is allowed
-  init._canDrop = true;
-  init._canRename = true;
-  init._canUnload = true;
-
-  // check for special system collection names
-  if (TRI_IsSystemNameCollection(name)) {
-    // a few system collections have special behavior
-    if (TRI_EqualString(name, TRI_COL_NAME_USERS) ||
-        TRI_IsPrefixString(name, TRI_COL_NAME_STATISTICS)) {
-      // these collections cannot be dropped or renamed
-      init._canDrop = false;
-      init._canRename = false;
-    }
-  }
-
-  TRI_CopyString(init._dbName, vocbase->_name, strlen(vocbase->_name));
-  TRI_CopyString(init._name, name, sizeof(init._name) - 1);
-
-  if (path == nullptr) {
-    init._path[0] = '\0';
-  } else {
-    TRI_CopyString(init._path, path, TRI_COL_PATH_LENGTH);
-  }
-
   // create a new proxy
-  // TODO: move to new instead of TRI_Allocate
-  TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false));
+  auto collection =
+      std::make_unique<TRI_vocbase_col_t>(vocbase, type, name, cid, path);
 
-  if (collection == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
-
-  memcpy(collection, &init, sizeof(TRI_vocbase_col_t));
-  collection->_isLocal = true;
+  TRI_ASSERT(collection != nullptr);
 
   // check name
   void const* found;
   int res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsByName, name,
-                                             collection, &found);
+                                             collection.get(), &found);
 
   if (found != nullptr) {
     LOG_ERROR("duplicate entry for collection name '%s'", name);
@@ -521,7 +514,6 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
         (unsigned long long)cid,
         (unsigned long long)static_cast<TRI_vocbase_col_t const*>(found)->_cid);
 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
 
     return nullptr;
@@ -530,7 +522,6 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
   if (res != TRI_ERROR_NO_ERROR) {
     // OOM. this might have happened AFTER insertion
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(res);
 
     return nullptr;
@@ -539,7 +530,7 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
   // check collection identifier
   TRI_ASSERT(collection->_cid == cid);
   res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsById, &cid,
-                                         collection, &found);
+                                         collection.get(), &found);
 
   if (found != nullptr) {
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
@@ -547,7 +538,6 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
     LOG_ERROR("duplicate collection identifier %llu for name '%s'",
               (unsigned long long)collection->_cid, name);
 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
 
     return nullptr;
@@ -557,7 +547,6 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
     // OOM. this might have happend AFTER insertion
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &cid);
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(res);
 
     return nullptr;
@@ -566,11 +555,12 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
   TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed ==
                        vocbase->_collectionsById._nrUsed);
 
-  TRI_InitReadWriteLock(&collection->_lock);
-
   // this needs the write lock on _collectionsLock
-  vocbase->_collections.emplace_back(collection);
-  return collection;
+  // TODO: if the following goes wrong, we still have the collection added into
+  // the associative arrays...
+  vocbase->_collections.emplace_back(collection.get());
+
+  return collection.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,7 +573,7 @@ static TRI_vocbase_col_t* CreateCollection(
   TRI_ASSERT(!builder.isClosed());
   std::string name = parameters.name();
 
-  WRITE_LOCKER(vocbase->_collectionsLock);
+  WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
 
   try {
     // reserve room for the new collection
@@ -620,9 +610,15 @@ static TRI_vocbase_col_t* CreateCollection(
   TRI_collection_t* col = document;
 
   // add collection container
-  TRI_vocbase_col_t* collection =
-      AddCollection(vocbase, col->_info.type(), col->_info.namec_str(),
-                    col->_info.id(), col->_directory);
+  TRI_vocbase_col_t* collection = nullptr;
+
+  try {
+    collection =
+        AddCollection(vocbase, col->_info.type(), col->_info.namec_str(),
+                      col->_info.id(), col->_directory);
+  } catch (...) {
+    // if an exception is caught, collection will be a nullptr
+  }
 
   if (collection == nullptr) {
     TRI_CloseDocumentCollection(document, false);
@@ -641,8 +637,6 @@ static TRI_vocbase_col_t* CreateCollection(
 
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
   collection->_collection = document;
-  TRI_CopyString(collection->_path, document->_directory,
-                 sizeof(collection->_path) - 1);
 
   if (writeMarker) {
     TRI_CreateVelocyPackCollectionInfo(col->_info, builder);
@@ -669,7 +663,7 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
   }
 
   {
-    WRITE_LOCKER(vocbase->_collectionsLock);
+    WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
 
     // check if the new name is unused
     void const* found = TRI_LookupByKeyAssociativePointer(
@@ -686,10 +680,10 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
     else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
       try {
         arangodb::VocbaseCollectionInfo info =
-            arangodb::VocbaseCollectionInfo::fromFile(
-                collection->_path, vocbase, newName, true);
+            arangodb::VocbaseCollectionInfo::fromFile(collection->pathc_str(),
+                                                      vocbase, newName, true);
 
-        int res = info.saveToFile(collection->_path,
+        int res = info.saveToFile(collection->pathc_str(),
                                   vocbase->_settings.forceSyncProperties);
 
         if (res != TRI_ERROR_NO_ERROR) {
@@ -731,7 +725,8 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
     // .............................................................................
 
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
-    TRI_CopyString(collection->_name, newName, sizeof(collection->_name) - 1);
+
+    collection->_name = newName;
 
     // this shouldn't fail, as we removed an element above so adding one should
     // be ok
@@ -750,7 +745,7 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
 
   // invalidate all entries for the two collections
   arangodb::aql::QueryCache::instance()->invalidate(
-      vocbase, std::vector<char const*>{oldName, newName});
+      vocbase, std::vector<std::string>{oldName, newName});
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -780,11 +775,10 @@ static bool StartupTickIterator(TRI_df_marker_t const* marker, void* data,
 
 static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
                     bool iterateMarkers) {
-  regmatch_t matches[2];
+  regmatch_t matches[3];
   regex_t re;
-  int res;
 
-  res = regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
+  int res = regcomp(&re, "^collection-([0-9][0-9]*)(-[0-9]+)?$", REG_EXTENDED | REG_NOSUB);
 
   if (res != 0) {
     LOG_ERROR("unable to compile regular expression");
@@ -836,10 +830,9 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
 
       try {
         arangodb::VocbaseCollectionInfo info =
-            arangodb::VocbaseCollectionInfo::fromFile(
-                file.c_str(), vocbase,
-                "",  // Name is unused
-                true);
+            arangodb::VocbaseCollectionInfo::fromFile(file.c_str(), vocbase,
+                                                      "",  // Name is unused
+                                                      true);
         TRI_UpdateTickServer(info.id());
 
         if (info.deleted()) {
@@ -856,7 +849,6 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
         } else {
           // we found a collection that is still active
           TRI_col_type_e type = info.type();
-          TRI_vocbase_col_t* c;
 
           if (info.version() < TRI_COL_VERSION) {
             // collection is too "old"
@@ -894,8 +886,14 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             }
           }
 
-          c = AddCollection(vocbase, type, info.namec_str(), info.id(),
-                            file.c_str());
+          TRI_vocbase_col_t* c = nullptr;
+
+          try {
+            c = AddCollection(vocbase, type, info.namec_str(), info.id(),
+                              file.c_str());
+          } catch (...) {
+            // if we caught an exception, c is still a nullptr
+          }
 
           if (c == nullptr) {
             LOG_ERROR("failed to add document collection from '%s'",
@@ -919,7 +917,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             TRI_UpdateTickServer(tick);
           }
 
-          LOG_DEBUG("added document collection from '%s'", file.c_str());
+          LOG_DEBUG("added document collection '%s' from '%s'", info.namec_str(), file.c_str());
         }
 
       } catch (arangodb::basics::Exception const& e) {
@@ -1095,8 +1093,6 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
     collection->_internalVersion = 0;
     collection->_collection = document;
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
-    TRI_CopyString(collection->_path, document->_directory,
-                   sizeof(collection->_path) - 1);
 
     // release the WRITE lock and try again
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1104,8 +1100,9 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
     return LoadCollectionVocBase(vocbase, collection, status, false);
   }
 
+  std::string const colName(collection->name());
   LOG_ERROR("unknown collection status %d for '%s'", (int)collection->_status,
-            collection->_name);
+            colName.c_str());
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   return TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -1118,10 +1115,11 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
 static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
                           bool writeMarker, DropState& state) {
   state = DROP_EXIT;
+  std::string const colName(collection->name());
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
-  arangodb::aql::QueryCache::instance()->invalidate(vocbase, collection->_name);
+  arangodb::aql::QueryCache::instance()->invalidate(vocbase, colName.c_str());
 
   // .............................................................................
   // collection already deleted
@@ -1143,8 +1141,9 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
     try {
       arangodb::VocbaseCollectionInfo info =
-          arangodb::VocbaseCollectionInfo::fromFile(
-              collection->_path, collection->_vocbase, collection->_name, true);
+          arangodb::VocbaseCollectionInfo::fromFile(collection->pathc_str(),
+                                                    collection->vocbase(),
+                                                    colName.c_str(), true);
       if (!info.deleted()) {
         info.setDeleted(true);
 
@@ -1153,7 +1152,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
             (vocbase->_settings.forceSyncProperties &&
              !arangodb::wal::LogfileManager::instance()->isInRecovery());
 
-        int res = info.saveToFile(collection->_path, doSync);
+        int res = info.saveToFile(collection->pathc_str(), doSync);
 
         if (res != TRI_ERROR_NO_ERROR) {
           TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1301,17 +1300,6 @@ static int ScanTrxCollection(TRI_vocbase_t* vocbase) {
   return res;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the memory associated with a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCollectionVocBase(TRI_vocbase_col_t* collection) {
-  TRI_DestroyReadWriteLock(&collection->_lock);
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
 /// the filename must look like this: /.*type-abc\.ending$/, where abc is
@@ -1346,11 +1334,10 @@ static bool FilenameStringComparator(std::string const& lhs,
   return numLeft < numRight;
 }
 
-
 void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
                                      TRI_voc_tick_t maxTick) {
   TRI_ASSERT(!builder.isClosed());
-  char* filename = TRI_Concatenate2File(_path, TRI_VOC_PARAMETER_FILE);
+  char* filename = TRI_Concatenate2File(_path.c_str(), TRI_VOC_PARAMETER_FILE);
   std::string path = std::string(filename, strlen(filename));
 
   std::shared_ptr<VPackBuilder> fileInfoBuilder =
@@ -1387,7 +1374,7 @@ void TRI_vocbase_col_t::toVelocyPackIndexes(VPackBuilder& builder,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  std::vector<std::string> files = TRI_FilesDirectory(_path);
+  std::vector<std::string> files = TRI_FilesDirectory(_path.c_str());
 
   // sort by index id
   std::sort(files.begin(), files.end(), FilenameStringComparator);
@@ -1395,7 +1382,7 @@ void TRI_vocbase_col_t::toVelocyPackIndexes(VPackBuilder& builder,
   for (auto const& file : files) {
     if (regexec(&re, file.c_str(), (size_t)0, nullptr, 0) == 0) {
       // TODO: fix memleak
-      char* fqn = TRI_Concatenate2File(_path, file.c_str());
+      char* fqn = TRI_Concatenate2File(_path.c_str(), file.c_str());
       std::string path = std::string(fqn, strlen(fqn));
       std::shared_ptr<VPackBuilder> indexVPack =
           arangodb::basics::VelocyPackHelper::velocyPackFromFile(path);
@@ -1439,7 +1426,6 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes(
   builder->close();
   return builder;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object, without threads and some other attributes
@@ -1553,7 +1539,7 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
   std::vector<TRI_vocbase_col_t*> collections;
 
   {
-    WRITE_LOCKER(vocbase->_collectionsLock);
+    WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
     collections = vocbase->_collections;
   }
 
@@ -1596,12 +1582,12 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
 
   // free dead collections (already dropped but pointers still around)
   for (auto& collection : vocbase->_deadCollections) {
-    TRI_FreeCollectionVocBase(collection);
+    delete collection;
   }
 
   // free collections
   for (auto& collection : vocbase->_collections) {
-    TRI_FreeCollectionVocBase(collection);
+    delete collection;
   }
 
   TRI_DestroyCompactorVocBase(vocbase);
@@ -1648,7 +1634,7 @@ int TRI_StopCompactorVocBase(TRI_vocbase_t* vocbase) {
 std::vector<TRI_vocbase_col_t*> TRI_CollectionsVocBase(TRI_vocbase_t* vocbase) {
   std::vector<TRI_vocbase_col_t*> result;
 
-  READ_LOCKER(vocbase->_collectionsLock);
+  READ_LOCKER(readLocker, vocbase->_collectionsLock);
 
   for (size_t i = 0; i < vocbase->_collectionsById._nrAlloc; ++i) {
     TRI_vocbase_col_t* found =
@@ -1669,18 +1655,14 @@ std::vector<TRI_vocbase_col_t*> TRI_CollectionsVocBase(TRI_vocbase_t* vocbase) {
 std::vector<std::string> TRI_CollectionNamesVocBase(TRI_vocbase_t* vocbase) {
   std::vector<std::string> result;
 
-  READ_LOCKER(vocbase->_collectionsLock);
+  READ_LOCKER(readLocker, vocbase->_collectionsLock);
 
   for (size_t i = 0; i < vocbase->_collectionsById._nrAlloc; ++i) {
     TRI_vocbase_col_t* found =
         static_cast<TRI_vocbase_col_t*>(vocbase->_collectionsById._table[i]);
 
     if (found != nullptr) {
-      char const* name = found->_name;
-
-      if (name != nullptr) {
-        result.emplace_back(std::string(name));
-      }
+      result.emplace_back(found->name());
     }
   }
 
@@ -1702,12 +1684,12 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase(
   std::vector<TRI_vocbase_col_t*> collections;
 
   // cycle on write-lock
-  WRITE_LOCKER_EVENTUAL(vocbase->_inventoryLock, 1000);
+  WRITE_LOCKER_EVENTUAL(writeLock, vocbase->_inventoryLock, 1000);
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
   {
-    READ_LOCKER(vocbase->_collectionsLock);
+    READ_LOCKER(readLocker, vocbase->_collectionsLock);
     collections = vocbase->_collections;
   }
 
@@ -1720,34 +1702,26 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase(
     VPackArrayBuilder b(builder.get());
 
     for (auto& collection : collections) {
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      READ_LOCKER(readLocker, collection->_lock);
 
       if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
           collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
         // we do not need to care about deleted or corrupted collections
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
         continue;
       }
 
       if (collection->_cid > maxTick) {
         // collection is too new
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
         continue;
       }
 
       // check if we want this collection
       if (filter != nullptr && !filter(collection, data)) {
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
         continue;
       }
-      try {
-        VPackObjectBuilder b(builder.get());
-        collection->toVelocyPack(*builder, true, maxTick);
-      } catch (...) {
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-        throw;
-      }
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+      VPackObjectBuilder b(builder.get());
+      collection->toVelocyPack(*builder, true, maxTick);
     }
   }
   return builder;
@@ -1786,8 +1760,8 @@ char const* TRI_GetStatusStringCollectionVocBase(
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
-                                       const TRI_voc_cid_t id) {
-  READ_LOCKER(vocbase->_collectionsLock);
+                                       TRI_voc_cid_t id) {
+  READ_LOCKER(readLocker, vocbase->_collectionsLock);
 
   TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(
       TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
@@ -1796,7 +1770,8 @@ char* TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, found->_name);
+  std::string const colName(found->name());
+  return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, colName.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1815,7 +1790,7 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
   }
 
   // otherwise we'll look up the collection by name
-  READ_LOCKER(vocbase->_collectionsLock);
+  READ_LOCKER(readLocker, vocbase->_collectionsLock);
   return static_cast<TRI_vocbase_col_t*>(
       TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
 }
@@ -1826,7 +1801,7 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
 
 TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase(TRI_vocbase_t* vocbase,
                                                    TRI_voc_cid_t id) {
-  READ_LOCKER(vocbase->_collectionsLock);
+  READ_LOCKER(readLocker, vocbase->_collectionsLock);
   return static_cast<TRI_vocbase_col_t*>(
       TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
 }
@@ -1844,7 +1819,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
   TRI_vocbase_col_t* found = nullptr;
 
   {
-    READ_LOCKER(vocbase->_collectionsLock);
+    READ_LOCKER(readLocker, vocbase->_collectionsLock);
 
     if (name[0] >= '0' && name[0] <= '9') {
       // support lookup by id, too
@@ -1897,7 +1872,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
     return nullptr;
   }
 
-  READ_LOCKER(vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, vocbase->_inventoryLock);
 
   TRI_vocbase_col_t* collection;
   VPackBuilder builder;
@@ -2043,7 +2018,7 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
     DropState state = DROP_EXIT;
     int res;
     {
-      READ_LOCKER(vocbase->_inventoryLock);
+      READ_LOCKER(readLocker, vocbase->_inventoryLock);
 
       res = DropCollection(vocbase, collection, writeMarker, state);
     }
@@ -2087,58 +2062,45 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
   }
 
   // lock collection because we are going to copy its current name
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-
-  // old name should be different
-  char* oldName = TRI_DuplicateString(TRI_CORE_MEM_ZONE, collection->_name);
-
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-  if (oldName == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+  std::string oldName;
+  {
+    READ_LOCKER(readLocker, collection->_lock);
+    oldName = collection->name();
   }
 
-  // check if names are actually different
-  if (TRI_EqualString(oldName, newName)) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+  // old name should be different
 
+  // check if names are actually different
+  if (oldName == std::string(newName)) {
     return TRI_ERROR_NO_ERROR;
   }
 
   if (!doOverride) {
     bool isSystem;
-    isSystem = TRI_IsSystemNameCollection(oldName);
+    isSystem = TRI_IsSystemNameCollection(oldName.c_str());
 
     if (isSystem && !TRI_IsSystemNameCollection(newName)) {
       // a system collection shall not be renamed to a non-system collection
       // name
-      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     } else if (!isSystem && TRI_IsSystemNameCollection(newName)) {
       // a non-system collection shall not be renamed to a system collection
       // name
-      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 
     if (!TRI_IsAllowedNameCollection(isSystem, newName)) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
-
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
   }
 
-  READ_LOCKER(vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, vocbase->_inventoryLock);
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
-  int res = RenameCollection(vocbase, collection, oldName, newName);
+  int res = RenameCollection(vocbase, collection, oldName.c_str(), newName);
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
   if (res == TRI_ERROR_NO_ERROR && writeMarker) {
     // now log the operation
@@ -2192,7 +2154,7 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase(
 
   TRI_vocbase_col_t const* collection = nullptr;
   {
-    READ_LOCKER(vocbase->_collectionsLock);
+    READ_LOCKER(readLocker, vocbase->_collectionsLock);
     collection = static_cast<TRI_vocbase_col_t const*>(
         TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &cid));
   }
@@ -2232,7 +2194,7 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase(
   TRI_vocbase_col_t const* collection = nullptr;
 
   {
-    READ_LOCKER(vocbase->_collectionsLock);
+    READ_LOCKER(readLocker, vocbase->_collectionsLock);
     collection = static_cast<TRI_vocbase_col_t const*>(
         TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
   }
@@ -2403,7 +2365,6 @@ void TRI_SetThrowCollectionNotLoadedVocBase(TRI_vocbase_t* vocbase,
   ThrowCollectionNotLoaded.store(value, std::memory_order_seq_cst);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object
 ////////////////////////////////////////////////////////////////////////////////
@@ -2499,7 +2460,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
 void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
                                             TRI_voc_tick_t lastFetchedTick) {
-  WRITE_LOCKER(_replicationClientsLock);
+  WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
   try {
     auto it = _replicationClients.find(serverId);
@@ -2527,7 +2488,7 @@ std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
 TRI_vocbase_t::getReplicationClients() {
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> result;
 
-  READ_LOCKER(_replicationClientsLock);
+  READ_LOCKER(readLocker, _replicationClientsLock);
 
   for (auto& it : _replicationClients) {
     result.emplace_back(
@@ -2535,5 +2496,3 @@ TRI_vocbase_t::getReplicationClients() {
   }
   return result;
 }
-
-

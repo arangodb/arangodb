@@ -33,11 +33,9 @@
 
 struct TRI_fulltext_wordlist_s;
 
-
 namespace arangodb {
 
 class FulltextIndex final : public Index {
-  
  public:
   FulltextIndex() = delete;
 
@@ -46,7 +44,6 @@ class FulltextIndex final : public Index {
 
   ~FulltextIndex();
 
-  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
@@ -79,11 +76,9 @@ class FulltextIndex final : public Index {
 
   TRI_fts_index_t* internals() { return _fulltextIndex; }
 
-  
  private:
   struct TRI_fulltext_wordlist_s* wordlist(struct TRI_doc_mptr_t const*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the indexed attribute (path)
@@ -106,4 +101,3 @@ class FulltextIndex final : public Index {
 }
 
 #endif
-

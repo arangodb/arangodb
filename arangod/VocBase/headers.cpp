@@ -26,7 +26,6 @@
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the size (number of entries) for a block, based on a function
 ///
@@ -50,7 +49,6 @@ static inline size_t GetBlockSize(size_t blockNumber) {
   // this will use 32768 * sizeof(TRI_doc_mptr_t) bytes, i.e. 1.5 MB
   return (size_t)(BLOCK_SIZE_UNIT << 8);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the headers
@@ -76,7 +74,6 @@ TRI_headers_t::~TRI_headers_t() {
     delete[] it;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moves an existing header to the end of the list
@@ -442,5 +439,3 @@ void TRI_headers_t::adjustTotalSize(int64_t oldSize, int64_t newSize) {
 
   _totalSize -= (TRI_DF_ALIGN_BLOCK(oldSize) - TRI_DF_ALIGN_BLOCK(newSize));
 }
-
-

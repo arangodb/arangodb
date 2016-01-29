@@ -25,5 +25,6 @@ operations such as creating and dropping databases, collections and indexes.
 The syntax of AQL queries is different to SQL, even if some keywords overlap.
 Nevertheless, AQL should be easy to understand for anyone with an SQL background.
 
-For some example queries, please refer to the page [AQL Examples](../AqlExamples/README.md).
+For some example queries, please refer to the pages [Data Modification Queries](DataModification.md)  and 
+[Usual query patterns](../AqlExamples/README.md).
 

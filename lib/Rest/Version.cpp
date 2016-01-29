@@ -82,7 +82,7 @@ void Version::initialize() {
 #else
   Values["fd-client-event-handler"] = "select";
 #endif
-    
+
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
   }
@@ -325,7 +325,4 @@ void Version::getVPack(VPackBuilder& dst) {
   }
 }
 
-
 std::map<std::string, std::string> Version::Values;
-
-

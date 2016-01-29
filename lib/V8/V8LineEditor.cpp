@@ -34,13 +34,11 @@ using namespace std;
 using namespace arangodb;
 using namespace arangodb;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the active instance of the editor
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::atomic<V8LineEditor*> SINGLETON(nullptr);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signal handler for CTRL-C
@@ -97,24 +95,18 @@ static void SignalHandler(int signal) {
 
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8Completer
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
 class V8Completer : public Completer {
-  
  public:
-
   V8Completer() {}
-
 
   ~V8Completer() {}
 
-  
  public:
-
   bool isComplete(std::string const& source, size_t lineno) override final {
     int openParen = 0;
     int openBrackets = 0;
@@ -270,7 +262,6 @@ class V8Completer : public Completer {
             openStrings <= 0 && openComments <= 0);
   }
 
-
   std::vector<std::string> alternatives(char const* text) override final {
     std::vector<std::string> result;
 
@@ -374,8 +365,6 @@ class V8Completer : public Completer {
 };
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,5 +414,3 @@ V8LineEditor::~V8LineEditor() {
   TRI_ASSERT(SINGLETON.load() != nullptr);
   SINGLETON.store(nullptr);
 }
-
-

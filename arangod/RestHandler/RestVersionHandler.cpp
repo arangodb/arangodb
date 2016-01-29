@@ -42,13 +42,10 @@ using namespace arangodb::admin;
 
 extern AnyServer* ArangoInstance;
 
-
 RestVersionHandler::RestVersionHandler(HttpRequest* request)
     : RestBaseHandler(request) {}
 
-
 bool RestVersionHandler::isDirect() const { return true; }
-
 
 HttpHandler::status_t RestVersionHandler::execute() {
   try {

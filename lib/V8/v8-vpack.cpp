@@ -29,7 +29,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VelocyValueType::String into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
@@ -341,5 +340,3 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
 
   return res;
 }
-
-

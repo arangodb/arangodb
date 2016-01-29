@@ -28,10 +28,8 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
-
 struct TRI_doc_mptr_t;
 class VocShaper;
-
 
 namespace arangodb {
 
@@ -58,10 +56,9 @@ class ExampleMatcher {
   VocShaper* _shaper;
   std::vector<ExampleDefinition> definitions;
 
-  void fillExampleDefinition(
-      TRI_json_t const* example,
-      arangodb::CollectionNameResolver const* resolver,
-      ExampleDefinition& def);
+  void fillExampleDefinition(TRI_json_t const* example,
+                             arangodb::CollectionNameResolver const* resolver,
+                             ExampleDefinition& def);
 
   void fillExampleDefinition(v8::Isolate* isolate,
                              v8::Handle<v8::Object> const& example,
@@ -88,7 +85,6 @@ class ExampleMatcher {
 }
 
 #endif
-
 
 // Local Variables:
 // mode: outline-minor

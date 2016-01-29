@@ -42,25 +42,21 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Job::V8Job(TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
-             std::string const& command, std::shared_ptr<VPackBuilder> parameters,
-             bool allowUseDatabase)
+             std::string const& command,
+             std::shared_ptr<VPackBuilder> parameters, bool allowUseDatabase)
     : Job("V8 Job"),
       _vocbase(vocbase),
       _v8Dealer(v8Dealer),
       _command(command),
       _parameters(parameters),
       _canceled(false),
-      _allowUseDatabase(allowUseDatabase) {
-}
+      _allowUseDatabase(allowUseDatabase) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Job::~V8Job() {
-}
-
-
+V8Job::~V8Job() {}
 
 void V8Job::work() {
   if (_canceled) {
@@ -135,19 +131,14 @@ void V8Job::work() {
   _v8Dealer->exitContext(context);
 }
 
-
 bool V8Job::cancel() {
   _canceled = true;
   return true;
 }
-
 
 void V8Job::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
 
-
 void V8Job::handleError(Exception const& ex) {}
-
-

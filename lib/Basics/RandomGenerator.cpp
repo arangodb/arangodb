@@ -33,6 +33,7 @@
 #include <chrono>
 
 using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
@@ -489,7 +490,7 @@ std::unique_ptr<UniformIntegerImpl> uniformInteger(new UniformIntegerMersenne);
 // -----------------------------------------------------------------------------
 
 int32_t UniformInteger::random() {
-  MUTEX_LOCKER(RandomLock);
+  MUTEX_LOCKER(mutexLocker, RandomLock);
 
   if (uniformInteger == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -539,7 +540,7 @@ std::string UniformCharacter::random(size_t length) {
 // -----------------------------------------------------------------------------
 
 random_e selectVersion(random_e newVersion) {
-  MUTEX_LOCKER(RandomLock);
+  MUTEX_LOCKER(mutexLocker, RandomLock);
 
   random_e oldVersion = version;
   version = newVersion;
@@ -612,7 +613,7 @@ void shutdown() {}
 bool isBlocking() { return version == RAND_RANDOM; }
 
 int32_t interval(int32_t left, int32_t right) {
-  MUTEX_LOCKER(RandomLock);
+  MUTEX_LOCKER(mutexLocker, RandomLock);
 
   if (uniformInteger == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -623,7 +624,7 @@ int32_t interval(int32_t left, int32_t right) {
 }
 
 uint32_t interval(uint32_t left, uint32_t right) {
-  MUTEX_LOCKER(RandomLock);
+  MUTEX_LOCKER(mutexLocker, RandomLock);
 
   if (uniformInteger == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -638,5 +639,3 @@ uint32_t interval(uint32_t left, uint32_t right) {
 }
 }
 }
-
-

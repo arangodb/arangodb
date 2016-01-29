@@ -27,13 +27,11 @@
 
 #include "Basics/Thread.h"
 
-
 namespace arangodb {
 namespace rest {
 class DispatcherQueue;
 class Job;
 class Scheduler;
-
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief job dispatcher thread
@@ -46,7 +44,6 @@ class DispatcherThread : public basics::Thread {
   friend class Dispatcher;
   friend class DispatcherQueue;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a global, but thread-local place to hold the current dispatcher
@@ -55,7 +52,6 @@ class DispatcherThread : public basics::Thread {
 
   static thread_local DispatcherThread* currentDispatcherThread;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a dispatcher thread
@@ -63,15 +59,11 @@ class DispatcherThread : public basics::Thread {
 
   explicit DispatcherThread(DispatcherQueue*);
 
-  
  protected:
-
   void run();
-
 
   void addStatus(arangodb::velocypack::Builder* b);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief indicates that thread is doing a blocking operation
@@ -85,14 +77,12 @@ class DispatcherThread : public basics::Thread {
 
   void unblock();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief do the real work
   //////////////////////////////////////////////////////////////////////////////
 
   void handleJob(Job* job);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the dispatcher queue
@@ -104,5 +94,3 @@ class DispatcherThread : public basics::Thread {
 }
 
 #endif
-
-

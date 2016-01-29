@@ -24,7 +24,6 @@
 #ifndef LIB_BASICS_SHELL_COLORS_H
 #define LIB_BASICS_SHELL_COLORS_H 1
 
-
 #ifndef _WIN32
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,5 +168,3 @@
 #endif
 
 #endif
-
-

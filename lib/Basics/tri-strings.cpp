@@ -26,7 +26,6 @@
 #include "Basics/Utf8Helper.h"
 #include <openssl/sha.h>
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hex values for all characters
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +68,6 @@ static uint8_t const HexDecodeLookup[256] = {
     0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes UTF-8 range U+0000 to U+007F
@@ -342,7 +340,6 @@ static void DecodeSurrogatePair(char** dst, char const* src1,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to lower case
 ////////////////////////////////////////////////////////////////////////////////
@@ -613,7 +610,8 @@ char* TRI_Concatenate3String(TRI_memory_zone_t* zone, char const* a,
   size_t nb = strlen(b);
   size_t nc = strlen(c);
 
-  char* result = static_cast<char*>(TRI_Allocate(zone, na + nb + nc + 1, false));
+  char* result =
+      static_cast<char*>(TRI_Allocate(zone, na + nb + nc + 1, false));
 
   if (result != nullptr) {
     memcpy(result, a, na);
@@ -782,7 +780,6 @@ void TRI_FreeString(TRI_memory_zone_t* zone, char* value) {
 }
 
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts into printable representation
@@ -1305,5 +1302,3 @@ char* TRI_PrefixUtf8String(char const* in, const uint32_t maximumLength) {
 
   return (char*)p;
 }
-
-

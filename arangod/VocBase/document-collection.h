@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/ReadWriteLockCPP11.h"
+#include "Basics/ReadWriteLock.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
@@ -243,12 +243,12 @@ struct TRI_document_collection_t : public TRI_collection_t {
   // ...........................................................................
 
   // TRI_read_write_lock_t        _lock;
-  arangodb::basics::ReadWriteLockCPP11 _lock;
+  arangodb::basics::ReadWriteLock _lock;
 
  private:
   VocShaper* _shaper;
 
-  arangodb::basics::Mutex _compactionStatusLock;
+  arangodb::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
   char _lastCompactionStamp[21];
@@ -794,8 +794,8 @@ int TRI_SaveIndex(TRI_document_collection_t*, arangodb::Index*,
 /// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::shared_ptr<arangodb::velocypack::Builder>> TRI_IndexesDocumentCollection(
-    TRI_document_collection_t*, bool);
+std::vector<std::shared_ptr<arangodb::velocypack::Builder>>
+TRI_IndexesDocumentCollection(TRI_document_collection_t*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, including index file removal and replication
@@ -996,4 +996,3 @@ int TRI_UpdateShapedJsonDocumentCollection(
     TRI_shaped_json_t const*, TRI_doc_update_policy_t const*, bool, bool);
 
 #endif
-

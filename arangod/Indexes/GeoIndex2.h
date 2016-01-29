@@ -36,7 +36,6 @@ class VocShaper;
 namespace arangodb {
 
 class GeoIndex2 final : public Index {
-  
  public:
   GeoIndex2() = delete;
 
@@ -50,7 +49,6 @@ class GeoIndex2 final : public Index {
 
   ~GeoIndex2();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief geo index variants
@@ -63,7 +61,6 @@ class GeoIndex2 final : public Index {
     INDEX_GEO_COMBINED_LON_LAT
   };
 
-  
  public:
   IndexType type() const override final {
     if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
@@ -114,7 +111,6 @@ class GeoIndex2 final : public Index {
             _longitude == longitude);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extracts a double value from an object
@@ -130,7 +126,6 @@ class GeoIndex2 final : public Index {
   bool extractDoubleArray(VocShaper*, struct TRI_shaped_json_s const*, double*,
                           double*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the attribute paths
@@ -168,5 +163,3 @@ class GeoIndex2 final : public Index {
 }
 
 #endif
-
-

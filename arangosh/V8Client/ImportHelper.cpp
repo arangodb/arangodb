@@ -623,8 +623,8 @@ void ImportHelper::sendCsvBuffer() {
 
   std::map<std::string, std::string> headerFields;
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
-             StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
-             StringUtils::urlEncode(_onDuplicateAction));
+                  StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
+                  StringUtils::urlEncode(_onDuplicateAction));
   std::unique_ptr<SimpleHttpResult> result(_client->request(
       HttpRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(),
       _outputBuffer.length(), headerFields));
@@ -712,5 +712,3 @@ void ImportHelper::handleResult(SimpleHttpResult* result) {
 }
 }
 }
-
-

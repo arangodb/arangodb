@@ -38,13 +38,11 @@ class Builder;
 }
 namespace aql {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cache mode
 ////////////////////////////////////////////////////////////////////////////////
 
 enum QueryCacheMode { CACHE_ALWAYS_OFF, CACHE_ALWAYS_ON, CACHE_ON_DEMAND };
-
 
 struct QueryCacheResultEntry {
   QueryCacheResultEntry() = delete;
@@ -72,7 +70,6 @@ struct QueryCacheResultEntry {
 
   void unuse();
 
-  
   uint64_t const _hash;
   char* _queryString;
   size_t const _queryStringLength;
@@ -83,7 +80,6 @@ struct QueryCacheResultEntry {
   std::atomic<uint32_t> _refCount;
   std::atomic<uint32_t> _deletionRequested;
 };
-
 
 class QueryCacheResultEntryGuard {
   QueryCacheResultEntryGuard(QueryCacheResultEntryGuard const&) = delete;
@@ -107,9 +103,7 @@ class QueryCacheResultEntryGuard {
   QueryCacheResultEntry* _entry;
 };
 
-
 struct QueryCacheDatabaseEntry {
-  
   QueryCacheDatabaseEntry(QueryCacheDatabaseEntry const&) = delete;
   QueryCacheDatabaseEntry& operator=(QueryCacheDatabaseEntry const&) = delete;
 
@@ -125,7 +119,6 @@ struct QueryCacheDatabaseEntry {
 
   ~QueryCacheDatabaseEntry();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lookup a query result in the database-specific cache
   //////////////////////////////////////////////////////////////////////////////
@@ -143,13 +136,14 @@ struct QueryCacheDatabaseEntry {
   /// database-specific cache
   //////////////////////////////////////////////////////////////////////////////
 
-  void invalidate(std::vector<char const*> const&);
+  void invalidate(std::vector<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate all entries for a collection in the database-specific
   /// cache
   //////////////////////////////////////////////////////////////////////////////
 
+  void invalidate(std::string const&);
   void invalidate(char const*);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -158,7 +152,6 @@ struct QueryCacheDatabaseEntry {
 
   void enforceMaxResults(size_t);
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check whether the element can be destroyed, and delete it if yes
   //////////////////////////////////////////////////////////////////////////////
@@ -177,7 +170,6 @@ struct QueryCacheDatabaseEntry {
 
   void link(QueryCacheResultEntry*);
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief hash table that maps query hashes to query results
   //////////////////////////////////////////////////////////////////////////////
@@ -212,9 +204,7 @@ struct QueryCacheDatabaseEntry {
   size_t _numElements;
 };
 
-
 class QueryCache {
-  
  public:
   QueryCache(QueryCache const&) = delete;
   QueryCache& operator=(QueryCache const&) = delete;
@@ -231,7 +221,6 @@ class QueryCache {
 
   ~QueryCache();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the query cache properties
@@ -291,7 +280,7 @@ class QueryCache {
   /// @brief invalidate all queries for the given collections
   //////////////////////////////////////////////////////////////////////////////
 
-  void invalidate(TRI_vocbase_t*, std::vector<char const*> const&);
+  void invalidate(TRI_vocbase_t*, std::vector<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate all queries for a particular collection
@@ -323,7 +312,6 @@ class QueryCache {
 
   static QueryCache* instance();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief enforce maximum number of results in each database-specific cache
   //////////////////////////////////////////////////////////////////////////////
@@ -361,7 +349,6 @@ class QueryCache {
 
   void setMode(std::string const&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of R/W locks for the query cache
@@ -373,7 +360,7 @@ class QueryCache {
   /// @brief protect mode changes with a mutex
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _propertiesLock;
+  arangodb::Mutex _propertiesLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read-write lock for the cache
@@ -392,5 +379,3 @@ class QueryCache {
 }
 
 #endif
-
-

@@ -35,7 +35,6 @@ struct TRI_document_collection_t;
 namespace arangodb {
 namespace aql {
 
-
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
 // Entries in a given column (i.e. all the values of a given register
@@ -56,7 +55,7 @@ namespace aql {
 
 class AqlItemBlock {
   friend class AqlItemBlockManager;
-  
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the block
@@ -75,7 +74,6 @@ class AqlItemBlock {
  private:
   void destroy();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief getValue, get the value of a register
@@ -334,7 +332,6 @@ class AqlItemBlock {
 
   arangodb::basics::Json toJson(arangodb::AqlTransaction* trx) const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -378,4 +375,3 @@ class AqlItemBlock {
 }  // namespace arangodb
 
 #endif
-

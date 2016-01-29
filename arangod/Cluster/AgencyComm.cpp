@@ -20,7 +20,6 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Cluster/AgencyComm.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
@@ -137,8 +136,8 @@ std::string AgencyCommResult::errorMessage() const {
       return "";
     }
     // get "message" attribute ("" if not exist)
-    return arangodb::basics::VelocyPackHelper::getStringValue(
-        body, "message", "");
+    return arangodb::basics::VelocyPackHelper::getStringValue(body, "message",
+                                                              "");
   } catch (VPackException const&) {
     return std::string("Out of memory");
   }
@@ -279,7 +278,7 @@ bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
 
   VPackSlice slice = parsedBody->slice();
 
-  if(!slice.isObject()) {
+  if (!slice.isObject()) {
     return false;
   }
 
@@ -290,8 +289,6 @@ bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
 
   return result;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the static global URL prefix
@@ -328,8 +325,6 @@ AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
     10      // numRetries
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an agency comm locker
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,10 +351,7 @@ AgencyCommLocker::AgencyCommLocker(std::string const& key,
 /// @brief destroys an agency comm locker
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommLocker::~AgencyCommLocker() {
-  unlock();
-}
-
+AgencyCommLocker::~AgencyCommLocker() { unlock(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
@@ -375,7 +367,6 @@ void AgencyCommLocker::unlock() {
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a lock version from the agency
@@ -444,14 +435,12 @@ bool AgencyCommLocker::updateVersion(AgencyComm& comm) {
     } catch (...) {
       return false;
     }
-    AgencyCommResult result =
-        comm.casValue(_key + "/Version", oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
+    AgencyCommResult result = comm.casValue(
+        _key + "/Version", oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
 
     return result.successful();
   }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an agency communication object
@@ -466,7 +455,6 @@ AgencyComm::AgencyComm(bool addNewEndpoints)
 
 AgencyComm::~AgencyComm() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up all connections
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,7 +465,7 @@ void AgencyComm::cleanup() {
   while (true) {
     {
       bool busyFound = false;
-      WRITE_LOCKER(AgencyComm::_globalLock);
+      WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -507,33 +495,40 @@ void AgencyComm::cleanup() {
 
 bool AgencyComm::tryConnect() {
   {
-    WRITE_LOCKER(AgencyComm::_globalLock);
+    std::string endpointsStr { getUniqueEndpointsString() };
+
+    WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
     if (_globalEndpoints.size() == 0) {
       return false;
     }
+    
+    // mop: not sure if a timeout makes sense here
+    while (true) {
+      LOG_INFO("Trying to find an active agency. Checking %s", endpointsStr.c_str());
+      std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
-    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+      while (it != _globalEndpoints.end()) {
+        AgencyEndpoint* agencyEndpoint = (*it);
 
-    while (it != _globalEndpoints.end()) {
-      AgencyEndpoint* agencyEndpoint = (*it);
+        TRI_ASSERT(agencyEndpoint != nullptr);
+        TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
+        TRI_ASSERT(agencyEndpoint->_connection != nullptr);
 
-      TRI_ASSERT(agencyEndpoint != nullptr);
-      TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
-      TRI_ASSERT(agencyEndpoint->_connection != nullptr);
+        if (agencyEndpoint->_endpoint->isConnected()) {
+          return true;
+        }
 
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
+        agencyEndpoint->_endpoint->connect(
+            _globalConnectionOptions._connectTimeout,
+            _globalConnectionOptions._requestTimeout);
+
+        if (agencyEndpoint->_endpoint->isConnected()) {
+          return true;
+        }
+
+        ++it;
       }
-
-      agencyEndpoint->_endpoint->connect(
-          _globalConnectionOptions._connectTimeout,
-          _globalConnectionOptions._requestTimeout);
-
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
-      }
-
-      ++it;
+      sleep(1);
     }
   }
 
@@ -546,7 +541,7 @@ bool AgencyComm::tryConnect() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AgencyComm::disconnect() {
-  WRITE_LOCKER(AgencyComm::_globalLock);
+  WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
   std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -574,7 +569,7 @@ bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
             endpointSpecification.c_str());
 
   {
-    WRITE_LOCKER(AgencyComm::_globalLock);
+    WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
     // check if we already have got this endpoint
     std::list<AgencyEndpoint*>::const_iterator it = _globalEndpoints.begin();
@@ -620,7 +615,7 @@ bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
 
 bool AgencyComm::hasEndpoint(std::string const& endpointSpecification) {
   {
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     // check if we have got this endpoint
     std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
@@ -650,7 +645,7 @@ std::vector<std::string> AgencyComm::getEndpoints() {
 
   {
     // iterate over the list of endpoints
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     std::list<AgencyEndpoint*>::const_iterator it =
         AgencyComm::_globalEndpoints.begin();
@@ -669,6 +664,46 @@ std::vector<std::string> AgencyComm::getEndpoints() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a stringified version of all endpoints (unique)
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::getUniqueEndpointsString() {
+  std::string result;
+
+  {
+    // iterate over the list of endpoints
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
+
+    std::list<AgencyEndpoint*> uniqueEndpoints{
+      AgencyComm::_globalEndpoints.begin(),
+      AgencyComm::_globalEndpoints.end()
+    };
+
+    uniqueEndpoints.unique([] (AgencyEndpoint *a, AgencyEndpoint *b) {
+        return a->_endpoint->getSpecification() == b->_endpoint->getSpecification();
+    });
+
+    std::list<AgencyEndpoint*>::const_iterator it =
+        uniqueEndpoints.begin();
+    
+    while (it != uniqueEndpoints.end()) {
+      if (!result.empty()) {
+        result += ", ";
+      }
+
+      AgencyEndpoint const* agencyEndpoint = (*it);
+
+      TRI_ASSERT(agencyEndpoint != nullptr);
+
+      result.append(agencyEndpoint->_endpoint->getSpecification());
+      ++it;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -677,7 +712,7 @@ std::string AgencyComm::getEndpointsString() {
 
   {
     // iterate over the list of endpoints
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     std::list<AgencyEndpoint*>::const_iterator it =
         AgencyComm::_globalEndpoints.begin();
@@ -745,7 +780,6 @@ std::string AgencyComm::generateStamp() {
   return std::string(buffer, len);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new agency endpoint
 ////////////////////////////////////////////////////////////////////////////////
@@ -776,7 +810,6 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint(
 
   return ep;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends the current server state to the agency
@@ -1202,7 +1235,6 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
   return result;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a ttl query parameter
 ////////////////////////////////////////////////////////////////////////////////
@@ -1324,7 +1356,7 @@ AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
 
   while (1) {
     {
-      WRITE_LOCKER(AgencyComm::_globalLock);
+      WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
       size_t const numEndpoints TRI_UNUSED = _globalEndpoints.size();
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
@@ -1380,7 +1412,7 @@ AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
 
 void AgencyComm::requeueEndpoint(AgencyEndpoint* agencyEndpoint,
                                  bool wasWorking) {
-  WRITE_LOCKER(AgencyComm::_globalLock);
+  WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
   size_t const numEndpoints TRI_UNUSED = _globalEndpoints.size();
 
   TRI_ASSERT(agencyEndpoint != nullptr);
@@ -1432,7 +1464,7 @@ bool AgencyComm::sendWithFailover(
   size_t numEndpoints;
 
   {
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
     numEndpoints = AgencyComm::_globalEndpoints.size();
 
     if (numEndpoints == 0) {
@@ -1692,5 +1724,3 @@ std::string AgencyComm::decodeKey(std::string const& s) {
   }
   return res;
 }
-
-

@@ -37,7 +37,7 @@ static size_t const QUEUE_SIZE = 1000;
 /// @brief lock for request statistics data
 ////////////////////////////////////////////////////////////////////////////////
 
-static arangodb::basics::Mutex RequestDataLock;
+static arangodb::Mutex RequestDataLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the request statistics queue
@@ -55,14 +55,13 @@ static boost::lockfree::queue<TRI_request_statistics_t*,
                               boost::lockfree::capacity<QUEUE_SIZE>>
     RequestFinishedList;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   {
-    MUTEX_LOCKER(RequestDataLock);
+    MUTEX_LOCKER(mutexLocker, RequestDataLock);
 
     TRI_TotalRequestsStatistics.incCounter();
 
@@ -129,7 +128,6 @@ static size_t ProcessAllRequestStatistics() {
   return count;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a new statistics block
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,7 +182,7 @@ void TRI_FillRequestStatistics(StatisticsDistribution& totalTime,
                                StatisticsDistribution& ioTime,
                                StatisticsDistribution& bytesSent,
                                StatisticsDistribution& bytesReceived) {
-  MUTEX_LOCKER(RequestDataLock);
+  MUTEX_LOCKER(mutexLocker, RequestDataLock);
 
   totalTime = *TRI_TotalTimeDistributionStatistics;
   requestTime = *TRI_RequestTimeDistributionStatistics;
@@ -194,12 +192,11 @@ void TRI_FillRequestStatistics(StatisticsDistribution& totalTime,
   bytesReceived = *TRI_BytesReceivedDistributionStatistics;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for connection data
 ////////////////////////////////////////////////////////////////////////////////
 
-static arangodb::basics::Mutex ConnectionDataLock;
+static arangodb::Mutex ConnectionDataLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free list
@@ -208,7 +205,6 @@ static arangodb::basics::Mutex ConnectionDataLock;
 static boost::lockfree::queue<TRI_connection_statistics_t*,
                               boost::lockfree::capacity<QUEUE_SIZE>>
     ConnectionFreeList;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a new statistics block
@@ -234,7 +230,7 @@ void TRI_ReleaseConnectionStatistics(TRI_connection_statistics_t* statistics) {
   }
 
   {
-    MUTEX_LOCKER(ConnectionDataLock);
+    MUTEX_LOCKER(mutexLocker, ConnectionDataLock);
 
     if (statistics->_http) {
       if (statistics->_connStart != 0.0) {
@@ -266,12 +262,11 @@ void TRI_ReleaseConnectionStatistics(TRI_connection_statistics_t* statistics) {
 /// @brief fills the current statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FillConnectionStatistics(StatisticsCounter& httpConnections,
-                                  StatisticsCounter& totalRequests,
-                                  std::vector<StatisticsCounter>& methodRequests,
-                                  StatisticsCounter& asyncRequests,
-                                  StatisticsDistribution& connectionTime) {
-  MUTEX_LOCKER(ConnectionDataLock);
+void TRI_FillConnectionStatistics(
+    StatisticsCounter& httpConnections, StatisticsCounter& totalRequests,
+    std::vector<StatisticsCounter>& methodRequests,
+    StatisticsCounter& asyncRequests, StatisticsDistribution& connectionTime) {
+  MUTEX_LOCKER(mutexLocker, ConnectionDataLock);
 
   httpConnections = TRI_HttpConnectionsStatistics;
   totalRequests = TRI_TotalRequestsStatistics;
@@ -279,7 +274,6 @@ void TRI_FillConnectionStatistics(StatisticsCounter& httpConnections,
   asyncRequests = TRI_AsyncRequestsStatistics;
   connectionTime = *TRI_ConnectionTimeDistributionStatistics;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the global server statistics
@@ -294,7 +288,6 @@ TRI_server_statistics_t TRI_GetServerStatistics() {
   return server;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown flag
 ////////////////////////////////////////////////////////////////////////////////
@@ -306,7 +299,6 @@ static std::atomic<bool> Shutdown;
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_thread_t StatisticsThread;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for new statistics and process them
@@ -374,7 +366,6 @@ static void StatisticsQueueWorker(void* data) {
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics enabled flags
@@ -478,13 +469,11 @@ StatisticsDistribution* TRI_BytesReceivedDistributionStatistics;
 
 TRI_server_statistics_t TRI_ServerStatistics;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the current wallclock time
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_StatisticsTime() { return TRI_microtime(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function
@@ -576,5 +565,3 @@ void TRI_ShutdownStatistics(void) {
   int res TRI_UNUSED = TRI_JoinThread(&StatisticsThread);
   TRI_ASSERT(res == 0);
 }
-
-

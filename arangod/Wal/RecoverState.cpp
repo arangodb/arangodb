@@ -69,24 +69,6 @@ static std::string GetDatabaseDirectory(TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the directory for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string GetCollectionDirectory(TRI_vocbase_t* vocbase,
-                                          TRI_voc_cid_t collectionId) {
-  char* dirname =
-      TRI_GetDirectoryCollection(vocbase->_path,
-                                 "empty",                // does not matter
-                                 TRI_COL_TYPE_DOCUMENT,  // does not matter
-                                 collectionId);
-
-  std::string result(dirname);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wait until a database directory disappears
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -117,47 +99,6 @@ static int WaitForDeletion(TRI_server_t* server, TRI_voc_tick_t databaseId,
 
     if (iterations == 5 * 10) {
       LOG_INFO("waiting for deletion of database directory '%s'",
-               result.c_str());
-    }
-
-    ++iterations;
-    usleep(100000);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait until a collection directory disappears
-////////////////////////////////////////////////////////////////////////////////
-
-static int WaitForDeletion(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                           int statusCode) {
-  std::string const result = GetCollectionDirectory(vocbase, collectionId);
-
-  int iterations = 0;
-  // wait for at most 30 seconds for the directory to be removed
-  while (TRI_IsDirectory(result.c_str())) {
-    if (iterations == 0) {
-      LOG_TRACE(
-          "waiting for deletion of collection directory '%s', called with "
-          "status code %d",
-          result.c_str(), statusCode);
-
-      if (statusCode != TRI_ERROR_FORBIDDEN &&
-          (statusCode == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND ||
-           statusCode != TRI_ERROR_NO_ERROR)) {
-        LOG_WARNING("forcefully deleting collection directory '%s'",
-                    result.c_str());
-        TRI_RemoveDirectory(result.c_str());
-      }
-    } else if (iterations >= 30 * 10) {
-      LOG_WARNING("unable to remove collection directory '%s'", result.c_str());
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (iterations == 5 * 10) {
-      LOG_INFO("waiting for deletion of collection directory '%s'",
                result.c_str());
     }
 
@@ -410,8 +351,7 @@ int RecoverState::executeSingleOperation(
 
   try {
     trx = new SingleWriteTransactionType(
-        new arangodb::StandaloneTransactionContext(), vocbase,
-        collectionId);
+        new arangodb::StandaloneTransactionContext(), vocbase, collectionId);
 
     if (trx == nullptr) {
       THROW_ARANGO_EXCEPTION(res);
@@ -912,9 +852,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (other != nullptr) {
         TRI_voc_cid_t otherCid = other->_cid;
         state->releaseCollection(otherCid);
-        int statusCode = TRI_DropCollectionVocBase(vocbase, other, false);
-        WaitForDeletion(vocbase, otherCid, statusCode);
+        TRI_DropCollectionVocBase(vocbase, other, false);
       }
+
 
       int res =
           TRI_RenameCollectionVocBase(vocbase, collection, name, true, false);
@@ -1029,6 +969,17 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
             TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
         return true;
       }
+      
+      TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+
+      if (col == nullptr) {
+        // if the underlying collection gone, we can go on
+        LOG_TRACE(
+            "cannot create index for collection %llu in database %llu: %s",
+            (unsigned long long)collectionId, (unsigned long long)databaseId,
+            TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
+        return true;
+      }
 
       char const* properties =
           reinterpret_cast<char const*>(m) + sizeof(index_create_marker_t);
@@ -1055,20 +1006,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         return state->canContinue();
       }
 
-      std::string collectionDirectory =
-          GetCollectionDirectory(vocbase, collectionId);
-      char* idString = TRI_StringUInt64(indexId);
-      char* indexName = TRI_Concatenate3String("index-", idString, ".json");
-      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-      char* filename =
-          TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
+      std::string const indexName("index-" + std::to_string(indexId) + ".json");
+      std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
 
       bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-          filename, slice, vocbase->_settings.forceSyncProperties);
+          filename.c_str(), slice, vocbase->_settings.forceSyncProperties);
 
       if (!ok) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
         LOG_WARNING(
             "cannot create index %llu, collection %llu in database %llu",
             (unsigned long long)indexId, (unsigned long long)collectionId,
@@ -1076,7 +1020,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         ++state->errorCount;
         return state->canContinue();
       } else {
-        TRI_PushBackVectorString(&document->_indexFiles, filename);
+        char* p = TRI_DuplicateString(TRI_CORE_MEM_ZONE, filename.c_str(), filename.size());
+        TRI_PushBackVectorString(&document->_indexFiles, p);
       }
 
       break;
@@ -1108,11 +1053,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (collection == nullptr) {
         collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
       }
-
+      
       if (collection != nullptr) {
         // drop an existing collection
-        int statusCode = TRI_DropCollectionVocBase(vocbase, collection, false);
-        WaitForDeletion(vocbase, collectionId, statusCode);
+        TRI_DropCollectionVocBase(vocbase, collection, false);
       }
 
       char const* properties =
@@ -1154,9 +1098,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_voc_cid_t otherCid = collection->_cid;
 
           state->releaseCollection(otherCid);
-          int statusCode =
-              TRI_DropCollectionVocBase(vocbase, collection, false);
-          WaitForDeletion(vocbase, otherCid, statusCode);
+          TRI_DropCollectionVocBase(vocbase, collection, false);
         }
       } else {
         LOG_WARNING(
@@ -1181,11 +1123,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
       slice = b2.slice();
 
-      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(),
-                                                   slice);
-
-      WaitForDeletion(vocbase, collectionId,
-                      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), slice);
 
       if (state->willBeDropped(collectionId)) {
         // in case we detect that this collection is going to be deleted anyway,
@@ -1322,22 +1260,22 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         return true;
       }
 
+      TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+
+      if (col == nullptr) {
+        // if the underlying collection gone, we can go on
+        return true;
+      }
+
       // ignore any potential error returned by this call
       TRI_DropIndexDocumentCollection(document, indexId, false);
       TRI_RemoveFileIndexCollection(document, indexId);
 
       // additionally remove the index file
-      std::string collectionDirectory =
-          GetCollectionDirectory(vocbase, collectionId);
-      char* idString = TRI_StringUInt64(indexId);
-      char* indexName = TRI_Concatenate3String("index-", idString, ".json");
-      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-      char* filename =
-          TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
+      std::string const indexName("index-" + std::to_string(indexId) + ".json");
+      std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
 
-      TRI_UnlinkFile(filename);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+      TRI_UnlinkFile(filename.c_str());
       break;
     }
 
@@ -1351,6 +1289,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       state->droppedCollections.insert(collectionId);
 
       TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
       if (vocbase == nullptr) {
         // database already deleted - do nothing
         return true;
@@ -1364,8 +1303,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       if (collection != nullptr) {
-        int statusCode = TRI_DropCollectionVocBase(vocbase, collection, false);
-        WaitForDeletion(vocbase, collectionId, statusCode);
+        TRI_DropCollectionVocBase(vocbase, collection, false);
       }
       break;
     }
@@ -1395,9 +1333,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RecoverState::replayLogfile(Logfile* logfile, int number) {
+  std::string const logfileName = logfile->filename();
+
   int const n = static_cast<int>(logfilesToProcess.size());
 
-  LOG_INFO("replaying WAL logfile '%s' (%d of %d)", logfile->filename().c_str(),
+  LOG_INFO("replaying WAL logfile '%s' (%d of %d)", logfileName.c_str(),
            number + 1, n);
 
   // Advise on sequential use:
@@ -1409,7 +1349,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
   if (!TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker,
                            static_cast<void*>(this))) {
     LOG_WARNING("WAL inspection failed when scanning logfile '%s'",
-                logfile->filename().c_str());
+                logfileName.c_str());
     return TRI_ERROR_ARANGO_RECOVERY;
   }
 
@@ -1526,8 +1466,8 @@ int RecoverState::fillIndexes() {
     document->useSecondaryIndexes(true);
 
     arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new arangodb::StandaloneTransactionContext(),
-        collection->_vocbase, document->_info.id());
+        new arangodb::StandaloneTransactionContext(), collection->_vocbase,
+        document->_info.id());
 
     int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);
 
@@ -1538,4 +1478,3 @@ int RecoverState::fillIndexes() {
 
   return TRI_ERROR_NO_ERROR;
 }
-

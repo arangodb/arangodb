@@ -28,9 +28,7 @@
 #include "Actions/actions.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-
 class TRI_action_t;
-
 
 namespace arangodb {
 
@@ -39,7 +37,6 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestActionHandler : public RestVocbaseBaseHandler {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor options
@@ -49,23 +46,16 @@ class RestActionHandler : public RestVocbaseBaseHandler {
     TRI_vocbase_t* _vocbase;
   };
 
-  
  public:
-
   RestActionHandler(rest::HttpRequest*, action_options_t*);
 
-  
  public:
-
   bool isDirect() const override;
-
 
   status_t execute() override;
 
-
   bool cancel() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief executes an action
@@ -73,7 +63,6 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
   TRI_action_result_t executeAction();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief action
@@ -85,7 +74,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   /// @brief data lock
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::Mutex _dataLock;
+  Mutex _dataLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief data for cancelation
@@ -96,5 +85,3 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

@@ -52,7 +52,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief empty string singleton
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +76,6 @@ static std::string StateNames[] = {
 static_assert(sizeof(StateNames) / sizeof(std::string) ==
                   static_cast<size_t>(ExecutionState::INVALID_STATE),
               "invalid number of ExecutionState values");
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a profile
@@ -138,7 +136,8 @@ std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
   {
     VPackObjectBuilder b(result.get());
     for (auto const& it : results) {
-      result->add(StateNames[static_cast<int>(it.first)], VPackValue(it.second));
+      result->add(StateNames[static_cast<int>(it.first)],
+                  VPackValue(it.second));
     }
   }
   return result;
@@ -157,13 +156,11 @@ TRI_json_t* Profile::toJson(TRI_memory_zone_t*) {
   return result.steal();
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not query tracking is disabled globally
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::DoDisableQueryTracking = false;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query
@@ -270,8 +267,8 @@ Query::~Query() {
     // unregister transaction and resolver in context
     ISOLATE;
     TRI_GET_GLOBALS();
-    auto ctx = static_cast<arangodb::V8TransactionContext*>(
-        v8g->_transactionContext);
+    auto ctx =
+        static_cast<arangodb::V8TransactionContext*>(v8g->_transactionContext);
     if (ctx != nullptr) {
       ctx->unregisterTransaction();
     }
@@ -353,7 +350,6 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::addNode(AstNode* node) { _nodes.emplace_back(node); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a region from the query
@@ -488,9 +484,9 @@ QueryResult Query::prepare(QueryRegistry* registry) {
     _isModificationQuery = parser->isModificationQuery();
 
     // create the transaction object, but do not start it yet
-    _trx = new arangodb::AqlTransaction(
-        createTransactionContext(), _vocbase, _collections.collections(),
-        _part == PART_MAIN);
+    _trx = new arangodb::AqlTransaction(createTransactionContext(), _vocbase,
+                                        _collections.collections(),
+                                        _part == PART_MAIN);
 
     bool planRegisters;
 
@@ -618,8 +614,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
   if (_queryString == nullptr) {
     // we don't have query string... now pass query id to WorkMonitor
     work.reset(new CustomWorkStack("AQL query id", _id));
-  }
-  else {
+  } else {
     // we do have a query string... pass query to WorkMonitor
     work.reset(new CustomWorkStack("AQL query", _queryString, _queryLength));
   }
@@ -951,8 +946,8 @@ QueryResult Query::explain() {
     // << "\n";
 
     // create the transaction object, but do not start it yet
-    _trx = new arangodb::AqlTransaction(
-        createTransactionContext(), _vocbase, _collections.collections(), true);
+    _trx = new arangodb::AqlTransaction(createTransactionContext(), _vocbase,
+                                        _collections.collections(), true);
 
     // we have an AST
     int res = _trx->begin();
@@ -1238,7 +1233,6 @@ TRI_json_t* Query::warningsToJson(TRI_memory_zone_t* zone) const {
   return json;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the query
 ////////////////////////////////////////////////////////////////////////////////
@@ -1519,5 +1513,3 @@ Graph const* Query::lookupGraphByName(std::string const& name) {
 
   return g.release();
 }
-
-

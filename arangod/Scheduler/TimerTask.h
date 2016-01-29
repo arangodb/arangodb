@@ -62,16 +62,12 @@ class TimerTask : virtual public Task {
   virtual bool handleTimeout() = 0;
 
  protected:
-
   ~TimerTask();
 
  protected:
-
   bool setup(Scheduler*, EventLoop) override;
 
-
   void cleanup() override;
-
 
   bool handleEvent(EventToken token, EventType event) override;
 
@@ -92,4 +88,3 @@ class TimerTask : virtual public Task {
 }
 
 #endif
-

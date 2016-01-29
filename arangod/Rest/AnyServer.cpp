@@ -43,7 +43,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a pid file
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +132,8 @@ static void CheckPidFile(std::string const& pidFile) {
 
 #ifdef TRI_HAVE_FORK
 
-static int ForkProcess(std::string const& workingDirectory, std::string& current) {
+static int ForkProcess(std::string const& workingDirectory,
+                       std::string& current) {
   // fork off the parent process
   TRI_pid_t pid = fork();
 
@@ -267,7 +267,8 @@ int WaitForSupervisor(int pid) {
 // TODO: use windows API CreateProcess & CreateThread to minic fork()
 // .............................................................................
 
-static int ForkProcess(std::string const& workingDirectory, std::string& current) {
+static int ForkProcess(std::string const& workingDirectory,
+                       std::string& current) {
   // fork off the parent process
   TRI_pid_t pid = -1;  // fork();
 
@@ -280,8 +281,6 @@ static int ForkProcess(std::string const& workingDirectory, std::string& current
 
 #endif
 
-
-
 AnyServer::AnyServer()
     : _mode(ServerMode::MODE_STANDALONE),
       _daemonMode(false),
@@ -290,9 +289,7 @@ AnyServer::AnyServer()
       _workingDirectory(""),
       _applicationServer(nullptr) {}
 
-
 AnyServer::~AnyServer() { delete _applicationServer; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the server
@@ -345,7 +342,6 @@ void AnyServer::beginShutdown() {
     _applicationServer->beginShutdown();
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a supervisor
@@ -551,5 +547,3 @@ int AnyServer::startupSupervisor() { return 0; }
 int AnyServer::startupDaemon() { return 0; }
 
 #endif
-
-

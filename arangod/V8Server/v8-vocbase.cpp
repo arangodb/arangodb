@@ -93,7 +93,6 @@ int32_t const WRP_VOCBASE_TYPE = 1;
 
 int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
-
 struct CollectionDitchInfo {
   arangodb::DocumentDitch* ditch;
   TRI_transaction_collection_t* col;
@@ -102,7 +101,6 @@ struct CollectionDitchInfo {
                       TRI_transaction_collection_t* col)
       : ditch(ditch), col(col) {}
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
@@ -130,7 +128,6 @@ static v8::Handle<v8::Object> WrapClass(
 
   return scope.Escape<v8::Object>(result);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a transaction
@@ -673,7 +670,7 @@ static void JS_Debug(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                  args[0]);
   }
 
-  MUTEX_LOCKER(ConsoleThread::serverConsoleMutex);
+  MUTEX_LOCKER(mutexLocker, ConsoleThread::serverConsoleMutex);
   V8LineEditor* console = ConsoleThread::serverConsole;
 
   if (console != nullptr) {
@@ -968,7 +965,6 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses an AQL query
@@ -2671,8 +2667,6 @@ static void JS_QuerySleepAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
@@ -2782,19 +2776,17 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
           lock = false;
         }
       }
-        
+
       TRI_vocbase_col_status_e status;
       TRI_voc_cid_t cid;
       uint32_t internalVersion;
 
       if (lock) {
-        TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+        READ_LOCKER(readLocker, collection->_lock);
         status = collection->_status;
         cid = collection->_cid;
         internalVersion = collection->_internalVersion;
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-      }
-      else {
+      } else {
         status = collection->_status;
         cid = collection->_cid;
         internalVersion = collection->_internalVersion;
@@ -2803,7 +2795,6 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
           collection->_isLocal) {
-
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (value->Has(_IdKey)) {
@@ -2844,7 +2835,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       collection = CoordinatorCollection(vocbase, *ci);
 
       if (collection != nullptr && collection->_cid == 0) {
-        FreeCoordinatorCollection(collection);
+        delete collection;
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
     }
@@ -2864,7 +2855,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
   if (result.IsEmpty()) {
     if (ServerState::instance()->isCoordinator()) {
-      FreeCoordinatorCollection(collection);
+      delete collection;
     }
     TRI_V8_RETURN_UNDEFINED();
   }
@@ -3049,10 +3040,10 @@ static void ListDatabasesCoordinator(
 
         std::map<std::string, std::string> headers;
         headers["Authentication"] = TRI_ObjectToString(args[2]);
-        auto res =
-            cc->syncRequest("", 0, "server:" + sid,
-                            arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
-                            "/_api/database/user", std::string(""), headers, 0.0);
+        auto res = cc->syncRequest(
+            "", 0, "server:" + sid,
+            arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+            "/_api/database/user", std::string(""), headers, 0.0);
 
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8
@@ -3065,7 +3056,8 @@ static void ListDatabasesCoordinator(
                 JsonHelper::getObjectElement(json, "result");
 
             if (dotresult != 0) {
-              std::vector<std::string> list = JsonHelper::stringArray(dotresult);
+              std::vector<std::string> list =
+                  JsonHelper::stringArray(dotresult);
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
               v8::Handle<v8::Array> result = v8::Array::New(isolate);
               for (size_t i = 0; i < list.size(); ++i) {
@@ -3198,7 +3190,8 @@ static void CreateDatabaseCoordinator(
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
 
-  int res = ci->createDatabaseCoordinator(name, builder.slice(), errorMsg, 120.0);
+  int res =
+      ci->createDatabaseCoordinator(name, builder.slice(), errorMsg, 120.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);
@@ -3571,7 +3564,6 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
@@ -3907,5 +3899,3 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
   context->Global()->ForceSet(TRI_V8_ASCII_STRING("_AQL"),
                               v8::Undefined(isolate), v8::DontEnum);
 }
-
-

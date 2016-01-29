@@ -146,17 +146,6 @@ typedef enum {
 
 typedef uint32_t TRI_col_version_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection enum
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_COL_TYPE_UNKNOWN = 0,           // only used when initializing
-  TRI_COL_TYPE_SHAPE_DEPRECATED = 1,  // not used since ArangoDB 1.5
-  TRI_COL_TYPE_DOCUMENT = 2,
-  TRI_COL_TYPE_EDGE = 3
-} TRI_col_type_e;
-
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,7 +176,7 @@ class VocbaseCollectionInfo {
 
  public:
   VocbaseCollectionInfo(){};
-  virtual ~VocbaseCollectionInfo(){};
+  ~VocbaseCollectionInfo(){};
 
   explicit VocbaseCollectionInfo(CollectionInfo const&);
 
@@ -212,56 +201,57 @@ class VocbaseCollectionInfo {
                                         char const*, bool);
 
   // collection version
-  virtual TRI_col_version_t version() const;
+  TRI_col_version_t version() const;
 
   // collection type
-  virtual TRI_col_type_e type() const;
+  TRI_col_type_e type() const;
 
   // local collection identifier
-  virtual TRI_voc_cid_t id() const;
+  TRI_voc_cid_t id() const;
 
   // cluster-wide collection identifier
-  virtual TRI_voc_cid_t planId() const;
+  TRI_voc_cid_t planId() const;
 
   // last revision id written
-  virtual TRI_voc_rid_t revision() const;
+  TRI_voc_rid_t revision() const;
 
   // maximal size of memory mapped file
-  virtual TRI_voc_size_t maximalSize() const;
+  TRI_voc_size_t maximalSize() const;
 
   // initial count, used when loading a collection
-  virtual int64_t initialCount() const;
+  int64_t initialCount() const;
 
   // number of buckets used in hash tables for indexes
-  virtual uint32_t indexBuckets() const;
+  uint32_t indexBuckets() const;
 
   // name of the collection
-  virtual std::string name() const;
+  std::string name() const;
 
   // name of the collection as c string
-  virtual char const* namec_str() const;
+  char const* namec_str() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a copy of the key options
   /// the caller is responsible for freeing it
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOptions() const;
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOptions()
+      const;
 
   // If true, collection has been deleted
-  virtual bool deleted() const;
+  bool deleted() const;
 
   // If true, collection will be compacted
-  virtual bool doCompact() const;
+  bool doCompact() const;
 
   // If true, collection is a system collection
-  virtual bool isSystem() const;
+  bool isSystem() const;
 
   // If true, collection is memory-only
-  virtual bool isVolatile() const;
+  bool isVolatile() const;
 
   // If true waits for mysnc
-  virtual bool waitForSync() const;
+  bool waitForSync() const;
 
   void setVersion(TRI_col_version_t);
 
@@ -345,16 +335,6 @@ struct TRI_collection_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the full directory name for a collection
-///
-/// it is the caller's responsibility to check if the returned string is NULL
-/// and to free it if not.
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_GetDirectoryCollection(char const*, char const*, TRI_col_type_e,
-                                 TRI_voc_cid_t);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -404,8 +384,8 @@ int TRI_IterateJsonIndexesCollectionInfo(
 struct TRI_json_t* TRI_CreateJsonCollectionInfo(
     arangodb::VocbaseCollectionInfo const&);
 
-std::shared_ptr<arangodb::velocypack::Builder> TRI_CreateVelocyPackCollectionInfo(
-    arangodb::VocbaseCollectionInfo const&);
+std::shared_ptr<arangodb::velocypack::Builder>
+TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&);
 
 // Expects the builder to be in an open Object state
 void TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&,
@@ -497,4 +477,3 @@ bool TRI_IsSystemNameCollection(char const*);
 bool TRI_IsAllowedNameCollection(bool, char const*);
 
 #endif
-

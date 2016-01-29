@@ -35,7 +35,8 @@ using JsonHelper = arangodb::basics::JsonHelper;
 CollectOptions::CollectOptions(Json const& json) {
   Json obj = json.get("collectOptions");
 
-  method = methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
+  method =
+      methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +56,7 @@ bool CollectOptions::canUseHashMethod() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectOptions::toJson(arangodb::basics::Json& json,
-                                TRI_memory_zone_t* zone) const {
+                            TRI_memory_zone_t* zone) const {
   Json options = Json(Json::Object, 1)("method", Json(methodToString(method)));
   json("collectOptions", options);
 }

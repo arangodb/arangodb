@@ -31,13 +31,11 @@ namespace arangodb {
 namespace aql {
 
 class Graph {
-  
  public:
   explicit Graph(arangodb::basics::Json const&);
 
   ~Graph() {}
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the cids of all vertexCollections
@@ -63,7 +61,6 @@ class Graph {
 
   static char const* _attrOrphans;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Graph collection name
@@ -77,7 +74,6 @@ class Graph {
 
   void insertVertexCollectionsFromJsonArray(arangodb::basics::Json& arr);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the cids of all vertexCollections
@@ -115,7 +111,6 @@ class Graph {
 }  // namespace arangodb
 
 #endif
-
 
 // Local Variables:
 // mode: outline-minor

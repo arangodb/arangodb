@@ -26,8 +26,6 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a master info struct
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,5 +66,3 @@ void TRI_LogMasterInfoReplication(TRI_replication_master_info_t const* info,
            info->_majorVersion, info->_minorVersion,
            (unsigned long long)info->_lastLogTick);
 }
-
-

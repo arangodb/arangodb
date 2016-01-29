@@ -31,7 +31,6 @@
 #include "RestServer/VocbaseContext.h"
 #include "Utils/transactions.h"
 
-
 struct TRI_document_collection_t;
 class TRI_vocbase_col_t;
 struct TRI_vocbase_t;
@@ -50,7 +49,6 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   RestVocbaseBaseHandler(RestVocbaseBaseHandler const&) = delete;
   RestVocbaseBaseHandler& operator=(RestVocbaseBaseHandler const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief batch path
@@ -124,15 +122,11 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
 
   static std::string const UPLOAD_PATH;
 
-  
  public:
-
   explicit RestVocbaseBaseHandler(rest::HttpRequest*);
-
 
   ~RestVocbaseBaseHandler();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check if a collection needs to be created on the fly
@@ -194,9 +188,9 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   /// @brief generates deleted message
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDeleted(
-      arangodb::SingleCollectionWriteTransaction<1>& trx,
-      TRI_voc_cid_t cid, TRI_voc_key_t key, TRI_voc_rid_t rid) {
+  void generateDeleted(arangodb::SingleCollectionWriteTransaction<1>& trx,
+                       TRI_voc_cid_t cid, TRI_voc_key_t key,
+                       TRI_voc_rid_t rid) {
     rest::HttpResponse::HttpResponseCode statusCode;
     if (trx.synchronous()) {
       statusCode = rest::HttpResponse::OK;
@@ -214,8 +208,8 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDocumentNotFound(
-      arangodb::SingleCollectionReadOnlyTransaction& trx,
-      TRI_voc_cid_t cid, TRI_voc_key_t key) {
+      arangodb::SingleCollectionReadOnlyTransaction& trx, TRI_voc_cid_t cid,
+      TRI_voc_key_t key) {
     generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
   }
 
@@ -224,8 +218,8 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDocumentNotFound(
-      arangodb::SingleCollectionWriteTransaction<1>& trx,
-      TRI_voc_cid_t cid, TRI_voc_key_t key) {
+      arangodb::SingleCollectionWriteTransaction<1>& trx, TRI_voc_cid_t cid,
+      TRI_voc_key_t key) {
     generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
   }
 
@@ -341,7 +335,6 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   int parseDocumentId(arangodb::CollectionNameResolver const*,
                       std::string const&, TRI_voc_cid_t&, TRI_voc_key_t&);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request context
@@ -355,9 +348,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
 
   TRI_vocbase_t* _vocbase;
 
-  
  public:
-
   bool isDirect() const override { return false; }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -387,5 +378,3 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
 }
 
 #endif
-
-

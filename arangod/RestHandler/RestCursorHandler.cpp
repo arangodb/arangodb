@@ -43,8 +43,8 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestCursorHandler::RestCursorHandler(
-    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
-                                    arangodb::aql::QueryRegistry*>* pair)
+    HttpRequest* request,
+    std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
       _queryRegistry(pair->second),
@@ -76,9 +76,7 @@ HttpHandler::status_t RestCursorHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-
 bool RestCursorHandler::cancel() { return cancelQuery(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes the query and returns the results/cursor
@@ -183,8 +181,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     }
 
     // result is bigger than batchSize, and a cursor will be created
-    auto cursors = static_cast<arangodb::CursorRepository*>(
-        _vocbase->_cursorRepository);
+    auto cursors =
+        static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
     TRI_ASSERT(cursors != nullptr);
 
     double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
@@ -223,13 +221,12 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   TRI_ASSERT(_query == nullptr);
   _query = query;
@@ -240,7 +237,7 @@ void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::unregisterQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   _query = nullptr;
 }
@@ -250,7 +247,7 @@ void RestCursorHandler::unregisterQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestCursorHandler::cancelQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
     _query->killed(true);
@@ -266,7 +263,7 @@ bool RestCursorHandler::cancelQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestCursorHandler::wasCanceled() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
   return _queryKilled;
 }
 
@@ -430,8 +427,8 @@ void RestCursorHandler::modifyCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<arangodb::CursorRepository*>(
-      _vocbase->_cursorRepository);
+  auto cursors =
+      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -488,8 +485,8 @@ void RestCursorHandler::deleteCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<arangodb::CursorRepository*>(
-      _vocbase->_cursorRepository);
+  auto cursors =
+      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -512,5 +509,3 @@ void RestCursorHandler::deleteCursor() {
 
   json.dump(_response->body());
 }
-
-

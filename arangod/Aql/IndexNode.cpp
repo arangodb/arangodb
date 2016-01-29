@@ -199,4 +199,3 @@ void IndexNode::getVariablesUsedHere(
 
   vars.erase(_outVariable);
 }
-

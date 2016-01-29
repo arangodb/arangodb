@@ -32,7 +32,6 @@
 #include "fulltext-result.h"
 #include "fulltext-wordlist.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use padding for pointers in binary data
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +44,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define MAX_WORD_BYTES ((TRI_FULLTEXT_MAX_WORD_LENGTH)*4)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the type of characters indexed. should be one byte long
@@ -119,7 +117,6 @@ typedef struct {
   uint32_t _initialNodeHandles;  // how many handles to allocate per node
 } index_t;
 
-
 static uint32_t NodeNumFollowers(const node_t* const);
 
 static uint32_t NodeNumAllocated(const node_t* const);
@@ -133,7 +130,6 @@ static void FreeFollowers(index_t* const, node_t*);
 static void FreeNode(index_t* const, node_t*);
 
 static size_t MemorySubNodeList(uint32_t);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print some indentation
@@ -425,8 +421,7 @@ static inline node_t** NodeFollowersNodes(const node_t* const node) {
 /// the caller must make sure the node actually has sub-nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline node_t** FollowersNodesPos(void* data,
-                                         uint32_t numAllocated) {
+static inline node_t** FollowersNodesPos(void* data, uint32_t numAllocated) {
   uint8_t* head = (uint8_t*)data;
   uint8_t* keys = (uint8_t*)(head + 2);  // numAllocated + numEntries
 
@@ -452,8 +447,7 @@ static size_t MemorySubNodeList(uint32_t numEntries) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ExtendSubNodeList(index_t* const idx, node_t* const node,
-                              uint32_t numFollowers,
-                              uint32_t numAllocated) {
+                              uint32_t numFollowers, uint32_t numAllocated) {
   size_t nextSize;
   uint32_t nextAllocated;
 
@@ -1192,7 +1186,6 @@ TRI_fulltext_result_t* FindDocuments (index_t* const idx,
 }
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the common prefix length of two words
 ////////////////////////////////////////////////////////////////////////////////
@@ -1209,7 +1202,6 @@ static inline size_t CommonPrefixLength(char const* const lhs,
 
   return length;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the fulltext index
@@ -1292,7 +1284,6 @@ void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
   // free index itself
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
@@ -1442,7 +1433,6 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1569,7 +1559,6 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
   // deleted documents)
   return MakeListResult(idx, result, maxResults);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump index tree
@@ -1719,5 +1708,3 @@ bool TRI_CompactFulltextIndex(TRI_fts_index_t* const ftx) {
 
   return true;
 }
-
-

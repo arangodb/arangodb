@@ -65,7 +65,6 @@ using namespace arangodb::v8client;
 
 using namespace arangodb;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief command prompt
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +181,6 @@ static uint64_t GcInterval = 10;
 
 static bool VoiceMode = false;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
@@ -223,8 +221,8 @@ static void JS_StartOutputPager(
   } else {
     BaseClient.setUsePager(true);
     BaseClient.internalPrint(std::string(std::string("Using pager ") +
-                                    BaseClient.outputPager() +
-                                    " for output buffering.\n"));
+                                         BaseClient.outputPager() +
+                                         " for output buffering.\n"));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -251,7 +249,6 @@ static void JS_StopOutputPager(
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a CSV file
@@ -443,13 +440,11 @@ static void JS_CompareString(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enum for wrapped V8 objects
 ////////////////////////////////////////////////////////////////////////////////
 
 enum WRAP_CLASS_TYPES { WRAP_TYPE_CONNECTION = 1 };
-
 
 typedef enum __eRunMode {
   eInteractive,
@@ -465,7 +460,7 @@ typedef enum __eRunMode {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::vector<std::string> ParseProgramOptions(int argc, char* args[],
-                                          eRunMode* runMode) {
+                                                    eRunMode* runMode) {
   ProgramOptionsDescription description("STANDARD options");
   ProgramOptionsDescription javascript("JAVASCRIPT options");
 
@@ -565,7 +560,8 @@ static std::vector<std::string> ParseProgramOptions(int argc, char* args[],
 /// @brief copies v8::Object to std::map<std::string, std::string>
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ObjectToMap(v8::Isolate* isolate, std::map<std::string, std::string>& myMap,
+static void ObjectToMap(v8::Isolate* isolate,
+                        std::map<std::string, std::string>& myMap,
                         v8::Handle<v8::Value> val) {
   v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
 
@@ -1388,7 +1384,7 @@ static void ClientConnection_toString(
   }
 
   std::string result = "[object ArangoConnection:" +
-                  BaseClient.endpointServer()->getSpecification();
+                       BaseClient.endpointServer()->getSpecification();
 
   if (connection->isConnected()) {
     result += "," + connection->getVersion() + ",connected]";
@@ -1768,7 +1764,8 @@ static bool RunScripts(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   for (size_t i = 0; i < scripts.size(); ++i) {
     if (!FileUtils::exists(scripts[i])) {
-      std::string msg = "error: Javascript file not found: '" + scripts[i] + "'";
+      std::string msg =
+          "error: Javascript file not found: '" + scripts[i] + "'";
 
       BaseClient.printErrLine(msg.c_str());
       BaseClient.log("%s", msg.c_str());
@@ -1900,7 +1897,6 @@ static bool RunJsLint(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   return ok;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -2430,6 +2426,10 @@ int main(int argc, char* args[]) {
   if (getenv("SHELL") != nullptr) {
     cygwinShell = true;
   }
+  if (!TRI_InitWindowsEventLog()) {
+    std::cerr << "failed to init event log" << std::endl;
+    return EXIT_FAILURE;
+  }
 #endif
   LocalEntryFunction();
 
@@ -2458,7 +2458,8 @@ int main(int argc, char* args[]) {
   // parse the program options
   // .............................................................................
 
-  std::vector<std::string> positionals = ParseProgramOptions(argc, args, &runMode);
+  std::vector<std::string> positionals =
+      ParseProgramOptions(argc, args, &runMode);
 
   // .............................................................................
   // set-up client connection
@@ -2608,5 +2609,3 @@ int main(int argc, char* args[]) {
 
   return ret;
 }
-
-

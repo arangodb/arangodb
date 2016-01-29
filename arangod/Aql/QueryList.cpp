@@ -31,21 +31,17 @@
 
 using namespace arangodb::aql;
 
-
 QueryEntry::QueryEntry(arangodb::aql::Query const* query, double started)
     : query(query), started(started) {}
-
 
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
                                std::string const& queryString, double started,
                                double runTime)
     : id(id), queryString(queryString), started(started), runTime(runTime) {}
 
-
 double const QueryList::DefaultSlowQueryThreshold = 10.0;
 size_t const QueryList::DefaultMaxSlowQueries = 64;
 size_t const QueryList::DefaultMaxQueryStringLength = 4096;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a query list
@@ -69,7 +65,7 @@ QueryList::QueryList(TRI_vocbase_t*)
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryList::~QueryList() {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   for (auto& it : _current) {
     delete it.second;
@@ -77,7 +73,6 @@ QueryList::~QueryList() {
   _current.clear();
   _slow.clear();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a query
@@ -92,7 +87,7 @@ bool QueryList::insert(Query const* query, double stamp) {
   try {
     auto entry = std::make_unique<QueryEntry>(query, stamp);
 
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     TRI_IF_FAILURE("QueryList::insert") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -130,7 +125,7 @@ void QueryList::remove(Query const* query, double now) {
   QueryEntry* entry = nullptr;
 
   {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
     auto it = _current.find(query->id());
 
     if (it != _current.end()) {
@@ -205,7 +200,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   std::string queryString;
 
   {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     auto it = _current.find(id);
 
@@ -237,7 +232,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   std::vector<QueryEntryCopy> result;
 
   {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
     result.reserve(_current.size());
 
     for (auto const& it : _current) {
@@ -292,7 +287,7 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
   std::vector<QueryEntryCopy> result;
 
   {
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
     result.reserve(_slow.size());
     result.assign(_slow.begin(), _slow.end());
   }
@@ -305,9 +300,7 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QueryList::clearSlow() {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _slow.clear();
   _slowCount = 0;
 }
-
-

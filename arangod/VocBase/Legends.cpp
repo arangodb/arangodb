@@ -333,4 +333,3 @@ void JsonLegend::dump(void* buf) {
     memset(c + shapeDataLength, 0, static_cast<size_t>(i) - shapeDataLength);
   }
 }
-

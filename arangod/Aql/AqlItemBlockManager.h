@@ -32,9 +32,7 @@ namespace aql {
 
 class AqlItemBlock;
 
-
 class AqlItemBlockManager {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the manager
@@ -48,7 +46,6 @@ class AqlItemBlockManager {
 
   ~AqlItemBlockManager();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request a block with the specified size
@@ -62,7 +59,6 @@ class AqlItemBlockManager {
 
   void returnBlock(AqlItemBlock*&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief last block handed back to the manager
@@ -75,5 +71,3 @@ class AqlItemBlockManager {
 }
 
 #endif
-
-

@@ -151,7 +151,8 @@ void ExampleMatcher::fillExampleDefinition(
     char const* _key = strchr(example->_value._string.data, '/');
     if (_key != nullptr) {
       _key += 1;
-      def._internal.insert(std::make_pair(internalAttr::key, DocumentId(0, _key)));
+      def._internal.insert(
+          std::make_pair(internalAttr::key, DocumentId(0, _key)));
       return;
     }
     THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
@@ -371,7 +372,7 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       // Match _to
       it = def._internal.find(internalAttr::to);
       if (it != def._internal.end()) {
-        if (! TRI_IS_EDGE_MARKER(mptr)) {
+        if (!TRI_IS_EDGE_MARKER(mptr)) {
           goto nextExample;
         }
         if (it->second.cid != TRI_EXTRACT_MARKER_TO_CID(mptr)) {
@@ -385,7 +386,7 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       // Match _from
       it = def._internal.find(internalAttr::from);
       if (it != def._internal.end()) {
-        if (! TRI_IS_EDGE_MARKER(mptr)) {
+        if (!TRI_IS_EDGE_MARKER(mptr)) {
           goto nextExample;
         }
         if (it->second.cid != TRI_EXTRACT_MARKER_FROM_CID(mptr)) {

@@ -22,18 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-replication.h"
-#include "v8-vocbaseprivate.h"
 #include "Replication/InitialSyncer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "Wal/LogfileManager.h"
+#include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/replication-dump.h"
+#include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication logger
@@ -263,14 +262,14 @@ static void JS_SynchronizeReplication(
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
-  config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(),
-                                           endpoint.size());
-  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
-                                           database.size());
-  config._username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(),
-                                           username.size());
-  config._password = TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(),
-                                           password.size());
+  config._endpoint =
+      TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._database =
+      TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
+  config._username =
+      TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
+  config._password =
+      TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
 
   if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
     if (object->Get(TRI_V8_ASCII_STRING("chunkSize"))->IsNumber()) {
@@ -315,7 +314,8 @@ static void JS_SynchronizeReplication(
                 V8TickId(isolate, syncer.getLastLogTick()));
 
     std::map<TRI_voc_cid_t, std::string>::const_iterator it;
-    std::map<TRI_voc_cid_t, std::string> const& c = syncer.getProcessedCollections();
+    std::map<TRI_voc_cid_t, std::string> const& c =
+        syncer.getProcessedCollections();
 
     uint32_t j = 0;
     v8::Handle<v8::Array> collections = v8::Array::New(isolate);
@@ -386,7 +386,7 @@ static void JS_ConfigureApplierReplication(
     TRI_InitConfigurationReplicationApplier(&config);
 
     {
-      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
+      READ_LOCKER(readLocker, vocbase->_replicationApplier->_statusLock);
       TRI_CopyConfigurationReplicationApplier(
           &vocbase->_replicationApplier->_configuration, &config);
     }
@@ -416,7 +416,7 @@ static void JS_ConfigureApplierReplication(
 
     // fill with previous configuration
     {
-      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
+      READ_LOCKER(readLocker, vocbase->_replicationApplier->_statusLock);
       TRI_CopyConfigurationReplicationApplier(
           &vocbase->_replicationApplier->_configuration, &config);
     }

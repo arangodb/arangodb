@@ -29,7 +29,6 @@
 #include "Basics/socket-utils.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
-
 namespace arangodb {
 namespace httpclient {
 
@@ -38,7 +37,6 @@ namespace httpclient {
 ////////////////////////////////////////////////////////////////////////////////
 
 class ClientConnection final : public GeneralClientConnection {
-  
  private:
   ClientConnection(ClientConnection const&);
   ClientConnection& operator=(ClientConnection const&);
@@ -56,14 +54,12 @@ class ClientConnection final : public GeneralClientConnection {
 
   ~ClientConnection();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check whether the socket is still alive
   //////////////////////////////////////////////////////////////////////////////
 
   bool checkSocket();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -102,7 +98,6 @@ class ClientConnection final : public GeneralClientConnection {
 
   bool readable() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying socket
@@ -114,4 +109,3 @@ class ClientConnection final : public GeneralClientConnection {
 }
 
 #endif
-

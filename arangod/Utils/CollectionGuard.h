@@ -32,7 +32,6 @@
 namespace arangodb {
 
 class CollectionGuard {
-  
  public:
   CollectionGuard(CollectionGuard const&) = delete;
   CollectionGuard& operator=(CollectionGuard const&) = delete;
@@ -111,7 +110,6 @@ class CollectionGuard {
     }
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection pointer
@@ -127,7 +125,6 @@ class CollectionGuard {
     return _originalStatus;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to vocbase
@@ -156,4 +153,3 @@ class CollectionGuard {
 }
 
 #endif
-

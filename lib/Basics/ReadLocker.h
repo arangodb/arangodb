@@ -32,7 +32,6 @@
 #include "Basics/logging.h"
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
 ///
@@ -40,31 +39,24 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define READ_LOCKER_VAR_A(a) _read_lock_variable##a
-#define READ_LOCKER_VAR_B(a) READ_LOCKER_VAR_A(a)
-
 #ifdef TRI_SHOW_LOCK_TIME
 
-#define READ_LOCKER(b)                                                   \
-  arangodb::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
-      READ_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+#define READ_LOCKER(obj, lock) \
+  arangodb::basics::ReadLocker obj(&lock, __FILE__, __LINE__)
 
-#define READ_LOCKER_EVENTUAL(b, t)                                       \
-  arangodb::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
-      READ_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
+#define READ_LOCKER_EVENTUAL(obj, lock, t) \
+  arangodb::basics::ReadLocker obj(&lock, t, __FILE__, __LINE__)
 
 #else
 
-#define READ_LOCKER(b)                                                   \
-  arangodb::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
-      READ_LOCKER_VAR_B(__LINE__)(&b)
+#define READ_LOCKER(obj, lock) arangodb::basics::ReadLocker obj(&lock)
 
-#define READ_LOCKER_EVENTUAL(b, t)                                       \
-  arangodb::basics::ReadLocker<std::remove_reference<decltype(b)>::type> \
-      READ_LOCKER_VAR_B(__LINE__)(&b, t)
+#define READ_LOCKER_EVENTUAL(obj, lock, t) \
+  arangodb::basics::ReadLocker obj(&lock, t)
 
 #endif
 
+#define TRY_READ_LOCKER(obj, lock) arangodb::basics::TryReadLocker obj(&lock)
 
 namespace arangodb {
 namespace basics {
@@ -76,12 +68,10 @@ namespace basics {
 /// the lock when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
 class ReadLocker {
-  ReadLocker(ReadLocker const&);
-  ReadLocker& operator=(ReadLocker const&);
+  ReadLocker(ReadLocker const&) = delete;
+  ReadLocker& operator=(ReadLocker const&) = delete;
 
-  
  public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a read-lock
@@ -91,7 +81,7 @@ class ReadLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-  ReadLocker(T* readWriteLock, char const* file, int line)
+  ReadLocker(ReadWriteLock* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
     double t = TRI_microtime();
     _readWriteLock->readLock();
@@ -100,7 +90,8 @@ class ReadLocker {
 
 #else
 
-  explicit ReadLocker(T* readWriteLock) : _readWriteLock(readWriteLock) {
+  explicit ReadLocker(ReadWriteLock* readWriteLock)
+      : _readWriteLock(readWriteLock) {
     _readWriteLock->readLock();
   }
 
@@ -113,7 +104,8 @@ class ReadLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-  ReadLocker(T* readWriteLock, uint64_t sleepTime, char const* file, int line)
+  ReadLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime, char const* file,
+             int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
     double t = TRI_microtime();
     while (!_readWriteLock->tryReadLock()) {
@@ -128,7 +120,7 @@ class ReadLocker {
 
 #else
 
-  ReadLocker(T* readWriteLock, uint64_t sleepTime)
+  ReadLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime)
       : _readWriteLock(readWriteLock) {
     while (!_readWriteLock->tryReadLock()) {
 #ifdef _WIN32
@@ -155,13 +147,12 @@ class ReadLocker {
 #endif
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the read-write lock
   //////////////////////////////////////////////////////////////////////////////
 
-  T* _readWriteLock;
+  ReadWriteLock* _readWriteLock;
 
 #ifdef TRI_SHOW_LOCK_TIME
 
@@ -185,9 +176,54 @@ class ReadLocker {
 
 #endif
 };
+
+class TryReadLocker {
+  TryReadLocker(TryReadLocker const&) = delete;
+  TryReadLocker& operator=(TryReadLocker const&) = delete;
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tries to aquire a read-lock
+  ///
+  /// The constructors tries to read-lock the lock, the destructors unlocks the
+  /// lock if it was acquired in the constructor
+  ////////////////////////////////////////////////////////////////////////////////
+
+  explicit TryReadLocker(ReadWriteLock* readWriteLock)
+      : _readWriteLock(readWriteLock), _isLocked(false) {
+    _isLocked = _readWriteLock->tryReadLock();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief releases the read-lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  ~TryReadLocker() {
+    if (_isLocked) {
+      _readWriteLock->unlock();
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we acquired the lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isLocked() const { return _isLocked; }
+
+ private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the read-write lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  ReadWriteLock* _readWriteLock;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we acquired the lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool _isLocked;
+};
 }
 }
 
 #endif
-
-

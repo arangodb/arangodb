@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AsyncJobManager.h"
-
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
@@ -31,20 +30,15 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AsyncCallbackContext
 ////////////////////////////////////////////////////////////////////////////////
 
 class arangodb::rest::AsyncCallbackContext {
-  
  public:
-
   explicit AsyncCallbackContext(std::string const& coordHeader)
       : _coordHeader(coordHeader), _response(nullptr) {}
-
 
   ~AsyncCallbackContext() {
     if (_response != nullptr) {
@@ -52,7 +46,6 @@ class arangodb::rest::AsyncCallbackContext {
     }
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief gets the coordinator header
@@ -60,7 +53,6 @@ class arangodb::rest::AsyncCallbackContext {
 
   std::string& getCoordinatorHeader() { return _coordHeader; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief coordinator header
@@ -74,8 +66,6 @@ class arangodb::rest::AsyncCallbackContext {
 
   HttpResponse* _response;
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for an unspecified job result
@@ -101,21 +91,15 @@ AsyncJobResult::AsyncJobResult(IdType jobId, HttpResponse* response,
       _status(status),
       _ctx(ctx) {}
 
-
 AsyncJobResult::~AsyncJobResult() {}
-
-
-
 
 AsyncJobManager::AsyncJobManager(callback_fptr callback)
     : _lock(), _jobs(), callback(callback) {}
-
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
   deleteJobResults();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the result of an async job
@@ -124,7 +108,7 @@ AsyncJobManager::~AsyncJobManager() {
 HttpResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
                                             AsyncJobResult::Status& status,
                                             bool removeFromList) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _jobs.find(jobId);
 
@@ -154,7 +138,7 @@ HttpResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _jobs.find(jobId);
 
@@ -178,7 +162,7 @@ bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::deleteJobResults() {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _jobs.begin();
 
@@ -200,7 +184,7 @@ void AsyncJobManager::deleteJobResults() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::deleteExpiredJobResults(double stamp) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _jobs.begin();
 
@@ -247,7 +231,7 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
 
   {
     size_t n = 0;
-    READ_LOCKER(_lock);
+    READ_LOCKER(readLocker, _lock);
     auto it = _jobs.begin();
 
     // iterate the list. the list is sorted by id
@@ -284,7 +268,7 @@ void AsyncJobManager::initAsyncJob(HttpServerJob* job, char const* hdr) {
   AsyncJobResult ajr(job->jobId(), nullptr, TRI_microtime(),
                      AsyncJobResult::JOB_PENDING, ctx);
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   _jobs.emplace(job->jobId(), ajr);
 }
@@ -299,7 +283,7 @@ void AsyncJobManager::finishAsyncJob(AsyncJobResult::IdType jobId,
   AsyncCallbackContext* ctx = nullptr;
 
   {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
     auto it = _jobs.find(jobId);
 
     if (it == _jobs.end()) {
@@ -333,5 +317,3 @@ void AsyncJobManager::finishAsyncJob(AsyncJobResult::IdType jobId,
     }
   }
 }
-
-

@@ -425,7 +425,7 @@ function multiCollectionGraphSuite () {
       /* this test is intended to trigger the clone functionality. */
       var query = "FOR t IN " + vn +
         " FOR s IN " + vn2 + 
-        " FOR x, e, p IN OUTBOUND t " + en + " RETURN {vertex: x, path: p}";
+        " FOR x, e, p IN OUTBOUND t " + en + " SORT x._key RETURN {vertex: x, path: p}";
       var result = db._query(query).toArray();
       var plans = AQL_EXPLAIN(query, { }, opts).plans;
       plans.forEach(function(plan) {
@@ -435,7 +435,7 @@ function multiCollectionGraphSuite () {
     },
 
     testNoBindParameterSingleFor: function () {
-      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " + en + " SORT x RETURN x";
+      var query = "FOR s IN " + vn + " FOR x, e, p IN OUTBOUND s " + en + " SORT x._key RETURN x";
       var result = db._query(query).toArray();
       var plans = AQL_EXPLAIN(query, { }, opts).plans;
       plans.forEach(function(plan) {
@@ -445,8 +445,8 @@ function multiCollectionGraphSuite () {
     },
 
     testNoBindParameterSingleForFilter: function () {
-      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " +
-        en + " FILTER p.vertices[1]._key == s._key SORT x RETURN x";
+      var query = "FOR s IN " + vn + " FOR x, e, p IN OUTBOUND s " +
+        en + " FILTER p.vertices[1]._key == s._key SORT x._key RETURN x";
       var result = db._query(query).toArray();
       assertEqual(result.length, 0);
       var plans = AQL_EXPLAIN(query, { }, opts).plans;
@@ -457,8 +457,8 @@ function multiCollectionGraphSuite () {
     },
 
     testNoBindParameterV8Function: function () {
-      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " +
-        en + " FILTER p.vertices[1]._key == NOOPT(V8(RAND())) SORT x RETURN x";
+      var query = "FOR s IN " + vn + " FOR x, e, p IN OUTBOUND s " +
+        en + " FILTER p.vertices[1]._key == NOOPT(V8(RAND())) SORT x._key RETURN x";
       var result = db._query(query).toArray();
       assertEqual(result.length, 0);
       var plans = AQL_EXPLAIN(query, { }, opts).plans;
@@ -470,7 +470,7 @@ function multiCollectionGraphSuite () {
 
 
     testNoBindParameter: function () {
-      var query = "FOR x, e, p IN OUTBOUND '" + vertex.B + "' " + en + " RETURN {vertex: x, path: p}";
+      var query = "FOR x, e, p IN OUTBOUND '" + vertex.B + "' " + en + " SORT x._key RETURN {vertex: x, path: p}";
       var result = db._query(query).toArray();
       validateResult(result);
       var plans = AQL_EXPLAIN(query, { }, opts).plans;
@@ -481,7 +481,7 @@ function multiCollectionGraphSuite () {
     },
 
     testStartBindParameter: function () {
-      var query = "FOR x, e, p IN OUTBOUND @startId " + en + " RETURN {vertex: x, path: p}";
+      var query = "FOR x, e, p IN OUTBOUND @startId " + en + " SORT x._key RETURN {vertex: x, path: p}";
       var bindVars = {
         startId: vertex.B
       };
@@ -495,7 +495,7 @@ function multiCollectionGraphSuite () {
     },
 
     testEdgeCollectionBindParameter: function () {
-      var query = "FOR x, e, p IN OUTBOUND '" + vertex.B + "' @@eCol RETURN {vertex: x, path: p}";
+      var query = "FOR x, e, p IN OUTBOUND '" + vertex.B + "' @@eCol SORT x._key RETURN {vertex: x, path: p}";
       var bindVars = {
         "@eCol": en
       };
@@ -509,7 +509,8 @@ function multiCollectionGraphSuite () {
     },
 
     testStepsBindParameter: function () {
-      var query = "FOR x, e, p IN @steps OUTBOUND '" + vertex.B + "' " + en + " RETURN {vertex: x, path: p}";
+      var query = "FOR x, e, p IN @steps OUTBOUND '" + vertex.B + "' " + en + 
+                  " SORT x._key RETURN {vertex: x, path: p}";
       var bindVars = {
         steps: 1
       };
@@ -524,7 +525,7 @@ function multiCollectionGraphSuite () {
 
     testStepsRangeBindParameter: function () {
       var query = "FOR x, e, p IN @lsteps..@rsteps OUTBOUND '" + vertex.B
-        + "' " + en + " RETURN {vertex: x, path: p}";
+        + "' " + en + " SORT x._key RETURN {vertex: x, path: p}";
       var bindVars = {
         lsteps: 1,
         rsteps: 1
@@ -539,7 +540,7 @@ function multiCollectionGraphSuite () {
     },
 
     testFirstEntryIsVertex: function () {
-      var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x";
+      var query = "FOR x IN OUTBOUND @startId @@eCol SORT x._key RETURN x";
       var bindVars = {
         "@eCol": en,
         startId: vertex.B
@@ -555,7 +556,7 @@ function multiCollectionGraphSuite () {
     },
 
     testSecondEntryIsEdge: function () {
-      var query = "FOR x, e IN OUTBOUND @startId @@eCol RETURN e";
+      var query = "FOR x, e IN OUTBOUND @startId @@eCol SORT x._key RETURN e";
       var bindVars = {
         "@eCol": en,
         startId: vertex.B
@@ -571,7 +572,7 @@ function multiCollectionGraphSuite () {
     },
 
     testThirdEntryIsPath: function () {
-      var query = "FOR x, e, p IN OUTBOUND @startId @@eCol RETURN p";
+      var query = "FOR x, e, p IN OUTBOUND @startId @@eCol SORT x._key RETURN p";
       var bindVars = {
         "@eCol": en,
         startId: vertex.B
@@ -592,7 +593,7 @@ function multiCollectionGraphSuite () {
     },
 
     testOutboundDirection: function () {
-      var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x._id";
+      var query = "FOR x IN OUTBOUND @startId @@eCol SORT x._key RETURN x._id";
       var bindVars = {
         "@eCol": en,
         startId: vertex.B
@@ -609,7 +610,7 @@ function multiCollectionGraphSuite () {
     },
 
     testInboundDirection: function () {
-      var query = "FOR x IN INBOUND @startId @@eCol RETURN x._id";
+      var query = "FOR x IN INBOUND @startId @@eCol SORT x._key RETURN x._id";
       var bindVars = {
         "@eCol": en,
         startId: vertex.C
@@ -647,7 +648,7 @@ function multiCollectionGraphSuite () {
     },
 
     testExactNumberSteps: function () {
-      var query = "FOR x IN 2 OUTBOUND @startId @@eCol  SORT x._id ASC RETURN x._id";
+      var query = "FOR x IN 2 OUTBOUND @startId @@eCol SORT x._id ASC RETURN x._id";
       var bindVars = {
         "@eCol": en,
         startId: vertex.B
@@ -728,7 +729,7 @@ function multiCollectionGraphSuite () {
 
     testSingleDocumentInput: function () {
       var query = "FOR y IN @@vCol FILTER y._id == @startId "
-        + "FOR x IN OUTBOUND y @@eCol RETURN x";
+        + "FOR x IN OUTBOUND y @@eCol SORT x._key RETURN x";
       var bindVars = {
         startId: vertex.B,
         "@eCol": en,
@@ -1814,9 +1815,117 @@ function brokenGraphSuite () {
         assertEqual(result.length, 1, "Without opt: ", query);
         assertEqual(result, [ vertex.B ], "Without opt: ", query);
       }
+    },
+
+    testQueryWithEmptyGraph: function () {
+      var query = `FOR x IN OUTBOUND 'start/123' GRAPH @graph RETURN x`;
+      var emptyGN = "UnitTestEmptyGraph";
+      try {
+        gm._drop(emptyGN);
+      } catch (e) {
+      }
+      gm._create(emptyGN);
+      var bindVars = {
+        graph: emptyGN
+      };
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_GRAPH_EMPTY.code);
+      }
     }
   };
+}
 
+function multiEdgeDirectionSuite () {
+  const en2 = "UnitTestEdgeCollection2";
+  var ec2;
+
+  return {
+
+    setUp: function () {
+      cleanup();
+      db._drop(en2);
+
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      ec2 = db._createEdgeCollection(en2, {numberOfShards: 4});
+     
+      vertex.A = vc.save({_key: "A"})._id;
+      vertex.B = vc.save({_key: "B"})._id;
+      vertex.C = vc.save({_key: "C"})._id;
+      vertex.D = vc.save({_key: "D"})._id;
+      vertex.E = vc.save({_key: "E"})._id;
+
+      vertex.F = vc.save({_key: "F"})._id;
+
+      // F is always 2 hops away and only reachable with alternating
+      // collections and directions
+
+      ec.save(vertex.A, vertex.B, {});
+      ec.save(vertex.C, vertex.A, {});
+      ec2.save(vertex.A, vertex.D, {});
+      ec2.save(vertex.E, vertex.A, {});
+
+      ec2.save(vertex.F, vertex.B, {});
+      ec2.save(vertex.C, vertex.F, {});
+
+      ec.save(vertex.F, vertex.D, {});
+      ec.save(vertex.E, vertex.F, {});
+    },
+
+    tearDown: function () {
+      cleanup();
+      db._drop(en2);
+    },
+
+    testOverrideOneDirection: function () {
+      var queries = [
+        { q1 :"FOR x IN ANY @start @@ec1, INBOUND @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN ANY @start ${en}, INBOUND ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.C, vertex.E] },
+        { q1 :"FOR x IN ANY @start @@ec1, OUTBOUND @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN ANY @start ${en}, OUTBOUND ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.C, vertex.D] },
+        { q1 :"FOR x IN ANY @start INBOUND @@ec1, @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN ANY @start INBOUND ${en}, ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.C, vertex.D, vertex.E] },
+        { q1 :"FOR x IN ANY @start OUTBOUND @@ec1, @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN ANY @start OUTBOUND ${en}, ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.D, vertex.E] },
+        { q1 :"FOR x IN OUTBOUND @start INBOUND @@ec1, @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN OUTBOUND @start INBOUND ${en}, ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.C, vertex.D] },
+        { q1 :"FOR x IN OUTBOUND @start @@ec1, INBOUND @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN OUTBOUND @start ${en}, INBOUND ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.E] },
+        { q1 :"FOR x IN INBOUND @start @@ec1, OUTBOUND @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN INBOUND @start ${en}, OUTBOUND ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.C, vertex.D] },
+        { q1 :"FOR x IN INBOUND @start OUTBOUND @@ec1, @@ec2 SORT x._key RETURN x._id",
+          q2 :`FOR x IN INBOUND @start OUTBOUND ${en}, ${en2} SORT x._key RETURN x._id`,
+          res: [vertex.B, vertex.E] },
+      ];
+
+      var bindVars = {
+        "@ec1": en,
+        "@ec2": en2,
+        start: vertex.A
+      };
+      var bindVars2 = {
+        start: vertex.A
+      };
+      queries.forEach(function (item) {
+        var result = db._query(item.q1, bindVars).toArray();
+        assertEqual(result, item.res);
+        result = db._query(item.q2, bindVars2).toArray();
+        assertEqual(result, item.res);
+      });
+    }
+
+
+  };
 }
 
 jsunity.run(namedGraphSuite);
@@ -1826,5 +1935,6 @@ jsunity.run(potentialErrorsSuite);
 jsunity.run(complexInternaSuite);
 jsunity.run(complexFilteringSuite);
 jsunity.run(brokenGraphSuite);
+jsunity.run(multiEdgeDirectionSuite);
 
 return jsunity.done();

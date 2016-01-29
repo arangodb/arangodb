@@ -56,4 +56,3 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
 }
 
 #endif
-

@@ -28,7 +28,6 @@
 #include "Replication/Syncer.h"
 #include "Utils/transactions.h"
 
-
 struct TRI_json_t;
 class TRI_replication_applier_configuration_t;
 struct TRI_transaction_collection_s;
@@ -40,9 +39,7 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
-
 class InitialSyncer : public Syncer {
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply phases
@@ -56,17 +53,13 @@ class InitialSyncer : public Syncer {
     PHASE_DUMP
   } sync_phase_e;
 
-  
  public:
-
   InitialSyncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*,
                 std::unordered_map<std::string, bool> const&,
                 std::string const&, bool);
 
-
   ~InitialSyncer();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run method, performs a full synchronization
@@ -108,7 +101,6 @@ class InitialSyncer : public Syncer {
     return _processedCollections;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set a progress message
@@ -217,7 +209,6 @@ class InitialSyncer : public Syncer {
           std::pair<struct TRI_json_t const*, struct TRI_json_t const*>> const&,
       bool, std::string&, sync_phase_e);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief progress message
@@ -294,5 +285,3 @@ class InitialSyncer : public Syncer {
 }
 
 #endif
-
-

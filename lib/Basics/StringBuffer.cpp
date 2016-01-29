@@ -26,7 +26,6 @@
 #include "Basics/fpconv.h"
 #include "Zip/zip.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escape tables
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,7 +69,6 @@ static char const JsonEscapeTableWithSlash[256] = {
     0,   '\\', 0,   0,   0,                            // 50
     Z16, Z16,  Z16, Z16, Z16, Z16, Z16, Z16, Z16, Z16  // 60~FF
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append a character without check
@@ -399,7 +397,6 @@ static int AppendJsonEncodedValue(TRI_string_buffer_t* self, char const*& ptr,
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new string buffer and initialize it
 ////////////////////////////////////////////////////////////////////////////////
@@ -501,7 +498,6 @@ void TRI_FreeStringBuffer(TRI_memory_zone_t* zone, TRI_string_buffer_t* self) {
   TRI_DestroyStringBuffer(self);
   TRI_Free(zone, self);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compress the string buffer using deflate
@@ -763,8 +759,6 @@ int TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self, char const* str,
   return TRI_AppendString2StringBuffer(self, str, len);
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends character
 ////////////////////////////////////////////////////////////////////////////////
@@ -893,8 +887,6 @@ int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with two digits
@@ -1086,8 +1078,6 @@ int TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 32 bits in octal
 ////////////////////////////////////////////////////////////////////////////////
@@ -1124,8 +1114,6 @@ int TRI_AppendUInt64OctalStringBuffer(TRI_string_buffer_t* self,
   return TRI_ERROR_NO_ERROR;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 32 bits in hex
 ////////////////////////////////////////////////////////////////////////////////
@@ -1160,8 +1148,6 @@ int TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends floating point number
 ////////////////////////////////////////////////////////////////////////////////
@@ -1189,8 +1175,6 @@ int TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr) {
 
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends time in standard format
@@ -1220,8 +1204,6 @@ int TRI_AppendTimeStringBuffer(TRI_string_buffer_t* self, int32_t attr) {
 
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends csv 32-bit integer
@@ -1337,5 +1319,3 @@ int TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d) {
   AppendChar(self, ';');
   return TRI_ERROR_NO_ERROR;
 }
-
-

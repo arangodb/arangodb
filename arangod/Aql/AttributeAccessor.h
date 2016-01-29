@@ -54,24 +54,19 @@ class AttributeAccessor {
     ATTRIBUTE_TYPE_REGULAR
   };
 
-  
  public:
-
   AttributeAccessor(std::vector<char const*> const&, Variable const*);
-
 
   ~AttributeAccessor();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute the accessor
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue get(arangodb::AqlTransaction* trx, AqlItemBlock const*,
-               size_t, std::vector<Variable const*> const&,
+  AqlValue get(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
+               std::vector<Variable const*> const&,
                std::vector<RegisterId> const&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _rev attribute from a ShapedJson marker
@@ -105,7 +100,6 @@ class AttributeAccessor {
   AqlValue extractRegular(AqlValue const&, arangodb::AqlTransaction*,
                           struct TRI_document_collection_t const*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
@@ -163,4 +157,3 @@ class AttributeAccessor {
 }  // namespace arangodb
 
 #endif
-

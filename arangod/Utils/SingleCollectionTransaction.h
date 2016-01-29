@@ -42,8 +42,6 @@
 namespace arangodb {
 
 class SingleCollectionTransaction : public Transaction {
-  
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection id
@@ -87,7 +85,6 @@ class SingleCollectionTransaction : public Transaction {
 
   ~SingleCollectionTransaction() {}
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying transaction collection
@@ -146,9 +143,7 @@ class SingleCollectionTransaction : public Transaction {
     return trxCollection->_ditch;
   }
 
-  inline arangodb::DocumentDitch* ditch(TRI_voc_cid_t) {
-    return ditch();
-  }
+  inline arangodb::DocumentDitch* ditch(TRI_voc_cid_t) { return ditch(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a ditch is available for a collection
@@ -242,7 +237,6 @@ class SingleCollectionTransaction : public Transaction {
     return this->readSlice(this->trxCollection(), docs);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id
@@ -271,4 +265,3 @@ class SingleCollectionTransaction : public Transaction {
 }
 
 #endif
-

@@ -40,7 +40,6 @@ class V8QueueJob : public rest::Job {
   V8QueueJob(V8QueueJob const&) = delete;
   V8QueueJob& operator=(V8QueueJob const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new V8 queue job
@@ -55,24 +54,17 @@ class V8QueueJob : public rest::Job {
 
   ~V8QueueJob();
 
-  
  public:
-
   size_t queue() const override;
-
 
   void work() override;
 
-
   bool cancel() override;
-
 
   void cleanup(rest::DispatcherQueue*) override;
 
-
   void handleError(basics::Exception const& ex) override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queue name
@@ -107,4 +99,3 @@ class V8QueueJob : public rest::Job {
 }
 
 #endif
-

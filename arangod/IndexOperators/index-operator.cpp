@@ -45,8 +45,9 @@ TRI_relation_index_operator_t::~TRI_relation_index_operator_t() {
 
 TRI_index_operator_t* TRI_CreateIndexOperator(
     TRI_index_operator_type_e operatorType, TRI_index_operator_t* leftOperand,
-    TRI_index_operator_t* rightOperand, std::shared_ptr<VPackBuilder> parameters,
-    VocShaper* shaper, size_t numFields) {
+    TRI_index_operator_t* rightOperand,
+    std::shared_ptr<VPackBuilder> parameters, VocShaper* shaper,
+    size_t numFields) {
   switch (operatorType) {
     case TRI_AND_INDEX_OPERATOR: {
       return new TRI_logical_index_operator_t(operatorType, shaper, leftOperand,

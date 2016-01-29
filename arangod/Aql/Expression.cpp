@@ -40,7 +40,6 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "constant" global object for NULL which can be shared by all
 /// expressions but must never be freed
@@ -62,7 +61,6 @@ TRI_json_t const Expression::TrueJson = {TRI_JSON_BOOLEAN, {true}};
 
 TRI_json_t const Expression::FalseJson = {TRI_JSON_BOOLEAN, {false}};
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register warning
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +80,6 @@ static void RegisterWarning(arangodb::aql::Ast const* ast,
 
   ast->query()->registerWarning(code, msg.c_str());
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the expression
@@ -142,7 +139,6 @@ Expression::~Expression() {
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all variables used in the expression
@@ -280,7 +276,6 @@ void Expression::invalidate() {
   // we do not need to invalidate the other expression type
   // expression data will be freed in the destructor
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find a value in an AQL list node
@@ -462,8 +457,8 @@ void Expression::buildExpression() {
 
 AqlValue Expression::executeSimpleExpression(
     AstNode const* node, TRI_document_collection_t const** collection,
-    arangodb::AqlTransaction* trx, AqlItemBlock const* argv,
-    size_t startPos, std::vector<Variable const*> const& vars,
+    arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs, bool doCopy) {
   switch (node->type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS:
@@ -795,8 +790,7 @@ AqlValue Expression::executeSimpleExpressionReference(
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      return AqlValue(
-          new Json(TRI_UNKNOWN_MEM_ZONE, copy));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, copy));
     }
   }
 
@@ -1269,8 +1263,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
 AqlValue Expression::executeSimpleExpressionIterator(
     AstNode const* node, TRI_document_collection_t const** collection,
-    arangodb::AqlTransaction* trx, AqlItemBlock const* argv,
-    size_t startPos, std::vector<Variable const*> const& vars,
+    arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
@@ -1343,5 +1337,3 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
       return AqlValue(new Json(Json::Null));
   }
 }
-
-

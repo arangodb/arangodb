@@ -35,13 +35,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-
 RestSimpleQueryHandler::RestSimpleQueryHandler(
-    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
-                                    arangodb::aql::QueryRegistry*>* pair)
+    HttpRequest* request,
+    std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>* pair)
     : RestCursorHandler(request, pair) {}
-
-
 
 HttpHandler::status_t RestSimpleQueryHandler::execute() {
   // extract the sub-request type
@@ -62,7 +59,6 @@ HttpHandler::status_t RestSimpleQueryHandler::execute() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSA_put_api_simple_all
@@ -159,5 +155,3 @@ void RestSimpleQueryHandler::allDocuments() {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
-
-

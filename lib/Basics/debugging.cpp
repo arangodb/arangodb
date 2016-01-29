@@ -39,7 +39,6 @@
 #endif
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global string containing the currently registered failure points
 /// the string is a comma-separated list of point names
@@ -54,7 +53,6 @@ static char* FailurePoints = nullptr;
 arangodb::basics::ReadWriteLock FailurePointsLock;
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make a delimited value from a string, so we can unambigiously
@@ -71,8 +69,8 @@ static char* MakeValue(char const* value) {
     return nullptr;
   }
 
-  char* delimited = static_cast<char*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, len + 3, false));
+  char* delimited =
+      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, len + 3, false));
 
   if (delimited != nullptr) {
     memcpy(delimited + 1, value, len);
@@ -83,7 +81,6 @@ static char* MakeValue(char const* value) {
 
   return delimited;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
@@ -117,7 +114,7 @@ bool TRI_ShouldFailDebugging(char const* value) {
     return false;
   }
 
-  READ_LOCKER(FailurePointsLock);
+  READ_LOCKER(readLocker, FailurePointsLock);
 
   if (FailurePoints != nullptr) {
     char* checkValue = MakeValue(value);
@@ -142,7 +139,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
     return;
   }
 
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   char* found;
   if (FailurePoints == nullptr) {
@@ -161,7 +158,8 @@ void TRI_AddFailurePointDebugging(char const* value) {
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {
-      copy = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + 1, false));
+      copy =
+          static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + 1, false));
 
       if (copy == nullptr) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
@@ -197,7 +195,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   if (FailurePoints == nullptr) {
     return;
@@ -255,7 +253,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearFailurePointsDebugging() {
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   if (FailurePoints != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, FailurePoints);
@@ -393,5 +391,3 @@ void TRI_PrintBacktrace() {
 #endif
 #endif
 }
-
-

@@ -35,7 +35,6 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-
 class SingletonBlock : public ExecutionBlock {
   void deleteInputVariables() {
     delete _inputRegisterValues;
@@ -82,7 +81,6 @@ class SingletonBlock : public ExecutionBlock {
 
   AqlItemBlock* _inputRegisterValues;
 };
-
 
 class FilterBlock : public ExecutionBlock {
  public:
@@ -135,7 +133,6 @@ class FilterBlock : public ExecutionBlock {
   std::vector<size_t> _chosen;
 };
 
-
 class LimitBlock : public ExecutionBlock {
  public:
   LimitBlock(ExecutionEngine* engine, LimitNode const* ep)
@@ -186,13 +183,10 @@ class LimitBlock : public ExecutionBlock {
   bool const _fullCount;
 };
 
-
 class ReturnBlock : public ExecutionBlock {
  public:
-
   ReturnBlock(ExecutionEngine* engine, ReturnNode const* ep)
       : ExecutionBlock(engine, ep), _returnInheritedResults(false) {}
-
 
   ~ReturnBlock() {}
 
@@ -210,7 +204,6 @@ class ReturnBlock : public ExecutionBlock {
 
   RegisterId returnInheritedResults();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief if set to true, the return block will return the AqlItemBlocks it
@@ -221,7 +214,6 @@ class ReturnBlock : public ExecutionBlock {
 
   bool _returnInheritedResults;
 };
-
 
 class NoResultsBlock : public ExecutionBlock {
  public:
@@ -254,4 +246,3 @@ class NoResultsBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

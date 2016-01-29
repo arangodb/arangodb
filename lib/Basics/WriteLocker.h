@@ -32,7 +32,6 @@
 #include "Basics/logging.h"
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
 ///
@@ -40,31 +39,24 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define WRITE_LOCKER_VAR_A(a) _write_lock_variable##a
-#define WRITE_LOCKER_VAR_B(a) WRITE_LOCKER_VAR_A(a)
-
 #ifdef TRI_SHOW_LOCK_TIME
 
-#define WRITE_LOCKER(b)                                                   \
-  arangodb::basics::WriteLocker<std::remove_reference<decltype(b)>::type> \
-      WRITE_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+#define WRITE_LOCKER(obj, lock) \
+  arangodb::basics::WriteLocker obj(&lock, __FILE__, __LINE__)
 
-#define WRITE_LOCKER_EVENTUAL(b, t)                                       \
-  arangodb::basics::WriteLocker<std::remove_reference<decltype(b)>::type> \
-      WRITE_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
+#define WRITE_LOCKER_EVENTUAL(obj, lock, t) \
+  arangodb::basics::WriteLocker obj(&lock, t, __FILE__, __LINE__)
 
 #else
 
-#define WRITE_LOCKER(b)                                                   \
-  arangodb::basics::WriteLocker<std::remove_reference<decltype(b)>::type> \
-      WRITE_LOCKER_VAR_B(__LINE__)(&b)
+#define WRITE_LOCKER(obj, lock) arangodb::basics::WriteLocker obj(&lock)
 
-#define WRITE_LOCKER_EVENTUAL(b, t)                                       \
-  arangodb::basics::WriteLocker<std::remove_reference<decltype(b)>::type> \
-      WRITE_LOCKER_VAR_B(__LINE__)(&b, t)
+#define WRITE_LOCKER_EVENTUAL(obj, lock, t) \
+  arangodb::basics::WriteLocker obj(&lock, t)
 
 #endif
 
+#define TRY_WRITE_LOCKER(obj, lock) arangodb::basics::TryWriteLocker obj(&lock)
 
 namespace arangodb {
 namespace basics {
@@ -76,12 +68,10 @@ namespace basics {
 /// the lock when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
 class WriteLocker {
-  WriteLocker(WriteLocker const&);
-  WriteLocker& operator=(WriteLocker const&);
+  WriteLocker(WriteLocker const&) = delete;
+  WriteLocker& operator=(WriteLocker const&) = delete;
 
-  
  public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a write-lock
@@ -91,7 +81,7 @@ class WriteLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-  WriteLocker(T* readWriteLock, char const* file, int line)
+  WriteLocker(ReadWriteLock* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
     double t = TRI_microtime();
     _readWriteLock->writeLock();
@@ -100,7 +90,8 @@ class WriteLocker {
 
 #else
 
-  explicit WriteLocker(T* readWriteLock) : _readWriteLock(readWriteLock) {
+  explicit WriteLocker(ReadWriteLock* readWriteLock)
+      : _readWriteLock(readWriteLock) {
     _readWriteLock->writeLock();
   }
 
@@ -113,7 +104,8 @@ class WriteLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-  WriteLocker(T* readWriteLock, uint64_t sleepTime, char const* file, int line)
+  WriteLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime,
+              char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
     double t = TRI_microtime();
     while (!_readWriteLock->tryWriteLock()) {
@@ -128,7 +120,7 @@ class WriteLocker {
 
 #else
 
-  WriteLocker(T* readWriteLock, uint64_t sleepTime)
+  WriteLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime)
       : _readWriteLock(readWriteLock) {
     while (!_readWriteLock->tryWriteLock()) {
 #ifdef _WIN32
@@ -155,13 +147,12 @@ class WriteLocker {
 #endif
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the read-write lock
   //////////////////////////////////////////////////////////////////////////////
 
-  T* _readWriteLock;
+  ReadWriteLock* _readWriteLock;
 
 #ifdef TRI_SHOW_LOCK_TIME
 
@@ -185,9 +176,54 @@ class WriteLocker {
 
 #endif
 };
+
+class TryWriteLocker {
+  TryWriteLocker(TryWriteLocker const&) = delete;
+  TryWriteLocker& operator=(TryWriteLocker const&) = delete;
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tries to aquire a write-lock
+  ///
+  /// The constructor tries to aquire a write lock, the destructors unlocks the
+  /// lock if we acquired it in the constructor
+  ////////////////////////////////////////////////////////////////////////////////
+
+  explicit TryWriteLocker(ReadWriteLock* readWriteLock)
+      : _readWriteLock(readWriteLock) {
+    _isLocked = _readWriteLock->tryWriteLock();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief releases the write-lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  ~TryWriteLocker() {
+    if (_isLocked) {
+      _readWriteLock->unlock();
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we acquired the lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isLocked() const { return _isLocked; }
+
+ private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the read-write lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  ReadWriteLock* _readWriteLock;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we acquired the lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool _isLocked;
+};
 }
 }
 
 #endif
-
-

@@ -42,7 +42,6 @@ arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
   return nullptr;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the index
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +93,6 @@ PathBasedIndex::PathBasedIndex(VPackSlice const& slice, bool allowPartialIndex)
 ////////////////////////////////////////////////////////////////////////////////
 
 PathBasedIndex::~PathBasedIndex() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to insert a document into any index type
@@ -211,7 +209,6 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create the sole index value insert
@@ -450,5 +447,3 @@ PathBasedIndex::fillPidPaths() {
 
   return result;
 }
-
-

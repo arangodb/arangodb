@@ -118,10 +118,6 @@ function ahuacatlMiscFunctionsTestSuite () {
         assertEqual(expected, actual);
 
         expected = [ { collection: cn, key: "foobar" } ];
-        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', @key))"), { cn: cn, key: "foobar" });
-        assertEqual(expected, actual);
-
-        expected = [ { collection: cn, key: "foobar" } ];
         actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', 'foobar'))"), { cn: cn });
         assertEqual(expected, actual);
 
@@ -168,6 +164,124 @@ function ahuacatlMiscFunctionsTestSuite () {
         assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ }")); 
         assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ foo: 'bar' }")); 
       }
+    },
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test is_same_collection function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIsSameCollection : function () {
+      var buildQuery = function (nr, collection, doc) {
+        var q = "IS_SAME_COLLECTION(" + JSON.stringify(collection) + ", " + JSON.stringify(doc) + ")";
+        switch (nr) {
+          case 0:
+            return "RETURN " + q;
+         case 1:
+            return "RETURN NOOPT(" + q + ")";
+          case 2:
+            return "RETURN NOOPT(V8(" + q + "))";
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+
+     for (var i = 0; i < 3; ++i) {
+        assertEqual([ true ], getQueryResults(buildQuery(i, "foo", "foo/bar")));
+        assertEqual([ true ], getQueryResults(buildQuery(i, "foo", "foo/bark")));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "FOO", "foo/bark")));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", "food/barz")));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", "fooe/barz")));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", " foo/barz")));
+
+        assertEqual([ true ], getQueryResults(buildQuery(i, "foo", { _id: "foo/bark" })));
+        assertEqual([ true ], getQueryResults(buildQuery(i, "foobar", { _id: "foobar/bark" })));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "FOOBAR", { _id: "foobar/bark" })));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "foobar2", { _id: "foobar/bark" })));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", { _id: "food/bark" })));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", { _id: "f/bark" })));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", { _id: "f/bark" })));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", { _id: "foobar/bark" })));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", { id: "foobar/bark" })));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", { _key: "foo/bark" })));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", { _key: "foobar/bark" })));
+        
+        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", null)));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", true)));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", false)));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", 3.5)));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", [ ])));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", [ "foo/bar" ])));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test is_same_collection function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIsSameCollectionCollection : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var cx = internal.db._create(cn);
+      cx.save({ "title" : "123", "value" : 456, "_key" : "foobar" });
+      cx.save({ "_key" : "so-this-is-it", "title" : "nada", "value" : 123 });
+
+      var actual;
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN IS_SAME_COLLECTION(${cn}, ${input})`;
+          case 1:
+            return `RETURN NOOPT(IS_SAME_COLLECTION(${cn}, ${input}))`;
+          case 2:
+          return `RETURN NOOPT(V8(IS_SAME_COLLECTION(${cn}, ${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+
+      for (var i = 0; i < 3; ++i) {
+        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', @key))"), { cn: cn, key: "foobar" });
+        assertTrue(actual[0]);
+
+        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', 'foobar'))"), { cn: cn });
+        assertTrue(actual[0]);
+
+        actual = getQueryResults(buildQuery(i, "DOCUMENT([ @key ])[0]"), { key: "UnitTestsAhuacatlFunctions/foobar" });
+        assertTrue(actual[0]);
+
+        actual = getQueryResults(buildQuery(i, "DOCUMENT([ 'UnitTestsAhuacatlFunctions/so-this-is-it' ])[0]"));
+        assertTrue(actual[0]);
+      }
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test is_same_collection function
+////////////////////////////////////////////////////////////////////////////////
+
+    testIsSameCollectionInvalid : function () {
+     assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo'))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', 'bar', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', 'bar', 'baz'))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', null)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', false)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', true)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', 3)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', [ ])"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', { })"); 
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', { }))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

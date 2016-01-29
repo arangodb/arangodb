@@ -33,14 +33,12 @@
 #include "Scheduler/events.h"
 #include "Statistics/StatisticsAgent.h"
 
-
 namespace arangodb {
 namespace rest {
 class Dispatcher;
 class HttpHandlerFactory;
 class HttpRequest;
 class HttpServer;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract class for http handlers
@@ -50,7 +48,6 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   HttpHandler(HttpHandler const&) = delete;
   HttpHandler& operator=(HttpHandler const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new handler
@@ -68,7 +65,6 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
  protected:
   ~HttpHandler();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief status of execution
@@ -88,7 +84,6 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
     status_e _status;
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns true if a handler is executed directly
@@ -138,7 +133,6 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
   virtual void addResponse(HttpHandler*);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the id of the underlying task
@@ -194,7 +188,6 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
   HttpResponse* stealResponse();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a new HTTP response
@@ -202,7 +195,6 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
   void createResponse(HttpResponse::HttpResponseCode);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler id
@@ -244,5 +236,3 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 }
 
 #endif
-
-

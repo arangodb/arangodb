@@ -26,9 +26,6 @@
 
 #include "Basics/logging.h"
 #include "Basics/MutexLocker.h"
-#include "velocypack/Value.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -37,10 +34,12 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/Task.h"
 
+#include <velocypack/Value.h>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-#define SCHEDULER_LOCKER(a) MUTEX_LOCKER(a)
 
 SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
                                  bool defaultLoop)
@@ -121,7 +120,7 @@ bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   // put the register request onto the queue
-  SCHEDULER_LOCKER(_queueLock);
+  MUTEX_LOCKER(mutexLocker, _queueLock);
 
   _queue.push_back(w);
   _hasWork = true;
@@ -152,7 +151,7 @@ void SchedulerThread::unregisterTask(Task* task) {
     Work w(CLEANUP, nullptr, task);
 
     // put the unregister request into the queue
-    SCHEDULER_LOCKER(_queueLock);
+    MUTEX_LOCKER(mutexLocker, _queueLock);
 
     _queue.push_back(w);
     _hasWork = true;
@@ -183,7 +182,7 @@ void SchedulerThread::destroyTask(Task* task) {
     // put the unregister request into the queue
     Work w(DESTROY, nullptr, task);
 
-    SCHEDULER_LOCKER(_queueLock);
+    MUTEX_LOCKER(mutexLocker, _queueLock);
 
     _queue.push_back(w);
     _hasWork = true;
@@ -252,7 +251,8 @@ void SchedulerThread::run() {
       Work w;
 
       {
-        SCHEDULER_LOCKER(_queueLock);  // TODO(fc) XXX goto boost lockfree
+        MUTEX_LOCKER(mutexLocker,
+                     _queueLock);  // TODO(fc) XXX goto boost lockfree
 
         if (!_hasWork.load() || _queue.empty()) {
           break;
@@ -316,7 +316,7 @@ void SchedulerThread::run() {
     Work w;
 
     {
-      SCHEDULER_LOCKER(_queueLock);
+      MUTEX_LOCKER(mutexLocker, _queueLock);
 
       if (_queue.empty()) {
         break;

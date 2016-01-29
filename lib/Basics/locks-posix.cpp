@@ -29,12 +29,12 @@
 
 #define BUSY_LOCK_DELAY (10 * 1000)
 
-
 #ifdef TRI_TRACE_LOCKS
 
 #include <iostream>
 
-static thread_local std::unordered_map<TRI_read_write_lock_t*, int> _threadLocks;
+static thread_local std::unordered_map<TRI_read_write_lock_t*, int>
+    _threadLocks;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief busy wait delay (in microseconds)
@@ -44,12 +44,12 @@ static thread_local std::unordered_map<TRI_read_write_lock_t*, int> _threadLocks
 /// loop until we can acquire the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LockError (TRI_read_write_lock_t* lock, int mode) {
+static void LockError(TRI_read_write_lock_t* lock, int mode) {
   auto it = _threadLocks.find(lock);
   auto m = (*it).second;
-  std::cerr << "ERROR. TRYING TO ACQUIRE " << (mode == 1 ? "READ" : "WRITE") 
-            << " LOCK WHILE ALREADY HOLDING IT IN " << (m == 1 ? "READ" : "WRITE") << " MODE" 
-            << std::endl;
+  std::cerr << "ERROR. TRYING TO ACQUIRE " << (mode == 1 ? "READ" : "WRITE")
+            << " LOCK WHILE ALREADY HOLDING IT IN "
+            << (m == 1 ? "READ" : "WRITE") << " MODE" << std::endl;
   TRI_ASSERT(false);
 }
 
@@ -70,7 +70,6 @@ int TRI_InitMutex(TRI_mutex_t* mutex) {
 int TRI_DestroyMutex(TRI_mutex_t* mutex) {
   return pthread_mutex_destroy(mutex);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks mutex
@@ -115,7 +114,6 @@ void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock) {
   pthread_rwlock_destroy(lock);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,12 +121,12 @@ void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock) {
 bool TRI_TryReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
 #ifdef TRI_TRACE_LOCKS
   if (_threadLocks.find(lock) != _threadLocks.end()) {
-    LockError(lock, 1); 
+    LockError(lock, 1);
   }
-#endif  
+#endif
   int rc = pthread_rwlock_tryrdlock(lock);
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   if (rc == 0) {
     _threadLocks.emplace(lock, 1);
   }
@@ -146,9 +144,9 @@ void TRI_ReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
 
 #ifdef TRI_TRACE_LOCKS
   if (_threadLocks.find(lock) != _threadLocks.end()) {
-    LockError(lock, 1); 
+    LockError(lock, 1);
   }
-#endif  
+#endif
 
 again:
   int rc = pthread_rwlock_rdlock(lock);
@@ -185,7 +183,7 @@ again:
 
 #ifdef TRI_TRACE_LOCKS
   _threadLocks.emplace(lock, 1);
-#endif  
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,9 +201,9 @@ void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
                        strerror(rc));
   }
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   _threadLocks.erase(lock);
-#endif  
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,19 +211,19 @@ void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TryWriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   if (_threadLocks.find(lock) != _threadLocks.end()) {
-    LockError(lock, 2); 
+    LockError(lock, 2);
   }
 #endif
 
   int rc = pthread_rwlock_trywrlock(lock);
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   if (rc == 0) {
     _threadLocks.emplace(lock, 2);
   }
-#endif  
+#endif
 
   return (rc == 0);
 }
@@ -235,9 +233,9 @@ bool TRI_TryWriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   if (_threadLocks.find(lock) != _threadLocks.end()) {
-    LockError(lock, 2); 
+    LockError(lock, 2);
   }
 #endif
 
@@ -254,7 +252,7 @@ void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
                        strerror(rc));
   }
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   _threadLocks.emplace(lock, 2);
 #endif
 }
@@ -274,9 +272,9 @@ void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
                        strerror(rc));
   }
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   _threadLocks.erase(lock);
-#endif  
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -306,7 +304,6 @@ void TRI_DestroyCondition(TRI_condition_t* cond) {
   pthread_mutex_destroy(cond->_mutex);
   TRI_Free(TRI_CORE_MEM_ZONE, cond->_mutex);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signals a condition variable
@@ -429,5 +426,3 @@ void TRI_UnlockCondition(TRI_condition_t* cond) {
 }
 
 #endif
-
-

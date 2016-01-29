@@ -80,7 +80,6 @@ JsonCursor::~JsonCursor() {
   TRI_ReleaseVocBase(_vocbase);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the cursor contains more data
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +190,6 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the internals
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,11 +200,9 @@ void JsonCursor::freeJson() {
   _isDeleted = true;
 }
 
-
-
 ExportCursor::ExportCursor(TRI_vocbase_t* vocbase, CursorId id,
-                           arangodb::CollectionExport* ex,
-                           size_t batchSize, double ttl, bool hasCount)
+                           arangodb::CollectionExport* ex, size_t batchSize,
+                           double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
       _vocbase(vocbase),
       _ex(ex),
@@ -218,7 +214,6 @@ ExportCursor::~ExportCursor() {
   delete _ex;
   TRI_ReleaseVocBase(_vocbase);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the cursor contains more data
@@ -404,5 +399,3 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
     this->deleted();
   }
 }
-
-

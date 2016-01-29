@@ -252,4 +252,3 @@ int flushWalOnAllDBServers(bool, bool);
 }  // namespace arangodb
 
 #endif
-

@@ -96,7 +96,6 @@ class VelocyPackHelper {
   static std::string getStringValue(VPackSlice const&, char const*,
                                     std::string const&);
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief convert a Object sub value into a uint64
   //////////////////////////////////////////////////////////////////////////////
@@ -131,4 +130,3 @@ class VelocyPackHelper {
 }
 
 #endif
-

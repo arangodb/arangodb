@@ -151,7 +151,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief lock for currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _queryLock;
+  Mutex _queryLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently running query
@@ -168,4 +168,3 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-

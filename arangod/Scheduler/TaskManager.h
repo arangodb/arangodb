@@ -45,9 +45,7 @@ class TaskManager {
   TaskManager& operator=(TaskManager const&);
 
  public:
-
   TaskManager() {}
-
 
   virtual ~TaskManager() {}
 
@@ -78,4 +76,3 @@ class TaskManager {
 }
 
 #endif
-

@@ -47,10 +47,9 @@ ConnectionOptions ConnectionManager::_globalConnectionOptions = {
 
 static ConnectionManager* Instance = nullptr;
 
-
 ConnectionManager::~ConnectionManager() {
   for (size_t i = 0; i < CONNECTION_MANAGER_BUCKETS; ++i) {
-    WRITE_LOCKER(_connectionsBuckets[i]._lock);
+    WRITE_LOCKER(writeLocker, _connectionsBuckets[i]._lock);
 
     for (auto& it : _connectionsBuckets[i]._connections) {
       delete it.second;
@@ -84,7 +83,7 @@ ConnectionManager::SingleServerConnection::~SingleServerConnection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 ConnectionManager::ServerConnections::~ServerConnections() {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   for (auto& it : _connections) {
     delete it;
@@ -100,7 +99,7 @@ ConnectionManager::ServerConnections::~ServerConnections() {
 
 void ConnectionManager::ServerConnections::addConnection(
     ConnectionManager::SingleServerConnection* connection) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   _connections.emplace_back(connection);
 }
@@ -114,7 +113,7 @@ ConnectionManager::SingleServerConnection*
 ConnectionManager::ServerConnections::popConnection() {
   // get an unused connection
   {
-    WRITE_LOCKER(_lock);
+    WRITE_LOCKER(writeLocker, _lock);
 
     if (!_unused.empty()) {
       auto connection = _unused.back();
@@ -135,7 +134,7 @@ void ConnectionManager::ServerConnections::pushConnection(
     ConnectionManager::SingleServerConnection* connection) {
   connection->_lastUsed = time(0);
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
   _unused.emplace_back(connection);
 }
 
@@ -145,7 +144,7 @@ void ConnectionManager::ServerConnections::pushConnection(
 
 void ConnectionManager::ServerConnections::removeConnection(
     ConnectionManager::SingleServerConnection* connection) {
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   for (auto it = _connections.begin(); it != _connections.end(); ++it) {
     if ((*it) == connection) {
@@ -166,7 +165,7 @@ void ConnectionManager::ServerConnections::closeUnusedConnections(
 
   std::list<ConnectionManager::SingleServerConnection*>::iterator current;
 
-  WRITE_LOCKER(_lock);
+  WRITE_LOCKER(writeLocker, _lock);
 
   for (current = _unused.begin(); current != _unused.end(); /* no hoisting */) {
     SingleServerConnection* connection = (*current);
@@ -204,7 +203,7 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection(
 
   ServerConnections* s = nullptr;
   {
-    READ_LOCKER(_connectionsBuckets[slot]._lock);
+    READ_LOCKER(readLocker, _connectionsBuckets[slot]._lock);
 
     auto it = _connectionsBuckets[slot]._connections.find(endpoint);
 
@@ -223,7 +222,7 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection(
     // note that it is possible for a concurrent thread to have created
     // a list for the same endpoint. this case is handled below
 
-    WRITE_LOCKER(_connectionsBuckets[slot]._lock);
+    WRITE_LOCKER(writeLocker, _connectionsBuckets[slot]._lock);
 
     auto it =
         _connectionsBuckets[slot]._connections.emplace(endpoint, sc.get());
@@ -337,7 +336,7 @@ void ConnectionManager::closeUnusedConnections(double limit) {
   std::vector<ConnectionManager::ServerConnections*> copy;
   {
     for (size_t i = 0; i < CONNECTION_MANAGER_BUCKETS; ++i) {
-      READ_LOCKER(_connectionsBuckets[i]._lock);
+      READ_LOCKER(readLocker, _connectionsBuckets[i]._lock);
 
       for (auto& it : _connectionsBuckets[i]._connections) {
         copy.emplace_back(it.second);
@@ -351,5 +350,3 @@ void ConnectionManager::closeUnusedConnections(double limit) {
     it->closeUnusedConnections(limit);
   }
 }
-
-

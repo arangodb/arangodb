@@ -66,7 +66,7 @@ Task::~Task() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> Task::toVelocyPack() const {
-  try { 
+  try {
     auto builder = std::make_shared<VPackBuilder>();
     {
       VPackObjectBuilder b(builder.get());
@@ -88,8 +88,6 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
   builder.add("name", VPackValue(name()));
   getDescription(builder);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is user-defined

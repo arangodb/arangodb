@@ -30,7 +30,6 @@
 
 #include <v8.h>
 
-
 namespace arangodb {
 namespace httpclient {
 class GeneralClientConnection;
@@ -42,7 +41,6 @@ namespace rest {
 class Endpoint;
 }
 }
-
 
 namespace arangodb {
 namespace v8client {
@@ -56,17 +54,13 @@ class V8ClientConnection {
   V8ClientConnection(V8ClientConnection const&);
   V8ClientConnection& operator=(V8ClientConnection const&);
 
-  
  public:
-
   V8ClientConnection(arangodb::rest::Endpoint*, std::string, std::string const&,
                      std::string const&, double, double, size_t, uint32_t,
                      bool);
 
-
   ~V8ClientConnection();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request location rewriter (injects database name)
@@ -218,8 +212,7 @@ class V8ClientConnection {
 
   v8::Handle<v8::Value> postData(
       v8::Isolate* isolate, std::string const& location, char const* body,
-      size_t bodySize,
-      std::map<std::string, std::string> const& headerFields);
+      size_t bodySize, std::map<std::string, std::string> const& headerFields);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief do a "PUT" request
@@ -253,7 +246,6 @@ class V8ClientConnection {
       std::string const& body,
       std::map<std::string, std::string> const& headerFields, bool raw);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief executes a request
@@ -288,7 +280,6 @@ class V8ClientConnection {
       std::string const& location, std::string const& body,
       std::map<std::string, std::string> const& headerFields);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connection
@@ -342,5 +333,3 @@ class V8ClientConnection {
 }
 
 #endif
-
-

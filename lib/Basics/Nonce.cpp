@@ -32,11 +32,8 @@
 #include "Basics/StringUtils.h"
 
 using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-
-// -----------------------------------------------------------------------------
-// statistic nonce buffer
-// -----------------------------------------------------------------------------
 
 namespace {
 Mutex MutexNonce;
@@ -45,47 +42,20 @@ size_t SizeNonces = 16777216;
 
 uint32_t* TimestampNonces = 0;
 
-uint32_t StatisticsNonces[32][5] = {{0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0}};
+uint32_t StatisticsNonces[32][5] = {
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
 }
 
 namespace arangodb {
 namespace basics {
 namespace Nonce {
-
-// -----------------------------------------------------------------------------
-// static functions
-// -----------------------------------------------------------------------------
 
 void create(size_t size) {
   if (SizeNonces < 64) {
@@ -151,7 +121,7 @@ bool checkAndMark(std::string const& nonce) {
 }
 
 bool checkAndMark(uint32_t timestamp, uint64_t random) {
-  MUTEX_LOCKER(MutexNonce);
+  MUTEX_LOCKER(mutexLocker, MutexNonce);
 
   if (TimestampNonces == 0) {
     LOG_TRACE("setting nonce hash size to %d", (int)SizeNonces);
@@ -220,7 +190,7 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
 }
 
 vector<Statistics> statistics() {
-  MUTEX_LOCKER(MutexNonce);
+  MUTEX_LOCKER(mutexLocker, MutexNonce);
 
   int const N = 4;
   std::vector<Statistics> result;
@@ -260,5 +230,3 @@ vector<Statistics> statistics() {
 }
 }
 }
-
-

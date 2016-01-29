@@ -36,7 +36,6 @@ using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,9 +60,6 @@ class DispatcherReporterTask : public PeriodicTask {
 };
 }
 
-
-
-
 ApplicationDispatcher::ApplicationDispatcher()
     : ApplicationFeature("dispatcher"),
       _applicationScheduler(nullptr),
@@ -72,9 +68,7 @@ ApplicationDispatcher::ApplicationDispatcher()
       _nrStandardThreads(0),
       _nrAQLThreads(0) {}
 
-
 ApplicationDispatcher::~ApplicationDispatcher() { delete _dispatcher; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the scheduler
@@ -160,13 +154,12 @@ size_t ApplicationDispatcher::numberOfThreads() {
 /// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::setProcessorAffinity(std::vector<size_t> const& cores) {
+void ApplicationDispatcher::setProcessorAffinity(
+    std::vector<size_t> const& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
 #endif
 }
-
-
 
 void ApplicationDispatcher::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
@@ -174,7 +167,6 @@ void ApplicationDispatcher::setupOptions(
                                        &_reportInterval,
                                        "dispatcher report interval");
 }
-
 
 bool ApplicationDispatcher::prepare() {
   if (_disabled) {
@@ -186,7 +178,6 @@ bool ApplicationDispatcher::prepare() {
   return true;
 }
 
-
 bool ApplicationDispatcher::start() {
   if (_disabled) {
     return true;
@@ -197,9 +188,7 @@ bool ApplicationDispatcher::start() {
   return true;
 }
 
-
 bool ApplicationDispatcher::open() { return true; }
-
 
 void ApplicationDispatcher::close() {
   if (_disabled) {
@@ -210,7 +199,6 @@ void ApplicationDispatcher::close() {
     _dispatcher->beginShutdown();
   }
 }
-
 
 void ApplicationDispatcher::stop() {
   if (_disabled) {
@@ -223,7 +211,6 @@ void ApplicationDispatcher::stop() {
     _dispatcher = nullptr;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the dispatcher
@@ -254,5 +241,3 @@ void ApplicationDispatcher::buildDispatcherReporter() {
     _applicationScheduler->scheduler()->registerTask(dispatcherReporterTask);
   }
 }
-
-

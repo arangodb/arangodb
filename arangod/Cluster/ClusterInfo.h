@@ -795,9 +795,8 @@ class ClusterInfo {
   /// @brief actually clears a list of current databases
   //////////////////////////////////////////////////////////////////////////////
 
-  void clearCurrentDatabases(
-      std::unordered_map<DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>&
-          databases);
+  void clearCurrentDatabases(std::unordered_map<
+      DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>& databases);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
@@ -887,7 +886,7 @@ class ClusterInfo {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    arangodb::basics::Mutex mutex;
+    arangodb::Mutex mutex;
     std::atomic<uint64_t> version;
     arangodb::basics::ReadWriteLock lock;
 
@@ -963,7 +962,7 @@ class ClusterInfo {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _idLock;
+  arangodb::Mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the sole instance
@@ -993,4 +992,3 @@ class ClusterInfo {
 }  // end namespace arangodb
 
 #endif
-
