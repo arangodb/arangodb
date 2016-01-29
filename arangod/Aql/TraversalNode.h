@@ -92,7 +92,7 @@ class TraversalNode : public ExecutionNode {
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 std::vector<std::string> const& edgeColls,
                 Variable const* inVariable, std::string const& vertexId,
-                TRI_edge_direction_e direction, uint64_t minDepth,
+                std::vector<TRI_edge_direction_e> directions, uint64_t minDepth,
                 uint64_t maxDepth);
 
  public:
@@ -354,10 +354,10 @@ class TraversalNode : public ExecutionNode {
   uint64_t _maxDepth;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief The direction edges are followed
+  /// @brief The directions edges are followed
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_edge_direction_e _direction;
+  std::vector<TRI_edge_direction_e> _directions;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the edge collection cid

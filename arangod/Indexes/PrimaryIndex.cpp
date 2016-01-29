@@ -422,11 +422,6 @@ IndexIterator* PrimaryIndex::createIterator(
     }
   }
 
-  if (keys.empty()) {
-    // nothing to do: still new to return an empty iterator
-    return new PrimaryIndexIterator(trx, this, keys);
-  }
-
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

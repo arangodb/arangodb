@@ -71,6 +71,7 @@
   * [Limitations](Transactions/Limitations.md)
 * [AQL](Aql/README.md)
   * [How to invoke AQL](Aql/Invoke.md)
+    * [AQL with Arangosh](Aql/AqlWithArangosh.md)
   * [Data modification queries](Aql/DataModification.md)
   * [AQL Fundamentals](Aql/Fundamentals.md)
     * [AQL Syntax](Aql/Syntax.md)
