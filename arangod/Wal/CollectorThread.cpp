@@ -958,7 +958,7 @@ int CollectorThread::collect(Logfile* logfile) {
       OperationsType const& ops = state.structuralOperations[cid];
 
       sortedOperations.insert(sortedOperations.begin(), ops.begin(), ops.end());
-      TRI_ASSERT_EXPENSIVE(sortedOperations.size() == ops.size());
+      TRI_ASSERT(sortedOperations.size() == ops.size());
     }
 
     // insert document operations - those are sorted by key, not by tick

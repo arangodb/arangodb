@@ -96,7 +96,6 @@ ApplicationServer::ApplicationServer(std::string const& name,
       _logThreadId(false),
       _logLineNumber(false),
       _logLocalTime(false),
-      _logSourceFilter(),
       _logContentFilter(),
 #ifdef _WIN32
       _randomGenerator(5),
@@ -183,10 +182,6 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
   TRI_SetPrefixLogging(_logPrefix.c_str());
   TRI_SetThreadIdentifierLogging(_logThreadId);
 
-  for (auto it = _logSourceFilter.begin(); it != _logSourceFilter.end(); ++it) {
-    TRI_SetFileToLog(it->c_str());
-  }
-
   char const* contentFilter = nullptr;
 
   if (_options.has("log.content-filter")) {
@@ -218,10 +213,7 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
     // the user specified a requests log file to use but it could not be
     // created. bail out
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT(
-          "failed to create requests logfile '%s'. Please check the path and "
-          "permissions.",
-          filename.c_str());
+      LOG(FATAL) << "failed to create requests logfile '" << filename.c_str() << "'. Please check the path and permissions."; FATAL_ERROR_EXIT();
     }
   }
 
@@ -258,10 +250,7 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
     // the user specified a log file to use but it could not be created. bail
     // out
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT(
-          "failed to create logfile '%s'. Please check the path and "
-          "permissions.",
-          filename.c_str());
+      LOG(FATAL) << "failed to create logfile '" << filename.c_str() << "'. Please check the path and permissions."; FATAL_ERROR_EXIT();
     }
 
     if (daemon && _logFile != "+" && _logFile != "-") {
@@ -435,7 +424,7 @@ bool ApplicationServer::parse(
       default: { break; }
     }
   } catch (...) {
-    LOG_FATAL_AND_EXIT("cannot select random generator, giving up");
+    LOG(FATAL) << "cannot select random generator, giving up"; FATAL_ERROR_EXIT();
   }
 
   return true;
@@ -462,8 +451,7 @@ void ApplicationServer::prepare() {
     bool ok = feature->prepare();
 
     if (!ok) {
-      LOG_FATAL_AND_EXIT("failed to prepare server feature '%s'",
-                         feature->getName().c_str());
+      LOG(FATAL) << "failed to prepare server feature '" << feature->getName().c_str() << "'"; FATAL_ERROR_EXIT();
     }
 
     LOG(TRACE) << "prepared server feature '" << feature->getName().c_str() << "'";
@@ -486,8 +474,7 @@ void ApplicationServer::prepare2() {
     bool ok = feature->prepare2();
 
     if (!ok) {
-      LOG_FATAL_AND_EXIT("failed to prepare(2) server feature '%s'",
-                         feature->getName().c_str());
+      LOG(FATAL) << "failed to prepare(2) server feature '" << feature->getName().c_str() << "'"; FATAL_ERROR_EXIT();
     }
 
     LOG(TRACE) << "prepared(2) server feature '" << feature->getName().c_str() << "'";
@@ -513,8 +500,7 @@ void ApplicationServer::start() {
     bool ok = feature->start();
 
     if (!ok) {
-      LOG_FATAL_AND_EXIT("failed to start server feature '%s'",
-                         feature->getName().c_str());
+      LOG(FATAL) << "failed to start server feature '" << feature->getName().c_str() << "'"; FATAL_ERROR_EXIT();
     }
 
     LOG(DEBUG) << "started server feature '" << feature->getName().c_str() << "'";
@@ -531,8 +517,7 @@ void ApplicationServer::start() {
     bool ok = feature->open();
 
     if (!ok) {
-      LOG_FATAL_AND_EXIT("failed to open server feature '%s'",
-                         feature->getName().c_str());
+      LOG(FATAL) << "failed to open server feature '" << feature->getName().c_str() << "'"; FATAL_ERROR_EXIT();
     }
 
     LOG(TRACE) << "opened server feature '" << feature->getName().c_str() << "'";
@@ -616,7 +601,7 @@ void ApplicationServer::extractPrivileges() {
       group* g = getgrgid(gidNumber);
 
       if (g == 0) {
-        LOG_FATAL_AND_EXIT("unknown numeric gid '%s'", _gid.c_str());
+        LOG(FATAL) << "unknown numeric gid '" << _gid.c_str() << "'"; FATAL_ERROR_EXIT();
       }
 #endif
     } else {
@@ -627,12 +612,10 @@ void ApplicationServer::extractPrivileges() {
       if (g != 0) {
         gidNumber = g->gr_gid;
       } else {
-        LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid",
-                           _gid.c_str());
+        LOG(FATAL) << "cannot convert groupname '" << _gid.c_str() << "' to numeric gid"; FATAL_ERROR_EXIT();
       }
 #else
-      LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid",
-                         _gid.c_str());
+      LOG(FATAL) << "cannot convert groupname '" << _gid.c_str() << "' to numeric gid"; FATAL_ERROR_EXIT();
 #endif
     }
 
@@ -653,7 +636,7 @@ void ApplicationServer::extractPrivileges() {
       passwd* p = getpwuid(uidNumber);
 
       if (p == 0) {
-        LOG_FATAL_AND_EXIT("unknown numeric uid '%s'", _uid.c_str());
+        LOG(FATAL) << "unknown numeric uid '" << _uid.c_str() << "'"; FATAL_ERROR_EXIT();
       }
 #endif
     } else {
@@ -664,12 +647,10 @@ void ApplicationServer::extractPrivileges() {
       if (p != 0) {
         uidNumber = p->pw_uid;
       } else {
-        LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid",
-                           _uid.c_str());
+        LOG(FATAL) << "cannot convert username '" << _uid.c_str() << "' to numeric uid"; FATAL_ERROR_EXIT();
       }
 #else
-      LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid",
-                         _uid.c_str());
+      LOG(FATAL) << "cannot convert username '" << _uid.c_str() << "' to numeric uid"; FATAL_ERROR_EXIT();
 #endif
     }
 
@@ -707,8 +688,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
     int res = setgid(_numericGid);
 
     if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set gid %d: %s", (int)_numericGid,
-                         strerror(errno));
+      LOG(FATAL) << "cannot set gid " << _numericGid << ": " << strerror(errno); FATAL_ERROR_EXIT();
     }
   }
 
@@ -723,8 +703,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
     int res = setuid(_numericUid);
 
     if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set uid '%s': %s", _uid.c_str(),
-                         strerror(errno));
+      LOG(FATAL) << "cannot set uid '" << _uid.c_str() << "': " << strerror(errno); FATAL_ERROR_EXIT();
     }
   }
 
@@ -765,8 +744,6 @@ void ApplicationServer::setupOptions(
   options["Logging Options:help-log"]("log.application", &_logApplicationName,
                                       "application name for syslog")(
       "log.facility", &_logFacility, "facility name for syslog (OS dependent)")(
-      "log.source-filter", &_logSourceFilter,
-      "only debug and trace messages emitted by specific C source file")(
       "log.content-filter", &_logContentFilter,
       "only log message containing the specified string (case-sensitive)")(
       "log.line-number", "always log file and line number")(

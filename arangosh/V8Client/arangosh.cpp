@@ -2292,8 +2292,7 @@ static int WarmupEnvironment(v8::Isolate* isolate,
 
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "no 'javascript.startup-directory' has been supplied, giving up");
+    LOG(FATAL) << "no 'javascript.startup-directory' has been supplied, giving up"; FATAL_ERROR_EXIT();
   }
 
   LOG(DEBUG) << "using JavaScript startup files at '" << StartupPath << "'";
@@ -2333,12 +2332,10 @@ static int WarmupEnvironment(v8::Isolate* isolate,
         LOG(TRACE) << "loaded JavaScript file '" << files[i] << "'";
         break;
       case JSLoader::eFailLoad:
-        LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'",
-                           files[i].c_str());
+        LOG(FATAL) << "cannot load JavaScript file '" << files[i].c_str() << "'"; FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
-        LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'",
-                           files[i].c_str());
+        LOG(FATAL) << "error during execution of JavaScript file '" << files[i].c_str() << "'"; FATAL_ERROR_EXIT();
         break;
     }
   }

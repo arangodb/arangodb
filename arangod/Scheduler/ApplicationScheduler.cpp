@@ -437,7 +437,7 @@ bool ApplicationScheduler::start() {
   bool ok = _scheduler->start(nullptr);
 
   if (!ok) {
-    LOG_FATAL_AND_EXIT("the scheduler cannot be started");
+    LOG(FATAL) << "the scheduler cannot be started"; FATAL_ERROR_EXIT();
   }
 
   while (!_scheduler->isStarted()) {
@@ -498,7 +498,7 @@ void ApplicationScheduler::stop() {
 
 void ApplicationScheduler::buildScheduler() {
   if (_scheduler != nullptr) {
-    LOG_FATAL_AND_EXIT("a scheduler has already been created");
+    LOG(FATAL) << "a scheduler has already been created"; FATAL_ERROR_EXIT();
   }
 
   _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
@@ -510,8 +510,7 @@ void ApplicationScheduler::buildScheduler() {
 
 void ApplicationScheduler::buildSchedulerReporter() {
   if (_scheduler == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no scheduler is known, cannot create control-c handler");
+    LOG(FATAL) << "no scheduler is known, cannot create control-c handler"; FATAL_ERROR_EXIT();
   }
 
   if (0.0 < _reportInterval) {
@@ -531,8 +530,7 @@ void ApplicationScheduler::buildSchedulerReporter() {
 
 void ApplicationScheduler::buildControlCHandler() {
   if (_scheduler == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no scheduler is known, cannot create control-c handler");
+    LOG(FATAL) << "no scheduler is known, cannot create control-c handler"; FATAL_ERROR_EXIT();
   }
 
   if (!_disableControlCHandler) {
@@ -577,8 +575,7 @@ void ApplicationScheduler::adjustFileDescriptors() {
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
     if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s",
-                         strerror(errno));
+      LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
     }
 
     LOG(DEBUG) << "file-descriptors (nofiles) hard limit is " << rlim.rlim_max << ", soft limit is " << rlim.rlim_cur;
@@ -594,8 +591,7 @@ void ApplicationScheduler::adjustFileDescriptors() {
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOG_FATAL_AND_EXIT("cannot raise the file descriptor limit to %d: %s",
-                           (int)_descriptorMinimum, strerror(errno));
+        LOG(FATAL) << "cannot raise the file descriptor limit to " << _descriptorMinimum << ": " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
       changed = true;
@@ -607,8 +603,7 @@ void ApplicationScheduler::adjustFileDescriptors() {
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOG_FATAL_AND_EXIT("cannot raise the file descriptor limit to %d: %s",
-                           (int)_descriptorMinimum, strerror(errno));
+        LOG(FATAL) << "cannot raise the file descriptor limit to " << _descriptorMinimum << ": " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
       changed = true;
@@ -618,8 +613,7 @@ void ApplicationScheduler::adjustFileDescriptors() {
       res = getrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res != 0) {
-        LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s",
-                           strerror(errno));
+        LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
       LOG(INFO) << "file-descriptors (nofiles) new hard limit is " << rlim.rlim_max << ", new soft limit is " << rlim.rlim_cur;
@@ -628,10 +622,7 @@ void ApplicationScheduler::adjustFileDescriptors() {
     // the select backend has more restrictions
     if (_backend == 1) {
       if (FD_SETSIZE < _descriptorMinimum) {
-        LOG_FATAL_AND_EXIT(
-            "i/o backend 'select' has been selected, which supports only %d "
-            "descriptors, but %d are required",
-            (int)FD_SETSIZE, (int)_descriptorMinimum);
+        LOG(FATAL) << "i/o backend 'select' has been selected, which supports only " << FD_SETSIZE << " descriptors, but " << _descriptorMinimum << " are required"; FATAL_ERROR_EXIT();
       }
     }
   }

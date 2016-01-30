@@ -341,7 +341,7 @@ class Logfile {
   //////////////////////////////////////////////////////////////////////////////
 
   inline void release() {
-    TRI_ASSERT_EXPENSIVE(_users > 0);
+    TRI_ASSERT(_users > 0);
     --_users;
   }
 

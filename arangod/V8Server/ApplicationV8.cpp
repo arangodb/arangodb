@@ -740,18 +740,12 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
                   TRI_V8_ASCII_STRING("UPGRADE_STARTED"))) {
             localContext->Exit();
             if (perform) {
-              LOG_FATAL_AND_EXIT(
-                  "Database '%s' upgrade failed. Please inspect the logs from "
-                  "the upgrade procedure",
-                  vocbase->_name);
+              LOG(FATAL) << "Database '" << vocbase->_name << "' upgrade failed. Please inspect the logs from the upgrade procedure"; FATAL_ERROR_EXIT();
             } else {
-              LOG_FATAL_AND_EXIT(
-                  "Database '%s' needs upgrade. Please start the server with "
-                  "the --upgrade option",
-                  vocbase->_name);
+              LOG(FATAL) << "Database '" << vocbase->_name << "' needs upgrade. Please start the server with the --upgrade option"; FATAL_ERROR_EXIT();
             }
           } else {
-            LOG_FATAL_AND_EXIT("JavaScript error during server start");
+            LOG(FATAL) << "JavaScript error during server start"; FATAL_ERROR_EXIT();
           }
 
           LOG(DEBUG) << "database '" << vocbase->_name << "' init/upgrade done";
@@ -840,10 +834,7 @@ void ApplicationV8::versionCheck() {
           TRI_CheckDatabaseVersion(vocbase, &_startupLoader, localContext);
 
       if (status < 0) {
-        LOG_FATAL_AND_EXIT(
-            "Database version check failed for '%s'. Please inspect the logs "
-            "from any errors",
-            vocbase->_name);
+        LOG(FATAL) << "Database version check failed for '" << vocbase->_name << "'. Please inspect the logs from any errors"; FATAL_ERROR_EXIT();
       } else if (status == 3) {
         result = 3;
       } else if (status == 2 && result == 1) {
@@ -930,8 +921,7 @@ void ApplicationV8::setupOptions(
 bool ApplicationV8::prepare() {
   // check the startup path
   if (_startupPath.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "no 'javascript.startup-directory' has been supplied, giving up");
+    LOG(FATAL) << "no 'javascript.startup-directory' has been supplied, giving up"; FATAL_ERROR_EXIT();
   }
 
   // remove trailing / from path
@@ -956,8 +946,7 @@ bool ApplicationV8::prepare() {
 
   // check whether app-path was specified
   if (_appPath.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "no value has been specified for --javascript.app-path.");
+    LOG(FATAL) << "no value has been specified for --javascript.app-path."; FATAL_ERROR_EXIT();
   }
 
   _startupLoader.setDirectory(_startupPath);
@@ -1186,7 +1175,7 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
   V8Context* context = _contexts[i] = new V8Context();
 
   if (context == nullptr) {
-    LOG_FATAL_AND_EXIT("cannot initialize V8 context #%d", (int)i);
+    LOG(FATAL) << "cannot initialize V8 context #" << i; FATAL_ERROR_EXIT();
   }
 
   TRI_ASSERT(context->_locker == nullptr);
@@ -1215,7 +1204,7 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     context->_context.Reset(context->isolate, localContext);
 
     if (context->_context.IsEmpty()) {
-      LOG_FATAL_AND_EXIT("cannot initialize V8 engine");
+      LOG(FATAL) << "cannot initialize V8 engine"; FATAL_ERROR_EXIT();
     }
 
     v8::Handle<v8::Object> globalObj = localContext->Global();
@@ -1295,12 +1284,10 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
           LOG(TRACE) << "loaded JavaScript file '" << files[j].c_str() << "'";
           break;
         case JSLoader::eFailLoad:
-          LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'",
-                             files[j].c_str());
+          LOG(FATAL) << "cannot load JavaScript file '" << files[j].c_str() << "'"; FATAL_ERROR_EXIT();
           break;
         case JSLoader::eFailExecute:
-          LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'",
-                             files[j].c_str());
+          LOG(FATAL) << "error during execution of JavaScript file '" << files[j].c_str() << "'"; FATAL_ERROR_EXIT();
           break;
       }
     }
@@ -1365,13 +1352,10 @@ void ApplicationV8::prepareV8Server(size_t i, std::string const& startupFile) {
         LOG(TRACE) << "loaded JavaScript file '" << startupFile.c_str() << "'";
         break;
       case JSLoader::eFailLoad:
-        LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'",
-                           startupFile.c_str());
+        LOG(FATAL) << "cannot load JavaScript utilities from file '" << startupFile.c_str() << "'"; FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
-        LOG_FATAL_AND_EXIT(
-            "error during execution of JavaScript utilities from file '%s'",
-            startupFile.c_str());
+        LOG(FATAL) << "error during execution of JavaScript utilities from file '" << startupFile.c_str() << "'"; FATAL_ERROR_EXIT();
         break;
     }
 

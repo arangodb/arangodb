@@ -1083,8 +1083,9 @@ class AssocMulti {
 
     LOG(TRACE) << "resizing index " << cb.c_str() << ", target size: " << size;
 
-    LOG_ACTION("index-resize %s, target size: %llu", cb.c_str(),
-               (unsigned long long)size);
+    LOG_TOPIC(INFO, Logger::PERFORMANCE) << 
+        "index-resize " << cb << ", target size: " << size;
+
     double start = TRI_microtime();
 
     EntryType* oldTable = b._table;
@@ -1159,8 +1160,7 @@ class AssocMulti {
 
     LOG(TRACE) << "resizing index " << cb.c_str() << " done";
 
-    LOG_TIMER((TRI_microtime() - start), "index-resize, %s, target size: %llu",
-              cb.c_str(), (unsigned long long)size);
+    LOG_TOPIC(INFO, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << size;
   }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH

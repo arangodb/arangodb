@@ -77,7 +77,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
     m = _queries.emplace(vocbase->_name,
                          std::unordered_map<QueryId, QueryInfo*>()).first;
 
-    TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name) != _queries.end());
+    TRI_ASSERT(_queries.find(vocbase->_name) != _queries.end());
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -91,7 +91,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
     m->second.emplace(id, p.get());
     p.release();
 
-    TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name)->second.find(id) !=
+    TRI_ASSERT(_queries.find(vocbase->_name)->second.find(id) !=
                          _queries.find(vocbase->_name)->second.end());
 
     // If we have set _makeNolockHeaders, we need to unset it:

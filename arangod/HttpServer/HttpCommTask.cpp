@@ -654,13 +654,15 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   // disable the following statement to prevent excessive logging of incoming
   // requests
-  LOG_USAGE(
-      ",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
-      _connectionInfo.clientAddress.c_str(),
-      HttpRequest::translateMethod(_requestType).c_str(),
-      HttpRequest::translateVersion(_httpVersion).c_str(),
-      (int)response->responseCode(), (unsigned long long)_originalBodyLength,
-      (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
+  LOG_TOPIC(INFO, Logger::REQUESTS) 
+      << "\"http-request\",\"" << _connectionInfo.clientAddress 
+      << "\",\"" << HttpRequest::translateMethod(_requestType) << "\",\""
+      << HttpRequest::translateVersion(_httpVersion) << "\"," 
+      << static_cast<int>(response->responseCode()) << "," 
+      << _originalBodyLength << "," 
+      << responseBodyLength << ",\"" 
+      << _fullUrl << "\","
+      << Logger::DURATION(totalTime, 6);
 
   // start output
   fillWriteBuffer();

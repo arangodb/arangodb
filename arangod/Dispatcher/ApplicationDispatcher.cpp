@@ -92,8 +92,7 @@ Dispatcher* ApplicationDispatcher::dispatcher() const { return _dispatcher; }
 void ApplicationDispatcher::buildStandardQueue(size_t nrThreads,
                                                size_t maxSize) {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no dispatcher is known, cannot create dispatcher queue");
+    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher queue"; FATAL_ERROR_EXIT();
   }
 
   LOG(TRACE) << "setting up a standard queue with " << nrThreads << " threads";
@@ -110,8 +109,7 @@ void ApplicationDispatcher::buildStandardQueue(size_t nrThreads,
 
 void ApplicationDispatcher::buildAQLQueue(size_t nrThreads, size_t maxSize) {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no dispatcher is known, cannot create dispatcher queue");
+    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher queue"; FATAL_ERROR_EXIT();
   }
 
   LOG(TRACE) << "setting up the AQL standard queue with " << nrThreads << " threads";
@@ -129,8 +127,7 @@ void ApplicationDispatcher::buildAQLQueue(size_t nrThreads, size_t maxSize) {
 void ApplicationDispatcher::buildExtraQueue(size_t identifier, size_t nrThreads,
                                             size_t maxSize) {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no dispatcher is known, cannot create dispatcher queue");
+    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher queue"; FATAL_ERROR_EXIT();
   }
 
   LOG(TRACE) << "setting up a standard queue with " << nrThreads << " threads";
@@ -217,7 +214,7 @@ void ApplicationDispatcher::stop() {
 
 void ApplicationDispatcher::buildDispatcher(Scheduler* scheduler) {
   if (_dispatcher != nullptr) {
-    LOG_FATAL_AND_EXIT("a dispatcher has already been created");
+    LOG(FATAL) << "a dispatcher has already been created"; FATAL_ERROR_EXIT();
   }
 
   _dispatcher = new Dispatcher(scheduler);
@@ -229,8 +226,7 @@ void ApplicationDispatcher::buildDispatcher(Scheduler* scheduler) {
 
 void ApplicationDispatcher::buildDispatcherReporter() {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no dispatcher is known, cannot create dispatcher reporter");
+    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher reporter"; FATAL_ERROR_EXIT();
   }
 
   if (0.0 < _reportInterval) {

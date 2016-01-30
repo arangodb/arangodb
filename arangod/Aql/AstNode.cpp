@@ -268,8 +268,8 @@ static TRI_json_type_e GetNodeCompareType(AstNode const* node) {
 
 int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
                                    bool compareUtf8) {
-  TRI_ASSERT_EXPENSIVE(lhs != nullptr);
-  TRI_ASSERT_EXPENSIVE(rhs != nullptr);
+  TRI_ASSERT(lhs != nullptr);
+  TRI_ASSERT(rhs != nullptr);
 
   if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     lhs = ResolveAttribute(lhs);
@@ -284,7 +284,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
   if (lType != rType) {
     int diff = static_cast<int>(lType) - static_cast<int>(rType);
 
-    TRI_ASSERT_EXPENSIVE(diff != 0);
+    TRI_ASSERT(diff != 0);
 
     if (diff < 0) {
       return -1;
@@ -421,8 +421,8 @@ AstNode::AstNode(AstNodeType type)
 
 AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
   value.type = valueType;
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,8 +433,8 @@ AstNode::AstNode(bool v, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_BOOL);
   value.value._bool = v;
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,8 +445,8 @@ AstNode::AstNode(int64_t v, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_INT);
   value.value._int = v;
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,8 +457,8 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_STRING);
   setStringValue(v, length);
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,8 +467,8 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
 
 AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 
   auto query = ast->query();
 
@@ -640,8 +640,8 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
                  std::function<char const*(std::string const&)> registerString,
                  arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 
   switch (type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
@@ -915,7 +915,7 @@ TRI_json_t* AstNode::computeJson() const {
 
 void AstNode::sort() {
   TRI_ASSERT(type == NODE_TYPE_ARRAY);
-  TRI_ASSERT_EXPENSIVE(isConstant());
+  TRI_ASSERT(isConstant());
 
   std::sort(members.begin(), members.end(),
             [](AstNode const* lhs, AstNode const* rhs) {

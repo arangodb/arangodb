@@ -2934,7 +2934,7 @@ AstNode* Ast::traverseAndModify(
           traverseAndModify(member, preVisitor, visitor, postVisitor, data);
 
       if (result != node) {
-        TRI_ASSERT_EXPENSIVE(node != nullptr);
+        TRI_ASSERT(node != nullptr);
         node->changeMember(i, result);
       }
     }

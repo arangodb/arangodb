@@ -102,14 +102,14 @@ class BenchmarkThread : public arangodb::basics::Thread {
         _endpoint, _requestTimeout, _connectTimeout, 3, _sslProtocol);
 
     if (_connection == nullptr) {
-      LOG_FATAL_AND_EXIT("out of memory");
+      LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
     }
 
     _client =
         new httpclient::SimpleHttpClient(_connection, _requestTimeout, true);
 
     if (_client == nullptr) {
-      LOG_FATAL_AND_EXIT("out of memory");
+      LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
     }
 
     _client->setLocationRewriter(this, &rewriteLocation);
@@ -127,7 +127,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
         delete result;
       }
 
-      LOG_FATAL_AND_EXIT("could not connect to server");
+      LOG(FATAL) << "could not connect to server"; FATAL_ERROR_EXIT();
     }
 
     delete result;
@@ -135,7 +135,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
     // if we're the first thread, set up the test
     if (_threadNumber == 0) {
       if (!_operation->setUp(_client)) {
-        LOG_FATAL_AND_EXIT("could not set up the test");
+        LOG(FATAL) << "could not set up the test"; FATAL_ERROR_EXIT();
       }
     }
 
@@ -164,15 +164,13 @@ class BenchmarkThread : public arangodb::basics::Thread {
         try {
           executeBatchRequest(numOps);
         } catch (arangodb::basics::Exception const& ex) {
-          LOG_FATAL_AND_EXIT("Caught exception during test execution: %d %s",
-                             ex.code(), ex.what());
+          LOG(FATAL) << "Caught exception during test execution: " << ex.code() << " " << ex.what(); FATAL_ERROR_EXIT();
         } catch (std::bad_alloc const&) {
-          LOG_FATAL_AND_EXIT("Caught OOM exception during test execution!");
+          LOG(FATAL) << "Caught OOM exception during test execution!"; FATAL_ERROR_EXIT();
         } catch (std::exception const& ex) {
-          LOG_FATAL_AND_EXIT("Caught STD exception during test execution: %s",
-                             ex.what());
+          LOG(FATAL) << "Caught STD exception during test execution: " << ex.what(); FATAL_ERROR_EXIT();
         } catch (...) {
-          LOG_FATAL_AND_EXIT("Caught unknown exception during test execution!");
+          LOG(FATAL) << "Caught unknown exception during test execution!"; FATAL_ERROR_EXIT();
         }
       }
       _operationsCounter->done(_batchSize > 0 ? _batchSize : 1);
@@ -212,9 +210,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
     basics::StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
     int ret = batchPayload.reserve(numOperations * 1024);
     if (ret != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT(
-          "Failed to reserve %lu bytes for %lu batch operations: %d",
-          numOperations * 1024, numOperations, ret);
+      LOG(FATAL) << "Failed to reserve " << numOperations * 1024 << " bytes for " << numOperations << " batch operations: " << ret; FATAL_ERROR_EXIT();
     }
     for (unsigned long i = 0; i < numOperations; ++i) {
       // append boundary

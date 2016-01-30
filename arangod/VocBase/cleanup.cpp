@@ -200,7 +200,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
       }
     } else {
       // unknown type
-      LOG_FATAL_AND_EXIT("unknown ditch type '%d'", (int)type);
+      LOG(FATAL) << "unknown ditch type '" << type << "'"; FATAL_ERROR_EXIT();
     }
 
     // next iteration

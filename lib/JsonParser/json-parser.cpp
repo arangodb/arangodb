@@ -2246,7 +2246,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
       // get the address of the next element so we can create the attribute name in place
       TRI_json_t* next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // we made sure with the reserve call that we haven't run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       // store attribute name
       TRI_InitStringJson(next, name, nameLen);
@@ -2254,7 +2254,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
       // now process the value
       next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // we made sure with the reserve call that we haven't run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
       
       // be paranoid and initialize the memory  
       TRI_InitNullJson(next);

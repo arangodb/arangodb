@@ -70,7 +70,7 @@ typedef struct TRI_log_buffer_s {
 /// @brief gets the log level
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_LogLevelLogging(void);
+char const* TRI_LogLevelLogging();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the log level
@@ -109,60 +109,6 @@ void TRI_SetUseLocalTimeLogging(bool);
 void TRI_SetLineNumberLogging(bool show);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the file to log for debug and trace
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetFileToLog(char const* file);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if usage logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsUsageLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if fatal logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsFatalLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if error logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsErrorLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if warning logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsWarningLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if info logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsInfoLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if debug logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsDebugLogging(char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if trace logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsTraceLogging(char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if performance logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsPerformanceLogging();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a new message
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -181,72 +127,6 @@ struct TRI_vector_s* TRI_BufferLogging(TRI_log_level_e, uint64_t pos,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBufferLogging(struct TRI_vector_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs fatal errors
-////////////////////////////////////////////////////////////////////////////////
-
-void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR(void);
-
-#define LOG_FATAL_AND_EXIT(...)                                        \
-  do {                                                                 \
-    if (TRI_IsFatalLogging()) {                                        \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_FATAL,   \
-              TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__);                    \
-      std::string bt;                                                  \
-      TRI_GetBacktrace(bt);                                            \
-      if (!bt.empty()) {                                               \
-        TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_ERROR, \
-                TRI_LOG_SEVERITY_HUMAN, "%s", bt.c_str());             \
-      }                                                                \
-    }                                                                  \
-    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                         \
-  } while (0);                                                         \
-  exit(EXIT_FAILURE)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs usage messages
-////////////////////////////////////////////////////////////////////////////////
-
-#undef LOG_USAGE
-
-#define LOG_USAGE(...)                                              \
-  do {                                                              \
-    if (TRI_IsUsageLogging()) {                                     \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, \
-              TRI_LOG_SEVERITY_USAGE, __VA_ARGS__);                 \
-    }                                                               \
-  } while (0)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs performance messages
-////////////////////////////////////////////////////////////////////////////////
-
-#undef LOG_ACTION
-
-#define LOG_ACTION(...)                                             \
-  do {                                                              \
-    if (TRI_IsPerformanceLogging()) {                               \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, \
-              TRI_LOG_SEVERITY_HUMAN, "[action] " __VA_ARGS__);     \
-    }                                                               \
-  } while (0)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs timings
-////////////////////////////////////////////////////////////////////////////////
-
-#undef LOG_TIMER
-
-#define LOG_TIMER(value, ...)                                           \
-  do {                                                                  \
-    double timerValue = value;                                          \
-    if (timerValue > 1.0 && TRI_IsPerformanceLogging()) {               \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO,     \
-              TRI_LOG_SEVERITY_HUMAN, "[timer] %0.2f s - " __VA_ARGS__, \
-              timerValue);                                              \
-    }                                                                   \
-  } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log append for file output

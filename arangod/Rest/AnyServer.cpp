@@ -51,7 +51,7 @@ static void WritePidFile(std::string const& pidFile, int pid) {
   ofstream out(pidFile.c_str(), ios::trunc);
 
   if (!out) {
-    LOG_FATAL_AND_EXIT("cannot write pid-file '%s'", pidFile.c_str());
+    LOG(FATAL) << "cannot write pid-file '" << pidFile.c_str() << "'"; FATAL_ERROR_EXIT();
   }
 
   out << pid;
@@ -65,7 +65,7 @@ static void CheckPidFile(std::string const& pidFile) {
   // check if the pid-file exists
   if (!pidFile.empty()) {
     if (FileUtils::isDirectory(pidFile)) {
-      LOG_FATAL_AND_EXIT("pid-file '%s' is a directory", pidFile.c_str());
+      LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' is a directory"; FATAL_ERROR_EXIT();
     } else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
       LOG(INFO) << "pid-file '" << pidFile.c_str() << "' already exists, verifying pid";
 
@@ -78,7 +78,7 @@ static void CheckPidFile(std::string const& pidFile) {
         f >> oldPid;
 
         if (oldPid == 0) {
-          LOG_FATAL_AND_EXIT("pid-file '%s' is unreadable", pidFile.c_str());
+          LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' is unreadable"; FATAL_ERROR_EXIT();
         }
 
         LOG(DEBUG) << "found old pid: " << oldPid;
@@ -90,34 +90,25 @@ static void CheckPidFile(std::string const& pidFile) {
 #endif
 
         if (r == 0) {
-          LOG_FATAL_AND_EXIT(
-              "pid-file '%s' exists and process with pid %d is still running",
-              pidFile.c_str(), (int)oldPid);
+          LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' exists and process with pid " << oldPid << " is still running"; FATAL_ERROR_EXIT();
         } else if (errno == EPERM) {
-          LOG_FATAL_AND_EXIT(
-              "pid-file '%s' exists and process with pid %d is still running",
-              pidFile.c_str(), (int)oldPid);
+          LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' exists and process with pid " << oldPid << " is still running"; FATAL_ERROR_EXIT();
         } else if (errno == ESRCH) {
           LOG(ERROR) << "pid-file '" << pidFile.c_str() << " exists, but no process with pid " << oldPid << " exists";
 
           if (!FileUtils::remove(pidFile)) {
-            LOG_FATAL_AND_EXIT(
-                "pid-file '%s' exists, no process with pid %d exists, but "
-                "pid-file cannot be removed",
-                pidFile.c_str(), (int)oldPid);
+            LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed"; FATAL_ERROR_EXIT();
           }
 
           LOG(INFO) << "removed stale pid-file '" << pidFile.c_str() << "'";
         } else {
-          LOG_FATAL_AND_EXIT("pid-file '%s' exists and kill %d failed",
-                             pidFile.c_str(), (int)oldPid);
+          LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' exists and kill " << oldPid << " failed"; FATAL_ERROR_EXIT();
         }
       }
 
       // failed to open file
       else {
-        LOG_FATAL_AND_EXIT("pid-file '%s' exists, but cannot be opened",
-                           pidFile.c_str());
+        LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' exists, but cannot be opened"; FATAL_ERROR_EXIT();
       }
     }
 
@@ -137,7 +128,7 @@ static int ForkProcess(std::string const& workingDirectory,
   TRI_pid_t pid = fork();
 
   if (pid < 0) {
-    LOG_FATAL_AND_EXIT("cannot fork");
+    LOG(FATAL) << "cannot fork"; FATAL_ERROR_EXIT();
   }
 
   // Upon successful completion, fork() shall return 0 to the child process and
@@ -156,7 +147,7 @@ static int ForkProcess(std::string const& workingDirectory,
   TRI_pid_t sid = setsid();
 
   if (sid < 0) {
-    LOG_FATAL_AND_EXIT("cannot create sid");
+    LOG(FATAL) << "cannot create sid"; FATAL_ERROR_EXIT();
   }
 
   // store current working directory
@@ -164,14 +155,13 @@ static int ForkProcess(std::string const& workingDirectory,
   current = FileUtils::currentDirectory(&err);
 
   if (err != 0) {
-    LOG_FATAL_AND_EXIT("cannot get current directory");
+    LOG(FATAL) << "cannot get current directory"; FATAL_ERROR_EXIT();
   }
 
   // change the current working directory
   if (!workingDirectory.empty()) {
     if (!FileUtils::changeDirectory(workingDirectory)) {
-      LOG_FATAL_AND_EXIT("cannot change into working directory '%s'",
-                         workingDirectory.c_str());
+      LOG(FATAL) << "cannot change into working directory '" << workingDirectory.c_str() << "'"; FATAL_ERROR_EXIT();
     } else {
       LOG(INFO) << "changed working directory for child process to '" << workingDirectory.c_str() << "'";
     }
@@ -182,19 +172,19 @@ static int ForkProcess(std::string const& workingDirectory,
   int fd = open("/dev/null", O_RDWR | O_CREAT, 0644);
 
   if (fd < 0) {
-    LOG_FATAL_AND_EXIT("cannot open /dev/null");
+    LOG(FATAL) << "cannot open /dev/null"; FATAL_ERROR_EXIT();
   }
 
   if (dup2(fd, STDIN_FILENO) < 0) {
-    LOG_FATAL_AND_EXIT("cannot re-map stdin to /dev/null");
+    LOG(FATAL) << "cannot re-map stdin to /dev/null"; FATAL_ERROR_EXIT();
   }
 
   if (dup2(fd, STDOUT_FILENO) < 0) {
-    LOG_FATAL_AND_EXIT("cannot re-map stdout to /dev/null");
+    LOG(FATAL) << "cannot re-map stdout to /dev/null"; FATAL_ERROR_EXIT();
   }
 
   if (dup2(fd, STDERR_FILENO) < 0) {
-    LOG_FATAL_AND_EXIT("cannot re-map stderr to /dev/null");
+    LOG(FATAL) << "cannot re-map stderr to /dev/null"; FATAL_ERROR_EXIT();
   }
 
   close(fd);
@@ -270,7 +260,7 @@ static int ForkProcess(std::string const& workingDirectory,
   TRI_pid_t pid = -1;  // fork();
 
   if (pid < 0) {
-    LOG_FATAL_AND_EXIT("cannot fork");
+    LOG(FATAL) << "cannot fork"; FATAL_ERROR_EXIT();
   }
 
   return 0;

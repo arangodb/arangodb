@@ -379,7 +379,7 @@ void DispatcherQueue::startQueueThread() {
   bool ok = thread->start();
 
   if (!ok) {
-    LOG_FATAL_AND_EXIT("cannot start dispatcher thread");
+    LOG(FATAL) << "cannot start dispatcher thread"; FATAL_ERROR_EXIT();
   } else {
     _lastChanged = TRI_microtime();
   }

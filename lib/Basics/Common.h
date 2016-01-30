@@ -196,13 +196,6 @@ static inline void TRI_MemoryPrefetch(void* p) {}
       assert(expr);         \
     }                       \
   }
-#define TRI_ASSERT_EXPENSIVE(expr) \
-  {                                \
-    if (!(expr)) {                 \
-      TRI_PrintBacktrace();        \
-      assert(expr);                \
-    }                              \
-  }
 #endif
 
 #else
@@ -212,22 +205,32 @@ static inline void TRI_MemoryPrefetch(void* p) {}
   do {                   \
     (void)0;             \
   } while (0)
-#define TRI_ASSERT_EXPENSIVE(expr) \
-  do {                             \
-    (void)0;                       \
-  } while (0)
 
 #endif
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aborts program execution
+/// if backtraces are enabled, a backtrace will be printed before
+////////////////////////////////////////////////////////////////////////////////
+
+#define FATAL_ERROR_EXIT(...)                       \
+  do {                                              \
+    std::string bt;                                 \
+    TRI_GetBacktrace(bt);                           \
+    if (!bt.empty()) {                              \
+      LOG(WARNING) << bt;                           \
+    }                                               \
+    TRI_ShutdownLogging(true);                      \
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);       \
+  } while (0);                                      \
+  exit(EXIT_FAILURE)
+
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTIONS--                                                          alignas
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct alignas(x) ... does not work in Visual Studio 2013

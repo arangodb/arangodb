@@ -284,7 +284,7 @@ void ArangoClient::parse(ProgramOptions& options,
                          std::string const& initFilename) {
   // if options are invalid, exit directly
   if (!options.parse(description, argc, argv)) {
-    LOG_FATAL_AND_EXIT("%s", options.lastError().c_str());
+    LOG(FATAL) << "" << options.lastError().c_str(); FATAL_ERROR_EXIT();
   }
 
   if (options.has("log.use-local-time")) {
@@ -334,9 +334,7 @@ void ArangoClient::parse(ProgramOptions& options,
         LOG(DEBUG) << "using init override file '" << localConfigFile.c_str() << "'";
 
         if (!options.parse(description, localConfigFile)) {
-          LOG_FATAL_AND_EXIT("cannot parse config file '%s': %s",
-                             localConfigFile.c_str(),
-                             options.lastError().c_str());
+          LOG(FATAL) << "cannot parse config file '" << localConfigFile.c_str() << "': " << options.lastError().c_str(); FATAL_ERROR_EXIT();
         }
       }
     }
@@ -344,8 +342,7 @@ void ArangoClient::parse(ProgramOptions& options,
     LOG(DEBUG) << "using init file '" << configFile.c_str() << "'";
 
     if (!options.parse(description, configFile)) {
-      LOG_FATAL_AND_EXIT("cannot parse config file '%s': %s",
-                         configFile.c_str(), options.lastError().c_str());
+      LOG(FATAL) << "cannot parse config file '" << configFile.c_str() << "': " << options.lastError().c_str(); FATAL_ERROR_EXIT();
     }
   }
 
@@ -434,22 +431,20 @@ void ArangoClient::parse(ProgramOptions& options,
   if (_serverOptions) {
     // check connection args
     if (_connectTimeout < 0.0) {
-      LOG_FATAL_AND_EXIT(
-          "invalid value for --server.connect-timeout, must be >= 0");
+      LOG(FATAL) << "invalid value for --server.connect-timeout, must be >= 0"; FATAL_ERROR_EXIT();
     } else if (_connectTimeout == 0.0) {
       _connectTimeout = LONG_TIMEOUT;
     }
 
     if (_requestTimeout < 0.0) {
-      LOG_FATAL_AND_EXIT(
-          "invalid value for --server.request-timeout, must be positive");
+      LOG(FATAL) << "invalid value for --server.request-timeout, must be positive"; FATAL_ERROR_EXIT();
     } else if (_requestTimeout == 0.0) {
       _requestTimeout = LONG_TIMEOUT;
     }
 
     // must specify a user name
     if (_username.size() == 0) {
-      LOG_FATAL_AND_EXIT("no value specified for --server.username");
+      LOG(FATAL) << "no value specified for --server.username"; FATAL_ERROR_EXIT();
     }
 
     // no password given on command-line

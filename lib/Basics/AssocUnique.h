@@ -194,8 +194,8 @@ class AssocUnique {
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
-      LOG_ACTION("index-resize %s, target size: %llu", cb.c_str(),
-                 (unsigned long long)targetSize);
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << 
+          "index-resize " << cb << ", target size: " << targetSize;
     }
 
     Element** oldTable = b._table;
@@ -251,8 +251,7 @@ class AssocUnique {
 
     LOG(TRACE) << "resizing index " << cb.c_str() << " done";
 
-    LOG_TIMER((TRI_microtime() - start), "index-resize %s, target size: %llu",
-              cb.c_str(), (unsigned long long)targetSize);
+    LOG_TOPIC(INFO, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << targetSize;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -903,7 +902,7 @@ class AssocUnique {
       if (position.position != n) {
         // found an element
         auto found = b._table[position.position];
-        TRI_ASSERT_EXPENSIVE(found != nullptr);
+        TRI_ASSERT(found != nullptr);
 
         // move forward the position indicator one more time
         if (++position.position == n) {

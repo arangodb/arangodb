@@ -168,11 +168,11 @@ void ClusterComm::startBackgroundThread() {
   _backgroundThread = new ClusterCommThread();
 
   if (nullptr == _backgroundThread) {
-    LOG_FATAL_AND_EXIT("unable to start ClusterComm background thread");
+    LOG(FATAL) << "unable to start ClusterComm background thread"; FATAL_ERROR_EXIT();
   }
 
   if (!_backgroundThread->init() || !_backgroundThread->start()) {
-    LOG_FATAL_AND_EXIT("ClusterComm background thread does not work");
+    LOG(FATAL) << "ClusterComm background thread does not work"; FATAL_ERROR_EXIT();
   }
 }
 

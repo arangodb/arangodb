@@ -313,7 +313,7 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       return 1;
     }
 
-    TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
+    TRI_ASSERT(lWeight == rWeight);
   }
 
   // lhs and rhs have equal weights

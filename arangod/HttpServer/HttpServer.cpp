@@ -113,11 +113,7 @@ void HttpServer::startListening() {
     if (ok) {
       LOG(DEBUG) << "bound to endpoint '" << i.first.c_str() << "'";
     } else {
-      LOG_FATAL_AND_EXIT(
-          "failed to bind to endpoint '%s'. Please check "
-          "whether another instance is already running or "
-          "review your endpoints configuration.",
-          i.first.c_str());
+      LOG(FATAL) << "failed to bind to endpoint '" << i.first.c_str() << "'. Please check whether another instance is already running or review your endpoints configuration."; FATAL_ERROR_EXIT();
     }
   }
 }

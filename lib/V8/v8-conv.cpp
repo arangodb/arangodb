@@ -287,7 +287,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       auto next =
           static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       res = ObjectToJson(isolate, next, array->Get(i), seenHashes, seenObjects);
 
@@ -416,7 +416,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       TRI_json_t* next =
           static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       // this passes ownership for the utf8 string to the JSON object
       char* attributeName = str.steal();
@@ -425,7 +425,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       // process attribute value
       next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       res = ObjectToJson(isolate, next, o->Get(key), seenHashes, seenObjects);
 
@@ -539,7 +539,7 @@ static int ObjectToJsonSimple(v8::Isolate* isolate, TRI_json_t* result,
       TRI_json_t* next =
           static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       res = ObjectToJsonSimple(isolate, next, array->Get(i));
 
@@ -614,7 +614,7 @@ static int ObjectToJsonSimple(v8::Isolate* isolate, TRI_json_t* result,
       TRI_json_t* next =
           static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       // this passes ownership for the utf8 string to the JSON object
       char* attributeName = str.steal();
@@ -623,7 +623,7 @@ static int ObjectToJsonSimple(v8::Isolate* isolate, TRI_json_t* result,
       // process attribute value
       next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       res = ObjectToJsonSimple(isolate, next, o->Get(key));
 

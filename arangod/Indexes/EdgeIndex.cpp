@@ -40,7 +40,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementKey(void* userData, TRI_edge_header_t const* data) {
-  TRI_ASSERT_EXPENSIVE(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   TRI_edge_header_t const* h = static_cast<TRI_edge_header_t const*>(data);
   char const* key = h->_key;
@@ -57,7 +57,7 @@ static uint64_t HashElementKey(void* userData, TRI_edge_header_t const* data) {
 
 static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
                                     bool byKey) {
-  TRI_ASSERT_EXPENSIVE(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   uint64_t hash;
 
@@ -100,7 +100,7 @@ static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
 
 static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
                                   bool byKey) {
-  TRI_ASSERT_EXPENSIVE(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   uint64_t hash;
 
@@ -143,8 +143,8 @@ static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
 
 static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
                                TRI_doc_mptr_t const* right) {
-  TRI_ASSERT_EXPENSIVE(left != nullptr);
-  TRI_ASSERT_EXPENSIVE(right != nullptr);
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
 
   // left is a key
   // right is an element, that is a master pointer
@@ -185,8 +185,8 @@ static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
 
 static bool IsEqualKeyEdgeTo(void* userData, TRI_edge_header_t const* left,
                              TRI_doc_mptr_t const* right) {
-  TRI_ASSERT_EXPENSIVE(left != nullptr);
-  TRI_ASSERT_EXPENSIVE(right != nullptr);
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
 
   // left is a key
   // right is an element, that is a master pointer
@@ -238,8 +238,8 @@ static bool IsEqualElementEdge(void* userData, TRI_doc_mptr_t const* left,
 static bool IsEqualElementEdgeFromByKey(void* userData,
                                         TRI_doc_mptr_t const* left,
                                         TRI_doc_mptr_t const* right) {
-  TRI_ASSERT_EXPENSIVE(left != nullptr);
-  TRI_ASSERT_EXPENSIVE(right != nullptr);
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
 
   char const* lKey = nullptr;
   char const* rKey = nullptr;
@@ -302,8 +302,8 @@ static bool IsEqualElementEdgeFromByKey(void* userData,
 static bool IsEqualElementEdgeToByKey(void* userData,
                                       TRI_doc_mptr_t const* left,
                                       TRI_doc_mptr_t const* right) {
-  TRI_ASSERT_EXPENSIVE(left != nullptr);
-  TRI_ASSERT_EXPENSIVE(right != nullptr);
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
 
   char const* lKey = nullptr;
   char const* rKey = nullptr;

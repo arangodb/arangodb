@@ -252,7 +252,7 @@ static bool UnregisterCollection(TRI_vocbase_t* vocbase,
   }
 
   // post-condition
-  TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed ==
+  TRI_ASSERT(vocbase->_collectionsByName._nrUsed ==
                        vocbase->_collectionsById._nrUsed);
 
   return true;
@@ -540,7 +540,7 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed ==
+  TRI_ASSERT(vocbase->_collectionsByName._nrUsed ==
                        vocbase->_collectionsById._nrUsed);
 
   // this needs the write lock on _collectionsLock
@@ -722,7 +722,7 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
                                             newName, collection, false);
     TRI_ASSERT(found == nullptr);
 
-    TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed ==
+    TRI_ASSERT(vocbase->_collectionsByName._nrUsed ==
                          vocbase->_collectionsById._nrUsed);
   }  // _colllectionsLock
 
@@ -792,7 +792,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
     char* filePtr = TRI_Concatenate2File(path, name.c_str());
 
     if (filePtr == nullptr) {
-      LOG_FATAL_AND_EXIT("out of memory");
+      LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
     }
 
     std::string file = filePtr;
@@ -1482,9 +1482,7 @@ TRI_vocbase_t* TRI_OpenVocBase(TRI_server_t* server, char const* path,
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(server, vocbase);
 
   if (vocbase->_replicationApplier == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "initializing replication applier for database '%s' failed: %s",
-        vocbase->_name, TRI_last_error());
+    LOG(FATAL) << "initializing replication applier for database '" << vocbase->_name << "' failed: " << TRI_last_error(); FATAL_ERROR_EXIT();
   }
 
   // we are done

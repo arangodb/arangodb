@@ -136,9 +136,7 @@ int TRI_JoinThread(TRI_thread_t* thread) {
 
   switch (result) {
     case WAIT_ABANDONED: {
-      LOG_FATAL_AND_EXIT(
-          "threads-win32.c:TRI_JoinThread:could not join thread --> "
-          "WAIT_ABANDONED");
+      LOG(FATAL) << "threads-win32.c:TRI_JoinThread:could not join thread --> WAIT_ABANDONED"; FATAL_ERROR_EXIT();
     }
 
     case WAIT_OBJECT_0: {
@@ -147,17 +145,12 @@ int TRI_JoinThread(TRI_thread_t* thread) {
     }
 
     case WAIT_TIMEOUT: {
-      LOG_FATAL_AND_EXIT(
-          "threads-win32.c:TRI_JoinThread:could not joint thread --> "
-          "WAIT_TIMEOUT");
+      LOG(FATAL) << "threads-win32.c:TRI_JoinThread:could not joint thread --> WAIT_TIMEOUT"; FATAL_ERROR_EXIT();
     }
 
     case WAIT_FAILED: {
       result = GetLastError();
-      LOG_FATAL_AND_EXIT(
-          "threads-win32.c:TRI_JoinThread:could not join thread --> "
-          "WAIT_FAILED - reason -->%d",
-          result);
+      LOG(FATAL) << "threads-win32.c:TRI_JoinThread:could not join thread --> WAIT_FAILED - reason -->" << result; FATAL_ERROR_EXIT();
     }
   }
 

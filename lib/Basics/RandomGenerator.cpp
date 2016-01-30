@@ -121,9 +121,9 @@ class RandomDeviceDirect : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
 
       if (r == 0) {
-        LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
+        LOG(FATAL) << "read on random device failed: nothing read"; FATAL_ERROR_EXIT();
       } else if (r < 0) {
-        LOG_FATAL_AND_EXIT("read on random device failed: %s", strerror(errno));
+        LOG(FATAL) << "read on random device failed: " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
       ptr += r;
@@ -197,12 +197,12 @@ class RandomDeviceCombined : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
 
       if (r == 0) {
-        LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
+        LOG(FATAL) << "read on random device failed: nothing read"; FATAL_ERROR_EXIT();
       } else if (errno == EWOULDBLOCK || errno == EAGAIN) {
         LOG(INFO) << "not enough entropy (got " << (sizeof(buffer) - n) << "), switching to pseudo-random";
         break;
       } else if (r < 0) {
-        LOG_FATAL_AND_EXIT("read on random device failed: %s", strerror(errno));
+        LOG(FATAL) << "read on random device failed: " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
       ptr += r;
@@ -277,7 +277,7 @@ class RandomDeviceWin32 : public RandomDevice {
     // fill the buffer with random characters
     int result = CryptGenRandom(cryptoHandle, n, ptr);
     if (result == 0) {
-      LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
+      LOG(FATAL) << "read on random device failed: nothing read"; FATAL_ERROR_EXIT();
     }
     pos = 0;
   }

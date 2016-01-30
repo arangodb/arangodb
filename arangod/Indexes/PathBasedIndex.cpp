@@ -101,7 +101,7 @@ PathBasedIndex::~PathBasedIndex() {}
 int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
                                 TRI_doc_mptr_t const* document) {
   TRI_ASSERT(document != nullptr);
-  TRI_ASSERT_EXPENSIVE(document->getDataPtr() !=
+  TRI_ASSERT(document->getDataPtr() !=
                        nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   TRI_shaped_json_t shapedJson;

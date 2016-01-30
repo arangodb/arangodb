@@ -288,7 +288,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
                              TRI_document_collection_t const* rightCollection,
                              arangodb::AqlTransaction* trx,
                              AstNode const* node) const {
-  TRI_ASSERT_EXPENSIVE(right.isArray());
+  TRI_ASSERT(right.isArray());
 
   size_t const n = right.arraySize();
 
@@ -367,7 +367,7 @@ void Expression::analyzeExpression() {
     _isDeterministic = _node->isDeterministic();
 
     if (_node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      TRI_ASSERT_EXPENSIVE(_node->numMembers() == 1);
+      TRI_ASSERT(_node->numMembers() == 1);
       auto member = _node->getMemberUnchecked(0);
       std::vector<char const*> parts{
           static_cast<char const*>(_node->getData())};
@@ -576,7 +576,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
   // object lookup, e.g. users.name
-  TRI_ASSERT_EXPENSIVE(node->numMembers() == 1);
+  TRI_ASSERT(node->numMembers() == 1);
 
   auto member = node->getMemberUnchecked(0);
   auto name = static_cast<char const*>(node->getData());

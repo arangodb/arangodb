@@ -90,7 +90,7 @@ bool Scheduler::start(ConditionVariable* cv) {
     bool ok = threads[i]->start(cv);
 
     if (!ok) {
-      LOG_FATAL_AND_EXIT("cannot start threads");
+      LOG(FATAL) << "cannot start threads"; FATAL_ERROR_EXIT();
     }
   }
 

@@ -455,7 +455,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
 
     if (res != TRI_ERROR_NO_ERROR) {
       // TODO: dont fail but recover from this state
-      LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
+      LOG(FATAL) << "cannot write compactor file: " << TRI_last_error(); FATAL_ERROR_EXIT();
     }
 
     TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found);
@@ -483,8 +483,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: dont fail but recover from this state
-        LOG_FATAL_AND_EXIT("cannot write document marker to compactor file: %s",
-                           TRI_last_error());
+        LOG(FATAL) << "cannot write document marker to compactor file: " << TRI_last_error(); FATAL_ERROR_EXIT();
       }
 
       // update datafile info
@@ -499,15 +498,14 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
 
     if (res != TRI_ERROR_NO_ERROR) {
       // TODO: dont fail but recover from this state
-      LOG_FATAL_AND_EXIT("cannot write shape marker to compactor file: %s",
-                         TRI_last_error());
+      LOG(FATAL) << "cannot write shape marker to compactor file: " << TRI_last_error(); FATAL_ERROR_EXIT();
     }
 
     res = document->getShaper()->moveMarker(
         result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
+      LOG(FATAL) << "cannot re-locate shape marker"; FATAL_ERROR_EXIT();
     }
 
     context->_dfi.numberShapes++;
@@ -521,15 +519,14 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
 
     if (res != TRI_ERROR_NO_ERROR) {
       // TODO: dont fail but recover from this state
-      LOG_FATAL_AND_EXIT("cannot write attribute marker to compactor file: %s",
-                         TRI_last_error());
+      LOG(FATAL) << "cannot write attribute marker to compactor file: " << TRI_last_error(); FATAL_ERROR_EXIT();
     }
 
     res = document->getShaper()->moveMarker(
         result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("cannot re-locate attribute marker");
+      LOG(FATAL) << "cannot re-locate attribute marker"; FATAL_ERROR_EXIT();
     }
 
     context->_dfi.numberAttributes++;

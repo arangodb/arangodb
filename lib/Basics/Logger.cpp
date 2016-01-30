@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Logger.h"
+#include <iomanip>
 
 using namespace arangodb;
 
@@ -58,9 +59,39 @@ LogTopic LogTopic::operator|(LogTopic const& that) {
 
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMPACTOR("compactor");
-LogTopic Logger::PERFORMANCE("performance");
-LogTopic Logger::REQUESTS("request");
+LogTopic Logger::PERFORMANCE("performance", LogLevel::FATAL); // suppress by default
+LogTopic Logger::REQUESTS("request", LogLevel::FATAL); // suppress by default
 
 void Logger::setLevel(LogLevel level) {
   _level = level;
 }
+
+LogLevel Logger::logLevel() {
+  return _level.load(std::memory_order_relaxed);
+}
+
+char const* Logger::translateLogLevel(LogLevel level) {
+  switch (level) {
+    case LogLevel::DEFAULT: return "default";
+    case LogLevel::FATAL: return "fatal"; 
+    case LogLevel::ERROR: return "error";
+    case LogLevel::WARNING: return "warning";
+    case LogLevel::INFO: return "info";
+    case LogLevel::DEBUG: return "debug";
+    case LogLevel::TRACE: return "trace";
+  }
+  return "unknown";
+}
+
+std::ostream& operator<<(std::ostream& stream, LogLevel level) {
+  stream << Logger::translateLogLevel(level);
+  return stream;
+}
+
+LoggerStream& LoggerStream::operator<<(Logger::DURATION duration) {
+  std::ostringstream tmp;
+  tmp << std::setprecision(duration._precision) << std::fixed << duration._duration;
+  _out << tmp.str();
+  return *this;
+}
+

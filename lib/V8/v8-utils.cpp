@@ -59,8 +59,7 @@
 
 #include "3rdParty/valgrind/valgrind.h"
 
-using namespace std;
-
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
@@ -722,14 +721,14 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       size_t found = url.find('/', 7);
 
       relative = "/";
-      if (found != string::npos) {
+      if (found != std::string::npos) {
         relative.append(url.substr(found + 1));
         endpoint = url.substr(7, found - 7);
       } else {
         endpoint = url.substr(7);
       }
       found = endpoint.find(":");
-      if (found == string::npos) {
+      if (found == std::string::npos) {
         endpoint = endpoint + ":80";
       }
       endpoint = "tcp://" + endpoint;
@@ -737,14 +736,14 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       size_t found = url.find('/', 8);
 
       relative = "/";
-      if (found != string::npos) {
+      if (found != std::string::npos) {
         relative.append(url.substr(found + 1));
         endpoint = url.substr(8, found - 8);
       } else {
         endpoint = url.substr(8);
       }
       found = endpoint.find(":");
-      if (found == string::npos) {
+      if (found == std::string::npos) {
         endpoint = endpoint + ":443";
       }
       endpoint = "ssl://" + endpoint;
@@ -930,10 +929,10 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
           keys->Get(v8::Integer::New(isolate, i))->ToString();
       v8::Handle<v8::Value> value = sandbox->Get(key);
 
-      if (TRI_IsTraceLogging(__FILE__)) {
+      if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
-        if (*keyName != 0) {
+        if (*keyName != nullptr) {
           LOG(TRACE) << "copying key '" << *keyName << "' from sandbox to context";
         }
       }
@@ -1001,7 +1000,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
           keys->Get(v8::Integer::New(isolate, i))->ToString();
       v8::Handle<v8::Value> value = context->Global()->Get(key);
 
-      if (TRI_IsTraceLogging(__FILE__)) {
+      if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != nullptr) {
@@ -2377,9 +2376,9 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid <content> buffer value");
     }
 
-    ofstream file;
+    std::ofstream file;
 
-    file.open(*name, ios::out | ios::binary | ios::app);
+    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file.write(data, size);
@@ -2393,9 +2392,9 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
     }
 
-    ofstream file;
+    std::ofstream file;
 
-    file.open(*name, ios::out | ios::binary | ios::app);
+    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file << *content;
@@ -2436,9 +2435,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid <content> buffer value");
     }
 
-    ofstream file;
+    std::ofstream file;
 
-    file.open(*name, ios::out | ios::binary);
+    file.open(*name, std::ios::out | std::ios::binary);
 
     if (file.is_open()) {
       file.write(data, size);
@@ -2452,9 +2451,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
     }
 
-    ofstream file;
+    std::ofstream file;
 
-    file.open(*name, ios::out | ios::binary);
+    file.open(*name, std::ios::out | std::ios::binary);
 
     if (file.is_open()) {
       file << *content;
@@ -3663,7 +3662,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
     if (exceptionString == nullptr) {
       result = "JavaScript exception\n";
     } else {
-      result = "JavaScript exception: " + string(exceptionString) + "\n";
+      result = "JavaScript exception: " + std::string(exceptionString) + "\n";
     }
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
@@ -3678,15 +3677,15 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
       if (exceptionString == nullptr) {
         result = "JavaScript exception\n";
       } else {
-        result = "JavaScript exception: " + string(exceptionString) + "\n";
+        result = "JavaScript exception: " + std::string(exceptionString) + "\n";
       }
     } else {
       if (exceptionString == nullptr) {
-        result = "JavaScript exception in file '" + string(filenameString) +
+        result = "JavaScript exception in file '" + std::string(filenameString) +
                  "' at " + StringUtils::itoa(linenum) + "," +
                  StringUtils::itoa(start) + "\n";
       } else {
-        result = "JavaScript exception in file '" + string(filenameString) +
+        result = "JavaScript exception in file '" + std::string(filenameString) +
                  "' at " + StringUtils::itoa(linenum) + "," +
                  StringUtils::itoa(start) + ": " + exceptionString + "\n";
       }
@@ -3713,7 +3712,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
     TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
-      result += "stacktrace: " + string(*stacktrace) + "\n";
+      result += "stacktrace: " + std::string(*stacktrace) + "\n";
     }
   }
 
@@ -3905,7 +3904,7 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 
   if (autoPrepend) {
     CreateErrorObject(isolate, errorNumber,
-                      message + ": " + string(TRI_errno_string(errorNumber)));
+                      message + ": " + std::string(TRI_errno_string(errorNumber)));
   } else {
     CreateErrorObject(isolate, errorNumber, message);
   }

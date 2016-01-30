@@ -238,8 +238,8 @@ class HashIndex final : public PathBasedIndex {
 
     bool operator()(void* userData, TRI_index_element_t const* left,
                     TRI_index_element_t const* right) {
-      TRI_ASSERT_EXPENSIVE(left->document() != nullptr);
-      TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
+      TRI_ASSERT(left->document() != nullptr);
+      TRI_ASSERT(right->document() != nullptr);
 
       if (left->document() == right->document()) {
         return true;

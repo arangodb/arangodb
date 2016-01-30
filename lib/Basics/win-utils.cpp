@@ -95,7 +95,7 @@ void TRI_usleep(unsigned long waitTime) {
   }
 
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG_FATAL_AND_EXIT("internal error in TRI_usleep()");
+    LOG(FATAL) << "internal error in TRI_usleep()"; FATAL_ERROR_EXIT();
   }
 
   // Set timer to wait for indicated micro seconds.
@@ -110,7 +110,7 @@ void TRI_usleep(unsigned long waitTime) {
 
   if (result != WAIT_OBJECT_0) {
     CloseHandle(hTimer);
-    LOG_FATAL_AND_EXIT("couldn't wait for timer in TRI_usleep()");
+    LOG(FATAL) << "couldn't wait for timer in TRI_usleep()"; FATAL_ERROR_EXIT();
   }
 
   CloseHandle(hTimer);

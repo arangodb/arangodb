@@ -162,11 +162,21 @@ class Logger {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief duration
+  //////////////////////////////////////////////////////////////////////////////
+
+  struct DURATION {
+    explicit DURATION(double duration, int precision = 6) : _duration(duration), _precision(precision){};
+    double _duration;
+    int _precision;
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief line number helper class
   //////////////////////////////////////////////////////////////////////////////
 
   struct LINE {
-    LINE(long int line) : _line(line){};
+    explicit LINE(long int line) : _line(line){};
     long int _line;
   };
 
@@ -175,7 +185,7 @@ class Logger {
   //////////////////////////////////////////////////////////////////////////////
 
   struct FILE {
-    FILE(char const* file) : _file(file){};
+    explicit FILE(char const* file) : _file(file){};
     char const* _file;
   };
 
@@ -184,16 +194,28 @@ class Logger {
   //////////////////////////////////////////////////////////////////////////////
 
   struct FUNCTION {
-    FUNCTION(char const* function) : _function(function){};
+    explicit FUNCTION(char const* function) : _function(function){};
     char const* _function;
   };
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the log level
+  /// @brief sets the global log level
   //////////////////////////////////////////////////////////////////////////////
 
   static void setLevel(LogLevel);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief determines the global log level
+  //////////////////////////////////////////////////////////////////////////////
+
+  static LogLevel logLevel();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a string description for the log level
+  //////////////////////////////////////////////////////////////////////////////
+
+  static char const* translateLogLevel(LogLevel);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if logging is enabled for log level
@@ -254,6 +276,8 @@ class LoggerStream {
     return *this;
   }
 
+  LoggerStream& operator<<(Logger::DURATION duration);
+
   LoggerStream& operator<<(Logger::LINE line) {
     _line = line._line;
     return *this;
@@ -294,5 +318,7 @@ class LogVoidify {
   void operator&(LoggerStream const&) {}
 };
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::LogLevel);
 
 #endif

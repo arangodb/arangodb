@@ -145,7 +145,7 @@ bool ApplicationEndpointServer::buildServers() {
     // check the ssl context
     if (_sslContext == nullptr) {
       LOG(INFO) << "please use the --server.keyfile option";
-      LOG_FATAL_AND_EXIT("no ssl context is known, cannot create https server");
+      LOG(FATAL) << "no ssl context is known, cannot create https server"; FATAL_ERROR_EXIT();
     }
 
     // https
@@ -204,8 +204,7 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   }
 
   if (_backlogSize <= 0) {
-    LOG_FATAL_AND_EXIT(
-        "invalid value for --server.backlog-size. expecting a positive value");
+    LOG(FATAL) << "invalid value for --server.backlog-size. expecting a positive value"; FATAL_ERROR_EXIT();
   }
 
   if (_backlogSize > SOMAXCONN) {
@@ -226,15 +225,12 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
                                 _reuseAddress);
 
     if (!ok) {
-      LOG_FATAL_AND_EXIT("invalid endpoint '%s'", (*i).c_str());
+      LOG(FATAL) << "invalid endpoint '" << (*i).c_str() << "'"; FATAL_ERROR_EXIT();
     }
   }
 
   if (_defaultApiCompatibility < HttpRequest::MinCompatibility) {
-    LOG_FATAL_AND_EXIT(
-        "invalid value for --server.default-api-compatibility. minimum allowed "
-        "value is %d",
-        (int)HttpRequest::MinCompatibility);
+    LOG(FATAL) << "invalid value for --server.default-api-compatibility. minimum allowed value is " << HttpRequest::MinCompatibility; FATAL_ERROR_EXIT();
   }
 
   // and return
@@ -336,7 +332,7 @@ bool ApplicationEndpointServer::prepare() {
 
   if (_endpointList.empty()) {
     LOG(INFO) << "please use the '--server.endpoint' option";
-    LOG_FATAL_AND_EXIT("no endpoints have been specified, giving up");
+    LOG(FATAL) << "no endpoints have been specified, giving up"; FATAL_ERROR_EXIT();
   }
 
   // dump all endpoints for user information
@@ -403,8 +399,7 @@ bool ApplicationEndpointServer::createSslContext() {
   LOG(DEBUG) << "using SSL protocol version '" << protocolName((protocol_e)_sslProtocol).c_str() << "'";
 
   if (!FileUtils::exists(_httpsKeyfile)) {
-    LOG_FATAL_AND_EXIT("unable to find SSL keyfile '%s'",
-                       _httpsKeyfile.c_str());
+    LOG(FATAL) << "unable to find SSL keyfile '" << _httpsKeyfile.c_str() << "'"; FATAL_ERROR_EXIT();
   }
 
   // create context
@@ -431,8 +426,7 @@ bool ApplicationEndpointServer::createSslContext() {
   if (!_sslCipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
       LOG(ERROR) << "SSL error: " << lastSSLError().c_str();
-      LOG_FATAL_AND_EXIT("cannot set SSL cipher list '%s'",
-                         _sslCipherList.c_str());
+      LOG(FATAL) << "cannot set SSL cipher list '" << _sslCipherList.c_str() << "'"; FATAL_ERROR_EXIT();
     } else {
       LOG(INFO) << "using SSL cipher-list '" << _sslCipherList.c_str() << "'";
     }
@@ -448,7 +442,7 @@ bool ApplicationEndpointServer::createSslContext() {
 
   if (res != 1) {
     LOG(ERROR) << "SSL error: " << lastSSLError().c_str();
-    LOG_FATAL_AND_EXIT("cannot set SSL session id context '%s'", _rctx.c_str());
+    LOG(FATAL) << "cannot set SSL session id context '" << _rctx.c_str() << "'"; FATAL_ERROR_EXIT();
   }
 
   // check CA
@@ -459,8 +453,7 @@ bool ApplicationEndpointServer::createSslContext() {
 
     if (res == 0) {
       LOG(ERROR) << "SSL error: " << lastSSLError().c_str();
-      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'",
-                         _cafile.c_str());
+      LOG(FATAL) << "cannot load CA certificates from '" << _cafile.c_str() << "'"; FATAL_ERROR_EXIT();
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -469,11 +462,10 @@ bool ApplicationEndpointServer::createSslContext() {
 
     if (certNames == nullptr) {
       LOG(ERROR) << "ssl error: " << lastSSLError().c_str();
-      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'",
-                         _cafile.c_str());
+      LOG(FATAL) << "cannot load CA certificates from '" << _cafile.c_str() << "'"; FATAL_ERROR_EXIT();
     }
 
-    if (TRI_IsTraceLogging(__FILE__)) {
+    if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
       for (int i = 0; i < sk_X509_NAME_num(certNames); ++i) {
         X509_NAME* cert = sk_X509_NAME_value(certNames, i);
 

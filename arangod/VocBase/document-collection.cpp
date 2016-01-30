@@ -2825,9 +2825,8 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   auto primaryIndex = document->primaryIndex();
 
   if (primaryIndex->size() > NotificationSizeThreshold) {
-    LOG_ACTION(
-        "fill-indexes-document-collection { collection: %s/%s }, indexes: %d",
-        document->_vocbase->_name, document->_info.namec_str(), (int)(n - 1));
+    LOG_TOPIC(INFO, Logger::PERFORMANCE) <<
+        "fill-indexes-document-collection { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, indexes: " << (n - 1);
   }
 
   TRI_ASSERT(n > 1);
@@ -2895,10 +2894,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
     // barrier waits here until all threads have joined
   }
 
-  LOG_TIMER(
-      (TRI_microtime() - start),
-      "fill-indexes-document-collection { collection: %s/%s }, indexes: %d",
-      document->_vocbase->_name, document->_info.namec_str(), (int)(n - 1));
+  LOG_TOPIC(INFO, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, fill-indexes-document-collection { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, indexes: " << (n - 1);
 
   return result.load();
 }
@@ -2926,8 +2922,8 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   TRI_ASSERT(document != nullptr);
 
   double start = TRI_microtime();
-  LOG_ACTION("open-document-collection { collection: %s/%s }", vocbase->_name,
-             col->namec_str());
+  LOG_TOPIC(INFO, Logger::PERFORMANCE) <<
+      "open-document-collection { collection: " << vocbase->_name << "/" << col->name() << " }";
 
   TRI_collection_t* collection =
       TRI_OpenCollection(vocbase, document, path, ignoreErrors);
@@ -2979,15 +2975,13 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   {
     double start = TRI_microtime();
 
-    LOG_ACTION("iterate-markers { collection: %s/%s }", vocbase->_name,
-               document->_info.namec_str());
+    LOG_TOPIC(INFO, Logger::PERFORMANCE) <<
+        "iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
 
     // iterate over all markers of the collection
     int res = IterateMarkersCollection(&trx, collection);
 
-    LOG_TIMER((TRI_microtime() - start),
-              "iterate-markers { collection: %s/%s }", vocbase->_name,
-              document->_info.namec_str());
+    LOG_TOPIC(INFO, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (document->_failedTransactions != nullptr) {
@@ -3010,9 +3004,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     TRI_FillIndexesDocumentCollection(&trx, col, document);
   }
 
-  LOG_TIMER((TRI_microtime() - start),
-            "open-document-collection { collection: %s/%s }", vocbase->_name,
-            document->_info.namec_str());
+  LOG_TOPIC(INFO, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, open-document-collection { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
 
   return document;
 }
@@ -3088,11 +3080,9 @@ static int FillIndexBatch(arangodb::Transaction* trx,
 
   double start = TRI_microtime();
 
-  LOG_ACTION(
-      "fill-index-batch { collection: %s/%s }, %s, threads: %d, buckets: %d",
-      document->_vocbase->_name, document->_info.namec_str(),
-      idx->context().c_str(), (int)indexPool->numThreads(),
-      (int)document->_info.indexBuckets());
+  LOG_TOPIC(INFO, Logger::PERFORMANCE) <<
+      "fill-index-batch { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " << 
+      idx->context() << ", threads: " << indexPool->numThreads() << ", buckets: " << document->_info.indexBuckets();
 
   // give the index a size hint
   auto primaryIndex = document->primaryIndex();
@@ -3146,12 +3136,7 @@ static int FillIndexBatch(arangodb::Transaction* trx,
     res = idx->batchInsert(trx, &documents, indexPool->numThreads());
   }
 
-  LOG_TIMER(
-      (TRI_microtime() - start),
-      "fill-index-batch { collection: %s/%s }, %s, threads: %d, buckets: %d",
-      document->_vocbase->_name, document->_info.namec_str(),
-      idx->context().c_str(), (int)indexPool->numThreads(),
-      (int)document->_info.indexBuckets());
+  LOG_TOPIC(INFO, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, fill-index-batch { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " << idx->context() << ", threads: " << indexPool->numThreads() << ", buckets: " << document->_info.indexBuckets();
 
   return res;
 }
@@ -3165,9 +3150,9 @@ static int FillIndexSequential(arangodb::Transaction* trx,
                                arangodb::Index* idx) {
   double start = TRI_microtime();
 
-  LOG_ACTION("fill-index-sequential { collection: %s/%s }, %s, buckets: %d",
-             document->_vocbase->_name, document->_info.namec_str(),
-             idx->context().c_str(), (int)document->_info.indexBuckets());
+  LOG_TOPIC(INFO, Logger::PERFORMANCE) << 
+      "fill-index-sequential { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " <<
+      idx->context() << ", buckets: " << document->_info.indexBuckets();
 
   // give the index a size hint
   auto primaryIndex = document->primaryIndex();
@@ -3208,10 +3193,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
     }
   }
 
-  LOG_TIMER((TRI_microtime() - start),
-            "fill-index-sequential { collection: %s/%s }, %s, buckets: %d",
-            document->_vocbase->_name, document->_info.namec_str(),
-            idx->context().c_str(), (int)document->_info.indexBuckets());
+  LOG_TOPIC(INFO, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, fill-index-sequential { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " << idx->context() << ", buckets: " << document->_info.indexBuckets();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4912,7 +4894,7 @@ int TRI_InsertShapedJsonDocumentCollection(
   TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  // TRI_ASSERT_EXPENSIVE(lock ||
+  // TRI_ASSERT(lock ||
   // TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE,
   // 0));
 
@@ -5045,7 +5027,7 @@ int TRI_UpdateShapedJsonDocumentCollection(
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  // TRI_ASSERT_EXPENSIVE(lock ||
+  // TRI_ASSERT(lock ||
   // TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE,
   // 0));
 

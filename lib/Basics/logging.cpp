@@ -115,7 +115,7 @@ struct TRI_log_appender_t {
                           size_t length) = 0;
   virtual void reopenLog() = 0;
   virtual void closeLog() = 0;
-  virtual char* details() = 0;
+  virtual std::string details() = 0;
   virtual TRI_log_appender_type_e type() = 0;
   virtual char const* typeName() = 0;
 
@@ -251,54 +251,6 @@ static TRI_thread_t LoggingThread;
 static std::atomic<bool> LoggingThreadActive(false);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief usage logging
-////////////////////////////////////////////////////////////////////////////////
-
-static sig_atomic_t IsUsage = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log fatal messages
-////////////////////////////////////////////////////////////////////////////////
-
-static sig_atomic_t IsFatal = 1;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log error messages
-////////////////////////////////////////////////////////////////////////////////
-
-static sig_atomic_t IsError = 1;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log warning messages
-////////////////////////////////////////////////////////////////////////////////
-
-static sig_atomic_t IsWarning = 1;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log info messages
-////////////////////////////////////////////////////////////////////////////////
-
-static sig_atomic_t IsInfo = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log debug messages
-////////////////////////////////////////////////////////////////////////////////
-
-static sig_atomic_t IsDebug = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log trace messages
-////////////////////////////////////////////////////////////////////////////////
-
-static sig_atomic_t IsTrace = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log performance messages
-////////////////////////////////////////////////////////////////////////////////
-
-static sig_atomic_t IsPerformance = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief use local time for dates & times in log output
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -333,24 +285,6 @@ static sig_atomic_t LoggingActive = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ThreadedLogging = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use file based logging
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UseFileBasedLogging = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief size of hash
-////////////////////////////////////////////////////////////////////////////////
-
-#define FilesToLogSize (1024 * 1024)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief files to log
-////////////////////////////////////////////////////////////////////////////////
-
-static bool FilesToLog[FilesToLogSize];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores output in a buffer
@@ -897,40 +831,11 @@ static void CloseLogging() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs fatal error, cleans up, and exists
-////////////////////////////////////////////////////////////////////////////////
-
-void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR() {
-  TRI_ShutdownLogging(true);
-  TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the log level
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* TRI_LogLevelLogging() {
-  if (IsTrace) {
-    return "trace";
-  }
-
-  if (IsDebug) {
-    return "debug";
-  }
-
-  if (IsInfo) {
-    return "info";
-  }
-
-  if (IsWarning) {
-    return "warning";
-  }
-
-  if (IsError) {
-    return "error";
-  }
-
-  return "fatal";
+  return Logger::translateLogLevel(Logger::logLevel());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -938,46 +843,20 @@ char const* TRI_LogLevelLogging() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetLogLevelLogging(char const* level) {
-  IsFatal = 1;
-  IsError = 0;
-  IsWarning = 0;
-  IsInfo = 0;
-  IsDebug = 0;
-  IsTrace = 0;
-
   if (TRI_CaseEqualString(level, "fatal")) {
     Logger::setLevel(LogLevel::FATAL);
   } else if (TRI_CaseEqualString(level, "error")) {
     Logger::setLevel(LogLevel::ERROR);
-    IsError = 1;
   } else if (TRI_CaseEqualString(level, "warning")) {
     Logger::setLevel(LogLevel::WARNING);
-    IsError = 1;
-    IsWarning = 1;
   } else if (TRI_CaseEqualString(level, "info")) {
     Logger::setLevel(LogLevel::INFO);
-    IsError = 1;
-    IsWarning = 1;
-    IsInfo = 1;
   } else if (TRI_CaseEqualString(level, "debug")) {
     Logger::setLevel(LogLevel::DEBUG);
-    IsError = 1;
-    IsWarning = 1;
-    IsInfo = 1;
-    IsDebug = 1;
   } else if (TRI_CaseEqualString(level, "trace")) {
     Logger::setLevel(LogLevel::TRACE);
-    IsError = 1;
-    IsWarning = 1;
-    IsInfo = 1;
-    IsDebug = 1;
-    IsTrace = 1;
   } else {
     Logger::setLevel(LogLevel::INFO);
-    IsError = 1;
-    IsWarning = 1;
-    IsInfo = 1;
-
     LOG(ERROR) << "strange log level '" << level << "'. using log level 'info'";
   }
 }
@@ -987,9 +866,6 @@ void TRI_SetLogLevelLogging(char const* level) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetLogSeverityLogging(char const* severities) {
-  IsUsage = 0;
-  IsPerformance = 0;
-
   TRI_vector_string_t split = TRI_SplitString(severities, ',');
   size_t const n = split._length;
 
@@ -997,9 +873,9 @@ void TRI_SetLogSeverityLogging(char const* severities) {
     char const* type = split._buffer[i];
 
     if (TRI_CaseEqualString(type, "usage")) {
-      IsUsage = 1;
+      // IsUsage = 1;  // TODO: enable REQUESTS logging here
     } else if (TRI_CaseEqualString(type, "performance")) {
-      IsPerformance = 1;
+      // IsPerformance = 1;  // TODO: enable PERFORMANCE logging here
     }
   }
 
@@ -1045,91 +921,6 @@ void TRI_SetUseLocalTimeLogging(bool value) { UseLocalTime = value ? 1 : 0; }
 void TRI_SetLineNumberLogging(bool show) { ShowLineNumber = show ? 1 : 0; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the file to log for debug and trace
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetFileToLog(char const* file) {
-  UseFileBasedLogging = true;
-  FilesToLog[TRI_FnvHashString(file) % FilesToLogSize] = true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if usage logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsUsageLogging() { return IsUsage != 0; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if fatal logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsFatalLogging() { return IsFatal != 0; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if error logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsErrorLogging() { return IsError != 0; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if warning logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsWarningLogging() { return IsWarning != 0; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if info logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsInfoLogging() { return IsInfo != 0; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if debug logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsDebugLogging(char const* file) {
-  if (UseFileBasedLogging) {
-    if (!IsDebug || file == nullptr) {
-      return false;
-    }
-
-    while (file[0] == '.' && file[1] == '.' && file[2] == '/') {
-      file += 3;
-    }
-
-    return FilesToLog[TRI_FnvHashString(file) % FilesToLogSize];
-  } else {
-    return IsDebug != 0;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if trace logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsTraceLogging(char const* file) {
-  if (UseFileBasedLogging) {
-    if (!IsTrace || file == nullptr) {
-      return false;
-    }
-
-    while (file[0] == '.' && file[1] == '.' && file[2] == '/') {
-      file += 3;
-    }
-
-    return FilesToLog[TRI_FnvHashString(file) % FilesToLogSize];
-  } else {
-    return IsTrace != 0;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if performance logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsPerformanceLogging() { return IsInfo != 0 && IsPerformance != 0; }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a new message
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1140,7 +931,6 @@ void TRI_Log(char const* func, char const* file, int line,
 
   va_start(ap, fmt);
 #ifdef _WIN32
-#include "win-utils.h"
   if (level == TRI_LOG_LEVEL_FATAL || level == TRI_LOG_LEVEL_ERROR) {
     va_list wva;
     va_copy(wva, ap);
@@ -1240,7 +1030,7 @@ struct log_appender_file_t : public TRI_log_appender_t {
                   size_t) override final;
   void reopenLog() override final;
   void closeLog() override final;
-  char* details() override final;
+  std::string details() override final;
 
   TRI_log_appender_type_e type() override final { return APPENDER_TYPE_FILE; }
 
@@ -1318,11 +1108,10 @@ void log_appender_file_t::logMessage(TRI_log_level_e level,
     // this function is already called when the appenders lock is held
     // no need to lock it again
     for (auto& it : Appenders) {
-      char* details = it->details();
+      std::string details = it->details();
 
-      if (details != nullptr) {
-        WriteStderr(TRI_LOG_LEVEL_INFO, details);
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, details);
+      if (!details.empty()) {
+        WriteStderr(TRI_LOG_LEVEL_INFO, details.c_str());
       }
     }
 
@@ -1394,24 +1183,22 @@ void log_appender_file_t::closeLog() {
 /// @brief provide details about the logfile appender
 ////////////////////////////////////////////////////////////////////////////////
 
-char* log_appender_file_t::details() {
+std::string log_appender_file_t::details() {
   if (_filename.empty()) {
-    return nullptr;
+    return "";
   }
 
   int fd = _fd.load();
 
   if (fd != STDOUT_FILENO && fd != STDERR_FILENO) {
-    char buffer[1024];
+    std::string buffer("More error details may be provided in the logfile '");
+    buffer.append(_filename);
+    buffer.append("'");
 
-    snprintf(buffer, sizeof(buffer),
-             "More error details may be provided in the logfile '%s'",
-             _filename.c_str());
-
-    return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, buffer);
+    return buffer;
   }
 
-  return nullptr;
+  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1499,7 +1286,7 @@ struct log_appender_syslog_t : public TRI_log_appender_t {
                   size_t length) override final;
   void reopenLog() override final;
   void closeLog() override final;
-  char* details() override final;
+  std::string details() override final;
 
   TRI_log_appender_type_e type() override final { return APPENDER_TYPE_SYSLOG; }
 
@@ -1648,9 +1435,8 @@ void log_appender_syslog_t::closeLog() {
 /// @brief provide details about the logfile appender
 ////////////////////////////////////////////////////////////////////////////////
 
-char* log_appender_syslog_t::details() {
-  return TRI_DuplicateString(
-      TRI_UNKNOWN_MEM_ZONE, "More error details may be provided in the syslog");
+std::string log_appender_syslog_t::details() {
+  return "More error details may be provided in the syslog";
 }
 
 #endif
@@ -1710,9 +1496,6 @@ void TRI_InitializeLogging(bool threaded) {
   }
 
   Initialized = 1;
-
-  UseFileBasedLogging = false;
-  memset(FilesToLog, 0, sizeof(FilesToLog));
 
   // logging is now active
   LoggingActive = 1;

@@ -2105,19 +2105,19 @@ std::string TRI_GetTempPath() {
                               NULL);                  // no template
 
   if (tempFileHandle == INVALID_HANDLE_VALUE) {
-    LOG_FATAL_AND_EXIT("Can not create a temporary file");
+    LOG(FATAL) << "Can not create a temporary file"; FATAL_ERROR_EXIT();
   }
 
   ok = CloseHandle(tempFileHandle);
 
   if (!ok) {
-    LOG_FATAL_AND_EXIT("Can not close the handle of a temporary file");
+    LOG(FATAL) << "Can not close the handle of a temporary file"; FATAL_ERROR_EXIT();
   }
 
   ok = DeleteFile(tempFileName);
 
   if (!ok) {
-    LOG_FATAL_AND_EXIT("Can not destroy a temporary file");
+    LOG(FATAL) << "Can not destroy a temporary file"; FATAL_ERROR_EXIT();
   }
 
   // ...........................................................................
@@ -2132,12 +2132,12 @@ std::string TRI_GetTempPath() {
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
 
     if (temp == nullptr) {
-      LOG_FATAL_AND_EXIT("Out of memory");
+      LOG(FATAL) << "Out of memory"; FATAL_ERROR_EXIT();
     }
 
     for (j = 0; j < pathSize; ++j) {
       if (tempPathName[j] > 127) {
-        LOG_FATAL_AND_EXIT("Invalid characters in temporary path name");
+        LOG(FATAL) << "Invalid characters in temporary path name"; FATAL_ERROR_EXIT();
       }
       temp[j] = (char)(tempPathName[j]);
     }

@@ -255,8 +255,7 @@ bool LogfileManager::prepare() {
       if (res) {
         LOG(INFO) << "created database directory '" << _directory.c_str() << "'.";
       } else {
-        LOG_FATAL_AND_EXIT("unable to create database directory: %s",
-                           systemErrorStr.c_str());
+        LOG(FATAL) << "unable to create database directory: " << systemErrorStr.c_str(); FATAL_ERROR_EXIT();
       }
     }
 
@@ -269,9 +268,7 @@ bool LogfileManager::prepare() {
   }
 
   if (_directory.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "no directory specified for WAL logfiles. Please use the "
-        "--wal.directory option");
+    LOG(FATAL) << "no directory specified for WAL logfiles. Please use the --wal.directory option"; FATAL_ERROR_EXIT();
   }
 
   if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
@@ -281,34 +278,23 @@ bool LogfileManager::prepare() {
 
   if (_filesize < MinFileSize()) {
     // minimum filesize per logfile
-    LOG_FATAL_AND_EXIT(
-        "invalid value for --wal.logfile-size. Please use a value of at least "
-        "%lu",
-        (unsigned long)MinFileSize());
+    LOG(FATAL) << "invalid value for --wal.logfile-size. Please use a value of at least " << MinFileSize(); FATAL_ERROR_EXIT();
   }
 
   _filesize = (uint32_t)(((_filesize + PageSize - 1) / PageSize) * PageSize);
 
   if (_numberOfSlots < MinSlots() || _numberOfSlots > MaxSlots()) {
     // invalid number of slots
-    LOG_FATAL_AND_EXIT(
-        "invalid value for --wal.slots. Please use a value between %lu and %lu",
-        (unsigned long)MinSlots(), (unsigned long)MaxSlots());
+    LOG(FATAL) << "invalid value for --wal.slots. Please use a value between " << MinSlots() << " and " << MaxSlots(); FATAL_ERROR_EXIT();
   }
 
   if (_throttleWhenPending > 0 &&
       _throttleWhenPending < MinThrottleWhenPending()) {
-    LOG_FATAL_AND_EXIT(
-        "invalid value for --wal.throttle-when-pending. Please use a value of "
-        "at least %llu",
-        (unsigned long long)MinThrottleWhenPending());
+    LOG(FATAL) << "invalid value for --wal.throttle-when-pending. Please use a value of at least " << MinThrottleWhenPending(); FATAL_ERROR_EXIT();
   }
 
   if (_syncInterval < MinSyncInterval()) {
-    LOG_FATAL_AND_EXIT(
-        "invalid value for --wal.sync-interval. Please use a value of at least "
-        "%llu",
-        (unsigned long long)MinSyncInterval());
+    LOG(FATAL) << "invalid value for --wal.sync-interval. Please use a value of at least " << MinSyncInterval(); FATAL_ERROR_EXIT();
   }
 
   // sync interval is specified in milliseconds by the user, but internally
@@ -571,7 +557,7 @@ int LogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
 
     // insert into currently running list of transactions
     _transactions.emplace(transactionId, std::move(p));
-    TRI_ASSERT_EXPENSIVE(lastCollectedId <= lastSealedId);
+    TRI_ASSERT(lastCollectedId <= lastSealedId);
 
     return TRI_ERROR_NO_ERROR;
   } catch (...) {

@@ -876,7 +876,7 @@ static TRI_replication_operation_e TranslateType(
 
 static int StringifyWalMarker(TRI_replication_dump_t* dump,
                               TRI_df_marker_t const* marker) {
-  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
+  TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
   APPEND_STRING(dump->_buffer, "{\"tick\":\"");
   APPEND_UINT64(dump->_buffer, (uint64_t)marker->_tick);
@@ -968,7 +968,7 @@ static TRI_voc_tick_t GetDatabaseId(TRI_df_marker_t const* marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_tick_t GetDatabaseFromWalMarker(TRI_df_marker_t const* marker) {
-  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
+  TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
   switch (marker->_type) {
     case TRI_WAL_MARKER_ATTRIBUTE:
@@ -1066,7 +1066,7 @@ static TRI_voc_tid_t GetTransactionId(TRI_df_marker_t const* marker) {
 
 static TRI_voc_tid_t GetTransactionFromWalMarker(
     TRI_df_marker_t const* marker) {
-  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
+  TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
   switch (marker->_type) {
     case TRI_WAL_MARKER_DOCUMENT:

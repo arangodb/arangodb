@@ -1056,7 +1056,7 @@ static int WriteInitialHeaderMarker(TRI_datafile_t* datafile, TRI_voc_fid_t fid,
       TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ASSERT_EXPENSIVE(position != nullptr);
+    TRI_ASSERT(position != nullptr);
     res = TRI_WriteCrcElementDatafile(datafile, position, &header.base, false);
   }
 
@@ -1605,7 +1605,7 @@ int TRI_ReserveElementDatafile(TRI_datafile_t* datafile, TRI_voc_size_t size,
 
   *position = (TRI_df_marker_t*)datafile->_next;
 
-  TRI_ASSERT_EXPENSIVE(*position != nullptr);
+  TRI_ASSERT(*position != nullptr);
 
   datafile->_next += size;
   datafile->_currentSize += size;
@@ -1635,7 +1635,7 @@ int TRI_WriteElementDatafile(TRI_datafile_t* datafile, void* position,
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
   }
 
-  TRI_ASSERT_EXPENSIVE(position != nullptr);
+  TRI_ASSERT(position != nullptr);
 
   // out of bounds check for writing into a datafile
   if (position == nullptr || position < (void*)datafile->_data ||
@@ -1915,7 +1915,7 @@ int TRI_SealDatafile(TRI_datafile_t* datafile) {
       TRI_ReserveElementDatafile(datafile, footer.base._size, &position, 0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ASSERT_EXPENSIVE(position != nullptr);
+    TRI_ASSERT(position != nullptr);
     res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, false);
   }
 

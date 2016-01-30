@@ -191,7 +191,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   _finishedCondition = finishedCondition;
 
   if (_started) {
-    LOG_FATAL_AND_EXIT("called started on an already started thread");
+    LOG(FATAL) << "called started on an already started thread"; FATAL_ERROR_EXIT();
   }
 
   _started = true;
