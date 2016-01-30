@@ -46,6 +46,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -945,27 +946,34 @@ void TRI_SetLogLevelLogging(char const* level) {
   IsTrace = 0;
 
   if (TRI_CaseEqualString(level, "fatal")) {
+    Logger::setLevel(LogLevel::FATAL);
   } else if (TRI_CaseEqualString(level, "error")) {
+    Logger::setLevel(LogLevel::ERROR);
     IsError = 1;
   } else if (TRI_CaseEqualString(level, "warning")) {
+    Logger::setLevel(LogLevel::WARNING);
     IsError = 1;
     IsWarning = 1;
   } else if (TRI_CaseEqualString(level, "info")) {
+    Logger::setLevel(LogLevel::INFO);
     IsError = 1;
     IsWarning = 1;
     IsInfo = 1;
   } else if (TRI_CaseEqualString(level, "debug")) {
+    Logger::setLevel(LogLevel::DEBUG);
     IsError = 1;
     IsWarning = 1;
     IsInfo = 1;
     IsDebug = 1;
   } else if (TRI_CaseEqualString(level, "trace")) {
+    Logger::setLevel(LogLevel::TRACE);
     IsError = 1;
     IsWarning = 1;
     IsInfo = 1;
     IsDebug = 1;
     IsTrace = 1;
   } else {
+    Logger::setLevel(LogLevel::INFO);
     IsError = 1;
     IsWarning = 1;
     IsInfo = 1;

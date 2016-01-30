@@ -2296,7 +2296,8 @@ static int WarmupEnvironment(v8::Isolate* isolate,
         "no 'javascript.startup-directory' has been supplied, giving up");
   }
 
-  LOG(DEBUG) << "using JavaScript startup files at '" << StartupPath.c_str() << "'";
+  LOG(DEBUG) << "using JavaScript startup files at '" << StartupPath << "'";
+
   StartupLoader.setDirectory(StartupPath);
 
   // load all init files
@@ -2329,7 +2330,7 @@ static int WarmupEnvironment(v8::Isolate* isolate,
   for (size_t i = 0; i < files.size(); ++i) {
     switch (StartupLoader.loadScript(isolate, context, files[i])) {
       case JSLoader::eSuccess:
-        LOG(TRACE) << "loaded JavaScript file '" << files[i].c_str() << "'";
+        LOG(TRACE) << "loaded JavaScript file '" << files[i] << "'";
         break;
       case JSLoader::eFailLoad:
         LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'",

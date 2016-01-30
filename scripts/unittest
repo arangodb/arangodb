@@ -1,14 +1,6 @@
 #!/bin/bash
 export PID=$$
 
-self=$0
-if test -f "${self}.js"; then 
-  export SCRIPT=${self}.js
-else
-  export SCRIPT=$1
-  shift
-fi
-
 if test -n "$ORIGINAL_PATH"; then
 # running in cygwin...
   PS='\'
