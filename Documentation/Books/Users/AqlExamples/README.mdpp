@@ -18,7 +18,7 @@ following server-generated attributes:
 * *_key*: The server sequence value
 * *_rev*: The document's revision id
 
-Whenever you run queries on the documents in the two collections, don't be surprised if
+Whenever you run queries on the documents in collections, don't be surprised if
 these additional attributes are returned as well.
 
 Please also note that with real-world data, you might want to create additional
