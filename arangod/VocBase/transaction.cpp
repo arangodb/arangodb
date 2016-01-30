@@ -43,7 +43,7 @@
 
 #else
 
-#define LOG_TRX(...) while (0)
+#define LOG_TRX(...) while (0) LOG(TRACE)
 
 #endif
 
