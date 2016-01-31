@@ -32,7 +32,6 @@
 #include "V8/v8-utils.h"
 #include "VocBase/VocShaper.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 // #define DEBUG_JSON_SHAPER 1

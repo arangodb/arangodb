@@ -29,7 +29,6 @@
 
 #include <iterator>
 
-using namespace std;
 using namespace arangodb::basics;
 
 ProgramOptionsDescription::ProgramOptionsDescription()
@@ -201,7 +200,7 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator()(
   _stringOptions[name] = value;
   _helpTexts[name] = text;
   _defaultTexts[name] = (value->empty()) ? "" : ("\"" + *value + "\"");
-  _currentTexts[name] = [](void* p) -> string {
+  _currentTexts[name] = [](void* p) -> std::string {
     return ((std::string*)p)->empty() ? "" : "\"" + (*(std::string*)p) + "\"";
   };
   _values[name] = (void*)value;
@@ -223,7 +222,7 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator()(
   _vectorStringOptions[name] = value;
   _helpTexts[name] = text;
   _defaultTexts[name] = value->empty() ? "" : StringUtils::join(*value, ", ");
-  _currentTexts[name] = [](void* p) -> string {
+  _currentTexts[name] = [](void* p) -> std::string {
     return ((std::vector<std::string>*)p)->empty()
                ? ""
                : "\"" + StringUtils::join(*(std::vector<std::string>*)p, " ,") +
@@ -247,7 +246,7 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator()(
   _int32Options[name] = value;
   _helpTexts[name] = text;
   _defaultTexts[name] = StringUtils::itoa(*value);
-  _currentTexts[name] = [](void* p) -> string {
+  _currentTexts[name] = [](void* p) -> std::string {
     return p == nullptr ? "" : StringUtils::itoa(*(int32_t*)p);
   };
   _values[name] = (void*)value;
@@ -286,7 +285,7 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator()(
   _int64Options[name] = value;
   _helpTexts[name] = text;
   _defaultTexts[name] = StringUtils::itoa(*value);
-  _currentTexts[name] = [](void* p) -> string {
+  _currentTexts[name] = [](void* p) -> std::string {
     return p == nullptr ? "" : StringUtils::itoa(*(int64_t*)p);
   };
   _values[name] = (void*)value;
@@ -325,7 +324,7 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator()(
   _uint32Options[name] = value;
   _helpTexts[name] = text;
   _defaultTexts[name] = StringUtils::itoa(*value);
-  _currentTexts[name] = [](void* p) -> string {
+  _currentTexts[name] = [](void* p) -> std::string {
     return p == nullptr ? "" : StringUtils::itoa(*(uint32_t*)p);
   };
   _values[name] = (void*)value;
@@ -364,7 +363,7 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator()(
   _uint64Options[name] = value;
   _helpTexts[name] = text;
   _defaultTexts[name] = StringUtils::itoa(*value);
-  _currentTexts[name] = [](void* p) -> string {
+  _currentTexts[name] = [](void* p) -> std::string {
     return p == nullptr ? "" : StringUtils::itoa(*(uint64_t*)p);
   };
   _values[name] = (void*)value;
@@ -403,7 +402,7 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator()(
   _doubleOptions[name] = value;
   _helpTexts[name] = text;
   _defaultTexts[name] = StringUtils::ftoa(*value);
-  _currentTexts[name] = [](void* p) -> string {
+  _currentTexts[name] = [](void* p) -> std::string {
     return p == nullptr ? "" : StringUtils::ftoa(*(double*)p);
   };
   _values[name] = (void*)value;
@@ -442,8 +441,8 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator()(
   _boolOptions[name] = value;
   _helpTexts[name] = text;
   _defaultTexts[name] = (*value ? "true" : "false");
-  _currentTexts[name] = [](void* p) -> string {
-    return p == nullptr ? "" : string(((*(bool*)p) ? "true" : "false"));
+  _currentTexts[name] = [](void* p) -> std::string {
+    return p == nullptr ? "" : std::string(((*(bool*)p) ? "true" : "false"));
   };
   _values[name] = (void*)value;
 
@@ -465,7 +464,7 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator()(
   _timeOptions[name] = value;
   _helpTexts[name] = text;
   _defaultTexts[name] = StringUtils::itoa((int64_t)*value);
-  _currentTexts[name] = [](void* p) -> string {
+  _currentTexts[name] = [](void* p) -> std::string {
     return p == nullptr ? "" : StringUtils::itoa((int64_t)(*(time_t*)p));
   };
   _values[name] = (void*)value;

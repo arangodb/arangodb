@@ -32,7 +32,6 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------

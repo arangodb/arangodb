@@ -38,9 +38,7 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 using namespace arangodb;
-using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the line editor object for use in debugging

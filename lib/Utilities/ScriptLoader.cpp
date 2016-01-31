@@ -28,7 +28,6 @@
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 

@@ -29,7 +29,6 @@ extern "C" {
 
 #include "Utilities/Completer.h"
 
-using namespace std;
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////

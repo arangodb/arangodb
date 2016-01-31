@@ -31,7 +31,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::admin;

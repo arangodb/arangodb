@@ -33,7 +33,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -54,7 +53,7 @@ DispatcherThread::DispatcherThread(DispatcherQueue* queue)
                                  ? std::string("Std")
                                  : (queue->_id == Dispatcher::AQL_QUEUE
                                         ? std::string("Aql")
-                                        : ("_" + to_string(queue->_id))))),
+                                        : ("_" + std::to_string(queue->_id))))),
       _queue(queue) {
   allowAsynchronousCancelation();
 }
@@ -65,7 +64,7 @@ void DispatcherThread::run() {
   double grace = 0.2;
 
   // iterate until we are shutting down
-  while (!_queue->_stopping.load(memory_order_relaxed)) {
+  while (!_queue->_stopping.load(std::memory_order_relaxed)) {
     double now = TRI_microtime();
 
     // drain the job queue
@@ -188,7 +187,7 @@ void DispatcherThread::handleJob(Job* job) {
     }
   } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
-    if (_queue->_stopping.load(memory_order_relaxed)) {
+    if (_queue->_stopping.load(std::memory_order_relaxed)) {
       LOG(WARNING) << "caught cancelation exception during work";
       throw;
     }
@@ -210,7 +209,7 @@ void DispatcherThread::handleJob(Job* job) {
     job->cleanup(_queue);
   } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
-    if (_queue->_stopping.load(memory_order_relaxed)) {
+    if (_queue->_stopping.load(std::memory_order_relaxed)) {
       LOG(WARNING) << "caught cancelation exception during cleanup";
       throw;
     }

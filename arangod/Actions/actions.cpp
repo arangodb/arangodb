@@ -30,7 +30,6 @@
 #include "Basics/Logger.h"
 #include "Rest/HttpRequest.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////

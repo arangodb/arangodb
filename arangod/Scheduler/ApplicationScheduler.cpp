@@ -35,7 +35,6 @@
 #include "Scheduler/SchedulerLibev.h"
 #include "Scheduler/SignalTask.h"
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -397,7 +396,7 @@ bool ApplicationScheduler::afterOptionParsing(
   // show io backends
   if (options.has("show-io-backends")) {
     std::cout << "available io backends are: "
-              << SchedulerLibev::availableBackends() << endl;
+              << SchedulerLibev::availableBackends() << std::endl;
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
 

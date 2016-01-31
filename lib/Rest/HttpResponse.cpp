@@ -28,7 +28,6 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch error count header

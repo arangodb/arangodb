@@ -33,8 +33,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-using namespace std;
-
 RestBatchHandler::RestBatchHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 

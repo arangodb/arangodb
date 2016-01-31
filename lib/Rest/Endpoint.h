@@ -74,7 +74,7 @@ class Endpoint {
   /// @brief creates an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  Endpoint(const EndpointType, const DomainType, const EncryptionType,
+  Endpoint(EndpointType, DomainType, EncryptionType,
            std::string const&, int);
 
  public:

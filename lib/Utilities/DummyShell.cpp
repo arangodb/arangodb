@@ -25,7 +25,6 @@
 
 #include <iostream>
 
-using namespace std;
 using namespace arangodb;
 
 DummyShell::DummyShell(std::string const& history, Completer* completer)
@@ -52,12 +51,12 @@ void DummyShell::addHistory(std::string const&) {}
 bool DummyShell::writeHistory() { return true; }
 
 std::string DummyShell::getLine(std::string const& prompt, bool& eof) {
-  std::cout << prompt << flush;
+  std::cout << prompt << std::flush;
 
   std::string line;
-  getline(cin, line);
+  std::getline(std::cin, line);
 
-  if (cin.eof()) {
+  if (std::cin.eof()) {
     eof = true;
     return "";
   }

@@ -25,7 +25,6 @@
 #include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 

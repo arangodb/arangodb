@@ -32,7 +32,6 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/PeriodicTask.h"
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 

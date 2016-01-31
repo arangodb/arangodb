@@ -35,7 +35,6 @@
 using namespace arangodb::admin;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
 
 RestJobHandler::RestJobHandler(HttpRequest* request,
                                std::pair<Dispatcher*, AsyncJobManager*>* data)

@@ -35,7 +35,6 @@
 
 using namespace arangodb;
 using namespace arangodb::rest;
-using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new server job

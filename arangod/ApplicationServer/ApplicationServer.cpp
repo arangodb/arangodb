@@ -45,7 +45,6 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
 
 static std::string DeprecatedParameter;
 

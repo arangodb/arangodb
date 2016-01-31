@@ -37,7 +37,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 // .............................................................................

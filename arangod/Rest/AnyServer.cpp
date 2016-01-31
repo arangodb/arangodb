@@ -38,7 +38,6 @@
 
 #include <fstream>
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -48,7 +47,7 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WritePidFile(std::string const& pidFile, int pid) {
-  ofstream out(pidFile.c_str(), ios::trunc);
+  std::ofstream out(pidFile.c_str(), std::ios::trunc);
 
   if (!out) {
     LOG(FATAL) << "cannot write pid-file '" << pidFile.c_str() << "'"; FATAL_ERROR_EXIT();
@@ -69,7 +68,7 @@ static void CheckPidFile(std::string const& pidFile) {
     } else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
       LOG(INFO) << "pid-file '" << pidFile.c_str() << "' already exists, verifying pid";
 
-      ifstream f(pidFile.c_str());
+      std::ifstream f(pidFile.c_str());
 
       // file can be opened
       if (f) {

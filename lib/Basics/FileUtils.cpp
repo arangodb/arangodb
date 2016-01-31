@@ -47,8 +47,6 @@
 
 #endif
 
-using namespace std;
-
 namespace arangodb {
 namespace basics {
 namespace FileUtils {
@@ -539,7 +537,7 @@ off_t size(std::string const& path) {
 std::string stripExtension(std::string const& path,
                            std::string const& extension) {
   size_t pos = path.rfind(extension);
-  if (pos == string::npos) {
+  if (pos == std::string::npos) {
     return path;
   }
 

@@ -25,8 +25,6 @@
 
 #include "Utilities/ShellBase.h"
 
-using namespace std;
-using namespace arangodb;
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////

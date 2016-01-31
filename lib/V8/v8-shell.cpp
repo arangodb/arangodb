@@ -34,8 +34,6 @@
 
 #include <fstream>
 
-using namespace std;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begins a new CSV line
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,13 +239,13 @@ static void JS_ProcessJsonFile(
 
   // read and convert
   std::string line;
-  ifstream file(*filename);
+  std::ifstream file(*filename);
 
   if (file.is_open()) {
     size_t row = 0;
 
     while (file.good()) {
-      getline(file, line);
+      std::getline(file, line);
 
       char const* ptr = line.c_str();
       char const* end = ptr + line.length();

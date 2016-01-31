@@ -29,7 +29,6 @@
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"
 
-using namespace std;
 using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +64,7 @@ DispatcherQueue::DispatcherQueue(Scheduler* scheduler, Dispatcher* dispatcher,
       _jobs(),
       _jobPositions(_maxSize) {
   // keep a list of all jobs
-  _jobs = new atomic<Job*>[maxSize];
+  _jobs = new std::atomic<Job*>[maxSize];
 
   // and a list of positions into this array
   for (size_t i = 0; i < maxSize; ++i) {
@@ -407,19 +406,18 @@ void DispatcherQueue::removeStartedThread(DispatcherThread* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::tooManyThreads() {
-  size_t nrRunning = _nrRunning.load(memory_order_relaxed);
-  size_t nrBlocked = (size_t)_nrBlocked.load(memory_order_relaxed);
+  size_t nrRunning = _nrRunning.load(std::memory_order_relaxed);
+  size_t nrBlocked = (size_t)_nrBlocked.load(std::memory_order_relaxed);
 
   if ((_nrThreads + nrBlocked) < nrRunning) {
     double now = TRI_microtime();
-    double lastChanged = _lastChanged.load(memory_order_relaxed);
+    double lastChanged = _lastChanged.load(std::memory_order_relaxed);
 
     if (lastChanged + _gracePeriod < now) {
-      _lastChanged.store(now, memory_order_relaxed);
+      _lastChanged.store(now, std::memory_order_relaxed);
       return true;
     }
-
-    return false;
+    // fall-through
   }
 
   return false;
@@ -430,8 +428,8 @@ bool DispatcherQueue::tooManyThreads() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::notEnoughThreads() {
-  size_t nrRunning = _nrRunning.load(memory_order_relaxed);
-  size_t nrBlocked = (size_t)_nrBlocked.load(memory_order_relaxed);
+  size_t nrRunning = _nrRunning.load(std::memory_order_relaxed);
+  size_t nrBlocked = (size_t)_nrBlocked.load(std::memory_order_relaxed);
 
   return nrRunning <= _nrThreads - 1 || nrRunning <= nrBlocked;
 }

@@ -1339,7 +1339,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   bool checkMore = false;
   bool active = false;
   bool fromIncluded = false;
-  TRI_voc_tick_t tick;
+  TRI_voc_tick_t tick = 0;
 
   bool found;
   std::string header =

@@ -38,8 +38,6 @@
 
 // #define DEBUG_DATAFILE 1
 
-using namespace std;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the datafile is a physical file (true) or an
 /// anonymous mapped region (false)

@@ -29,7 +29,6 @@
 #include "Basics/tri-strings.h"
 #include "V8/v8-utils.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////

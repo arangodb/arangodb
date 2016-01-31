@@ -94,8 +94,6 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::admin;
 
-using namespace std;
-
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
 bool IGNORE_DATAFILE_ERRORS;
@@ -432,7 +430,7 @@ void ArangoServer::buildApplicationServer() {
   // arangod allows defining a user-specific configuration file. arangosh and
   // the other binaries don't
   _applicationServer->setUserConfigFile(
-      ".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
+      ".arango" + std::string(1, TRI_DIR_SEPARATOR_CHAR) + std::string(conf));
 
   // initialize the server's write ahead log
   wal::LogfileManager::initialize(&_databasePath, _server);
@@ -1235,8 +1233,8 @@ int ArangoServer::startupServer() {
   closeDatabases();
 
   if (mode == OperationMode::MODE_CONSOLE) {
-    cout << endl
-         << TRI_BYE_MESSAGE << endl;
+    std::cout << std::endl
+         << TRI_BYE_MESSAGE << std::endl;
   }
 
   TRI_ShutdownStatistics();

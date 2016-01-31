@@ -31,8 +31,6 @@
 #include "Basics/tri-strings.h"
 #include "Basics/StringBuffer.h"
 
-using namespace std;
-
 // -----------------------------------------------------------------------------
 // helper functions
 // -----------------------------------------------------------------------------
@@ -1127,7 +1125,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   }
 
   // the max amount of memory is:
-  size_t mt = max(static_cast<size_t>(1), toLength);
+  size_t mt = (std::max)(static_cast<size_t>(1), toLength);
 
   if ((sourceLength / fromLength) + 1 >= (SIZE_MAX - toLength) / mt) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1137,7 +1135,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
 
   // the min amount of memory we have to allocate for the "replace" (new) string
   // is length of sourceStr
-  maxLength = max(maxLength, sourceLength) + 1;
+  maxLength = (std::max)(maxLength, sourceLength) + 1;
 
   char* result = new char[maxLength];
   size_t k = 0;

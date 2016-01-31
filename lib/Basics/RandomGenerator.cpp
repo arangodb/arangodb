@@ -32,7 +32,6 @@
 #include <random>
 #include <chrono>
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 

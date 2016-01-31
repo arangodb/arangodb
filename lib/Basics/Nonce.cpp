@@ -31,7 +31,6 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -188,7 +187,7 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
   return 0 < proofs;
 }
 
-vector<Statistics> statistics() {
+std::vector<Statistics> statistics() {
   MUTEX_LOCKER(mutexLocker, MutexNonce);
 
   int const N = 4;

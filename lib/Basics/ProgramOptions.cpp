@@ -28,7 +28,6 @@
 #include "Basics/tri-strings.h"
 #include "ProgramOptions/program-options.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////

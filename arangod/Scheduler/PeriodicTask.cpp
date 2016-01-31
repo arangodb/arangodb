@@ -29,7 +29,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::rest;
 
 PeriodicTask::PeriodicTask(std::string const& id, double offset,

@@ -29,7 +29,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::basics;
-using namespace std;
 
 namespace arangodb {
 namespace httpclient {

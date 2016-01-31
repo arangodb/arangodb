@@ -29,7 +29,6 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
 
 namespace {
 sig_atomic_t MaintenanceMode = 0;
@@ -229,7 +228,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
         size_t l = 1;
         size_t n = path.find_first_of('/', l);
 
-        while (n != string::npos) {
+        while (n != std::string::npos) {
           request->addSuffix(path.substr(l, n - l));
           l = n + 1;
           n = path.find_first_of('/', l);
@@ -250,7 +249,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
       size_t l = prefix.size() + 1;
       size_t n = path.find_first_of('/', l);
 
-      while (n != string::npos) {
+      while (n != std::string::npos) {
         request->addSuffix(path.substr(l, n - l));
         l = n + 1;
         n = path.find_first_of('/', l);

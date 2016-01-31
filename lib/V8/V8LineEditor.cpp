@@ -29,7 +29,6 @@
 #include "Utilities/ShellBase.h"
 #include "V8/v8-utils.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb;
 

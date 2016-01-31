@@ -29,7 +29,6 @@
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 

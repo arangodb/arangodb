@@ -28,7 +28,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::admin;
 using namespace arangodb::rest;
 

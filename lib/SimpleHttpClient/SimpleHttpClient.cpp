@@ -31,7 +31,6 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
 
 namespace arangodb {
 namespace httpclient {

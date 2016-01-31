@@ -27,7 +27,6 @@
 #include <openssl/err.h>
 
 using namespace arangodb::basics;
-using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an SSL context
