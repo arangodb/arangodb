@@ -27,8 +27,6 @@
 #include "Basics/Common.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/types.h"
-#include "Dispatcher/Dispatcher.h"
-#include "RestHandler/RestBaseHandler.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
 #include "V8Server/ApplicationV8.h"

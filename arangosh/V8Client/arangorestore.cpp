@@ -31,8 +31,6 @@
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
-#include "Basics/terminal-utils.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitializeRest.h"

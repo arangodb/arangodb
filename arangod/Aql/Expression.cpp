@@ -402,7 +402,7 @@ void Expression::analyzeExpression() {
 
       bool isSafeForOptimization;
       _attributes =
-          std::move(Ast::getReferencedAttributes(_node, isSafeForOptimization));
+          Ast::getReferencedAttributes(_node, isSafeForOptimization);
 
       if (!isSafeForOptimization) {
         _attributes.clear();
@@ -630,7 +630,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
       result.destroy();
       return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
     } else if (indexResult.isString()) {
-      auto value(std::move(indexResult.toString()));
+      auto value(indexResult.toString());
       indexResult.destroy();
 
       try {

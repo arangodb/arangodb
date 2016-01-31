@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestBaseHandler.h"
-#include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/HttpRequest.h"

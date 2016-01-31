@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "ApplicationServer/ApplicationFeature.h"
-#include "Cluster/ServerState.h"
 
 struct TRI_server_t;
 

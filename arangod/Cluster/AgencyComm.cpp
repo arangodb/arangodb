@@ -193,7 +193,7 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
     return false;
   }
 
-  std::string keydecoded = std::move(AgencyComm::decodeKey(key.copyString()));
+  std::string keydecoded = AgencyComm::decodeKey(key.copyString());
 
   // make sure we don't strip more bytes than the key is long
   size_t const offset =
@@ -822,7 +822,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
     std::string const status =
         ServerState::stateToString(ServerState::instance()->getState());
     builder.add("status", VPackValue(status));
-    std::string const stamp = std::move(AgencyComm::generateStamp());
+    std::string const stamp = AgencyComm::generateStamp();
     builder.add("time", VPackValue(stamp));
     builder.close();
   } catch (...) {
@@ -1438,7 +1438,7 @@ void AgencyComm::requeueEndpoint(AgencyEndpoint* agencyEndpoint,
 
 std::string AgencyComm::buildUrl(std::string const& relativePart) const {
   return AgencyComm::AGENCY_URL_PREFIX +
-         std::move(encodeKey(_globalPrefix + relativePart));
+         encodeKey(_globalPrefix + relativePart);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1447,8 +1447,7 @@ std::string AgencyComm::buildUrl(std::string const& relativePart) const {
 
 std::string AgencyComm::buildUrl() const {
   return AgencyComm::AGENCY_URL_PREFIX +
-         std::move(
-             encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1)));
+             encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

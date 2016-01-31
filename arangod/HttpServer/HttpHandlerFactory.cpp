@@ -23,12 +23,9 @@
 
 #include "HttpHandlerFactory.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/Logger.h"
-#include "Basics/tri-strings.h"
 #include "HttpServer/HttpHandler.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/SslInterface.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;

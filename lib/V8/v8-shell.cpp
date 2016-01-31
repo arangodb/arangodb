@@ -23,11 +23,9 @@
 
 #include "v8-shell.h"
 
-#include "Basics/conversions.h"
 #include "Basics/csv.h"
 #include "Basics/Exceptions.h"
 #include "Basics/shell-colors.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"

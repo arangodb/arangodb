@@ -30,8 +30,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
 #include "Rest/HttpRequest.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "VocBase/voc-types.h"
 #include "Cluster/AgencyComm.h"

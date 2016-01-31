@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-statistics.h"
+#include "Basics/Exceptions.h"
 #include "Basics/process-utils.h"
 #include "Basics/StringUtils.h"
 #include "Statistics/statistics.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-
-using namespace std;
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;

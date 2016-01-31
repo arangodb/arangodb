@@ -1204,8 +1204,7 @@ static void InsertVocbaseVPack(
     TRI_V8_RETURN_TRUE();
   }
 
-  std::string key =
-      std::move(TRI_EXTRACT_MARKER_KEY(&trx, &mptr));  // PROTECTED by trx here
+  std::string key = TRI_EXTRACT_MARKER_KEY(&trx, &mptr);  // PROTECTED by trx here
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_GET_GLOBAL_STRING(_IdKey);

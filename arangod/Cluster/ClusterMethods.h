@@ -26,22 +26,14 @@
 
 #include "Basics/Common.h"
 
-#include "Rest/HttpRequest.h"
+#include "Cluster/AgencyComm.h"
 #include "Rest/HttpResponse.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
-#include "Cluster/AgencyComm.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterComm.h"
 
 struct TRI_json_t;
-struct TRI_vector_pointer_s;
 
 namespace arangodb {
 namespace velocypack {

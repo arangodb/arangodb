@@ -294,6 +294,7 @@ static double ValueToNumber(TRI_json_t const* json, bool& isValid) {
   return 0.0;
 }
 
+#if 0
 static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
   if (slice.isNull()) {
     isValid = true;
@@ -340,6 +341,7 @@ static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
   isValid = false;
   return 0.0;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a value into a boolean value

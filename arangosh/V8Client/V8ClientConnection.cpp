@@ -24,17 +24,13 @@
 
 #include "V8ClientConnection.h"
 
-#include <sstream>
-
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-json.h"
 #include "V8/v8-globals.h"
 

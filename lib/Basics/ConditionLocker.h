@@ -26,7 +26,6 @@
 #define LIB_BASICS_CONDITION_LOCKER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
@@ -45,6 +44,7 @@
 
 namespace arangodb {
 namespace basics {
+class ConditionVariable; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition locker

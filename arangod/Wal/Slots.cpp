@@ -24,7 +24,6 @@
 #include "Slots.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/hashes.h"
 #include "Basics/Logger.h"
 #include "VocBase/datafile.h"
 #include "VocBase/server.h"

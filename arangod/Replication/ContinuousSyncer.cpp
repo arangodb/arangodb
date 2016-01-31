@@ -31,8 +31,6 @@
 #include "Basics/WriteLocker.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/SslInterface.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"

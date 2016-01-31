@@ -24,7 +24,6 @@
 
 #include "HttpServer.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/WorkMonitor.h"
 #include "Basics/Logger.h"

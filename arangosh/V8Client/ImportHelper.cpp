@@ -24,9 +24,6 @@
 
 #include "ImportHelper.h"
 
-#include <sstream>
-#include <iomanip>
-
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/Logger.h"

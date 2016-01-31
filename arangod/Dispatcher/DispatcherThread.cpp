@@ -29,7 +29,6 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"
-#include "Scheduler/Scheduler.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

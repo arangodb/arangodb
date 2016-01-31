@@ -552,7 +552,7 @@ class Slice {
     out.reserve(static_cast<size_t>(length));
     out.insert(out.end(), _start + 1 + h - 0xbf,
                _start + 1 + h - 0xbf + length);
-    return std::move(out);
+    return out;
   }
 
   // get the total byte size for the slice, including the head byte

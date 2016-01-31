@@ -25,10 +25,7 @@
 
 #include <iostream>
 
-#include "Basics/tri-strings.h"
-
 using namespace std;
-using namespace arangodb;
 using namespace arangodb;
 
 DummyShell::DummyShell(std::string const& history, Completer* completer)

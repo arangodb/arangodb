@@ -23,15 +23,15 @@
 
 #include "Cluster/ClusterComm.h"
 #include "Basics/Logger.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "SimpleHttpClient/ConnectionManager.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterInfo.h"
 
 using namespace arangodb;
 

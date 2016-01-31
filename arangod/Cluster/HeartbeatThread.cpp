@@ -27,6 +27,7 @@
 #include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerJob.h"

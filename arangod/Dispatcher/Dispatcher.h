@@ -27,8 +27,6 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
-
 namespace arangodb {
 namespace rest {
 class DispatcherQueue;

@@ -26,7 +26,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
-#include "HttpServer/HttpServerJob.h"
 #include "Rest/HttpRequest.h"
 
 using namespace arangodb::basics;

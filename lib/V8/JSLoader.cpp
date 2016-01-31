@@ -23,10 +23,7 @@
 
 #include "JSLoader.h"
 
-#include "Basics/MutexLocker.h"
-#include "Basics/files.h"
 #include "Basics/Logger.h"
-#include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "V8/v8-utils.h"
 
