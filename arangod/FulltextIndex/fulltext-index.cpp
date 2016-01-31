@@ -1065,6 +1065,10 @@ static bool InsertHandle(index_t* const idx, node_t* const node,
   TRI_ASSERT(node != nullptr);
 #endif
 
+  if (node == nullptr) {
+    return false;
+  }
+
   if (node->_handles == nullptr) {
     // node does not yet have any handles. now allocate a new chunk of handles
     node->_handles = TRI_CreateListFulltextIndex(idx->_initialNodeHandles);

@@ -102,7 +102,7 @@ HttpHandler::status_t RestImportHandler::execute() {
 TRI_col_type_e RestImportHandler::getCollectionType() {
   // extract the collection type from the request
   bool found;
-  std::string const& collectionType =
+  std::string const collectionType =
       _request->value("createCollectionType", found);
 
   if (found && !collectionType.empty() && collectionType == "edge") {
@@ -376,7 +376,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   // extract the collection name
   bool found;
-  std::string const& collection = _request->value("collection", found);
+  std::string const collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -603,7 +603,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // extract the collection name
   bool found;
-  std::string const& collection = _request->value("collection", found);
+  std::string const collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,

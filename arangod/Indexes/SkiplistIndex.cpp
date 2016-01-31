@@ -1519,7 +1519,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
         while (true) {
           if (++permutationStates[np - current].current <
               permutationStates[np - current].n) {
-            current = 0;
+            current = 0; // note: resetting the variable has no effect here
             // abort inner iteration
             break;
           }
