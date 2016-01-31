@@ -35,6 +35,9 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/vpack.h>
+#include <velocypack/Options.h>
+#include <velocypack/Parser.h>
 
 
 namespace arangodb {
@@ -50,8 +53,8 @@ namespace rest {
 
 class GeneralRequest {
  private:
-  GeneralRequest(HttpRequest const&);
-  GeneralRequest& operator=(HttpRequest const&);
+  GeneralRequest(GeneralRequest const&);
+  GeneralRequest& operator=(GeneralRequest const&);
 
   
  public:
@@ -165,7 +168,8 @@ class GeneralRequest {
   /// velocystream request consists of : length, chunk, isFirstChunk, messageId, n-Vpack objects. 
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralRequest(ConnectionInfo const&, Builder, int32_t, bool);
+  GeneralRequest(ConnectionInfo const&, velocypack::Builder, uint32_t,
+                        uint32_t , uint32_t, uint64_t , int32_t, bool);
 
   ~GeneralRequest();
 
@@ -499,13 +503,13 @@ class GeneralRequest {
   /// @brief parses the velocystream header
   //////////////////////////////////////////////////////////////////////////////
 
-  void parseHeader(Builder, size_t);
+  void parseHeader(velocypack::Builder, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get value from vpack and return as string.
   //////////////////////////////////////////////////////////////////////////////
 
-  string getValue(Slice);
+  std::string getValue(velocypack::Slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the full url of the request
@@ -567,13 +571,13 @@ class GeneralRequest {
   /// @brief length of total number of chunks in a Vpack enclosed message
   //////////////////////////////////////////////////////////////////////////////
     
-  uint31_t chunk;
+  uint32_t chunk;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief to check if the given sequence is the first chunk
   ////////////////////////////////////////////////////////////////////////////// 
 
-  uint1_t isFirstChunk;
+  uint32_t isFirstChunk;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unique messageId; useful when concatenating the chunk
@@ -640,7 +644,7 @@ class GeneralRequest {
   /// destructor
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<Builder> _freeablesVpack;
+  std::vector<velocypack::Builder> _freeablesVpack;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the protocol used

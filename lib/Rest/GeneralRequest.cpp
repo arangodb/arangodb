@@ -95,8 +95,8 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& info, char const* header,
 /// @brief VelocyStream(VStream) request constructor @TODO: _freeables for vpack
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest::GeneralRequest( ConnectionInfo const& info, Builder vobject, 
-                        uint32_t length, uint31_t chunk, uint1_t isFirstChunk, 
+GeneralRequest::GeneralRequest( ConnectionInfo const& info, velocypack::Builder vobject, 
+                        uint32_t length, uint32_t chunk, uint32_t isFirstChunk, 
                         uint64_t messageId, int32_t defaultApiCompatibility,
                         bool allowMethodOverride )
       : _values(10),
@@ -122,7 +122,7 @@ GeneralRequest::GeneralRequest( ConnectionInfo const& info, Builder vobject,
         _allowMethodOverride(allowMethodOverride) {
         
           if ((isFirstChunk == 1)) {
-            Builder vpack = vobject;
+            velocypack::Builder vpack = vobject;
             _freeablesVpack.emplace_back(vpack);
             parseHeader(vpack, length);
           }   
@@ -696,73 +696,74 @@ GeneralRequest::RequestType GeneralRequest::getRequestType(char const* ptr,
 /// @brief parses the VStream header
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralRequest::parseHeader(Builder ptr, size_t length) {
+void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
 
-  Slice s(ptr.start());
+  velocypack::Slice s(ptr.start());
+  arangodb::velocypack::ValueLength len;
 
-  for (auto const& it : ObjectIterator(s)) {
+  for (auto const& it : velocypack::ObjectIterator(s)) {
 
-     if(tolower(it.key.copyString()) == "requestType") {
+     if(StringUtils::tolower(it.key.getString(len)) == "requestType") {
     
         _type = getRequestType(getValue(it.value).c_str(), getValue(it.value).size());
     
-     } else if(tolower(it.key.copyString()) == "version") {
+     } else if(StringUtils::tolower(it.key.getString(len)) == "version") {
     
-        if(tolower(getValue(it.value)) == "vstream_unknown"){
+        if(StringUtils::tolower(getValue(it.value)) == "vstream_unknown"){
           _version = VSTREAM_UNKNOWN;
-        } else if(tolower(getValue(it.value)) == "vstream_1_0"){
+        } else if(StringUtils::tolower(getValue(it.value)) == "vstream_1_0"){
           _version = VSTREAM_1_0;   
         }
       
-     } else if(tolower(it.key.copyString()) == "database"){
+     } else if(StringUtils::tolower(it.key.getString(len)) == "database"){
 
-        if(getValue(it.value).c_str() != ''){
+        if(getValue(it.value).c_str() != ""){
           _databaseName = getValue(it.value);
         } else{
           _databaseName = "_system";
         }  
 
-     }else if(tolower(it.key.copyString()) == "request"){
+     }else if(StringUtils::tolower(it.key.getString(len)) == "request"){
 
-        if(getValue(it.value).c_str() != ''){
-          _requestPath = getValue(it.value);
+        if(getValue(it.value).c_str() != ""){
+          _requestPath = getValue(it.value).c_str();
         } else{
           _requestPath = "";
         }  
 
-     } else if(tolower(it.key.copyString()) == "fullUrl") { 
+     } else if(StringUtils::tolower(it.key.getString(len)) == "fullUrl") { 
 
-        if(getValue(it.value).c_str() != ''){
+        if(getValue(it.value).c_str() != ""){
           _fullUrl = getValue(it.value);
         } else{
           _fullUrl = "";
         }
 
-     }else if(tolower(it.key.copyString()) == "parameter"){
+     }else if(StringUtils::tolower(it.key.getString(len)) == "parameter"){
 
         /// @TODO: Revaluate _value.insert() and setArrayValue
 
-        for (auto const& it : ObjectIterator(s.get("parameter"))) { 
+        for (auto const& it : velocypack::ObjectIterator(s.get("parameter"))) { 
           if( it.value.isArray()){
 
             for(int i = 0; i < it.value.length(); i++){
-              setArrayValue(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
+              setArrayValue(it.key.getString(len).c_str(), it.key.byteSize(), getValue(it.value));
             } 
 
           } else {
-            _values.insert(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
+            _values.insert(it.key.getString(len).c_str(), it.key.byteSize(), getValue(it.value));
           } 
         }  
 
-     }else if(tolower(it.key.copyString()) == "meta") {
+     }else if(StringUtils::tolower(it.key.getString(len)) == "meta") {
 
-        for (auto const& it : ObjectIterator(s.get("meta"))) {
-            if(getValue(it.value).c_str() != ''){
-              setHeader(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
+        for (auto const& it : velocypack::ObjectIterator(s.get("meta"))) {
+            if(getValue(it.value).c_str() != ""){
+              setHeader(it.key.getString(len).c_str(), it.key.byteSize(), getValue(it.value));
             }
         }
      } else{
-        setHeader(it.key.copyString(), it.key.copyString().byteSize(), getValue(it.value));
+        setHeader(it.key.getString(len).c_str(), it.key.byteSize(), getValue(it.value));
      } 
   }
 }
@@ -1109,42 +1110,42 @@ void GeneralRequest::parseHeader(char* ptr, size_t length) {
 /// @brief retrieve object from Slice(VPack) and return as string
 ////////////////////////////////////////////////////////////////////////////////
 
-string getValue(Slice s) {
+string getValue(arangodb::velocypack::Slice s) {
   string result;
   switch(s.type()) {
-    case ValueType::String  :try{
-                                ValueLength len;
-                                result = std::to_string(s.getString(len));
-                              }catch(Exception const& e){
-                                LOG_ERROR("String Parse error: '%s'", e.what());
-                              }
-                             break;
-    case ValueType::Double  :try{
-                                result = std::to_string(s.getDouble());
-                              }catch(Exception const& e){
-                                LOG_ERROR("Double Parse error: '%s'", e.what());
-                              }
-                             break;
-    case ValueType::Int     :try{
-                                result = std::to_string(s.getInt());
-                              }catch(Exception const& e){
-                                LOG_ERROR("Int Parse error: '%s'", e.what());
-                              }
-                             break;
-    case ValueType::UInt    :try{
-                                result = std::to_string(s.getUInt());
-                              }catch(Exception const& e){
-                                LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
-                              }
-                             break;
-    case ValueType::Bool    :try{
-                                result = std::to_string(s.getBool());
-                              }catch(Exception const& e){
-                                LOG_ERROR("Boolean Parse error: '%s'", e.what());
-                              }
-                             break;
-    default                 :result = "";
-                             break;
+    case arangodb::velocypack::ValueType::String  :try{
+                                                    arangodb::velocypack::ValueLength len;
+                                                    result = std::string(s.getString(len));
+                                                  }catch(Exception const& e){
+                                                    LOG_ERROR("String Parse error: '%s'", e.what());
+                                                  }
+                                                 break;
+    case arangodb::velocypack::ValueType::Double :try{
+                                                    result = std::string(s.getDouble());
+                                                  }catch(Exception const& e){
+                                                    LOG_ERROR("Double Parse error: '%s'", e.what());
+                                                  }
+                                                 break;
+    case arangodb::velocypack::ValueType::Int  : try{
+                                                  result = std::string(s.getInt());
+                                                 }catch(Exception const& e){
+                                                  LOG_ERROR("Int Parse error: '%s'", e.what());
+                                                 }
+                                                 break;
+    case arangodb::velocypack::ValueType::UInt : try{
+                                                  result = std::string(s.getUInt());
+                                                 }catch(Exception const& e){
+                                                  LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
+                                                 }
+                                                 break;
+    case arangodb::velocypack::ValueType::Bool : try{
+                                                  result = std::string(s.getBool());
+                                                 }catch(Exception const& e){
+                                                  LOG_ERROR("Boolean Parse error: '%s'", e.what());
+                                                 }
+                                                 break;
+    default : result = "";
+              break;
   }
   return result;
 }
@@ -1463,7 +1464,7 @@ void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
 /// @brief set array value
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {
+void GeneralRequest::setArrayValue(char const* key, size_t length, char const* value) {
   Dictionary<std::vector<char const*>*>::KeyValue const* kv =
       _arrayValues.lookup(key);
   std::vector<char const*>* v = nullptr;
