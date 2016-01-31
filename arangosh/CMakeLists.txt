@@ -154,12 +154,12 @@ target_link_libraries(
     ${BIN_ARANGOIMP}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
+    ${ICU_LIBS}
 )
 
 ################################################################################

@@ -160,7 +160,7 @@ add_library(
     Zip/unzip.cpp
     Zip/zip.cpp
 )
-target_link_libraries(${LIB_ARANGO} ${AR_ICU_LIBS} ${AR_V8_LIBS})
+target_link_libraries(${LIB_ARANGO} ${AR_V8_LIBS} ${AR_ICU_LIBS} )
 
 
 ################################################################################
@@ -177,6 +177,7 @@ add_library(
     SimpleHttpClient/SimpleHttpClient.cpp
     SimpleHttpClient/SimpleHttpResult.cpp
 )
+target_link_libraries(${LIB_ARANGO_CLIENT} ${AR_V8_LIBS} ${AR_ICU_LIBS} )
 
 ################################################################################
 ### @brief LIB_ARANGO_V8

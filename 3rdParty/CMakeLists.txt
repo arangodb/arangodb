@@ -74,16 +74,16 @@ target_include_directories(icu_header INTERFACE
     "${V8_DIR}/third_party/icu/source/i18n"
 )
 import_target(icu_uc v8_build
-    "${V8_DIR}/third_party/icu/source/common"
+    "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
     "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/third_party/icu/libicuuc.a"
 )
 
 import_target(icu_data v8_build
-    "${V8_DIR}/third_party/icu/source/io"
+    "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
     "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/third_party/icu/libicudata.a"
 )
 
 import_target(icu_i18n v8_build
-    "${V8_DIR}/third_party/icu/source/i18n"
+    "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
     "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/third_party/icu/libicui18n.a"
 )

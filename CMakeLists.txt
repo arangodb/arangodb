@@ -34,7 +34,7 @@ set(CMAKE_CXX_STANDARD 11)
 ######################
 find_package(Threads REQUIRED)
 
-set(AR_ICU_LIBS icu_header icu_uc icu_data icu_i18n)
+set(AR_ICU_LIBS icu_header icu_i18n icu_uc icu_data)
 set(AR_V8_LIBS v8_base v8_libbase v8_libplatform v8_nosnapshot)
 
 
