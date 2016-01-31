@@ -529,8 +529,8 @@ static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster(
   std::vector<std::shared_ptr<CollectionInfo>> const collections =
       ClusterInfo::instance()->getCollections(vocbase->_name);
 
-  for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collections[i]));
+  for (auto& collection : collections) {
+    TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collection));
 
     try {
       result.emplace_back(c);
@@ -554,8 +554,8 @@ static std::vector<std::string> GetCollectionNamesCluster(
   std::vector<std::shared_ptr<CollectionInfo>> const collections =
       ClusterInfo::instance()->getCollections(vocbase->_name);
 
-  for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    std::string const& name = collections[i]->name();
+  for (auto& collection : collections) {
+    std::string const& name = collection->name();
     result.emplace_back(name);
   }
 

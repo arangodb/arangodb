@@ -50,7 +50,7 @@ class DispatcherReporterTask : public PeriodicTask {
         _dispatcher(dispatcher) {}
 
  public:
-  bool handlePeriod() {
+  bool handlePeriod() override {
     _dispatcher->reportStatus();
     return true;
   }

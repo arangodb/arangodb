@@ -782,7 +782,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 void HttpCommTask::processRequest(uint32_t compatibility) {
   // check for deflate
   bool found;
-  std::string const& acceptEncoding =
+  std::string const acceptEncoding =
       _request->header("accept-encoding", found);
 
   if (found) {
@@ -792,7 +792,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   // check for an async request
-  std::string const& asyncExecution = _request->header("x-arango-async", found);
+  std::string const asyncExecution = _request->header("x-arango-async", found);
 
   // create handler, this will take over the request
   WorkItem::uptr<HttpHandler> handler(

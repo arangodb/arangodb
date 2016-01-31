@@ -128,7 +128,7 @@ class V8GcThread : public Thread {
   /// @brief collect garbage in an endless loop (main functon of GC thread)
   //////////////////////////////////////////////////////////////////////////////
 
-  void run() { _applicationV8->collectGarbage(); }
+  void run() override { _applicationV8->collectGarbage(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timestamp of the last GC
@@ -567,7 +567,7 @@ void ApplicationV8::collectGarbage() {
   // can be performed more early for all dirty contexts. The flag is set
   // to false again once all contexts have been cleaned up and there is nothing
   // more to do
-  volatile bool useReducedWait = false;
+  bool useReducedWait = false;
   bool preferFree = false;
 
   // the time we'll wait for a signal
@@ -590,10 +590,6 @@ void ApplicationV8::collectGarbage() {
 
         // we'll wait for a signal or a timeout
         gotSignal = guard.wait(waitTime);
-
-        // use a reduced wait time in the next round because we seem to be idle
-        // the reduced wait time will allow to perfom GC for more contexts
-        useReducedWait = !gotSignal;
       }
 
       if (preferFree && !_freeContexts.empty()) {
@@ -1278,16 +1274,16 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     }
 
     // load all init files
-    for (size_t j = 0; j < files.size(); ++j) {
-      switch (_startupLoader.loadScript(isolate, localContext, files[j])) {
+    for (auto& file : files) {
+      switch (_startupLoader.loadScript(isolate, localContext, file)) {
         case JSLoader::eSuccess:
-          LOG(TRACE) << "loaded JavaScript file '" << files[j].c_str() << "'";
+          LOG(TRACE) << "loaded JavaScript file '" << file.c_str() << "'";
           break;
         case JSLoader::eFailLoad:
-          LOG(FATAL) << "cannot load JavaScript file '" << files[j].c_str() << "'"; FATAL_ERROR_EXIT();
+          LOG(FATAL) << "cannot load JavaScript file '" << file.c_str() << "'"; FATAL_ERROR_EXIT();
           break;
         case JSLoader::eFailExecute:
-          LOG(FATAL) << "error during execution of JavaScript file '" << files[j].c_str() << "'"; FATAL_ERROR_EXIT();
+          LOG(FATAL) << "error during execution of JavaScript file '" << file.c_str() << "'"; FATAL_ERROR_EXIT();
           break;
       }
     }

@@ -94,7 +94,7 @@ class ControlCTask : public SignalTask {
   }
 
  public:
-  bool handleSignal() {
+  bool handleSignal() override {
     std::string msg = _server->getName() + " [shutting down]";
 
     TRI_SetProcessTitle(msg.c_str());
@@ -146,7 +146,7 @@ class HangupTask : public SignalTask {
   HangupTask() : Task("Hangup"), SignalTask() { addSignal(SIGHUP); }
 
  public:
-  bool handleSignal() {
+  bool handleSignal() override {
     LOG(INFO) << "hangup received, about to reopen logfile";
     TRI_ReopenLogging();
     LOG(INFO) << "hangup received, reopened logfile";
@@ -170,7 +170,7 @@ class Sigusr1Task : public SignalTask {
   }
 
  public:
-  bool handleSignal() {
+  bool handleSignal() override {
     Scheduler* scheduler = this->_scheduler->scheduler();
 
     if (scheduler != nullptr) {
@@ -200,7 +200,7 @@ class SchedulerReporterTask : public PeriodicTask {
         _scheduler(scheduler) {}
 
  public:
-  bool handlePeriod() {
+  bool handlePeriod() override {
     _scheduler->reportStatus();
     return true;
   }

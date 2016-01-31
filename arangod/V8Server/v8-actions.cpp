@@ -88,7 +88,7 @@ class v8_action_t : public TRI_action_t {
   }
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, HttpRequest* request,
-                              Mutex* dataLock, void** data) {
+                              Mutex* dataLock, void** data) override {
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
@@ -172,7 +172,7 @@ class v8_action_t : public TRI_action_t {
     return result;
   }
 
-  bool cancel(Mutex* dataLock, void** data) {
+  bool cancel(Mutex* dataLock, void** data) override {
     {
       MUTEX_LOCKER(mutexLocker, *dataLock);
 
@@ -475,11 +475,9 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   std::map<std::string, std::vector<char const*>*> arrayValues =
       request->arrayValues();
 
-  for (std::map<std::string, std::vector<char const*>*>::iterator i =
-           arrayValues.begin();
-       i != arrayValues.end(); ++i) {
-    std::string const& k = i->first;
-    std::vector<char const*>* v = i->second;
+  for (auto& arrayValue : arrayValues) {
+    std::string const& k = arrayValue.first;
+    std::vector<char const*>* v = arrayValue.second;
 
     v8::Handle<v8::Array> list =
         v8::Array::New(isolate, static_cast<int>(v->size()));

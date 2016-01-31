@@ -816,8 +816,8 @@ void RestImportHandler::generateDocumentsCreated(
     if (found && StringUtils::boolean(detailsStr)) {
       json.add("details", VPackValue(VPackValueType::Array));
 
-      for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
-        json.add(VPackValue(result._errors[i]));
+      for (auto const& elem : result._errors) {
+        json.add(VPackValue(elem));
       }
       json.close();
     }

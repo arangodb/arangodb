@@ -784,9 +784,9 @@ static void EdgesQuery(TRI_edge_direction_e direction,
           TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid,
                                             key.get());
 
-      for (size_t j = 0; j < edges.size(); ++j) {
+      for (auto& edge : edges) {
         v8::Handle<v8::Value> doc =
-            WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
+            WRAP_SHAPED_JSON(trx, col->_cid, edge.getDataPtr());
 
         if (doc.IsEmpty()) {
           // error

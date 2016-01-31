@@ -2219,9 +2219,9 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
         }
       } else if (type == REPLICATION_MARKER_REMOVE) {
         // A remove marker, this has to be appended to all!
-        for (size_t j = 0; j < bufs.size(); j++) {
-          bufs[j]->appendText(ptr, pos - ptr);
-          bufs[j]->appendText("\n");
+        for (auto& buf : bufs) {
+          buf->appendText(ptr, pos - ptr);
+          buf->appendText("\n");
         }
       } else {
         // How very strange!

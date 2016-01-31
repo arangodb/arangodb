@@ -168,9 +168,7 @@ void Dispatcher::beginShutdown() {
 
   _stopping = true;
 
-  for (size_t i = 0; i < _queues.size(); ++i) {
-    DispatcherQueue* queue = _queues[i];
-
+  for (auto& queue : _queues) {
     if (queue != nullptr) {
       queue->beginShutdown();
     }
@@ -184,8 +182,8 @@ void Dispatcher::beginShutdown() {
 void Dispatcher::shutdown() {
   LOG(DEBUG) << "shutting down the dispatcher";
 
-  for (size_t i = 0; i < _queues.size(); ++i) {
-    DispatcherQueue* queue = _queues[i];
+  for (auto queue : _queues) {
+    
 
     if (queue != nullptr) {
       queue->shutdown();

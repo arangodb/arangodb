@@ -882,8 +882,8 @@ static int FillShapeValueJson(v8::Isolate* isolate, VocShaper* shaper,
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
-      for (auto it = seenObjects.begin(); it != seenObjects.end(); ++it) {
-        if (json->StrictEquals(*it)) {
+      for (auto const& seenObject : seenObjects) {
+        if (json->StrictEquals(seenObject)) {
           return TRI_ERROR_ARANGO_SHAPER_FAILED;
         }
       }
