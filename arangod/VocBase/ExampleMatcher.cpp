@@ -418,7 +418,8 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
         goto nextExample;
       }
 
-      if (memcmp(result._data.data, example->_data.data,
+      if (result._data.length > 0 &&
+          memcmp(result._data.data, example->_data.data,
                  example->_data.length) != 0) {
         // suppress excessive log spam
         // LOG(TRACE) << "data mismatch at path " << pids[i];

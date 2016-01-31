@@ -1082,6 +1082,7 @@ void ApplicationV8::stop() {
   v8::V8::Dispose();
   v8::V8::ShutdownPlatform();
 
+  TRI_ASSERT(_platform != nullptr);
   delete _platform;
   // delete GC thread after all action threads have been stopped
   delete _gcThread;

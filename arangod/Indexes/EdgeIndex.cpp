@@ -556,7 +556,7 @@ void EdgeIndex::lookup(arangodb::Transaction* trx,
     } else {
       TRI_ASSERT(false);
     }
-    if (found != nullptr && found->size() != 0) {
+    if (found != nullptr && !found->empty()) {
       next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
     }
   } else {
@@ -567,7 +567,7 @@ void EdgeIndex::lookup(arangodb::Transaction* trx,
     } else {
       TRI_ASSERT(false);
     }
-    if (found != nullptr && found->size() != 0) {
+    if (found != nullptr && !found->empty()) {
       next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
     } else {
       next = nullptr;
