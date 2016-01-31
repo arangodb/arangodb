@@ -106,8 +106,9 @@ const optionsDocumentation = [
 const optionsDefaults = {
   "cleanup": true,
   "cluster": false,
+  "concurrency": 3,
   "coreDirectory": "/var/tmp",
-  "duration": 240,
+  "duration": 10,
   "extraargs": [],
   "extremeVerbosity": false,
   "force": true,
@@ -177,8 +178,13 @@ function findTopDir() {
 /// @brief arguments for testing (server)
 ////////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangod(appDir) {
+function makeArgsArangod(options, appDir) {
   const topDir = findTopDir();
+
+  if (appDir === undefined) {
+    appDir = fs.getTempPath();
+  }
+
   fs.makeDirectoryRecursive(appDir, true);
 
   return {
@@ -232,10 +238,13 @@ function endpointToURL(endpoint) {
   if (endpoint.substr(0, 6) === "ssl://") {
     return "https://" + endpoint.substr(6);
   }
-  var pos = endpoint.indexOf("://");
+
+  const pos = endpoint.indexOf("://");
+
   if (pos === -1) {
     return "http://" + endpoint;
   }
+
   return "http" + endpoint.substr(pos);
 }
 
@@ -456,7 +465,7 @@ function waitOnServerForGC(instanceInfo, options, waitTime) {
     print("waiting " + waitTime + " for server GC");
     const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
 
-    var requestOptions = makeAuthorizationHeaders(options);
+    const requestOptions = makeAuthorizationHeaders(options);
     requestOptions.method = "POST";
     requestOptions.timeout = waitTime * 10;
     requestOptions.returnBodyOnError = true;
@@ -544,10 +553,10 @@ function runThere(options, instanceInfo, file) {
     let testCode;
 
     if (file.indexOf("-spec") === -1) {
-      testCode = 'var runTest = require("jsunity").runTest; ' +
+      testCode = 'const runTest = require("jsunity").runTest; ' +
         'return runTest(' + JSON.stringify(file) + ', true);';
     } else {
-      testCode = 'var runTest = require("@arangodb/mocha-runner"); ' +
+      testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
         'return runTest(' + JSON.stringify(file) + ', true);';
     }
 
@@ -578,7 +587,6 @@ function runThere(options, instanceInfo, file) {
           status: false,
           message: yaml.safeDump(reply)
         };
-
       }
     }
   } catch (ex) {
@@ -595,8 +603,7 @@ function runThere(options, instanceInfo, file) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function performTests(options, testList, testname) {
-  let instanceInfo;
-  instanceInfo = startInstance("tcp", options, [], testname);
+  let instanceInfo = startInstance("tcp", options, [], testname);
 
   if (instanceInfo === false) {
     return {
@@ -700,6 +707,91 @@ function performTests(options, testList, testname) {
   }
 
   return results;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs a stress test on arangod
+////////////////////////////////////////////////////////////////////////////////
+
+function runStressTest(options, command, testname) {
+  const concurrency = options.concurrency;
+
+  let extra = {
+    "javascript.v8-contexts": concurrency + 1,
+    "server.threads": concurrency + 1
+  };
+
+  let instanceInfo = startInstance("tcp", options, extra, testname);
+
+  if (instanceInfo === false) {
+    return {
+      status: false,
+      message: "failed to start server!"
+    };
+  }
+
+  const requestOptions = makeAuthorizationHeaders(options);
+  requestOptions.method = "POST";
+  requestOptions.returnBodyOnError = true;
+  requestOptions.headers = {
+    "x-arango-async": "store"
+  };
+
+  const reply = download(
+    instanceInfo.url + "/_admin/execute?returnAsJSON=true",
+    command,
+    requestOptions);
+
+  if (reply.error || reply.code !== 202) {
+    print("cannot execute command: (" +
+      reply.code + ") " + reply.message);
+
+    shutdownInstance(instanceInfo, options);
+
+    return {
+      status: false,
+      message: reply.hasOwnProperty('body') ? reply.body : yaml.safeDump(reply)
+    };
+  }
+
+  const id = reply.headers["x-arango-async-id"];
+
+  const checkOpts = makeAuthorizationHeaders(options);
+  checkOpts.method = "GET";
+  checkOpts.returnBodyOnError = true;
+
+  while (true) {
+    const check = download(
+      instanceInfo.url + "/_api/job/" + id,
+      "", checkOpts);
+
+    if (!check.error) {
+      if (check.code === 204) {
+        print("still running (" + (new Date()) + ")");
+        wait(60);
+        continue;
+      }
+
+      if (check.code === 200) {
+        print("stress test finished");
+        break;
+      }
+    }
+
+    print("cannot check job: (" + check.code + ") " + check.message);
+    shutdownInstance(instanceInfo, options);
+
+    return {
+      status: false,
+      message: reply.hasOwnProperty('body') ? reply.body : yaml.safeDump(reply)
+    };
+  }
+
+  print("Shutting down...");
+  shutdownInstance(instanceInfo, options);
+  print("done.");
+
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,7 +1215,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
       clusterNodes = options.clusterNodes;
     }
 
-    let extraargs = makeArgsArangod(appDir);
+    let extraargs = makeArgsArangod(options, appDir);
     extraargs = _.extend(extraargs, optionsExtraArgs);
 
     if (addArgs !== undefined) {
@@ -1202,7 +1294,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
     let td = fs.join(tmpDataDir, "data");
     fs.makeDirectoryRecursive(td);
 
-    let args = makeArgsArangod(appDir);
+    let args = makeArgsArangod(options, appDir);
     args["server.endpoint"] = endpoint;
     args["database.directory"] = td;
     args["log.file"] = fs.join(tmpDataDir, "log");
@@ -1362,8 +1454,10 @@ function rubyTests(options, ssl) {
     res.total++;
 
     if (!status) {
-      var msg = yaml.safeDump(testCase).replace(/.*rspec\/core.*\n/gm, "").replace(/.*rspec\\core.*\n/gm, "");
-      print("RSpec test case falied: \n" + msg); 
+      const msg = yaml.safeDump(testCase)
+        .replace(/.*rspec\/core.*\n/gm, "")
+        .replace(/.*rspec\\core.*\n/gm, "");
+      print("RSpec test case falied: \n" + msg);
       res[tName].message += "\n" + msg;
     }
   };
@@ -1403,7 +1497,7 @@ function rubyTests(options, ssl) {
           status: res.status
         };
 
-        var resultfn = fs.join("out", "UnitTests", te + ".json");
+        const resultfn = fs.join("out", "UnitTests", te + ".json");
 
         try {
           const jsonResult = JSON.parse(fs.read(resultfn));
@@ -2763,7 +2857,7 @@ testFuncs.upgrade = function(options) {
   const appDir = fs.join(tmpDataDir, "app");
   const port = findFreePort();
 
-  let args = makeArgsArangod(appDir);
+  let args = makeArgsArangod(options, appDir);
   args["server.endpoint"] = "tcp://127.0.0.1:" + port;
   args["database.directory"] = fs.join(tmpDataDir, "data");
 
@@ -2791,58 +2885,51 @@ testFuncs.upgrade = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.stress_crud = function(options) {
-  const testname = "stress_crud";
-
-  const topDir = findTopDir();
-
-  let instanceInfo = {};
-  instanceInfo.topDir = topDir;
-  instanceInfo.flatTmpDataDir = fs.getTempFile();
-
-  const port = findFreePort();
-  instanceInfo.port = port;
-  const endpoint = "tcp://127.0.0.1:" + port;
-
-  const tmpDataDir = fs.join(instanceInfo.flatTmpDataDir, testname);
-
-  fs.makeDirectoryRecursive(tmpDataDir);
-  instanceInfo.tmpDataDir = tmpDataDir;
-
-  let td = fs.join(tmpDataDir, "data");
-  fs.makeDirectoryRecursive(td);
-
   const duration = options.duration;
-  const concurrency = 3;
+  const concurrency = options.concurrency;
 
-  let args = makeArgsArangod(options);
+  const command = `
+    try {
+      const stressCrud = require("./js/server/tests/stress/crud");
 
-  args["database.directory"] = td;
-  args["javascript.v8-contexts"] = concurrency + 1;
-  args["log.file"] = fs.join(tmpDataDir, "log");
-  args["server.endpoint"] = endpoint;
-  args["server.threads"] = concurrency + 1;
+      stressCrud.createDeleteUpdateParallel({
+        concurrency: ${concurrency},
+        duration: ${duration},
+        gnuplot: true,
+        pauseFor: 60
+      });
+    } catch (err) {
+      require("internal").print(err);
+    }
+`;
 
-  const js = fs.getTempFile();
+  return runStressTest(options, command, "stress_crud");
+};
 
-  fs.write(js, `
-  function main() {
-    const stressCrud = require("./js/server/tests/stress/crud");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief STRESS TEST: stress_locks
+////////////////////////////////////////////////////////////////////////////////
 
-    stressCrud.createDeleteUpdateParallel({
-      concurrency: ${concurrency},
-      duration: ${duration},
-      gnuplot: true,
-      pauseFor: 60
-    });
-  }
-`);
 
-  args["javascript.script"] = js;
+testFuncs.stress_locks = function(options) {
+  const duration = options.duration;
+  const concurrency = options.concurrency;
 
-  executeExternalAndWait(fs.join("bin", "arangod"), toArgv(args));
+  const command = `
+    try {
+      const deadlock = require("./js/server/tests/stress/deadlock");
 
-  return {
-  };
+      deadlock.lockCycleParallel({
+        concurrency: ${concurrency},
+        duration: ${duration},
+        gnuplot: true
+      });
+    } catch (err) {
+      require("internal").print(err);
+    }
+`;
+
+  return runStressTest(options, command, "stress_lock");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2863,7 +2950,8 @@ function unitTestPrettyPrintResults(r) {
         let oneOutput = "* Testrun: " + testrun + "\n";
 
         for (let test in r[testrun]) {
-          if (r[testrun].hasOwnProperty(test) && (internalMembers.indexOf(test) === -1)) {
+          if (r[testrun].hasOwnProperty(test) &&
+            (internalMembers.indexOf(test) === -1)) {
             if (r[testrun][test].status) {
               const where = test.lastIndexOf(fs.pathSeparator);
               let which;
@@ -3011,6 +3099,9 @@ function unitTest(which, options) {
 
   if (which === undefined) {
     printUsage();
+
+    print('FATAL: "which" is undefined\n');
+
     return {
       ok: false,
       all_ok: false
