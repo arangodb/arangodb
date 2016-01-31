@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
-#include "Basics/tri-strings.h"
 #include "Utils/AqlTransaction.h"
 
 #include <functional>

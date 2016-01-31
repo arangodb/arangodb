@@ -87,18 +87,6 @@ static int FilenameComparator(const void* lhs, const void* rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two filenames, based on the numeric part contained in
-/// the filename. this is used to sort datafile filenames on startup
-////////////////////////////////////////////////////////////////////////////////
-
-static bool FilenameStringComparator(std::string const& lhs,
-                                     std::string const& rhs) {
-  uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
-  uint64_t const numRight = GetNumericFilenamePart(rhs.c_str());
-  return numLeft < numRight;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two datafiles, based on the numeric part contained in
 /// the filename
 ////////////////////////////////////////////////////////////////////////////////
@@ -1333,75 +1321,6 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _isSystem = other.isSystem();
   _isVolatile = other.isVolatile();
   _waitForSync = other.waitForSync();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return JSON information about the collection from the collection's
-/// "parameter.json" file. This function does not require the collection to be
-/// loaded.
-/// The caller must make sure that the "parameter.json" file is not modified
-/// while this function is called.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_ReadJsonCollectionInfo(TRI_vocbase_col_t* collection) {
-  char* filename =
-      TRI_Concatenate2File(collection->pathc_str(), TRI_VOC_PARAMETER_FILE);
-
-  // load JSON description of the collection
-  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-  if (json == nullptr) {
-    return nullptr;
-  }
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over the index (JSON) files of a collection, using a callback
-/// function for each.
-/// This function does not require the collection to be loaded.
-/// The caller must make sure that the files are not modified while this
-/// function is called.
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
-                                         int (*filter)(TRI_vocbase_col_t*,
-                                                       char const*, void*),
-                                         void* data) {
-  regex_t re;
-  int res;
-
-  if (regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB) !=
-      0) {
-    LOG(ERROR) << "unable to compile regular expression";
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  std::vector<std::string> files = TRI_FilesDirectory(collection->pathc_str());
-  res = TRI_ERROR_NO_ERROR;
-
-  // sort by index id
-  std::sort(files.begin(), files.end(), FilenameStringComparator);
-
-  for (auto const& file : files) {
-    if (regexec(&re, file.c_str(), (size_t)0, nullptr, 0) == 0) {
-      char* fqn = TRI_Concatenate2File(collection->pathc_str(), file.c_str());
-
-      res = filter(collection, fqn, data);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        break;
-      }
-    }
-  }
-
-  regfree(&re);
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

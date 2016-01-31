@@ -33,7 +33,6 @@
 #include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Utils/AqlTransaction.h"
-#include "Utils/V8TransactionContext.h"
 #include "VocBase/voc-types.h"
 #include "V8Server/ApplicationV8.h"
 

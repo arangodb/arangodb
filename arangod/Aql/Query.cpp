@@ -39,12 +39,10 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8Server/ApplicationV8.h"
-#include "V8Server/v8-shape-conv.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Graphs.h"
 

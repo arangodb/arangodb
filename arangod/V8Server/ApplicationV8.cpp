@@ -44,6 +44,7 @@
 #include "Rest/HttpRequest.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "Scheduler/Scheduler.h"
+#include "Utils/V8TransactionContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"

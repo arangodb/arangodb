@@ -23,11 +23,9 @@
 
 #include "Syncer.h"
 
-#include "Basics/files.h"
-#include "Basics/json.h"
-#include "Basics/tri-strings.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/json.h"
+#include "Basics/JsonHelper.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"

@@ -23,10 +23,7 @@
 
 #include "RestEdgeHandler.h"
 #include "Basics/conversions.h"
-#include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"

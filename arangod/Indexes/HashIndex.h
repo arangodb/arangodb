@@ -59,6 +59,7 @@ namespace aql {
 class SortCondition;
 }
 
+class HashIndex;
 class Transaction;
 
 class HashIndexIterator final : public IndexIterator {
