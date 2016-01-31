@@ -28,7 +28,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Wal/Logfile.h"
-#include "Wal/SyncRegion.h"
 
 namespace arangodb {
 namespace wal {

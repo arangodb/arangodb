@@ -25,7 +25,6 @@
 
 #include "Basics/Logger.h"
 #include "Basics/socket-utils.h"
-#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 
 #if TRI_HAVE_LINUX_SOCKETS

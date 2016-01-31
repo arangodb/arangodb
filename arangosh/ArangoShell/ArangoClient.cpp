@@ -26,14 +26,15 @@
 #include "Basics/files.h"
 #include "Basics/Logger.h"
 #include "Basics/messages.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/ProgramOptions.h"
+#include "Rest/Endpoint.h"
 
 #include <iostream>
-#include <sstream>
 
 using namespace arangodb;
 using namespace arangodb::basics;

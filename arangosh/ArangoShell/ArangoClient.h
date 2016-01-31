@@ -25,7 +25,6 @@
 #define ARANGOSH_ARANGO_SHELL_ARANGO_CLIENT_H 1
 
 #include "Basics/Common.h"
-#include "Rest/Endpoint.h"
 
 namespace arangodb {
 namespace basics {

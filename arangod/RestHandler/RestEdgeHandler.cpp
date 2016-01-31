@@ -87,7 +87,7 @@ bool RestEdgeHandler::createDocument() {
   }
 
   // extract the cid
-  std::string const& collection = _request->value("collection", found);
+  std::string const collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,

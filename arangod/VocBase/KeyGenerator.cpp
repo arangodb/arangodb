@@ -253,7 +253,7 @@ bool TraditionalKeyGenerator::validateKey(char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TraditionalKeyGenerator::generate(TRI_voc_tick_t tick) {
-  return std::move(arangodb::basics::StringUtils::itoa(tick));
+  return arangodb::basics::StringUtils::itoa(tick);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -364,7 +364,7 @@ std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
     _lastValue = keyValue;
   }
 
-  return std::move(arangodb::basics::StringUtils::itoa(keyValue));
+  return arangodb::basics::StringUtils::itoa(keyValue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

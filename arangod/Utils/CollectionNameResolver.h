@@ -231,7 +231,7 @@ class CollectionNameResolver {
       return (*it).second.size();
     }
 
-    std::string name(std::move(getCollectionName(cid)));
+    std::string name(getCollectionName(cid));
 
     memcpy(buffer, name.c_str(), name.size());
     return name.size();
@@ -256,7 +256,7 @@ class CollectionNameResolver {
       return;
     }
 
-    std::string name(std::move(getCollectionName(cid)));
+    std::string name(getCollectionName(cid));
     buffer.appendText(name.c_str(), name.size());
   }
 

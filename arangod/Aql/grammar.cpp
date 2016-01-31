@@ -2739,7 +2739,7 @@ yyreduce:
       parser->ast()->startSubQuery();
       
       scopes->start(arangodb::aql::AQL_SCOPE_FOR);
-      std::string const variableName = std::move(parser->ast()->variables()->nextName());
+      std::string const variableName = parser->ast()->variables()->nextName();
       auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), (yyvsp[-1].node), false);
       parser->ast()->addOperation(forNode);
 
@@ -2759,7 +2759,7 @@ yyreduce:
       AstNode* subqueryNode = parser->ast()->endSubQuery();
       scopes->endCurrent();
       
-      std::string const subqueryName = std::move(parser->ast()->variables()->nextName());
+      std::string const subqueryName = parser->ast()->variables()->nextName();
       auto subQuery = parser->ast()->createNodeLet(subqueryName.c_str(), subqueryName.size(), subqueryNode, false);
       parser->ast()->addOperation(subQuery);
       
@@ -3085,7 +3085,7 @@ yyreduce:
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      std::string const variableName = std::move(parser->ast()->variables()->nextName());
+      std::string const variableName = parser->ast()->variables()->nextName();
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
@@ -3613,7 +3613,7 @@ yyreduce:
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      std::string const variableName = std::move(parser->ast()->variables()->nextName());
+      std::string const variableName = parser->ast()->variables()->nextName();
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 

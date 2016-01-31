@@ -24,9 +24,6 @@
 
 #include "Dispatcher.h"
 
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/DispatcherThread.h"

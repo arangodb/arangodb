@@ -491,7 +491,7 @@ class ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_set<VariableId> getVariableIdsUsedHere() const {
-    auto v(std::move(getVariablesUsedHere()));
+    auto v(getVariablesUsedHere());
 
     std::unordered_set<VariableId> ids;
     ids.reserve(v.size());

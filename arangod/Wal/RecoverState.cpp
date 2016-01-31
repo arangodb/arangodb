@@ -30,7 +30,6 @@
 #include "Utils/SingleCollectionWriteTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
-#include "VocBase/replication-applier.h"
 #include "VocBase/VocShaper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"

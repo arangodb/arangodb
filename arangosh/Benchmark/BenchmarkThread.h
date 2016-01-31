@@ -28,14 +28,16 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
 #include "Basics/Logger.h"
 #include "Basics/Thread.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Rest/HttpResponse.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 namespace arangodb {
 namespace arangob {

@@ -1996,8 +1996,8 @@ int RestReplicationHandler::processRestoreDataBatch(
       // found something
       std::string key;
       VPackSlice doc;
-      TRI_voc_rid_t rid;
-      TRI_replication_operation_e type;
+      TRI_voc_rid_t rid = 0;
+      TRI_replication_operation_e type = REPLICATION_INVALID;
 
       int res = restoreDataParser(ptr, pos, invalidMsg, useRevision, errorMsg,
                                   key, builder, doc, rid, type);
@@ -2185,8 +2185,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       //
       std::string key;
       VPackSlice doc;
-      TRI_voc_rid_t rid;
-      TRI_replication_operation_e type;
+      TRI_voc_rid_t rid = 0;
+      TRI_replication_operation_e type = REPLICATION_INVALID;
 
       res = restoreDataParser(ptr, pos, invalidMsg, false, errorMsg, key,
                               builder, doc, rid, type);

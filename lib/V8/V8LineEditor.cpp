@@ -23,7 +23,6 @@
 
 #include "V8LineEditor.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Utilities/Completer.h"

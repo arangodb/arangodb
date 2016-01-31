@@ -27,7 +27,6 @@
 #include <regex.h>
 
 #include "Basics/conversions.h"
-#include "Basics/files.h"
 #include "Basics/levenshtein.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"

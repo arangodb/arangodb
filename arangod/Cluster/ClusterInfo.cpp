@@ -24,10 +24,8 @@
 
 #include "Cluster/ClusterInfo.h"
 
-#include "Basics/conversions.h"
 #include "Basics/json.h"
 #include "Basics/Logger.h"
-#include "Basics/tri-strings.h"
 #include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
@@ -35,7 +33,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "VocBase/server.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

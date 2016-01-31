@@ -31,8 +31,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
-#include "Basics/tri-strings.h"
-#include "Basics/terminal-utils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitializeRest.h"
