@@ -10,6 +10,21 @@ It also provides a feature to explain a query and inspect its execution plan ( w
 Bind parameters can be defined in the lower box of the screen. 
 They are defined as JSON values, the same format that is used for bind parameters in the HTTP REST API and in (JavaScript) application code.
  
+Here is an example: 
+
+	for doc in @@collection 
+	FILTER CONTAINS(LOWER(doc.author), @search, false)
+	return {"name":doc.name, "descr": doc.description, "author":doc.author}
+
+Bind parameter: 
+
+	{
+	"@collection":"_apps", 
+	"search":"arango"
+	}
+
+An overview of Bind Parameters may be found in [Aql Fundamentals](BindParameters.md).
+
 Queries can also be saved in the AQL editor along with their bind parameter values for later reuse. This data is stored in the user profile in the current database (in the *_users* system table). 
 
 
