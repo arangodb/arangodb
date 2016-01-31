@@ -6,13 +6,13 @@ arangosh&gt; query.fromVertices([{name: <span class="hljs-string">"Alice"</span>
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1342416549"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1343715433"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1342940837"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1344239721"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
   } 
 ]
