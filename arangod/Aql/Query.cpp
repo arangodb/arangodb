@@ -159,7 +159,7 @@ TRI_json_t* Profile::toJson(TRI_memory_zone_t*) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::DoDisableQueryTracking = false;
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
@@ -654,6 +654,8 @@ QueryResult Query::execute(QueryRegistry* registry) {
     if (res.code != TRI_ERROR_NO_ERROR) {
       return res;
     }
+    
+    log();
 
     if (useQueryCache && (_isModificationQuery || !_warnings.empty() ||
                           !_ast->root()->isCacheable())) {
@@ -805,6 +807,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     if (res.code != TRI_ERROR_NO_ERROR) {
       return res;
     }
+  
+    log();
 
     if (useQueryCache && (_isModificationQuery || !_warnings.empty() ||
                           !_ast->root()->isCacheable())) {
@@ -1271,6 +1275,18 @@ void Query::init() {
   _ast = new Ast(this);
   _nodes.reserve(32);
   _strings.reserve(32);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log a query
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::log() {
+  if (_queryString != nullptr) {
+    static size_t const MaxLength = 1024;
+
+    LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '" << std::string(_queryString, (std::min)(_queryLength, MaxLength)).append(_queryLength > MaxLength ? "..." : "") << "'";
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

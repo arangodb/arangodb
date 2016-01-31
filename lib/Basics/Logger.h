@@ -158,6 +158,7 @@ class Logger {
   static LogTopic COLLECTOR;
   static LogTopic COMPACTOR;
   static LogTopic PERFORMANCE;
+  static LogTopic QUERIES;
   static LogTopic REQUESTS;
 
  public:

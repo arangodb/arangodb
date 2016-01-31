@@ -194,7 +194,7 @@ class AssocUnique {
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
-      LOG_TOPIC(INFO, Logger::PERFORMANCE) << 
+      LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
           "index-resize " << cb << ", target size: " << targetSize;
     }
 
@@ -251,7 +251,7 @@ class AssocUnique {
 
     LOG(TRACE) << "resizing index " << cb.c_str() << " done";
 
-    LOG_TOPIC(INFO, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << targetSize;
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << targetSize;
   }
 
   //////////////////////////////////////////////////////////////////////////////

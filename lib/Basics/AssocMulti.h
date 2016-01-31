@@ -1083,7 +1083,7 @@ class AssocMulti {
 
     LOG(TRACE) << "resizing index " << cb.c_str() << ", target size: " << size;
 
-    LOG_TOPIC(INFO, Logger::PERFORMANCE) << 
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
         "index-resize " << cb << ", target size: " << size;
 
     double start = TRI_microtime();
@@ -1160,7 +1160,7 @@ class AssocMulti {
 
     LOG(TRACE) << "resizing index " << cb.c_str() << " done";
 
-    LOG_TOPIC(INFO, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << size;
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << size;
   }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH

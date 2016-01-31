@@ -57,10 +57,11 @@ LogTopic LogTopic::operator|(LogTopic const& that) {
   return result;
 }
 
-LogTopic Logger::COLLECTOR("collector");
-LogTopic Logger::COMPACTOR("compactor");
-LogTopic Logger::PERFORMANCE("performance", LogLevel::FATAL); // suppress by default
-LogTopic Logger::REQUESTS("request", LogLevel::FATAL); // suppress by default
+LogTopic Logger::COLLECTOR("collector", LogLevel::INFO);
+LogTopic Logger::COMPACTOR("compactor", LogLevel::INFO);
+LogTopic Logger::PERFORMANCE("performance", LogLevel::INFO);
+LogTopic Logger::QUERIES("queries", LogLevel::INFO);
+LogTopic Logger::REQUESTS("requests", LogLevel::INFO);
 
 void Logger::setLevel(LogLevel level) {
   _level = level;

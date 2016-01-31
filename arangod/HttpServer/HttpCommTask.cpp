@@ -652,9 +652,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
 
-  // disable the following statement to prevent excessive logging of incoming
-  // requests
-  LOG_TOPIC(INFO, Logger::REQUESTS) 
+  LOG_TOPIC(TRACE, Logger::REQUESTS) 
       << "\"http-request\",\"" << _connectionInfo.clientAddress 
       << "\",\"" << HttpRequest::translateMethod(_requestType) << "\",\""
       << HttpRequest::translateVersion(_httpVersion) << "\"," 
