@@ -151,9 +151,19 @@ void DatafileStatistics::create(TRI_voc_fid_t fid,
 void DatafileStatistics::remove(TRI_voc_fid_t fid) {
   LOG(TRACE) << "removing statistics for datafile " << fid;
 
-  WRITE_LOCKER(writeLocker, _lock);
+  DatafileStatisticsContainer* found = nullptr;
+  {
+    WRITE_LOCKER(writeLocker, _lock);
 
-  _stats.erase(fid);
+    auto it = _stats.find(fid);
+
+    if (it != _stats.end()) {
+      found = (*it).second;    
+      _stats.erase(it);
+    }
+  }
+ 
+  delete found;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
