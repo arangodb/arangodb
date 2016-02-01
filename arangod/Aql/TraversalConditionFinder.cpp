@@ -120,6 +120,7 @@ static bool extractSimplePathAccesses (AstNode const* node,
     bool isEdgeAccess = false;
     size_t attrAccessTo = 0;
 
+    TRI_ASSERT(len >= 3);
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       isEdgeAccess   = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
     }
@@ -170,7 +171,8 @@ static bool extractSimplePathAccesses (AstNode const* node,
         filterByNode = compareNode->getMember(0);
       }
 
-      if (accessNodeBranch->isSimple() && filterByNode->isDeterministic()) {
+      if (accessNodeBranch != nullptr && accessNodeBranch->isSimple() &&
+          filterByNode->isDeterministic()) {
         currentPath.clear();
         clonePath.clear();
         filterByNode->findVariableAccess(currentPath, clonePath, tn->pathOutVariable());
