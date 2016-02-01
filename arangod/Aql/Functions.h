@@ -40,6 +40,8 @@ typedef std::function<bool()> ExecutionCondition;
 typedef std::vector<std::pair<AqlValue, TRI_document_collection_t const*>>
     FunctionParameters;
 
+typedef std::vector<AqlValue$> VPackFunctionParameters;
+
 typedef std::function<AqlValue(arangodb::aql::Query*, arangodb::AqlTransaction*,
                                FunctionParameters const&)>
     FunctionImplementation;
@@ -62,11 +64,11 @@ struct Functions {
   static AqlValue IsNull(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
   static AqlValue IsNullVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
-                              FunctionParameters const&);
+                              VPackFunctionParameters const&);
   static AqlValue IsBool(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
   static AqlValue IsBoolVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
-                              FunctionParameters const&);
+                              VPackFunctionParameters const&);
   static AqlValue IsNumber(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
   static AqlValue IsString(arangodb::aql::Query*, arangodb::AqlTransaction*,

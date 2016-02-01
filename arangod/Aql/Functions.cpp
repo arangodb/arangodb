@@ -45,6 +45,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#define TMPUSEVPACK = 1
+
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using CollectionNameResolver = arangodb::CollectionNameResolver;
@@ -56,6 +58,21 @@ using VertexId = arangodb::traverser::VertexId;
 
 thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
     nullptr;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transform old AQLValues to new AqlValues
+///        Only temporary function
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackFunctionParameters transformParameters(
+    FunctionParameters const& oldParams, arangodb::AqlTransaction* trx) {
+  VPackFunctionParameters newParams;
+  for (auto const& it : oldParams) {
+    newParams.emplace_back(it.first, trx, it.second);
+  }
+  return newParams;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear the regex cache in a thread
@@ -160,17 +177,16 @@ static Json ExtractFunctionParameter(arangodb::AqlTransaction* trx,
 ///              Iff the AQLValue is repsonsible for the data
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<VPackBuffer<uint8_t>> ExtractFunctionParameterVPack(
-    arangodb::AqlTransaction* trx, FunctionParameters const& parameters,
-    size_t position, bool copy) {
+static VPackSlice ExtractFunctionParameter(
+    arangodb::AqlTransaction* trx, VPackFunctionParameters const& parameters,
+    size_t position) {
   if (position >= parameters.size()) {
     // parameter out of range
-    VPackBuilder b;
-    b.add(VPackValue(VPackValueType::Null));
-    return b.steal();
+    VPackSlice tmp;
+    return tmp;
   }
   auto const& parameter = parameters[position];
-  return parameter.first.toVelocyPack(trx, parameter.second, copy);
+  return parameter.slice();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -840,36 +856,43 @@ void Functions::DestroyThreadContext() { ClearRegexCache(); }
 /// @brief function IS_NULL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsNull(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
+AqlValue Functions::IsNull(arangodb::aql::Query* q, arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return IsNullVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isNull()));
+#endif
 }
 
-AqlValue Functions::IsNullVPack(arangodb::aql::Query*,
-                                arangodb::AqlTransaction* trx,
-                                FunctionParameters const& parameters) {
-  auto const buffer = ExtractFunctionParameterVPack(trx, parameters, 0, false);
-  VPackSlice s(buffer->data());
-  return AqlValue(new Json(s.isNull()));
+AqlValue Functions::IsNullVPack(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  auto const slice = ExtractFunctionParameter(trx, parameters, 0);
+  return AqlValue(new Json(slice.isNull()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function IS_BOOL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsBool(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
+AqlValue Functions::IsBool(arangodb::aql::Query* q, arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return IsBoolVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isBoolean()));
+#endif
 }
 
 AqlValue Functions::IsBoolVPack(arangodb::aql::Query*,
                                 arangodb::AqlTransaction* trx,
-                                FunctionParameters const& parameters) {
-  auto const buffer = ExtractFunctionParameterVPack(trx, parameters, 0, false);
-  VPackSlice s(buffer->data());
-  return AqlValue(new Json(s.isBoolean()));
+                                VPackFunctionParameters const& parameters) {
+  auto const slice = ExtractFunctionParameter(trx, parameters, 0);
+  return AqlValue(new Json(slice.isBoolean()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

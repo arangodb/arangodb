@@ -284,15 +284,8 @@ struct AqlValue {
   arangodb::basics::Json toJson(arangodb::AqlTransaction*,
                                 TRI_document_collection_t const*, bool) const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief toVelocyPack method
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> toVelocyPack(
-      arangodb::AqlTransaction*, TRI_document_collection_t const*, bool) const;
-
   void toVelocyPack(arangodb::AqlTransaction*, TRI_document_collection_t const*,
-                    bool, arangodb::velocypack::Builder&) const;
+                    arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a hash value for the AqlValue
@@ -363,6 +356,61 @@ struct AqlValue {
 
   AqlValueType _type;
 };
+
+struct AqlValue$ {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Holds the actual data for this AqlValue it has the following
+  /// semantics:
+  ///
+  /// All values with a size less than 16 will be stored directly in this
+  /// AqlValue using the data.internal structure.
+  /// All values of a larger size will be store in data.external.
+  /// The last bit of this union will be used to identify if we have to use
+  /// internal or external.
+  /// Delete of the Buffer should free every structure that is not using the
+  /// VPack external value type.
+  //////////////////////////////////////////////////////////////////////////////
+
+ private:
+  union {
+    char internal[16];
+    arangodb::velocypack::Buffer<uint8_t>* external;
+  } _data;
+
+ public:
+  AqlValue$(VPackBuilder const& data);
+  AqlValue$(VPackBuilder const* data);
+
+  AqlValue$(AqlValue const&, arangodb::AqlTransaction*,
+            TRI_document_collection_t const*);
+
+  ~AqlValue$() {
+    if (type() && _data.external != nullptr) {
+      delete _data.external;
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Copy Constructor.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue$(AqlValue$ const& other);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the type of this value. If true it uses an external pointer
+  /// if false it uses the internal data structure
+  //////////////////////////////////////////////////////////////////////////////
+
+  // Read last bit of the union
+  bool type() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns a slice to read this Value's data
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::velocypack::Slice slice() const;
+};
+
+static_assert(sizeof(AqlValue$) < 17, "invalid AqlValue size.");
 
 }  // closes namespace arangodb::aql
 }  // closes namespace arangodb
