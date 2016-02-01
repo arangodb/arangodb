@@ -67,10 +67,11 @@ add_executable(
 target_link_libraries(
     ${TEST_BASICS_SUITE}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
+    #${ICU_LIBS}
     ${OPENSSL_LIBRARIES}
     ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 endif ()
@@ -92,10 +93,11 @@ add_executable(
 target_link_libraries(
     ${TEST_GEO_SUITE}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
+    #${ICU_LIBS}
     ${OPENSSL_LIBRARIES}
     ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 endif ()
