@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collection.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/Index.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"

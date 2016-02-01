@@ -86,23 +86,16 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const key = TRI_ObjectToString(args[0]);
 
-  int res = TRI_ERROR_NO_ERROR;
   VPackBuilder oldBuilder;
-  try {
-    res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
-  }
+  int res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
   }
 
   VPackBuilder newBuilder;
-  try {
-    res = TRI_V8ToVPack(isolate, newBuilder, args[2], false);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to VPack");
-  }
+  res = TRI_V8ToVPack(isolate, newBuilder, args[2], false);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to VPack");
   }
@@ -528,9 +521,10 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const key = TRI_ObjectToString(args[0]);
 
-  TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
+  VPackBuilder builder;
+  int res = TRI_V8ToVPack(isolate, builder, args[1], false);
 
-  if (json == nullptr) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <value> to JSON");
   }
 
@@ -540,9 +534,7 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.setValue(key, json, ttl);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  AgencyCommResult result = comm.setValue(key, builder.slice(), ttl);
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
@@ -861,6 +853,10 @@ static void JS_GetCollectionInfoClusterInfo(
               v8::Boolean::New(isolate, ci->waitForSync()));
   result->Set(TRI_V8_ASCII_STRING("journalSize"),
               v8::Number::New(isolate, ci->journalSize()));
+  result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
+              v8::Number::New(isolate, ci->replicationFactor()));
+  result->Set(TRI_V8_ASCII_STRING("replicationQuorum"),
+              v8::Number::New(isolate, ci->replicationQuorum()));
 
   std::vector<std::string> const& sks = ci->shardKeys();
   v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate, (int)sks.size());
@@ -1908,7 +1904,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't queue async request");
   }
 
-  LOG_DEBUG("JS_AsyncRequest: request has been submitted");
+  LOG(DEBUG) << "JS_AsyncRequest: request has been submitted";
 
   Return_PrepareClusterCommResultForJS(args, res);
   TRI_V8_TRY_CATCH_END
@@ -1971,7 +1967,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't do sync request");
   }
 
-  LOG_DEBUG("JS_SyncRequest: request has been done");
+  LOG(DEBUG) << "JS_SyncRequest: request has been done";
 
   Return_PrepareClusterCommResultForJS(args, *res);
   TRI_V8_TRY_CATCH_END
@@ -1998,7 +1994,7 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   OperationID operationID = TRI_ObjectToUInt64(args[0], true);
 
-  LOG_DEBUG("JS_Enquire: calling ClusterComm::enquire()");
+  LOG(DEBUG) << "JS_Enquire: calling ClusterComm::enquire()";
 
   ClusterCommResult const res = cc->enquire(operationID);
 
@@ -2066,7 +2062,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG_DEBUG("JS_Wait: calling ClusterComm::wait()");
+  LOG(DEBUG) << "JS_Wait: calling ClusterComm::wait()";
 
   ClusterCommResult const res =
       cc->wait(myclientTransactionID, mycoordTransactionID, myoperationID,
@@ -2135,7 +2131,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG_DEBUG("JS_Drop: calling ClusterComm::drop()");
+  LOG(DEBUG) << "JS_Drop: calling ClusterComm::drop()";
 
   cc->drop(myclientTransactionID, mycoordTransactionID, myoperationID,
            myshardID);

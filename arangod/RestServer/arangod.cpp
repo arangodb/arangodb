@@ -22,12 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/files.h"
-#include "Basics/logging.h"
-#include "Basics/messages.h"
 #include "Rest/InitializeRest.h"
 #include "RestServer/ArangoServer.h"
-#include "Statistics/statistics.h"
 #include <signal.h>
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -111,7 +107,7 @@ int main(int argc, char* argv[]) {
       res = EXIT_FAILURE;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-      std::cerr << "Caught an exception during shutdown";
+      std::cerr << "Caught an exception during shutdown" << std::endl;
 #endif
     }
     ArangoInstance = nullptr;

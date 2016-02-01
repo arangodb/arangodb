@@ -32,7 +32,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::traverser;
@@ -78,20 +77,20 @@ class MultiCollectionEdgeExpander {
   /// @brief function to check if the edge passes the filter
   //////////////////////////////////////////////////////////////////////////////
 
-  function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> _isAllowed;
+  std::function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> _isAllowed;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief function to check if the vertex passes the filter
   //////////////////////////////////////////////////////////////////////////////
 
-  function<bool(VertexId&)> _isAllowedVertex;
+  std::function<bool(VertexId&)> _isAllowedVertex;
 
  public:
   MultiCollectionEdgeExpander(
       TRI_edge_direction_e const& direction,
       std::vector<EdgeCollectionInfo*> const& edgeCollections,
-      function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> isAllowed,
-      function<bool(VertexId&)> isAllowedVertex)
+      std::function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> isAllowed,
+      std::function<bool(VertexId&)> isAllowedVertex)
       : _direction(direction),
         _edgeCollections(edgeCollections),
         _isAllowed(isAllowed),
@@ -99,7 +98,7 @@ class MultiCollectionEdgeExpander {
 
   void operator()(VertexId& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
-    equal_to<VertexId> eq;
+    std::equal_to<VertexId> eq;
     for (auto const& edgeCollection : _edgeCollections) {
       TRI_ASSERT(edgeCollection != nullptr);
 
@@ -164,7 +163,7 @@ class SimpleEdgeExpander {
     TRI_ASSERT(_edgeCollection != nullptr);
     auto edges = _edgeCollection->getEdges(_direction, source);
 
-    equal_to<VertexId> eq;
+    std::equal_to<VertexId> eq;
     std::unordered_map<VertexId, size_t> candidates;
     for (size_t j = 0; j < edges.size(); ++j) {
       VertexId from = ExtractFromId(edges[j]);
@@ -424,8 +423,8 @@ TRI_RunSimpleShortestPathSearch(
 
   auto fwExpander =
       [&collectionInfos, forward](VertexId& v, std::vector<EdgeId>& res_edges,
-                                  vector<VertexId>& neighbors) {
-        equal_to<VertexId> eq;
+                                  std::vector<VertexId>& neighbors) {
+        std::equal_to<VertexId> eq;
         for (auto const& edgeCollection : collectionInfos) {
           TRI_ASSERT(edgeCollection != nullptr);
           auto edges = edgeCollection->getEdges(forward, v);
@@ -447,8 +446,8 @@ TRI_RunSimpleShortestPathSearch(
       };
   auto bwExpander =
       [&collectionInfos, backward](VertexId& v, std::vector<EdgeId>& res_edges,
-                                   vector<VertexId>& neighbors) {
-        equal_to<VertexId> eq;
+                                   std::vector<VertexId>& neighbors) {
+        std::equal_to<VertexId> eq;
         for (auto const& edgeCollection : collectionInfos) {
           TRI_ASSERT(edgeCollection != nullptr);
           auto edges = edgeCollection->getEdges(backward, v);

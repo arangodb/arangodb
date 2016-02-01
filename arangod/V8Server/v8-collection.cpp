@@ -529,8 +529,8 @@ static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster(
   std::vector<std::shared_ptr<CollectionInfo>> const collections =
       ClusterInfo::instance()->getCollections(vocbase->_name);
 
-  for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collections[i]));
+  for (auto& collection : collections) {
+    TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collection));
 
     try {
       result.emplace_back(c);
@@ -554,8 +554,8 @@ static std::vector<std::string> GetCollectionNamesCluster(
   std::vector<std::shared_ptr<CollectionInfo>> const collections =
       ClusterInfo::instance()->getCollections(vocbase->_name);
 
-  for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    std::string const& name = collections[i]->name();
+  for (auto& collection : collections) {
+    std::string const& name = collection->name();
     result.emplace_back(name);
   }
 
@@ -1204,8 +1204,7 @@ static void InsertVocbaseVPack(
     TRI_V8_RETURN_TRUE();
   }
 
-  std::string key =
-      std::move(TRI_EXTRACT_MARKER_KEY(&trx, &mptr));  // PROTECTED by trx here
+  std::string key = TRI_EXTRACT_MARKER_KEY(&trx, &mptr);  // PROTECTED by trx here
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_GET_GLOBAL_STRING(_IdKey);
@@ -2314,6 +2313,10 @@ static void JS_PropertiesVocbaseCol(
       VPackSlice const slice(keyOpts->data());
       result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, slice)->ToObject());
     }
+    result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
+        v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
+    result->Set(TRI_V8_ASCII_STRING("replicationQuorum"),
+        v8::Number::New(isolate, static_cast<double>(c->replicationQuorum())));
 
     TRI_V8_RETURN(result);
   }
@@ -2415,8 +2418,7 @@ static void JS_PropertiesVocbaseCol(
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: what to do here
-        LOG_WARNING("could not save collection change marker in log: %s",
-                    TRI_errno_string(res));
+        LOG(WARNING) << "could not save collection change marker in log: " << TRI_errno_string(res);
       }
 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);

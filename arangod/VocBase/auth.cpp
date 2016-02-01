@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "auth.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/WriteLocker.h"
 #include "Indexes/PrimaryIndex.h"
@@ -124,20 +124,20 @@ static VocbaseAuthInfo* AuthFromVelocyPack(VPackSlice const& slice) {
   VPackSlice const userSlice = slice.get("user");
 
   if (!userSlice.isString()) {
-    LOG_DEBUG("cannot extract username");
+    LOG(DEBUG) << "cannot extract username";
     return nullptr;
   }
   VPackSlice const authDataSlice = slice.get("authData");
 
   if (!authDataSlice.isObject()) {
-    LOG_DEBUG("cannot extract authData");
+    LOG(DEBUG) << "cannot extract authData";
     return nullptr;
   }
 
   VPackSlice const simpleSlice = authDataSlice.get("simple");
 
   if (!simpleSlice.isObject()) {
-    LOG_DEBUG("cannot extract simple");
+    LOG(DEBUG) << "cannot extract simple";
     return nullptr;
   }
 
@@ -147,7 +147,7 @@ static VocbaseAuthInfo* AuthFromVelocyPack(VPackSlice const& slice) {
 
   if (!methodSlice.isString() || !saltSlice.isString() ||
       !hashSlice.isString()) {
-    LOG_DEBUG("cannot extract password internals");
+    LOG(DEBUG) << "cannot extract password internals";
     return nullptr;
   }
 
@@ -156,7 +156,7 @@ static VocbaseAuthInfo* AuthFromVelocyPack(VPackSlice const& slice) {
   VPackSlice const activeSlice = authDataSlice.get("active");
 
   if (!activeSlice.isBoolean()) {
-    LOG_DEBUG("cannot extract active flag");
+    LOG(DEBUG) << "cannot extract active flag";
     return nullptr;
   }
   active = activeSlice.getBool();
@@ -169,7 +169,7 @@ static VocbaseAuthInfo* AuthFromVelocyPack(VPackSlice const& slice) {
       hashSlice.copyString(), active, mustChange);
 
   if (result == nullptr) {
-    LOG_ERROR("couldn't load auth information - out of memory");
+    LOG(ERROR) << "couldn't load auth information - out of memory";
 
     return nullptr;
   }
@@ -343,13 +343,13 @@ bool TRI_InsertInitialAuthInfo(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
-  LOG_DEBUG("starting to load authentication and authorization information");
+  LOG(DEBUG) << "starting to load authentication and authorization information";
 
   TRI_vocbase_col_t* collection =
       TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
 
   if (collection == nullptr) {
-    LOG_INFO("collection '_users' does not exist, no authentication available");
+    LOG(INFO) << "collection '_users' does not exist, no authentication available";
     return false;
   }
 

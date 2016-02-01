@@ -28,19 +28,13 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
-#include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
-#include "Basics/terminal-utils.h"
 #include "ImportHelper.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitializeRest.h"
-#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

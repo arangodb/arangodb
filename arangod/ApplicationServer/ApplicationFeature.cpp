@@ -25,7 +25,6 @@
 
 using namespace arangodb;
 using namespace arangodb::rest;
-using namespace std;
 
 ApplicationFeature::ApplicationFeature(std::string const& name)
     : _disabled(false), _name(name) {}

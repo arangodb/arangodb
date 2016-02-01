@@ -37,6 +37,10 @@ namespace aql {
 
 class Query;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 struct QueryEntry
+// -----------------------------------------------------------------------------
+      
 struct QueryEntry {
   QueryEntry(arangodb::aql::Query const*, double);
 
@@ -45,12 +49,17 @@ struct QueryEntry {
 };
 
 struct QueryEntryCopy {
-  QueryEntryCopy(TRI_voc_tick_t, std::string const&, double, double);
+  QueryEntryCopy (TRI_voc_tick_t,
+                  std::string const&,
+                  double,
+                  double,
+                  std::string const&);
 
-  TRI_voc_tick_t id;
-  std::string queryString;
-  double started;
-  double runTime;
+  TRI_voc_tick_t  id;
+  std::string     queryString;
+  double          started;
+  double          runTime;
+  std::string     queryState;
 };
 
 class QueryList {

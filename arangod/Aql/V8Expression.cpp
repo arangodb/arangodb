@@ -68,7 +68,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
                                std::vector<Variable const*> const& vars,
                                std::vector<RegisterId> const& regs) {
   size_t const n = vars.size();
-  TRI_ASSERT_EXPENSIVE(regs.size() == n);  // assert same vector length
+  TRI_ASSERT(regs.size() == n);  // assert same vector length
 
   bool const hasRestrictions = !_attributeRestrictions.empty();
 

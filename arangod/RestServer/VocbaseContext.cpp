@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -294,9 +294,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG_TRACE(
-          "invalid authentication data found, cannot extract "
-          "username/password");
+      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
 
       return HttpResponse::BAD;
     }
@@ -324,15 +322,13 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG_TRACE(
-          "invalid authentication data found, cannot extract "
-          "username/password");
+      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
       return HttpResponse::BAD;
     }
 
     username = up.substr(0, n);
 
-    LOG_TRACE("checking authentication for user '%s'", username.c_str());
+    LOG(TRACE) << "checking authentication for user '" << username.c_str() << "'";
     bool res =
         TRI_CheckAuthenticationAuthInfo(_vocbase, auth, username.c_str(),
                                         up.substr(n + 1).c_str(), &mustChange);

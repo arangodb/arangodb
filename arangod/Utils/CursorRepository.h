@@ -29,10 +29,12 @@
 #include "Utils/Cursor.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 
 class CollectionExport;
 
@@ -55,11 +57,12 @@ class CursorRepository {
   /// @brief creates a cursor and stores it in the registry
   /// the cursor will be returned with the usage flag set to true. it must be
   /// returned later using release()
-  /// the cursor will take ownership of both json and extra
+  /// the cursor will retain a shared pointer of both json and extra
   //////////////////////////////////////////////////////////////////////////////
 
-  JsonCursor* createFromJson(struct TRI_json_t*, size_t, struct TRI_json_t*,
-                             double, bool, bool);
+  JsonCursor* createFromVelocyPack(
+      std::shared_ptr<arangodb::velocypack::Builder>, size_t,
+      std::shared_ptr<arangodb::velocypack::Builder>, double, bool, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry

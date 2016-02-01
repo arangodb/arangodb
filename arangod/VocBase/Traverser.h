@@ -32,10 +32,10 @@
 #include "VocBase/DocumentAccessor.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 namespace traverser {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +90,7 @@ class TraverserExpression {
         varAccess(pvarAccess),
         compareTo(nullptr) {}
 
-  explicit TraverserExpression(VPackSlice const& slice);
+  explicit TraverserExpression(arangodb::velocypack::Slice const& slice);
 
   virtual ~TraverserExpression() {
     // no need to destroy varAccess here. Its memory is managed via the
@@ -109,7 +109,7 @@ class TraverserExpression {
 
   bool matchesCheck(TRI_json_t const* element) const;
 
-  bool matchesCheck(VPackSlice const& element) const;
+  bool matchesCheck(arangodb::velocypack::Slice const& element) const;
 
   bool matchesCheck(DocumentAccessor& accessor) const;
 

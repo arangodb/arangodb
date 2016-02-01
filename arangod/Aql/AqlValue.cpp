@@ -30,6 +30,9 @@
 #include "V8Server/v8-wrapshapedjson.h"
 #include "VocBase/VocShaper.h"
 
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
@@ -519,7 +522,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx,
     std::unordered_set<std::string> const& attributes,
     TRI_document_collection_t const* document) const {
-  TRI_ASSERT_EXPENSIVE(_type == JSON);
+  TRI_ASSERT(_type == JSON);
   TRI_ASSERT(_json != nullptr);
 
   TRI_json_t const* json = _json->json();
@@ -720,6 +723,78 @@ Json AqlValue::toJson(arangodb::AqlTransaction* trx,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
+// NOTE IMPORTANT: During the moving Process of shaped => VPACK
+// This function is slower than toJson().
+// It is just used for validation purposes of the callers
+std::shared_ptr<VPackBuffer<uint8_t>> AqlValue::toVelocyPack(
+    arangodb::AqlTransaction* trx, TRI_document_collection_t const* document,
+    bool copy) const {
+  VPackBuilder builder;
+  toVelocyPack(trx, document, copy, builder);
+  return builder.steal();
+}
+
+void AqlValue::toVelocyPack(arangodb::AqlTransaction* trx,
+                            TRI_document_collection_t const* document,
+                            bool copy, VPackBuilder& builder) const {
+  switch (_type) {
+    case JSON: {
+      TRI_ASSERT(_json != nullptr);
+      // TODO: Internal is still JSON. We always copy.
+      int res = arangodb::basics::JsonHelper::toVelocyPack(_json->json(), builder);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    case SHAPED: {
+      TRI_ASSERT(document != nullptr);
+      TRI_ASSERT(_marker != nullptr);
+      auto shaper = document->getShaper();
+      Json tmp = TRI_ExpandShapedJson(shaper, trx->resolver(),
+                                                document->_info.id(), _marker);
+      int res = arangodb::basics::JsonHelper::toVelocyPack(tmp.json(), builder);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    case DOCVEC: {
+      TRI_ASSERT(_vector != nullptr);
+      try {
+        VPackArrayBuilder b(&builder);
+        for (auto const& current : *_vector) {
+          size_t const n = current->size();
+          auto vecCollection = current->getDocumentCollection(0);
+          for (size_t i = 0; i < n; ++i) {
+            current->getValueReference(i, 0)
+                .toVelocyPack(trx, vecCollection, true, builder);
+          }
+        }
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+    }
+    case RANGE: {
+      TRI_ASSERT(_range != nullptr);
+      try {
+        VPackArrayBuilder b(&builder);
+        size_t const n = _range->size();
+        for (size_t i = 0; i < n; ++i) {
+          builder.add(VPackValue(_range->at(i)));
+        }
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+    }
+    case EMPTY: {
+      builder.add(VPackValue(VPackValueType::Null));
+    }
+    default: {
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the JSON contents
 ////////////////////////////////////////////////////////////////////////////////
@@ -739,7 +814,14 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx,
       auto shaper = document->getShaper();
       TRI_shaped_json_t shaped;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
-      Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
+
+      auto v = TRI_JsonShapedJson(shaper, &shaped);
+
+      if (v == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      Json json(shaper->memoryZone(), v);
 
       // append the internal attributes
 
@@ -923,7 +1005,13 @@ Json AqlValue::extractObjectMember(
         bool ok = shaper->extractShapedJson(&document, 0, pid, &json, &shape);
 
         if (ok && shape != nullptr) {
-          return Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &json));
+          auto v = TRI_JsonShapedJson(shaper, &json);
+
+          if (v == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          return Json(TRI_UNKNOWN_MEM_ZONE, v);
         }
       }
 

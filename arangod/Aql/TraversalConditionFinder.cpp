@@ -165,6 +165,7 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
         filterByNode = compareNode->getMember(0);
       }
 
+      // TODO: warning: Called C++ object pointer is null
       if (accessNodeBranch->isSimple() && filterByNode->isDeterministic()) {
         currentPath.clear();
         clonePath.clear();

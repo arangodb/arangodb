@@ -24,10 +24,8 @@
 
 #include "Cluster/ClusterInfo.h"
 
-#include "Basics/conversions.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
+#include "Basics/Logger.h"
 #include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
@@ -35,12 +33,9 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "VocBase/server.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <iostream>
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -522,11 +517,7 @@ void ClusterInfo::loadPlannedDatabases() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixPlannedDatabases.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixPlannedDatabases.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -638,11 +629,7 @@ void ClusterInfo::loadCurrentDatabases() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixCurrentDatabases.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixCurrentDatabases.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -668,7 +655,7 @@ void ClusterInfo::loadPlannedCollections() {
     if (locker.successful()) {
       result = _agency.getValues(prefixPlannedCollections, true);
     } else {
-      LOG_ERROR("Error while locking %s", prefixPlannedCollections.c_str());
+      LOG(ERROR) << "Error while locking " << prefixPlannedCollections.c_str();
       return;
     }
   }
@@ -693,8 +680,7 @@ void ClusterInfo::loadPlannedCollections() {
 
       if (parts.size() != 2) {
         // invalid entry
-        LOG_WARNING("found invalid collection key in agency: '%s'",
-                    key.c_str());
+        LOG(WARNING) << "found invalid collection key in agency: '" << key.c_str() << "'";
         continue;
       }
 
@@ -755,11 +741,7 @@ void ClusterInfo::loadPlannedCollections() {
     return;
   }
 
-  LOG_ERROR(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixPlannedCollections.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(ERROR) << "Error while loading " << prefixPlannedCollections.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -903,8 +885,7 @@ void ClusterInfo::loadCurrentCollections() {
 
       if (parts.size() != 3) {
         // invalid entry
-        LOG_WARNING("found invalid collection key in current in agency: '%s'",
-                    key.c_str());
+        LOG(WARNING) << "found invalid collection key in current in agency: '" << key.c_str() << "'";
         continue;
       }
 
@@ -963,11 +944,7 @@ void ClusterInfo::loadCurrentCollections() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixCurrentCollections.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixCurrentCollections.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1314,7 +1291,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     index = res._index;
   }
 
-  // LOG_ERROR("GOT TIMEOUT. NUMBEROFSHARDS: %d", (int) numberOfShards);
+  // LOG(ERROR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
@@ -1439,38 +1416,39 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
+    if (it->second._vpack == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
     VPackSlice const slice = it->second._vpack->slice();
     if (slice.isNone()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-
-    std::unique_ptr<TRI_json_t> copy(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-    if (copy == nullptr) {
+    VPackBuilder copy;
+    try {
+      VPackObjectBuilder b(&copy);
+      for (auto const& entry : VPackObjectIterator(slice)) {
+        std::string key = entry.key.copyString();
+        // Copy all values except the following
+        // They are overwritten later
+        if (key != "doCompact" &&
+            key != "journalSize" &&
+            key != "waitForSync" &&
+            key != "indexBuckets") {
+          copy.add(key, entry.value);
+        }
+      }
+      copy.add("doCompact", VPackValue(info->doCompact()));
+      copy.add("journalSize", VPackValue(info->maximalSize()));
+      copy.add("waitForSync", VPackValue(info->waitForSync()));
+      copy.add("indexBuckets", VPackValue(info->indexBuckets()));
+    } catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "doCompact");
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "journalSize");
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "waitForSync");
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "indexBuckets");
-
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, copy.get(), "doCompact",
-        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->doCompact()));
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, copy.get(), "journalSize",
-        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->maximalSize()));
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, copy.get(), "waitForSync",
-        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->waitForSync()));
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, copy.get(), "indexBuckets",
-        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->indexBuckets()));
-
     res.clear();
     res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID,
-                      copy.get(), 0.0);
+                      copy.slice(), 0.0);
   }
 
   if (res.successful()) {
@@ -1531,19 +1509,22 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_NO_ERROR;
     }
 
-    std::unique_ptr<TRI_json_t> copy(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-    if (copy == nullptr) {
+    VPackBuilder builder;
+    try {
+      VPackObjectBuilder b(&builder);
+      for (auto const& entry : VPackObjectIterator(slice)) {
+        std::string key = entry.key.copyString();
+        if (key != "status") {
+          builder.add(key, entry.value);
+        }
+      }
+      builder.add("status", VPackValue(status));
+    } catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "status");
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "status",
-                          TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, status));
-
     res.clear();
     res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID,
-                      copy.get(), 0.0);
+                      builder.slice(), 0.0);
   }
 
   if (res.successful()) {
@@ -1562,14 +1543,14 @@ int ClusterInfo::ensureIndexCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     VPackSlice const& slice, bool create,
     bool (*compare)(VPackSlice const&, VPackSlice const&),
-    TRI_json_t*& resultJson, std::string& errorMsg, double timeout) {
+    VPackBuilder& resultBuilder, std::string& errorMsg, double timeout) {
   AgencyComm ac;
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  resultJson = nullptr;
+  TRI_ASSERT(resultBuilder.isEmpty());
   int numberOfShards = 0;
 
   // check index id
@@ -1595,7 +1576,7 @@ int ClusterInfo::ensureIndexCoordinator(
   auto it = previous._values.begin();
   bool usePrevious = true;
   if (it == previous._values.end()) {
-    LOG_INFO("Entry for collection in Plan does not exist!");
+    LOG(INFO) << "Entry for collection in Plan does not exist!";
     usePrevious = false;
   }
 
@@ -1646,6 +1627,7 @@ int ClusterInfo::ensureIndexCoordinator(
             // compare index types first. they must match
             continue;
           }
+          TRI_ASSERT(other.isObject());
 
           hasSameIndexType = true;
 
@@ -1653,11 +1635,14 @@ int ClusterInfo::ensureIndexCoordinator(
 
           if (isSame) {
             // found an existing index...
-            resultJson =
-                arangodb::basics::VelocyPackHelper::velocyPackToJson(other);
-            TRI_Insert3ObjectJson(
-                TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
-                TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+            {
+              // Copy over all elements in slice.
+              VPackObjectBuilder b(&resultBuilder);
+              for (auto const& entry : VPackObjectIterator(other)) {
+                resultBuilder.add(entry.key.copyString(), entry.value);
+              }
+              resultBuilder.add("isNewlyCreated", VPackValue(false));
+            }
             return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
           }
         }
@@ -1680,7 +1665,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
       // no existing index found.
       if (!create) {
-        TRI_ASSERT(resultJson == nullptr);
+        TRI_ASSERT(resultBuilder.isEmpty());
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
 
@@ -1694,7 +1679,7 @@ int ClusterInfo::ensureIndexCoordinator(
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
     try {
-      newBuilder.openObject();
+      VPackObjectBuilder b(&newBuilder);
       // Create a new collection VPack with the new Index
       for (auto const& entry : VPackObjectIterator(collectionSlice)) {
         TRI_ASSERT(entry.key.isString());
@@ -1706,24 +1691,24 @@ int ClusterInfo::ensureIndexCoordinator(
           for (auto const& idx : VPackArrayIterator(entry.value)) {
             newBuilder.add(idx);
           }
-          newBuilder.openObject();
-          // Add the new index ignoring "id"
-          for (auto const& e : VPackObjectIterator(slice)) {
-            TRI_ASSERT(e.key.isString());
-            std::string tmpkey = e.key.copyString();
-            if (tmpkey != "id") {
-              newBuilder.add(tmpkey, e.value);
+          {
+            VPackObjectBuilder ob(&newBuilder);
+            // Add the new index ignoring "id"
+            for (auto const& e : VPackObjectIterator(slice)) {
+              TRI_ASSERT(e.key.isString());
+              std::string tmpkey = e.key.copyString();
+              if (tmpkey != "id") {
+                newBuilder.add(tmpkey, e.value);
+              }
             }
+            newBuilder.add("id", VPackValue(idString));
           }
-          newBuilder.add("id", VPackValue(idString));
-          newBuilder.close();  // the idx object
-          newBuilder.close();  // the array
+          newBuilder.close(); // the array
         } else {
           // Plain copy everything else
           newBuilder.add(key, entry.value);
         }
       }
-      newBuilder.close();
     } catch (...) {
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
@@ -1810,12 +1795,14 @@ int ClusterInfo::ensureIndexCoordinator(
           VPackValueLength l = indexFinder.length();
           indexFinder = indexFinder.at(l - 1);  // Get the last index
           TRI_ASSERT(indexFinder.isObject());
-          resultJson =
-              arangodb::basics::VelocyPackHelper::velocyPackToJson(indexFinder);
-          TRI_Insert3ObjectJson(
-              TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated",
-              TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-
+          {
+            // Copy over all elements in slice.
+            VPackObjectBuilder b(&resultBuilder);
+            for (auto const& entry : VPackObjectIterator(indexFinder)) {
+              resultBuilder.add(entry.key.copyString(), entry.value);
+            }
+            resultBuilder.add("isNewlyCreated", VPackValue(true));
+          }
           loadCurrentCollections();
 
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
@@ -2071,11 +2058,7 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixServers.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixServers.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2199,11 +2182,7 @@ void ClusterInfo::loadCurrentCoordinators() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixCurrentCoordinators.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixCurrentCoordinators.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2256,11 +2235,7 @@ void ClusterInfo::loadCurrentDBServers() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixCurrentDBServers.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixCurrentDBServers.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2529,72 +2504,34 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get information about current followers of a shard, the first
-/// overloaded method is supposed to be very fast, whereas the second
-/// needs a hash lookup, on the other hand one only needs the shardID.
-/// Returns an empty shared_ptr if the follower information of the
-/// shard has been dropped (see `dropFollowerInfo` below).
+/// @brief get information about current followers of a shard.
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::FollowerInfo ClusterInfo::getFollowerInfo(TRI_collection_t& coll) {
-  std::lock_guard<std::mutex> lock(_followerInfoMutex);
-  if (coll._followerInfoIndex >= 0) {
-    return _followerInfos[static_cast<size_t>(coll._followerInfoIndex)];
-  }
-  ServerID c = coll._info.name();
-  auto it = _followerInfoTable.find(c);
-  if (it != _followerInfoTable.end()) {
-    coll._followerInfoIndex = it->second;
-    return _followerInfos[static_cast<size_t>(it->second)];
-  }
-  return newFollowerInfo(c, coll._followerInfoIndex);
-}
-
-ClusterInfo::FollowerInfo ClusterInfo::getFollowerInfo(ShardID& c) {
-  std::lock_guard<std::mutex> lock(_followerInfoMutex);
-  auto it = _followerInfoTable.find(c);
-  if (it != _followerInfoTable.end()) {
-    return _followerInfos[static_cast<size_t>(it->second)];
-  }
-  int64_t tmp = -1;
-  return newFollowerInfo(c, tmp);
-}
-
-ClusterInfo::FollowerInfo ClusterInfo::newFollowerInfo(ShardID& c,
-                                                       int64_t& index) {
-  // Mutex must already be locked, which is done in the getFollowerInfo methods
-  auto v = std::make_shared<std::vector<ServerID> const>();
-  _followerInfos.push_back(v);
-  try {
-    index = static_cast<int64_t>(_followerInfos.size() - 1);
-    _followerInfoTable.emplace(make_pair(c, index));
-    return v;
-  } catch (...) {
-    _followerInfos.pop_back();  // make data structure consistent again
-    index = -1;
-    throw;
-  }
-  return _followerInfos[static_cast<size_t>(index)];
+std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
+  std::lock_guard<std::mutex> lock(_mutex);
+  return _followers;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower to a shard, this is only done by the server side
 /// of the "get-in-sync" capabilities. This reports to the agency under
-/// `/Current` but in asynchronous "fire-and-forget" way. The method
-/// fails silently, if the follower information has since been dropped
-/// (see `dropFollowerInfo` below).
+/// `/Current` but in asynchronous "fire-and-forget" way.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::addFollower(ShardID& c, ServerID const& s) {
-  std::lock_guard<std::mutex> lock(_followerInfoMutex);
-  auto it = _followerInfoTable.find(c);
-  TRI_ASSERT(it != _followerInfoTable.end());
-  size_t pos = static_cast<size_t>(it->second);
-  auto v = std::make_shared<std::vector<ServerID>>(*_followerInfos[pos]);
-  v->push_back(s);
-  _followerInfos[pos] = v;  // will cast to std::vector<ServerID> const
+void FollowerInfo::add(ServerID const& s) {
+  std::lock_guard<std::mutex> lock(_mutex);
+  // Fully copy the vector:
+  auto v = std::make_shared<std::vector<ServerID>>(*_followers);
+  v->push_back(s);  // add a single entry
+  _followers = v;   // will cast to std::vector<ServerID> const
   // Now tell the agency:
-  // ...
+  // Path is
+  //   Current/Collections/<dbName>/<collectionID>/<shardID>
+  // do { 
+  //   Get value, 
+  //   add follower
+  //   Casvalue
+  // } until geklappt
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2605,34 +2542,23 @@ void ClusterInfo::addFollower(ShardID& c, ServerID const& s) {
 /// since been dropped (see `dropFollowerInfo` below).
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::removeFollower(ShardID& c, ServerID const& s) {
-  std::lock_guard<std::mutex> lock(_followerInfoMutex);
-  auto it = _followerInfoTable.find(c);
-  TRI_ASSERT(it != _followerInfoTable.end());
-  size_t pos = static_cast<size_t>(it->second);
+void FollowerInfo::remove(ServerID const& s) {
+  std::lock_guard<std::mutex> lock(_mutex);
   auto v = std::make_shared<std::vector<ServerID>>();
-  v->reserve(_followerInfos[pos]->size() - 1);
-  for (auto const& i : *_followerInfos[pos]) {
+  v->reserve(_followers->size() - 1);
+  for (auto const& i : *_followers) {
     if (i != s) {
       v->push_back(i);
     }
   }
-  _followerInfos[pos] = v;  // will cast to std::vector<ServerID> const
+  _followers = v;  // will cast to std::vector<ServerID> const
   // Now tell the agency:
-  // ...
+  // Path is
+  //   Current/Collections/<dbName>/<collectionID>/<shardID>
+  // do { 
+  //   Get value, 
+  //   remove follower
+  //   Casvalue
+  // } until geklappt
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drop information about current followers of a shard,
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::dropFollowerInfo(ShardID& c) {
-  std::lock_guard<std::mutex> lock(_followerInfoMutex);
-  auto it = _followerInfoTable.find(c);
-  if (it == _followerInfoTable.end()) {
-    LOG_ERROR("Did not find expected followerInfo for shard %s.", c.c_str());
-    return;
-  }
-  _followerInfos[static_cast<size_t>(it->second)].reset();
-  _followerInfoTable.erase(it);
-}

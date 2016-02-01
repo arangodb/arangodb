@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Optimizer.h"
+#include "Optimizer.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRules.h"
 #include "Cluster/ServerState.h"

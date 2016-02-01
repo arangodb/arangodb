@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/ReadWriteLock.h"
+#include "Cluster/ClusterInfo.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
@@ -36,10 +36,6 @@
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
-#include <regex.h>
-
-struct TRI_cap_constraint_s;
-struct TRI_document_edge_s;
 class TRI_headers_t;
 
 class VocShaper;
@@ -48,12 +44,8 @@ namespace arangodb {
 class CapConstraint;
 class EdgeIndex;
 class ExampleMatcher;
-class FulltextIndex;
-class GeoIndex2;
-class HashIndex;
 class Index;
 class PrimaryIndex;
-class SkiplistIndex;
 class Transaction;
 namespace velocypack {
 class Builder;
@@ -256,6 +248,11 @@ struct TRI_document_collection_t : public TRI_collection_t {
   // whether or not secondary indexes are filled
   bool _useSecondaryIndexes;
 
+  // the following contains in the cluster/DBserver case the information
+  // which other servers are in sync with this shard. It is unset in all
+  // other cases.
+  std::unique_ptr<arangodb::FollowerInfo> _followers;
+
  public:
   arangodb::DatafileStatistics _datafileStatistics;
 
@@ -265,10 +262,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
 #else
   VocShaper* getShaper() const;
 #endif
-
-  inline TRI_tid_t getCurrentWriterThread() const {
-    return _currentWriterThread.load();
-  }
 
   void setNextCompactionStartIndex(size_t);
   size_t getNextCompactionStartIndex();
@@ -306,8 +299,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int64_t _numberDocuments;
   TRI_read_write_lock_t _compactionLock;
   double _lastCompaction;
-
-  std::atomic<TRI_tid_t> _currentWriterThread;
 
   // ...........................................................................
   // this condition variable protects the _journalsCondition

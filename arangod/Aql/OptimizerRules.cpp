@@ -1054,7 +1054,7 @@ void arangodb::aql::fuseCalculationsRule(Optimizer* opt, ExecutionPlan* plan,
             otherExpression->canRunOnDBServer() ==
                 nn->expression()->canRunOnDBServer()) {
           // found another calculation node
-          auto varsSet(std::move(current->getVariablesSetHere()));
+          auto varsSet(current->getVariablesSetHere());
           if (varsSet.size() == 1) {
             // check if it is a calculation for a variable that we are looking
             // for
@@ -1231,7 +1231,7 @@ void arangodb::aql::splitFiltersRule(Optimizer* opt, ExecutionPlan* plan,
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto inVars(std::move(n->getVariablesUsedHere()));
+    auto inVars(n->getVariablesUsedHere());
     TRI_ASSERT(inVars.size() == 1);
     auto setter = plan->getVarSetBy(inVars[0]->id);
 

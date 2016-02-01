@@ -24,11 +24,11 @@
 #include <iostream>
 
 #include "Basics/Common.h"
+#include "Basics/files.h"
 #include "Basics/messages.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Rest/InitializeRest.h"
-#include "Basics/files.h"
 #include "RestServer/ArangoServer.h"
 
 #include <signal.h>

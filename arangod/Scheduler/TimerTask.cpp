@@ -25,13 +25,12 @@
 #include "TimerTask.h"
 
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Scheduler/Scheduler.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -67,7 +66,7 @@ bool TimerTask::setup(Scheduler* scheduler, EventLoop loop) {
 
   if (0.0 < _seconds) {
     _watcher = _scheduler->installTimerEvent(loop, this, _seconds);
-    LOG_TRACE("armed TimerTask with %f seconds", _seconds);
+    LOG(TRACE) << "armed TimerTask with " << _seconds << " seconds";
   } else {
     _watcher = nullptr;
   }

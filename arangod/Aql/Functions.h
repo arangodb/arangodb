@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
-#include "Basics/tri-strings.h"
 #include "Utils/AqlTransaction.h"
 
 #include <functional>
@@ -62,8 +61,12 @@ struct Functions {
 
   static AqlValue IsNull(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
+  static AqlValue IsNullVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              FunctionParameters const&);
   static AqlValue IsBool(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
+  static AqlValue IsBoolVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              FunctionParameters const&);
   static AqlValue IsNumber(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
   static AqlValue IsString(arangodb::aql::Query*, arangodb::AqlTransaction*,

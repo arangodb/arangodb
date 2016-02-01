@@ -39,12 +39,10 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8Server/ApplicationV8.h"
-#include "V8Server/v8-shape-conv.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Graphs.h"
 
@@ -161,7 +159,7 @@ TRI_json_t* Profile::toJson(TRI_memory_zone_t*) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::DoDisableQueryTracking = false;
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,6 +302,10 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
   if (_options != nullptr) {
     options.reset(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _options));
+
+    if (options == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   }
 
   std::unique_ptr<Query> clone;
@@ -639,6 +641,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
         res.json = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheEntry->_queryResult);
         res.cached = true;
 
+        if (res.json == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
         return res;
       }
     }
@@ -648,6 +654,8 @@ QueryResult Query::execute(QueryRegistry* registry) {
     if (res.code != TRI_ERROR_NO_ERROR) {
       return res;
     }
+    
+    log();
 
     if (useQueryCache && (_isModificationQuery || !_warnings.empty() ||
                           !_ast->root()->isCacheable())) {
@@ -685,10 +693,21 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
-          QueryCache::instance()->store(
+          std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()));
+
+          if (copy == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          auto result = QueryCache::instance()->store(
               _vocbase, queryStringHash, _queryString, _queryLength,
-              TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()),
+              copy.get(),
               _trx->collectionNames());
+
+          if (result != nullptr) {
+            // result now belongs to cache
+            copy.release();
+          }
         }
       } else {
         // iterate over result and return it
@@ -788,6 +807,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     if (res.code != TRI_ERROR_NO_ERROR) {
       return res;
     }
+  
+    log();
 
     if (useQueryCache && (_isModificationQuery || !_warnings.empty() ||
                           !_ast->root()->isCacheable())) {
@@ -1254,6 +1275,18 @@ void Query::init() {
   _ast = new Ast(this);
   _nodes.reserve(32);
   _strings.reserve(32);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log a query
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::log() {
+  if (_queryString != nullptr) {
+    static size_t const MaxLength = 1024;
+
+    LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '" << std::string(_queryString, (std::min)(_queryLength, MaxLength)).append(_queryLength > MaxLength ? "..." : "") << "'";
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

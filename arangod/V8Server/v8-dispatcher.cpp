@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-dispatcher.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Dispatcher/ApplicationDispatcher.h"
@@ -190,8 +190,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto parameters = std::make_shared<VPackBuilder>();
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("params"))) {
-    TRI_V8ToVPack(isolate, *parameters, obj->Get(TRI_V8_ASCII_STRING("params")),
-                  false);
+    int res = TRI_V8ToVPack(isolate, *parameters,
+                            obj->Get(TRI_V8_ASCII_STRING("params")), false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
   TRI_GET_GLOBALS();
@@ -338,6 +341,6 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
     TRI_AddGlobalFunctionVocbase(
         isolate, context, TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
   } else {
-    LOG_ERROR("cannot initialize tasks, scheduler or dispatcher unknown");
+    LOG(ERROR) << "cannot initialize tasks, scheduler or dispatcher unknown";
   }
 }

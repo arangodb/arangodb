@@ -22,15 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KeyGenerator.h"
-
 #include "Basics/conversions.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
-#include "Basics/voc-errors.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
-
+#include "Basics/voc-errors.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
@@ -256,7 +253,7 @@ bool TraditionalKeyGenerator::validateKey(char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TraditionalKeyGenerator::generate(TRI_voc_tick_t tick) {
-  return std::move(arangodb::basics::StringUtils::itoa(tick));
+  return arangodb::basics::StringUtils::itoa(tick);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -367,7 +364,7 @@ std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
     _lastValue = keyValue;
   }
 
-  return std::move(arangodb::basics::StringUtils::itoa(keyValue));
+  return arangodb::basics::StringUtils::itoa(keyValue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

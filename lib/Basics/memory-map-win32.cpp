@@ -26,7 +26,7 @@
 #ifdef TRI_HAVE_WIN32_MMAP
 
 #include "Windows.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,9 +117,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     // .........................................................................
     fileHandle = INVALID_HANDLE_VALUE;
     if ((flags & MAP_ANONYMOUS) != MAP_ANONYMOUS) {
-      LOG_DEBUG(
-          "File descriptor is invalid however memory map flag is not "
-          "anonymous");
+      LOG(DEBUG) << "File descriptor is invalid however memory map flag is not anonymous";
       return TRI_ERROR_SYS_ERROR;
     }
   }
@@ -136,7 +134,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     // ...........................................................................
 
     if (fileHandle == INVALID_HANDLE_VALUE) {
-      LOG_DEBUG("File descriptor converted to an invalid handle");
+      LOG(DEBUG) << "File descriptor converted to an invalid handle";
       return TRI_ERROR_SYS_ERROR;
     }
   }
@@ -212,7 +210,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
   // ...........................................................................
   if (*mmHandle == nullptr) {
     DWORD errorCode = GetLastError();
-    LOG_DEBUG("File descriptor converted to an invalid handle: %d", errorCode);
+    LOG(DEBUG) << "File descriptor converted to an invalid handle: " << errorCode;
     return TRI_ERROR_SYS_ERROR;
   }
 
@@ -237,11 +235,10 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD
     // WINAPI GetLastError(void) );
     if (errorCode == ERROR_NOT_ENOUGH_MEMORY) {
-      LOG_DEBUG("MapViewOfFile failed with out of memory error %d",
-                (int)errorCode);
+      LOG(DEBUG) << "MapViewOfFile failed with out of memory error " << errorCode;
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    LOG_DEBUG("MapViewOfFile failed with error code = %d", (int)errorCode);
+    LOG(DEBUG) << "MapViewOfFile failed with error code = " << errorCode;
     return TRI_ERROR_SYS_ERROR;
   }
 

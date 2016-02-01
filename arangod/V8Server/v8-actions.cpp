@@ -30,7 +30,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
@@ -88,7 +88,7 @@ class v8_action_t : public TRI_action_t {
   }
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, HttpRequest* request,
-                              Mutex* dataLock, void** data) {
+                              Mutex* dataLock, void** data) override {
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
@@ -126,8 +126,7 @@ class v8_action_t : public TRI_action_t {
           _callbacks.find(context->isolate);
 
       if (i == _callbacks.end()) {
-        LOG_WARNING("no callback function for JavaScript action '%s'",
-                    _url.c_str());
+        LOG(WARNING) << "no callback function for JavaScript action '" << _url.c_str() << "'";
 
         GlobalV8Dealer->exitContext(context);
 
@@ -173,7 +172,7 @@ class v8_action_t : public TRI_action_t {
     return result;
   }
 
-  bool cancel(Mutex* dataLock, void** data) {
+  bool cancel(Mutex* dataLock, void** data) override {
     {
       MUTEX_LOCKER(mutexLocker, *dataLock);
 
@@ -476,11 +475,9 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   std::map<std::string, std::vector<char const*>*> arrayValues =
       request->arrayValues();
 
-  for (std::map<std::string, std::vector<char const*>*>::iterator i =
-           arrayValues.begin();
-       i != arrayValues.end(); ++i) {
-    std::string const& k = i->first;
-    std::vector<char const*>* v = i->second;
+  for (auto& arrayValue : arrayValues) {
+    std::string const& k = arrayValue.first;
+    std::vector<char const*>* v = arrayValue.second;
 
     v8::Handle<v8::Array> list =
         v8::Array::New(isolate, static_cast<int>(v->size()));
@@ -829,10 +826,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (action != nullptr) {
       action->createCallback(isolate, callback);
     } else {
-      LOG_ERROR("cannot create callback for V8 action");
+      LOG(ERROR) << "cannot create callback for V8 action";
     }
   } else {
-    LOG_ERROR("cannot define V8 action");
+    LOG(ERROR) << "cannot define V8 action";
   }
 
   TRI_V8_RETURN_UNDEFINED();

@@ -1009,18 +1009,16 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Array> collections = v8::Array::New(isolate);
     result->Set(TRI_V8_ASCII_STRING("collections"), collections);
     uint32_t i = 0;
-    for (auto it = parseResult.collectionNames.begin();
-         it != parseResult.collectionNames.end(); ++it) {
-      collections->Set(i++, TRI_V8_STD_STRING((*it)));
+    for (auto& elem : parseResult.collectionNames) {
+      collections->Set(i++, TRI_V8_STD_STRING((elem)));
     }
   }
 
   {
     v8::Handle<v8::Array> bindVars = v8::Array::New(isolate);
     uint32_t i = 0;
-    for (auto it = parseResult.bindParameters.begin();
-         it != parseResult.bindParameters.end(); ++it) {
-      bindVars->Set(i++, TRI_V8_STD_STRING((*it)));
+    for (auto const& elem : parseResult.bindParameters) {
+      bindVars->Set(i++, TRI_V8_STD_STRING((elem)));
     }
     result->Set(TRI_V8_ASCII_STRING("parameters"), bindVars);
   }
@@ -1455,16 +1453,17 @@ static void JS_QueriesCurrentAql(
     uint32_t i = 0;
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
-    for (auto it : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(it.started);
+    for (auto q : queries) {
+      auto const&& timeString = TRI_StringTimeStamp(q.started);
+      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, it.id));
-      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(it.queryString));
+      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
+      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(q.queryString));
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
       obj->Set(TRI_V8_ASCII_STRING("runTime"),
-               v8::Number::New(isolate, it.runTime));
-
+               v8::Number::New(isolate, q.runTime));
+      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(queryState));
       result->Set(i++, obj);
     }
 
@@ -1507,16 +1506,17 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     uint32_t i = 0;
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
-    for (auto it : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(it.started);
+    for (auto q : queries) {
+      auto const&& timeString = TRI_StringTimeStamp(q.started);
+      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, it.id));
-      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(it.queryString));
+      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
+      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(q.queryString));
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
       obj->Set(TRI_V8_ASCII_STRING("runTime"),
-               v8::Number::New(isolate, it.runTime));
-
+               v8::Number::New(isolate, q.runTime));
+      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(queryState));
       result->Set(i++, obj);
     }
 
@@ -1864,7 +1864,6 @@ static ExplicitTransaction* BeginTransaction(
   int res = trx->begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    trx->finish(res);
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -3874,7 +3873,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
 
   v8::Handle<v8::Object> v = WrapVocBase(isolate, vocbase);
   if (v.IsEmpty()) {
-    LOG_ERROR("out of memory when initializing VocBase");
+    LOG(ERROR) << "out of memory when initializing VocBase";
   } else {
     TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("db"),
                                  v);

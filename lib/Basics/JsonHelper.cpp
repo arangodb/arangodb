@@ -25,7 +25,6 @@
 #include "Basics/conversions.h"
 #include "Basics/StringBuffer.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////

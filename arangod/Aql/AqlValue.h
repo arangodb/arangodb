@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_AQL_VALUE_H
 #define ARANGOD_AQL_AQL_VALUE_H 1
 
+
 #include "Basics/Common.h"
 #include "Aql/Range.h"
 #include "Aql/types.h"
@@ -36,6 +37,11 @@
 #include <v8.h>
 
 namespace arangodb {
+
+namespace velocypack {
+template <typename T>
+class Buffer;
+}
 namespace aql {
 
 class AqlItemBlock;
@@ -133,7 +139,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_df_marker_t const* getMarker() const {
-    TRI_ASSERT_EXPENSIVE(isShaped());
+    TRI_ASSERT(isShaped());
     return _marker;
   }
 
@@ -277,6 +283,16 @@ struct AqlValue {
 
   arangodb::basics::Json toJson(arangodb::AqlTransaction*,
                                 TRI_document_collection_t const*, bool) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief toVelocyPack method
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> toVelocyPack(
+      arangodb::AqlTransaction*, TRI_document_collection_t const*, bool) const;
+
+  void toVelocyPack(arangodb::AqlTransaction*, TRI_document_collection_t const*,
+                    bool, arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a hash value for the AqlValue

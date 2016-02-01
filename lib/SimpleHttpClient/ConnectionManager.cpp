@@ -25,7 +25,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 
-using namespace std;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 

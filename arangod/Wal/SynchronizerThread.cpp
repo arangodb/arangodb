@@ -23,7 +23,7 @@
 
 #include "SynchronizerThread.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/server.h"
@@ -116,10 +116,9 @@ void SynchronizerThread::run() {
         }
       } catch (arangodb::basics::Exception const& ex) {
         int res = ex.code();
-        LOG_ERROR("got unexpected error in synchronizerThread: %s",
-                  TRI_errno_string(res));
+        LOG(ERROR) << "got unexpected error in synchronizerThread: " << TRI_errno_string(res);
       } catch (...) {
-        LOG_ERROR("got unspecific error in synchronizerThread");
+        LOG(ERROR) << "got unspecific error in synchronizerThread";
       }
     }
 
@@ -177,12 +176,10 @@ int SynchronizerThread::doSync(bool& checkMore) {
 
   bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
 
-  LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
-            (unsigned long long)id, region.mem, region.mem + region.size,
-            (unsigned long)region.size, region.waitForSync ? "true" : "false");
+  LOG(TRACE) << "syncing logfile " << id << ", region " << region.mem << " - " << (region.mem + region.size) << ", length: " << region.size << ", wfs: " << (region.waitForSync ? "true" : "false");
 
   if (!result) {
-    LOG_ERROR("unable to sync wal logfile region");
+    LOG(ERROR) << "unable to sync wal logfile region";
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
   }

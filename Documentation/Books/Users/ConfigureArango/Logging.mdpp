@@ -226,17 +226,6 @@ when no thread is logged and
 when this command line option is set.
 
 
-!SUBSECTION Source Filter
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-
-
-log source filter
-`--log.source-filter arg`
-
-For debug and trace messages, only log those messages originated from the
-C source file *arg*. The argument can be used multiple times.
-
-
 !SUBSECTION Content Filter
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 

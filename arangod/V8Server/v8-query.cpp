@@ -23,8 +23,6 @@
 
 #include "v8-query.h"
 #include "Aql/Query.h"
-#include "Basics/logging.h"
-#include "Basics/random.h"
 #include "Basics/StringBuffer.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
@@ -371,45 +369,39 @@ static TRI_index_operator_t* SetupExampleSkiplist(
     v8::Isolate* isolate,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     VocShaper* shaper, v8::Handle<v8::Object> example) {
-  TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  auto builder = std::make_shared<VPackBuilder>();
+  try {
+    VPackArrayBuilder b(builder.get());
 
-  if (parameters == nullptr) {
+    for (auto const& field : fields) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString, true);
+      v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
+
+      if (!example->HasOwnProperty(key)) {
+        break;
+      }
+
+      v8::Handle<v8::Value> value = example->Get(key);
+
+      int res = TRI_V8ToVPack(isolate, *builder, value, false);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return nullptr;
+      }
+    }
+
+  } catch (...) {
     return nullptr;
   }
-
-  for (auto const& field : fields) {
-    std::string fieldString;
-    TRI_AttributeNamesToString(field, fieldString, true);
-    v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
-
-    if (!example->HasOwnProperty(key)) {
-      break;
-    }
-
-    v8::Handle<v8::Value> value = example->Get(key);
-
-    TRI_json_t* json = TRI_ObjectToJson(isolate, value);
-
-    if (json == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-
-      return nullptr;
-    }
-
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
-  }
-
-  if (TRI_LengthArrayJson(parameters) > 0) {
+  VPackSlice const slice = builder->slice();
+  size_t l = static_cast<size_t>(slice.length());
+  if (l > 0) {
     // example means equality comparisons only
-    // // TODO FIX parameters to be VelocyPack in the first place
-    return TRI_CreateIndexOperator(
-        TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
-        arangodb::basics::JsonHelper::toVelocyPack(parameters), shaper,
-        TRI_LengthArrayJson(parameters));
+    return TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
+                                   builder, shaper, l);
   }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   return nullptr;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -792,9 +784,9 @@ static void EdgesQuery(TRI_edge_direction_e direction,
           TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid,
                                             key.get());
 
-      for (size_t j = 0; j < edges.size(); ++j) {
+      for (auto& edge : edges) {
         v8::Handle<v8::Value> doc =
-            WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
+            WRAP_SHAPED_JSON(trx, col->_cid, edge.getDataPtr());
 
         if (doc.IsEmpty()) {
           // error

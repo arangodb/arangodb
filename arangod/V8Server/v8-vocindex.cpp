@@ -43,6 +43,8 @@
 #include "V8Server/v8-vocbaseprivate.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -109,25 +111,6 @@ static bool IsIndexHandle(v8::Handle<v8::Value> const arg,
 
 static v8::Handle<v8::Value> IndexRep(v8::Isolate* isolate,
                                       std::string const& collectionName,
-                                      TRI_json_t const* idx) {
-  v8::EscapableHandleScope scope(isolate);
-  TRI_ASSERT(idx != nullptr);
-
-  v8::Handle<v8::Object> rep = TRI_ObjectJson(isolate, idx)->ToObject();
-
-  std::string iid = TRI_ObjectToString(rep->Get(TRI_V8_ASCII_STRING("id")));
-  std::string const id = collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
-  rep->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(id));
-
-  return scope.Escape<v8::Value>(rep);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the index representation
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> IndexRep(v8::Isolate* isolate,
-                                      std::string const& collectionName,
                                       VPackSlice const& idx) {
   v8::EscapableHandleScope scope(isolate);
   TRI_ASSERT(!idx.isNone());
@@ -147,7 +130,8 @@ static v8::Handle<v8::Value> IndexRep(v8::Isolate* isolate,
 
 static int ProcessIndexFields(v8::Isolate* isolate,
                               v8::Handle<v8::Object> const obj,
-                              TRI_json_t* json, int numFields, bool create) {
+                              VPackBuilder& builder, int numFields,
+                              bool create) {
   v8::HandleScope scope(isolate);
   std::set<std::string> fields;
 
@@ -184,15 +168,16 @@ static int ProcessIndexFields(v8::Isolate* isolate,
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  TRI_json_t* fieldJson =
-      TRI_ObjectToJson(isolate, obj->Get(TRI_V8_ASCII_STRING("fields")));
-
-  if (fieldJson == nullptr) {
+  try {
+    builder.add(VPackValue("fields"));
+    int res = TRI_V8ToVPack(isolate, builder,
+                            obj->Get(TRI_V8_ASCII_STRING("fields")), false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -200,53 +185,44 @@ static int ProcessIndexFields(v8::Isolate* isolate,
 /// @brief process the geojson flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexGeoJsonFlag(v8::Isolate* isolate,
-                                   v8::Handle<v8::Object> const obj,
-                                   TRI_json_t* json) {
+static void ProcessIndexGeoJsonFlag(v8::Isolate* isolate,
+                                    v8::Handle<v8::Object> const obj,
+                                    VPackBuilder& builder) {
   v8::HandleScope scope(isolate);
   bool geoJson =
       ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("geoJson"), false);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson",
-                        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
-
-  return TRI_ERROR_NO_ERROR;
+  builder.add("geoJson", VPackValue(geoJson));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the sparse flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexSparseFlag(v8::Isolate* isolate,
-                                  v8::Handle<v8::Object> const obj,
-                                  TRI_json_t* json, bool create) {
+static void ProcessIndexSparseFlag(v8::Isolate* isolate,
+                                   v8::Handle<v8::Object> const obj,
+                                   VPackBuilder& builder, bool create) {
   v8::HandleScope scope(isolate);
   if (obj->Has(TRI_V8_ASCII_STRING("sparse"))) {
     bool sparse =
         ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("sparse"), false);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse",
-                          TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, sparse));
+    builder.add("sparse", VPackValue(sparse));
   } else if (create) {
     // not set. now add a default value
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse",
-                          TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+    builder.add("sparse", VPackValue(false));
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the unique flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexUniqueFlag(v8::Isolate* isolate,
-                                  v8::Handle<v8::Object> const obj,
-                                  TRI_json_t* json) {
+static void ProcessIndexUniqueFlag(v8::Isolate* isolate,
+                                   v8::Handle<v8::Object> const obj,
+                                   VPackBuilder& builder) {
   v8::HandleScope scope(isolate);
   bool unique =
       ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("unique"), false);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "unique",
-                        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
-
-  return TRI_ERROR_NO_ERROR;
+  builder.add("unique", VPackValue(unique));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,19 +231,15 @@ static int ProcessIndexUniqueFlag(v8::Isolate* isolate,
 
 static int EnhanceJsonIndexGeo1(v8::Isolate* isolate,
                                 v8::Handle<v8::Object> const obj,
-                                TRI_json_t* json, bool create) {
-  int res = ProcessIndexFields(isolate, obj, json, 1, create);
+                                VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(isolate, obj, builder, 1, create);
   if (ServerState::instance()->isCoordinator()) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull",
-                          TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint",
-                          TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+    builder.add("ignoreNull", VPackValue(true));
+    builder.add("constraint", VPackValue(false));
   }
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse",
-                        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "unique",
-                        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
-  ProcessIndexGeoJsonFlag(isolate, obj, json);
+  builder.add("sparse", VPackValue(true));
+  builder.add("unique", VPackValue(false));
+  ProcessIndexGeoJsonFlag(isolate, obj, builder);
   return res;
 }
 
@@ -277,19 +249,15 @@ static int EnhanceJsonIndexGeo1(v8::Isolate* isolate,
 
 static int EnhanceJsonIndexGeo2(v8::Isolate* isolate,
                                 v8::Handle<v8::Object> const obj,
-                                TRI_json_t* json, bool create) {
-  int res = ProcessIndexFields(isolate, obj, json, 2, create);
+                                VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(isolate, obj, builder, 2, create);
   if (ServerState::instance()->isCoordinator()) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull",
-                          TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint",
-                          TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+    builder.add("ignoreNull", VPackValue(true));
+    builder.add("constraint", VPackValue(false));
   }
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse",
-                        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "unique",
-                        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
-  ProcessIndexGeoJsonFlag(isolate, obj, json);
+  builder.add("sparse", VPackValue(true));
+  builder.add("unique", VPackValue(false));
+  ProcessIndexGeoJsonFlag(isolate, obj, builder);
   return res;
 }
 
@@ -299,10 +267,10 @@ static int EnhanceJsonIndexGeo2(v8::Isolate* isolate,
 
 static int EnhanceJsonIndexHash(v8::Isolate* isolate,
                                 v8::Handle<v8::Object> const obj,
-                                TRI_json_t* json, bool create) {
-  int res = ProcessIndexFields(isolate, obj, json, 0, create);
-  ProcessIndexSparseFlag(isolate, obj, json, create);
-  ProcessIndexUniqueFlag(isolate, obj, json);
+                                VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(isolate, obj, builder, 0, create);
+  ProcessIndexSparseFlag(isolate, obj, builder, create);
+  ProcessIndexUniqueFlag(isolate, obj, builder);
   return res;
 }
 
@@ -312,10 +280,10 @@ static int EnhanceJsonIndexHash(v8::Isolate* isolate,
 
 static int EnhanceJsonIndexSkiplist(v8::Isolate* isolate,
                                     v8::Handle<v8::Object> const obj,
-                                    TRI_json_t* json, bool create) {
-  int res = ProcessIndexFields(isolate, obj, json, 0, create);
-  ProcessIndexSparseFlag(isolate, obj, json, create);
-  ProcessIndexUniqueFlag(isolate, obj, json);
+                                    VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(isolate, obj, builder, 0, create);
+  ProcessIndexSparseFlag(isolate, obj, builder, create);
+  ProcessIndexUniqueFlag(isolate, obj, builder);
   return res;
 }
 
@@ -325,8 +293,8 @@ static int EnhanceJsonIndexSkiplist(v8::Isolate* isolate,
 
 static int EnhanceJsonIndexFulltext(v8::Isolate* isolate,
                                     v8::Handle<v8::Object> const obj,
-                                    TRI_json_t* json, bool create) {
-  int res = ProcessIndexFields(isolate, obj, json, 1, create);
+                                    VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(isolate, obj, builder, 1, create);
 
   // handle "minLength" attribute
   int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
@@ -341,10 +309,7 @@ static int EnhanceJsonIndexFulltext(v8::Isolate* isolate,
       return TRI_ERROR_BAD_PARAMETER;
     }
   }
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json, "minLength",
-      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
-
+  builder.add("minLength", VPackValue(minWordLength));
   return res;
 }
 
@@ -354,7 +319,7 @@ static int EnhanceJsonIndexFulltext(v8::Isolate* isolate,
 
 static int EnhanceJsonIndexCap(v8::Isolate* isolate,
                                v8::Handle<v8::Object> const obj,
-                               TRI_json_t* json) {
+                               VPackBuilder& builder) {
   // handle "size" attribute
   size_t count = 0;
   if (obj->Has(TRI_V8_ASCII_STRING("size")) &&
@@ -383,13 +348,8 @@ static int EnhanceJsonIndexCap(v8::Isolate* isolate,
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json, "size",
-      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double)count));
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json, "byteSize",
-      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double)byteSize));
-
+  builder.add("size", VPackValue(count));
+  builder.add("byteSize", VPackValue(byteSize));
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -398,7 +358,7 @@ static int EnhanceJsonIndexCap(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
-                            TRI_json_t*& json, bool create) {
+                            VPackBuilder& builder, bool create) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -447,69 +407,64 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
   }
 
-  json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_ASSERT(builder.isEmpty());
+  int res = TRI_ERROR_INTERNAL;
+  try {
+    VPackObjectBuilder b(&builder);
 
-  if (json == nullptr) {
+    if (obj->Has(TRI_V8_ASCII_STRING("id"))) {
+      uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_ASCII_STRING("id")), true);
+      if (id > 0) {
+        char* idString = TRI_StringUInt64(id);
+        builder.add("id", VPackValue(idString));
+        TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
+      }
+    }
+
+    char const* idxType = arangodb::Index::typeName(type);
+    builder.add("type", VPackValue(idxType));
+
+    switch (type) {
+      case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
+      case arangodb::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+        res = TRI_ERROR_BAD_PARAMETER;
+        break;
+      }
+
+      case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+      case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX:
+      case arangodb::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
+        break;
+      }
+
+      case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
+        res = EnhanceJsonIndexGeo1(isolate, obj, builder, create);
+        break;
+
+      case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
+        res = EnhanceJsonIndexGeo2(isolate, obj, builder, create);
+        break;
+
+      case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX:
+        res = EnhanceJsonIndexHash(isolate, obj, builder, create);
+        break;
+
+      case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
+        res = EnhanceJsonIndexSkiplist(isolate, obj, builder, create);
+        break;
+
+      case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
+        res = EnhanceJsonIndexFulltext(isolate, obj, builder, create);
+        break;
+
+      case arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT:
+        res = EnhanceJsonIndexCap(isolate, obj, builder);
+        break;
+    }
+  } catch (...) {
+    // TODO Check for different type of Errors
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  if (obj->Has(TRI_V8_ASCII_STRING("id"))) {
-    uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_ASCII_STRING("id")), true);
-    if (id > 0) {
-      char* idString = TRI_StringUInt64(id);
-      TRI_Insert3ObjectJson(
-          TRI_UNKNOWN_MEM_ZONE, json, "id",
-          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString,
-                                   strlen(idString)));
-      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-    }
-  }
-
-  char const* idxType = arangodb::Index::typeName(type);
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json, "type",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idxType, strlen(idxType)));
-
-  int res = TRI_ERROR_INTERNAL;
-
-  switch (type) {
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
-    case arangodb::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
-      res = TRI_ERROR_BAD_PARAMETER;
-      break;
-    }
-
-    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
-      break;
-    }
-
-    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-      res = EnhanceJsonIndexGeo1(isolate, obj, json, create);
-      break;
-
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
-      res = EnhanceJsonIndexGeo2(isolate, obj, json, create);
-      break;
-
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX:
-      res = EnhanceJsonIndexHash(isolate, obj, json, create);
-      break;
-
-    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
-      res = EnhanceJsonIndexSkiplist(isolate, obj, json, create);
-      break;
-
-    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
-      res = EnhanceJsonIndexFulltext(isolate, obj, json, create);
-      break;
-
-    case arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT:
-      res = EnhanceJsonIndexCap(isolate, obj, json);
-      break;
-  }
-
   return res;
 }
 
@@ -519,30 +474,29 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
 
 static void EnsureIndexCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    TRI_vocbase_col_t const* collection, TRI_json_t const* json, bool create) {
+    TRI_vocbase_col_t const* collection, VPackSlice const slice, bool create) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(json != nullptr);
+  TRI_ASSERT(!slice.isNone());
 
   std::string const databaseName(collection->_dbName);
   std::string const cid = StringUtils::itoa(collection->_cid);
   // TODO: protect against races on _name
   std::string const collectionName(collection->_name);
 
-  TRI_json_t* resultJson = nullptr;
+  VPackBuilder resultBuilder;
   std::string errorMsg;
-  auto tmp = arangodb::basics::JsonHelper::toVelocyPack(json);
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
-      databaseName, cid, tmp->slice(), create, &arangodb::Index::Compare,
-      resultJson, errorMsg, 360.0);
+      databaseName, cid, slice, create, &arangodb::Index::Compare,
+      resultBuilder, errorMsg, 360.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);
   }
 
-  if (resultJson == nullptr) {
+  if (resultBuilder.slice().isNone()) {
     if (!create) {
       // did not find a suitable index
       TRI_V8_RETURN_NULL();
@@ -551,9 +505,7 @@ static void EnsureIndexCoordinator(
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  v8::Handle<v8::Value> ret = IndexRep(isolate, collectionName, resultJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
-
+  v8::Handle<v8::Value> ret = IndexRep(isolate, collectionName, resultBuilder.slice());
   TRI_V8_RETURN(ret);
 }
 
@@ -563,67 +515,59 @@ static void EnsureIndexCoordinator(
 
 static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
                              TRI_vocbase_col_t const* collection,
-                             TRI_json_t const* json, bool create) {
+                             VPackSlice const& slice, bool create) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(json != nullptr);
-
-  // extract type
-  TRI_json_t* value = TRI_LookupObjectJson(json, "type");
-
-  if (!TRI_IsStringJson(value)) {
+  if (!slice.isObject()) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  arangodb::Index::IndexType const type =
-      arangodb::Index::type(value->_value._string.data);
+  // extract type
+  VPackSlice value = slice.get("type");
+
+  if (!value.isString()) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  std::string tmp = value.copyString();
+  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
 
   // extract unique flag
-  bool unique = false;
-  value = TRI_LookupObjectJson(json, "unique");
-  if (TRI_IsBooleanJson(value)) {
-    unique = value->_value._boolean;
-  }
+  bool unique = arangodb::basics::VelocyPackHelper::getBooleanValue(
+      slice, "unique", false);
 
   // extract sparse flag
   bool sparse = false;
   int sparsity = -1;  // not set
-  value = TRI_LookupObjectJson(json, "sparse");
-  if (TRI_IsBooleanJson(value)) {
-    sparse = value->_value._boolean;
+  value = slice.get("sparse");
+  if (value.isBoolean()) {
+    sparse = value.getBoolean();
     sparsity = sparse ? 1 : 0;
   }
 
   // extract id
   TRI_idx_iid_t iid = 0;
-  value = TRI_LookupObjectJson(json, "id");
-  if (TRI_IsStringJson(value)) {
-    iid = TRI_UInt64String2(value->_value._string.data,
-                            value->_value._string.length - 1);
+  value = slice.get("id");
+  if (value.isString()) {
+    std::string tmp = value.copyString();
+    iid = TRI_UInt64String(tmp.c_str());
   }
 
   std::vector<std::string> attributes;
 
   // extract fields
-  value = TRI_LookupObjectJson(json, "fields");
-  if (TRI_IsArrayJson(value)) {
+  value = slice.get("fields");
+  if (value.isArray()) {
     // note: "fields" is not mandatory for all index types
 
     // copy all field names (attributes)
-    size_t const n = TRI_LengthArrayJson(value);
+    for (auto const& v : VPackArrayIterator(value)) {
+      if (v.isString()) {
+        std::string val = v.copyString();
 
-    for (size_t i = 0; i < n; ++i) {
-      auto v = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&value->_value._objects, i));
-
-      if (TRI_IsStringJson(v)) {
-        attributes.emplace_back(
-            std::string(v->_value._string.data, v->_value._string.length - 1));
-
-        auto last = attributes.back();
-        if (last.find("[*]") != std::string::npos) {
+        if (val.find("[*]") != std::string::npos) {
           if (type != arangodb::Index::TRI_IDX_TYPE_HASH_INDEX &&
               type != arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
             // expansion used in index type that does not support it
@@ -637,7 +581,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
             size_t found = 0;
             size_t offset = 0;
 
-            while ((offset = last.find("[*]", offset)) != std::string::npos) {
+            while ((offset = val.find("[*]", offset)) != std::string::npos) {
               ++found;
               offset += strlen("[*]");
             }
@@ -651,6 +595,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
             }
           }
         }
+        attributes.emplace_back(val);
       }
     }
   }
@@ -691,11 +636,8 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
-      bool geoJson = false;
-      value = TRI_LookupObjectJson(json, "geoJson");
-      if (TRI_IsBooleanJson(value)) {
-        geoJson = value->_value._boolean;
-      }
+      bool geoJson = arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "geoJson", false);
 
       if (create) {
         idx = static_cast<arangodb::GeoIndex2*>(
@@ -767,10 +709,10 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
       }
 
       int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-      TRI_json_t const* value = TRI_LookupObjectJson(json, "minLength");
-      if (TRI_IsNumberJson(value)) {
-        minWordLength = (int)value->_value._number;
-      } else if (value != nullptr) {
+      VPackSlice const value = slice.get("minLength");
+      if (value.isNumber()) {
+        minWordLength = value.getNumericValue<int>();
+      } else if (!value.isNone()) {
         // minLength defined but no number
         TRI_V8_THROW_EXCEPTION_PARAMETER("<minLength> must be a number");
       }
@@ -788,17 +730,13 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
 
     case arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT: {
-      size_t size = 0;
-      TRI_json_t const* value = TRI_LookupObjectJson(json, "size");
-      if (TRI_IsNumberJson(value)) {
-        size = (size_t)value->_value._number;
-      }
+      size_t size = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+          slice, "size", 0);
 
-      int64_t byteSize = 0;
-      value = TRI_LookupObjectJson(json, "byteSize");
-      if (TRI_IsNumberJson(value)) {
-        byteSize = (int64_t)value->_value._number;
-      }
+      int64_t byteSize =
+          arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
+              slice, "byteSize", 0);
+      ;
 
       if (create) {
         idx = static_cast<arangodb::Index*>(
@@ -869,13 +807,12 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION_USAGE(name.c_str());
   }
 
-  TRI_json_t* json = nullptr;
-  int res = EnhanceIndexJson(args, json, create);
-
-  // this object is responsible for the JSON from now on
-  std::unique_ptr<TRI_json_t> jsonDeleter(json);
-
+  VPackBuilder builder;
+  int res = EnhanceIndexJson(args, builder, create);
+  VPackSlice slice = builder.slice();
   if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(slice.isObject());
+
     std::string const dbname(collection->_dbName);
     // TODO: someone might rename the collection while we're reading its name...
     std::string const collname(collection->_name);
@@ -888,28 +825,26 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
-      TRI_json_t const* v = TRI_LookupObjectJson(json, "unique");
+      VPackSlice v = slice.get("unique");
 
-      if (TRI_IsBooleanJson(v) && v->_value._boolean) {
+      if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
-        TRI_json_t const* flds = TRI_LookupObjectJson(json, "fields");
-
-        if (TRI_IsArrayJson(flds) && c->numberOfShards() > 1) {
+        VPackSlice flds = slice.get("fields");
+        if (flds.isArray() && c->numberOfShards() > 1) {
           std::vector<std::string> const& shardKeys = c->shardKeys();
-          size_t const n = TRI_LengthArrayJson(flds);
+          size_t n = static_cast<size_t>(flds.length());
 
           if (shardKeys.size() != n) {
             res = TRI_ERROR_CLUSTER_UNSUPPORTED;
           } else {
             for (size_t i = 0; i < n; ++i) {
-              TRI_json_t const* f = TRI_LookupArrayJson(flds, i);
-
-              if (!TRI_IsStringJson(f)) {
+              VPackSlice f = flds.at(i);
+              if (!f.isString()) {
                 res = TRI_ERROR_INTERNAL;
                 continue;
               } else {
-                if (!TRI_EqualString(f->_value._string.data,
-                                     shardKeys[i].c_str())) {
+                std::string tmp = f.copyString();
+                if (!TRI_EqualString(tmp.c_str(), shardKeys[i].c_str())) {
                   res = TRI_ERROR_CLUSTER_UNSUPPORTED;
                 }
               }
@@ -924,13 +859,12 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_ASSERT(json != nullptr);
-
+  TRI_ASSERT(!slice.isNone());
   // ensure an index, coordinator case
   if (ServerState::instance()->isCoordinator()) {
-    EnsureIndexCoordinator(args, collection, json, create);
+    EnsureIndexCoordinator(args, collection, slice, create);
   } else {
-    EnsureIndexLocal(args, collection, json, create);
+    EnsureIndexLocal(args, collection, slice, create);
   }
 }
 
@@ -954,6 +888,8 @@ static void CreateCollectionCoordinator(
   bool allowUserKeys = true;
   uint64_t numberOfShards = 1;
   std::vector<std::string> shardKeys;
+  uint64_t replicationFactor = 1;
+  uint64_t replicationQuorum = 1;
 
   // default shard key
   shardKeys.push_back("_key");
@@ -1028,10 +964,26 @@ static void CreateCollectionCoordinator(
     if (p->Has(idKey) && p->Get(idKey)->IsString()) {
       cid = TRI_ObjectToString(p->Get(idKey));
     }
+
+    if (p->Has(TRI_V8_ASCII_STRING("replicationFactor"))) {
+      replicationFactor = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("replicationFactor")), false);
+    }
+
+    if (p->Has(TRI_V8_ASCII_STRING("replicationQuorum"))) {
+      replicationQuorum = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("replicationQuorum")), false);
+    }
   }
 
   if (numberOfShards == 0 || numberOfShards > 1000) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("invalid number of shards");
+  }
+
+  if (replicationFactor == 0 || replicationFactor > 10) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid replicationFactor");
+  }
+
+  if (replicationQuorum == 0 || replicationQuorum > replicationFactor) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid replicationQuorum");
   }
 
   if (shardKeys.empty() || shardKeys.size() > 8) {
@@ -1072,21 +1024,39 @@ static void CreateCollectionCoordinator(
     for (auto const& s : *shardList) {
       auto it = shards->find(s);
       if (it != shards->end()) {
-        dbServers.push_back(it->second[0]);
+        for (auto const& s : it->second) {
+          dbServers.push_back(s);
+        }
       }
     }
   }
 
   // now create the shards
-  std::map<std::string, std::string> shards;
+  std::map<std::string, std::vector<std::string>> shards;
+  size_t count = 0;
   for (uint64_t i = 0; i < numberOfShards; ++i) {
-    // determine responsible server
-    std::string serverId = dbServers[i % dbServers.size()];
+    // determine responsible server(s)
+    std::vector<std::string> serverIds;
+    for (uint64_t j = 0; j < replicationFactor; ++j) {
+      std::string candidate;
+      size_t count2 = 0;
+      do {
+        candidate = dbServers[count++];
+        if (count >= dbServers.size()) {
+          count = 0;
+        }
+        if (++count2 == dbServers.size() + 1) {
+          TRI_V8_THROW_EXCEPTION_PARAMETER("replicationFactor too large");
+        }
+      } while (std::find(serverIds.begin(), serverIds.end(), candidate) != 
+               serverIds.end());
+      serverIds.push_back(candidate);
+    }
 
     // determine shard id
     std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
 
-    shards.insert(std::make_pair(shardId, serverId));
+    shards.insert(std::make_pair(shardId, serverIds));
   }
 
   // now create the VelocyPack for the collection
@@ -1098,18 +1068,23 @@ static void CreateCollectionCoordinator(
 
   {
     ObjectBuilder ob(&velocy);
-    velocy("id", Value(cid))("name", Value(name))("type",
-                                                  Value((int)collectionType))(
-        "status", Value((int)TRI_VOC_COL_STATUS_LOADED))(
-        "deleted", Value(parameters.deleted()))("doCompact",
-                                                Value(parameters.doCompact()))(
-        "isSystem", Value(parameters.isSystem()))(
-        "isVolatile", Value(parameters.isVolatile()))(
-        "waitForSync", Value(parameters.waitForSync()))(
-        "journalSize", Value(parameters.maximalSize()))(
-        "indexBuckets", Value(parameters.indexBuckets()))(
-        "keyOptions", Value(ValueType::Object))("type", Value("traditional"))(
-        "allowUserKeys", Value(allowUserKeys)).close();
+    velocy("id",           Value(cid))
+          ("name",         Value(name))
+          ("type",         Value((int) collectionType))
+          ("status",       Value((int) TRI_VOC_COL_STATUS_LOADED))
+          ("deleted",      Value(parameters.deleted()))
+          ("doCompact",    Value(parameters.doCompact()))
+          ("isSystem",     Value(parameters.isSystem()))
+          ("isVolatile",   Value(parameters.isVolatile()))
+          ("waitForSync",  Value(parameters.waitForSync()))
+          ("journalSize",  Value(parameters.maximalSize()))
+          ("indexBuckets", Value(parameters.indexBuckets()))
+          ("replicationFactor", Value(replicationFactor))
+          ("replicationQuorum", Value(replicationQuorum))
+          ("keyOptions",   Value(ValueType::Object))
+              ("type",          Value("traditional"))
+              ("allowUserKeys", Value(allowUserKeys))
+           .close();
 
     {
       ArrayBuilder ab(&velocy, "shardKeys");
@@ -1122,7 +1097,9 @@ static void CreateCollectionCoordinator(
       ObjectBuilder ob(&velocy, "shards");
       for (auto const& p : shards) {
         ArrayBuilder ab(&velocy, p.first);
-        velocy(Value(p.second));
+        for (auto const& s : p.second) {
+          velocy(Value(s));
+        }
       }
     }
 
@@ -1339,16 +1316,14 @@ static void GetIndexesCoordinator(
 
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
-  TRI_json_t const* json = (*c).getIndexes();
+  std::shared_ptr<VPackBuilder> tmp =
+      arangodb::basics::JsonHelper::toVelocyPack(c->getIndexes());
+  VPackSlice slice = tmp->slice();
 
-  if (TRI_IsArrayJson(json)) {
+  if (slice.isArray()) {
     uint32_t j = 0;
-    size_t const n = TRI_LengthArrayJson(json);
-
-    for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* v = TRI_LookupArrayJson(json, i);
-
-      if (v != nullptr) {
+    for (auto const& v : VPackArrayIterator(slice)) {
+      if (!v.isNone()) {
         ret->Set(j++, IndexRep(isolate, collectionName, v));
       }
     }

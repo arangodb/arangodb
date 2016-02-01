@@ -59,6 +59,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/IndexNode.cpp \
 	arangod/Aql/ModificationBlocks.cpp \
 	arangod/Aql/ModificationNodes.cpp \
+	arangod/Aql/ModificationOptions.cpp \
 	arangod/Aql/NodeFinder.cpp \
 	arangod/Aql/Optimizer.cpp \
 	arangod/Aql/OptimizerRules.cpp \
@@ -82,7 +83,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/V8Expression.cpp \
 	arangod/Aql/Variable.cpp \
 	arangod/Aql/VariableGenerator.cpp \
-	arangod/Aql/ModificationOptions.cpp \
 	arangod/Cluster/AgencyComm.cpp \
 	arangod/Cluster/ApplicationCluster.cpp \
 	arangod/Cluster/ClusterComm.cpp \

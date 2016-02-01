@@ -20,7 +20,6 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Cluster/AgencyComm.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
@@ -29,7 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/random.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
@@ -194,7 +193,7 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
     return false;
   }
 
-  std::string keydecoded = std::move(AgencyComm::decodeKey(key.copyString()));
+  std::string keydecoded = AgencyComm::decodeKey(key.copyString());
 
   // make sure we don't strip more bytes than the key is long
   size_t const offset =
@@ -496,33 +495,40 @@ void AgencyComm::cleanup() {
 
 bool AgencyComm::tryConnect() {
   {
+    std::string endpointsStr { getUniqueEndpointsString() };
+
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
     if (_globalEndpoints.size() == 0) {
       return false;
     }
+    
+    // mop: not sure if a timeout makes sense here
+    while (true) {
+      LOG(INFO) << "Trying to find an active agency. Checking " << endpointsStr.c_str();
+      std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
-    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+      while (it != _globalEndpoints.end()) {
+        AgencyEndpoint* agencyEndpoint = (*it);
 
-    while (it != _globalEndpoints.end()) {
-      AgencyEndpoint* agencyEndpoint = (*it);
+        TRI_ASSERT(agencyEndpoint != nullptr);
+        TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
+        TRI_ASSERT(agencyEndpoint->_connection != nullptr);
 
-      TRI_ASSERT(agencyEndpoint != nullptr);
-      TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
-      TRI_ASSERT(agencyEndpoint->_connection != nullptr);
+        if (agencyEndpoint->_endpoint->isConnected()) {
+          return true;
+        }
 
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
+        agencyEndpoint->_endpoint->connect(
+            _globalConnectionOptions._connectTimeout,
+            _globalConnectionOptions._requestTimeout);
+
+        if (agencyEndpoint->_endpoint->isConnected()) {
+          return true;
+        }
+
+        ++it;
       }
-
-      agencyEndpoint->_endpoint->connect(
-          _globalConnectionOptions._connectTimeout,
-          _globalConnectionOptions._requestTimeout);
-
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
-      }
-
-      ++it;
+      sleep(1);
     }
   }
 
@@ -559,8 +565,7 @@ void AgencyComm::disconnect() {
 
 bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
                              bool toFront) {
-  LOG_TRACE("adding global agency-endpoint '%s'",
-            endpointSpecification.c_str());
+  LOG(TRACE) << "adding global agency-endpoint '" << endpointSpecification.c_str() << "'";
 
   {
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
@@ -658,6 +663,46 @@ std::vector<std::string> AgencyComm::getEndpoints() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a stringified version of all endpoints (unique)
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::getUniqueEndpointsString() {
+  std::string result;
+
+  {
+    // iterate over the list of endpoints
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
+
+    std::list<AgencyEndpoint*> uniqueEndpoints{
+      AgencyComm::_globalEndpoints.begin(),
+      AgencyComm::_globalEndpoints.end()
+    };
+
+    uniqueEndpoints.unique([] (AgencyEndpoint *a, AgencyEndpoint *b) {
+        return a->_endpoint->getSpecification() == b->_endpoint->getSpecification();
+    });
+
+    std::list<AgencyEndpoint*>::const_iterator it =
+        uniqueEndpoints.begin();
+    
+    while (it != uniqueEndpoints.end()) {
+      if (!result.empty()) {
+        result += ", ";
+      }
+
+      AgencyEndpoint const* agencyEndpoint = (*it);
+
+      TRI_ASSERT(agencyEndpoint != nullptr);
+
+      result.append(agencyEndpoint->_endpoint->getSpecification());
+      ++it;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -708,7 +753,7 @@ bool AgencyComm::setPrefix(std::string const& prefix) {
     }
   }
 
-  LOG_TRACE("setting agency-prefix to '%s'", prefix.c_str());
+  LOG(TRACE) << "setting agency-prefix to '" << prefix.c_str() << "'";
   return true;
 }
 
@@ -777,7 +822,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
     std::string const status =
         ServerState::stateToString(ServerState::instance()->getState());
     builder.add("status", VPackValue(status));
-    std::string const stamp = std::move(AgencyComm::generateStamp());
+    std::string const stamp = AgencyComm::generateStamp();
     builder.add("time", VPackValue(stamp));
     builder.close();
   } catch (...) {
@@ -884,8 +929,7 @@ void AgencyComm::increaseVersionRepeated(std::string const& key) {
       return;
     }
     uint32_t val = 300 + TRI_UInt32Random() % 400;
-    LOG_INFO("Could not increase %s in agency, retrying in %dms!", key.c_str(),
-             val);
+    LOG(INFO) << "Could not increase " << key.c_str() << " in agency, retrying in " << val << "!";
     usleep(val * 1000);
   }
 }
@@ -902,17 +946,6 @@ AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
                    buildUrl(key) + "?dir=true", "", false);
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a value in the backend
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommResult AgencyComm::setValue(std::string const& key,
-                                      TRI_json_t const* json, double ttl) {
-  // Only temporary
-  auto builder = arangodb::basics::JsonHelper::toVelocyPack(json);
-  return setValue(key, builder->slice(), ttl);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1405,7 +1438,7 @@ void AgencyComm::requeueEndpoint(AgencyEndpoint* agencyEndpoint,
 
 std::string AgencyComm::buildUrl(std::string const& relativePart) const {
   return AgencyComm::AGENCY_URL_PREFIX +
-         std::move(encodeKey(_globalPrefix + relativePart));
+         encodeKey(_globalPrefix + relativePart);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1414,8 +1447,7 @@ std::string AgencyComm::buildUrl(std::string const& relativePart) const {
 
 std::string AgencyComm::buildUrl() const {
   return AgencyComm::AGENCY_URL_PREFIX +
-         std::move(
-             encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1)));
+             encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1499,7 +1531,7 @@ bool AgencyComm::sendWithFailover(
         if (_addNewEndpoints) {
           AgencyComm::addEndpoint(endpoint, true);
 
-          LOG_INFO("adding agency-endpoint '%s'", endpoint.c_str());
+          LOG(INFO) << "adding agency-endpoint '" << endpoint.c_str() << "'";
 
           // re-check the new endpoint
           if (AgencyComm::hasEndpoint(endpoint)) {
@@ -1508,9 +1540,7 @@ bool AgencyComm::sendWithFailover(
           }
         }
 
-        LOG_ERROR(
-            "found redirection to unknown endpoint '%s'. Will not follow!",
-            endpoint.c_str());
+        LOG(ERROR) << "found redirection to unknown endpoint '" << endpoint.c_str() << "'. Will not follow!";
 
         // this is an error
         return false;
@@ -1566,10 +1596,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   result._connected = false;
   result._statusCode = 0;
 
-  LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s",
-            arangodb::rest::HttpRequest::translateMethod(method).c_str(),
-            connection->getEndpoint()->getSpecification().c_str(), url.c_str(),
-            body.c_str());
+  LOG(TRACE) << "sending " << arangodb::rest::HttpRequest::translateMethod(method).c_str() << " request to agency at endpoint '" << connection->getEndpoint()->getSpecification().c_str() << "', url '" << url.c_str() << "': " << body.c_str();
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
 
@@ -1590,7 +1617,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   if (response == nullptr) {
     connection->disconnect();
     result._message = "could not send request to agency";
-    LOG_TRACE("sending request to agency failed");
+    LOG(TRACE) << "sending request to agency failed";
 
     return false;
   }
@@ -1598,7 +1625,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   if (!response->isComplete()) {
     connection->disconnect();
     result._message = "sending request to agency failed";
-    LOG_TRACE("sending request to agency failed");
+    LOG(TRACE) << "sending request to agency failed";
 
     return false;
   }
@@ -1612,7 +1639,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
     bool found = false;
     result._location = response->getHeaderField("location", found);
 
-    LOG_TRACE("redirecting to location: '%s'", result._location.c_str());
+    LOG(TRACE) << "redirecting to location: '" << result._location.c_str() << "'";
 
     if (!found) {
       // a 307 without a location header does not make any sense
@@ -1635,9 +1662,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
     result._index = arangodb::basics::StringUtils::uint64(lastIndex);
   }
 
-  LOG_TRACE(
-      "request to agency returned status code %d, message: '%s', body: '%s'",
-      result._statusCode, result._message.c_str(), result._body.c_str());
+  LOG(TRACE) << "request to agency returned status code " << result._statusCode << ", message: '" << result._message.c_str() << "', body: '" << result._body.c_str() << "'";
 
   if (result.successful()) {
     return true;

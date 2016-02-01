@@ -27,12 +27,13 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/ApplicationV8.h"
 
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
@@ -133,7 +134,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     createResponse(HttpResponse::CREATED);
     _response->setContentType("application/json; charset=utf-8");
 
-    arangodb::basics::Json extra = buildExtra(queryResult);
+    std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
 
     size_t batchSize =
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
@@ -144,31 +145,37 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       // result is smaller than batchSize and will be returned directly. no need
       // to create a cursor
 
-      arangodb::basics::Json result(arangodb::basics::Json::Object, 7);
-      result.set("result",
-                 arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json,
-                                        arangodb::basics::Json::AUTOFREE));
-      queryResult.json = nullptr;
-
-      result.set("hasMore", arangodb::basics::Json(false));
-
-      if (arangodb::basics::VelocyPackHelper::getBooleanValue(options, "count",
-                                                              false)) {
-        result.set("count", arangodb::basics::Json(static_cast<double>(n)));
+      VPackBuilder result;
+      try {
+        VPackObjectBuilder b(&result);
+        result.add(VPackValue("result"));
+        int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.json, result);
+        if (res != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+        queryResult.json = nullptr;
+        result.add("hasMore", VPackValue(false));
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(options, "count",
+                                                                false)) {
+          result.add("count", VPackValue(n));
+        }
+        result.add("cached", VPackValue(queryResult.cached));
+        if (queryResult.cached) {
+          result.add("extra", VPackValue(VPackValueType::Object));
+          result.close();
+        } else {
+          result.add("extra", extra->slice());
+        }
+        result.add("error", VPackValue(false));
+        result.add("code", VPackValue(_response->responseCode()));
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      result.set("cached", arangodb::basics::Json(queryResult.cached));
-      if (queryResult.cached) {
-        result.set("extra",
-                   arangodb::basics::Json(arangodb::basics::Json::Object));
-      } else {
-        result.set("extra", extra);
-      }
-      result.set("error", arangodb::basics::Json(false));
-      result.set("code", arangodb::basics::Json(
-                             static_cast<double>(_response->responseCode())));
-
-      result.dump(_response->body());
+      arangodb::basics::VPackStringBufferAdapter bufferAdapter(
+          _response->body().stringBuffer());
+      VPackDumper dumper(&bufferAdapter);
+      dumper.dump(result.slice());
       return;
     }
 
@@ -184,8 +191,17 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
     // steal the query JSON, cursor will take over the ownership
     auto j = queryResult.json;
-    arangodb::JsonCursor* cursor = cursors->createFromJson(
-        j, batchSize, extra.steal(), ttl, count, queryResult.cached);
+    std::shared_ptr<VPackBuilder> builder = arangodb::basics::JsonHelper::toVelocyPack(j);
+    {
+      // Temporarily validate that transformation actually worked.
+      // Can be removed again as soon as queryResult returns VPack
+      VPackSlice validate = builder->slice();
+      if (validate.isNone() && j != nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+    }
+    arangodb::JsonCursor* cursor = cursors->createFromVelocyPack(
+        builder, batchSize, extra, ttl, count, queryResult.cached);
     queryResult.json = nullptr;
 
     try {
@@ -318,36 +334,40 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
 /// several values
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json RestCursorHandler::buildExtra(
+std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
     arangodb::aql::QueryResult& queryResult) const {
   // build "extra" attribute
-  arangodb::basics::Json extra(arangodb::basics::Json::Object);
-  if (queryResult.stats != nullptr) {
-    VPackSlice stats = queryResult.stats->slice();
-    if (!stats.isNone()) {
-      extra.set("stats",
-                arangodb::basics::Json(
-                    TRI_UNKNOWN_MEM_ZONE,
-                    arangodb::basics::VelocyPackHelper::velocyPackToJson(stats),
-                    arangodb::basics::Json::AUTOFREE));
+  auto extra = std::make_shared<VPackBuilder>();
+  try {
+    VPackObjectBuilder b(extra.get());
+    if (queryResult.stats != nullptr) {
+      VPackSlice stats = queryResult.stats->slice();
+      if (!stats.isNone()) {
+        extra->add("stats", stats);
+      }
     }
+    if (queryResult.profile != nullptr) {
+      extra->add(VPackValue("profile"));
+      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.profile, *extra);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return nullptr;
+      }
+      queryResult.profile = nullptr;
+    }
+    if (queryResult.warnings == nullptr) {
+      extra->add("warnings", VPackValue(VPackValueType::Array));
+      extra->close();
+    } else {
+      extra->add(VPackValue("warnings"));
+      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.warnings, *extra);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return nullptr;
+      }
+      queryResult.warnings = nullptr;
+    }
+  } catch (...) {
+    return nullptr;
   }
-  if (queryResult.profile != nullptr) {
-    extra.set("profile",
-              arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.profile,
-                                     arangodb::basics::Json::AUTOFREE));
-    queryResult.profile = nullptr;
-  }
-  if (queryResult.warnings == nullptr) {
-    extra.set("warnings",
-              arangodb::basics::Json(arangodb::basics::Json::Array));
-  } else {
-    extra.set("warnings",
-              arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.warnings,
-                                     arangodb::basics::Json::AUTOFREE));
-    queryResult.warnings = nullptr;
-  }
-
   return extra;
 }
 

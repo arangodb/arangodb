@@ -118,12 +118,12 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
 /// this wrapper (and the macro) are similar to regular log facilities.
 /// they should however only be used in panic situations.
 ////////////////////////////////////////////////////////////////////////////////
+
 void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
                              char const* fmt, ...);
 
 #define LOG_FATAL_WINDOWS(...)                                              \
   do {                                                                      \
-    LOG_ARG_CHECK(__VA_ARGS__);                                             \
     TRI_WindowsEmergencyLog(__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__); \
   } while (0)
 

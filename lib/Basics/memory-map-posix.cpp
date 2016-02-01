@@ -25,7 +25,7 @@
 
 #ifdef TRI_HAVE_POSIX_MMAP
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 
 #include <sys/mman.h>
@@ -61,8 +61,7 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
     // we have synced a region that was not mapped
 
     // set a special error. ENOMEM (out of memory) is not appropriate
-    LOG_ERROR("msync failed for range %p - %p", startingAddress,
-              (void*)(((char*)startingAddress) + numOfBytesToFlush));
+    LOG(ERROR) << "msync failed for range " << startingAddress << " - " << (void*)(((char*)startingAddress) + numOfBytesToFlush);
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
   }
@@ -144,8 +143,7 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
 
 int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
-  LOG_DEBUG("Doing madvise %d for %llu length %llu", advice,
-            (unsigned long long)memoryAddress, (unsigned long long)numOfBytes);
+  LOG(DEBUG) << "Doing madvise " << advice << " for " << memoryAddress << " length " << numOfBytes;
   int res = madvise(memoryAddress, numOfBytes, advice);
 
   if (res == 0) {
@@ -153,9 +151,7 @@ int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
   } else {
     char buffer[256];
     char* p = strerror_r(errno, buffer, 256);
-    LOG_INFO("madvise %d for %llu length %llu failed with: %s ", advice,
-             (unsigned long long)memoryAddress, (unsigned long long)numOfBytes,
-             p);
+    LOG(INFO) << "madvise " << advice << " for " << memoryAddress << " length " << numOfBytes << " failed with: " << p << " ";
     return TRI_ERROR_INTERNAL;
   }
 #else

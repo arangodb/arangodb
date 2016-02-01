@@ -23,10 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Shaper.h"
-
 #include "Basics/associative.h"
 #include "Basics/hashes.h"
-#include "Basics/logging.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"

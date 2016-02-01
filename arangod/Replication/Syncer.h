@@ -25,7 +25,6 @@
 #define ARANGOD_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/logging.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-master.h"
 #include "VocBase/server.h"

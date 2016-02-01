@@ -42,123 +42,267 @@ class DeadlockDetector {
   DeadlockDetector& operator=(DeadlockDetector const&) = delete;
 
  public:
-  bool isDeadlocked(T const* value) {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a thread to the list of blocked threads
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int detectDeadlock(T const* value, bool isWrite) {
     auto tid = TRI_CurrentThreadId();
-    std::unordered_set<TRI_tid_t> watchFor({tid});
 
-    std::vector<TRI_tid_t> stack;
-
-    TRI_tid_t writerTid = value->getCurrentWriterThread();
-
-    if (writerTid == 0) {
-      return false;
-    }
-
-    stack.push_back(writerTid);
-
-    MUTEX_LOCKER(mutexLocker, _readersLock);
-
-    while (!stack.empty()) {
-      TRI_tid_t current = stack.back();
-      stack.pop_back();
-
-      watchFor.emplace(current);
-      auto it2 = _readersBlocked.find(current);
-
-      if (it2 == _readersBlocked.end()) {
-        return false;
-      }
-
-      if (watchFor.find((*it2).second) != watchFor.end()) {
-        // deadlock!
-        return true;
-      }
-
-      stack.push_back((*it2).second);
-    }
-
-    // no deadlock found
-    return false;
+    MUTEX_LOCKER(mutexLocker, _lock);
+    return detectDeadlock(value, tid, isWrite);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief insert a reader into the list of blocked readers
-  /// returns true if a deadlock was detected and false otherwise
-  //////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a reader to the list of blocked readers
+  ////////////////////////////////////////////////////////////////////////////////
 
-  bool setReaderBlocked(T const* value) {
-    auto tid = TRI_CurrentThreadId();
-    std::unordered_set<TRI_tid_t> watchFor({tid});
+  int setReaderBlocked(T const* value) { return setBlocked(value, false); }
 
-    std::vector<TRI_tid_t> stack;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a writer to the list of blocked writers
+  ////////////////////////////////////////////////////////////////////////////////
 
-    TRI_tid_t writerTid = value->getCurrentWriterThread();
+  int setWriterBlocked(T const* value) { return setBlocked(value, true); }
 
-    if (writerTid == 0) {
-      return false;
-    }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief remove a reader from the list of blocked readers
+  ////////////////////////////////////////////////////////////////////////////////
 
-    stack.push_back(writerTid);
+  void unsetReaderBlocked(T const* value) { unsetBlocked(value, false); }
 
-    MUTEX_LOCKER(mutexLocker, _readersLock);
-    _readersBlocked.emplace(tid, writerTid);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief remove a writer from the list of blocked writers
+  ////////////////////////////////////////////////////////////////////////////////
 
-    try {
-      while (!stack.empty()) {
-        TRI_tid_t current = stack.back();
-        stack.pop_back();
+  void unsetWriterBlocked(T const* value) { unsetBlocked(value, true); }
 
-        watchFor.emplace(current);
-        auto it2 = _readersBlocked.find(current);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a reader to the list of active readers
+  ////////////////////////////////////////////////////////////////////////////////
 
-        if (it2 == _readersBlocked.end()) {
-          return false;
+  void addReader(T const* value, bool wasBlockedBefore) {
+    addActive(value, false, wasBlockedBefore);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a writer to the list of active writers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void addWriter(T const* value, bool wasBlockedBefore) {
+    addActive(value, true, wasBlockedBefore);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unregister a reader from the list of active readers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void unsetReader(T const* value) { unsetActive(value, false); }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unregister a writer from the list of active writers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void unsetWriter(T const* value) { unsetActive(value, true); }
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a thread to the list of blocked threads
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int detectDeadlock(T const* value, TRI_tid_t tid, bool isWrite) const {
+    struct StackValue {
+      StackValue(T const* value, TRI_tid_t tid, bool isWrite)
+          : value(value), tid(tid), isWrite(isWrite) {}
+      T const* value;
+      TRI_tid_t tid;
+      bool isWrite;
+    };
+
+    std::unordered_set<TRI_tid_t> visited;
+    std::vector<StackValue> stack;
+    stack.emplace_back(StackValue(value, tid, isWrite));
+
+    while (!stack.empty()) {
+      StackValue top = stack.back();  // intentionally copy StackValue
+      stack.pop_back();
+
+      if (!top.isWrite) {
+        // we are a reader
+        auto it = _active.find(top.value);
+
+        if (it != _active.end()) {
+          bool other = (*it).second.second;
+
+          if (other) {
+            // other is a writer
+            TRI_tid_t otherTid = *((*it).second.first.begin());
+
+            if (visited.find(otherTid) != visited.end()) {
+              return TRI_ERROR_DEADLOCK;
+            }
+
+            auto it2 = _blocked.find(otherTid);
+
+            if (it2 != _blocked.end()) {
+              // writer thread is blocking...
+              stack.emplace_back(
+                  StackValue((*it2).second.first, otherTid, other));
+            }
+          }
         }
+      } else {
+        // we are a writer
+        auto it = _active.find(top.value);
 
-        if (watchFor.find((*it2).second) != watchFor.end()) {
-          // deadlock!
-          _readersBlocked.erase(tid);
-          return true;
+        if (it != _active.end()) {
+          // other is either a reader or a writer
+          for (auto const& otherTid : (*it).second.first) {
+            if (visited.find(otherTid) != visited.end()) {
+              return TRI_ERROR_DEADLOCK;
+            }
+
+            auto it2 = _blocked.find(otherTid);
+
+            if (it2 != _blocked.end()) {
+              // writer thread is blocking...
+              stack.emplace_back(StackValue((*it2).second.first, otherTid,
+                                            (*it).second.second));
+            }
+          }
         }
-
-        stack.push_back((*it2).second);
       }
 
-      // no deadlock found
-      return false;
+      visited.emplace(top.tid);
+    }
+
+    // no deadlock
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a thread to the list of blocked threads
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int setBlocked(T const* value, bool isWrite) {
+    auto tid = TRI_CurrentThreadId();
+
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    auto it = _blocked.find(tid);
+
+    if (it != _blocked.end()) {
+      // we're already blocking. should never happend
+      return TRI_ERROR_DEADLOCK;
+    }
+
+    _blocked.emplace(tid, std::make_pair(value, isWrite));
+
+    try {
+      int res = detectDeadlock(value, tid, isWrite);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        // clean up
+        _blocked.erase(tid);
+      }
+
+      return res;
     } catch (...) {
-      // clean up and re-throw
-      _readersBlocked.erase(tid);
+      // clean up
+      _blocked.erase(tid);
       throw;
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief remove a reader from the list of blocked readers
-  //////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief remove a thread from the list of blocked threads
+  ////////////////////////////////////////////////////////////////////////////////
 
-  void setReaderUnblocked(T const* value) noexcept {
+  void unsetBlocked(T const* value, bool isWrite) {
     auto tid = TRI_CurrentThreadId();
 
-    try {
-      MUTEX_LOCKER(mutexLocker, _readersLock);
-      _readersBlocked.erase(tid);
-    } catch (...) {
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    _blocked.erase(tid);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unregister a thread from the list of active threads
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void unsetActive(T const* value, bool isWrite) {
+    auto tid = TRI_CurrentThreadId();
+
+    MUTEX_LOCKER(mutexLocker, _lock);
+    auto it = _active.find(value);
+
+    if (it == _active.end()) {
+      // should not happen, but definitely nothing to do here
+      return;
+    }
+
+    if (isWrite) {
+      TRI_ASSERT((*it).second.second);
+      TRI_ASSERT((*it).second.first.size() == 1);
+      // remove whole entry
+      _active.erase(value);
+    } else {
+      TRI_ASSERT(!(*it).second.second);
+      TRI_ASSERT((*it).second.first.size() >= 1);
+
+      (*it).second.first.erase(tid);
+      if ((*it).second.first.empty()) {
+        // remove last reader
+        _active.erase(value);
+      }
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a reader/writer to the list of active threads
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void addActive(T const* value, bool isWrite, bool wasBlockedBefore) {
+    auto tid = TRI_CurrentThreadId();
+
+    MUTEX_LOCKER(mutexLocker, _lock);
+    auto it = _active.find(value);
+
+    if (it == _active.end()) {
+      _active.emplace(
+          value, std::make_pair(std::unordered_set<TRI_tid_t>({tid}), isWrite));
+    } else {
+      TRI_ASSERT(!(*it).second.first.empty());
+      TRI_ASSERT(!(*it).second.second);
+      TRI_ASSERT(!isWrite);
+      auto result = (*it).second.first.emplace(tid);
+      TRI_ASSERT(result.second);
+    }
+
+    if (wasBlockedBefore) {
+      _blocked.erase(tid);
     }
   }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief lock for managing the readers
-  //////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lock for managing the data structures
+  ////////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Mutex _readersLock;
+  arangodb::Mutex _lock;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief readers that are blocked on writers
-  //////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief threads currently blocked
+  ////////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<TRI_tid_t, TRI_tid_t> _readersBlocked;
+  std::unordered_map<TRI_tid_t, std::pair<T const*, bool>> _blocked;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief threads currently holding locks
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_map<T const*, std::pair<std::unordered_set<TRI_tid_t>, bool>>
+      _active;
 };
 
 }  // namespace arangodb::basics

@@ -413,10 +413,7 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
 
       if (result._data.length != example->_data.length) {
         // suppress excessive log spam
-        // LOG_TRACE("expecting length %lu, got length %lu for path %lu",
-        //           (unsigned long) result._data.length,
-        //           (unsigned long) example->_data.length,
-        //           (unsigned long) pids[i]);
+        // LOG(TRACE) << "expecting length " << //           (unsigned long) result._data.length << ", got length " << //           (unsigned long) example->_data.length << " for path " << //           (unsigned long) pids[i];
 
         goto nextExample;
       }
@@ -424,7 +421,7 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       if (memcmp(result._data.data, example->_data.data,
                  example->_data.length) != 0) {
         // suppress excessive log spam
-        // LOG_TRACE("data mismatch at path %lu", (unsigned long) pids[i]);
+        // LOG(TRACE) << "data mismatch at path " << pids[i];
         goto nextExample;
       }
     }

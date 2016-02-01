@@ -24,7 +24,7 @@
 
 #include "SchedulerThread.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 
 #ifdef _WIN32
@@ -79,8 +79,7 @@ bool SchedulerThread::open() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::beginShutdown() {
-  LOG_TRACE("beginning shutdown sequence of scheduler thread (%llu)",
-            (unsigned long long)threadId());
+  LOG(TRACE) << "beginning shutdown sequence of scheduler thread (" << threadId() << ")";
 
   _stopping = true;
   _scheduler->wakeupLoop(_loop);
@@ -108,7 +107,7 @@ bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
     if (ok) {
       ++_numberTasks;
     } else {
-      LOG_WARNING("In SchedulerThread::registerTask setupTask has failed");
+      LOG(WARNING) << "In SchedulerThread::registerTask setupTask has failed";
       cleanupTask(task);
       deleteTask(task);
     }
@@ -201,7 +200,7 @@ void SchedulerThread::signalTask(std::unique_ptr<TaskData>& data) {
 }
 
 void SchedulerThread::run() {
-  LOG_TRACE("scheduler thread started (%llu)", (unsigned long long)threadId());
+  LOG(TRACE) << "scheduler thread started (" << threadId() << ")";
 
   if (_defaultLoop) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -235,16 +234,16 @@ void SchedulerThread::run() {
     } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
       if (_stopping.load()) {
-        LOG_WARNING("caught cancelation exception during work");
+        LOG(WARNING) << "caught cancelation exception during work";
         throw;
       }
 #endif
 
-      LOG_WARNING("caught exception from ev_loop");
+      LOG(WARNING) << "caught exception from ev_loop";
     }
 
 #if defined(DEBUG_SCHEDULER_THREAD)
-    LOG_TRACE("left scheduler loop %d", (int)threadId());
+    LOG(TRACE) << "left scheduler loop " << threadId();
 #endif
 
     while (true) {
@@ -291,14 +290,14 @@ void SchedulerThread::run() {
         }
 
         case INVALID: {
-          LOG_ERROR("logic error. got invalid Work item");
+          LOG(ERROR) << "logic error. got invalid Work item";
           break;
         }
       }
     }
   }
 
-  LOG_TRACE("scheduler thread stopped (%llu)", (unsigned long long)threadId());
+  LOG(TRACE) << "scheduler thread stopped (" << threadId() << ")";
 
   _stopped = true;
 
@@ -339,7 +338,7 @@ void SchedulerThread::run() {
         break;
 
       case INVALID:
-        LOG_ERROR("logic error. got invalid Work item");
+        LOG(ERROR) << "logic error. got invalid Work item";
         break;
     }
   }
