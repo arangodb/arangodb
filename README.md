@@ -76,6 +76,7 @@ Additional, there is a cool new **aggregation feature** that was added after the
 
 ArangoDB 2.8 now has an automatic **deadlock detection** for transactions. A deadlock is a situation in which two or more concurrent operations (user transactions or AQL queries) try to access the same resources (collections, documents) and need to wait for the others to finish, but none of them can make any progress.
 
+
 **Foxx Improvements**
 
 The module resolution used by `require` now behaves more like in node.js. The `org/arangodb/request` module now returns response bodies for error responses by default. The old behavior of not returning bodies for error responses can be re-enabled by explicitly setting the option `returnBodyOnError` to `false`.
