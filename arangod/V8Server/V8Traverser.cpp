@@ -932,7 +932,7 @@ void DepthFirstTraverser::setStartVertex(
       }
     }
   }
-  _enumerator.reset(new PathEnumerator<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>(
+  _enumerator.reset(new PathEnumerator<EdgeInfo, VertexId, TRI_doc_mptr_t>(
       _edgeGetter, _getVertex, v));
   _done = false;
 }
@@ -981,7 +981,7 @@ EdgeIndex* DepthFirstTraverser::EdgeGetter::getEdgeIndex(
 
 void DepthFirstTraverser::EdgeGetter::operator()(VertexId const& startVertex,
                                                  std::vector<EdgeInfo>& edges,
-                                                 TRI_doc_mptr_copy_t*& last,
+                                                 TRI_doc_mptr_t*& last,
                                                  size_t& eColIdx, bool& dir) {
   std::string eColName;
   TRI_edge_direction_e direction;
