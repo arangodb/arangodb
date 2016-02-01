@@ -116,6 +116,7 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
     bool isEdgeAccess = false;
     size_t attrAccessTo = 0;
 
+    TRI_ASSERT(len >= 3);
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
     }
