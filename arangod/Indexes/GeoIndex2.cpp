@@ -184,7 +184,7 @@ int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   int res = GeoIndex_insert(_geoIndex, &gc);
 
   if (res == -1) {
-    LOG(WARNING) << "found duplicate entry in geo-index, should not happen";
+    LOG(WARN) << "found duplicate entry in geo-index, should not happen";
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   } else if (res == -2) {
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);

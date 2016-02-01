@@ -171,7 +171,7 @@ bool HttpCommTask::processRead() {
     size_t headerLength = ptr - (_readBuffer->c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
-      LOG(WARNING) << "maximal header size is " << MaximalHeaderSize << ", request header size is " << headerLength;
+      LOG(WARN) << "maximal header size is " << MaximalHeaderSize << ", request header size is " << headerLength;
 
       // header is too large
       HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
@@ -200,7 +200,7 @@ bool HttpCommTask::processRead() {
           _readPosition - _startPosition);
 
       if (_request == nullptr) {
-        LOG(ERROR) << "cannot generate request";
+        LOG(ERR) << "cannot generate request";
 
         // internal server error
         HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
@@ -314,7 +314,7 @@ bool HttpCommTask::processRead() {
             l = 6;
           }
 
-          LOG(WARNING) << "got corrupted HTTP request '" << std::string(_readBuffer->c_str() + _startPosition, l).c_str() << "'";
+          LOG(WARN) << "got corrupted HTTP request '" << std::string(_readBuffer->c_str() + _startPosition, l).c_str() << "'";
 
           // bad request, method not allowed
           HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED,
@@ -687,11 +687,11 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
     // content-length header was sent but the request method does not support
     // that
     // we'll warn but read the body anyway
-    LOG(WARNING) << "received HTTP GET/HEAD request with content-length, this should not happen";
+    LOG(WARN) << "received HTTP GET/HEAD request with content-length, this should not happen";
   }
 
   if ((size_t)bodyLength > MaximalBodySize) {
-    LOG(WARNING) << "maximal body size is " << MaximalBodySize << ", request body size is " << bodyLength;
+    LOG(WARN) << "maximal body size is " << MaximalBodySize << ", request body size is " << bodyLength;
 
     // request entity too large
     HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE,

@@ -195,7 +195,7 @@ class SimpleHttpClient {
     _errorMessage = message;
 
     if (_warn || forceWarn) {
-      LOG(WARNING) << "" << _errorMessage.c_str();
+      LOG(WARN) << "" << _errorMessage.c_str();
     }
   }
 

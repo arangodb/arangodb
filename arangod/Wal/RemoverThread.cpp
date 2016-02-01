@@ -86,9 +86,9 @@ void RemoverThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
-      LOG(ERROR) << "got unexpected error in removerThread::run: " << TRI_errno_string(res);
+      LOG(ERR) << "got unexpected error in removerThread::run: " << TRI_errno_string(res);
     } catch (...) {
-      LOG(ERROR) << "got unspecific error in removerThread::run";
+      LOG(ERR) << "got unspecific error in removerThread::run";
     }
 
     if (stop == 0 && !worked) {

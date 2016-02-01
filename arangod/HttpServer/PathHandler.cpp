@@ -98,7 +98,7 @@ HttpHandler::status_t PathHandler::execute() {
     std::string const& next = *j;
 
     if (next == ".") {
-      LOG(WARNING) << "file '" << name.c_str() << "' contains '.'";
+      LOG(WARN) << "file '" << name.c_str() << "' contains '.'";
 
       createResponse(HttpResponse::FORBIDDEN);
       _response->body().appendText("path contains '.'");
@@ -106,7 +106,7 @@ HttpHandler::status_t PathHandler::execute() {
     }
 
     if (next == "..") {
-      LOG(WARNING) << "file '" << name.c_str() << "' contains '..'";
+      LOG(WARN) << "file '" << name.c_str() << "' contains '..'";
 
       createResponse(HttpResponse::FORBIDDEN);
       _response->body().appendText("path contains '..'");
@@ -116,7 +116,7 @@ HttpHandler::status_t PathHandler::execute() {
     std::string::size_type sc = next.find_first_not_of(allowed);
 
     if (sc != std::string::npos) {
-      LOG(WARNING) << "file '" << name.c_str() << "' contains illegal character";
+      LOG(WARN) << "file '" << name.c_str() << "' contains illegal character";
 
       createResponse(HttpResponse::FORBIDDEN);
       _response->body().appendText("path contains illegal character '" +
@@ -126,7 +126,7 @@ HttpHandler::status_t PathHandler::execute() {
 
     if (!path.empty()) {
       if (!FileUtils::isDirectory(path)) {
-        LOG(WARNING) << "file '" << name.c_str() << "' not found";
+        LOG(WARN) << "file '" << name.c_str() << "' not found";
 
         createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not found");
@@ -138,7 +138,7 @@ HttpHandler::status_t PathHandler::execute() {
     last = next;
 
     if (!allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
-      LOG(WARNING) << "file '" << name.c_str() << "' contains symbolic link";
+      LOG(WARN) << "file '" << name.c_str() << "' contains symbolic link";
 
       createResponse(HttpResponse::FORBIDDEN);
       _response->body().appendText("symbolic links are not allowed");
@@ -147,7 +147,7 @@ HttpHandler::status_t PathHandler::execute() {
   }
 
   if (!FileUtils::isRegularFile(name)) {
-    LOG(WARNING) << "file '" << name.c_str() << "' not found";
+    LOG(WARN) << "file '" << name.c_str() << "' not found";
 
     createResponse(HttpResponse::NOT_FOUND);
     _response->body().appendText("file not found");
@@ -159,7 +159,7 @@ HttpHandler::status_t PathHandler::execute() {
   try {
     FileUtils::slurp(name, _response->body());
   } catch (...) {
-    LOG(WARNING) << "file '" << name.c_str() << "' not readable";
+    LOG(WARN) << "file '" << name.c_str() << "' not readable";
 
     createResponse(HttpResponse::NOT_FOUND);
     _response->body().appendText("file not readable");

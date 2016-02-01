@@ -75,7 +75,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
       TRI_action_t* oldAction = PrefixActions[url];
 
       if (oldAction->_type != action->_type) {
-        LOG(ERROR) << "trying to define two incompatible actions of type '" << oldAction->_type.c_str() << "' and '" << action->_type.c_str() << "' for prefix url '" << action->_url.c_str() << "'";
+        LOG(ERR) << "trying to define two incompatible actions of type '" << oldAction->_type.c_str() << "' and '" << action->_type.c_str() << "' for prefix url '" << action->_url.c_str() << "'";
 
         delete oldAction;
       } else {
@@ -90,7 +90,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
       TRI_action_t* oldAction = Actions[url];
 
       if (oldAction->_type != action->_type) {
-        LOG(ERROR) << "trying to define two incompatible actions of type '" << oldAction->_type.c_str() << "' and type '" << action->_type.c_str() << "' for url '" << action->_url.c_str() << "'";
+        LOG(ERR) << "trying to define two incompatible actions of type '" << oldAction->_type.c_str() << "' and type '" << action->_type.c_str() << "' for url '" << action->_url.c_str() << "'";
 
         delete oldAction;
       } else {

@@ -169,7 +169,7 @@ static VocbaseAuthInfo* AuthFromVelocyPack(VPackSlice const& slice) {
       hashSlice.copyString(), active, mustChange);
 
   if (result == nullptr) {
-    LOG(ERROR) << "couldn't load auth information - out of memory";
+    LOG(ERR) << "couldn't load auth information - out of memory";
 
     return nullptr;
   }

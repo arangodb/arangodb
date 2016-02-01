@@ -326,7 +326,7 @@ bool ApplicationServer::parse(
   bool ok = _options.parse(_description, argc, argv);
 
   if (!ok) {
-    LOG(ERROR) << "cannot parse command line: " << _options.lastError().c_str();
+    LOG(ERR) << "cannot parse command line: " << _options.lastError().c_str();
     return false;
   }
 
@@ -835,7 +835,7 @@ bool ApplicationServer::readConfigurationFile() {
     // but for some reason can not be parsed. Best to report an error.
 
     if (!ok) {
-      LOG(ERROR) << "cannot parse config file '" << _configFile.c_str() << "': " << _options.lastError().c_str();
+      LOG(ERR) << "cannot parse config file '" << _configFile.c_str() << "': " << _options.lastError().c_str();
     }
 
     return ok;
@@ -877,7 +877,7 @@ bool ApplicationServer::readConfigurationFile() {
         // but for some reason can not be parsed. Best to report an error.
 
         if (!ok) {
-          LOG(ERROR) << "cannot parse config file '" << homeDir.c_str() << "': " << _options.lastError().c_str();
+          LOG(ERR) << "cannot parse config file '" << homeDir.c_str() << "': " << _options.lastError().c_str();
         }
 
         return ok;
@@ -919,7 +919,7 @@ bool ApplicationServer::readConfigurationFile() {
         // exists
         // but for some reason can not be parsed. Best to report an error.
         if (!ok) {
-          LOG(ERROR) << "cannot parse config file '" << localSysDir.c_str() << "': " << _options.lastError().c_str();
+          LOG(ERR) << "cannot parse config file '" << localSysDir.c_str() << "': " << _options.lastError().c_str();
           return ok;
         }
       } else {
@@ -936,7 +936,7 @@ bool ApplicationServer::readConfigurationFile() {
         // exists
         // but for some reason can not be parsed. Best to report an error.
         if (!ok) {
-          LOG(ERROR) << "cannot parse config file '" << sysDir.c_str() << "': " << _options.lastError().c_str();
+          LOG(ERR) << "cannot parse config file '" << sysDir.c_str() << "': " << _options.lastError().c_str();
         }
 
         return ok;

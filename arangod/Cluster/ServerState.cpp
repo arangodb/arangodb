@@ -260,13 +260,13 @@ ServerState::RoleEnum ServerState::getRole() {
         builder.add("Description", VPackValue(_description));
       }
     } catch (...) {
-      LOG(ERROR) << "Could not create entpoint information!";
+      LOG(ERR) << "Could not create entpoint information!";
       return ROLE_UNDEFINED;
     }
     result =
         comm.setValue("Current/NewServers/" + _localInfo, builder.slice(), 0.0);
     if (!result.successful()) {
-      LOG(ERROR) << "Could not talk to agency!";
+      LOG(ERR) << "Could not talk to agency!";
       return ROLE_UNDEFINED;
     }
     std::string jsonst = builder.slice().toJson();
@@ -447,7 +447,7 @@ void ServerState::setState(StateEnum state) {
 
     _state = state;
   } else {
-    LOG(ERROR) << "invalid state transition for " << ServerState::roleToString(role).c_str() << " server from " << ServerState::stateToString(_state).c_str() << " to " << ServerState::stateToString(state).c_str();
+    LOG(ERR) << "invalid state transition for " << ServerState::roleToString(role).c_str() << " server from " << ServerState::stateToString(_state).c_str() << " to " << ServerState::stateToString(state).c_str();
   }
 }
 
@@ -653,7 +653,7 @@ ServerState::RoleEnum ServerState::determineRole(std::string const& info,
   if (id.empty()) {
     int res = lookupLocalInfoToId(info, id);
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERROR) << "Could not lookupLocalInfoToId";
+      LOG(ERR) << "Could not lookupLocalInfoToId";
       return ServerState::ROLE_UNDEFINED;
     }
     // When we get here, we have have successfully looked up our id
@@ -833,7 +833,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
         id =
             arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID", "");
         if (id.empty()) {
-          LOG(ERROR) << "ID not set!";
+          LOG(ERR) << "ID not set!";
           return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
         }
         std::string description =

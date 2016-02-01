@@ -97,7 +97,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
       TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
 
   if (!TRI_IsObjectJson(json.get())) {
-    LOG(ERROR) << "unable to read replication applier configuration from file '" << filename << "'";
+    LOG(ERR) << "unable to read replication applier configuration from file '" << filename << "'";
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
@@ -1498,7 +1498,7 @@ int TRI_replication_applier_t::doSetError(int errorCode, char const* msg) {
 
   // log error message
   if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
-    LOG(ERROR) << "replication applier error for database '" << _databaseName.c_str() << "': " << realMsg;
+    LOG(ERR) << "replication applier error for database '" << _databaseName.c_str() << "': " << realMsg;
   }
 
   _state._lastError._code = errorCode;

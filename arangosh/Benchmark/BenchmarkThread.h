@@ -238,7 +238,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
       const rest::HttpRequest::HttpRequestType type =
           _operation->type(_threadNumber, threadCounter, globalCounter);
       if (url.empty()) {
-        LOG(WARNING) << "URL is empty!";
+        LOG(WARN) << "URL is empty!";
       }
 
       // headline, e.g. POST /... HTTP/1.1
@@ -281,7 +281,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
       }
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG(WARNING) << "batch operation failed because server did not reply";
+        LOG(WARN) << "batch operation failed because server did not reply";
       }
       return;
     }
@@ -291,13 +291,13 @@ class BenchmarkThread : public arangodb::basics::Thread {
 
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG(WARNING) << "batch operation failed with HTTP code " << result->getHttpReturnCode() << " - " << result->getHttpReturnMessage().c_str() << " ";
+        LOG(WARN) << "batch operation failed with HTTP code " << result->getHttpReturnCode() << " - " << result->getHttpReturnMessage().c_str() << " ";
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-        LOG(WARNING) << "We tried to send this size:\n " << batchPayload.length();
-        LOG(WARNING) << "We tried to send this:\n " << batchPayload.c_str();
+        LOG(WARN) << "We tried to send this size:\n " << batchPayload.length();
+        LOG(WARN) << "We tried to send this:\n " << batchPayload.c_str();
 #endif
       } else if (_warningCount == MaxWarnings) {
-        LOG(WARNING) << "...more warnings...";
+        LOG(WARN) << "...more warnings...";
       }
     } else {
       auto const& headers = result->getHeaderFields();
@@ -310,12 +310,12 @@ class BenchmarkThread : public arangodb::basics::Thread {
           _operationsCounter->incFailures(errorCount);
           _warningCount++;
           if (_warningCount < MaxWarnings) {
-            LOG(WARNING) << "Server side warning count: " << errorCount;
+            LOG(WARN) << "Server side warning count: " << errorCount;
             if (_verbose) {
-              LOG(WARNING) << "Server reply: " << result->getBody().c_str();
+              LOG(WARN) << "Server reply: " << result->getBody().c_str();
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-              LOG(WARNING) << "We tried to send this size:\n " << batchPayload.length();
-              LOG(WARNING) << "We tried to send this:\n " << batchPayload.c_str();
+              LOG(WARN) << "We tried to send this size:\n " << batchPayload.length();
+              LOG(WARN) << "We tried to send this:\n " << batchPayload.c_str();
 #endif
             }
           }
@@ -361,7 +361,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
       }
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG(WARNING) << "batch operation failed because server did not reply";
+        LOG(WARN) << "batch operation failed because server did not reply";
       }
       return;
     }
@@ -371,9 +371,9 @@ class BenchmarkThread : public arangodb::basics::Thread {
 
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG(WARNING) << "request for URL '" << url.c_str() << "' failed with HTTP code " << result->getHttpReturnCode();
+        LOG(WARN) << "request for URL '" << url.c_str() << "' failed with HTTP code " << result->getHttpReturnCode();
       } else if (_warningCount == MaxWarnings) {
-        LOG(WARNING) << "...more warnings...";
+        LOG(WARN) << "...more warnings...";
       }
     }
     delete result;

@@ -166,15 +166,15 @@ HttpHandler::status_t HttpHandler::executeFull() {
   } catch (Exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG(ERROR) << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
+    LOG(ERR) << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
   } catch (std::exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG(ERROR) << "caught exception: " << ex.what();
+    LOG(ERR) << "caught exception: " << ex.what();
   } catch (...) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG(ERROR) << "caught exception";
+    LOG(ERR) << "caught exception";
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {

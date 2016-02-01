@@ -61,7 +61,7 @@ MutexLocker::~MutexLocker() {
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-    LOG(WARNING) << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
+    LOG(WARN) << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
   }
 #endif
 }

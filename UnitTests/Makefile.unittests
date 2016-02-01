@@ -320,19 +320,7 @@ unittests-config:
 	@echo "================================================================================"
 	@echo
 
-	@builddir@/bin/arangod --configuration @builddir@/etc/arangodb/arangod.conf --help 1> /dev/null || false
-	@builddir@/bin/arangob --configuration @builddir@/etc/arangodb/arangob.conf --help 1> /dev/null || false
-	@builddir@/bin/arangodump --configuration @builddir@/etc/arangodb/arangodump.conf --help 1> /dev/null || false
-	@builddir@/bin/arangoimp --configuration @builddir@/etc/arangodb/arangoimp.conf --help 1> /dev/null || false
-	@builddir@/bin/arangorestore --configuration @builddir@/etc/arangodb/arangorestore.conf --help 1> /dev/null || false
-	@builddir@/bin/arangosh --configuration @builddir@/etc/arangodb/arangosh.conf --help 1> /dev/null || false
-
-	@builddir@/bin/arangod --configuration @builddir@/etc/relative/arangod.conf --help 1> /dev/null || false
-	@builddir@/bin/arangob --configuration @builddir@/etc/relative/arangob.conf --help 1> /dev/null || false
-	@builddir@/bin/arangodump --configuration @builddir@/etc/relative/arangodump.conf --help 1> /dev/null || false
-	@builddir@/bin/arangoimp --configuration @builddir@/etc/relative/arangoimp.conf --help 1> /dev/null || false
-	@builddir@/bin/arangorestore --configuration @builddir@/etc/relative/arangorestore.conf --help 1> /dev/null || false
-	@builddir@/bin/arangosh --configuration @builddir@/etc/relative/arangosh.conf --help 1> /dev/null || false
+	./scripts/unittest $(VALGRIND) config || test "x$(FORCE)" == "x1"
 
 ################################################################################
 ### @brief BOOST TESTS
@@ -349,10 +337,7 @@ unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 	@echo "================================================================================"
 	@echo
 
-	test "x$(SKIP_BOOST)" == "x1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "x$(FORCE)" == "x1"
-	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
-
-	@echo
+	./scripts/unittest $(VALGRIND) boost || test "x$(FORCE)" == "x1"
 
 noinst_PROGRAMS += UnitTests/basics_suite UnitTests/geo_suite
 
@@ -426,103 +411,8 @@ unittests-boost:
 endif
 
 ################################################################################
-### @brief CONVENIENCE TARGET TO EXECUTE A SINGLE TEST ON SERVER AND CLIENT
-################################################################################
-
-.PHONY: unittests-single-server unittests-single-client unittests-single
-
-unittests-single:
-	$(MAKE) unittests-single-server unittests-single-client TEST=$(TEST)
-
-unittests-single-server:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SERVER TEST ($(TEST))"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir -p "$(VOCDIR)/databases"
-
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint "tcp://$(VOCHOST):$(VOCPORT)" --javascript.unit-tests $(TEST) || test "x$(FORCE)" == "x1"
-
-	@rm -rf "$(VOCDIR)"
-	@echo
-
-unittests-single-client:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL CLIENT TEST ($(TEST))"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=unix
-
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-test $(TEST) || test "x$(FORCE)" == "x1"
-	sleep 2
-	kill `cat $(PIDFILE)`
-
-	while test -f $(PIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-
-	@rm -rf "$(VOCDIR)"
-	@echo
-
-################################################################################
-### @brief SHELL TESTS COMMON (BASICS)
-################################################################################
-
-SHELL_COMMON = \
-               @top_srcdir@/js/common/tests/shell-require.js \
-               @top_srcdir@/js/common/tests/shell-aqlfunctions.js \
-               @top_srcdir@/js/common/tests/shell-attributes.js \
-               @top_srcdir@/js/common/tests/shell-base64.js \
-               @top_srcdir@/js/common/tests/shell-collection.js \
-               @top_srcdir@/js/common/tests/shell-collection-volatile-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-crypto.js \
-               @top_srcdir@/js/common/tests/shell-collection-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-database.js \
-               @top_srcdir@/js/common/tests/shell-document.js \
-               @top_srcdir@/js/common/tests/shell-edge.js \
-               @top_srcdir@/js/common/tests/shell-edge-index-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-errors.js \
-               @top_srcdir@/js/common/tests/shell-fs.js \
-               @top_srcdir@/js/common/tests/shell-env.js \
-               @top_srcdir@/js/common/tests/shell-foxx-manager-install-spec.js \
-               @top_srcdir@/js/common/tests/shell-general-graph.js \
-               @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
-               @top_srcdir@/js/common/tests/shell-graph-measurement.js \
-               @top_srcdir@/js/common/tests/shell-graph-traversal.js \
-               @top_srcdir@/js/common/tests/shell-keygen.js \
-               @top_srcdir@/js/common/tests/shell-keygen-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-index-ensure.js \
-               @top_srcdir@/js/common/tests/shell-rename-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-simple-query.js \
-               @top_srcdir@/js/common/tests/shell-statement.js \
-               @top_srcdir@/js/common/tests/shell-statement-encoding-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-statement-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-explain-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-tasks-timecritical.js \
-               @top_srcdir@/js/common/tests/shell-transactions.js \
-               @top_srcdir@/js/common/tests/shell-unload.js \
-               @top_srcdir@/js/common/tests/shell-users.js \
-               @top_srcdir@/js/common/tests/shell-index.js \
-               @top_srcdir@/js/common/tests/shell-index-geo.js \
-               @top_srcdir@/js/common/tests/shell-cap-constraint.js \
-               @top_srcdir@/js/common/tests/shell-cap-constraint-timecritical.js \
-               @top_srcdir@/js/common/tests/shell-unique-constraint.js \
-               @top_srcdir@/js/common/tests/shell-hash-index.js \
-               @top_srcdir@/js/common/tests/shell-hash-index-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-fulltext.js \
-               @top_srcdir@/js/common/tests/shell-graph.js \
-               @top_srcdir@/js/common/tests/shell-query-timecritical-spec.js
-
-################################################################################
 ### @brief SHELL SERVER TESTS (BASICS)
 ################################################################################
-
-SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
 
 .PHONY: unittests-shell-server
 
@@ -837,6 +727,7 @@ unittests-arangob:
 	@echo "================================================================================"
 	@echo "<< ARANGOB TESTS                                                              >>"
 	@echo "================================================================================"
+
 	./scripts/unittest $(VALGRIND) arangob || test "x$(FORCE)" == "x1"
 
 ################################################################################
@@ -846,8 +737,6 @@ unittests-arangob:
 .PHONY: unittests-authentication
 
 unittests-authentication:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false" PROTO=http
-
 	@echo
 	@echo "================================================================================"
 	@echo "<< AUTHENTICATION TESTS                                                       >>"
@@ -869,60 +758,6 @@ unittests-authentication-parameters:
 	./scripts/unittest $(VALGRIND) authentication_parameters || test "x$(FORCE)" == "x1"
 
 ################################################################################
-### @brief FULL AUTHENTICATION
-################################################################################
-
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false --server.authenticate-system-only false" PROTO=http
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/version" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html/" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/test" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/the-big-fat-fox" EXPECTED="401" || test "x$(FORCE)" == "x1"
-
-	kill `cat $(PIDFILE)`
-	while test -f $(PIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-	@rm -rf "$(VOCDIR)"
-
-################################################################################
-### @brief AUTHENTICATION FOR /_ ONLY
-################################################################################
-
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false --server.authenticate-system-only true" PROTO=http
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/version" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html/" EXPECTED="401" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/test" EXPECTED="404" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/the-big-fat-fox" EXPECTED="404" || test "x$(FORCE)" == "x1"
-
-	kill `cat $(PIDFILE)`
-	while test -f $(PIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-	@rm -rf "$(VOCDIR)"
-
-################################################################################
-### @brief NO AUTHENTICATION
-################################################################################
-
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --server.authenticate-system-only true" PROTO=http
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/" EXPECTED="404" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api" EXPECTED="404" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/version" EXPECTED="200" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html" EXPECTED="301" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html/" EXPECTED="301" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/test" EXPECTED="404" || test "x$(FORCE)" == "x1"
-	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/the-big-fat-fox" EXPECTED="404" || test "x$(FORCE)" == "x1"
-
-	kill `cat $(PIDFILE)`
-	while test -f $(PIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-	@rm -rf "$(VOCDIR)"
-
-################################################################################
 ### @brief CPPCHECK
 ################################################################################
 
@@ -930,7 +765,19 @@ unittests-authentication-parameters:
 
 cppcheck:
 	@rm -f cppcheck.log cppcheck.log && echo -n "" > cppcheck.tmp
-	for platform in unix32 unix64; do cppcheck -j4 --std=c++11 --enable=style --force --platform=$$platform --suppress="*:lib/JsonParser/json-parser.cpp" --suppress="*:lib/V8/v8-json.cpp" --suppress="*:arangod/Aql/grammar.cpp" --suppress="*:arangod/Aql/tokens.cpp" arangod/ arangosh/ lib/ 1> /dev/null 2>> cppcheck.tmp; done
+
+	for platform in unix32 unix64; do \
+	  cppcheck -j4 \
+	    --std=c++11 \
+	    --enable=style \
+	    --force \
+	    --platform=$$platform \
+	    --suppress="*:lib/JsonParser/json-parser.cpp" \
+	    --suppress="*:lib/V8/v8-json.cpp" \
+	    --suppress="*:arangod/Aql/grammar.cpp" \
+	    --suppress="*:arangod/Aql/tokens.cpp" arangod/ arangosh/ lib/ 1> /dev/null 2>> cppcheck.tmp; \
+	done
+
 	@sort cppcheck.tmp | uniq > cppcheck.log
 	@rm cppcheck.tmp
 	@cat cppcheck.log
