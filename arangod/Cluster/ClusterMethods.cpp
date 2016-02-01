@@ -176,6 +176,22 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
   return false;
 }
 
+bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+                      VPackSlice const& oldSlice, VPackSlice const& newSlice,
+                      bool isPatch) {
+  std::unique_ptr<TRI_json_t> tmpOld(
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(oldSlice));
+  if (tmpOld == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  std::unique_ptr<TRI_json_t> tmpNew(
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(newSlice));
+  if (tmpNew == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return shardKeysChanged(dbname, collname, tmpOld.get(), tmpNew.get(), isPatch);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns users
 ////////////////////////////////////////////////////////////////////////////////

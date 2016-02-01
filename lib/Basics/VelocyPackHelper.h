@@ -125,6 +125,15 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static int compare(VPackSlice const&, VPackSlice const&, bool);
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Merges two VelocyPack Slices
+  //////////////////////////////////////////////////////////////////////////////
+
+  static arangodb::velocypack::Builder merge(arangodb::velocypack::Slice const&,
+                                             arangodb::velocypack::Slice const&,
+                                             bool, bool);
 };
 }
 }
