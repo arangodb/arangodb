@@ -30,16 +30,20 @@
 #include <vector>
 #include <random>
 
+#include "AgencyCommon.h"
+
+#include "Basics/Thread.h"
+
 namespace arangodb {
 namespace consensus {
 
 /**
  * @brief Raft leader election
  */
-class Constituent {
+class Constituent : public arangodb::basics::Thread {
   
 public:
-  
+
   enum mode_t {
     LEADER, CANDIDATE, FOLLOWER
   };
@@ -55,20 +59,11 @@ public:
   typedef uint32_t state_t;
   typedef std::uniform_real_distribution<double> dist_t; 
   
-  /**
-   * brief Construct with size of constituency
-   */
-  Constituent ();
   
   /**
    * brief Construct with size of constituency
    */
-  Constituent (const uint32_t n);
-  
-  /**
-   * brief Construct with subset of peers
-   */
-  Constituent (constituency_t const & constituency);
+  Constituent (const uint32_t n = 3);
   
   /**
    * @brief Clean up and exit election
@@ -96,6 +91,10 @@ public:
   bool leader() const;
 
   bool vote(id_t, term_t);
+
+  void run();
+
+  void voteCallBack();
 
 private:
   
@@ -127,6 +126,8 @@ private:
   
   mode_t _mode;
   
+  bool _run;
+
   std::vector<bool> _votes; 
   
 };

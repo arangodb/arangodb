@@ -21,26 +21,26 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/logging.h"
+#include "Cluster/ClusterComm.h"
+
 #include "Constituent.h"
+
+#include <chrono>
+#include <thread>
 
 using namespace arangodb::consensus;
 
-Constituent::Constituent () :
-  _term(0), _gen(std::random_device()()), _mode(FOLLOWER) {
-}
+Constituent::Constituent (const uint32_t n) : Thread("Constituent"),
+	_term(0), _gen(std::random_device()()), _mode(FOLLOWER), _run(true),
+	_votes(std::vector<bool>(n)) {
 
-Constituent::Constituent (const uint32_t n) :
-  _mode(FOLLOWER), _votes(std::vector<bool>(n)) {
-}
-
-Constituent::Constituent (const constituency_t& constituency) :
-  _gen(std::random_device()()), _mode(FOLLOWER) {
 }
 
 Constituent::~Constituent() {}
 
 Constituent::duration_t Constituent::sleepFor () {
-  dist_t dis(0., 1.);
+  dist_t dis(.15, .99);
   return Constituent::duration_t(dis(_gen));
 }
 
@@ -60,11 +60,13 @@ Constituent::mode_t Constituent::mode () const {
 }
 
 bool Constituent::vote (id_t id, term_t term) {
+	LOG_WARNING("(%d %d) (%d %d)", _id, _term, id, term);
 	if (id == _id)
 		return false;
 	else {
 		if (term > _term) {
 			_state = FOLLOWER;
+			_term = term;
 			return true;
 		} else {
 			return false;
@@ -85,8 +87,33 @@ bool Constituent::leader() const {
   return _mode==LEADER;
 }
 
-void Constituent::callElection() {}
+void Constituent::callElection() {
+  
+	std::unique_ptr<std::map<std::string, std::string>> headerFields;
+  
+	std::vector<ClusterCommResult> results(_constituency.size());
+	for (auto& i : _constituency)
+		results[i.id] = arangodb::ClusterComm::instance()->asyncRequest(
+      0, 0, i.address, rest::HttpRequest::HTTP_REQUEST_GET,
+      "/_api/agency/vote?id=0&term=3", nullptr, headerFields, nullptr,
+      .75*.15);
+	std::this_thread::sleep_for(sleepFor(.9*.15));
+  for (auto i : _votes)
+	  arangodb::ClusterComm::instance()->enquire(results[i.id].OperationID);
+	// time out
+	//count votes
+}
 
-
+void Constituent::run() {
+  while (_run) {
+    if (_state == FOLLOWER) {
+      LOG_WARNING ("sleeping ... ");
+      std::this_thread::sleep_for(sleepFor());
+    } else {
+      callElection();
+    }
+    
+  }
+};
 
 

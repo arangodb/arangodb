@@ -23,6 +23,8 @@
 
 #include <cstdint>
 
+#include "AgencyCommon.h"
+
 //using namespace arangodb::velocypack;
 
 class Slice {};
@@ -33,7 +35,7 @@ namespace consensus {
 /**
  * @brief Log repilca
  */
-class Log  {
+class Log {
   
 public:
   typedef uint64_t index_t;
@@ -51,7 +53,7 @@ public:
   /**
    * @brief Log
    */
-  
+
   Slice const& log (Slice const&);
   
 private:

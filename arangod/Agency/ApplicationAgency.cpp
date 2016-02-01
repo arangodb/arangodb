@@ -37,7 +37,9 @@ using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
     : ApplicationFeature("agency"), _size(5), _min_election_timeout(.15),
-	  _max_election_timeout(.3), _agent(new consensus::Agent()) {
+	  _max_election_timeout(.3) , _agent(new consensus::Agent()){
+	//arangodb::consensus::Config<double> config (5, .15, .9);
+	//_agent = std::uniqe_ptr<agent>(new config);
 }
 
 

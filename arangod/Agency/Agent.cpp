@@ -25,20 +25,20 @@
 
 using namespace arangodb::consensus;
 
-Agent::Agent () {}
+Agent::Agent () {
+	_constituent.start();
+}
 
-Agent::Agent (AgentConfig<double> const&) {}
-
-Agent::Agent (Agent const&) {}
-
-Agent::~Agent () {}
+Agent::~Agent () {
+	_constituent.stop();
+}
 
 Constituent::term_t Agent::term () const {
   return _constituent.term();
 }
 
 bool Agent::vote(Constituent::id_t id, Constituent::term_t term) {
-	bool res = _constituent.vote(id, term);
+	return _constituent.vote(id, term);
 }
 
 Slice const& Agent::log (const Slice& slice) {

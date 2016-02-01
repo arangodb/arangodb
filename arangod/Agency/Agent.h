@@ -24,6 +24,7 @@
 #ifndef __ARANGODB_CONSENSUS_AGENT__
 #define __ARANGODB_CONSENSUS_AGENT__
 
+#include "AgencyCommon.h"
 #include "Constituent.h"
 #include "Log.h"
 
@@ -33,25 +34,7 @@ namespace consensus {
   class Agent {
     
   public:
-    /**
-     * @brief Host descriptor
-     */
-    
-    template<class T> struct host_t {
-      std::string host;
-      std::string port;
-      T vote;
-    };
-    
-    /**
-     * @brief Agent configuration
-     */
-    template<class T> struct AgentConfig {
-      T min_ping;
-      T max_ping;
-      std::vector<host_t<T> > start_hosts;
-    }; 
-    
+
     /**
      * @brief Default ctor
      */
@@ -61,13 +44,8 @@ namespace consensus {
      * @brief Construct with program options \n
      *        One process starts with options, the \n remaining start with list of peers and gossip.
      */
-    Agent (AgentConfig<double> const&);
-    
-    /**
-     * @brief Copy ctor
-     */
-    Agent (Agent const&);
-    
+    Agent (Config<double> const&);
+
     /**
      * @brief Clean up
      */
