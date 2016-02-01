@@ -431,15 +431,8 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
   }
 }
 
-static VPackBuilder mergeNonNull(lhs, rhs, mergeObjects) {
-};
 VPackBuilder VelocyPackHelper::merge(VPackSlice const& lhs,
                                      VPackSlice const& rhs,
                                      bool nullMeansRemove, bool mergeObjects) {
-  // TODO if nullMeans remove exclude values of NULL on rhs from both lhs and rhs. Including nested sub values
-  if (nullMeansRemove) {
-    return mergeNonNull(lhs, rhs, mergeObjects);
-  }
-  VPackBuilder res = VPackCollection::merge(lhs, rhs, mergeObjects);
-  return res;
+  return VPackCollection::merge(lhs, rhs, mergeObjects, nullMeansRemove);
 }
