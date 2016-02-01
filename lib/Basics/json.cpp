@@ -1024,7 +1024,7 @@ bool TRI_SaveJson(char const* filename, TRI_json_t const* object,
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERROR) << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
+    LOG(ERR) << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
   }
@@ -1032,7 +1032,7 @@ bool TRI_SaveJson(char const* filename, TRI_json_t const* object,
   if (!TRI_PrintJson(fd, object, true)) {
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERROR) << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
+    LOG(ERR) << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
@@ -1044,7 +1044,7 @@ bool TRI_SaveJson(char const* filename, TRI_json_t const* object,
     if (!TRI_fsync(fd)) {
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG(ERROR) << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
+      LOG(ERR) << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
       TRI_UnlinkFile(tmp);
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
       return false;
@@ -1055,7 +1055,7 @@ bool TRI_SaveJson(char const* filename, TRI_json_t const* object,
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERROR) << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
+    LOG(ERR) << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
@@ -1065,7 +1065,7 @@ bool TRI_SaveJson(char const* filename, TRI_json_t const* object,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG(ERROR) << "cannot rename saved file '" << tmp << "' to '" << filename << "': " << TRI_LAST_ERROR_STR;
+    LOG(ERR) << "cannot rename saved file '" << tmp << "' to '" << filename << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 

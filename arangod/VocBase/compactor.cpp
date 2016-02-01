@@ -277,7 +277,7 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
     ok = TRI_RenameDatafile(datafile, filename);
 
     if (!ok) {
-      LOG_TOPIC(ERROR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_last_error();
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_last_error();
     }
   }
 
@@ -286,7 +286,7 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
   ok = TRI_CloseDatafile(datafile);
 
   if (!ok) {
-    LOG_TOPIC(ERROR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_last_error();
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_last_error();
   } else if (datafile->isPhysical(datafile)) {
     int res;
 
@@ -295,7 +295,7 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
     res = TRI_UnlinkFile(filename);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERROR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_last_error();
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_last_error();
     }
 
     // check for .dead files
@@ -356,10 +356,10 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
     if (!TRI_RenameDatafile(datafile, tempFilename)) {
-      LOG_TOPIC(ERROR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName(datafile) << "' to '" << tempFilename << "'";
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName(datafile) << "' to '" << tempFilename << "'";
     } else {
       if (!TRI_RenameDatafile(compactor, realName)) {
-        LOG_TOPIC(ERROR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName(compactor) << "' to '" << realName << "'";
+        LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName(compactor) << "' to '" << realName << "'";
       } else {
         ok = true;
       }
@@ -380,7 +380,7 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
     if (!LocateDatafile(&document->_datafiles, datafile->_fid, &i)) {
       TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
-      LOG_TOPIC(ERROR, Logger::COMPACTOR) << "logic error: could not locate datafile";
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate datafile";
       TRI_Free(TRI_CORE_MEM_ZONE, context);
       return;
     }
@@ -391,7 +391,7 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
     if (!LocateDatafile(&document->_compactors, compactor->_fid, &i)) {
       TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
-      LOG_TOPIC(ERROR, Logger::COMPACTOR) << "logic error: could not locate compactor";
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate compactor";
       TRI_Free(TRI_CORE_MEM_ZONE, context);
       return;
     }
@@ -553,7 +553,7 @@ static int RemoveCompactor(TRI_document_collection_t* document,
   if (!LocateDatafile(&document->_compactors, compactor->_fid, &i)) {
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
-    LOG_TOPIC(ERROR, Logger::COMPACTOR) << "logic error: could not locate compactor";
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate compactor";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -595,7 +595,7 @@ static int RemoveDatafile(TRI_document_collection_t* document,
   if (!LocateDatafile(&document->_datafiles, df->_fid, &i)) {
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
-    LOG_TOPIC(ERROR, Logger::COMPACTOR) << "logic error: could not locate datafile";
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate datafile";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -752,7 +752,7 @@ static void CompactifyDatafiles(
       InitCompaction(&trx, document, toCompact);
 
   if (initial._failed) {
-    LOG_TOPIC(ERROR, Logger::COMPACTOR) << "could not create initialize compaction";
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create initialize compaction";
 
     return;
   }
@@ -765,7 +765,7 @@ static void CompactifyDatafiles(
 
   if (compactor == nullptr) {
     // some error occurred
-    LOG_TOPIC(ERROR, Logger::COMPACTOR) << "could not create compactor file";
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file";
 
     return;
   }
@@ -780,7 +780,7 @@ static void CompactifyDatafiles(
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERROR, Logger::COMPACTOR) << "error during compaction: " << TRI_errno_string(res);
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "error during compaction: " << TRI_errno_string(res);
     return;
   }
 
@@ -800,7 +800,7 @@ static void CompactifyDatafiles(
     bool ok = TRI_IterateDatafile(df, Compactifier, &context);
 
     if (!ok) {
-      LOG_TOPIC(WARNING, Logger::COMPACTOR) << "failed to compact datafile '" << df->getName(df) << "'";
+      LOG_TOPIC(WARN, Logger::COMPACTOR) << "failed to compact datafile '" << df->getName(df) << "'";
       // compactor file does not need to be removed now. will be removed on next
       // startup
       // TODO: Remove file
@@ -827,14 +827,14 @@ static void CompactifyDatafiles(
     // not found
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
-    LOG_TOPIC(ERROR, Logger::COMPACTOR) << "logic error in CompactifyDatafiles: could not find compactor";
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error in CompactifyDatafiles: could not find compactor";
     return;
   }
 
   if (!TRI_CloseDatafileDocumentCollection(document, j, true)) {
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
-    LOG_TOPIC(ERROR, Logger::COMPACTOR) << "could not close compactor file";
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not close compactor file";
     // TODO: how do we recover from this state?
     return;
   }
@@ -877,7 +877,7 @@ static void CompactifyDatafiles(
           __LINE__);
 
       if (b == nullptr) {
-        LOG_TOPIC(ERROR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
+        LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
       }
     }
   } else {
@@ -914,7 +914,7 @@ static void CompactifyDatafiles(
             __LINE__);
 
         if (b == nullptr) {
-          LOG_TOPIC(ERROR, Logger::COMPACTOR) << "out of memory when creating datafile-rename ditch";
+          LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-rename ditch";
           TRI_Free(TRI_CORE_MEM_ZONE, copy);
         }
       } else {
@@ -927,7 +927,7 @@ static void CompactifyDatafiles(
             __LINE__);
 
         if (b == nullptr) {
-          LOG_TOPIC(ERROR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
+          LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
         }
       }
     }
@@ -1436,7 +1436,7 @@ void TRI_CompactorVocBase(void* data) {
 
                 if (ce == nullptr) {
                   // out of memory
-                  LOG_TOPIC(WARNING, Logger::COMPACTOR) << "out of memory when trying to create compaction ditch";
+                  LOG_TOPIC(WARN, Logger::COMPACTOR) << "out of memory when trying to create compaction ditch";
                 } else {
                   try {
                     worked = CompactifyDocumentCollection(document);
@@ -1449,7 +1449,7 @@ void TRI_CompactorVocBase(void* data) {
                     // force
                     // another round of compaction
                   } catch (...) {
-                    LOG_TOPIC(ERROR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
+                    LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
                     // in case an error occurs, we must still free this ditch
                   }
 
@@ -1458,7 +1458,7 @@ void TRI_CompactorVocBase(void* data) {
               }
             } catch (...) {
               // in case an error occurs, we must still relase the lock
-              LOG_TOPIC(ERROR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
+              LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
             }
           }
 

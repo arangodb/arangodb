@@ -220,7 +220,7 @@ static void CleanupCursors(TRI_vocbase_t* vocbase, bool force) {
   try {
     cursors->garbageCollect(force);
   } catch (...) {
-    LOG(WARNING) << "caught exception during cursor cleanup";
+    LOG(WARN) << "caught exception during cursor cleanup";
   }
 }
 

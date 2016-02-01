@@ -283,9 +283,9 @@ exports.lockCycleParallel = function(opts) {
   }).count();
 
   if (m < n) {
-    print("cannot start enough servers (want", n + ",", "got", m + "),",
+    print("cannot start enough workers (want", n + ",", "got", m + "),",
       "please check number V8 contexts");
-    return false;
+    throw new Error("cannot start workers");
   }
 
   if (opts.gnuplot) {

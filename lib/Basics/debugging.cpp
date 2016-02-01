@@ -88,7 +88,7 @@ static char* MakeValue(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SegfaultDebugging(char const* message) {
-  LOG(WARNING) << "" << message << ": summon Baal!";
+  LOG(WARN) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
   TRI_ShutdownLogging(true);
 
@@ -152,7 +152,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
     // not yet found. so add it
     char* copy;
 
-    LOG(WARNING) << "activating intentional failure point '" << value << "'. the server will misbehave!";
+    LOG(WARN) << "activating intentional failure point '" << value << "'. the server will misbehave!";
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {

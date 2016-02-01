@@ -95,7 +95,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   if (*thread == 0) {
     TRI_Free(TRI_CORE_MEM_ZONE, d);
-    LOG(ERROR) << "could not start thread: " << strerror(errno) << " ";
+    LOG(ERR) << "could not start thread: " << strerror(errno) << " ";
     return false;
   }
 
@@ -110,7 +110,7 @@ int TRI_StopThread(TRI_thread_t* thread) {
   if (TerminateThread(*thread, 0) == 0) {
     DWORD result = GetLastError();
 
-    LOG(ERROR) << "threads-win32.c:TRI_StopThread:could not stop thread -->" << result;
+    LOG(ERR) << "threads-win32.c:TRI_StopThread:could not stop thread -->" << result;
 
     return TRI_ERROR_INTERNAL;
   }

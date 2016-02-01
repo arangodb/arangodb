@@ -52,7 +52,7 @@ bool SignalTask::addSignal(int signal) {
   MUTEX_LOCKER(mutexLocker, _changeLock);
 
   if (_signals.size() >= MAX_SIGNALS) {
-    LOG(ERROR) << "maximal number of signals reached";
+    LOG(ERR) << "maximal number of signals reached";
     return false;
   } else {
     if (_scheduler != nullptr) {

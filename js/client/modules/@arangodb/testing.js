@@ -717,8 +717,8 @@ function runStressTest(options, command, testname) {
   const concurrency = options.concurrency;
 
   let extra = {
-    "javascript.v8-contexts": concurrency + 1,
-    "server.threads": concurrency + 1
+    "javascript.v8-contexts": concurrency + 2,
+    "server.threads": concurrency + 2
   };
 
   let instanceInfo = startInstance("tcp", options, extra, testname);

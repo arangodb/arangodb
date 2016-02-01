@@ -613,7 +613,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   delete[] buffer;
 
   if (corrupted) {
-    LOG(WARNING) << "escaped corrupted unicode string";
+    LOG(WARN) << "escaped corrupted unicode string";
   }
 
   return result;

@@ -142,7 +142,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
   auto edgeIndex = document->edgeIndex();
 
   if (edgeIndex == nullptr) {
-    LOG(ERROR) << "collection does not have an edges index";
+    LOG(ERR) << "collection does not have an edges index";
     return result;
   }
 

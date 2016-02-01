@@ -154,7 +154,7 @@ int FulltextIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
 
   if (words == nullptr) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
-    // LOG(WARNING) << "could not build wordlist";
+    // LOG(WARN) << "could not build wordlist";
     return res;
   }
 
@@ -162,7 +162,7 @@ int FulltextIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
     // TODO: use status codes
     if (!TRI_InsertWordsFulltextIndex(
             _fulltextIndex, (TRI_fulltext_doc_t)((uintptr_t)doc), words)) {
-      LOG(ERROR) << "adding document to fulltext index failed";
+      LOG(ERR) << "adding document to fulltext index failed";
       res = TRI_ERROR_INTERNAL;
     }
   }

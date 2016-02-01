@@ -70,7 +70,7 @@ void Mutex::lock() {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG(ERROR) << "mutex deadlock detected";
+      LOG(ERR) << "mutex deadlock detected";
     }
 
     LOG(FATAL) << "could not lock the mutex: " << strerror(rc); FATAL_ERROR_EXIT();

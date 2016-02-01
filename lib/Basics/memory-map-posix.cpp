@@ -61,7 +61,7 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
     // we have synced a region that was not mapped
 
     // set a special error. ENOMEM (out of memory) is not appropriate
-    LOG(ERROR) << "msync failed for range " << startingAddress << " - " << (void*)(((char*)startingAddress) + numOfBytesToFlush);
+    LOG(ERR) << "msync failed for range " << startingAddress << " - " << (void*)(((char*)startingAddress) + numOfBytesToFlush);
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
   }

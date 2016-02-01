@@ -163,7 +163,7 @@ int CapConstraint::apply(arangodb::Transaction* trx,
                                                    oldest);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG(WARNING) << "cannot cap collection: " << TRI_errno_string(res);
+          LOG(WARN) << "cannot cap collection: " << TRI_errno_string(res);
           break;
         }
       } else {
@@ -174,7 +174,7 @@ int CapConstraint::apply(arangodb::Transaction* trx,
       currentSize -= (int64_t)oldSize;
     } else {
       // we should not get here
-      LOG(WARNING) << "logic error in " << __FUNCTION__;
+      LOG(WARN) << "logic error in " << __FUNCTION__;
       break;
     }
   }

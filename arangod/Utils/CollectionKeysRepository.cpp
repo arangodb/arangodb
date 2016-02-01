@@ -61,7 +61,7 @@ CollectionKeysRepository::~CollectionKeysRepository() {
     if (tries == 0) {
       LOG(INFO) << "waiting for used keys to become unused";
     } else if (tries == 120) {
-      LOG(WARNING) << "giving up waiting for unused keys";
+      LOG(WARN) << "giving up waiting for unused keys";
     }
 
     usleep(500000);

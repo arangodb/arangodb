@@ -403,7 +403,7 @@ class UniformGenerator {
 
     while (r >= g) {
       if (++count >= MAX_COUNT) {
-        LOG(ERROR) << "cannot generate small random number after " << count << " tries";
+        LOG(ERR) << "cannot generate small random number after " << count << " tries";
         r %= g;
         continue;
       }

@@ -56,7 +56,7 @@ SSL_CTX* arangodb::basics::sslContext(protocol_e protocol,
       break;
 
     default:
-      LOG(ERROR) << "unknown SSL protocol method";
+      LOG(ERR) << "unknown SSL protocol method";
       return nullptr;
   }
 
@@ -64,12 +64,12 @@ SSL_CTX* arangodb::basics::sslContext(protocol_e protocol,
 
   // load our keys and certificates
   if (!SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
-    LOG(ERROR) << "cannot read certificate from '" << keyfile.c_str() << "': " << arangodb::basics::lastSSLError().c_str();
+    LOG(ERR) << "cannot read certificate from '" << keyfile.c_str() << "': " << arangodb::basics::lastSSLError().c_str();
     return nullptr;
   }
 
   if (!SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
-    LOG(ERROR) << "cannot read key from '" << keyfile.c_str() << "': " << arangodb::basics::lastSSLError().c_str();
+    LOG(ERR) << "cannot read key from '" << keyfile.c_str() << "': " << arangodb::basics::lastSSLError().c_str();
     return nullptr;
   }
 

@@ -110,7 +110,7 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   if (ok) {
     ++_numberJobs;
   } else {
-    LOG(WARNING) << "cannot insert job into ready queue, giving up";
+    LOG(WARN) << "cannot insert job into ready queue, giving up";
 
     removeJob(raw);
     delete raw;
@@ -212,7 +212,7 @@ void DispatcherQueue::blockThread() { ++_nrBlocked; }
 
 void DispatcherQueue::unblockThread() {
   if (--_nrBlocked < 0) {
-    LOG(ERROR) << "internal error, unblocking too many threads";
+    LOG(ERR) << "internal error, unblocking too many threads";
   }
 }
 

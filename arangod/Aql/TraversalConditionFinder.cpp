@@ -116,6 +116,7 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
     bool isEdgeAccess = false;
     size_t attrAccessTo = 0;
 
+    TRI_ASSERT(len >= 3);
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
     }
@@ -165,8 +166,10 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
         filterByNode = compareNode->getMember(0);
       }
 
-      // TODO: warning: Called C++ object pointer is null
-      if (accessNodeBranch->isSimple() && filterByNode->isDeterministic()) {
+      // Hacki: I do not think that the nullptr check can ever fail because of
+      // the structure of onePath
+      if (accessNodeBranch != nullptr && accessNodeBranch->isSimple() &&
+          filterByNode->isDeterministic()) {
         currentPath.clear();
         clonePath.clear();
         filterByNode->findVariableAccess(currentPath, clonePath,

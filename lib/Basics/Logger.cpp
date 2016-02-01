@@ -75,8 +75,8 @@ char const* Logger::translateLogLevel(LogLevel level) {
   switch (level) {
     case LogLevel::DEFAULT: return "default";
     case LogLevel::FATAL: return "fatal"; 
-    case LogLevel::ERROR: return "error";
-    case LogLevel::WARNING: return "warning";
+    case LogLevel::ERR: return "error";
+    case LogLevel::WARN: return "warning";
     case LogLevel::INFO: return "info";
     case LogLevel::DEBUG: return "debug";
     case LogLevel::TRACE: return "trace";

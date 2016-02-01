@@ -674,7 +674,7 @@ void ImportHelper::handleResult(SimpleHttpResult* result) {
   if (details.isArray()) {
     for (VPackSlice const& detail : VPackArrayIterator(details)) {
       if (detail.isString()) {
-        LOG(WARNING) << "" << detail.copyString().c_str();
+        LOG(WARN) << "" << detail.copyString().c_str();
       }
     }
   }
