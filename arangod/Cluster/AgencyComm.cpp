@@ -1150,11 +1150,10 @@ void AgencyComm::increaseVersionRepeated(std::string const& key) {
 /// @brief creates a directory in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::createDirectory(std::string const& key, bool prevExist) {
+AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
   AgencyCommResult result;
   
   std::string url = buildUrl(key) + "?dir=true";
-  url += "&prevExist=" + (prevExist ? std::string("true") : std::string("false"));
   sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                    _globalConnectionOptions._requestTimeout, result,
                    url, "", false);
