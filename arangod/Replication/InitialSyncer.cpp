@@ -758,6 +758,17 @@ int InitialSyncer::handleCollectionDump(
 
     if (!checkMore || fromTick == 0) {
       // done
+      if (!_shardFollower.empty()) {
+        // Tell the server to put us into the follower list:
+        std::string const shardFollowerUrl = BaseUrl + "/addShardFollower";
+        std::string const body = "{\"id\": \"" +
+                                 ServerState::instance()->getId() + "\"}";
+        response.reset(_client->request(HttpRequest::HTTP_REQUEST_PUT,
+                                        shardFollowerUrl,
+                                        body.c_str(), body.size()));
+        /// GO ON HERE.
+
+      }
       return res;
     }
 

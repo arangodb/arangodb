@@ -977,7 +977,7 @@ function synchroniseLocalFollowerCollections (plannedCollections) {
                         console.log("Hallo3");
                         rep.syncCollection(shard, 
                           { endpoint: ep, incremental: true,
-                            forSynchronousReplication: true });
+                            shardFollower: ArangoServerState.id() });
                         console.log("Hallo4");
                         if (cancelReadingQuery(ep, queryid)) {
                           console.info("Synchronization worked for shard", shard);

@@ -358,6 +358,9 @@
 /// - 1476: @LIT{could not determine my ID from my local info}
 ///   Will be raised if a cluster server at startup could not determine its own
 ///   ID from the local info provided.
+/// - 1477: @LIT{this operation is only valid on a DBserver in a cluster}
+///   Will be raised if there is an attempt to run a DBserver-only operation on
+///   a different type of node.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2141,6 +2144,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID                          (1476)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1477: ERROR_CLUSTER_ONLY_ON_DBSERVER
+///
+/// this operation is only valid on a DBserver in a cluster
+///
+/// Will be raised if there is an attempt to run a DBserver-only operation on a
+/// different type of node.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER                                (1477)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

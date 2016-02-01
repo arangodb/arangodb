@@ -555,8 +555,9 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
   }
   success = false;
-  VPackParser p;
-  return p.steal();
+  return std::make_shared<VPackBuilder>();
+  //VPackParser p;
+  //return p.steal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

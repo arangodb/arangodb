@@ -272,6 +272,10 @@ struct TRI_document_collection_t : public TRI_collection_t {
   VocShaper* getShaper() const;
 #endif
 
+  std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
+    return _followers;
+  }
+
   void setNextCompactionStartIndex(size_t);
   size_t getNextCompactionStartIndex();
   void setCompactionStatus(char const*);
