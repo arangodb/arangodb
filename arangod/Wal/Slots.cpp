@@ -591,7 +591,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
           int res = writeFooter(slot);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG(ERROR) << "could not write logfile footer: " << TRI_errno_string(res);
+            LOG(ERR) << "could not write logfile footer: " << TRI_errno_string(res);
             return res;
           }
 
@@ -633,7 +633,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
             res = writeHeader(slot);
 
             if (res != TRI_ERROR_NO_ERROR) {
-              LOG(ERROR) << "could not write logfile header: " << TRI_errno_string(res);
+              LOG(ERR) << "could not write logfile header: " << TRI_errno_string(res);
               return res;
             }
 

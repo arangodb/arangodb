@@ -321,7 +321,7 @@ bool LogfileManager::start() {
   int res = inventory();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "could not create WAL logfile inventory: " << TRI_errno_string(res);
+    LOG(ERR) << "could not create WAL logfile inventory: " << TRI_errno_string(res);
     return false;
   }
 
@@ -334,7 +334,7 @@ bool LogfileManager::start() {
     res = readShutdownInfo();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERROR) << "could not open shutdown file '" << shutdownFile.c_str() << "': " << TRI_errno_string(res);
+      LOG(ERR) << "could not open shutdown file '" << shutdownFile.c_str() << "': " << TRI_errno_string(res);
       return false;
     }
   } else {
@@ -344,7 +344,7 @@ bool LogfileManager::start() {
   res = inspectLogfiles();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "could not inspect WAL logfiles: " << TRI_errno_string(res);
+    LOG(ERR) << "could not inspect WAL logfiles: " << TRI_errno_string(res);
     return false;
   }
 
@@ -369,7 +369,7 @@ bool LogfileManager::open() {
   int res = runRecovery();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "unable to finish WAL recovery: " << TRI_errno_string(res);
+    LOG(ERR) << "unable to finish WAL recovery: " << TRI_errno_string(res);
     return false;
   }
 
@@ -420,14 +420,14 @@ bool LogfileManager::open() {
   res = startAllocatorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "could not start WAL allocator thread: " << TRI_errno_string(res);
+    LOG(ERR) << "could not start WAL allocator thread: " << TRI_errno_string(res);
     return false;
   }
 
   res = startSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "could not start WAL synchronizer thread: " << TRI_errno_string(res);
+    LOG(ERR) << "could not start WAL synchronizer thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -438,7 +438,7 @@ bool LogfileManager::open() {
   res = _recoverState->abortOpenTransactions();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "could not abort open transactions: " << TRI_errno_string(res);
+    LOG(ERR) << "could not abort open transactions: " << TRI_errno_string(res);
     return false;
   }
 
@@ -460,7 +460,7 @@ bool LogfileManager::open() {
   res = startCollectorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "could not start WAL collector thread: " << TRI_errno_string(res);
+    LOG(ERR) << "could not start WAL collector thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -469,7 +469,7 @@ bool LogfileManager::open() {
   res = startRemoverThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "could not start WAL remover thread: " << TRI_errno_string(res);
+    LOG(ERR) << "could not start WAL remover thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -480,7 +480,7 @@ bool LogfileManager::open() {
   res = TRI_InitDatabasesServer(_server);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "could not initialize databases: " << TRI_errno_string(res);
+    LOG(ERR) << "could not initialize databases: " << TRI_errno_string(res);
     return false;
   }
 
@@ -533,7 +533,7 @@ void LogfileManager::stop() {
   int res = writeShutdownInfo(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "could not write WAL shutdown info: " << TRI_errno_string(res);
+    LOG(ERR) << "could not write WAL shutdown info: " << TRI_errno_string(res);
   }
 }
 
@@ -900,7 +900,7 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
   int res = _slots->flush(waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
-    LOG(ERROR) << "unexpected error in WAL flush request: " << TRI_errno_string(res);
+    LOG(ERR) << "unexpected error in WAL flush request: " << TRI_errno_string(res);
     return res;
   }
 
@@ -1089,7 +1089,7 @@ int LogfileManager::getLogfileDescriptor(Logfile::IdType id) {
 
   if (it == _logfiles.end()) {
     // error
-    LOG(ERROR) << "could not find logfile " << id;
+    LOG(ERR) << "could not find logfile " << id;
     return -1;
   }
 
@@ -1300,7 +1300,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
   }
 
   TRI_ASSERT(result == nullptr);
-  LOG(WARNING) << "unable to acquire writeable WAL logfile after " << (MaxIterations * SleepTime) / 1000 << " ms";
+  LOG(WARN) << "unable to acquire writeable WAL logfile after " << (MaxIterations * SleepTime) / 1000 << " ms";
 
   return TRI_ERROR_LOCK_TIMEOUT;
 }
@@ -1460,7 +1460,7 @@ void LogfileManager::setCollectionDone(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
   Logfile::IdType id = logfile->id();
 
-  // LOG(ERROR) << "setCollectionDone setting lastCollectedId to " << (unsigned
+  // LOG(ERR) << "setCollectionDone setting lastCollectedId to " << (unsigned
   // long long) id;
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
@@ -1586,7 +1586,7 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
   // now physically remove the file
 
   if (!basics::FileUtils::remove(filename, &res)) {
-    LOG(ERROR) << "unable to remove logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
+    LOG(ERR) << "unable to remove logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
   }
 }
 
@@ -1669,7 +1669,7 @@ int LogfileManager::runRecovery() {
   if (_recoverState->errorCount == 0) {
     LOG(INFO) << "WAL recovery finished successfully";
   } else {
-    LOG(WARNING) << "WAL recovery finished, some errors ignored due to settings";
+    LOG(WARN) << "WAL recovery finished, some errors ignored due to settings";
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1803,11 +1803,11 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
     }
 
     if (!ok) {
-      LOG(ERROR) << "unable to write WAL state file '" << filename.c_str() << "'";
+      LOG(ERR) << "unable to write WAL state file '" << filename.c_str() << "'";
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
   } catch (...) {
-    LOG(ERROR) << "unable to write WAL state file '" << filename.c_str() << "'";
+    LOG(ERR) << "unable to write WAL state file '" << filename.c_str() << "'";
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1981,7 +1981,7 @@ int LogfileManager::inventory() {
           s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
 
       if (id == 0) {
-        LOG(WARNING) << "encountered invalid id for logfile '" << file.c_str() << "'. ids must be > 0";
+        LOG(WARN) << "encountered invalid id for logfile '" << file.c_str() << "'. ids must be > 0";
       } else {
         // update global tick
         TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
@@ -2062,7 +2062,7 @@ int LogfileManager::inspectLogfiles() {
     if (!TRI_IterateDatafile(logfile->df(), &RecoverState::InitialScanMarker,
                              static_cast<void*>(_recoverState))) {
       std::string const logfileName = logfile->filename();
-      LOG(WARNING) << "WAL inspection failed when scanning logfile '" << logfileName.c_str() << "'";
+      LOG(WARN) << "WAL inspection failed when scanning logfile '" << logfileName.c_str() << "'";
       return TRI_ERROR_ARANGO_RECOVERY;
     }
 
@@ -2122,7 +2122,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
   if (logfile == nullptr) {
     int res = TRI_errno();
 
-    LOG(ERROR) << "unable to create logfile: " << TRI_errno_string(res);
+    LOG(ERR) << "unable to create logfile: " << TRI_errno_string(res);
     return res;
   }
 
@@ -2160,13 +2160,13 @@ int LogfileManager::ensureDirectory() {
 
     int res;
     if (!basics::FileUtils::createDirectory(directory, &res)) {
-      LOG(ERROR) << "could not create WAL directory: '" << directory.c_str() << "': " << TRI_last_error();
+      LOG(ERR) << "could not create WAL directory: '" << directory.c_str() << "': " << TRI_last_error();
       return TRI_ERROR_SYS_ERROR;
     }
   }
 
   if (!basics::FileUtils::isDirectory(directory)) {
-    LOG(ERROR) << "WAL directory '" << directory.c_str() << "' does not exist";
+    LOG(ERR) << "WAL directory '" << directory.c_str() << "' does not exist";
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 

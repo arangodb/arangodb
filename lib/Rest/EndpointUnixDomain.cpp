@@ -72,14 +72,14 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
 
   if (_type == ENDPOINT_SERVER && FileUtils::exists(_path)) {
     // socket file already exists
-    LOG(WARNING) << "socket file '" << _path.c_str() << "' already exists.";
+    LOG(WARN) << "socket file '" << _path.c_str() << "' already exists.";
 
     int error = 0;
     // delete previously existing socket file
     if (FileUtils::remove(_path, &error)) {
-      LOG(WARNING) << "deleted previously existing socket file '" << _path.c_str() << "'";
+      LOG(WARN) << "deleted previously existing socket file '" << _path.c_str() << "'";
     } else {
-      LOG(ERROR) << "unable to delete previously existing socket file '" << _path.c_str() << "'";
+      LOG(ERR) << "unable to delete previously existing socket file '" << _path.c_str() << "'";
 
       return listenSocket;
     }
@@ -87,7 +87,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
 
   listenSocket = TRI_socket(AF_UNIX, SOCK_STREAM, 0);
   if (!TRI_isvalidsocket(listenSocket)) {
-    LOG(ERROR) << "socket() failed with " << errno << " (" << strerror(errno) << ")";
+    LOG(ERR) << "socket() failed with " << errno << " (" << strerror(errno) << ")";
     return listenSocket;
   }
 
@@ -102,7 +102,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
         TRI_bind(listenSocket, (struct sockaddr*)&address, SUN_LEN(&address));
     if (result != 0) {
       // bind error
-      LOG(ERROR) << "bind() failed with " << errno << " (" << strerror(errno) << ")";
+      LOG(ERR) << "bind() failed with " << errno << " (" << strerror(errno) << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -113,7 +113,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
-      LOG(ERROR) << "listen() failed with " << errno << " (" << strerror(errno) << ")";
+      LOG(ERR) << "listen() failed with " << errno << " (" << strerror(errno) << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;

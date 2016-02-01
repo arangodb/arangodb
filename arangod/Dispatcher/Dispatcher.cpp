@@ -123,7 +123,7 @@ int Dispatcher::addJob(std::unique_ptr<Job>& job) {
   DispatcherQueue* queue;
 
   if (qnr >= _queues.size() || (queue = _queues[qnr]) == nullptr) {
-    LOG(WARNING) << "unknown queue '" << qnr << "'";
+    LOG(WARN) << "unknown queue '" << qnr << "'";
     return TRI_ERROR_QUEUE_UNKNOWN;
   }
 

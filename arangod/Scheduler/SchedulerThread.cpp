@@ -107,7 +107,7 @@ bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
     if (ok) {
       ++_numberTasks;
     } else {
-      LOG(WARNING) << "In SchedulerThread::registerTask setupTask has failed";
+      LOG(WARN) << "In SchedulerThread::registerTask setupTask has failed";
       cleanupTask(task);
       deleteTask(task);
     }
@@ -234,12 +234,12 @@ void SchedulerThread::run() {
     } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
       if (_stopping.load()) {
-        LOG(WARNING) << "caught cancelation exception during work";
+        LOG(WARN) << "caught cancelation exception during work";
         throw;
       }
 #endif
 
-      LOG(WARNING) << "caught exception from ev_loop";
+      LOG(WARN) << "caught exception from ev_loop";
     }
 
 #if defined(DEBUG_SCHEDULER_THREAD)
@@ -290,7 +290,7 @@ void SchedulerThread::run() {
         }
 
         case INVALID: {
-          LOG(ERROR) << "logic error. got invalid Work item";
+          LOG(ERR) << "logic error. got invalid Work item";
           break;
         }
       }
@@ -338,7 +338,7 @@ void SchedulerThread::run() {
         break;
 
       case INVALID:
-        LOG(ERROR) << "logic error. got invalid Work item";
+        LOG(ERR) << "logic error. got invalid Work item";
         break;
     }
   }

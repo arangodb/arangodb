@@ -88,7 +88,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
       // error
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid multipart message received");
-      LOG(WARNING) << "received a corrupted multipart message";
+      LOG(WARN) << "received a corrupted multipart message";
 
       return status_t(HttpHandler::HANDLER_FAILED);
     }
@@ -455,7 +455,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         if (arangodb::rest::HttpRequest::BatchContentType == value) {
           hasTypeHeader = true;
         } else {
-          LOG(WARNING) << "unexpected content-type '" << value.c_str() << "' for multipart-message. expected: '" << arangodb::rest::HttpRequest::BatchContentType.c_str() << "'";
+          LOG(WARN) << "unexpected content-type '" << value.c_str() << "' for multipart-message. expected: '" << arangodb::rest::HttpRequest::BatchContentType.c_str() << "'";
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;

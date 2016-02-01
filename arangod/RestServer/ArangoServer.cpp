@@ -1309,7 +1309,7 @@ void ArangoServer::runStartupChecks() {
     }
 
     if (!alignmentDetected) {
-      LOG(WARNING) << "unable to detect CPU alignment settings. could not process file '" << filename.c_str() << "'. this may cause arangod to abort with SIGBUS. it may be necessary to set the value in '" << filename.c_str() << "' to 2";
+      LOG(WARN) << "unable to detect CPU alignment settings. could not process file '" << filename.c_str() << "'. this may cause arangod to abort with SIGBUS. it may be necessary to set the value in '" << filename.c_str() << "' to 2";
     }
   }
 #endif
@@ -1514,13 +1514,13 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
             ok = TRI_ObjectToDouble(result) == 0;
           }
         } catch (arangodb::basics::Exception const& ex) {
-          LOG(ERROR) << "caught exception " << TRI_errno_string(ex.code()) << ": " << ex.what();
+          LOG(ERR) << "caught exception " << TRI_errno_string(ex.code()) << ": " << ex.what();
           ok = false;
         } catch (std::bad_alloc const&) {
-          LOG(ERROR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+          LOG(ERR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ok = false;
         } catch (...) {
-          LOG(ERROR) << "caught unknown exception";
+          LOG(ERR) << "caught unknown exception";
           ok = false;
         }
       }

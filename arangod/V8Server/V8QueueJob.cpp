@@ -103,15 +103,15 @@ void V8QueueJob::work() {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG(WARNING) << "caught non-catchable exception (aka termination) in V8 queue job";
+            LOG(WARN) << "caught non-catchable exception (aka termination) in V8 queue job";
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG(ERROR) << "caught exception in V8 queue job: " << TRI_errno_string(ex.code()) << " " << ex.what();
+        LOG(ERR) << "caught exception in V8 queue job: " << TRI_errno_string(ex.code()) << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG(ERROR) << "caught exception in V8 queue job: " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+        LOG(ERR) << "caught exception in V8 queue job: " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
-        LOG(ERROR) << "caught unknown exception in V8 queue job";
+        LOG(ERR) << "caught unknown exception in V8 queue job";
       }
     }
   }

@@ -161,7 +161,7 @@ start_pretty_print();
     sigaddset(&set, SIGINT);
 
     if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
-      LOG(ERROR) << "unable to install signal handler";
+      LOG(ERR) << "unable to install signal handler";
     }
 #endif
 

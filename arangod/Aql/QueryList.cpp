@@ -174,7 +174,7 @@ void QueryList::remove(Query const* query, double now) {
           std::string q(queryString, length);
           q.append(originalLength > maxLength ? "..." : "");
 
-          LOG_TOPIC(WARNING, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::DURATION(now - entry->started);
+          LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::DURATION(now - entry->started);
 
           _slow.emplace_back(QueryEntryCopy(
               entry->query->id(),
@@ -221,7 +221,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   }
 
   // log outside the lock
-  LOG(WARNING) << "killing AQL query " << id << " '" << queryString.c_str() << "'";
+  LOG(WARN) << "killing AQL query " << id << " '" << queryString.c_str() << "'";
 
   return TRI_ERROR_NO_ERROR;
 }

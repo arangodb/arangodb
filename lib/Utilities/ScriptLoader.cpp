@@ -121,7 +121,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
       char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, nullptr);
 
       if (result == nullptr && (i == parts.size() - 1)) {
-        LOG(ERROR) << "cannot locate file '" << StringUtils::correctPath(name).c_str() << "': " << TRI_last_error();
+        LOG(ERR) << "cannot locate file '" << StringUtils::correctPath(name).c_str() << "': " << TRI_last_error();
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);

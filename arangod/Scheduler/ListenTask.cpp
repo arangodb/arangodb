@@ -99,7 +99,7 @@ bool ListenTask::setup(Scheduler* scheduler, EventLoop loop) {
   LOG(TRACE) << "attempting to convert socket handle to socket descriptor";
 
   if (!TRI_isvalidsocket(_listenSocket)) {
-    LOG(ERROR) << "In ListenTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
+    LOG(ERR) << "In ListenTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
     return false;
   }
 
@@ -112,13 +112,13 @@ bool ListenTask::setup(Scheduler* scheduler, EventLoop loop) {
   int res = (int)_listenSocket.fileHandle;
 
   if (res == -1) {
-    LOG(ERROR) << "In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
+    LOG(ERR) << "In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
 
     res = TRI_CLOSE_SOCKET(_listenSocket);
 
     if (res != 0) {
       res = WSAGetLastError();
-      LOG(ERROR) << "In ListenTask::setup closesocket(...) failed with error code: " << res;
+      LOG(ERR) << "In ListenTask::setup closesocket(...) failed with error code: " << res;
     }
 
     TRI_invalidatesocket(&_listenSocket);
@@ -168,9 +168,9 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
       ++_acceptFailures;
 
       if (_acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOG(WARNING) << "accept failed with " << errno << " (" << strerror(errno) << ")";
+        LOG(WARN) << "accept failed with " << errno << " (" << strerror(errno) << ")";
       } else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOG(ERROR) << "too many accept failures, stopping logging";
+        LOG(ERR) << "too many accept failures, stopping logging";
       }
 
       return true;
@@ -187,7 +187,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_CLOSE_SOCKET(connectionSocket);
 
-      LOG(WARNING) << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
+      LOG(WARN) << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
 
       return true;
     }

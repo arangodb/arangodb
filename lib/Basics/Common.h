@@ -220,7 +220,7 @@ static inline void TRI_MemoryPrefetch(void* p) {}
     std::string bt;                                 \
     TRI_GetBacktrace(bt);                           \
     if (!bt.empty()) {                              \
-      LOG(WARNING) << bt;                           \
+      LOG(WARN) << bt;                           \
     }                                               \
     TRI_ShutdownLogging(true);                      \
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);       \

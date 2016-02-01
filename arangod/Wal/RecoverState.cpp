@@ -84,11 +84,11 @@ static int WaitForDeletion(TRI_server_t* server, TRI_voc_tick_t databaseId,
       if (statusCode != TRI_ERROR_FORBIDDEN &&
           (statusCode == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
            statusCode != TRI_ERROR_NO_ERROR)) {
-        LOG(WARNING) << "forcefully deleting database directory '" << result.c_str() << "'";
+        LOG(WARN) << "forcefully deleting database directory '" << result.c_str() << "'";
         TRI_RemoveDirectory(result.c_str());
       }
     } else if (iterations >= 30 * 10) {
-      LOG(WARNING) << "unable to remove database directory '" << result.c_str() << "'";
+      LOG(WARN) << "unable to remove database directory '" << result.c_str() << "'";
       return TRI_ERROR_INTERNAL;
     }
 
@@ -255,7 +255,7 @@ TRI_vocbase_col_t* RecoverState::useCollection(TRI_vocbase_t* vocbase,
     res = TRI_errno();
 
     if (res == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
-      LOG(WARNING) << "unable to open collection " << collectionId << ". Please check the logs above for errors.";
+      LOG(WARN) << "unable to open collection " << collectionId << ". Please check the logs above for errors.";
     }
 
     return nullptr;
@@ -589,7 +589,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARNING) << "could not apply attribute marker: " << TRI_errno_string(res);
+        LOG(WARN) << "could not apply attribute marker: " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -619,7 +619,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARNING) << "could not apply shape marker: " << TRI_errno_string(res);
+        LOG(WARN) << "could not apply shape marker: " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -677,7 +677,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARNING) << "unable to insert document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
+        LOG(WARN) << "unable to insert document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -735,7 +735,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARNING) << "unable to insert edge in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
+        LOG(WARN) << "unable to insert edge in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -780,7 +780,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARNING) << "unable to remove document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
+        LOG(WARN) << "unable to remove document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -839,7 +839,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_RenameCollectionVocBase(vocbase, collection, name, true, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG(WARNING) << "cannot rename collection collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
+        LOG(WARN) << "cannot rename collection collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -879,7 +879,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       try {
         parsedProperties = VPackParser::fromJson(properties);
       } catch (...) {
-        LOG(WARNING) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
+        LOG(WARN) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -890,7 +890,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           vocbase, document, slice, vocbase->_settings.forceSyncProperties);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG(WARNING) << "cannot change collection properties for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
+        LOG(WARN) << "cannot change collection properties for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -944,13 +944,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       try {
         builder = VPackParser::fromJson(properties);
       } catch (...) {
-        LOG(WARNING) << "cannot unpack index properties for index " << indexId << ", collection " << collectionId << " in database " << databaseId;
+        LOG(WARN) << "cannot unpack index properties for index " << indexId << ", collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
       VPackSlice slice = builder->slice();
       if (!slice.isObject()) {
-        LOG(WARNING) << "cannot unpack index properties for index " << indexId << ", collection " << collectionId << " in database " << databaseId;
+        LOG(WARN) << "cannot unpack index properties for index " << indexId << ", collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -962,7 +962,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           filename.c_str(), slice, vocbase->_settings.forceSyncProperties);
 
       if (!ok) {
-        LOG(WARNING) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
+        LOG(WARN) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       } else {
@@ -1011,13 +1011,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       try {
         builder = VPackParser::fromJson(properties);
       } catch (...) {
-        LOG(WARNING) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
+        LOG(WARN) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
       VPackSlice slice = builder->slice();
       if (!slice.isObject()) {
-        LOG(WARNING) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
+        LOG(WARN) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1041,7 +1041,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_DropCollectionVocBase(vocbase, collection, false);
         }
       } else {
-        LOG(WARNING) << "empty name attribute in create collection marker for collection " << collectionId << " and database " << databaseId;
+        LOG(WARN) << "empty name attribute in create collection marker for collection " << collectionId << " and database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1079,7 +1079,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       if (collection == nullptr) {
-        LOG(WARNING) << "cannot create collection " << collectionId << " in database " << databaseId << ": " << TRI_last_error();
+        LOG(WARN) << "cannot create collection " << collectionId << " in database " << databaseId << ": " << TRI_last_error();
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1108,14 +1108,14 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       try {
         parsedProperties = VPackParser::fromJson(properties);
       } catch (...) {
-        LOG(WARNING) << "cannot unpack database properties for database " << databaseId;
+        LOG(WARN) << "cannot unpack database properties for database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
       VPackSlice const slice = parsedProperties->slice();
 
       if (!slice.isObject()) {
-        LOG(WARNING) << "cannot unpack database properties for database " << databaseId;
+        LOG(WARN) << "cannot unpack database properties for database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1123,7 +1123,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       VPackSlice const nameSlice = slice.get("name");
 
       if (!nameSlice.isString()) {
-        LOG(WARNING) << "cannot unpack database properties for database " << databaseId;
+        LOG(WARN) << "cannot unpack database properties for database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1154,7 +1154,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
                                          &vocbase, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG(WARNING) << "cannot create database " << databaseId << ": " << TRI_errno_string(res);
+        LOG(WARN) << "cannot create database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1278,7 +1278,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
 
   if (!TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker,
                            static_cast<void*>(this))) {
-    LOG(WARNING) << "WAL inspection failed when scanning logfile '" << logfileName.c_str() << "'";
+    LOG(WARN) << "WAL inspection failed when scanning logfile '" << logfileName.c_str() << "'";
     return TRI_ERROR_ARANGO_RECOVERY;
   }
 
