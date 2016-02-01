@@ -66,7 +66,7 @@ Latest Release - ArangoDB 2.8
 
 The [What's new in ArangoDB 2.8](https://docs.arangodb.com/NewFeatures/NewFeatures28.html) can be found in the documentation.
 
-**AQL Graph Traversals / Pattern Matching**: AQL offers a new feature to traverse over a graph without writing JavaScript functions but with all the other features you know from AQL. For this purpose, a special version of FOR variable-name IN expression has been introduced.
+**AQL Graph Traversals / Pattern Matching**: AQL offers a new feature to traverse over a graph without writing JavaScript functions but with all the other features you know from AQL. For this purpose, a special version of `FOR variable-name IN expression` has been introduced.
 
 The added **Array Indexes** are a major improvement to ArangoDB that you will love and never want to miss again. Hash indexes and skiplist indexes can now be defined for array values as well, so it’s freaking fast to access documents by individual array values.
 
