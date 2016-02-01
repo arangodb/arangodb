@@ -332,6 +332,8 @@ exports.createDeleteUpdateParallel = function(opts) {
       '@results': 'results'
     }).count();
 
+    print(m + " workers are up and running");
+
     if (m === n) {
       break;
     }
