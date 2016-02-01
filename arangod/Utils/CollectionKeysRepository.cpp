@@ -23,7 +23,7 @@
 
 #include "CollectionKeysRepository.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -59,9 +59,9 @@ CollectionKeysRepository::~CollectionKeysRepository() {
     }
 
     if (tries == 0) {
-      LOG_INFO("waiting for used keys to become unused");
+      LOG(INFO) << "waiting for used keys to become unused";
     } else if (tries == 120) {
-      LOG_WARNING("giving up waiting for unused keys");
+      LOG(WARNING) << "giving up waiting for unused keys";
     }
 
     usleep(500000);

@@ -23,7 +23,7 @@
 
 #include "RemoverThread.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
@@ -86,10 +86,9 @@ void RemoverThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
-      LOG_ERROR("got unexpected error in removerThread::run: %s",
-                TRI_errno_string(res));
+      LOG(ERROR) << "got unexpected error in removerThread::run: " << TRI_errno_string(res);
     } catch (...) {
-      LOG_ERROR("got unspecific error in removerThread::run");
+      LOG(ERROR) << "got unspecific error in removerThread::run";
     }
 
     if (stop == 0 && !worked) {

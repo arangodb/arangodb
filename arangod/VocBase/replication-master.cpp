@@ -23,7 +23,7 @@
 
 #include "replication-master.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,8 +61,5 @@ void TRI_LogMasterInfoReplication(TRI_replication_master_info_t const* info,
                                   char const* prefix) {
   TRI_ASSERT(info->_endpoint != nullptr);
 
-  LOG_INFO("%s master at %s, id %llu, version %d.%d, last log tick %llu",
-           prefix, info->_endpoint, (unsigned long long)info->_serverId,
-           info->_majorVersion, info->_minorVersion,
-           (unsigned long long)info->_lastLogTick);
+  LOG(INFO) << "" << prefix << " master at " << info->_endpoint << ", id " << info->_serverId << ", version " << info->_majorVersion << "." << info->_minorVersion << ", last log tick " << info->_lastLogTick;
 }

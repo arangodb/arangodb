@@ -86,9 +86,8 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const key = TRI_ObjectToString(args[0]);
 
-  int res = TRI_ERROR_NO_ERROR;
   VPackBuilder oldBuilder;
-  res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
+  int res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
@@ -1905,7 +1904,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't queue async request");
   }
 
-  LOG_DEBUG("JS_AsyncRequest: request has been submitted");
+  LOG(DEBUG) << "JS_AsyncRequest: request has been submitted";
 
   Return_PrepareClusterCommResultForJS(args, res);
   TRI_V8_TRY_CATCH_END
@@ -1968,7 +1967,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't do sync request");
   }
 
-  LOG_DEBUG("JS_SyncRequest: request has been done");
+  LOG(DEBUG) << "JS_SyncRequest: request has been done";
 
   Return_PrepareClusterCommResultForJS(args, *res);
   TRI_V8_TRY_CATCH_END
@@ -1995,7 +1994,7 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   OperationID operationID = TRI_ObjectToUInt64(args[0], true);
 
-  LOG_DEBUG("JS_Enquire: calling ClusterComm::enquire()");
+  LOG(DEBUG) << "JS_Enquire: calling ClusterComm::enquire()";
 
   ClusterCommResult const res = cc->enquire(operationID);
 
@@ -2063,7 +2062,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG_DEBUG("JS_Wait: calling ClusterComm::wait()");
+  LOG(DEBUG) << "JS_Wait: calling ClusterComm::wait()";
 
   ClusterCommResult const res =
       cc->wait(myclientTransactionID, mycoordTransactionID, myoperationID,
@@ -2132,7 +2131,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG_DEBUG("JS_Drop: calling ClusterComm::drop()");
+  LOG(DEBUG) << "JS_Drop: calling ClusterComm::drop()";
 
   cc->drop(myclientTransactionID, mycoordTransactionID, myoperationID,
            myshardID);

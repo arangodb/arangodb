@@ -32,12 +32,10 @@
 #include <fstream>
 #include <iostream>
 
-#include "Basics/conversions.h"
-#include "Basics/csv.h"
-#include "Basics/Dictionary.h"
+#include "Basics/Exceptions.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/Nonce.h"
 #include "Basics/process-utils.h"
 #include "Basics/ProgramOptions.h"
@@ -59,8 +57,7 @@
 
 #include "3rdParty/valgrind/valgrind.h"
 
-using namespace std;
-
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
@@ -108,7 +105,7 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
 static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                               std::string const& message) {
   if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
-    LOG_ERROR("encountered out-of-memory error");
+    LOG(ERROR) << "encountered out-of-memory error";
   }
 
   v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(message);
@@ -160,8 +157,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
 
   if (content == nullptr) {
-    LOG_ERROR("cannot load java script file '%s': %s", filename,
-              TRI_last_error());
+    LOG(ERROR) << "cannot load java script file '" << filename << "': " << TRI_last_error();
     return false;
   }
 
@@ -179,8 +175,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   if (content == nullptr) {
-    LOG_ERROR("cannot load java script file '%s': %s", filename,
-              TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    LOG(ERROR) << "cannot load java script file '" << filename << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
 
@@ -200,8 +195,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    LOG_ERROR("cannot load java script file '%s': compilation failed.",
-              filename);
+    LOG(ERROR) << "cannot load java script file '" << filename << "': compilation failed.";
     return false;
   }
 
@@ -219,7 +213,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     }
   }
 
-  LOG_TRACE("loaded java script file: '%s'", filename);
+  LOG(TRACE) << "loaded java script file: '" << filename << "'";
   return true;
 }
 
@@ -233,7 +227,7 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
   bool result;
   regex_t re;
 
-  LOG_TRACE("loading JavaScript directory: '%s'", path);
+  LOG(TRACE) << "loading JavaScript directory: '" << path << "'";
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
@@ -725,14 +719,14 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       size_t found = url.find('/', 7);
 
       relative = "/";
-      if (found != string::npos) {
+      if (found != std::string::npos) {
         relative.append(url.substr(found + 1));
         endpoint = url.substr(7, found - 7);
       } else {
         endpoint = url.substr(7);
       }
       found = endpoint.find(":");
-      if (found == string::npos) {
+      if (found == std::string::npos) {
         endpoint = endpoint + ":80";
       }
       endpoint = "tcp://" + endpoint;
@@ -740,14 +734,14 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       size_t found = url.find('/', 8);
 
       relative = "/";
-      if (found != string::npos) {
+      if (found != std::string::npos) {
         relative.append(url.substr(found + 1));
         endpoint = url.substr(8, found - 8);
       } else {
         endpoint = url.substr(8);
       }
       found = endpoint.find(":");
-      if (found == string::npos) {
+      if (found == std::string::npos) {
         endpoint = endpoint + ":443";
       }
       endpoint = "ssl://" + endpoint;
@@ -765,8 +759,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
     }
 
-    LOG_TRACE("downloading file. endpoint: %s, relative URL: %s",
-              endpoint.c_str(), url.c_str());
+    LOG(TRACE) << "downloading file. endpoint: " << endpoint.c_str() << ", relative URL: " << url.c_str();
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
@@ -934,11 +927,11 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
           keys->Get(v8::Integer::New(isolate, i))->ToString();
       v8::Handle<v8::Value> value = sandbox->Get(key);
 
-      if (TRI_IsTraceLogging(__FILE__)) {
+      if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
-        if (*keyName != 0) {
-          LOG_TRACE("copying key '%s' from sandbox to context", *keyName);
+        if (*keyName != nullptr) {
+          LOG(TRACE) << "copying key '" << *keyName << "' from sandbox to context";
         }
       }
 
@@ -1005,11 +998,11 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
           keys->Get(v8::Integer::New(isolate, i))->ToString();
       v8::Handle<v8::Value> value = context->Global()->Get(key);
 
-      if (TRI_IsTraceLogging(__FILE__)) {
+      if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != nullptr) {
-          LOG_TRACE("copying key '%s' from context to sandbox", *keyName);
+          LOG(TRACE) << "copying key '" << *keyName << "' from context to sandbox";
         }
       }
 
@@ -1680,19 +1673,19 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (TRI_CaseEqualString(*level, "fatal")) {
-    LOG_ERROR("(FATAL) %s", *message);
+    LOG(ERROR) << "(FATAL) " << *message;
   } else if (TRI_CaseEqualString(*level, "error")) {
-    LOG_ERROR("%s", *message);
+    LOG(ERROR) << "" << *message;
   } else if (TRI_CaseEqualString(*level, "warning")) {
-    LOG_WARNING("%s", *message);
+    LOG(WARNING) << "" << *message;
   } else if (TRI_CaseEqualString(*level, "info")) {
-    LOG_INFO("%s", *message);
+    LOG(INFO) << "" << *message;
   } else if (TRI_CaseEqualString(*level, "debug")) {
-    LOG_DEBUG("%s", *message);
+    LOG(DEBUG) << "" << *message;
   } else if (TRI_CaseEqualString(*level, "trace")) {
-    LOG_TRACE("%s", *message);
+    LOG(TRACE) << "" << *message;
   } else {
-    LOG_ERROR("(unknown log level '%s') %s", *level, *message);
+    LOG(ERROR) << "(unknown log level '" << *level << "') " << *message;
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -2381,9 +2374,9 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid <content> buffer value");
     }
 
-    ofstream file;
+    std::ofstream file;
 
-    file.open(*name, ios::out | ios::binary | ios::app);
+    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file.write(data, size);
@@ -2397,9 +2390,9 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
     }
 
-    ofstream file;
+    std::ofstream file;
 
-    file.open(*name, ios::out | ios::binary | ios::app);
+    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file << *content;
@@ -2440,9 +2433,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid <content> buffer value");
     }
 
-    ofstream file;
+    std::ofstream file;
 
-    file.open(*name, ios::out | ios::binary);
+    file.open(*name, std::ios::out | std::ios::binary);
 
     if (file.is_open()) {
       file.write(data, size);
@@ -2456,9 +2449,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
     }
 
-    ofstream file;
+    std::ofstream file;
 
-    file.open(*name, ios::out | ios::binary);
+    file.open(*name, std::ios::out | std::ios::binary);
 
     if (file.is_open()) {
       file << *content;
@@ -3667,7 +3660,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
     if (exceptionString == nullptr) {
       result = "JavaScript exception\n";
     } else {
-      result = "JavaScript exception: " + string(exceptionString) + "\n";
+      result = "JavaScript exception: " + std::string(exceptionString) + "\n";
     }
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
@@ -3682,15 +3675,15 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
       if (exceptionString == nullptr) {
         result = "JavaScript exception\n";
       } else {
-        result = "JavaScript exception: " + string(exceptionString) + "\n";
+        result = "JavaScript exception: " + std::string(exceptionString) + "\n";
       }
     } else {
       if (exceptionString == nullptr) {
-        result = "JavaScript exception in file '" + string(filenameString) +
+        result = "JavaScript exception in file '" + std::string(filenameString) +
                  "' at " + StringUtils::itoa(linenum) + "," +
                  StringUtils::itoa(start) + "\n";
       } else {
-        result = "JavaScript exception in file '" + string(filenameString) +
+        result = "JavaScript exception in file '" + std::string(filenameString) +
                  "' at " + StringUtils::itoa(linenum) + "," +
                  StringUtils::itoa(start) + ": " + exceptionString + "\n";
       }
@@ -3717,7 +3710,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
     TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
-      result += "stacktrace: " + string(*stacktrace) + "\n";
+      result += "stacktrace: " + std::string(*stacktrace) + "\n";
     }
   }
 
@@ -3739,35 +3732,31 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   // exception.
   if (message.IsEmpty()) {
     if (exceptionString == nullptr) {
-      LOG_ERROR("JavaScript exception");
+      LOG(ERROR) << "JavaScript exception";
     } else {
-      LOG_ERROR("JavaScript exception: %s", exceptionString);
+      LOG(ERROR) << "JavaScript exception: " << exceptionString;
     }
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
                               message->GetScriptResourceName());
     char const* filenameString = *filename;
-#ifdef TRI_ENABLE_LOGGER
     // if ifdef is not used, the compiler will complain about linenum being
     // unused
     int linenum = message->GetLineNumber();
-#endif
     int start = message->GetStartColumn() + 1;
     int end = message->GetEndColumn();
 
     if (filenameString == nullptr) {
       if (exceptionString == nullptr) {
-        LOG_ERROR("JavaScript exception");
+        LOG(ERROR) << "JavaScript exception";
       } else {
-        LOG_ERROR("JavaScript exception: %s", exceptionString);
+        LOG(ERROR) << "JavaScript exception: " << exceptionString;
       }
     } else {
       if (exceptionString == nullptr) {
-        LOG_ERROR("JavaScript exception in file '%s' at %d,%d", filenameString,
-                  linenum, start);
+        LOG(ERROR) << "JavaScript exception in file '" << filenameString << "' at " << linenum << "," << start;
       } else {
-        LOG_ERROR("JavaScript exception in file '%s' at %d,%d: %s",
-                  filenameString, linenum, start, exceptionString);
+        LOG(ERROR) << "JavaScript exception in file '" << filenameString << "' at " << linenum << "," << start << ": " << exceptionString;
       }
     }
 
@@ -3776,7 +3765,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     if (*sourceline) {
       std::string l = *sourceline;
 
-      LOG_ERROR("!%s", l.c_str());
+      LOG(ERROR) << "!" << l.c_str();
 
       if (1 < start) {
         l = std::string(start - 1, ' ');
@@ -3786,13 +3775,13 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
       l += std::string((size_t)(end - start + 1), '^');
 
-      LOG_ERROR("!%s", l.c_str());
+      LOG(ERROR) << "!" << l.c_str();
     }
 
     TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
-      LOG_ERROR("stacktrace: %s", *stacktrace);
+      LOG(ERROR) << "stacktrace: " << *stacktrace;
     }
   }
 }
@@ -3913,7 +3902,7 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 
   if (autoPrepend) {
     CreateErrorObject(isolate, errorNumber,
-                      message + ": " + string(TRI_errno_string(errorNumber)));
+                      message + ": " + std::string(TRI_errno_string(errorNumber)));
   } else {
     CreateErrorObject(isolate, errorNumber, message);
   }

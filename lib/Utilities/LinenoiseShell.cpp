@@ -28,9 +28,7 @@ extern "C" {
 }
 
 #include "Utilities/Completer.h"
-#include "Utilities/LineEditor.h"
 
-using namespace std;
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////

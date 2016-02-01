@@ -23,8 +23,6 @@
 
 #include "v8-query.h"
 #include "Aql/Query.h"
-#include "Basics/logging.h"
-#include "Basics/random.h"
 #include "Basics/StringBuffer.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
@@ -786,9 +784,9 @@ static void EdgesQuery(TRI_edge_direction_e direction,
           TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid,
                                             key.get());
 
-      for (size_t j = 0; j < edges.size(); ++j) {
+      for (auto& edge : edges) {
         v8::Handle<v8::Value> doc =
-            WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
+            WRAP_SHAPED_JSON(trx, col->_cid, edge.getDataPtr());
 
         if (doc.IsEmpty()) {
           // error

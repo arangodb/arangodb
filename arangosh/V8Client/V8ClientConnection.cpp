@@ -24,17 +24,13 @@
 
 #include "V8ClientConnection.h"
 
-#include <sstream>
-
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-json.h"
 #include "V8/v8-globals.h"
 
@@ -64,7 +60,7 @@ V8ClientConnection::V8ClientConnection(
   _client = new SimpleHttpClient(_connection, requestTimeout, warn);
 
   if (_client == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
+    LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
   }
 
   _client->setLocationRewriter(this, &rewriteLocation);

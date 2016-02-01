@@ -32,7 +32,6 @@
 #include "Utilities/LinenoiseShell.h"
 #endif
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -137,7 +136,7 @@ std::string ShellBase::prompt(std::string const& prompt,
     ++lineno;
 
     // remove any prompt at the beginning of the line
-    size_t pos = string::npos;
+    size_t pos = std::string::npos;
 
     if (StringUtils::isPrefix(line, plain)) {
       pos = line.find('>');
@@ -145,10 +144,10 @@ std::string ShellBase::prompt(std::string const& prompt,
       pos = line.find('>');
     }
 
-    if (pos != string::npos) {
+    if (pos != std::string::npos) {
       pos = line.find_first_not_of(" \t", pos + 1);
 
-      if (pos != string::npos) {
+      if (pos != std::string::npos) {
         line = line.substr(pos);
       } else {
         line.clear();

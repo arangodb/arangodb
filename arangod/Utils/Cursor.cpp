@@ -98,8 +98,8 @@ bool JsonCursor::hasNext() {
 ////////////////////////////////////////////////////////////////////////////////
 
 VPackSlice JsonCursor::next() {
-  TRI_ASSERT_EXPENSIVE(_json != nullptr);
-  TRI_ASSERT_EXPENSIVE(_position < _size);
+  TRI_ASSERT(_json != nullptr);
+  TRI_ASSERT(_position < _size);
   VPackSlice slice = _json->slice();
   return slice.at(_position++);
 }

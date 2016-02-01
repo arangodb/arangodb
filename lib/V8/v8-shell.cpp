@@ -23,12 +23,9 @@
 
 #include "v8-shell.h"
 
-#include "Basics/conversions.h"
 #include "Basics/csv.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
 #include "Basics/shell-colors.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
@@ -36,8 +33,6 @@
 #include "V8/v8-utils.h"
 
 #include <fstream>
-
-using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begins a new CSV line
@@ -244,13 +239,13 @@ static void JS_ProcessJsonFile(
 
   // read and convert
   std::string line;
-  ifstream file(*filename);
+  std::ifstream file(*filename);
 
   if (file.is_open()) {
     size_t row = 0;
 
     while (file.good()) {
-      getline(file, line);
+      std::getline(file, line);
 
       char const* ptr = line.c_str();
       char const* end = ptr + line.length();

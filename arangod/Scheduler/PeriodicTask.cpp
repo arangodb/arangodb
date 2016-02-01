@@ -23,20 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PeriodicTask.h"
-
 #include "Basics/json.h"
-#include "Basics/logging.h"
 #include "Scheduler/Scheduler.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::rest;
-
-// -----------------------------------------------------------------------------
-// constructors and destructors
-// -----------------------------------------------------------------------------
 
 PeriodicTask::PeriodicTask(std::string const& id, double offset,
                            double interval)

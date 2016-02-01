@@ -26,12 +26,11 @@
 
 #include <math.h>
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -124,7 +123,7 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
   MUTEX_LOCKER(mutexLocker, MutexNonce);
 
   if (TimestampNonces == 0) {
-    LOG_TRACE("setting nonce hash size to %d", (int)SizeNonces);
+    LOG(TRACE) << "setting nonce hash size to " << SizeNonces;
     create(SizeNonces);
   }
 
@@ -164,8 +163,7 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
     age >>= 1;
   }
 
-  LOG_TRACE("age of timestamp %ld is %ld (log %ld)", (unsigned long)timestamp,
-            (unsigned long)age, (unsigned long)l2age);
+  LOG(TRACE) << "age of timestamp " << timestamp << " is " << age << " (log " << l2age << ")";
 
   StatisticsNonces[l2age][proofs]++;
 
@@ -189,7 +187,7 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
   return 0 < proofs;
 }
 
-vector<Statistics> statistics() {
+std::vector<Statistics> statistics() {
   MUTEX_LOCKER(mutexLocker, MutexNonce);
 
   int const N = 4;

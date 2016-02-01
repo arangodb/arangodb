@@ -23,7 +23,7 @@
 
 #include "PathBasedIndex.h"
 #include "Aql/AstNode.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 using namespace arangodb;
 
@@ -101,7 +101,7 @@ PathBasedIndex::~PathBasedIndex() {}
 int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
                                 TRI_doc_mptr_t const* document) {
   TRI_ASSERT(document != nullptr);
-  TRI_ASSERT_EXPENSIVE(document->getDataPtr() !=
+  TRI_ASSERT(document->getDataPtr() !=
                        nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   TRI_shaped_json_t shapedJson;
@@ -111,7 +111,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
       document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (shapedJson._sid == TRI_SHAPE_ILLEGAL) {
-    LOG_WARNING("encountered invalid marker with shape id 0");
+    LOG(WARNING) << "encountered invalid marker with shape id 0";
 
     return TRI_ERROR_INTERNAL;
   }

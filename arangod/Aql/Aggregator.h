@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
-#include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
 

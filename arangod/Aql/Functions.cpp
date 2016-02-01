@@ -294,6 +294,7 @@ static double ValueToNumber(TRI_json_t const* json, bool& isValid) {
   return 0.0;
 }
 
+#if 0
 static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
   if (slice.isNull()) {
     isValid = true;
@@ -340,6 +341,7 @@ static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
   isValid = false;
   return 0.0;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a value into a boolean value
@@ -363,6 +365,7 @@ static bool ValueToBoolean(TRI_json_t const* json) {
   return boolValue;
 }
 
+#if 0
 static bool ValueToBoolean(VPackSlice const& slice) {
   if (slice.isBoolean()) {
     return slice.getBoolean();
@@ -378,6 +381,7 @@ static bool ValueToBoolean(VPackSlice const& slice) {
   }
   return false;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a boolean parameter from an array
@@ -512,6 +516,7 @@ static bool ListContainsElement(Json const& list, Json const& testee) {
   return ListContainsElement(list, testee, unused);
 }
 
+#if 0
 static bool ListContainsElement(VPackSlice const& list,
                                 VPackSlice const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
@@ -524,11 +529,14 @@ static bool ListContainsElement(VPackSlice const& list,
   }
   return false;
 }
+#endif
 
+#if 0
 static bool ListContainsElement(VPackSlice const& list, VPackSlice const& testee) {
   size_t unused;
   return ListContainsElement(list, testee, unused);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Computes the Variance of the given list.
@@ -560,6 +568,7 @@ static bool Variance(Json const& values, double& value, size_t& count) {
   return true;
 }
 
+#if 0
 static bool Variance(VPackSlice const& values, double& value, size_t& count) {
   TRI_ASSERT(values.isArray());
   value = 0.0;
@@ -580,8 +589,7 @@ static bool Variance(VPackSlice const& values, double& value, size_t& count) {
   }
   return true;
 }
-
-
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Sorts the given list of Numbers in ASC order.
@@ -612,6 +620,7 @@ static bool SortNumberList(Json const& values, std::vector<double>& result) {
 ///        Returns false if the list contains non-number values.
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 static bool SortNumberList(VPackSlice const& values,
                            std::vector<double>& result) {
   TRI_ASSERT(values.isArray());
@@ -628,6 +637,7 @@ static bool SortNumberList(VPackSlice const& values,
   std::sort(result.begin(), result.end());
   return true;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Expands a shaped Json

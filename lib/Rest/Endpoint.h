@@ -25,9 +25,7 @@
 #define LIB_REST_ENDPOINT_H 1
 
 #include "Basics/socket-utils.h"
-
 #include "Basics/Common.h"
-#include "Basics/StringUtils.h"
 
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <arpa/inet.h>
@@ -76,7 +74,7 @@ class Endpoint {
   /// @brief creates an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  Endpoint(const EndpointType, const DomainType, const EncryptionType,
+  Endpoint(EndpointType, DomainType, EncryptionType,
            std::string const&, int);
 
  public:

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shape-accessor.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/vector.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/VocShaper.h"
@@ -49,7 +49,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
   TRI_shape_t const* shape = shaper->lookupShapeId(accessor->_sid);
 
   if (shape == nullptr) {
-    LOG_ERROR("unknown shape id %llu", (unsigned long long)accessor->_sid);
+    LOG(ERROR) << "unknown shape id " << accessor->_sid;
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
@@ -69,8 +69,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
       shaper->lookupAttributePathByPid(accessor->_pid);
 
   if (path == nullptr) {
-    LOG_ERROR("unknown attribute path %llu",
-              (unsigned long long)accessor->_pid);
+    LOG(ERROR) << "unknown attribute path " << accessor->_pid;
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
@@ -113,18 +112,12 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
         if (*paids == *aids) {
           TRI_shape_sid_t const sid = *sids;
 
-          LOG_TRACE(
-              "found aid '%ld' as fixed entry with sid '%ld' and offset '%ld' "
-              "- '%ld'",
-              (unsigned long)*paids, (unsigned long)sid,
-              (unsigned long)offsetsF[0], (unsigned long)offsetsF[1]);
+          LOG(TRACE) << "found aid '" << *paids << "' as fixed entry with sid '" << sid << "' and offset '" << offsetsF[0] << "' - '" << offsetsF[1] << "'";
 
           shape = shaper->lookupShapeId(sid);
 
           if (shape == nullptr) {
-            LOG_ERROR("unknown shape id '%llu' for attribute id '%llu'",
-                      (unsigned long long)accessor->_sid,
-                      (unsigned long long)*paids);
+            LOG(ERROR) << "unknown shape id '" << accessor->_sid << "' for attribute id '" << *paids << "'";
 
             TRI_DestroyVectorPointer(&ops);
             return false;
@@ -135,7 +128,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
           int res = TRI_ReserveVectorPointer(&ops, 4);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("out of memory");
+            LOG(ERROR) << "out of memory";
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -161,15 +154,12 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
         if (*paids == *aids) {
           TRI_shape_sid_t const sid = *sids;
 
-          LOG_TRACE("found aid '%llu' as variable entry with sid '%llu'",
-                    (unsigned long long)*paids, (unsigned long long)sid);
+          LOG(TRACE) << "found aid '" << *paids << "' as variable entry with sid '" << sid << "'";
 
           shape = shaper->lookupShapeId(sid);
 
           if (shape == nullptr) {
-            LOG_ERROR("unknown shape id '%llu' for attribute id '%llu'",
-                      (unsigned long long)accessor->_sid,
-                      (unsigned long long)*paids);
+            LOG(ERROR) << "unknown shape id '" << accessor->_sid << "' for attribute id '" << *paids << "'";
 
             TRI_DestroyVectorPointer(&ops);
             return false;
@@ -180,7 +170,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
           int res = TRI_ReserveVectorPointer(&ops, 3);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("out of memory");
+            LOG(ERROR) << "out of memory";
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -197,7 +187,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
         continue;
       }
 
-      LOG_TRACE("unknown attribute id '%llu'", (unsigned long long)*paids);
+      LOG(TRACE) << "unknown attribute id '" << *paids << "'";
     }
 
     TRI_DestroyVectorPointer(&ops);

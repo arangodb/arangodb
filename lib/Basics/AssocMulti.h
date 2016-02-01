@@ -31,7 +31,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -1081,11 +1081,11 @@ class AssocMulti {
   void resizeInternal(UserData* userData, Bucket& b, size_t size) {
     std::string const cb(_contextCallback());
 
-    LOG_TRACE("resizing index %s, target size: %llu", cb.c_str(),
-              (unsigned long long)size);
+    LOG(TRACE) << "resizing index " << cb.c_str() << ", target size: " << size;
 
-    LOG_ACTION("index-resize %s, target size: %llu", cb.c_str(),
-               (unsigned long long)size);
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
+        "index-resize " << cb << ", target size: " << size;
+
     double start = TRI_microtime();
 
     EntryType* oldTable = b._table;
@@ -1158,10 +1158,9 @@ class AssocMulti {
 
     delete[] oldTable;
 
-    LOG_TRACE("resizing index %s done", cb.c_str());
+    LOG(TRACE) << "resizing index " << cb.c_str() << " done";
 
-    LOG_TIMER((TRI_microtime() - start), "index-resize, %s, target size: %llu",
-              cb.c_str(), (unsigned long long)size);
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << size;
   }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH

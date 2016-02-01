@@ -259,7 +259,7 @@ std::string Slice::toJson() const {
   StringSink sink(&buffer);
   Dumper dumper(&sink, options);
   dumper.dump(this);
-  return std::move(buffer);
+  return buffer;
 }
 
 std::string Slice::toString() const {
@@ -270,7 +270,7 @@ std::string Slice::toString() const {
   std::string buffer;
   StringSink sink(&buffer);
   Dumper::dump(this, &sink, &prettyOptions);
-  return std::move(buffer);
+  return buffer;
 }
 
 std::string Slice::hexType() const { return HexDump::toHex(head()); }

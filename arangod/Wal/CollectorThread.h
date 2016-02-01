@@ -55,10 +55,10 @@ struct CollectorOperation {
         datafileMarkerSize(datafileMarkerSize),
         walPosition(walPosition),
         datafileId(datafileId) {
-    TRI_ASSERT_EXPENSIVE(datafilePosition != nullptr);
-    TRI_ASSERT_EXPENSIVE(datafileMarkerSize > 0);
-    TRI_ASSERT_EXPENSIVE(walPosition != nullptr);
-    TRI_ASSERT_EXPENSIVE(datafileId > 0);
+    TRI_ASSERT(datafilePosition != nullptr);
+    TRI_ASSERT(datafileMarkerSize > 0);
+    TRI_ASSERT(walPosition != nullptr);
+    TRI_ASSERT(datafileId > 0);
   }
 
   char const* datafilePosition;

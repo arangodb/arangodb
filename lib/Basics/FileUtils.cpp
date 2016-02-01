@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 
 #if defined(_WIN32) && defined(_MSC_VER)
@@ -46,8 +46,6 @@
 #define TRI_DIR_FN(item) item->d_name
 
 #endif
-
-using namespace std;
 
 namespace arangodb {
 namespace basics {
@@ -118,7 +116,7 @@ void throwFileReadError(int fd, std::string const& filename) {
 
   std::string message("read failed for file '" + filename + "': " +
                       strerror(res));
-  LOG_TRACE("%s", message.c_str());
+  LOG(TRACE) << "" << message.c_str();
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
@@ -133,7 +131,7 @@ void throwFileWriteError(int fd, std::string const& filename) {
 
   std::string message("write failed for file '" + filename + "': " +
                       strerror(res));
-  LOG_TRACE("%s", message.c_str());
+  LOG(TRACE) << "" << message.c_str();
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
@@ -539,7 +537,7 @@ off_t size(std::string const& path) {
 std::string stripExtension(std::string const& path,
                            std::string const& extension) {
   size_t pos = path.rfind(extension);
-  if (pos == string::npos) {
+  if (pos == std::string::npos) {
     return path;
   }
 

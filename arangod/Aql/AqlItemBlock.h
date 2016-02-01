@@ -80,7 +80,7 @@ class AqlItemBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue getValue(size_t index, RegisterId varNr) const {
-    TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
 
@@ -89,7 +89,7 @@ class AqlItemBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
-    TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
 
@@ -98,8 +98,8 @@ class AqlItemBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
-    TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT_EXPENSIVE(_data[index * _nrRegs + varNr].isEmpty());
+    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
     // First update the reference count, if this fails, the value is empty
     if (value.requiresDestruction()) {
@@ -111,7 +111,7 @@ class AqlItemBlock {
         }
         _valueCount.emplace(value, 1);
       } else {
-        TRI_ASSERT_EXPENSIVE(it->second > 0);
+        TRI_ASSERT(it->second > 0);
         ++(it->second);
       }
     }
@@ -126,8 +126,8 @@ class AqlItemBlock {
 
   void setShaped(size_t index, RegisterId varNr,
                  TRI_df_marker_t const* marker) {
-    TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT_EXPENSIVE(!_data[index * _nrRegs + varNr].requiresDestruction());
+    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(!_data[index * _nrRegs + varNr].requiresDestruction());
 
     auto& v = _data[index * _nrRegs + varNr];
     v._marker = marker;

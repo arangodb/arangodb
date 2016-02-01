@@ -22,15 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminLogHandler.h"
-
-#include "Basics/StringUtils.h"
 #include "Basics/logging.h"
+#include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -196,7 +194,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     if (search) {
       std::string text = StringUtils::tolower(buf->_text);
 
-      if (text.find(searchString) == string::npos) {
+      if (text.find(searchString) == std::string::npos) {
         continue;
       }
     }

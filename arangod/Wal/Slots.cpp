@@ -24,8 +24,7 @@
 #include "Slots.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/hashes.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "VocBase/datafile.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
@@ -592,8 +591,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
           int res = writeFooter(slot);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("could not write logfile footer: %s",
-                      TRI_errno_string(res));
+            LOG(ERROR) << "could not write logfile footer: " << TRI_errno_string(res);
             return res;
           }
 
@@ -635,8 +633,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
             res = writeHeader(slot);
 
             if (res != TRI_ERROR_NO_ERROR) {
-              LOG_ERROR("could not write logfile header: %s",
-                        TRI_errno_string(res));
+              LOG(ERROR) << "could not write logfile header: " << TRI_errno_string(res);
               return res;
             }
 

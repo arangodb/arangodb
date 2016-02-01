@@ -27,6 +27,7 @@
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Dispatcher/DispatcherThread.h"
@@ -1329,7 +1330,7 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _queryId(queryId),
       _isResponsibleForInitCursor(en->isResponsibleForInitCursor()) {
   TRI_ASSERT(!queryId.empty());
-  TRI_ASSERT_EXPENSIVE(
+  TRI_ASSERT(
       (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
       (!arangodb::ServerState::instance()->isCoordinator() &&
        !ownName.empty()));

@@ -32,7 +32,7 @@
 #endif
 
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 
@@ -91,7 +91,7 @@ void socketCallback(struct ev_loop*, ev_io* w, int revents) {
     // note: task may have been destroyed by here, so it's not safe to access it
     // anymore
   } else {
-    LOG_WARNING("socketCallback called for unknown task");
+    LOG(WARNING) << "socketCallback called for unknown task";
     // TODO: given that the task is unknown, is it safe to stop to I/O here?
     // ev_io_stop(watcher->loop, w);
   }
@@ -219,10 +219,10 @@ SchedulerLibev::SchedulerLibev(size_t concurrency, int backend)
   //_backend = 1;
 
   // report status
-  LOG_TRACE("supported backends: %d", (int)ev_supported_backends());
-  LOG_TRACE("recommended backends: %d", (int)ev_recommended_backends());
-  LOG_TRACE("embeddable backends: %d", (int)ev_embeddable_backends());
-  LOG_TRACE("backend flags: %d", (int)backend);
+  LOG(TRACE) << "supported backends: " << ev_supported_backends();
+  LOG(TRACE) << "recommended backends: " << ev_recommended_backends();
+  LOG(TRACE) << "embeddable backends: " << ev_embeddable_backends();
+  LOG(TRACE) << "backend flags: " << backend;
 
   // construct the loops
   _loops = new struct ev_loop* [nrThreads];

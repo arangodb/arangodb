@@ -28,7 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "VocBase/datafile.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"
@@ -294,9 +294,7 @@ class Logfile {
         break;
     }
 
-    LOG_TRACE("changing logfile status from %s to %s for logfile %llu",
-              statusText(_status).c_str(), statusText(status).c_str(),
-              (unsigned long long)id());
+    LOG(TRACE) << "changing logfile status from " << statusText(_status).c_str() << " to " << statusText(status).c_str() << " for logfile " << id();
     _status = status;
   }
 
@@ -343,7 +341,7 @@ class Logfile {
   //////////////////////////////////////////////////////////////////////////////
 
   inline void release() {
-    TRI_ASSERT_EXPENSIVE(_users > 0);
+    TRI_ASSERT(_users > 0);
     --_users;
   }
 

@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Logger.h"
 #include "Replication/Syncer.h"
 #include "Utils/transactions.h"
 
@@ -110,7 +111,7 @@ class InitialSyncer : public Syncer {
     _progress = msg;
 
     if (_verbose) {
-      LOG_INFO("synchronization progress: %s", msg.c_str());
+      LOG(INFO) << "synchronization progress: " << msg.c_str();
     }
 
     if (_vocbase->_replicationApplier != nullptr) {

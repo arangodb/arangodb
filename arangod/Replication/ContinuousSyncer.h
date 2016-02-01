@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Replication/Syncer.h"
-#include "Utils/ReplicationTransaction.h"
 #include "VocBase/replication-applier.h"
 
 struct TRI_json_t;

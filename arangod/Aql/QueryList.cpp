@@ -23,7 +23,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/Query.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/Exceptions.h"
@@ -171,10 +171,14 @@ void QueryList::remove(Query const* query, double now) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
 
+          std::string q(queryString, length);
+          q.append(originalLength > maxLength ? "..." : "");
+
+          LOG_TOPIC(WARNING, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::DURATION(now - entry->started);
+
           _slow.emplace_back(QueryEntryCopy(
               entry->query->id(),
-              std::string(queryString, length)
-                  .append(originalLength > maxLength ? "..." : ""),
+              std::move(q),
               entry->started, now - entry->started,
               std::string(" (while finished)")));
 
@@ -217,8 +221,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   }
 
   // log outside the lock
-  LOG_WARNING("killing AQL query %llu '%s'", (unsigned long long)id,
-              queryString.c_str());
+  LOG(WARNING) << "killing AQL query " << id << " '" << queryString.c_str() << "'";
 
   return TRI_ERROR_NO_ERROR;
 }

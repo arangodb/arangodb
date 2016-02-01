@@ -24,7 +24,7 @@
 
 #include "Mutex.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 using namespace arangodb;
 
@@ -70,10 +70,10 @@ void Mutex::lock() {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("mutex deadlock detected");
+      LOG(ERROR) << "mutex deadlock detected";
     }
 
-    LOG_FATAL_AND_EXIT("could not lock the mutex: %s", strerror(rc));
+    LOG(FATAL) << "could not lock the mutex: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 }
 
@@ -95,7 +95,7 @@ void Mutex::unlock() {
   int rc = pthread_mutex_unlock(&_mutex);
 
   if (rc != 0) {
-    LOG_FATAL_AND_EXIT("could not release the mutex: %s", strerror(rc));
+    LOG(FATAL) << "could not release the mutex: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 }
 

@@ -300,6 +300,7 @@ static void JS_SynchronizeReplication(
     }
   }
 
+#if 0
   bool forSynchronousReplication = false;
   if (object->Has(TRI_V8_ASCII_STRING("forSynchronousReplication"))) {
     if (object->Get(TRI_V8_ASCII_STRING("forSynchronousReplication"))->IsBoolean()) {
@@ -307,6 +308,7 @@ static void JS_SynchronizeReplication(
           TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("forSynchronousReplication")));
     }
   }
+#endif  
 
   std::string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,

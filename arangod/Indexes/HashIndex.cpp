@@ -74,7 +74,7 @@ static uint64_t HashKey(void* userData,
 static bool IsEqualKeyElement(void* userData,
                               TRI_hash_index_search_value_t const* left,
                               TRI_index_element_t const* right) {
-  TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
+  TRI_ASSERT(right->document() != nullptr);
 
   for (size_t j = 0; j < left->_length; ++j) {
     TRI_shaped_json_t* leftJson = &left->_values[j];

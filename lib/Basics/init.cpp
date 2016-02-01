@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "init.h"
-
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/logging.h"

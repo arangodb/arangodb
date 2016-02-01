@@ -205,7 +205,7 @@ int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
       return 1;
     }
 
-    TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
+    TRI_ASSERT(lWeight == rWeight);
   }
 
   // lhs and rhs have equal weights

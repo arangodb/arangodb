@@ -139,7 +139,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_df_marker_t const* getMarker() const {
-    TRI_ASSERT_EXPENSIVE(isShaped());
+    TRI_ASSERT(isShaped());
     return _marker;
   }
 
