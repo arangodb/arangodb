@@ -462,6 +462,10 @@ HttpResponse::HttpResponse(HttpResponseCode code, uint32_t apiCompatibility)
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse::~HttpResponse() {
+
+  // @BrainStorming Needed :-> One possible approach to handle velocypack is to handle it as json and then destroy.
+  // Other could be to use it as private destructor overloading: http://stackoverflow.com/questions/17863715/calling-a-self-destructor-from-inside-a-method
+  
   for (auto& it : _freeables) {
     delete[] it;
   }
