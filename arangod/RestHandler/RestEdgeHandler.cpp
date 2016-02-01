@@ -49,7 +49,7 @@ using namespace arangodb::rest;
   }
 
 
-RestEdgeHandler::RestEdgeHandler(HttpRequest* request)
+RestEdgeHandler::RestEdgeHandler(GeneralRequest* request)
     : RestDocumentHandler(request) {}
 
 

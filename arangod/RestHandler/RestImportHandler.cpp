@@ -40,7 +40,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestImportHandler::RestImportHandler(HttpRequest* request)
+RestImportHandler::RestImportHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request), _onDuplicateAction(DUPLICATE_ERROR) {}
 
 
@@ -69,10 +69,10 @@ HttpHandler::status_t RestImportHandler::execute() {
   }
 
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_POST: {
+    case GeneralRequest::HTTP_REQUEST_POST: {
       // extract the import type
       std::string const documentType = _request->value("type", found);
 

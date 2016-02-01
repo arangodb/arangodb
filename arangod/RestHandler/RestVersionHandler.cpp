@@ -40,7 +40,7 @@ using namespace arangodb::admin;
 extern AnyServer* ArangoInstance;
 
 
-RestVersionHandler::RestVersionHandler(HttpRequest* request)
+RestVersionHandler::RestVersionHandler(GeneralRequest* request)
     : RestBaseHandler(request) {}
 
 

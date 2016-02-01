@@ -64,7 +64,7 @@ void mergeResponseHeaders(arangodb::rest::HttpResponse* response,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::map<std::string, std::string> getForwardableRequestHeaders(
-    arangodb::rest::HttpRequest* request);
+    arangodb::rest::GeneralRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two JSON

@@ -313,7 +313,7 @@ static int TryCreateDatabase(std::string const& name) {
   std::string const body(arangodb::basics::JsonHelper::toString(json.json()));
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/database",
+      Client->request(GeneralRequest::HTTP_REQUEST_POST, "/_api/database",
                       body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
@@ -343,7 +343,7 @@ static int TryCreateDatabase(std::string const& name) {
 
 static std::string GetArangoVersion() {
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
+      GeneralRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     return "";
@@ -391,7 +391,7 @@ static std::string GetArangoVersion() {
 
 static bool GetArangoIsCluster() {
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_admin/server/role", "", 0));
+      GeneralRequest::HTTP_REQUEST_GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -444,7 +444,7 @@ static int SendRestoreCollection(VPackSlice const& slice, std::string const& nam
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -474,7 +474,7 @@ static int SendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg) {
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -506,7 +506,7 @@ static int SendRestoreData(std::string const& cname, char const* buffer,
                           (Force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_PUT, url, buffer, bufferSize));
+      Client->request(GeneralRequest::HTTP_REQUEST_PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();

@@ -626,7 +626,7 @@ void ImportHelper::sendCsvBuffer() {
              StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
              StringUtils::urlEncode(_onDuplicateAction));
   std::unique_ptr<SimpleHttpResult> result(_client->request(
-      HttpRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(),
+      GeneralRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(),
       _outputBuffer.length(), headerFields));
 
   handleResult(result.get());
@@ -652,7 +652,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 
   std::map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(_client->request(
-      HttpRequest::HTTP_REQUEST_POST, url, str, len, headerFields));
+      GeneralRequest::HTTP_REQUEST_POST, url, str, len, headerFields));
 
   handleResult(result.get());
 }

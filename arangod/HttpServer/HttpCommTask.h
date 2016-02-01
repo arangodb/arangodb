@@ -284,7 +284,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief http version number used
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralRequest::HttpVersion _httpVersion;
+  GeneralRequest::ProtocolVersion _httpVersion;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief type of request (GET, POST, ...)

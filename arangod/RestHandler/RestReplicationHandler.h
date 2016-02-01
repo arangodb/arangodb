@@ -47,7 +47,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   
  public:
 
-  explicit RestReplicationHandler(rest::HttpRequest*);
+  explicit RestReplicationHandler(rest::GeneralRequest*);
 
 
   ~RestReplicationHandler();

@@ -226,7 +226,7 @@ bool HttpCommTask::processRead() {
       _request->setClientTaskId(_taskId);
 
       // check HTTP protocol version
-      _httpVersion = _request->httpVersion();
+      _httpVersion = _request->protocolVersion();
 
       if (_httpVersion != GeneralRequest::HTTP_1_0 &&
           _httpVersion != GeneralRequest::HTTP_1_1) {

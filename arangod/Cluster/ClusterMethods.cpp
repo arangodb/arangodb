@@ -864,7 +864,7 @@ int getDocumentOnCoordinator(
   if (rev != 0) {
     revstr = "?rev=" + StringUtils::itoa(rev);
   }
-  arangodb::rest::GeneralRequest::GeneralRequestType reqType;
+  arangodb::rest::GeneralRequest::RequestType reqType;
   if (generateDocument) {
     reqType = arangodb::rest::GeneralRequest::HTTP_REQUEST_GET;
   } else {
@@ -1415,7 +1415,7 @@ int modifyDocumentOnCoordinator(
   if (rev != 0) {
     revstr = "&rev=" + StringUtils::itoa(rev);
   }
-  arangodb::rest::GeneralRequest::GeneralRequestType reqType;
+  arangodb::rest::GeneralRequest::RequestType reqType;
   if (isPatch) {
     reqType = arangodb::rest::GeneralRequest::HTTP_REQUEST_PATCH;
     if (!keepNull) {

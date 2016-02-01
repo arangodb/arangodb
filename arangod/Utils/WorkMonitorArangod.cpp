@@ -95,7 +95,7 @@ void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
   b->add("method",
          VPackValue(GeneralRequest::translateMethod(request->requestType())));
   b->add("url", VPackValue(request->fullUrl()));
-  b->add("httpVersion", VPackValue(request->httpVersion()));
+  b->add("httpVersion", VPackValue(request->protocolVersion()));
   b->add("database", VPackValue(request->databaseName()));
   b->add("user", VPackValue(request->user()));
   b->add("taskId", VPackValue(request->clientTaskId()));

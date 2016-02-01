@@ -3043,7 +3043,7 @@ static void ListDatabasesCoordinator(
         headers["Authentication"] = TRI_ObjectToString(args[2]);
         auto res =
             cc->syncRequest("", 0, "server:" + sid,
-                            arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+                            arangodb::rest::GeneralRequest::HTTP_REQUEST_GET,
                             "/_api/database/user", std::string(""), headers, 0.0);
 
         if (res->status == CL_COMM_SENT) {

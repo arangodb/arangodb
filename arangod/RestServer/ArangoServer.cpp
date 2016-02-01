@@ -273,7 +273,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(
-    arangodb::rest::HttpRequest* request, TRI_server_t* server) {
+    arangodb::rest::GeneralRequest* request, TRI_server_t* server) {
   // get the request endpoint
   ConnectionInfo const& ci = request->connectionInfo();
   std::string const& endpoint = ci.endpoint;
@@ -333,7 +333,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(
 /// @brief add the context to a request
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SetRequestContext(arangodb::rest::HttpRequest* request,
+static bool SetRequestContext(arangodb::rest::GeneralRequest* request,
                               void* data) {
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
