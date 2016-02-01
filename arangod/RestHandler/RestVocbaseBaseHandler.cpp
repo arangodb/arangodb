@@ -118,7 +118,7 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 
 std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request)
     : RestBaseHandler(request),
       _context(static_cast<VocbaseContext*>(request->getRequestContext())),
       _vocbase(_context->getVocbase()),

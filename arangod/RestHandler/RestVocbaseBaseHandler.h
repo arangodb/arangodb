@@ -127,7 +127,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   
  public:
 
-  explicit RestVocbaseBaseHandler(rest::HttpRequest*);
+  explicit RestVocbaseBaseHandler(rest::GeneralRequest*);
 
 
   ~RestVocbaseBaseHandler();

@@ -178,7 +178,7 @@ class RequestStatisticsAgent
   /// @brief sets the request type
   //////////////////////////////////////////////////////////////////////////////
 
-  void requestStatisticsAgentSetRequestType(HttpRequest::HttpRequestType b) {
+  void requestStatisticsAgentSetRequestType(GeneralRequest::RequestType b) {
     if (TRI_ENABLE_STATISTICS) {
       if (_statistics != nullptr) {
         _statistics->_requestType = b;

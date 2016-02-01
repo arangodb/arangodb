@@ -544,7 +544,7 @@ class AgencyComm {
   /// @brief sends an HTTP request to the agency, handling failover
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendWithFailover(arangodb::rest::HttpRequest::HttpRequestType, double,
+  bool sendWithFailover(arangodb::rest::GeneralRequest::RequestType, double,
                         AgencyCommResult&, std::string const&,
                         std::string const&, bool);
 
@@ -553,7 +553,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   bool send(arangodb::httpclient::GeneralClientConnection*,
-            arangodb::rest::HttpRequest::HttpRequestType, double,
+            arangodb::rest::GeneralRequest::RequestType, double,
             AgencyCommResult&, std::string const&, std::string const&);
 
   

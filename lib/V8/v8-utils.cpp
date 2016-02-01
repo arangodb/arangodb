@@ -618,7 +618,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   double timeout = 10.0;
   bool returnBodyAsBuffer = false;
   bool followRedirects = true;
-  HttpRequest::HttpRequestType method = HttpRequest::HTTP_REQUEST_GET;
+  GeneralRequest::RequestType method = GeneralRequest::HTTP_REQUEST_GET;
   bool returnBodyOnError = false;
   int maxRedirects = 5;
 
@@ -638,7 +638,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       std::string methodString =
           TRI_ObjectToString(options->Get(TRI_V8_ASCII_STRING("method")));
 
-      method = HttpRequest::translateMethod(methodString);
+      method = GeneralRequest::translateMethod(methodString);
     }
 
     // headers
@@ -690,8 +690,8 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           options->Get(TRI_V8_ASCII_STRING("maxRedirects")));
     }
 
-    if (!body.empty() && (method == HttpRequest::HTTP_REQUEST_GET ||
-                          method == HttpRequest::HTTP_REQUEST_HEAD)) {
+    if (!body.empty() && (method == GeneralRequest::HTTP_REQUEST_GET ||
+                          method == GeneralRequest::HTTP_REQUEST_HEAD)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "should not provide a body value for this request method");
