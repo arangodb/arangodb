@@ -325,11 +325,19 @@ exports.createDeleteUpdateParallel = function(opts) {
     return a.count() === b.count();
   };
 
-  sleep(30);
+  let m = 0;
 
-  const m = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
-    '@results': 'results'
-  }).count();
+  for (let i = 0; i < 10; ++i) {
+    m = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
+      '@results': 'results'
+    }).count();
+
+    if (m === n) {
+      break;
+    }
+
+    sleep(30);
+  }
 
   if (m < n) {
     print("cannot start enough workers (want", n + ",", "got", m + "),",
