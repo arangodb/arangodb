@@ -8,15 +8,34 @@
 
 include(ExternalProject)
 
+macro(import_target tname tdep tinclude tpath)
+    add_library(${tname} STATIC IMPORTED GLOBAL)
+    add_dependencies(${tname} ${tdep})
+    set_target_properties(${tname} PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES
+            "${tinclude}"
+        IMPORTED_LOCATION
+            "${tpath}"
+    )
+endmacro()
+
+
 # EV
 if (UNIX)
   ExternalProject_Add(ev_build
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libev
-    BUILD_IN_SOURCE TRUE
+    BUILD_IN_SOURCE 1
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libev
+    CONFIGURE_COMMAND ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libev
     INSTALL_COMMAND ""
-    )
-  
+    UPDATE_COMMAND ""
+    )  
 endif()
+
+import_target(ev ev_build
+    "${CMAKE_CURRENT_SOURCE_DIR}/libev"
+    "${CMAKE_CURRENT_SOURCE_DIR}/libev/.libs/libev.a"
+)
 
 ### V8 and ICU
 
@@ -25,7 +44,7 @@ if(UNIX)
     set(V8_PLATFORM "native")
     set(V8_BIN_DIR "${V8_DIR}/out/${V8_PLATFORM}")
     set(ICU_BIN_DIR "${V8_BIN_DIR}")
-    if (LINUX)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
       set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
     endif()
@@ -41,17 +60,6 @@ ExternalProject_Add(v8_build
     BUILD_COMMAND       CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} CXX_FLAGS=-std=c++11 make -j8 -f Makefile-v8 strictaliasing=off snapshot=off werror=no  "${V8_PLATFORM}" 
     INSTALL_COMMAND     ""
 )
-
-macro(import_target tname tdep tinclude tpath)
-    add_library(${tname} STATIC IMPORTED GLOBAL)
-    add_dependencies(${tname} ${tdep})
-    set_target_properties(${tname} PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES
-            "${tinclude}"
-        IMPORTED_LOCATION
-            "${tpath}"
-    )
-endmacro()
 
 ## V8
 import_target(v8_base v8_build

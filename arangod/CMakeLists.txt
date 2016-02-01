@@ -299,6 +299,7 @@ target_link_libraries(
     ${LINENOISE_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${CMAKE_DL_LIBS}
     ${MSVC_LIBS}
 )
 
