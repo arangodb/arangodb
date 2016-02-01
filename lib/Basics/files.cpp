@@ -2247,7 +2247,7 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
 /// temp path if none is specified
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_GetUserTempPath(void) {
+std::string TRI_GetUserTempPath() {
   if (TempPath.empty()) {
     return TRI_GetTempPath();
   }
@@ -2353,7 +2353,7 @@ size_t TRI_GetNullBufferSizeFiles() { return sizeof(NullBuffer); }
 /// @brief initialize the files subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeFiles(void) {
+void TRI_InitializeFiles() {
   memset(TRI_GetNullBufferFiles(), 0, TRI_GetNullBufferSizeFiles());
 }
 
@@ -2361,4 +2361,4 @@ void TRI_InitializeFiles(void) {
 /// @brief shutdown the files subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownFiles(void) {}
+void TRI_ShutdownFiles() {}
