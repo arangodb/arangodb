@@ -116,9 +116,9 @@ void SynchronizerThread::run() {
         }
       } catch (arangodb::basics::Exception const& ex) {
         int res = ex.code();
-        LOG(ERROR) << "got unexpected error in synchronizerThread: " << TRI_errno_string(res);
+        LOG(ERR) << "got unexpected error in synchronizerThread: " << TRI_errno_string(res);
       } catch (...) {
-        LOG(ERROR) << "got unspecific error in synchronizerThread";
+        LOG(ERR) << "got unspecific error in synchronizerThread";
       }
     }
 
@@ -179,7 +179,7 @@ int SynchronizerThread::doSync(bool& checkMore) {
   LOG(TRACE) << "syncing logfile " << id << ", region " << region.mem << " - " << (region.mem + region.size) << ", length: " << region.size << ", wfs: " << (region.waitForSync ? "true" : "false");
 
   if (!result) {
-    LOG(ERROR) << "unable to sync wal logfile region";
+    LOG(ERR) << "unable to sync wal logfile region";
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
   }

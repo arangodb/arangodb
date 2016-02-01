@@ -655,7 +655,7 @@ void ClusterInfo::loadPlannedCollections() {
     if (locker.successful()) {
       result = _agency.getValues(prefixPlannedCollections, true);
     } else {
-      LOG(ERROR) << "Error while locking " << prefixPlannedCollections.c_str();
+      LOG(ERR) << "Error while locking " << prefixPlannedCollections.c_str();
       return;
     }
   }
@@ -680,7 +680,7 @@ void ClusterInfo::loadPlannedCollections() {
 
       if (parts.size() != 2) {
         // invalid entry
-        LOG(WARNING) << "found invalid collection key in agency: '" << key.c_str() << "'";
+        LOG(WARN) << "found invalid collection key in agency: '" << key.c_str() << "'";
         continue;
       }
 
@@ -741,7 +741,7 @@ void ClusterInfo::loadPlannedCollections() {
     return;
   }
 
-  LOG(ERROR) << "Error while loading " << prefixPlannedCollections.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
+  LOG(ERR) << "Error while loading " << prefixPlannedCollections.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -885,7 +885,7 @@ void ClusterInfo::loadCurrentCollections() {
 
       if (parts.size() != 3) {
         // invalid entry
-        LOG(WARNING) << "found invalid collection key in current in agency: '" << key.c_str() << "'";
+        LOG(WARN) << "found invalid collection key in current in agency: '" << key.c_str() << "'";
         continue;
       }
 
@@ -1291,7 +1291,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     index = res._index;
   }
 
-  // LOG(ERROR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;
+  // LOG(ERR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 

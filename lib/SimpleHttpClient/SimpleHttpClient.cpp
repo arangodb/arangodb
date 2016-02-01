@@ -147,7 +147,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     }
 
     if (!_retryMessage.empty() && (_maxRetries - tries) > 0) {
-      LOG(WARNING) << "" << _retryMessage.c_str() << " - retries left: " << (_maxRetries - tries);
+      LOG(WARN) << "" << _retryMessage.c_str() << " - retries left: " << (_maxRetries - tries);
     }
 
 #ifdef _WIN32

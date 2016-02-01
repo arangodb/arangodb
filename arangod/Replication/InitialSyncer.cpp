@@ -173,7 +173,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
 
     if (_masterInfo._majorVersion == 1 ||
         (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion <= 6)) {
-      LOG(WARNING) << "incremental replication is not supported with a master < ArangoDB 2.7";
+      LOG(WARN) << "incremental replication is not supported with a master < ArangoDB 2.7";
       incremental = false;
     }
 

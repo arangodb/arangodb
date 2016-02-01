@@ -177,7 +177,7 @@ void DatafileStatistics::update(TRI_voc_fid_t fid,
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG(WARNING) << "did not find required statistics for datafile " << fid;
+    LOG(WARN) << "did not find required statistics for datafile " << fid;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "required datafile statistics not found");
   }
@@ -198,7 +198,7 @@ void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG(WARNING) << "did not find required statistics for datafile " << fid;
+    LOG(WARN) << "did not find required statistics for datafile " << fid;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "required datafile statistics not found");
   }
@@ -208,7 +208,7 @@ void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   it = _stats.find(src);
 
   if (it == _stats.end()) {
-    LOG(WARNING) << "did not find required statistics for source datafile " << src;
+    LOG(WARN) << "did not find required statistics for source datafile " << src;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "required datafile statistics not found");
   }
@@ -228,7 +228,7 @@ void DatafileStatistics::replace(TRI_voc_fid_t fid,
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG(WARNING) << "did not find required statistics for datafile " << fid;
+    LOG(WARN) << "did not find required statistics for datafile " << fid;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "required datafile statistics not found");
   }
@@ -294,7 +294,7 @@ DatafileStatisticsContainer DatafileStatistics::get(TRI_voc_fid_t fid) {
     auto it = _stats.find(fid);
 
     if (it == _stats.end()) {
-      LOG(WARNING) << "did not find required statistics for datafile " << fid;
+      LOG(WARN) << "did not find required statistics for datafile " << fid;
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "required datafile statistics not found");
     }

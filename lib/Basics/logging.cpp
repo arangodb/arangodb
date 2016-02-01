@@ -846,9 +846,9 @@ void TRI_SetLogLevelLogging(char const* level) {
   if (TRI_CaseEqualString(level, "fatal")) {
     Logger::setLevel(LogLevel::FATAL);
   } else if (TRI_CaseEqualString(level, "error")) {
-    Logger::setLevel(LogLevel::ERROR);
+    Logger::setLevel(LogLevel::ERR);
   } else if (TRI_CaseEqualString(level, "warning")) {
-    Logger::setLevel(LogLevel::WARNING);
+    Logger::setLevel(LogLevel::WARN);
   } else if (TRI_CaseEqualString(level, "info")) {
     Logger::setLevel(LogLevel::INFO);
   } else if (TRI_CaseEqualString(level, "debug")) {
@@ -857,7 +857,7 @@ void TRI_SetLogLevelLogging(char const* level) {
     Logger::setLevel(LogLevel::TRACE);
   } else {
     Logger::setLevel(LogLevel::INFO);
-    LOG(ERROR) << "strange log level '" << level << "'. using log level 'info'";
+    LOG(ERR) << "strange log level '" << level << "'. using log level 'info'";
   }
 }
 

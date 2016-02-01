@@ -779,7 +779,7 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
       res |= TRI_JoinThread(&vocbase->_cleanup);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG(ERROR) << "unable to join database threads for database '" << vocbase->_name << "'";
+        LOG(ERR) << "unable to join database threads for database '" << vocbase->_name << "'";
       }
     }
 
@@ -861,7 +861,7 @@ void ApplicationV8::versionCheck() {
     res |= TRI_JoinThread(&vocbase->_cleanup);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERROR) << "unable to join database threads for database '" << vocbase->_name << "'";
+      LOG(ERR) << "unable to join database threads for database '" << vocbase->_name << "'";
     }
   }
 
@@ -1035,7 +1035,7 @@ void ApplicationV8::stop() {
     CONDITION_LOCKER(guard, _contextCondition);
 
     for (auto& it : _busyContexts) {
-      LOG(WARNING) << "sending termination signal to V8 context";
+      LOG(WARN) << "sending termination signal to V8 context";
       v8::V8::TerminateExecution(it->isolate);
     }
   }
@@ -1394,7 +1394,7 @@ void ApplicationV8::shutdownV8Instance(size_t i) {
       while (tries++ < 10 &&
              TRI_RunGarbageCollectionV8(isolate, availableTime)) {
         if (tries > 3) {
-          LOG(WARNING) << "waiting for garbage v8 collection to end";
+          LOG(WARN) << "waiting for garbage v8 collection to end";
         }
       }
     } else {

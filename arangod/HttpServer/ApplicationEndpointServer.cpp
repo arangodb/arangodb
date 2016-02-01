@@ -207,7 +207,7 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   }
 
   if (_backlogSize > SOMAXCONN) {
-    LOG(WARNING) << "value for --server.backlog-size exceeds default system header SOMAXCONN value " << SOMAXCONN << ". trying to use " << SOMAXCONN << " anyway";
+    LOG(WARN) << "value for --server.backlog-size exceeds default system header SOMAXCONN value " << SOMAXCONN << ". trying to use " << SOMAXCONN << " anyway";
   }
 
   if (!_httpPort.empty()) {
@@ -276,7 +276,7 @@ bool ApplicationEndpointServer::loadEndpoints() {
   VPackSlice const slice = builder->slice();
 
   if (!slice.isObject()) {
-    LOG(WARNING) << "error loading ENDPOINTS file '" << filename.c_str() << "'";
+    LOG(WARN) << "error loading ENDPOINTS file '" << filename.c_str() << "'";
     return false;
   }
 
@@ -391,7 +391,7 @@ bool ApplicationEndpointServer::createSslContext() {
 
   // validate protocol
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
-    LOG(ERROR) << "invalid SSL protocol version specified. Please use a valid value for --server.ssl-protocol.";
+    LOG(ERR) << "invalid SSL protocol version specified. Please use a valid value for --server.ssl-protocol.";
     return false;
   }
 
@@ -405,7 +405,7 @@ bool ApplicationEndpointServer::createSslContext() {
   _sslContext = sslContext(protocol_e(_sslProtocol), _httpsKeyfile);
 
   if (_sslContext == nullptr) {
-    LOG(ERROR) << "failed to create SSL context, cannot create HTTPS server";
+    LOG(ERR) << "failed to create SSL context, cannot create HTTPS server";
     return false;
   }
 
@@ -424,7 +424,7 @@ bool ApplicationEndpointServer::createSslContext() {
 
   if (!_sslCipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
-      LOG(ERROR) << "SSL error: " << lastSSLError().c_str();
+      LOG(ERR) << "SSL error: " << lastSSLError().c_str();
       LOG(FATAL) << "cannot set SSL cipher list '" << _sslCipherList.c_str() << "'"; FATAL_ERROR_EXIT();
     } else {
       LOG(INFO) << "using SSL cipher-list '" << _sslCipherList.c_str() << "'";
@@ -440,7 +440,7 @@ bool ApplicationEndpointServer::createSslContext() {
       _sslContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
 
   if (res != 1) {
-    LOG(ERROR) << "SSL error: " << lastSSLError().c_str();
+    LOG(ERR) << "SSL error: " << lastSSLError().c_str();
     LOG(FATAL) << "cannot set SSL session id context '" << _rctx.c_str() << "'"; FATAL_ERROR_EXIT();
   }
 
@@ -451,7 +451,7 @@ bool ApplicationEndpointServer::createSslContext() {
     int res = SSL_CTX_load_verify_locations(_sslContext, _cafile.c_str(), 0);
 
     if (res == 0) {
-      LOG(ERROR) << "SSL error: " << lastSSLError().c_str();
+      LOG(ERR) << "SSL error: " << lastSSLError().c_str();
       LOG(FATAL) << "cannot load CA certificates from '" << _cafile.c_str() << "'"; FATAL_ERROR_EXIT();
     }
 
@@ -460,7 +460,7 @@ bool ApplicationEndpointServer::createSslContext() {
     certNames = SSL_load_client_CA_file(_cafile.c_str());
 
     if (certNames == nullptr) {
-      LOG(ERROR) << "ssl error: " << lastSSLError().c_str();
+      LOG(ERR) << "ssl error: " << lastSSLError().c_str();
       LOG(FATAL) << "cannot load CA certificates from '" << _cafile.c_str() << "'"; FATAL_ERROR_EXIT();
     }
 

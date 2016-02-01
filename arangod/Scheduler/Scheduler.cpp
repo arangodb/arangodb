@@ -344,7 +344,7 @@ int Scheduler::unregisterTask(Task* task) {
         task);  // TODO(fc) XXX remove this! This should be in the Task
 
     if (it == task2thread.end()) {
-      LOG(WARNING) << "unregisterTask called for an unknown task " << (void*)task << " (" << taskName.c_str() << ")";
+      LOG(WARN) << "unregisterTask called for an unknown task " << (void*)task << " (" << taskName.c_str() << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
@@ -376,7 +376,7 @@ int Scheduler::destroyTask(Task* task) {
     auto it = task2thread.find(task);
 
     if (it == task2thread.end()) {
-      LOG(WARNING) << "destroyTask called for an unknown task " << (void*)task << " (" << taskName.c_str() << ")";
+      LOG(WARN) << "destroyTask called for an unknown task " << (void*)task << " (" << taskName.c_str() << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
@@ -552,7 +552,7 @@ void Scheduler::initializeSignalHandlers() {
   int res = sigaction(SIGPIPE, &action, 0);
 
   if (res < 0) {
-    LOG(ERROR) << "cannot initialize signal handlers for pipe";
+    LOG(ERR) << "cannot initialize signal handlers for pipe";
   }
 #endif
 }

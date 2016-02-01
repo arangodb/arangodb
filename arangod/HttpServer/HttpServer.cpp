@@ -222,7 +222,7 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
-    LOG(WARNING) << "unable to add job to the job queue: " << TRI_errno_string(res);
+    LOG(WARN) << "unable to add job to the job queue: " << TRI_errno_string(res);
     // todo send info to async work manager?
     return false;
   }

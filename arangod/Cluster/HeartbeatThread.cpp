@@ -628,7 +628,7 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
     return true;
   }
 
-  LOG(ERROR) << "could not schedule plan update handler";
+  LOG(ERR) << "could not schedule plan update handler";
 
   return false;
 }
@@ -684,7 +684,7 @@ bool HeartbeatThread::sendState() {
   if (++_numFails % _maxFailsBeforeWarning == 0) {
     std::string const endpoints = AgencyComm::getEndpointsString();
 
-    LOG(WARNING) << "heartbeat could not be sent to agency endpoints (" << endpoints.c_str() << "): http code: " << result.httpCode() << ", body: " << result.body().c_str();
+    LOG(WARN) << "heartbeat could not be sent to agency endpoints (" << endpoints.c_str() << "): http code: " << result.httpCode() << ", body: " << result.body().c_str();
     _numFails = 0;
   }
 

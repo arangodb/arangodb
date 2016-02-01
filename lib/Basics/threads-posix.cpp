@@ -110,7 +110,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   if (rc != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERROR) << "could not start thread: " << strerror(errno);
+    LOG(ERR) << "could not start thread: " << strerror(errno);
 
     TRI_Free(TRI_CORE_MEM_ZONE, d);
     return false;
@@ -172,7 +172,7 @@ void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
   int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
 
   if (s != 0) {
-    LOG(ERROR) << "cannot set affinity to core " << core << ": " << strerror(errno);
+    LOG(ERR) << "cannot set affinity to core " << core << ": " << strerror(errno);
   }
 
 #endif

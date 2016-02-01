@@ -286,7 +286,7 @@ Builder Collection::remove(Slice const& slice,
 }
 
 Builder Collection::merge(Slice const& left, Slice const& right,
-                          bool mergeValues) {
+                          bool mergeValues, bool nullMeansRemove) {
   if (!left.isObject() || !right.isObject()) {
     throw Exception(Exception::InvalidValueType, "Expecting type Object");
   }
@@ -316,11 +316,19 @@ Builder Collection::merge(Slice const& left, Slice const& right,
       } else if (mergeValues && it.value().isObject() &&
                  (*found).second.isObject()) {
         // merge both values
-        Builder sub = Collection::merge(it.value(), (*found).second, true);
-        b.add(key, sub.slice());
+        auto& value = (*found).second;
+        if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
+          Builder sub = Collection::merge(it.value(), value, true, nullMeansRemove);
+          b.add(key, sub.slice());
+        }
+        // clear the value in the map so its not added again
+        (*found).second = Slice();
       } else {
         // use right value
-        b.add(key, (*found).second);
+        auto& value = (*found).second;
+        if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
+          b.add(key, value);
+        }
         // clear the value in the map so its not added again
         (*found).second = Slice();
       }
@@ -330,10 +338,14 @@ Builder Collection::merge(Slice const& left, Slice const& right,
 
   // add remaining values that were only in right
   for (auto& it : rightValues) {
-    auto s = it.second;
-    if (!s.isNone()) {
-      b.add(std::move(it.first), it.second);
+    auto& s = it.second;
+    if (s.isNone()) {
+      continue;
     }
+    if (nullMeansRemove && s.isNull()) {
+      continue;
+    }
+    b.add(std::move(it.first), s);
   }
 
   b.close();

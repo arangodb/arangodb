@@ -119,7 +119,7 @@ bool ServerJob::execute() {
     v8::Handle<v8::Value> res = TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(), content, file, false);
     if (res->IsBoolean() && res->IsTrue()) {
-      LOG(ERROR) << "An error occurred whilst executing the handlePlanChange in JavaScript.";
+      LOG(ERR) << "An error occurred whilst executing the handlePlanChange in JavaScript.";
       ok = false;  // The heartbeat thread will notice this!
     }
     // invalidate our local cache, even if an error occurred
