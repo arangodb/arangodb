@@ -657,7 +657,7 @@ if (ICU_INCLUDE)
 endif ()
 
 if (ICU_LIB_PATH)
-    link_directories(${ICU_LIB_PATH})
+    # link_directories(${ICU_LIB_PATH})
 endif ()
 
 # OS type ------------------------------------------------------------
@@ -682,6 +682,7 @@ endif()
 #endif()
 
 # OpenSSL -----------------------------------------------------------
+set (OPENSSL_USE_STATIC_LIBS "TRUE")
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
@@ -693,7 +694,7 @@ set (V8_INCLUDE_DIR ${V8_BUILD_DIR}/include)
 set (V8_LIBRARIES_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/x64.release)
 set (ICU_LIBRARIES icui18n;icuuc;icudata)
 set (V8_LIBRARIES v8_base;v8_libbase;v8_libplatform;v8_nosnapshot)
-link_directories(${V8_LIBRARIES_DIR})
+#link_directories(${V8_LIBRARIES_DIR})
 
 # BISON -------------------------------------------------------------
 find_package (BISON)
@@ -778,7 +779,7 @@ if (V8_INCLUDE)
 endif ()
 
 if (V8_LIB_PATH)
-  link_directories(${V8_LIB_PATH})
+  #link_directories(${V8_LIB_PATH})
 endif ()
 
 add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")

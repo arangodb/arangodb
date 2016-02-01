@@ -44,7 +44,6 @@ add_executable(
     ArangoShell/ArangoClient.cpp
     Benchmark/arangob.cpp
 )
-
 target_link_libraries(
     ${BIN_ARANGOB}
     ${LIB_ARANGO_CLIENT}
@@ -54,7 +53,6 @@ target_link_libraries(
     ${LINENOISE_LIBS}
     ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
-
     ${AR_V8_LIBS}
     ${AR_ICU_LIBS}
     ${CMAKE_THREAD_LIBS_INIT} 

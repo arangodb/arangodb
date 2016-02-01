@@ -23,7 +23,12 @@ endif()
 if(UNIX)
     set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61")
     set(V8_PLATFORM "native")
-    set(V8_BIN_DIR "${V8_DIR}/out/")
+    set(V8_BIN_DIR "${V8_DIR}/out/${V8_PLATFORM}")
+    set(ICU_BIN_DIR "${V8_BIN_DIR}")
+    if (LINUX)
+      set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
+      set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
+    endif()
 else()
     message(ERROR "Not implemented for your OS")
 endif()
@@ -48,32 +53,31 @@ macro(import_target tname tdep tinclude tpath)
     )
 endmacro()
 
-
 ## V8
 import_target(v8_base v8_build
     "${V8_DIR}/include"
-    "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/tools/gyp/libv8_base.a"
+    "${V8_BIN_DIR}/libv8_base.a"
 )
 
 import_target(v8_libbase v8_build
     "${V8_DIR}/include"
-    "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/tools/gyp/libv8_libbase.a"
+    "${V8_BIN_DIR}/libv8_libbase.a"
 )
 
 import_target(v8_libplatform v8_build
     "${V8_DIR}/include"
-    "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/tools/gyp/libv8_libplatform.a"
+    "${V8_BIN_DIR}/libv8_libplatform.a"
 )
 
 
 import_target(v8_nosnapshot v8_build
     "${V8_DIR}/include"
-    "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/tools/gyp/libv8_nosnapshot.a"
+    "${V8_BIN_DIR}/libv8_nosnapshot.a"
 )
 
 import_target(v8_snapshot v8_build
     "${V8_DIR}/include"
-    "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/tools/gyp/libv8_snapshot.a"
+    "${V8_BIN_DIR}/libv8_snapshot.a"
 )
 
 ## ICU
@@ -86,15 +90,15 @@ target_include_directories(icu_header INTERFACE
 )
 import_target(icu_uc v8_build
     "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
-    "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/third_party/icu/libicuuc.a"
+    "${ICU_BIN_DIR}/libicuuc.a"
 )
 
 import_target(icu_data v8_build
     "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
-    "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/third_party/icu/libicudata.a"
+    "${ICU_BIN_DIR}/libicudata.a"
 )
 
 import_target(icu_i18n v8_build
     "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
-    "${V8_BIN_DIR}/${V8_PLATFORM}/obj.target/third_party/icu/libicui18n.a"
+    "${ICU_BIN_DIR}/libicui18n.a"
 )
