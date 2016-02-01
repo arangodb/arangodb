@@ -2285,5 +2285,3 @@ size_t GeoIndex_MemoryUsage(void* theIndex) {
   return 0;
 }
 /* end of GeoIndex.c  */
-
-

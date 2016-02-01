@@ -32,15 +32,12 @@
 namespace arangodb {
 namespace aql {
 
-
 class QueryRegistry {
  public:
-  
   QueryRegistry() {}
 
   ~QueryRegistry();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
@@ -91,7 +88,6 @@ class QueryRegistry {
   void expireQueries();
 
  private:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a struct for all information regarding one query in the registry
   //////////////////////////////////////////////////////////////////////////////
@@ -124,4 +120,3 @@ class QueryRegistry {
 }  // namespace arangodb
 
 #endif
-

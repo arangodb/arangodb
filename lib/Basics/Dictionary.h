@@ -33,7 +33,6 @@
 namespace arangodb {
 namespace basics {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array for character pointer to POD
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +43,6 @@ class Dictionary {
   Dictionary(Dictionary const&);
   Dictionary& operator=(Dictionary const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief key-value stored in the dictonary
@@ -66,7 +64,6 @@ class Dictionary {
     ELEMENT _value;
   };
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief description for the associative array
@@ -91,7 +88,6 @@ class Dictionary {
     }
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new associative array for POD data
@@ -99,7 +95,6 @@ class Dictionary {
 
   explicit Dictionary(uint64_t size) : _array(size) {}
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief swaps two dictonaries
@@ -177,7 +172,6 @@ class Dictionary {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief underlying associative array
@@ -189,5 +183,3 @@ class Dictionary {
 }
 
 #endif
-
-

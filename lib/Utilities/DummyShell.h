@@ -26,43 +26,30 @@
 
 #include "ShellBase.h"
 
-
 namespace arangodb {
 class Completer;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief DummyShell
 ////////////////////////////////////////////////////////////////////////////////
 
 class DummyShell : public ShellBase {
-  
  public:
-
   DummyShell(std::string const& history, Completer*);
-
 
   virtual ~DummyShell();
 
-  
  public:
-
   bool open(bool autoComplete) override final;
-
 
   bool close() override final;
 
-
   void addHistory(std::string const&) override final;
 
-
   bool writeHistory() override final;
-
 
   std::string getLine(std::string const& prompt, bool& eof) override final;
 };
 }
 
 #endif
-
-

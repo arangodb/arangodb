@@ -23,14 +23,12 @@
 
 #include "fulltext-handles.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief at what percentage of deleted documents should the handle list be
 /// cleaned?
 ////////////////////////////////////////////////////////////////////////////////
 
 #define CLEANUP_THRESHOLD 0.25
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a handle slot
@@ -149,8 +147,7 @@ static bool AllocateSlotList(TRI_fulltext_handles_t* const handles,
 /// @brief create a handles instance
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex(
-    uint32_t slotSize) {
+TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex(uint32_t slotSize) {
   TRI_fulltext_handles_t* handles =
       static_cast<TRI_fulltext_handles_t*>(TRI_Allocate(
           TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false));
@@ -193,7 +190,6 @@ void TRI_FreeHandlesFulltextIndex(TRI_fulltext_handles_t* handles) {
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, handles);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get number of documents (including deleted)
@@ -474,5 +470,3 @@ size_t TRI_MemoryHandleFulltextIndex(
 
   return memory;
 }
-
-

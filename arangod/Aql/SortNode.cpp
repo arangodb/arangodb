@@ -195,4 +195,3 @@ double SortNode::estimateCost(size_t& nrItems) const {
   }
   return depCost + nrItems * log(nrItems);
 }
-

@@ -30,9 +30,7 @@
 namespace arangodb {
 namespace basics {
 
-
 class Barrier {
-  
  public:
   Barrier(Barrier const&) = delete;
   Barrier& operator=(Barrier const&) = delete;
@@ -41,7 +39,6 @@ class Barrier {
 
   ~Barrier();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief join a single task. reduces the number of waiting tasks and wakes
   /// up the barrier's synchronize() routine
@@ -55,7 +52,6 @@ class Barrier {
 
   void synchronize();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief condition variable
@@ -70,9 +66,7 @@ class Barrier {
   size_t _missing;
 };
 
-
 class BarrierTask {
-  
  public:
   BarrierTask() = delete;
   BarrierTask(BarrierTask const&) = delete;
@@ -86,7 +80,6 @@ class BarrierTask {
 
   ~BarrierTask() { _barrier->join(); }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying barrier
@@ -99,5 +92,3 @@ class BarrierTask {
 }  // namespace arangodb
 
 #endif
-
-

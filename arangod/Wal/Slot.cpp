@@ -26,7 +26,6 @@
 
 using namespace arangodb::wal;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a slot
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +36,6 @@ Slot::Slot()
       _mem(nullptr),
       _size(0),
       _status(StatusType::UNUSED) {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the slot status as a string
@@ -90,14 +88,13 @@ void Slot::fill(void* src, size_t size) {
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
-    LOG_WARNING("intentionally writing corrupt marker into datafile");
+    LOG(WARNING) << "intentionally writing corrupt marker into datafile";
     marker->_crc = 0xdeadbeef;
   }
 
   // copy data into marker
   memcpy(_mem, src, size);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mark as slot as used
@@ -138,5 +135,3 @@ void Slot::setReturned(bool waitForSync) {
     _status = StatusType::RETURNED;
   }
 }
-
-

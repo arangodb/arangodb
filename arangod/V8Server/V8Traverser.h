@@ -77,8 +77,8 @@ typedef arangodb::basics::PathFinder<arangodb::traverser::VertexId,
                                      arangodb::traverser::EdgeId,
                                      double> ArangoDBPathFinder;
 
-typedef arangodb::basics::ConstDistanceFinder<
-    arangodb::traverser::VertexId, arangodb::traverser::EdgeId>
+typedef arangodb::basics::ConstDistanceFinder<arangodb::traverser::VertexId,
+                                              arangodb::traverser::EdgeId>
     ArangoDBConstDistancePathFinder;
 
 namespace arangodb {
@@ -88,8 +88,7 @@ namespace traverser {
 // Should not be used directly, use specialization instead.
 struct BasicOptions {
  protected:
-  std::unordered_map<TRI_voc_cid_t, arangodb::ExampleMatcher*>
-      _edgeFilter;
+  std::unordered_map<TRI_voc_cid_t, arangodb::ExampleMatcher*> _edgeFilter;
   std::unordered_map<TRI_voc_cid_t, VertexFilterInfo> _vertexFilter;
 
   BasicOptions() : useEdgeFilter(false), useVertexFilter(false) {}
@@ -166,9 +165,7 @@ struct ShortestPathOptions : BasicOptions {
   bool matchesVertex(VertexId const&) const;
 };
 
-
 class SingleServerTraversalPath : public TraversalPath {
-  
  public:
   explicit SingleServerTraversalPath(
       arangodb::basics::EnumeratedPath<EdgeInfo, VertexId> const& path)
@@ -177,19 +174,15 @@ class SingleServerTraversalPath : public TraversalPath {
   ~SingleServerTraversalPath() {}
 
   arangodb::basics::Json* pathToJson(
-      arangodb::Transaction*,
-      arangodb::CollectionNameResolver*) override;
+      arangodb::Transaction*, arangodb::CollectionNameResolver*) override;
 
   arangodb::basics::Json* lastEdgeToJson(
-      arangodb::Transaction*,
-      arangodb::CollectionNameResolver*) override;
+      arangodb::Transaction*, arangodb::CollectionNameResolver*) override;
 
   arangodb::basics::Json* lastVertexToJson(
-      arangodb::Transaction*,
-      arangodb::CollectionNameResolver*) override;
+      arangodb::Transaction*, arangodb::CollectionNameResolver*) override;
 
  private:
-  
   arangodb::basics::Json* edgeToJson(Transaction* trx,
                                      CollectionNameResolver* resolver,
                                      EdgeInfo const& e);
@@ -198,13 +191,66 @@ class SingleServerTraversalPath : public TraversalPath {
                                        CollectionNameResolver* resolver,
                                        VertexId const& v);
 
-  
   arangodb::basics::EnumeratedPath<EdgeInfo, VertexId> _path;
 };
 
-
 class DepthFirstTraverser : public Traverser {
+
  private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief callable class to load edges based on opts.
+  //////////////////////////////////////////////////////////////////////////////
+
+  class EdgeGetter {
+   public:
+    explicit EdgeGetter(DepthFirstTraverser* traverser,
+                        TraverserOptions const& opts,
+                        CollectionNameResolver* resolver, Transaction* trx)
+        : _traverser(traverser), _resolver(resolver), _opts(opts), _trx(trx) {}
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Function to fill the list of edges properly.
+    //////////////////////////////////////////////////////////////////////////////
+
+    void operator()(VertexId const&, std::vector<EdgeInfo>&,
+                    TRI_doc_mptr_t*&, size_t&, bool&);
+
+   private:
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Get an edge index for the given collection by name
+    //////////////////////////////////////////////////////////////////////////////
+    
+    EdgeIndex* getEdgeIndex(std::string const&, TRI_voc_cid_t&);
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Collection name resolver
+    //////////////////////////////////////////////////////////////////////////////
+    DepthFirstTraverser* _traverser;
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Collection name resolver
+    //////////////////////////////////////////////////////////////////////////////
+    CollectionNameResolver* _resolver;
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Cache for indexes. Maps collectionName to Index
+    //////////////////////////////////////////////////////////////////////////////
+    std::unordered_map<std::string, std::pair<TRI_voc_cid_t, EdgeIndex*>>
+        _indexCache;
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Traverser options
+    //////////////////////////////////////////////////////////////////////////////
+    TraverserOptions _opts;
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Pointer to active transaction
+    ///        All Edge Collections have to be properly locked before traversing!
+    //////////////////////////////////////////////////////////////////////////////
+    Transaction* _trx;
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection name resolver
   //////////////////////////////////////////////////////////////////////////////
@@ -216,14 +262,13 @@ class DepthFirstTraverser : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unique_ptr<arangodb::basics::PathEnumerator<
-      EdgeInfo, VertexId, TRI_doc_mptr_copy_t>> _enumerator;
+      EdgeInfo, VertexId, TRI_doc_mptr_t>> _enumerator;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal function to extract an edge
+  /// @brief internal getter to extract an edge
   //////////////////////////////////////////////////////////////////////////////
 
-  std::function<void(VertexId const&, std::vector<EdgeInfo>&,
-                     TRI_doc_mptr_copy_t*&, size_t&, bool&)> _getEdge;
+  EdgeGetter _edgeGetter;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal function to extract vertex information
@@ -268,7 +313,6 @@ class DepthFirstTraverser : public Traverser {
 
   TraversalPath* next() override;
 
-  
  private:
   bool edgeMatchesConditions(TRI_doc_mptr_t&, size_t&, size_t);
 
@@ -328,7 +372,7 @@ class EdgeCollectionInfo {
 
   arangodb::traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
     return arangodb::traverser::EdgeId(_edgeCollectionCid,
-                                               TRI_EXTRACT_MARKER_KEY(&ptr));
+                                       TRI_EXTRACT_MARKER_KEY(&ptr));
   }
 
   std::vector<TRI_doc_mptr_copy_t> getEdges(

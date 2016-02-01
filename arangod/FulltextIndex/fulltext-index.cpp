@@ -24,14 +24,13 @@
 #include "fulltext-index.h"
 
 #include "Basics/locks.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 #include "fulltext-handles.h"
 #include "fulltext-list.h"
 #include "fulltext-query.h"
 #include "fulltext-result.h"
 #include "fulltext-wordlist.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use padding for pointers in binary data
@@ -45,7 +44,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define MAX_WORD_BYTES ((TRI_FULLTEXT_MAX_WORD_LENGTH)*4)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the type of characters indexed. should be one byte long
@@ -119,7 +117,6 @@ typedef struct {
   uint32_t _initialNodeHandles;  // how many handles to allocate per node
 } index_t;
 
-
 static uint32_t NodeNumFollowers(const node_t* const);
 
 static uint32_t NodeNumAllocated(const node_t* const);
@@ -133,7 +130,6 @@ static void FreeFollowers(index_t* const, node_t*);
 static void FreeNode(index_t* const, node_t*);
 
 static size_t MemorySubNodeList(uint32_t);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print some indentation
@@ -425,8 +421,7 @@ static inline node_t** NodeFollowersNodes(const node_t* const node) {
 /// the caller must make sure the node actually has sub-nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline node_t** FollowersNodesPos(void* data,
-                                         uint32_t numAllocated) {
+static inline node_t** FollowersNodesPos(void* data, uint32_t numAllocated) {
   uint8_t* head = (uint8_t*)data;
   uint8_t* keys = (uint8_t*)(head + 2);  // numAllocated + numEntries
 
@@ -452,8 +447,7 @@ static size_t MemorySubNodeList(uint32_t numEntries) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ExtendSubNodeList(index_t* const idx, node_t* const node,
-                              uint32_t numFollowers,
-                              uint32_t numAllocated) {
+                              uint32_t numFollowers, uint32_t numAllocated) {
   size_t nextSize;
   uint32_t nextAllocated;
 
@@ -1071,6 +1065,10 @@ static bool InsertHandle(index_t* const idx, node_t* const node,
   TRI_ASSERT(node != nullptr);
 #endif
 
+  if (node == nullptr) {
+    return false;
+  }
+
   if (node->_handles == nullptr) {
     // node does not yet have any handles. now allocate a new chunk of handles
     node->_handles = TRI_CreateListFulltextIndex(idx->_initialNodeHandles);
@@ -1192,7 +1190,6 @@ TRI_fulltext_result_t* FindDocuments (index_t* const idx,
 }
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the common prefix length of two words
 ////////////////////////////////////////////////////////////////////////////////
@@ -1209,7 +1206,6 @@ static inline size_t CommonPrefixLength(char const* const lhs,
 
   return length;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the fulltext index
@@ -1293,7 +1289,6 @@ void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
 ////////////////////////////////////////////////////////////////////////////////
@@ -1366,7 +1361,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
     size_t start;
     size_t i;
 
-    // LOG_DEBUG("checking word %s", wordlist->_words[w]);
+    // LOG(DEBUG) << "checking word " << wordlist->_words[w];
 
     if (w > 0) {
       // check if current word has a shared/common prefix with the previous word
@@ -1442,7 +1437,6 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1513,7 +1507,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
     match = query->_matches[i];
     operation = query->_operations[i];
 
-    LOG_DEBUG("searching for word: '%s'", word);
+    LOG(DEBUG) << "searching for word: '" << word << "'";
 
     if ((operation == TRI_FULLTEXT_AND || operation == TRI_FULLTEXT_EXCLUDE) &&
         i > 0 && TRI_NumEntriesListFulltextIndex(result) == 0) {
@@ -1532,7 +1526,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
         // prefix matching
         list = GetSubNodeHandles(node);
       } else {
-        LOG_WARNING("invalid matching option for fulltext index query");
+        LOG(WARNING) << "invalid matching option for fulltext index query";
         list = TRI_CreateListFulltextIndex(0);
       }
     } else {
@@ -1569,7 +1563,6 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
   // deleted documents)
   return MakeListResult(idx, result, maxResults);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump index tree
@@ -1719,5 +1712,3 @@ bool TRI_CompactFulltextIndex(TRI_fts_index_t* const ftx) {
 
   return true;
 }
-
-

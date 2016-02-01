@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ditch.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "VocBase/document-collection.h"
 
@@ -37,7 +37,6 @@ Ditch::Ditch(Ditches* ditches, char const* filename, int line)
 
 Ditch::~Ditch() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the associated collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,8 +44,6 @@ Ditch::~Ditch() {}
 TRI_document_collection_t* Ditch::collection() const {
   return _ditches->collection();
 }
-
-
 
 DocumentDitch::DocumentDitch(Ditches* ditches, bool usedByTransaction,
                              char const* filename, int line)
@@ -74,23 +71,17 @@ void DocumentDitch::setUsedByExternal() {
   _ditches->executeProtected(callback);
 }
 
-
-
 ReplicationDitch::ReplicationDitch(Ditches* ditches, char const* filename,
                                    int line)
     : Ditch(ditches, filename, line) {}
 
 ReplicationDitch::~ReplicationDitch() {}
 
-
-
 CompactionDitch::CompactionDitch(Ditches* ditches, char const* filename,
                                  int line)
     : Ditch(ditches, filename, line) {}
 
 CompactionDitch::~CompactionDitch() {}
-
-
 
 DropDatafileDitch::DropDatafileDitch(
     Ditches* ditches, TRI_datafile_t* datafile, void* data,
@@ -103,8 +94,6 @@ DropDatafileDitch::DropDatafileDitch(
 
 DropDatafileDitch::~DropDatafileDitch() {}
 
-
-
 RenameDatafileDitch::RenameDatafileDitch(
     Ditches* ditches, TRI_datafile_t* datafile, void* data,
     std::function<void(TRI_datafile_t*, void*)> callback, char const* filename,
@@ -115,8 +104,6 @@ RenameDatafileDitch::RenameDatafileDitch(
       _callback(callback) {}
 
 RenameDatafileDitch::~RenameDatafileDitch() {}
-
-
 
 UnloadCollectionDitch::UnloadCollectionDitch(
     Ditches* ditches, TRI_collection_t* collection, void* data,
@@ -129,8 +116,6 @@ UnloadCollectionDitch::UnloadCollectionDitch(
 
 UnloadCollectionDitch::~UnloadCollectionDitch() {}
 
-
-
 DropCollectionDitch::DropCollectionDitch(
     Ditches* ditches, TRI_collection_t* collection, void* data,
     std::function<bool(TRI_collection_t*, void*)> callback,
@@ -142,7 +127,6 @@ DropCollectionDitch::DropCollectionDitch(
 
 DropCollectionDitch::~DropCollectionDitch() {}
 
-
 Ditches::Ditches(TRI_document_collection_t* collection)
     : _collection(collection),
       _lock(),
@@ -153,7 +137,6 @@ Ditches::Ditches(TRI_document_collection_t* collection)
 }
 
 Ditches::~Ditches() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the ditches - to be called on shutdown only
@@ -174,9 +157,9 @@ void Ditches::destroy() {
         type == Ditch::TRI_DITCH_COMPACTION) {
       delete ptr;
     } else if (type == Ditch::TRI_DITCH_DOCUMENT) {
-      LOG_ERROR("logic error. shouldn't have document ditches on unload");
+      LOG(ERROR) << "logic error. shouldn't have document ditches on unload";
     } else {
-      LOG_ERROR("unknown ditch type");
+      LOG(ERROR) << "unknown ditch type";
     }
 
     ptr = next;
@@ -194,7 +177,7 @@ TRI_document_collection_t* Ditches::collection() const { return _collection; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ditches::executeProtected(std::function<void()> callback) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
   callback();
 }
 
@@ -209,7 +192,7 @@ Ditch* Ditches::process(bool& popped,
                         std::function<bool(Ditch const*)> callback) {
   popped = false;
 
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   auto ditch = _begin;
 
@@ -271,7 +254,7 @@ Ditch* Ditches::process(bool& popped,
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* Ditches::head() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   auto ditch = _begin;
 
@@ -286,7 +269,7 @@ char const* Ditches::head() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t Ditches::numDocumentDitches() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   return _numDocumentDitches;
 }
@@ -296,7 +279,7 @@ uint64_t Ditches::numDocumentDitches() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Ditches::contains(Ditch::DitchType type) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   if (type == Ditch::TRI_DITCH_DOCUMENT) {
     // shortcut
@@ -324,7 +307,7 @@ void Ditches::freeDitch(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     unlink(ditch);
 
@@ -348,7 +331,7 @@ void Ditches::freeDocumentDitch(DocumentDitch* ditch, bool fromTransaction) {
 
   bool shouldFree = false;
   {
-    MUTEX_LOCKER(_lock);  // FIX_MUTEX
+    MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
 
     // First see who might still be using the ditch:
     if (fromTransaction) {
@@ -436,7 +419,7 @@ CompactionDitch* Ditches::createCompactionDitch(char const* filename,
 
 DropDatafileDitch* Ditches::createDropDatafileDitch(
     TRI_datafile_t* datafile, void* data,
-    std::function<void(struct TRI_datafile_s*, void*)> callback,
+    std::function<void(struct TRI_datafile_t*, void*)> callback,
     char const* filename, int line) {
   try {
     auto ditch =
@@ -455,7 +438,7 @@ DropDatafileDitch* Ditches::createDropDatafileDitch(
 
 RenameDatafileDitch* Ditches::createRenameDatafileDitch(
     TRI_datafile_t* datafile, void* data,
-    std::function<void(struct TRI_datafile_s*, void*)> callback,
+    std::function<void(struct TRI_datafile_t*, void*)> callback,
     char const* filename, int line) {
   try {
     auto ditch =
@@ -506,7 +489,6 @@ DropCollectionDitch* Ditches::createDropCollectionDitch(
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts the ditch into the linked list of ditches
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,7 +496,7 @@ DropCollectionDitch* Ditches::createDropCollectionDitch(
 void Ditches::link(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
-  MUTEX_LOCKER(_lock);  // FIX_MUTEX
+  MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
 
   // empty list
   if (_end == nullptr) {
@@ -559,5 +541,3 @@ void Ditches::unlink(Ditch* ditch) {
     ditch->_next->_prev = ditch->_prev;
   }
 }
-
-

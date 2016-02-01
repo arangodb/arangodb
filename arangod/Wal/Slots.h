@@ -36,7 +36,6 @@ namespace wal {
 
 class LogfileManager;
 
-
 struct SlotInfoCopy {
   explicit SlotInfoCopy(Slot const* slot)
       : mem(slot->mem()),
@@ -54,7 +53,6 @@ struct SlotInfoCopy {
   Slot::TickType const tick;
   int const errorCode;
 };
-
 
 struct SlotInfo {
   explicit SlotInfo(int errorCode)
@@ -74,9 +72,7 @@ struct SlotInfo {
   int errorCode;
 };
 
-
 class Slots {
-  
  private:
   Slots(Slots const&) = delete;
   Slots& operator=(Slots const&) = delete;
@@ -94,7 +90,6 @@ class Slots {
 
   ~Slots();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the statistics of the slots
@@ -159,7 +154,6 @@ class Slots {
 
   void getActiveTickRange(Logfile*, TRI_voc_tick_t&, TRI_voc_tick_t&);
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief close a logfile
   //////////////////////////////////////////////////////////////////////////////
@@ -197,7 +191,6 @@ class Slots {
 
   int newLogfile(uint32_t, Logfile::StatusType& status);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -215,7 +208,7 @@ class Slots {
   /// @brief mutex protecting the slots interface
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::Mutex _lock;
+  Mutex _lock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief all slots
@@ -287,5 +280,3 @@ class Slots {
 }
 
 #endif
-
-

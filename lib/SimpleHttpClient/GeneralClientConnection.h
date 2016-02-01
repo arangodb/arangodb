@@ -28,7 +28,6 @@
 #include "Basics/StringBuffer.h"
 #include "Rest/Endpoint.h"
 
-
 namespace arangodb {
 namespace httpclient {
 
@@ -37,7 +36,6 @@ namespace httpclient {
 ////////////////////////////////////////////////////////////////////////////////
 
 class GeneralClientConnection {
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief size of read buffer for read operations
@@ -45,7 +43,6 @@ class GeneralClientConnection {
 
   enum { READBUFFER_SIZE = 8192 };
 
-  
  private:
   explicit GeneralClientConnection(GeneralClientConnection const&);
   GeneralClientConnection& operator=(GeneralClientConnection const&);
@@ -64,7 +61,6 @@ class GeneralClientConnection {
 
   virtual ~GeneralClientConnection();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a new connection from an endpoint
@@ -148,7 +144,6 @@ class GeneralClientConnection {
 
   void setInterrupted(bool value) { _isInterrupted = value; }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -187,7 +182,6 @@ class GeneralClientConnection {
 
   virtual bool readable() = 0;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief details to errors
@@ -241,4 +235,3 @@ class GeneralClientConnection {
 }
 
 #endif
-

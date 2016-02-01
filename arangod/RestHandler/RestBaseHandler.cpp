@@ -22,9 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestBaseHandler.h"
-
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/HttpRequest.h"
@@ -34,21 +31,15 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::admin;
 
-
-
 RestBaseHandler::RestBaseHandler(HttpRequest* request) : HttpHandler(request) {}
-
-
 
 void RestBaseHandler::handleError(Exception const& ex) {
   generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from JSON
@@ -178,4 +169,3 @@ void RestBaseHandler::generateError(HttpResponse::HttpResponseCode code,
 void RestBaseHandler::generateOOMError() {
   generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 }
-

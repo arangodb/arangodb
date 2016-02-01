@@ -148,7 +148,7 @@ function main(argv) {
   }
 
   options.jsonReply = true;
-  
+
   fs.makeDirectoryRecursive("out");
 
   start_pretty_print();
@@ -166,6 +166,9 @@ function main(argv) {
 
     if (x.stack !== undefined) {
       print(x.stack);
+    } else {
+      print(x);
+
     }
 
     print(JSON.stringify(r));
@@ -177,11 +180,13 @@ function main(argv) {
   if (options.writeXmlReport) {
     fs.write("out/UNITTEST_RESULT.json", JSON.stringify(r));
 
-    // should be renamed to UNITTEST_RESULT_CRASHED, because that's what it actually contains
+    // should be renamed to UNITTEST_RESULT_CRASHED, because that's what
+    // it actually contains
     fs.write("out/UNITTEST_RESULT_SUMMARY.txt", JSON.stringify(!r.crashed));
 
     try {
-      resultsToXml(r, "UNITTEST_RESULT_", (options.hasOwnProperty('cluster') && options.cluster));
+      resultsToXml(r,
+        "UNITTEST_RESULT_", (options.hasOwnProperty('cluster') && options.cluster));
     } catch (x) {
       print("exception while serializing status xml!");
       print(x.message);

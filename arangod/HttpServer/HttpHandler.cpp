@@ -24,21 +24,17 @@
 #include "HttpHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
-#include "HttpServer/HttpServerJob.h"
 #include "Rest/HttpRequest.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 namespace {
 std::atomic_uint_fast64_t NEXT_HANDLER_ID(
     static_cast<uint64_t>(TRI_microtime() * 100000.0));
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler
@@ -59,7 +55,6 @@ HttpHandler::~HttpHandler() {
   delete _request;
   delete _response;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name
@@ -171,15 +166,15 @@ HttpHandler::status_t HttpHandler::executeFull() {
   } catch (Exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
+    LOG(ERROR) << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
   } catch (std::exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", ex.what());
+    LOG(ERROR) << "caught exception: " << ex.what();
   } catch (...) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception");
+    LOG(ERROR) << "caught exception";
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {
@@ -230,7 +225,6 @@ HttpResponse* HttpHandler::stealResponse() {
   return tmp;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new HTTP response
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,5 +247,3 @@ void HttpHandler::createResponse(HttpResponse::HttpResponseCode code) {
   // create a "standard" (standalone) Http response
   _response = new HttpResponse(code, apiCompatibility);
 }
-
-

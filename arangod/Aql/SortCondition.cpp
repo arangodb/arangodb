@@ -26,8 +26,6 @@
 
 using namespace arangodb::aql;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an empty condition
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +152,6 @@ SortCondition::SortCondition(
 
 SortCondition::~SortCondition() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of attributes in the sort condition covered
 /// by the specified index fields
@@ -201,5 +198,3 @@ size_t SortCondition::coveredAttributes(
 
   return numAttributes;
 }
-
-

@@ -27,12 +27,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-
+#include "Basics/tri-strings.h"
 #include "V8/v8-json.h"
 #include "V8/v8-globals.h"
-
-#include "Basics/tri-strings.h"
-#include "Basics/logging.h"
 
 #define YY_NO_INPUT
 }
@@ -72,7 +69,6 @@ struct jsonData {
 
 #define YY_FATAL_ERROR(a)          \
   do {                             \
-    LOG_DEBUG("v8-json: %s", (a)); \
     if (false) {                   \
       yy_fatal_error(a, nullptr);  \
     }                              \
@@ -453,15 +449,11 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
   int c = yylex(scanner);
   v8::Handle<v8::Value> value = ParseValue(isolate, scanner, c);
 
-  if (value->IsUndefined()) {
-    LOG_DEBUG("failed to parse JSON value: '%s'", yyextra._message);
-  }
-  else {
+  if (!value->IsUndefined()) {
     c = yylex(scanner);
 
     if (c != END_OF_FILE) {
       value = v8::Undefined(isolate);
-      LOG_DEBUG("failed to parse JSON value: expecting EOF");
     }
   }
 

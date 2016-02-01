@@ -30,9 +30,7 @@
 namespace arangodb {
 namespace basics {
 
-
 class WorkerThread : public arangodb::basics::Thread {
-  
  public:
   WorkerThread(WorkerThread const&) = delete;
   WorkerThread operator=(WorkerThread const&) = delete;
@@ -55,7 +53,6 @@ class WorkerThread : public arangodb::basics::Thread {
     }
   }
 
-  
  protected:
   void run() {
     while (_status == 0) {
@@ -71,7 +68,6 @@ class WorkerThread : public arangodb::basics::Thread {
     _status = 2;
   }
 
-  
  private:
   ThreadPool* _pool;
 
@@ -81,5 +77,3 @@ class WorkerThread : public arangodb::basics::Thread {
 }
 
 #endif
-
-

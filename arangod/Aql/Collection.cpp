@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collection.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/Index.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
@@ -40,7 +39,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 using namespace arangodb::aql;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection wrapper
@@ -68,7 +66,6 @@ Collection::~Collection() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief count the number of documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,8 +75,7 @@ size_t Collection::count() const {
     if (arangodb::ServerState::instance()->isCoordinator()) {
       // cluster case
       uint64_t result;
-      int res =
-          arangodb::countOnCoordinator(vocbase->_name, name, result);
+      int res = arangodb::countOnCoordinator(vocbase->_name, name, result);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             res, "could not determine number of documents in collection");
@@ -201,7 +197,6 @@ bool Collection::usesDefaultSharding() const {
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills the index list for the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +256,6 @@ void Collection::fillIndexesCoordinator() const {
     indexes.reserve(n);
 
     for (auto const& v : VPackArrayIterator(slice)) {
-
       if (!v.isObject()) {
         continue;
       }
@@ -289,8 +283,7 @@ void Collection::fillIndexesCoordinator() const {
         p->setInternals(new arangodb::EdgeIndex(v), true);
       } else if (p->type == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
         p->setInternals(new arangodb::HashIndex(v), true);
-      } else if (p->type ==
-                 arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      } else if (p->type == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
         p->setInternals(new arangodb::SkiplistIndex(v), true);
       }
     }
@@ -390,8 +383,7 @@ void Collection::fillIndexesLocal() const {
   indexes.reserve(n);
 
   for (size_t i = 0; i < n; ++i) {
-    if (allIndexes[i]->type() ==
-        arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
+    if (allIndexes[i]->type() == arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
       // ignore this type of index
       continue;
     }
@@ -401,5 +393,3 @@ void Collection::fillIndexesLocal() const {
     idx.release();
   }
 }
-
-

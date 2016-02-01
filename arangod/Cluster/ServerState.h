@@ -30,7 +30,6 @@
 namespace arangodb {
 
 class ServerState {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief an enum describing the roles a server can have
@@ -62,15 +61,11 @@ class ServerState {
     STATE_SHUTDOWN        // used by all roles
   };
 
-  
  public:
-
   ServerState();
-
 
   ~ServerState();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the (sole) instance
@@ -102,7 +97,6 @@ class ServerState {
 
   static StateEnum stringToState(std::string const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the initialized flag
@@ -369,7 +363,6 @@ class ServerState {
 
   bool redetermineRole();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically fetches the server role
@@ -429,7 +422,6 @@ class ServerState {
 
   bool checkCoordinatorState(StateEnum);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
@@ -560,5 +552,3 @@ class ServerState {
 }
 
 #endif
-
-

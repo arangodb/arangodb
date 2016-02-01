@@ -35,11 +35,9 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-
 class SubqueryBlock : public ExecutionBlock {
  public:
   SubqueryBlock(ExecutionEngine*, SubqueryNode const*, ExecutionBlock*);
-
 
   ~SubqueryBlock();
 
@@ -97,4 +95,3 @@ class SubqueryBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

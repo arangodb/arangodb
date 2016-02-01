@@ -30,7 +30,6 @@
 
 class VocShaper;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape access
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +41,6 @@ typedef struct TRI_shape_access_s {
   TRI_shape_sid_t _resultSid;  // resulting shape
   void const** _code;          // bytecode
 } TRI_shape_access_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a shape accessor
@@ -72,5 +70,3 @@ bool TRI_ExecuteShapeAccessor(TRI_shape_access_t const* accessor,
 void TRI_PrintShapeAccessor(TRI_shape_access_t*);
 
 #endif
-
-

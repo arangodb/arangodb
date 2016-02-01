@@ -27,8 +27,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/VocShaper.h"
 
-
-
 DocumentAccessor::DocumentAccessor(
     arangodb::CollectionNameResolver const* resolver,
     TRI_document_collection_t* document, TRI_doc_mptr_t const* mptr)
@@ -60,7 +58,6 @@ DocumentAccessor::DocumentAccessor(VPackSlice const& slice)
 }
 
 DocumentAccessor::~DocumentAccessor() {}
-
 
 bool DocumentAccessor::hasKey(std::string const& attribute) const {
   if (!isObject()) {
@@ -228,7 +225,6 @@ arangodb::basics::Json DocumentAccessor::toJson() {
 
   return arangodb::basics::Json(arangodb::basics::Json::Null);
 }
-
 
 void DocumentAccessor::setToNull() {
   // check if already null

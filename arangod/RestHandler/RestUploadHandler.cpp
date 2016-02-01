@@ -24,7 +24,7 @@
 #include "RestUploadHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
@@ -36,10 +36,7 @@ using namespace arangodb::rest;
 RestUploadHandler::RestUploadHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-
 RestUploadHandler::~RestUploadHandler() {}
-
-
 
 HttpHandler::status_t RestUploadHandler::execute() {
   // extract the request type
@@ -65,8 +62,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
 
   char* relative = TRI_GetFilename(filename);
 
-  LOG_TRACE("saving uploaded file of length %llu in file '%s', relative '%s'",
-            (unsigned long long)_request->bodySize(), filename, relative);
+  LOG(TRACE) << "saving uploaded file of length " << _request->bodySize() << " in file '" << filename << "', relative '" << relative << "'";
 
   char const* body = _request->body();
   size_t bodySize = _request->bodySize();
@@ -259,5 +255,3 @@ bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
 
   return true;
 }
-
-

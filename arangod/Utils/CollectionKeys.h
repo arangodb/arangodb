@@ -34,14 +34,13 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace velocypack {
-  class Slice;
+class Slice;
 }
 
 class CollectionGuard;
 class DocumentDitch;
 
 typedef TRI_voc_tick_t CollectionKeysId;
-
 
 class CollectionKeys {
  public:
@@ -53,7 +52,6 @@ class CollectionKeys {
 
   ~CollectionKeys();
 
-  
  public:
   CollectionKeysId id() const { return _id; }
 
@@ -114,7 +112,6 @@ class CollectionKeys {
   void dumpDocs(arangodb::basics::Json&, size_t, size_t,
                 arangodb::velocypack::Slice const&) const;
 
-  
  private:
   struct TRI_vocbase_t* _vocbase;
   arangodb::CollectionGuard* _guard;
@@ -134,4 +131,3 @@ class CollectionKeys {
 }
 
 #endif
-

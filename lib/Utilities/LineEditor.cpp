@@ -25,11 +25,7 @@
 
 #include "Utilities/ShellBase.h"
 
-using namespace std;
 using namespace arangodb;
-using namespace arangodb;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
@@ -37,14 +33,12 @@ using namespace arangodb;
 
 LineEditor::LineEditor() : _shell(nullptr), _signalFunc(nullptr) {}
 
-
 LineEditor::~LineEditor() {
   if (_shell != nullptr) {
     close();
     delete _shell;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the shell implementation supports colors
@@ -68,8 +62,8 @@ bool LineEditor::close() { return _shell->close(); }
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string LineEditor::prompt(std::string const& prompt, std::string const& begin,
-                          bool& eof) {
+std::string LineEditor::prompt(std::string const& prompt,
+                               std::string const& begin, bool& eof) {
   return _shell->prompt(prompt, begin, eof);
 }
 
@@ -99,5 +93,3 @@ void LineEditor::signal() {
 void LineEditor::setSignalFunction(std::function<void()> const& func) {
   _signalFunc = func;
 }
-
-

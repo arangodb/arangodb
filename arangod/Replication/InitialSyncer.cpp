@@ -26,7 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -40,7 +40,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-#include "velocypack/Builder.h"
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -109,9 +109,7 @@ static bool FindRange(std::vector<TRI_df_marker_t const*> const& markers,
   return found;
 }
 
-
 size_t const InitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
-
 
 InitialSyncer::InitialSyncer(
     TRI_vocbase_t* vocbase,
@@ -139,13 +137,11 @@ InitialSyncer::InitialSyncer(
   _includeSystem = configuration->_includeSystem;
 }
 
-
 InitialSyncer::~InitialSyncer() {
   if (_batchId > 0) {
     sendFinishBatch();
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run method, performs a full synchronization
@@ -177,9 +173,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
 
     if (_masterInfo._majorVersion == 1 ||
         (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion <= 6)) {
-      LOG_WARNING(
-          "incremental replication is not supported with a master < ArangoDB "
-          "2.7");
+      LOG(WARNING) << "incremental replication is not supported with a master < ArangoDB 2.7";
       incremental = false;
     }
 
@@ -263,7 +257,6 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
     return TRI_ERROR_NO_ERROR;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send a WAL flush command
@@ -463,11 +456,11 @@ bool InitialSyncer::checkAborted() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::applyCollectionDump(
-    arangodb::Transaction* trx,
-    TRI_transaction_collection_t* trxCollection, SimpleHttpResult* response,
-    uint64_t& markersProcessed, std::string& errorMsg) {
+    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
+    SimpleHttpResult* response, uint64_t& markersProcessed,
+    std::string& errorMsg) {
   std::string const invalidMsg = "received invalid JSON data for collection " +
-                            StringUtils::itoa(trxCollection->_cid);
+                                 StringUtils::itoa(trxCollection->_cid);
 
   StringBuffer& data = response->getBody();
   char* p = data.begin();
@@ -573,8 +566,9 @@ int InitialSyncer::applyCollectionDump(
 
 int InitialSyncer::handleCollectionDump(
     arangodb::Transaction* trx, std::string const& cid,
-    TRI_transaction_collection_t* trxCollection, std::string const& collectionName,
-    TRI_voc_tick_t maxTick, std::string& errorMsg) {
+    TRI_transaction_collection_t* trxCollection,
+    std::string const& collectionName, TRI_voc_tick_t maxTick,
+    std::string& errorMsg) {
   std::string appendix;
 
   if (_hasFlushed) {
@@ -746,7 +740,8 @@ int InitialSyncer::handleCollectionDump(
 
     if (!found) {
       errorMsg = "got invalid response from master at " +
-                 std::string(_masterInfo._endpoint) + ": required header is missing";
+                 std::string(_masterInfo._endpoint) +
+                 ": required header is missing";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
@@ -1001,7 +996,8 @@ int InitialSyncer::handleSyncKeys(
     }
 
     std::string progress = "sorting " + std::to_string(markers.size()) +
-                      " local key(s) for collection '" + collectionName + "'";
+                           " local key(s) for collection '" + collectionName +
+                           "'";
     setProgress(progress);
 
     // sort all our local keys
@@ -1229,7 +1225,8 @@ int InitialSyncer::handleSyncKeys(
 
       if (!TRI_IsArrayJson(rangeKeysJson.get())) {
         errorMsg = "got invalid response from master at " +
-                   std::string(_masterInfo._endpoint) + ": response is no array";
+                   std::string(_masterInfo._endpoint) +
+                   ": response is no array";
 
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
@@ -1398,7 +1395,8 @@ int InitialSyncer::handleSyncKeys(
 
         if (!TRI_IsArrayJson(documentsJson.get())) {
           errorMsg = "got invalid response from master at " +
-                     std::string(_masterInfo._endpoint) + ": response is no array";
+                     std::string(_masterInfo._endpoint) +
+                     ": response is no array";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
         }
@@ -1547,7 +1545,8 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
                                     bool incremental, std::string& errorMsg,
                                     sync_phase_e phase) {
   // Only Temporary indexesJson will be VPack soon
-  std::shared_ptr<VPackBuilder> builder = arangodb::basics::JsonHelper::toVelocyPack(indexesJson);
+  std::shared_ptr<VPackBuilder> builder =
+      arangodb::basics::JsonHelper::toVelocyPack(indexesJson);
   VPackSlice indexes = builder->slice();
   if (checkAborted()) {
     return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
@@ -1555,7 +1554,8 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
 
   sendExtendBatch();
 
-  std::string const masterName = JsonHelper::getStringValue(parameters, "name", "");
+  std::string const masterName =
+      JsonHelper::getStringValue(parameters, "name", "");
 
   TRI_json_t const* masterId = JsonHelper::getObjectElement(parameters, "cid");
 
@@ -1579,7 +1579,8 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
   TRI_voc_cid_t const cid = StringUtils::uint64(
       masterId->_value._string.data, masterId->_value._string.length - 1);
   std::string const collectionMsg = "collection '" + masterName + "', type " +
-                               typeString + ", id " + StringUtils::itoa(cid);
+                                    typeString + ", id " +
+                                    StringUtils::itoa(cid);
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
@@ -1606,8 +1607,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
       if (col != nullptr) {
         bool truncate = false;
 
-        if (col->_name[0] == '_' &&
-            TRI_EqualString(col->_name, TRI_COL_NAME_USERS)) {
+        if (col->name() == TRI_COL_NAME_USERS) {
           // better not throw away the _users collection. otherwise it is gone
           // and this may be a problem if the
           // server crashes in-between.
@@ -1726,8 +1726,8 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
       res = trx.begin();
 
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg =
-            "unable to start transaction: " + std::string(TRI_errno_string(res));
+        errorMsg = "unable to start transaction: " +
+                   std::string(TRI_errno_string(res));
 
         return res;
       }
@@ -1736,8 +1736,8 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
 
       if (trxCollection == nullptr) {
         res = TRI_ERROR_INTERNAL;
-        errorMsg =
-            "unable to start transaction: " + std::string(TRI_errno_string(res));
+        errorMsg = "unable to start transaction: " +
+                   std::string(TRI_errno_string(res));
       } else {
         if (incremental && trx.documentCollection()->size() > 0) {
           res = handleCollectionSync(StringUtils::itoa(cid), trx, masterName,
@@ -1756,10 +1756,10 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
 
         if (n > 0) {
           std::string const progress = "creating " + std::to_string(n) +
-                                  " index(es) for " + collectionMsg;
+                                       " index(es) for " + collectionMsg;
           setProgress(progress);
 
-          READ_LOCKER(_vocbase->_inventoryLock);
+          READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
           try {
             arangodb::CollectionGuard guard(_vocbase, col->_cid, false);
@@ -1777,10 +1777,9 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
                 if (idxDef.isObject()) {
                   VPackSlice const type = idxDef.get("type");
                   if (type.isString()) {
-                    std::string const progress =
-                        "creating index of type " +
-                        type.copyString() +
-                        " for " + collectionMsg;
+                    std::string const progress = "creating index of type " +
+                                                 type.copyString() + " for " +
+                                                 collectionMsg;
                     setProgress(progress);
                   }
                 }
@@ -1967,5 +1966,3 @@ int InitialSyncer::iterateCollections(
   // all ok
   return TRI_ERROR_NO_ERROR;
 }
-
-

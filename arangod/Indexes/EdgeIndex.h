@@ -76,7 +76,6 @@ class EdgeIndexIterator final : public IndexIterator {
 };
 
 class EdgeIndex final : public Index {
-  
  public:
   EdgeIndex() = delete;
 
@@ -86,7 +85,6 @@ class EdgeIndex final : public Index {
 
   ~EdgeIndex();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief typedef for hash tables
@@ -95,7 +93,6 @@ class EdgeIndex final : public Index {
   typedef arangodb::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
                                        uint32_t, true> TRI_EdgeIndexHash_t;
 
-  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_EDGE_INDEX;
@@ -127,7 +124,7 @@ class EdgeIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   void lookup(arangodb::Transaction*, TRI_edge_index_iterator_t const*,
-              std::vector<TRI_doc_mptr_copy_t>&, TRI_doc_mptr_copy_t*&, size_t);
+              std::vector<TRI_doc_mptr_copy_t>&, TRI_doc_mptr_t*&, size_t);
 
   int batchInsert(arangodb::Transaction*,
                   std::vector<TRI_doc_mptr_t const*> const*,
@@ -155,7 +152,6 @@ class EdgeIndex final : public Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the iterator
@@ -166,7 +162,6 @@ class EdgeIndex final : public Index {
       arangodb::aql::AstNode const*,
       std::vector<arangodb::aql::AstNode const*> const&) const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the hash table for _from
@@ -189,5 +184,3 @@ class EdgeIndex final : public Index {
 }
 
 #endif
-
-

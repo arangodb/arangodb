@@ -52,7 +52,6 @@
 #include "Basics/memory-map-win32.h"
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes changes made in memory back to disk
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,5 +88,3 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
 int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
 
 #endif
-
-

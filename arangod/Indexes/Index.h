@@ -34,7 +34,6 @@
 
 #include <iosfwd>
 
-
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
 struct TRI_shaped_json_s;
@@ -60,7 +59,6 @@ struct Variable;
 
 class Transaction;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Unified index element. Do not directly construct it.
@@ -121,9 +119,9 @@ struct TRI_index_element_t {
   //////////////////////////////////////////////////////////////////////////////
 
   static void freeElement(TRI_index_element_t* el) {
-    TRI_ASSERT_EXPENSIVE(el != nullptr);
-    TRI_ASSERT_EXPENSIVE(el->document() != nullptr);
-    TRI_ASSERT_EXPENSIVE(el->subObjects() != nullptr);
+    TRI_ASSERT(el != nullptr);
+    TRI_ASSERT(el->document() != nullptr);
+    TRI_ASSERT(el->subObjects() != nullptr);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, el);
   }
@@ -133,9 +131,7 @@ namespace arangodb {
 class IndexIterator;
 struct IndexIteratorContext;
 
-
 class Index {
-  
  public:
   Index() = delete;
   Index(Index const&) = delete;
@@ -168,7 +164,6 @@ class Index {
     TRI_IDX_TYPE_CAP_CONSTRAINT
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the index id
@@ -324,8 +319,7 @@ class Index {
   /// contents are the same
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool Compare(VPackSlice const& lhs,
-                      VPackSlice const& rhs);
+  static bool Compare(VPackSlice const& lhs, VPackSlice const& rhs);
 
   virtual IndexType type() const = 0;
 
@@ -347,10 +341,10 @@ class Index {
 
   virtual bool dumpFields() const = 0;
 
-  virtual int insert(arangodb::Transaction*,
-                     struct TRI_doc_mptr_t const*, bool) = 0;
-  virtual int remove(arangodb::Transaction*,
-                     struct TRI_doc_mptr_t const*, bool) = 0;
+  virtual int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
+                     bool) = 0;
+  virtual int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
+                     bool) = 0;
   virtual int postInsert(arangodb::Transaction*,
                          struct TRI_transaction_collection_s*,
                          struct TRI_doc_mptr_t const*);
@@ -389,7 +383,6 @@ class Index {
                            arangodb::aql::Variable const* reference,
                            bool) const;
 
-  
  protected:
   TRI_idx_iid_t const _iid;
 
@@ -409,5 +402,3 @@ std::ostream& operator<<(std::ostream&, arangodb::Index const*);
 std::ostream& operator<<(std::ostream&, arangodb::Index const&);
 
 #endif
-
-

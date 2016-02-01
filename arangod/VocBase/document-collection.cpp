@@ -28,9 +28,10 @@
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ThreadPool.h"
+#include "Cluster/ServerState.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/CapConstraint.h"
 #include "Indexes/EdgeIndex.h"
@@ -63,7 +64,6 @@
 
 using namespace arangodb;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,11 +79,13 @@ TRI_document_collection_t::TRI_document_collection_t()
       _headersPtr(nullptr),
       _keyGenerator(nullptr),
       _uncollectedLogfileEntries(0),
-      _currentWriterThread(0),
       _cleanupIndexes(0) {
   _tickMax = 0;
 
   setCompactionStatus("compaction not yet started");
+  if (ServerState::instance()->isDBServer()) {
+    _followers.reset(new FollowerInfo(this));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,14 +95,14 @@ TRI_document_collection_t::TRI_document_collection_t()
 TRI_document_collection_t::~TRI_document_collection_t() {
   delete _keyGenerator;
 }
- 
+
 void TRI_document_collection_t::setNextCompactionStartIndex(size_t index) {
-  MUTEX_LOCKER(_compactionStatusLock);
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   _nextCompactionStartIndex = index;
 }
 
 size_t TRI_document_collection_t::getNextCompactionStartIndex() {
-  MUTEX_LOCKER(_compactionStatusLock);
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   return _nextCompactionStartIndex;
 }
 
@@ -110,7 +112,7 @@ void TRI_document_collection_t::setCompactionStatus(char const* reason) {
   time_t tt = time(nullptr);
   TRI_gmtime(tt, &tb);
 
-  MUTEX_LOCKER(_compactionStatusLock);
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   _lastCompactionStatus = reason;
 
   strftime(&_lastCompactionStamp[0], sizeof(_lastCompactionStamp),
@@ -123,7 +125,7 @@ void TRI_document_collection_t::getCompactionStatus(char const*& reason,
   if (maxSize > sizeof(_lastCompactionStamp)) {
     maxSize = sizeof(_lastCompactionStamp);
   }
-  MUTEX_LOCKER(_compactionStatusLock);
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   reason = _lastCompactionStatus;
   memcpy(dst, &_lastCompactionStamp[0], maxSize);
 }
@@ -147,6 +149,14 @@ int TRI_document_collection_t::beginRead() {
   // LOCKING-DEBUG
   // std::cout << "BeginRead: " << document->_info._name << std::endl;
   TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+  
+  try { 
+    _vocbase->_deadlockDetector.addReader(this, false);
+  }
+  catch (...) {
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -166,6 +176,13 @@ int TRI_document_collection_t::endRead() {
       return TRI_ERROR_NO_ERROR;
     }
   }
+  
+  try { 
+    _vocbase->_deadlockDetector.unsetReader(this);
+  }
+  catch (...) {
+  }
+  
   // LOCKING-DEBUG
   // std::cout << "EndRead: " << document->_info._name << std::endl;
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
@@ -192,9 +209,15 @@ int TRI_document_collection_t::beginWrite() {
   // LOCKING_DEBUG
   // std::cout << "BeginWrite: " << document->_info._name << std::endl;
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
-
+  
   // register writer
-  _currentWriterThread.store(TRI_CurrentThreadId());
+  try { 
+    _vocbase->_deadlockDetector.addWriter(this, false);
+  }
+  catch (...) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -215,12 +238,18 @@ int TRI_document_collection_t::endWrite() {
       return TRI_ERROR_NO_ERROR;
     }
   }
+  
+  // unregister writer
+  try {
+    _vocbase->_deadlockDetector.unsetWriter(this);
+  }
+  catch (...) {
+    // must go on here to unlock the lock
+  }
+
   // LOCKING-DEBUG
   // std::cout << "EndWrite: " << document->_info._name << std::endl;
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
-
-  // unregister writer
-  _currentWriterThread.store(0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -257,26 +286,28 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
     try {
       if (!wasBlocked) {
         // insert reader
-        if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
+        if (_vocbase->_deadlockDetector.setReaderBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.namec_str() << "'";
           return TRI_ERROR_DEADLOCK;
         }
         wasBlocked = true;
-        LOG_TRACE("waiting for read-lock on collection '%s'", _info.name().c_str());
+        LOG(TRACE) << "waiting for read-lock on collection '" << _info.namec_str() << "'";
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
         iterations = 0;
-        if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, false) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          _vocbase->_deadlockDetector.setReaderUnblocked(this);
+          _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.namec_str() << "'";
           return TRI_ERROR_DEADLOCK;
         }
       }
     } catch (...) {
       // clean up!
       if (wasBlocked) {
-        _vocbase->_deadlockDetector.setReaderUnblocked(this);
+        _vocbase->_deadlockDetector.unsetReaderBlocked(this);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
@@ -290,15 +321,19 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
     waited += sleepPeriod;
 
     if (waited > timeout) {
-      _vocbase->_deadlockDetector.setReaderUnblocked(this);
-      LOG_TRACE("timed out waiting for read-lock on collection '%s'", _info.name().c_str());
+      _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+      LOG(TRACE) << "timed out waiting for read-lock on collection '" << _info.namec_str() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
-
-  // when we are here, we've got the read lock
-  if (wasBlocked) {
-    _vocbase->_deadlockDetector.setReaderUnblocked(this);
+  
+  try { 
+    // when we are here, we've got the read lock
+    _vocbase->_deadlockDetector.addReader(this, wasBlocked);
+  }
+  catch (...) {
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -335,27 +370,29 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
   while (!TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
     try {
       if (!wasBlocked) {
-        // insert writer (with method named "setReaderBlocked"..., but it works)
-        if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
+        // insert writer
+        if (_vocbase->_deadlockDetector.setWriterBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.namec_str() << "'";
           return TRI_ERROR_DEADLOCK;
         }
         wasBlocked = true;
-        LOG_TRACE("waiting for write-lock on collection '%s'", _info.name().c_str());
+        LOG(TRACE) << "waiting for write-lock on collection '" << _info.namec_str() << "'";
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
         iterations = 0;
-        if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, true) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          _vocbase->_deadlockDetector.setReaderUnblocked(this);
+          _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.namec_str() << "'";
           return TRI_ERROR_DEADLOCK;
         }
       }
     } catch (...) {
       // clean up!
       if (wasBlocked) {
-        _vocbase->_deadlockDetector.setReaderUnblocked(this);
+        _vocbase->_deadlockDetector.unsetWriterBlocked(this);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
@@ -369,19 +406,20 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
     waited += sleepPeriod;
 
     if (waited > timeout) {
-      _vocbase->_deadlockDetector.setReaderUnblocked(this);
-      LOG_TRACE("timed out waiting for write-lock on collection '%s'", _info.name().c_str());
+      _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+      LOG(TRACE) << "timed out waiting for write-lock on collection '" << _info.namec_str() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
 
-  // when we are here, we've got the write lock
-  if (wasBlocked) {
-    _vocbase->_deadlockDetector.setReaderUnblocked(this);
+  try { 
+    // register writer 
+    _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
   }
-
-  // register writer
-  _currentWriterThread.store(TRI_CurrentThreadId());
+  catch (...) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -489,8 +527,7 @@ void TRI_document_collection_t::addIndex(arangodb::Index* idx) {
   if (idx->type() == arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
     // register cap constraint
     _capConstraint = static_cast<arangodb::CapConstraint*>(idx);
-  } else if (idx->type() ==
-             arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+  } else if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     ++_cleanupIndexes;
   }
 }
@@ -499,8 +536,7 @@ void TRI_document_collection_t::addIndex(arangodb::Index* idx) {
 /// @brief get an index by id
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::Index* TRI_document_collection_t::removeIndex(
-    TRI_idx_iid_t iid) {
+arangodb::Index* TRI_document_collection_t::removeIndex(TRI_idx_iid_t iid) {
   size_t const n = _indexes.size();
 
   for (size_t i = 0; i < n; ++i) {
@@ -518,8 +554,7 @@ arangodb::Index* TRI_document_collection_t::removeIndex(
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
         // unregister cap constraint
         _capConstraint = nullptr;
-      } else if (idx->type() ==
-                 arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      } else if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         --_cleanupIndexes;
       }
 
@@ -535,8 +570,7 @@ arangodb::Index* TRI_document_collection_t::removeIndex(
 /// @brief get all indexes of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<arangodb::Index*> TRI_document_collection_t::allIndexes()
-    const {
+std::vector<arangodb::Index*> TRI_document_collection_t::allIndexes() const {
   return _indexes;
 }
 
@@ -692,11 +726,8 @@ static int InsertPrimaryIndex(arangodb::Transaction* trx,
 
   // we found a previous revision in the index
   // the found revision is still alive
-  LOG_TRACE(
-      "document '%s' already existed with revision %llu while creating "
-      "revision %llu",
-      TRI_EXTRACT_MARKER_KEY(header),  // ONLY IN INDEX, PROTECTED by RUNTIME
-      (unsigned long long)found->_rid, (unsigned long long)header->_rid);
+  LOG(TRACE) << "document '" << TRI_EXTRACT_MARKER_KEY(header) << "' already existed with revision " << // ONLY IN INDEX << " while creating revision " << PROTECTED by RUNTIME
+      (unsigned long long)found->_rid;
 
   return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
 }
@@ -831,7 +862,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
 
   if (number == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG_ERROR("out of memory when creating index number");
+    LOG(ERROR) << "out of memory when creating index number";
     return false;
   }
 
@@ -841,7 +872,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-    LOG_ERROR("out of memory when creating index name");
+    LOG(ERROR) << "out of memory when creating index name";
     return false;
   }
 
@@ -852,7 +883,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, name);
-    LOG_ERROR("out of memory when creating index filename");
+    LOG(ERROR) << "out of memory when creating index filename";
     return false;
   }
 
@@ -863,7 +894,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot remove index definition: %s", TRI_last_error());
+    LOG(ERROR) << "cannot remove index definition: " << TRI_last_error();
     return false;
   }
 
@@ -899,7 +930,7 @@ static int CleanupIndexes(TRI_document_collection_t* document) {
   // cleaning indexes is expensive, so only do it if the flag is set for the
   // collection
   if (document->_cleanupIndexes > 0) {
-    WRITE_LOCKER(document->_lock);
+    WRITE_LOCKER(writeLocker, document->_lock);
 
     for (auto& idx : document->allIndexes()) {
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
@@ -1227,20 +1258,20 @@ struct open_iterator_state_t {
   uint32_t _trxCollections;
   bool _trxPrepared;
 
-  open_iterator_state_t(TRI_document_collection_t* document, TRI_vocbase_t* vocbase)
-    : _document(document),
-      _tid(0),
-      _fid(0),
-      _stats(),
-      _dfi(nullptr),
-      _vocbase(vocbase),
-      _trx(nullptr),
-      _deletions(0),
-      _documents(0),
-      _initialCount(-1),
-      _trxCollections(0),
-      _trxPrepared(false) {
-  }
+  open_iterator_state_t(TRI_document_collection_t* document,
+                        TRI_vocbase_t* vocbase)
+      : _document(document),
+        _tid(0),
+        _fid(0),
+        _stats(),
+        _dfi(nullptr),
+        _vocbase(vocbase),
+        _trx(nullptr),
+        _deletions(0),
+        _documents(0),
+        _initialCount(-1),
+        _trxCollections(0),
+        _trxPrepared(false) {}
 
   ~open_iterator_state_t() {
     for (auto& it : _stats) {
@@ -1263,8 +1294,8 @@ struct open_iterator_operation_t {
 /// @brief find a statistics container for a given file id
 ////////////////////////////////////////////////////////////////////////////////
 
-static DatafileStatisticsContainer* FindDatafileStats(open_iterator_state_t* state, 
-                                                      TRI_voc_fid_t fid) {
+static DatafileStatisticsContainer* FindDatafileStats(
+    open_iterator_state_t* state, TRI_voc_fid_t fid) {
   auto it = state->_stats.find(fid);
 
   if (it != state->_stats.end()) {
@@ -1312,39 +1343,25 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
   if (state->_fid != operation->_fid) {
     // update the state
     state->_fid = operation->_fid;
-    state->_dfi = FindDatafileStats(state, operation->_fid); 
+    state->_dfi = FindDatafileStats(state, operation->_fid);
   }
 
   SetRevision(document, d->_rid, false);
 
-#ifdef TRI_ENABLE_LOGGER
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
 #if 0
   // currently disabled because it is too chatty in trace mode
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    LOG_TRACE("document: fid %llu, key %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
-              (unsigned long long) operation->_fid,
-              ((char*) d + d->_offsetKey),
-              (unsigned long long) d->_rid,
-              (unsigned long) d->_offsetJson,
-              (unsigned long) d->_offsetKey);
+    LOG(TRACE) << "document: fid " << operation->_fid << ", key " << ((char*) d + d->_offsetKey) << ", rid " << d->_rid << ", _offsetJson " << d->_offsetJson << ", _offsetKey " << d->_offsetKey;
   }
   else {
     TRI_doc_edge_key_marker_t const* e = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
-    LOG_TRACE("edge: fid %llu, key %s, fromKey %s, toKey %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
-              (unsigned long long) operation->_fid,
-              ((char*) d + d->_offsetKey),
-              ((char*) e + e->_offsetFromKey),
-              ((char*) e + e->_offsetToKey),
-              (unsigned long long) d->_rid,
-              (unsigned long) d->_offsetJson,
-              (unsigned long) d->_offsetKey);
+    LOG(TRACE) << "edge: fid " << operation->_fid << ", key " << ((char*) d + d->_offsetKey) << ", fromKey " << ((char*) e + e->_offsetFromKey) << ", toKey " << ((char*) e + e->_offsetToKey) << ", rid " << d->_rid << ", _offsetJson " << d->_offsetJson << ", _offsetKey " << d->_offsetKey;
 
   }
 #endif
 
-#endif
 #endif
 
   TRI_voc_key_t key = ((char*)d) + d->_offsetKey;
@@ -1370,7 +1387,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
                            operation->_fid, key, hash, &header);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("out of memory");
+      LOG(ERROR) << "out of memory";
 
       return TRI_set_errno(res);
     }
@@ -1395,8 +1412,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("inserting document into indexes failed with error: %s",
-                TRI_errno_string(res));
+      LOG(ERROR) << "inserting document into indexes failed with error: " << TRI_errno_string(res);
 
       return res;
     }
@@ -1429,7 +1445,8 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
       dfi = FindDatafileStats(state, oldData._fid);
     }
 
-    if (oldData.getDataPtr() != nullptr) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    if (oldData.getDataPtr() !=
+        nullptr) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
       TRI_ASSERT(oldData.getDataPtr() !=
                  nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
       int64_t size = (int64_t)((TRI_df_marker_t const*)oldData.getDataPtr())
@@ -1447,12 +1464,13 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
 
   // it is a stale update
   else {
-    TRI_ASSERT(found->getDataPtr() !=  nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    TRI_ASSERT(found->getDataPtr() !=
+               nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
     state->_dfi->numberDead++;
     state->_dfi->sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(
-          ((TRI_df_marker_t*)found->getDataPtr())
-              ->_size);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+        ((TRI_df_marker_t*)found->getDataPtr())
+            ->_size);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1486,9 +1504,7 @@ static int OpenIteratorApplyRemove(open_iterator_state_t* state,
   TRI_voc_key_t key = ((char*)d) + d->_offsetKey;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  LOG_TRACE("deletion: fid %llu, key %s, rid %llu, deletion %llu",
-            (unsigned long long)operation->_fid, (char*)key,
-            (unsigned long long)d->_rid, (unsigned long long)marker->_tick);
+  LOG(TRACE) << "deletion: fid " << operation->_fid << ", key " << (char*)key << ", rid " << d->_rid << ", deletion " << marker->_tick;
 #endif
 
   document->_keyGenerator->track(key);
@@ -1515,7 +1531,8 @@ static int OpenIteratorApplyRemove(open_iterator_state_t* state,
       dfi = FindDatafileStats(state, found->_fid);
     }
 
-    TRI_ASSERT(found->getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    TRI_ASSERT(found->getDataPtr() !=
+               nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
     int64_t size = (int64_t)((TRI_df_marker_t*)found->getDataPtr())
                        ->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
@@ -1548,7 +1565,7 @@ static int OpenIteratorApplyOperation(
     return OpenIteratorApplyInsert(state, operation);
   }
 
-  LOG_ERROR("logic error in %s", __FUNCTION__);
+  LOG(ERROR) << "logic error in " << __FUNCTION__;
   return TRI_ERROR_INTERNAL;
 }
 
@@ -1640,8 +1657,7 @@ static int OpenIteratorAbortTransaction(open_iterator_state_t* state) {
         // otherwise we would have got TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND etc.
         int res = TRI_ERROR_NO_ERROR;
 
-        LOG_INFO("recovering transaction %llu",
-                 (unsigned long long)state->_tid);
+        LOG(INFO) << "recovering transaction " << state->_tid;
         size_t const n = TRI_LengthVector(&state->_operations);
 
         for (size_t i = 0; i < n; ++i) {
@@ -1665,8 +1681,7 @@ static int OpenIteratorAbortTransaction(open_iterator_state_t* state) {
 
     OpenIteratorNoteFailedTransaction(state);
 
-    LOG_INFO("rolling back uncommitted transaction %llu",
-             (unsigned long long)state->_tid);
+    LOG(INFO) << "rolling back uncommitted transaction " << state->_tid;
     OpenIteratorResetOperations(state);
   }
 
@@ -1717,11 +1732,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     // marker has a transaction id
     if (d->_tid != state->_tid) {
       // we have a different transaction ongoing
-      LOG_WARNING(
-          "logic error in %s, fid %llu. found tid: %llu, expected tid: %llu. "
-          "this may also be the result of an aborted transaction",
-          __FUNCTION__, (unsigned long long)datafile->_fid,
-          (unsigned long long)d->_tid, (unsigned long long)state->_tid);
+      LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << d->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
 
       OpenIteratorAbortTransaction(state);
 
@@ -1747,11 +1758,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
     // marker has a transaction id
     if (d->_tid != state->_tid) {
       // we have a different transaction ongoing
-      LOG_WARNING(
-          "logic error in %s, fid %llu. found tid: %llu, expected tid: %llu. "
-          "this may also be the result of an aborted transaction",
-          __FUNCTION__, (unsigned long long)datafile->_fid,
-          (unsigned long long)d->_tid, (unsigned long long)state->_tid);
+      LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << d->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
 
       OpenIteratorAbortTransaction(state);
 
@@ -1809,8 +1816,7 @@ static int OpenIteratorHandleAttributeMarker(TRI_df_marker_t const* marker,
     }
 
     state->_dfi->numberAttributes++;
-    state->_dfi->sizeAttributes +=
-          (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
+    state->_dfi->sizeAttributes += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
   }
 
   return res;
@@ -1828,11 +1834,7 @@ static int OpenIteratorHandleBeginMarker(TRI_df_marker_t const* marker,
 
   if (m->_tid != state->_tid && state->_tid != 0) {
     // some incomplete transaction was going on before us...
-    LOG_WARNING(
-        "logic error in %s, fid %llu. found tid: %llu, expected tid: %llu. "
-        "this may also be the result of an aborted transaction",
-        __FUNCTION__, (unsigned long long)datafile->_fid,
-        (unsigned long long)m->_tid, (unsigned long long)state->_tid);
+    LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
 
     OpenIteratorAbortTransaction(state);
   }
@@ -1855,10 +1857,7 @@ static int OpenIteratorHandleCommitMarker(TRI_df_marker_t const* marker,
   if (m->_tid != state->_tid) {
     // we found a commit marker, but we did not find any begin marker
     // beforehand. strange
-    LOG_WARNING(
-        "logic error in %s, fid %llu. found tid: %llu, expected tid: %llu",
-        __FUNCTION__, (unsigned long long)datafile->_fid,
-        (unsigned long long)m->_tid, (unsigned long long)state->_tid);
+    LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
 
     OpenIteratorAbortTransaction(state);
   } else {
@@ -1884,10 +1883,7 @@ static int OpenIteratorHandlePrepareMarker(TRI_df_marker_t const* marker,
   if (m->_tid != state->_tid) {
     // we found a commit marker, but we did not find any begin marker
     // beforehand. strange
-    LOG_WARNING(
-        "logic error in %s, fid %llu. found tid: %llu, expected tid: %llu",
-        __FUNCTION__, (unsigned long long)datafile->_fid,
-        (unsigned long long)m->_tid, (unsigned long long)state->_tid);
+    LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
 
     OpenIteratorAbortTransaction(state);
   } else {
@@ -1910,10 +1906,7 @@ static int OpenIteratorHandleAbortMarker(TRI_df_marker_t const* marker,
   if (m->_tid != state->_tid) {
     // we found an abort marker, but we did not find any begin marker
     // beforehand. strange
-    LOG_WARNING(
-        "logic error in %s, fid %llu. found tid: %llu, expected tid: %llu",
-        __FUNCTION__, (unsigned long long)datafile->_fid,
-        (unsigned long long)m->_tid, (unsigned long long)state->_tid);
+    LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
   }
 
   OpenIteratorAbortTransaction(state);
@@ -1973,7 +1966,7 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
       FindDatafileStats((open_iterator_state_t*)data, datafile->_fid);
     }
 
-    LOG_TRACE("skipping marker type %lu", (unsigned long)marker->_type);
+    LOG(TRACE) << "skipping marker type " << marker->_type;
     res = TRI_ERROR_NO_ERROR;
   }
 
@@ -2012,14 +2005,14 @@ static bool OpenIndexIterator(char const* filename, void* data) {
     builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
   } catch (...) {
     // Failed to parse file
-    LOG_ERROR("failed to parse index definition from '%s'", filename);
+    LOG(ERROR) << "failed to parse index definition from '" << filename << "'";
     return false;
   }
 
   VPackSlice description = builder->slice();
   // VelocyPack must be a index description
   if (!description.isObject()) {
-    LOG_ERROR("cannot read index definition from '%s'", filename);
+    LOG(ERROR) << "cannot read index definition from '" << filename << "'";
     return false;
   }
 
@@ -2191,11 +2184,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   // read all documents and fill primary index
   TRI_IterateCollection(collection, OpenIterator, &openState);
 
-  LOG_TRACE(
-      "found %llu document markers, %llu deletion markers for collection '%s'",
-      (unsigned long long)openState._documents,
-      (unsigned long long)openState._deletions,
-      collection->_info.name().c_str());
+  LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.namec_str() << "'";
 
   // abort any transaction that's unfinished after iterating over all markers
   OpenIteratorAbortTransaction(&openState);
@@ -2207,11 +2196,9 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
     for (auto& it : openState._stats) {
       document->_datafileStatistics.create(it.first, *(it.second));
     }
-  }
-  catch (basics::Exception const& ex) {
+  } catch (basics::Exception const& ex) {
     return ex.code();
-  }
-  catch (...) {
+  } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -2258,7 +2245,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
 
   if (document == nullptr) {
     delete keyGenerator;
-    LOG_WARNING("cannot create document collection");
+    LOG(WARNING) << "cannot create document collection";
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return nullptr;
@@ -2273,7 +2260,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
 
   if (collection == nullptr) {
     delete document;
-    LOG_ERROR("cannot create document collection");
+    LOG(ERROR) << "cannot create document collection";
 
     return nullptr;
   }
@@ -2282,7 +2269,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
 
   // create document collection and shaper
   if (false == InitDocumentCollection(document, shaper)) {
-    LOG_ERROR("cannot initialize document collection");
+    LOG(ERROR) << "cannot initialize document collection";
 
     // TODO: shouldn't we free document->_headersPtr etc.?
     // Yes, do this in the context of the TRI_document_collection_t cleanup.
@@ -2301,8 +2288,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we free document->_headersPtr etc.?
     // Yes, do this in the context of the TRI_document_collection_t cleanup.
-    LOG_ERROR("cannot save collection parameters in directory '%s': '%s'",
-              collection->_directory, TRI_last_error());
+    LOG(ERROR) << "cannot save collection parameters in directory '" << collection->_directory << "': '" << TRI_last_error() << "'";
 
     TRI_CloseCollection(collection);
     TRI_DestroyCollection(collection);
@@ -2361,12 +2347,11 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
     TRI_document_collection_t* document, TRI_voc_fid_t fid,
     TRI_voc_size_t journalSize, bool isCompactor) {
   TRI_ASSERT(fid > 0);
-  
+
   // create a datafile entry for the new journal
   try {
     document->_datafileStatistics.create(fid);
-  }
-  catch (...) {
+  } catch (...) {
     EnsureErrorCode(TRI_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
@@ -2428,9 +2413,9 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
   TRI_ASSERT(journal != nullptr);
 
   if (isCompactor) {
-    LOG_TRACE("created new compactor '%s'", journal->getName(journal));
+    LOG(TRACE) << "created new compactor '" << journal->getName(journal) << "'";
   } else {
-    LOG_TRACE("created new journal '%s'", journal->getName(journal));
+    LOG(TRACE) << "created new journal '" << journal->getName(journal) << "'";
   }
 
   // create a collection header, still in the temporary file
@@ -2444,8 +2429,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = journal->_lastError;
-    LOG_ERROR("cannot create collection header in file '%s': %s",
-              journal->getName(journal), TRI_errno_string(res));
+    LOG(ERROR) << "cannot create collection header in file '" << journal->getName(journal) << "': " << TRI_errno_string(res);
 
     // close the journal and remove it
     TRI_CloseDatafile(journal);
@@ -2472,8 +2456,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = journal->_lastError;
-    LOG_ERROR("cannot create collection header in file '%s': %s",
-              journal->getName(journal), TRI_last_error());
+    LOG(ERROR) << "cannot create collection header in file '" << journal->getName(journal) << "': " << TRI_last_error();
 
     // close the journal and remove it
     TRI_CloseDatafile(journal);
@@ -2502,8 +2485,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
       bool ok = TRI_RenameDatafile(journal, filename);
 
       if (!ok) {
-        LOG_ERROR("failed to rename journal '%s' to '%s': %s",
-                  journal->getName(journal), filename, TRI_last_error());
+        LOG(ERROR) << "failed to rename journal '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
 
         TRI_CloseDatafile(journal);
         TRI_UnlinkFile(journal->getName(journal));
@@ -2514,8 +2496,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 
         return nullptr;
       } else {
-        LOG_TRACE("renamed journal from '%s' to '%s'",
-                  journal->getName(journal), filename);
+        LOG(TRACE) << "renamed journal from '" << journal->getName(journal) << "' to '" << filename << "'";
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -2539,9 +2520,9 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_DocumentIteratorDocumentCollection(
-    arangodb::Transaction* trx, TRI_document_collection_t* document,
-    void* data, bool (*callback)(TRI_doc_mptr_t const*,
-                                 TRI_document_collection_t*, void*)) {
+    arangodb::Transaction* trx, TRI_document_collection_t* document, void* data,
+    bool (*callback)(TRI_doc_mptr_t const*, TRI_document_collection_t*,
+                     void*)) {
   // The first argument is only used to make the compiler prove that a
   // transaction is ongoing. We need this to prove that accesses to
   // master pointers and their data pointers in the callback are
@@ -2597,7 +2578,7 @@ int TRI_FromVelocyPackIndexDocumentCollection(
     std::string tmp = iis.copyString();
     iid = static_cast<TRI_idx_iid_t>(TRI_UInt64String(tmp.c_str()));
   } else {
-    LOG_ERROR("ignoring index, index identifier could not be located");
+    LOG(ERROR) << "ignoring index, index identifier could not be located";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -2644,17 +2625,12 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   // ...........................................................................
   if (typeStr == "edge") {
     // we should never get here, as users cannot create their own edge indexes
-    LOG_ERROR(
-        "logic error. there should never be a JSON file describing an edges "
-        "index");
+    LOG(ERROR) << "logic error. there should never be a JSON file describing an edges index";
     return TRI_ERROR_INTERNAL;
   }
 
   // default:
-  LOG_WARNING(
-      "index type '%s' is not supported in this version of ArangoDB and is "
-      "ignored",
-      typeStr.c_str());
+  LOG(WARNING) << "index type '" << typeStr.c_str() << "' is not supported in this version of ArangoDB and is ignored";
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2698,7 +2674,7 @@ int TRI_RollbackOperationDocumentCollection(
       res = InsertSecondaryIndexes(trx, document, header, true);
       document->_numberDocuments++;
     } else {
-      LOG_ERROR("error rolling back remove operation");
+      LOG(ERROR) << "error rolling back remove operation";
     }
     return res;
   }
@@ -2735,8 +2711,7 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
   int res = TRI_SealDatafile(journal);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to seal datafile '%s': %s", journal->getName(journal),
-              TRI_last_error());
+    LOG(ERROR) << "failed to seal datafile '" << journal->getName(journal) << "': " << TRI_last_error();
 
     if (!isCompactor) {
       TRI_RemoveVectorPointer(vector, position);
@@ -2758,8 +2733,7 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
     bool ok = TRI_RenameDatafile(journal, filename);
 
     if (!ok) {
-      LOG_ERROR("failed to rename datafile '%s' to '%s': %s",
-                journal->getName(journal), filename, TRI_last_error());
+      LOG(ERROR) << "failed to rename datafile '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
 
       TRI_RemoveVectorPointer(vector, position);
       TRI_PushBackVectorPointer(&document->_datafiles, journal);
@@ -2770,7 +2744,7 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-    LOG_TRACE("closed file '%s'", journal->getName(journal));
+    LOG(TRACE) << "closed file '" << journal->getName(journal) << "'";
   }
 
   if (!isCompactor) {
@@ -2787,9 +2761,8 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
 
 class IndexFiller {
  public:
-  IndexFiller(arangodb::Transaction* trx,
-              TRI_document_collection_t* document, arangodb::Index* idx,
-              std::function<void(int)> callback)
+  IndexFiller(arangodb::Transaction* trx, TRI_document_collection_t* document,
+              arangodb::Index* idx, std::function<void(int)> callback)
       : _trx(trx), _document(document), _idx(idx), _callback(callback) {}
 
   void operator()() {
@@ -2852,10 +2825,8 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   auto primaryIndex = document->primaryIndex();
 
   if (primaryIndex->size() > NotificationSizeThreshold) {
-    LOG_ACTION(
-        "fill-indexes-document-collection { collection: %s/%s }, indexes: %d",
-        document->_vocbase->_name, document->_info.name().c_str(),
-        (int)(n - 1));
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
+        "fill-indexes-document-collection { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, indexes: " << (n - 1);
   }
 
   TRI_ASSERT(n > 1);
@@ -2923,10 +2894,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
     // barrier waits here until all threads have joined
   }
 
-  LOG_TIMER(
-      (TRI_microtime() - start),
-      "fill-indexes-document-collection { collection: %s/%s }, indexes: %d",
-      document->_vocbase->_name, document->_info.name().c_str(), (int)(n - 1));
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, fill-indexes-document-collection { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, indexes: " << (n - 1);
 
   return result.load();
 }
@@ -2938,7 +2906,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
 TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
                                                       TRI_vocbase_col_t* col,
                                                       bool ignoreErrors) {
-  char const* path = col->_path;
+  char const* path = col->pathc_str();
 
   // first open the document collection
   TRI_document_collection_t* document = nullptr;
@@ -2954,15 +2922,15 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   TRI_ASSERT(document != nullptr);
 
   double start = TRI_microtime();
-  LOG_ACTION("open-document-collection { collection: %s/%s }", vocbase->_name,
-             col->_name);
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
+      "open-document-collection { collection: " << vocbase->_name << "/" << col->name() << " }";
 
   TRI_collection_t* collection =
       TRI_OpenCollection(vocbase, document, path, ignoreErrors);
 
   if (collection == nullptr) {
     delete document;
-    LOG_ERROR("cannot open document collection from path '%s'", path);
+    LOG(ERROR) << "cannot open document collection from path '" << path << "'";
 
     return nullptr;
   }
@@ -2973,7 +2941,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   if (false == InitDocumentCollection(document, shaper)) {
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
-    LOG_ERROR("cannot initialize document collection");
+    LOG(ERROR) << "cannot initialize document collection";
 
     return nullptr;
   }
@@ -3007,15 +2975,13 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   {
     double start = TRI_microtime();
 
-    LOG_ACTION("iterate-markers { collection: %s/%s }", vocbase->_name,
-               document->_info.namec_str());
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
+        "iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
 
     // iterate over all markers of the collection
     int res = IterateMarkersCollection(&trx, collection);
 
-    LOG_TIMER((TRI_microtime() - start),
-              "iterate-markers { collection: %s/%s }", vocbase->_name,
-              document->_info.namec_str());
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (document->_failedTransactions != nullptr) {
@@ -3024,7 +2990,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
       TRI_CloseCollection(collection);
       TRI_FreeCollection(collection);
 
-      LOG_ERROR("cannot iterate data of document collection");
+      LOG(ERROR) << "cannot iterate data of document collection";
       TRI_set_errno(res);
 
       return nullptr;
@@ -3038,9 +3004,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     TRI_FillIndexesDocumentCollection(&trx, col, document);
   }
 
-  LOG_TIMER((TRI_microtime() - start),
-            "open-document-collection { collection: %s/%s }", vocbase->_name,
-            document->_info.namec_str());
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, open-document-collection { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
 
   return document;
 }
@@ -3091,16 +3055,13 @@ typedef struct pid_name_s {
 static VPackSlice ExtractFields(VPackSlice const& slice, TRI_idx_iid_t iid) {
   VPackSlice fld = slice.get("fields");
   if (!fld.isArray()) {
-    LOG_ERROR("ignoring index %llu, 'fields' must be an array",
-              (unsigned long long)iid);
+    LOG(ERROR) << "ignoring index " << iid << ", 'fields' must be an array";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
   for (auto const& sub : VPackArrayIterator(fld)) {
     if (!sub.isString()) {
-      LOG_ERROR(
-          "ignoring index %llu, 'fields' must be an array of attribute paths",
-          (unsigned long long)iid);
+      LOG(ERROR) << "ignoring index " << iid << ", 'fields' must be an array of attribute paths";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
   }
@@ -3119,11 +3080,9 @@ static int FillIndexBatch(arangodb::Transaction* trx,
 
   double start = TRI_microtime();
 
-  LOG_ACTION(
-      "fill-index-batch { collection: %s/%s }, %s, threads: %d, buckets: %d",
-      document->_vocbase->_name, document->_info.namec_str(),
-      idx->context().c_str(), (int)indexPool->numThreads(),
-      (int)document->_info.indexBuckets());
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
+      "fill-index-batch { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " << 
+      idx->context() << ", threads: " << indexPool->numThreads() << ", buckets: " << document->_info.indexBuckets();
 
   // give the index a size hint
   auto primaryIndex = document->primaryIndex();
@@ -3177,12 +3136,7 @@ static int FillIndexBatch(arangodb::Transaction* trx,
     res = idx->batchInsert(trx, &documents, indexPool->numThreads());
   }
 
-  LOG_TIMER(
-      (TRI_microtime() - start),
-      "fill-index-batch { collection: %s/%s }, %s, threads: %d, buckets: %d",
-      document->_vocbase->_name, document->_info.namec_str(),
-      idx->context().c_str(), (int)indexPool->numThreads(),
-      (int)document->_info.indexBuckets());
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, fill-index-batch { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " << idx->context() << ", threads: " << indexPool->numThreads() << ", buckets: " << document->_info.indexBuckets();
 
   return res;
 }
@@ -3196,9 +3150,9 @@ static int FillIndexSequential(arangodb::Transaction* trx,
                                arangodb::Index* idx) {
   double start = TRI_microtime();
 
-  LOG_ACTION("fill-index-sequential { collection: %s/%s }, %s, buckets: %d",
-             document->_vocbase->_name, document->_info.namec_str(),
-             idx->context().c_str(), (int)document->_info.indexBuckets());
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
+      "fill-index-sequential { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " <<
+      idx->context() << ", buckets: " << document->_info.indexBuckets();
 
   // give the index a size hint
   auto primaryIndex = document->primaryIndex();
@@ -3233,18 +3187,13 @@ static int FillIndexSequential(arangodb::Transaction* trx,
       if (++counter == LoopSize) {
         counter = 0;
         ++loops;
-        LOG_TRACE("indexed %llu documents of collection %llu",
-                  (unsigned long long)(LoopSize * loops),
-                  (unsigned long long)document->_info.id());
+        LOG(TRACE) << "indexed " << (LoopSize * loops) << " documents of collection " << document->_info.id();
       }
 #endif
     }
   }
 
-  LOG_TIMER((TRI_microtime() - start),
-            "fill-index-sequential { collection: %s/%s }, %s, buckets: %d",
-            document->_vocbase->_name, document->_info.namec_str(),
-            idx->context().c_str(), (int)document->_info.indexBuckets());
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, fill-index-sequential { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " << idx->context() << ", buckets: " << document->_info.indexBuckets();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3410,9 +3359,9 @@ static int PathBasedIndexFromVelocyPack(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     VPackSlice const& definition, TRI_idx_iid_t iid,
     arangodb::Index* (*creator)(arangodb::Transaction*,
-                                        TRI_document_collection_t*,
-                                        std::vector<std::string> const&,
-                                        TRI_idx_iid_t, bool, bool, bool&),
+                                TRI_document_collection_t*,
+                                std::vector<std::string> const&, TRI_idx_iid_t,
+                                bool, bool, bool&),
     arangodb::Index** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
@@ -3429,8 +3378,7 @@ static int PathBasedIndexFromVelocyPack(
 
   // extract the list of fields
   if (fieldCount < 1) {
-    LOG_ERROR("ignoring index %llu, need at least one attribute path",
-              (unsigned long long)iid);
+    LOG(ERROR) << "ignoring index " << iid << ", need at least one attribute path";
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -3439,9 +3387,7 @@ static int PathBasedIndexFromVelocyPack(
   VPackSlice bv = definition.get("unique");
 
   if (!bv.isBoolean()) {
-    LOG_ERROR(
-        "ignoring index %llu, could not determine if unique or non-unique",
-        (unsigned long long)iid);
+    LOG(ERROR) << "ignoring index " << iid << ", could not determine if unique or non-unique";
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -3488,8 +3434,7 @@ static int PathBasedIndexFromVelocyPack(
   }
 
   if (idx == nullptr) {
-    LOG_ERROR("cannot create index %llu in collection '%s'",
-              (unsigned long long)iid, document->_info.namec_str());
+    LOG(ERROR) << "cannot create index " << iid << " in collection '" << document->_info.namec_str() << "'";
     return TRI_errno();
   }
 
@@ -3514,7 +3459,7 @@ void TRI_UpdateRevisionDocumentCollection(TRI_document_collection_t* document,
 
 bool TRI_IsFullyCollectedDocumentCollection(
     TRI_document_collection_t* document) {
-  READ_LOCKER(document->_lock);
+  READ_LOCKER(readLocker, document->_lock);
 
   int64_t uncollected = document->_uncollectedLogfileEntries.load();
 
@@ -3525,18 +3470,18 @@ bool TRI_IsFullyCollectedDocumentCollection(
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex(TRI_document_collection_t* document,
-                  arangodb::Index* idx, bool writeMarker) {
+int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
+                  bool writeMarker) {
   // convert into JSON
   std::shared_ptr<VPackBuilder> builder;
   try {
     builder = idx->toVelocyPack(false);
   } catch (...) {
-    LOG_ERROR("cannot save index definition.");
+    LOG(ERROR) << "cannot save index definition.";
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
   if (builder == nullptr) {
-    LOG_ERROR("cannot save index definition.");
+    LOG(ERROR) << "cannot save index definition.";
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   }
 
@@ -3558,7 +3503,7 @@ int TRI_SaveIndex(TRI_document_collection_t* document,
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (!ok) {
-    LOG_ERROR("cannot save index definition: %s", TRI_last_error());
+    LOG(ERROR) << "cannot save index definition: " << TRI_last_error();
 
     return TRI_errno();
   }
@@ -3570,9 +3515,8 @@ int TRI_SaveIndex(TRI_document_collection_t* document,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CreateIndexMarker marker(
-        vocbase->_id, document->_info.id(), idx->id(),
-        idxSlice.toJson());
+    arangodb::wal::CreateIndexMarker marker(vocbase->_id, document->_info.id(),
+                                            idx->id(), idxSlice.toJson());
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -3629,9 +3573,9 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
   TRI_vocbase_t* vocbase = document->_vocbase;
   arangodb::Index* found = nullptr;
   {
-    READ_LOCKER(document->_vocbase->_inventoryLock);
+    READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-    WRITE_LOCKER(document->_lock);
+    WRITE_LOCKER(writeLocker, document->_lock);
 
     arangodb::aql::QueryCache::instance()->invalidate(
         vocbase, document->_info.namec_str());
@@ -3665,8 +3609,7 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
         res = TRI_ERROR_INTERNAL;
       }
 
-      LOG_WARNING("could not save index drop marker in log: %s",
-                  TRI_errno_string(res));
+      LOG(WARNING) << "could not save index drop marker in log: " << TRI_errno_string(res);
     }
 
     // TODO: what to do here?
@@ -3728,9 +3671,8 @@ static int PidNamesByAttributeNames(
 
     // sort according to pid
     std::sort(pidNames.begin(), pidNames.end(),
-              [](PidNameType const& l, PidNameType const& r) -> bool {
-                return l.second < r.second;
-              });
+              [](PidNameType const& l, PidNameType const& r)
+                  -> bool { return l.second < r.second; });
 
     for (auto const& it : pidNames) {
       pids.emplace_back(it.second);
@@ -3803,8 +3745,7 @@ static arangodb::Index* CreateCapConstraintDocumentCollection(
   std::unique_ptr<arangodb::Index> capConstraint(cc);
 
   cc->initialize(trx);
-  arangodb::Index* idx =
-      static_cast<arangodb::Index*>(capConstraint.get());
+  arangodb::Index* idx = static_cast<arangodb::Index*>(capConstraint.get());
 
   // initializes the index with all existing documents
   int res = FillIndex(trx, document, idx);
@@ -3847,8 +3788,7 @@ static int CapConstraintFromVelocyPack(arangodb::Transaction* trx,
   VPackSlice val2 = definition.get("byteSize");
 
   if (!val1.isNumber() && !val2.isNumber()) {
-    LOG_ERROR("ignoring cap constraint %llu, 'size' and 'byteSize' missing",
-              (unsigned long long)iid);
+    LOG(ERROR) << "ignoring cap constraint " << iid << ", 'size' and 'byteSize' missing";
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -3881,11 +3821,7 @@ static int CapConstraintFromVelocyPack(arangodb::Transaction* trx,
   }
 
   if (count == 0 && size == 0) {
-    LOG_ERROR(
-        "ignoring cap constraint %llu, 'size' must be at least 1, "
-        "or 'byteSize' must be at least %lu",
-        (unsigned long long)iid,
-        (unsigned long)arangodb::CapConstraint::MinSize);
+    LOG(ERROR) << "ignoring cap constraint " << iid << ", 'size' must be at least 1, or 'byteSize' must be at least " << arangodb::CapConstraint::MinSize;
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -3917,9 +3853,9 @@ arangodb::Index* TRI_LookupCapConstraintDocumentCollection(
 arangodb::Index* TRI_EnsureCapConstraintDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, size_t count, int64_t size, bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateCapConstraintDocumentCollection(trx, document, count, size,
                                                    iid, created);
@@ -3992,12 +3928,12 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
     idx = TRI_LookupGeoIndex2DocumentCollection(document, latitude, longitude);
   } else {
     TRI_set_errno(TRI_ERROR_INTERNAL);
-    LOG_TRACE("expecting either 'location' or 'latitude' and 'longitude'");
+    LOG(TRACE) << "expecting either 'location' or 'latitude' and 'longitude'";
     return nullptr;
   }
 
   if (idx != nullptr) {
-    LOG_TRACE("geo-index already created for location '%s'", location.c_str());
+    LOG(TRACE) << "geo-index already created for location '" << location.c_str() << "'";
 
     created = false;
 
@@ -4018,8 +3954,7 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
             {{location, false}}},
         std::vector<TRI_shape_pid_t>{loc}, geoJson));
 
-    LOG_TRACE("created geo-index for location '%s': %ld", location.c_str(),
-              (unsigned long)loc);
+    LOG(TRACE) << "created geo-index for location '" << location.c_str() << "': " << loc;
   } else if (!longitude.empty() && !latitude.empty()) {
     geoIndex.reset(new arangodb::GeoIndex2(
         iid, document,
@@ -4027,8 +3962,7 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
             {{latitude, false}}, {{longitude, false}}},
         std::vector<TRI_shape_pid_t>{lat, lon}));
 
-    LOG_TRACE("created geo-index for location '%s': %ld, %ld", location.c_str(),
-              (unsigned long)lat, (unsigned long)lon);
+    LOG(TRACE) << "created geo-index for location '" << location.c_str() << "': " << lat << ", " << lon;
   }
 
   idx = static_cast<arangodb::GeoIndex2*>(geoIndex.get());
@@ -4069,8 +4003,7 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
 static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
                                   TRI_document_collection_t* document,
                                   VPackSlice const& definition,
-                                  TRI_idx_iid_t iid,
-                                  arangodb::Index** dst) {
+                                  TRI_idx_iid_t iid, arangodb::Index** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
@@ -4115,9 +4048,7 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG_ERROR(
-          "ignoring %s-index %llu, 'fields' must be a list with 1 entries",
-          typeStr.c_str(), (unsigned long long)iid);
+      LOG(ERROR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 1 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -4141,9 +4072,7 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG_ERROR(
-          "ignoring %s-index %llu, 'fields' must be a list with 2 entries",
-          typeStr.c_str(), (unsigned long long)iid);
+      LOG(ERROR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 2 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -4219,9 +4148,9 @@ arangodb::Index* TRI_EnsureGeoIndex1DocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::string const& location, bool geoJson,
     bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx =
       CreateGeoIndexDocumentCollection(trx, document, location, std::string(),
@@ -4250,9 +4179,9 @@ arangodb::Index* TRI_EnsureGeoIndex2DocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::string const& latitude,
     std::string const& longitude, bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateGeoIndexDocumentCollection(
       trx, document, std::string(), latitude, longitude, false, iid, created);
@@ -4302,11 +4231,11 @@ static arangodb::Index* CreateHashIndexDocumentCollection(
 
   int sparsity = sparse ? 1 : 0;
   auto idx = LookupPathIndexDocumentCollection(
-      document, fields, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
-      sparsity, unique, false);
+      document, fields, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, sparsity,
+      unique, false);
 
   if (idx != nullptr) {
-    LOG_TRACE("hash-index already created");
+    LOG(TRACE) << "hash-index already created";
 
     return idx;
   }
@@ -4318,8 +4247,8 @@ static arangodb::Index* CreateHashIndexDocumentCollection(
   // create the hash index. we'll provide it with the current number of
   // documents
   // in the collection so the index can do a sensible memory preallocation
-  auto hashIndex = std::make_unique<arangodb::HashIndex>(
-      iid, document, fields, unique, sparse);
+  auto hashIndex = std::make_unique<arangodb::HashIndex>(iid, document, fields,
+                                                         unique, sparse);
   idx = static_cast<arangodb::Index*>(hashIndex.get());
 
   // initializes the index with all existing documents
@@ -4353,8 +4282,7 @@ static arangodb::Index* CreateHashIndexDocumentCollection(
 static int HashIndexFromVelocyPack(arangodb::Transaction* trx,
                                    TRI_document_collection_t* document,
                                    VPackSlice const& definition,
-                                   TRI_idx_iid_t iid,
-                                   arangodb::Index** dst) {
+                                   TRI_idx_iid_t iid, arangodb::Index** dst) {
   return PathBasedIndexFromVelocyPack(trx, document, definition, iid,
                                       CreateHashIndexDocumentCollection, dst);
 }
@@ -4381,8 +4309,8 @@ arangodb::Index* TRI_LookupHashIndexDocumentCollection(
   }
 
   return LookupPathIndexDocumentCollection(
-      document, fields, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
-      sparsity, unique, true);
+      document, fields, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, sparsity,
+      unique, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4393,9 +4321,9 @@ arangodb::Index* TRI_EnsureHashIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
     bool unique, bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateHashIndexDocumentCollection(trx, document, attributes, iid,
                                                sparse, unique, created);
@@ -4444,11 +4372,11 @@ static arangodb::Index* CreateSkiplistIndexDocumentCollection(
 
   int sparsity = sparse ? 1 : 0;
   auto idx = LookupPathIndexDocumentCollection(
-      document, fields, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-      sparsity, unique, false);
+      document, fields, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity,
+      unique, false);
 
   if (idx != nullptr) {
-    LOG_TRACE("skiplist-index already created");
+    LOG(TRACE) << "skiplist-index already created";
 
     return idx;
   }
@@ -4522,8 +4450,8 @@ arangodb::Index* TRI_LookupSkiplistIndexDocumentCollection(
   }
 
   return LookupPathIndexDocumentCollection(
-      document, fields, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-      sparsity, unique, true);
+      document, fields, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity,
+      unique, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4534,9 +4462,9 @@ arangodb::Index* TRI_EnsureSkiplistIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
     bool unique, bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateSkiplistIndexDocumentCollection(
       trx, document, attributes, iid, sparse, unique, created);
@@ -4592,7 +4520,7 @@ static arangodb::Index* CreateFulltextIndexDocumentCollection(
       LookupFulltextIndexDocumentCollection(document, attribute, minWordLength);
 
   if (idx != nullptr) {
-    LOG_TRACE("fulltext-index already created");
+    LOG(TRACE) << "fulltext-index already created";
 
     return idx;
   }
@@ -4654,8 +4582,7 @@ static int FulltextIndexFromVelocyPack(arangodb::Transaction* trx,
 
   // extract the list of fields
   if (fieldCount != 1) {
-    LOG_ERROR("ignoring index %llu, has an invalid number of attributes",
-              (unsigned long long)iid);
+    LOG(ERROR) << "ignoring index " << iid << ", has an invalid number of attributes";
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -4690,7 +4617,7 @@ static int FulltextIndexFromVelocyPack(arangodb::Transaction* trx,
   }
 
   if (idx == nullptr) {
-    LOG_ERROR("cannot create fulltext index %llu", (unsigned long long)iid);
+    LOG(ERROR) << "cannot create fulltext index " << iid;
     return TRI_errno();
   }
 
@@ -4717,9 +4644,9 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::string const& attribute, int minWordLength,
     bool& created) {
-  READ_LOCKER(document->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(document->_lock);
+  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateFulltextIndexDocumentCollection(trx, document, attribute,
                                                    minWordLength, iid, created);
@@ -4765,8 +4692,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DeleteDocumentDocumentCollection(
-    arangodb::Transaction* trx,
-    TRI_transaction_collection_t* trxCollection,
+    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
     TRI_doc_update_policy_t const* policy, TRI_doc_mptr_t* doc) {
   return TRI_RemoveShapedJsonDocumentCollection(
       trx, trxCollection, (const TRI_voc_key_t)TRI_EXTRACT_MARKER_KEY(doc), 0,
@@ -4805,9 +4731,8 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ReadShapedJsonDocumentCollection(
-    arangodb::Transaction* trx,
-    TRI_transaction_collection_t* trxCollection, const TRI_voc_key_t key,
-    TRI_doc_mptr_copy_t* mptr, bool lock) {
+    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
+    const TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr, bool lock) {
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
@@ -4848,9 +4773,8 @@ int TRI_ReadShapedJsonDocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveShapedJsonDocumentCollection(
-    arangodb::Transaction* trx,
-    TRI_transaction_collection_t* trxCollection, TRI_voc_key_t key,
-    TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
+    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
+    TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
     TRI_doc_update_policy_t const* policy, bool lock, bool forceSync) {
   bool const freeMarker = (marker == nullptr);
   rid = GetRevisionId(rid);
@@ -4956,11 +4880,11 @@ int TRI_RemoveShapedJsonDocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertShapedJsonDocumentCollection(
-    arangodb::Transaction* trx,
-    TRI_transaction_collection_t* trxCollection, const TRI_voc_key_t key,
-    TRI_voc_rid_t rid, arangodb::wal::Marker* marker, TRI_doc_mptr_copy_t* mptr,
-    TRI_shaped_json_t const* shaped, TRI_document_edge_t const* edge, bool lock,
-    bool forceSync, bool isRestore) {
+    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
+    const TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
+    TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t const* shaped,
+    TRI_document_edge_t const* edge, bool lock, bool forceSync,
+    bool isRestore) {
   bool const freeMarker = (marker == nullptr);
 
   TRI_ASSERT(mptr != nullptr);
@@ -4970,7 +4894,7 @@ int TRI_InsertShapedJsonDocumentCollection(
   TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  // TRI_ASSERT_EXPENSIVE(lock ||
+  // TRI_ASSERT(lock ||
   // TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE,
   // 0));
 
@@ -5088,11 +5012,10 @@ int TRI_InsertShapedJsonDocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UpdateShapedJsonDocumentCollection(
-    arangodb::Transaction* trx,
-    TRI_transaction_collection_t* trxCollection, TRI_voc_key_t key,
-    TRI_voc_rid_t rid, arangodb::wal::Marker* marker, TRI_doc_mptr_copy_t* mptr,
-    TRI_shaped_json_t const* shaped, TRI_doc_update_policy_t const* policy,
-    bool lock, bool forceSync) {
+    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
+    TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
+    TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t const* shaped,
+    TRI_doc_update_policy_t const* policy, bool lock, bool forceSync) {
   bool const freeMarker = (marker == nullptr);
 
   rid = GetRevisionId(rid);
@@ -5104,7 +5027,7 @@ int TRI_UpdateShapedJsonDocumentCollection(
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  // TRI_ASSERT_EXPENSIVE(lock ||
+  // TRI_ASSERT(lock ||
   // TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE,
   // 0));
 
@@ -5480,8 +5403,8 @@ int TRI_document_collection_t::insertDocument(
 /// @brief creates a new entry in the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_document_collection_t::insertPrimaryIndex(
-    arangodb::Transaction* trx, TRI_doc_mptr_t* header) {
+int TRI_document_collection_t::insertPrimaryIndex(arangodb::Transaction* trx,
+                                                  TRI_doc_mptr_t* header) {
   TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
 
   TRI_doc_mptr_t* found;
@@ -5504,11 +5427,8 @@ int TRI_document_collection_t::insertPrimaryIndex(
 
   // we found a previous revision in the index
   // the found revision is still alive
-  LOG_TRACE(
-      "document '%s' already existed with revision %llu while creating "
-      "revision %llu",
-      TRI_EXTRACT_MARKER_KEY(header),  // ONLY IN INDEX, PROTECTED by RUNTIME
-      (unsigned long long)found->_rid, (unsigned long long)header->_rid);
+  LOG(TRACE) << "document '" << TRI_EXTRACT_MARKER_KEY(header) << "' already existed with revision " << // ONLY IN INDEX << " while creating revision " << PROTECTED by RUNTIME
+      (unsigned long long)found->_rid;
 
   return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
 }
@@ -5518,8 +5438,7 @@ int TRI_document_collection_t::insertPrimaryIndex(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_document_collection_t::insertSecondaryIndexes(
-    arangodb::Transaction* trx, TRI_doc_mptr_t const* header,
-    bool isRollback) {
+    arangodb::Transaction* trx, TRI_doc_mptr_t const* header, bool isRollback) {
   TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
 
   if (!useSecondaryIndexes()) {
@@ -5574,8 +5493,7 @@ int TRI_document_collection_t::deletePrimaryIndex(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_document_collection_t::deleteSecondaryIndexes(
-    arangodb::Transaction* trx, TRI_doc_mptr_t const* header,
-    bool isRollback) {
+    arangodb::Transaction* trx, TRI_doc_mptr_t const* header, bool isRollback) {
   if (!useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -5604,8 +5522,8 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
 /// @brief post-insert operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_document_collection_t::postInsertIndexes(
-    arangodb::Transaction* trx, TRI_doc_mptr_t* header) {
+int TRI_document_collection_t::postInsertIndexes(arangodb::Transaction* trx,
+                                                 TRI_doc_mptr_t* header) {
   if (!useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
   }

@@ -28,14 +28,12 @@
 
 #include "ApplicationServer/ApplicationFeature.h"
 
-
 namespace arangodb {
 namespace rest {
 class ApplicationServer;
 class Scheduler;
 class SignalTask;
 class Task;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application server scheduler implementation
@@ -46,15 +44,11 @@ class ApplicationScheduler : public ApplicationFeature {
   ApplicationScheduler(ApplicationScheduler const&);
   ApplicationScheduler& operator=(ApplicationScheduler const&);
 
-  
  public:
-
   explicit ApplicationScheduler(ApplicationServer*);
-
 
   ~ApplicationScheduler();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief allows a multi scheduler to be build
@@ -86,27 +80,19 @@ class ApplicationScheduler : public ApplicationFeature {
 
   void disableControlCHandler();
 
-  
  public:
-
   void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&);
-
 
   bool afterOptionParsing(basics::ProgramOptions&);
 
-
   bool prepare();
-
 
   bool start();
 
-
   bool open();
-
 
   void stop();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds the scheduler
@@ -132,7 +118,6 @@ class ApplicationScheduler : public ApplicationFeature {
 
   void adjustFileDescriptors();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief application server
@@ -164,15 +149,15 @@ class ApplicationScheduler : public ApplicationFeature {
 
   bool _multiSchedulerAllowed;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock schedulerThreads
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief was docuBlock schedulerThreads
+  ////////////////////////////////////////////////////////////////////////////////
 
   uint32_t _nrSchedulerThreads;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock schedulerBackend
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief was docuBlock schedulerBackend
+  ////////////////////////////////////////////////////////////////////////////////
 
   uint32_t _backend;
 
@@ -192,5 +177,3 @@ class ApplicationScheduler : public ApplicationFeature {
 }
 
 #endif
-
-

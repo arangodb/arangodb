@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 
 #if defined(_WIN32) && defined(_MSC_VER)
@@ -47,11 +47,64 @@
 
 #endif
 
-using namespace std;
-
 namespace arangodb {
 namespace basics {
 namespace FileUtils {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes trailing path separators from path
+///
+/// path will be modified in-place
+////////////////////////////////////////////////////////////////////////////////
+
+std::string removeTrailingSeparator(std::string const& name) {
+  size_t endpos = name.find_last_not_of(TRI_DIR_SEPARATOR_CHAR);
+  if (endpos != std::string::npos) {
+    return name.substr(0, endpos + 1);
+  }
+
+  return name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes path
+///
+/// path will be modified in-place
+////////////////////////////////////////////////////////////////////////////////
+
+void normalizePath(std::string& name) {
+  std::replace(name.begin(), name.end(), '/', TRI_DIR_SEPARATOR_CHAR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a filename
+////////////////////////////////////////////////////////////////////////////////
+
+std::string buildFilename(char const* path, char const* name) {
+  std::string result(path);
+
+  if (! result.empty()) {
+    result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
+  }
+  
+  result.append(name); 
+  normalizePath(result); // in place
+
+  return result;
+}
+
+std::string buildFilename(std::string const& path, std::string const& name) {
+  std::string result(path);
+
+  if (! result.empty()) {
+    result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
+  }
+  
+  result.append(name); 
+  normalizePath(result); // in place
+
+  return result;
+}
 
 void throwFileReadError(int fd, std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -63,7 +116,7 @@ void throwFileReadError(int fd, std::string const& filename) {
 
   std::string message("read failed for file '" + filename + "': " +
                       strerror(res));
-  LOG_TRACE("%s", message.c_str());
+  LOG(TRACE) << "" << message.c_str();
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
@@ -78,7 +131,7 @@ void throwFileWriteError(int fd, std::string const& filename) {
 
   std::string message("write failed for file '" + filename + "': " +
                       strerror(res));
-  LOG_TRACE("%s", message.c_str());
+  LOG(TRACE) << "" << message.c_str();
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
@@ -235,7 +288,8 @@ bool remove(std::string const& fileName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool rename(std::string const& oldName, std::string const& newName, int* errorNumber) {
+bool rename(std::string const& oldName, std::string const& newName,
+            int* errorNumber) {
   if (errorNumber != nullptr) {
     *errorNumber = 0;
   }
@@ -480,9 +534,10 @@ off_t size(std::string const& path) {
   return (off_t)result;
 }
 
-std::string stripExtension(std::string const& path, std::string const& extension) {
+std::string stripExtension(std::string const& path,
+                           std::string const& extension) {
   size_t pos = path.rfind(extension);
-  if (pos == string::npos) {
+  if (pos == std::string::npos) {
     return path;
   }
 
@@ -539,5 +594,3 @@ std::string homeDirectory() {
 }
 }
 }
-
-

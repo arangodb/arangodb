@@ -25,21 +25,12 @@
 
 #include <iostream>
 
-#include "Basics/tri-strings.h"
-
-using namespace std;
 using namespace arangodb;
-using namespace arangodb;
-
-
-
 
 DummyShell::DummyShell(std::string const& history, Completer* completer)
     : ShellBase(history, completer) {}
 
-
 DummyShell::~DummyShell() { close(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
@@ -50,31 +41,25 @@ bool DummyShell::open(bool) {
   return true;
 }
 
-
 bool DummyShell::close() {
   _state = STATE_CLOSED;
   return true;
 }
 
-
 void DummyShell::addHistory(std::string const&) {}
-
 
 bool DummyShell::writeHistory() { return true; }
 
-
 std::string DummyShell::getLine(std::string const& prompt, bool& eof) {
-  std::cout << prompt << flush;
+  std::cout << prompt << std::flush;
 
   std::string line;
-  getline(cin, line);
+  std::getline(std::cin, line);
 
-  if (cin.eof()) {
+  if (std::cin.eof()) {
     eof = true;
     return "";
   }
 
   return line;
 }
-
-

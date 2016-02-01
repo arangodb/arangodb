@@ -251,5 +251,3 @@ size_t TRI_CharLengthUtf8String(char const*);
 char* TRI_PrefixUtf8String(char const*, const uint32_t);
 
 #endif
-
-

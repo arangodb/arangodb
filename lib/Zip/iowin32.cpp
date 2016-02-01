@@ -354,4 +354,3 @@ void fill_win32_filefunc64W(zlib_filefunc64_def* pzlib_filefunc_def) {
   pzlib_filefunc_def->zerror_file = win32_error_file_func;
   pzlib_filefunc_def->opaque = NULL;
 }
-

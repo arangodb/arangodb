@@ -36,7 +36,6 @@ namespace wal {
 
 class LogfileManager;
 
-
 class AllocatorThread : public basics::Thread {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AllocatorThread
@@ -46,7 +45,6 @@ class AllocatorThread : public basics::Thread {
   AllocatorThread(AllocatorThread const&) = delete;
   AllocatorThread& operator=(AllocatorThread const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the allocator thread
@@ -60,7 +58,6 @@ class AllocatorThread : public basics::Thread {
 
   ~AllocatorThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stops the allocator thread
@@ -85,7 +82,7 @@ class AllocatorThread : public basics::Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   void recoveryDone() {
-    WRITE_LOCKER(_recoveryLock);
+    WRITE_LOCKER(writeLocker, _recoveryLock);
     _inRecovery = false;
   }
 
@@ -94,11 +91,10 @@ class AllocatorThread : public basics::Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   bool inRecovery() {
-    READ_LOCKER(_recoveryLock);
+    READ_LOCKER(readLocker, _recoveryLock);
     return _inRecovery;
   }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
@@ -106,7 +102,6 @@ class AllocatorThread : public basics::Thread {
 
   void run();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new reserve logfile
@@ -114,7 +109,6 @@ class AllocatorThread : public basics::Thread {
 
   int createReserveLogfile(uint32_t);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -174,5 +168,3 @@ class AllocatorThread : public basics::Thread {
 }
 
 #endif
-
-

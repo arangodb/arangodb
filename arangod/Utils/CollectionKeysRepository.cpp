@@ -23,7 +23,7 @@
 
 #include "CollectionKeysRepository.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -31,7 +31,6 @@
 using namespace arangodb;
 
 size_t const CollectionKeysRepository::MaxCollectCount = 32;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection keys repository
@@ -60,9 +59,9 @@ CollectionKeysRepository::~CollectionKeysRepository() {
     }
 
     if (tries == 0) {
-      LOG_INFO("waiting for used keys to become unused");
+      LOG(INFO) << "waiting for used keys to become unused";
     } else if (tries == 120) {
-      LOG_WARNING("giving up waiting for unused keys");
+      LOG(WARNING) << "giving up waiting for unused keys";
     }
 
     usleep(500000);
@@ -70,7 +69,7 @@ CollectionKeysRepository::~CollectionKeysRepository() {
   }
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it : _keys) {
       delete it.second;
@@ -80,13 +79,12 @@ CollectionKeysRepository::~CollectionKeysRepository() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores collection keys in the repository
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeysRepository::store(arangodb::CollectionKeys* keys) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
   _keys.emplace(keys->id(), keys);
 }
 
@@ -98,7 +96,7 @@ bool CollectionKeysRepository::remove(CollectionKeysId id) {
   arangodb::CollectionKeys* collectionKeys = nullptr;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _keys.find(id);
 
@@ -140,7 +138,7 @@ CollectionKeys* CollectionKeysRepository::find(CollectionKeysId id) {
   arangodb::CollectionKeys* collectionKeys = nullptr;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _keys.find(id);
 
@@ -168,7 +166,7 @@ CollectionKeys* CollectionKeysRepository::find(CollectionKeysId id) {
 
 void CollectionKeysRepository::release(CollectionKeys* collectionKeys) {
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     TRI_ASSERT(collectionKeys->isUsed());
     collectionKeys->release();
@@ -190,7 +188,7 @@ void CollectionKeysRepository::release(CollectionKeys* collectionKeys) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectionKeysRepository::containsUsed() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   for (auto it : _keys) {
     if (it.second->isUsed()) {
@@ -212,7 +210,7 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
   auto const now = TRI_microtime();
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it = _keys.begin(); it != _keys.end(); /* no hoisting */) {
       auto collectionKeys = (*it).second;
@@ -252,5 +250,3 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
 
   return (!found.empty());
 }
-
-

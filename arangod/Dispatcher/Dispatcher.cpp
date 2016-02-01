@@ -24,18 +24,13 @@
 
 #include "Dispatcher.h"
 
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the default dispatcher thread
@@ -45,20 +40,16 @@ static DispatcherThread* CreateDispatcherThread(DispatcherQueue* queue) {
   return new DispatcherThread(queue);
 }
 
-
-
 Dispatcher::Dispatcher(Scheduler* scheduler)
     : _scheduler(scheduler), _stopping(false) {
   _queues.resize(SYSTEM_QUEUE_SIZE, nullptr);
 }
-
 
 Dispatcher::~Dispatcher() {
   for (size_t i = 0; i < SYSTEM_QUEUE_SIZE; ++i) {
     delete _queues[i];
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the standard queue
@@ -123,7 +114,7 @@ int Dispatcher::addJob(std::unique_ptr<Job>& job) {
   job->requestStatisticsAgentSetQueueStart();
 
   // do not start new jobs if we are already shutting down
-  if (_stopping.load(memory_order_relaxed)) {
+  if (_stopping.load(std::memory_order_relaxed)) {
     return TRI_ERROR_DISPATCHER_IS_STOPPING;
   }
 
@@ -132,15 +123,14 @@ int Dispatcher::addJob(std::unique_ptr<Job>& job) {
   DispatcherQueue* queue;
 
   if (qnr >= _queues.size() || (queue = _queues[qnr]) == nullptr) {
-    LOG_WARNING("unknown queue '%lu'", (unsigned long)qnr);
+    LOG(WARNING) << "unknown queue '" << qnr << "'";
     return TRI_ERROR_QUEUE_UNKNOWN;
   }
 
   // log success, but do this BEFORE the real add, because the addJob might
   // execute
   // and delete the job before we have a chance to log something
-  LOG_TRACE("added job %p to queue '%lu'", (void*)(job.get()),
-            (unsigned long)qnr);
+  LOG(TRACE) << "added job " << (void*)(job.get()) << " to queue '" << qnr << "'";
 
   // add the job to the list of ready jobs
   return queue->addJob(job);
@@ -173,13 +163,11 @@ void Dispatcher::beginShutdown() {
     return;
   }
 
-  LOG_DEBUG("beginning shutdown sequence of dispatcher");
+  LOG(DEBUG) << "beginning shutdown sequence of dispatcher";
 
   _stopping = true;
 
-  for (size_t i = 0; i < _queues.size(); ++i) {
-    DispatcherQueue* queue = _queues[i];
-
+  for (auto& queue : _queues) {
     if (queue != nullptr) {
       queue->beginShutdown();
     }
@@ -191,10 +179,10 @@ void Dispatcher::beginShutdown() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::shutdown() {
-  LOG_DEBUG("shutting down the dispatcher");
+  LOG(DEBUG) << "shutting down the dispatcher";
 
-  for (size_t i = 0; i < _queues.size(); ++i) {
-    DispatcherQueue* queue = _queues[i];
+  for (auto queue : _queues) {
+    
 
     if (queue != nullptr) {
       queue->shutdown();
@@ -207,25 +195,17 @@ void Dispatcher::shutdown() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::reportStatus() {
-#ifdef TRI_ENABLE_LOGGER
-
   for (size_t i = 0; i < _queues.size(); ++i) {
     DispatcherQueue* queue = _queues[i];
 
     if (queue != nullptr) {
-      LOG_INFO(
-          "dispatcher queue '%lu': initial = %d, running = %d, waiting = %d, "
-          "blocked = %d",
-          (unsigned long)i, (int)queue->_nrThreads, (int)queue->_nrRunning,
-          (int)queue->_nrWaiting, (int)queue->_nrBlocked);
+      LOG(INFO) << "dispatcher queue '" << i << "': initial = " << queue->_nrThreads << ", running = " << queue->_nrRunning.load() << ", waiting = " << queue->_nrWaiting.load() << ", blocked = " << queue->_nrBlocked.load();
     }
   }
-
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the process affinity
+/// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
 void Dispatcher::setProcessorAffinity(size_t id,
@@ -238,5 +218,3 @@ void Dispatcher::setProcessorAffinity(size_t id,
 
   queue->setProcessorAffinity(cores);
 }
-
-

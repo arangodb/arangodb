@@ -25,15 +25,13 @@
 #define LIB_REST_ENDPOINT_IP_V4_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringUtils.h"
 #include "Rest/EndpointIp.h"
 
 namespace arangodb {
 namespace rest {
 
-
 class EndpointIpV4 final : public EndpointIp {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
@@ -48,7 +46,6 @@ class EndpointIpV4 final : public EndpointIp {
 
   ~EndpointIpV4();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get endpoint domain
@@ -68,5 +65,3 @@ class EndpointIpV4 final : public EndpointIp {
 }
 
 #endif
-
-

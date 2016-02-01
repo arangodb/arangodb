@@ -179,7 +179,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   void track(TRI_voc_key_t) override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the generator name
+  /// @brief return the generator name (must be lowercase)
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string name() { return "traditional"; }
@@ -232,7 +232,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   void track(TRI_voc_key_t) override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the generator name
+  /// @brief return the generator name (must be lowercase)
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string name() { return "autoincrement"; }
@@ -244,7 +244,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
 
  private:
-  arangodb::basics::Mutex _lock;
+  arangodb::Mutex _lock;
 
   uint64_t _lastValue;  // last value assigned
 

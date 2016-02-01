@@ -617,4 +617,3 @@ std::string decodeHex(std::string const& str);
 }
 
 #endif
-

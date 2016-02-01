@@ -27,10 +27,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
-#include "Basics/logging.h"
 
 #ifdef _WIN32
 #define YY_NO_UNISTD_H 1
@@ -44,7 +42,7 @@ int fileno(FILE *stream);
 
 
 
-#line 48 "lib/JsonParser/json-parser.cpp"
+#line 46 "lib/JsonParser/json-parser.cpp"
 
 #define  YY_INT_ALIGNED short int
 
@@ -555,9 +553,8 @@ struct jsonData {
 
 #define YY_FATAL_ERROR(a)              \
   do {                                 \
-    LOG_DEBUG("json-parser: %s", (a)); \
     if (false) {                       \
-      yy_fatal_error(a, nullptr);         \
+      yy_fatal_error(a, nullptr);      \
     }                                  \
   }                                    \
   while (0)
@@ -2249,7 +2246,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
       // get the address of the next element so we can create the attribute name in place
       TRI_json_t* next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // we made sure with the reserve call that we haven't run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       // store attribute name
       TRI_InitStringJson(next, name, nameLen);
@@ -2257,7 +2254,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
       // now process the value
       next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // we made sure with the reserve call that we haven't run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
       
       // be paranoid and initialize the memory  
       TRI_InitNullJson(next);
@@ -2445,7 +2442,6 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
   if (! ParseValue(scanner, object, c)) {
     TRI_FreeJson(zone, object);
     object = nullptr;
-    LOG_DEBUG("failed to parse json object: '%s'", yyextra._message);
   }
   else {
     c = tri_jsp_lex(scanner);
@@ -2454,8 +2450,6 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
       TRI_FreeJson(zone, object);
       object = nullptr;
       yyextra._message = "failed to parse json object: expecting EOF";
-
-      LOG_DEBUG("failed to parse json object: expecting EOF");
     }
   }
 
@@ -2503,7 +2497,6 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
   in = fopen(path, "rb");
 
   if (in == nullptr) {
-    LOG_ERROR("cannot open file '%s': '%s'", path, TRI_LAST_ERROR_STR);
     TRI_Free(zone, value);
 
     return nullptr;
@@ -2522,7 +2515,6 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
   if (! ParseValue(scanner, value, c)) {
     TRI_FreeJson(zone, value);
     value = nullptr;
-    LOG_DEBUG("failed to parse json value: '%s'", yyextra._message);
   }
   else {
     c = tri_jsp_lex(scanner);
@@ -2530,7 +2522,6 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
     if (c != END_OF_FILE) {
       TRI_FreeJson(zone, value);
       value = nullptr;
-      LOG_DEBUG("failed to parse json value: expecting EOF");
     }
   }
 

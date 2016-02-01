@@ -107,7 +107,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// several values
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json buildExtra(arangodb::aql::QueryResult&) const;
+  std::shared_ptr<arangodb::velocypack::Builder> buildExtra(
+      arangodb::aql::QueryResult&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body
@@ -150,7 +151,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief lock for currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _queryLock;
+  Mutex _queryLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently running query
@@ -167,4 +168,3 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-

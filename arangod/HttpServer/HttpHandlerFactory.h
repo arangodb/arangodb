@@ -30,7 +30,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Rest/HttpResponse.h"
 
-
 namespace arangodb {
 namespace rest {
 struct ConnectionInfo;
@@ -38,13 +37,11 @@ class HttpHandler;
 class HttpRequest;
 class HttpResponse;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
 class HttpHandlerFactory {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler
@@ -76,7 +73,6 @@ class HttpHandlerFactory {
 
   typedef bool (*context_fptr)(HttpRequest*, void*);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new handler factory
@@ -102,7 +98,6 @@ class HttpHandlerFactory {
 
   virtual ~HttpHandlerFactory();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets maintenance mode
@@ -110,7 +105,6 @@ class HttpHandlerFactory {
 
   static void setMaintenance(bool);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief authenticates a new request, wrapper method
@@ -160,7 +154,6 @@ class HttpHandlerFactory {
 
   void addNotFoundHandler(create_fptr);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief authentication realm
@@ -222,5 +215,3 @@ class HttpHandlerFactory {
 }
 
 #endif
-
-

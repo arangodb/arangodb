@@ -24,7 +24,7 @@
 #include "RestBatchHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
@@ -33,16 +33,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-using namespace std;
-
-
-
 RestBatchHandler::RestBatchHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-
 RestBatchHandler::~RestBatchHandler() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_batch_processing
@@ -68,7 +62,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     return status_t(HttpHandler::HANDLER_FAILED);
   }
 
-  LOG_TRACE("boundary of multipart-message is '%s'", boundary.c_str());
+  LOG(TRACE) << "boundary of multipart-message is '" << boundary.c_str() << "'";
 
   size_t errors = 0;
 
@@ -94,7 +88,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
       // error
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid multipart message received");
-      LOG_WARNING("received a corrupted multipart message");
+      LOG(WARNING) << "received a corrupted multipart message";
 
       return status_t(HttpHandler::HANDLER_FAILED);
     }
@@ -131,7 +125,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     }
 
     // set up request object for the part
-    LOG_TRACE("part header is: %s", std::string(headerStart, headerLength).c_str());
+    LOG(TRACE) << "part header is: " << std::string(headerStart, headerLength).c_str();
     HttpRequest* request =
         new HttpRequest(_request->connectionInfo(), headerStart, headerLength,
                         _request->compatibility(), false);
@@ -151,7 +145,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
-      LOG_TRACE("part body is '%s'", std::string(bodyStart, bodyLength).c_str());
+      LOG(TRACE) << "part body is '" << std::string(bodyStart, bodyLength).c_str() << "'";
       request->setBody(bodyStart, bodyLength);
     }
 
@@ -461,11 +455,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         if (arangodb::rest::HttpRequest::BatchContentType == value) {
           hasTypeHeader = true;
         } else {
-          LOG_WARNING(
-              "unexpected content-type '%s' for multipart-message. expected: "
-              "'%s'",
-              value.c_str(),
-              arangodb::rest::HttpRequest::BatchContentType.c_str());
+          LOG(WARNING) << "unexpected content-type '" << value.c_str() << "' for multipart-message. expected: '" << arangodb::rest::HttpRequest::BatchContentType.c_str() << "'";
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;
@@ -513,5 +503,3 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
 
   return true;
 }
-
-

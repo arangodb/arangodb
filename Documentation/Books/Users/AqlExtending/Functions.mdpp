@@ -10,11 +10,8 @@ var aqlfunctions = require("@arangodb/aql/functions");
 To register a function, the fully qualified function name plus the
 function code must be specified.
 
-!SUBSECTION Register 
-<!-- js/common/modules/@arangodb/aql/functions.js -->
+!SUBSECTION Registering an AQL user function
 
-
-register an AQL user function
 `aqlfunctions.register(name, code, isDeterministic)`
 
 Registers an AQL user function, identified by a fully qualified function
@@ -51,12 +48,21 @@ when it detects syntactially invalid function code.
   });
 ```
 
+The function code will not be executed in *strict mode* or *strong mode* by 
+default. In order to make a user function being run in strict mode, use
+`use strict` explicitly, e.g.:
 
-!SUBSECTION Unregister 
-<!-- js/common/modules/@arangodb/aql/functions.js -->
+```js
+  require("@arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit",
+  function (celsius) {
+    "use strict";
+    return celsius * 1.8 + 32;
+  });
+```
 
 
-delete an existing AQL user function
+!SUBSECTION Deleting an existing AQL user function
+
 `aqlfunctions.unregister(name)`
 
 Unregisters an existing AQL user function, identified by the fully qualified
@@ -97,11 +103,8 @@ This will return the number of functions unregistered.
 ```
 
 
-!SUBSECTION To Array
-<!-- js/common/modules/@arangodb/aql/functions.js -->
+!SUBSECTION Listing all AQL user functions
 
-
-list all AQL user functions
 `aqlfunctions.toArray()`
 
 Returns all previously registered AQL user functions, with their fully
@@ -114,7 +117,6 @@ by specifying a group prefix:
 
 
 **Examples**
-
 
 To list all available user functions:
 

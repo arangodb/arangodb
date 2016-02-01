@@ -58,9 +58,7 @@ class SimpleHttpResult {
   };
 
  public:
-
   SimpleHttpResult();
-
 
   ~SimpleHttpResult();
 
@@ -247,5 +245,3 @@ class SimpleHttpResult {
 }
 }
 #endif
-
-

@@ -139,9 +139,12 @@ _.extend(Engine.prototype, {
   buildManifest: function() {
     var manifest = {
       name: this.name,
-      description: this.description,
-      author: this.author,
       version: '0.0.1',
+      description: this.description,
+      engines: {
+        arangodb: '^2.8.0'
+      },
+      author: this.author,
       license: this.license,
       controllers: {},
       scripts: {

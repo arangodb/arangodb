@@ -23,7 +23,6 @@
 
 #include "fulltext-wordlist.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a wordlist
 ///
@@ -68,7 +67,6 @@ void TRI_FreeWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort a wordlist in place
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,5 +82,3 @@ void TRI_SortWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
   std::sort(wordlist->_words, wordlist->_words + wordlist->_numWords,
             compareSort);
 }
-
-

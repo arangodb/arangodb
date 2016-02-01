@@ -41,7 +41,6 @@
 #include <WS2tcpip.h>
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +53,6 @@ typedef struct TRI_socket_s {
 #else
 typedef struct TRI_socket_s { int fileDescriptor; } TRI_socket_t;
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket abstraction for different OSes
@@ -307,8 +305,4 @@ int TRI_InetPton4(char const* src, unsigned char* dst);
 
 int TRI_InetPton6(char const* src, unsigned char* dst);
 
-
-
 #endif
-
-

@@ -833,7 +833,7 @@ upsert_statement:
       parser->ast()->startSubQuery();
       
       scopes->start(arangodb::aql::AQL_SCOPE_FOR);
-      std::string const variableName = std::move(parser->ast()->variables()->nextName());
+      std::string const variableName = parser->ast()->variables()->nextName();
       auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), $8, false);
       parser->ast()->addOperation(forNode);
 
@@ -853,7 +853,7 @@ upsert_statement:
       AstNode* subqueryNode = parser->ast()->endSubQuery();
       scopes->endCurrent();
       
-      std::string const subqueryName = std::move(parser->ast()->variables()->nextName());
+      std::string const subqueryName = parser->ast()->variables()->nextName();
       auto subQuery = parser->ast()->createNodeLet(subqueryName.c_str(), subqueryName.size(), subqueryNode, false);
       parser->ast()->addOperation(subQuery);
       
@@ -1018,7 +1018,7 @@ expression_or_query:
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      std::string const variableName = std::move(parser->ast()->variables()->nextName());
+      std::string const variableName = parser->ast()->variables()->nextName();
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
@@ -1194,6 +1194,18 @@ graph_collection:
       }
       $$ = $1;
     }
+  | graph_direction T_STRING {
+      auto tmp = parser->ast()->createNodeValueString($2.value, $2.length);
+      $$ = parser->ast()->createNodeCollectionDirection($1, tmp);
+    }
+  | graph_direction bind_parameter {
+      char const* p = $2->getStringValue();
+      size_t const len = $2->getStringLength();
+      if (len < 1 || *p != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
+      }
+      $$ = parser->ast()->createNodeCollectionDirection($1, $2);
+    }
   ;
 
 graph_collection_list:
@@ -1323,7 +1335,7 @@ reference:
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      std::string const variableName = std::move(parser->ast()->variables()->nextName());
+      std::string const variableName = parser->ast()->variables()->nextName();
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 

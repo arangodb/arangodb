@@ -29,7 +29,6 @@
 
 #include <openssl/ssl.h>
 
-
 namespace arangodb {
 namespace rest {
 class HttpsServer;
@@ -42,7 +41,6 @@ class HttpsCommTask : public HttpCommTask {
   HttpsCommTask(HttpsCommTask const&) = delete;
   HttpsCommTask const& operator=(HttpsCommTask const&) = delete;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read block size
@@ -50,7 +48,6 @@ class HttpsCommTask : public HttpCommTask {
 
   static size_t const READ_BLOCK_SIZE = 10000;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new task with a given socket
@@ -67,22 +64,15 @@ class HttpsCommTask : public HttpCommTask {
  protected:
   ~HttpsCommTask();
 
-  
  protected:
-
   bool setup(Scheduler*, EventLoop) override;
-
 
   bool handleEvent(EventToken, EventType) override;
 
-  
-
   bool fillReadBuffer() override;
-
 
   bool handleWrite() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief accepts SSL connection
@@ -108,7 +98,6 @@ class HttpsCommTask : public HttpCommTask {
 
   void shutdownSsl(bool initShutdown);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief accepted done
@@ -162,5 +151,3 @@ class HttpsCommTask : public HttpCommTask {
 }
 
 #endif
-
-

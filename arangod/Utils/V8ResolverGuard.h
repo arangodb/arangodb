@@ -35,8 +35,6 @@
 namespace arangodb {
 
 class V8ResolverGuard {
-  
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the guard
@@ -67,20 +65,18 @@ class V8ResolverGuard {
     }
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
   //////////////////////////////////////////////////////////////////////////////
 
   inline CollectionNameResolver const* getResolver() const {
-    TRI_ASSERT_EXPENSIVE(static_cast<V8TransactionContext*>(
+    TRI_ASSERT(static_cast<V8TransactionContext*>(
                              _v8g->_transactionContext)->hasResolver());
     return static_cast<V8TransactionContext*>(_v8g->_transactionContext)
         ->getResolver();
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief v8 global context
@@ -97,4 +93,3 @@ class V8ResolverGuard {
 }
 
 #endif
-

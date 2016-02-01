@@ -85,7 +85,6 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
   return 1.0;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a scatter node from JSON
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +125,6 @@ double ScatterNode::estimateCost(size_t& nrItems) const {
   size_t nrShards = shardIds->size();
   return depCost + nrItems * nrShards;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a distribute node from JSON
@@ -178,7 +176,6 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a gather node from JSON
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,4 +225,3 @@ double GatherNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies[0]->getCost(nrItems);
   return depCost + nrItems;
 }
-

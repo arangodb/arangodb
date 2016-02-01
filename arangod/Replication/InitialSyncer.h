@@ -25,9 +25,9 @@
 #define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Logger.h"
 #include "Replication/Syncer.h"
 #include "Utils/transactions.h"
-
 
 struct TRI_json_t;
 class TRI_replication_applier_configuration_t;
@@ -40,9 +40,7 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
-
 class InitialSyncer : public Syncer {
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply phases
@@ -56,17 +54,13 @@ class InitialSyncer : public Syncer {
     PHASE_DUMP
   } sync_phase_e;
 
-  
  public:
-
   InitialSyncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*,
                 std::unordered_map<std::string, bool> const&,
                 std::string const&, bool);
 
-
   ~InitialSyncer();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run method, performs a full synchronization
@@ -108,7 +102,6 @@ class InitialSyncer : public Syncer {
     return _processedCollections;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set a progress message
@@ -118,7 +111,7 @@ class InitialSyncer : public Syncer {
     _progress = msg;
 
     if (_verbose) {
-      LOG_INFO("synchronization progress: %s", msg.c_str());
+      LOG(INFO) << "synchronization progress: " << msg.c_str();
     }
 
     if (_vocbase->_replicationApplier != nullptr) {
@@ -217,7 +210,6 @@ class InitialSyncer : public Syncer {
           std::pair<struct TRI_json_t const*, struct TRI_json_t const*>> const&,
       bool, std::string&, sync_phase_e);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief progress message
@@ -294,5 +286,3 @@ class InitialSyncer : public Syncer {
 }
 
 #endif
-
-

@@ -45,7 +45,6 @@ class CollectionNameResolver;
 
 class DocumentAccessor {
  public:
-  
   DocumentAccessor(DocumentAccessor const&);
   DocumentAccessor& operator=(DocumentAccessor const&);
 
@@ -58,7 +57,6 @@ class DocumentAccessor {
 
   ~DocumentAccessor();
 
-  
  public:
   bool hasKey(std::string const& attribute) const;
 
@@ -76,7 +74,6 @@ class DocumentAccessor {
 
   arangodb::basics::Json toJson();
 
-  
  private:
   void setToNull();
 
@@ -84,7 +81,6 @@ class DocumentAccessor {
 
   void lookupDocumentAttribute(char const* name, size_t nameLength);
 
-  
  private:
   arangodb::CollectionNameResolver const* _resolver;
 
@@ -122,8 +118,8 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
 /// @brief extracts the key from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline std::string TRI_EXTRACT_MARKER_KEY(
-    arangodb::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+static inline std::string TRI_EXTRACT_MARKER_KEY(arangodb::Transaction* trx,
+                                                 TRI_doc_mptr_t const* mptr) {
   return TRI_EXTRACT_MARKER_KEY(
       trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
@@ -154,8 +150,8 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
 /// @brief extracts the revision id from a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
-    arangodb::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(arangodb::Transaction* trx,
+                                                   TRI_doc_mptr_t const* mptr) {
   return TRI_EXTRACT_MARKER_RID(
       trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
@@ -226,5 +222,3 @@ static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
 }
 
 #endif
-
-

@@ -306,6 +306,12 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string getEndpointsString();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get a stringified version of the endpoints (unique)
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::string getUniqueEndpointsString();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the global prefix for all operations
@@ -365,12 +371,6 @@ class AgencyComm {
   /// @brief sets a value in the back end
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyCommResult setValue(std::string const&, TRI_json_t const*, double);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets a value in the back end, velocypack variant
-  //////////////////////////////////////////////////////////////////////////////
-
   AgencyCommResult setValue(std::string const&,
                             arangodb::velocypack::Slice const, double);
 
@@ -397,15 +397,6 @@ class AgencyComm {
   /// the CAS condition is whether or not a previous value existed for the key
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyCommResult casValue(std::string const&, TRI_json_t const*, bool, double,
-                            double) = delete;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief compares and swaps a single value in the backend
-  /// the CAS condition is whether or not a previous value existed for the key
-  /// velocypack variant
-  //////////////////////////////////////////////////////////////////////////////
-
   AgencyCommResult casValue(std::string const&,
                             arangodb::velocypack::Slice const, bool, double,
                             double);
@@ -414,16 +405,6 @@ class AgencyComm {
   /// @brief compares and swaps a single value in the back end
   /// the CAS condition is whether or not the previous value for the key was
   /// identical to `oldValue`
-  //////////////////////////////////////////////////////////////////////////////
-
-  AgencyCommResult casValue(std::string const&, TRI_json_t const*,
-                            TRI_json_t const*, double, double) = delete;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief compares and swaps a single value in the back end
-  /// the CAS condition is whether or not the previous value for the key was
-  /// identical to `oldValue`
-  /// velocypack variant
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult casValue(std::string const&,
@@ -613,4 +594,3 @@ class AgencyComm {
 }
 
 #endif
-
