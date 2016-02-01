@@ -325,7 +325,7 @@ exports.createDeleteUpdateParallel = function(opts) {
     return a.count() === b.count();
   };
 
-  sleep(10);
+  sleep(30);
 
   const m = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
     '@results': 'results'

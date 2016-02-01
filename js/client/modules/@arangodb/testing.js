@@ -757,7 +757,7 @@ function runStressTest(options, command, testname) {
   const id = reply.headers["x-arango-async-id"];
 
   const checkOpts = makeAuthorizationHeaders(options);
-  checkOpts.method = "GET";
+  checkOpts.method = "PUT";
   checkOpts.returnBodyOnError = true;
 
   while (true) {
@@ -778,12 +778,13 @@ function runStressTest(options, command, testname) {
       }
     }
 
-    print("cannot check job: (" + check.code + ") " + check.message);
+    print(yaml.safeDump(check));
+
     shutdownInstance(instanceInfo, options);
 
     return {
       status: false,
-      message: reply.hasOwnProperty('body') ? reply.body : yaml.safeDump(reply)
+      message: check.hasOwnProperty('body') ? check.body : yaml.safeDump(check)
     };
   }
 
@@ -2890,18 +2891,14 @@ testFuncs.stress_crud = function(options) {
   const concurrency = options.concurrency;
 
   const command = `
-    try {
-      const stressCrud = require("./js/server/tests/stress/crud");
+    const stressCrud = require("./js/server/tests/stress/crud");
 
-      stressCrud.createDeleteUpdateParallel({
-        concurrency: ${concurrency},
-        duration: ${duration},
-        gnuplot: true,
-        pauseFor: 60
-      });
-    } catch (err) {
-      require("internal").print(err);
-    }
+    stressCrud.createDeleteUpdateParallel({
+      concurrency: ${concurrency},
+      duration: ${duration},
+      gnuplot: true,
+      pauseFor: 60
+    });
 `;
 
   return runStressTest(options, command, "stress_crud");
@@ -2917,17 +2914,13 @@ testFuncs.stress_locks = function(options) {
   const concurrency = options.concurrency;
 
   const command = `
-    try {
-      const deadlock = require("./js/server/tests/stress/deadlock");
+    const deadlock = require("./js/server/tests/stress/deadlock");
 
-      deadlock.lockCycleParallel({
-        concurrency: ${concurrency},
-        duration: ${duration},
-        gnuplot: true
-      });
-    } catch (err) {
-      require("internal").print(err);
-    }
+    deadlock.lockCycleParallel({
+      concurrency: ${concurrency},
+      duration: ${duration},
+      gnuplot: true
+    });
 `;
 
   return runStressTest(options, command, "stress_lock");
