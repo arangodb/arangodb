@@ -35,12 +35,22 @@
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
+#include <velocypack/Iterator.h>
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <velocypack/Dumper.h>
+#include <velocypack/Sink.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+
+void addEmptyVPackObject(std::string const& name, VPackBuilder &builder) {
+  builder.add(VPackValue(name));
+  {
+    VPackObjectBuilder c(&builder);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an agency endpoint
@@ -536,6 +546,207 @@ bool AgencyComm::tryConnect() {
   return false;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief will try to initialize a new agency
+//////////////////////////////////////////////////////////////////////////////
+bool AgencyComm::initialize() {
+  if (!AgencyComm::tryConnect()) {
+    return false;
+  }
+  AgencyComm comm;
+  return comm.ensureStructureInitialized();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief will try to initialize a new agency
+//////////////////////////////////////////////////////////////////////////////
+bool AgencyComm::tryInitializeStructure() {
+  VPackBuilder trueBuilder;
+  trueBuilder.add(VPackValue(true));
+  
+  VPackSlice trueSlice = trueBuilder.slice();
+
+  AgencyCommResult result;
+  result = casValue("Init", trueSlice, false, 10.0, 0.0);
+  if (!result.successful()) {
+    // mop: we couldn"t aquire a lock. so somebody else is already initializing
+    return false;
+  }
+
+  VPackBuilder builder;
+  try {
+    VPackObjectBuilder b(&builder);
+    builder.add(VPackValue("Sync"));
+    {
+      VPackObjectBuilder c(&builder);
+      builder.add("LatestID", VPackValue("\"1\""));
+      addEmptyVPackObject("Problems", builder);
+      builder.add("UserVersion", VPackValue("\"1\""));
+      addEmptyVPackObject("ServerStates", builder);
+      builder.add("HeartbeatIntervalMs", VPackValue("1000"));
+      addEmptyVPackObject("Commands", builder);
+    }
+    builder.add(VPackValue("Current"));
+    {
+      VPackObjectBuilder c(&builder);
+      builder.add(VPackValue("Collections"));
+      {
+        VPackObjectBuilder d(&builder);
+        addEmptyVPackObject("_system", builder);
+      }
+      builder.add("Version", VPackValue("\"1\""));
+      addEmptyVPackObject("ShardsCopied", builder);
+      addEmptyVPackObject("NewServers", builder);
+      addEmptyVPackObject("Coordinators", builder);
+      builder.add("Lock", VPackValue("\"UNLOCKED\""));
+      addEmptyVPackObject("DBServers", builder);
+      builder.add(VPackValue("ServersRegistered"));
+      {
+        VPackObjectBuilder c(&builder);
+        builder.add("Version", VPackValue("\"1\""));
+      }
+      builder.add(VPackValue("Databases"));
+      {
+        VPackObjectBuilder d(&builder);
+        builder.add(VPackValue("_system"));
+        {
+          VPackObjectBuilder e(&builder);
+          builder.add("id", VPackValue("\"1\""));
+          // mop: seems wrong to me but this was present in the initial json
+          builder.add("name", VPackValue("\"name\""));
+        }
+      }
+    }
+    builder.add(VPackValue("Plan"));
+    {
+      VPackObjectBuilder c(&builder);
+      addEmptyVPackObject("Coordinators", builder);
+      builder.add(VPackValue("Databases"));
+      {
+        VPackObjectBuilder d(&builder);
+        builder.add(VPackValue("_system"));
+        {
+          VPackObjectBuilder e(&builder);
+          builder.add("id", VPackValue("\"1\""));
+          builder.add("name", VPackValue("\"_system\""));
+        }
+      }
+      addEmptyVPackObject("DBServers", builder);
+      builder.add("Version", VPackValue("\"1\""));
+      builder.add(VPackValue("Collections"));
+      {
+        VPackObjectBuilder d(&builder);
+        addEmptyVPackObject("_system", builder);
+      }
+    }
+    addEmptyVPackObject("Launchers", builder);
+    builder.add(VPackValue("Target"));
+    {
+      VPackObjectBuilder c(&builder);
+      addEmptyVPackObject("Coordinators", builder);
+      addEmptyVPackObject("MapIDToEndpoint", builder);
+      builder.add(VPackValue("Collections"));
+      {
+        VPackObjectBuilder d(&builder);
+        addEmptyVPackObject("_system", builder);
+      }
+      builder.add("Version", VPackValue("\"1\""));
+      addEmptyVPackObject("MapLocalToID", builder);
+      builder.add(VPackValue("Databases"));
+      {
+        VPackObjectBuilder d(&builder);
+        builder.add(VPackValue("_system"));
+        {
+          VPackObjectBuilder e(&builder);
+          builder.add("id", VPackValue("\"1\""));
+          builder.add("name", VPackValue("\"_system\""));
+        }
+      }
+      addEmptyVPackObject("DBServers", builder);
+      builder.add("Lock", VPackValue("\"UNLOCKED\""));
+    }
+  } catch (...) {
+    LOG(WARNING) << "Couldn't create initializing structure";
+    return false;
+  }
+
+  VPackSlice s = builder.slice();
+
+  VPackOptions dumperOptions;
+  // now dump the Slice into an std::string
+  std::string buffer;
+  VPackStringSink sink(&buffer);
+  VPackDumper::dump(s, &sink, &dumperOptions);
+
+  LOG(DEBUG) << "Initializing agency with " << buffer;
+
+  if (!initFromVPackSlice(std::string(""), s)) {
+    LOG(FATAL) << "Couldn't initialize agency";
+    FATAL_ERROR_EXIT();
+    return false;
+  } else {
+    setValue("InitDone", trueSlice, 0.0);
+    return true;
+  }
+}
+
+bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
+  bool ret = true;
+  LOG(TRACE) << "Initializing " << key << " with " << s.type();
+  if (s.type() == VPackValueType::Object) {
+    for (auto const& it : VPackObjectIterator(s)) {
+      std::string subKey("");
+      if (!key.empty()) {
+        subKey += key + "/";
+      }
+      subKey += it.key.copyString();
+      ret = ret && initFromVPackSlice(subKey, it.value);
+    }
+  } else {
+    AgencyCommResult result;
+    result = casValue(key, s, false, 0.0, 0.0);
+    if (!result.successful()) {
+      ret = false;
+    }
+  }
+
+  return ret;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the agency is initialized
+//////////////////////////////////////////////////////////////////////////////
+bool AgencyComm::hasInitializedStructure() {
+  AgencyCommResult result = getValues("InitDone", false);
+  
+  if (!result.successful()) {
+    return false;
+  }
+  // mop: hmmm ... don't check value...we only save true there right now...
+  // should be sufficient to check for key presence
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief will initialize agency if it is freshly started
+////////////////////////////////////////////////////////////////////////////////
+bool AgencyComm::ensureStructureInitialized() {
+  LOG(TRACE) << ("Checking if agency is initialized");
+  while (!hasInitializedStructure()) {
+    LOG(TRACE) << ("Agency is fresh. Needs initial structure.");
+    // mop: we initialized it .. great success
+    if (tryInitializeStructure()) {
+      LOG(TRACE) << ("Done initializing");
+      return true;
+    } else {
+      LOG(TRACE) << ("Somebody else is already initializing");
+      // mop: somebody else is initializing it right now...wait a bit and retry
+      sleep(1);
+    }
+  }
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnects all communication channels
 ////////////////////////////////////////////////////////////////////////////////
@@ -872,6 +1083,7 @@ bool AgencyComm::increaseVersion(std::string const& key) {
     try {
       builder.add(VPackValue(1));
     } catch (...) {
+      LOG(TRACE) << ("Couldn't add value to builder");
       return false;
     }
 
@@ -938,12 +1150,14 @@ void AgencyComm::increaseVersionRepeated(std::string const& key) {
 /// @brief creates a directory in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
+AgencyCommResult AgencyComm::createDirectory(std::string const& key, bool prevExist) {
   AgencyCommResult result;
-
+  
+  std::string url = buildUrl(key) + "?dir=true";
+  url += "&prevExist=" + (prevExist ? std::string("true") : std::string("false"));
   sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                    _globalConnectionOptions._requestTimeout, result,
-                   buildUrl(key) + "?dir=true", "", false);
+                   url, "", false);
 
   return result;
 }
@@ -1040,11 +1254,22 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       double timeout) {
   AgencyCommResult result;
 
+  std::string url;
+
+  if (key.empty()) {
+    url = buildUrl();
+  } else {
+    url = buildUrl(key);
+  }
+
+  url += "?prevExist=" + (prevExist ? std::string("true")
+      : std::string("false"));
+  url += ttlParam(ttl, false);
+
   sendWithFailover(
       arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
-      result, buildUrl(key) + "?prevExist=" + (prevExist ? "true" : "false") +
-                  ttlParam(ttl, false),
+      result, url,
       "value=" + arangodb::basics::StringUtils::urlEncode(json.toJson()),
       false);
   return result;

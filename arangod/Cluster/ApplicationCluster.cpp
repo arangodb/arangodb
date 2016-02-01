@@ -212,7 +212,7 @@ bool ApplicationCluster::prepare() {
   // perform an initial connect to the agency
   std::string const endpoints = AgencyComm::getEndpointsString();
 
-  if (!AgencyComm::tryConnect()) {
+  if (!AgencyComm::initialize()) {
     LOG(FATAL) << "Could not connect to agency endpoints (" << endpoints.c_str() << ")"; FATAL_ERROR_EXIT();
   }
 
