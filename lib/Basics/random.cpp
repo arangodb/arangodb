@@ -43,16 +43,16 @@ static unsigned long SeedRandom(void) {
 
   /* ignore result */ gettimeofday(&tv, 0);
 
-  seed = (unsigned long)(tv.tv_sec);
-  seed ^= (unsigned long)(tv.tv_usec);
+  seed = static_cast<decltype(seed)>(tv.tv_sec);
+  seed ^= static_cast<decltype(seed)>(tv.tv_usec);
 #else
-  seed = (unsigned long)time(0);
+  seed = static_cast<decltype(seed)>(time(0));
 #endif
 
-  seed ^= (unsigned long)((uint32_t) TRI_CurrentProcessId() << 8);
-  seed ^= (unsigned long)((uint32_t) TRI_CurrentProcessId() << 16);
-  seed ^= (unsigned long)((uint32_t) TRI_CurrentProcessId() << 24);
-  seed ^= (unsigned long)((uint32_t) TRI_CurrentThreadId());
+  seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 8);
+  seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 16);
+  seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 24);
+  seed ^= static_cast<decltype(seed)>(static_cast<std::conditional<std::is_pointer<TRI_tid_t>::value, uintptr_t, uint32_t>::type>(TRI_CurrentThreadId()));
 
   return seed;
 }
