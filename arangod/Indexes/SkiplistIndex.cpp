@@ -446,21 +446,19 @@ void SkiplistIterator::findHelper(
   SkiplistIteratorInterval interval;
   Node* temp;
 
-  TRI_relation_index_operator_t* relationOperator =
-      (TRI_relation_index_operator_t*)indexOperator;
-  TRI_logical_index_operator_t* logicalOperator =
-      (TRI_logical_index_operator_t*)indexOperator;
-
   switch (indexOperator->_type) {
     case TRI_EQ_INDEX_OPERATOR:
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR:
     case TRI_GE_INDEX_OPERATOR:
-    case TRI_GT_INDEX_OPERATOR:
+    case TRI_GT_INDEX_OPERATOR: {
+      TRI_relation_index_operator_t* relationOperator =
+        (TRI_relation_index_operator_t*)indexOperator;
 
       values._fields = relationOperator->_fields;
       values._numFields = relationOperator->_numFields;
       break;  // this is to silence a compiler warning
+    }
 
     default: {
       // must not access relationOperator->xxx if the operator is not a
@@ -471,6 +469,8 @@ void SkiplistIterator::findHelper(
 
   switch (indexOperator->_type) {
     case TRI_AND_INDEX_OPERATOR: {
+      TRI_logical_index_operator_t* logicalOperator =
+        (TRI_logical_index_operator_t*)indexOperator;
       findHelper(logicalOperator->_left, leftResult);
       findHelper(logicalOperator->_right, rightResult);
 

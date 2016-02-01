@@ -49,10 +49,10 @@ static unsigned long SeedRandom(void) {
   seed = (unsigned long)time(0);
 #endif
 
-  seed ^= (unsigned long)(TRI_CurrentProcessId() << 8);
-  seed ^= (unsigned long)(TRI_CurrentProcessId() << 16);
-  seed ^= (unsigned long)(TRI_CurrentProcessId() << 24);
-  seed ^= (unsigned long)(TRI_CurrentThreadId());
+  seed ^= (unsigned long)((uint32_t) TRI_CurrentProcessId() << 8);
+  seed ^= (unsigned long)((uint32_t) TRI_CurrentProcessId() << 16);
+  seed ^= (unsigned long)((uint32_t) TRI_CurrentProcessId() << 24);
+  seed ^= (unsigned long)((uint32_t) TRI_CurrentThreadId());
 
   return seed;
 }
