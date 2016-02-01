@@ -103,12 +103,13 @@ target_link_libraries(
     ${BIN_ARANGODUMP}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBRARIES}
+    #${ICU_LIBRARIES}
     ${V8_LIBRARIES}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
     ${OPENSSL_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
     ${MSVC_LIBS}
 )
 
@@ -151,18 +152,17 @@ add_executable(
     V8Client/ImportHelper.cpp
     V8Client/arangoimp.cpp
 )
-
 target_link_libraries(
     ${BIN_ARANGOIMP}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBRARIES}
     ${V8_LIBRARIES}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
     ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 ################################################################################
@@ -207,13 +207,14 @@ target_link_libraries(
     ${BIN_ARANGORESTORE}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBRARIES}
+    #${ICU_LIBRARIES}
     ${V8_LIBRARIES}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
     ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 ################################################################################
@@ -261,14 +262,16 @@ target_link_libraries(
     ${LIB_ARANGO_V8}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBRARIES}
+    #${ICU_LIBRARIES}
     ${V8_LIBRARIES}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
     ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
-)
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${CMAKE_DL_LIBS}
+    )
 
 ################################################################################
 ### @brief install arangosh binary

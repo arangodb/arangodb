@@ -34,7 +34,7 @@ set(CMAKE_CXX_STANDARD 11)
 ######################
 find_package(Threads REQUIRED)
 
-set(AR_ICU_LIBS icu_header icu_uc icu_data icu_i18n)
+set(AR_ICU_LIBS icu_header icu_i18n icu_uc icu_data)
 set(AR_V8_LIBS v8_base v8_libbase v8_libplatform v8_nosnapshot)
 
 
@@ -647,9 +647,9 @@ elseif (DARWIN)
   set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/x64.release CACHE path "ICU library path")
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 else ()
-    #  set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/io CACHE path "ICU include path")
-    #  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/x64.release/obj.target/third_party/icu/ CACHE path "ICU library path")
-    #  set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
+    set(ICU_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/io CACHE path "ICU include path")
+    set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/x64.release/obj.target/third_party/icu/ CACHE path "ICU library path")
+    set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 endif ()
 
 if (ICU_INCLUDE)
@@ -657,7 +657,7 @@ if (ICU_INCLUDE)
 endif ()
 
 if (ICU_LIB_PATH)
-    # link_directories(${ICU_LIB_PATH})
+    link_directories(${ICU_LIB_PATH})
 endif ()
 
 # OS type ------------------------------------------------------------

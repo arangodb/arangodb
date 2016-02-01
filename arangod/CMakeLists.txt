@@ -32,6 +32,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(${V8_INCLUDE_DIR})
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/boost/1.58.0)
 
 if (MSVC)
   SET(ARANGO_MSVC
@@ -292,7 +293,7 @@ target_link_libraries(
     ${LIB_ARANGO}
     ${LIBEV_LIBS}
     ${V8_LIBRARIES} # need this for rest::Version
-    ${ICU_LIBRARIES}
+    #${ICU_LIBRARIES}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
