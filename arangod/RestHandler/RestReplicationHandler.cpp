@@ -3458,7 +3458,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
         "body needs to be an object with attributes 'followerId' and 'shard'");
     return;
   }
-  VPackSlice const serverId = body.get("followerId");
+  VPackSlice const followerId = body.get("followerId");
   VPackSlice const shard = body.get("shard");
   if (!followerId.isString() || !shard.isString()) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
