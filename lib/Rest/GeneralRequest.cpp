@@ -747,11 +747,11 @@ void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
           if( it.value.isArray()){
 
             for(int i = 0; i < it.value.length(); i++){
-              setArrayValue(it.key.getString(len).c_str(), it.key.byteSize(), getValue(it.value));
+              setArrayValue((char *)it.key.copyString().c_str(), it.key.byteSize(), getValue(it.value).c_str());
             } 
 
           } else {
-            _values.insert(it.key.getString(len).c_str(), it.key.byteSize(), getValue(it.value));
+            _values.insert(it.key.getString(len), std::string(getValue(it.value), len).c_str());
           } 
         }  
 
@@ -759,11 +759,11 @@ void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
 
         for (auto const& it : velocypack::ObjectIterator(s.get("meta"))) {
             if(getValue(it.value).c_str() != ""){
-              setHeader(it.key.getString(len).c_str(), it.key.byteSize(), getValue(it.value));
+              setHeader(it.key.getString(len), it.key.byteSize(), getValue(it.value).c_str());
             }
         }
      } else{
-        setHeader(it.key.getString(len).c_str(), it.key.byteSize(), getValue(it.value));
+        setHeader(it.key.getString(len), it.key.byteSize(), getValue(it.value).c_str());
      } 
   }
 }
@@ -1112,34 +1112,34 @@ void GeneralRequest::parseHeader(char* ptr, size_t length) {
 
 string getValue(arangodb::velocypack::Slice s) {
   string result;
+  arangodb::velocypack::ValueLength len;
   switch(s.type()) {
     case arangodb::velocypack::ValueType::String  :try{
-                                                    arangodb::velocypack::ValueLength len;
-                                                    result = std::string(s.getString(len));
+                                                    result = s.getString(len);
                                                   }catch(Exception const& e){
                                                     LOG_ERROR("String Parse error: '%s'", e.what());
                                                   }
                                                  break;
     case arangodb::velocypack::ValueType::Double :try{
-                                                    result = std::string(s.getDouble());
+                                                    result = std::string(s.getDouble(), len);
                                                   }catch(Exception const& e){
                                                     LOG_ERROR("Double Parse error: '%s'", e.what());
                                                   }
                                                  break;
     case arangodb::velocypack::ValueType::Int  : try{
-                                                  result = std::string(s.getInt());
+                                                  result = std::string(s.getInt(), len);
                                                  }catch(Exception const& e){
                                                   LOG_ERROR("Int Parse error: '%s'", e.what());
                                                  }
                                                  break;
     case arangodb::velocypack::ValueType::UInt : try{
-                                                  result = std::string(s.getUInt());
+                                                  result = std::string(s.getUInt(), len);
                                                  }catch(Exception const& e){
                                                   LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
                                                  }
                                                  break;
     case arangodb::velocypack::ValueType::Bool : try{
-                                                  result = std::string(s.getBool());
+                                                  result = std::string(s.getBool(), len);
                                                  }catch(Exception const& e){
                                                   LOG_ERROR("Boolean Parse error: '%s'", e.what());
                                                  }
@@ -1464,7 +1464,7 @@ void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
 /// @brief set array value
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralRequest::setArrayValue(char const* key, size_t length, char const* value) {
+void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {
   Dictionary<std::vector<char const*>*>::KeyValue const* kv =
       _arrayValues.lookup(key);
   std::vector<char const*>* v = nullptr;

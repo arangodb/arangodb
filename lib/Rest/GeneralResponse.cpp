@@ -22,7 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpResponse.h"
+#include "GeneralResponse.h"
 #include "Basics/logging.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
