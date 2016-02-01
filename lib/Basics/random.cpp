@@ -52,7 +52,13 @@ static unsigned long SeedRandom(void) {
   seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 8);
   seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 16);
   seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 24);
-  seed ^= static_cast<decltype(seed)>(reinterpret_cast<std::conditional<std::is_pointer<TRI_tid_t>::value, uintptr_t, TRI_tid_t>::type>(TRI_CurrentThreadId()));
+
+#ifdef __APPLE__
+  auto tid = reinterpret_cast<uintptr_t>(TRI_CurrentThreadId());
+  seed ^= static_cast<decltype(seed)>(tid);
+#else
+  seed ^= static_cast<decltype(seed)>(TRI_CurrentThreadId());
+#endif
 
   return seed;
 }
