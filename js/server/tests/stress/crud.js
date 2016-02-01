@@ -347,6 +347,7 @@ set output "out/documents.png"
 set multiplot layout 3, 1 title "CRUD Stress Test" font ",14"
 
 set autoscale
+set logscale y
 set key outside
 set xlabel "runtime in seconds"
 
@@ -375,6 +376,7 @@ set terminal png size 1024,1024
 set size ratio 0.8
 set output "out/datafiles.png"
 set autoscale
+set logscale y
 set xlabel "runtime in seconds"
 set ylabel "numbers"
 set key outside
