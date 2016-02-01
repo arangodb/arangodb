@@ -31,13 +31,10 @@ using namespace arangodb::basics;
 using arangodb::rest::HttpRequest;
 using arangodb::rest::HttpHandler;
 
-
 WorkMonitorHandler::WorkMonitorHandler(HttpRequest* request)
     : RestBaseHandler(request) {}
 
-
 bool WorkMonitorHandler::isDirect() const { return true; }
-
 
 #include <iostream>
 

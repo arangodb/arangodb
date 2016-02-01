@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/StringBuffer.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Rest/HttpRequest.h"
 
 namespace arangodb {
@@ -195,7 +195,7 @@ class SimpleHttpClient {
     _errorMessage = message;
 
     if (_warn || forceWarn) {
-      LOG_WARNING("%s", _errorMessage.c_str());
+      LOG(WARNING) << "" << _errorMessage.c_str();
     }
   }
 
@@ -428,4 +428,3 @@ class SimpleHttpClient {
 }
 
 #endif
-

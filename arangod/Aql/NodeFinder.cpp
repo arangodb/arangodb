@@ -26,8 +26,6 @@
 namespace arangodb {
 namespace aql {
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief node finder for one node type
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +45,6 @@ NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder(
     std::vector<ExecutionNode::NodeType> lookingFor,
     std::vector<ExecutionNode*>& out, bool enterSubqueries)
     : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief before method for one node type
@@ -80,8 +77,6 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(
   return false;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief node finder for one node type
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,7 +84,6 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(
 EndNodeFinder::EndNodeFinder(std::vector<ExecutionNode*>& out,
                              bool enterSubqueries)
     : _out(out), _found({false}), _enterSubqueries(enterSubqueries) {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief before method for one node type
@@ -110,5 +104,3 @@ bool EndNodeFinder::before(ExecutionNode* en) {
 
 }  // namespace arangodb::aql
 }  // namespace arangodb
-
-

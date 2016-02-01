@@ -39,13 +39,10 @@ using namespace arangodb::admin;
 
 extern AnyServer* ArangoInstance;
 
-
 RestDebugHandler::RestDebugHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-
 bool RestDebugHandler::isDirect() const { return false; }
-
 
 HttpHandler::status_t RestDebugHandler::execute() {
   // extract the sub-request type

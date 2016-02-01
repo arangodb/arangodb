@@ -25,19 +25,17 @@
 
 #include "Rest/HttpRequest.h"
 
-using namespace std;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::admin;
 using namespace arangodb::rest;
-
-
 
 RestShutdownHandler::RestShutdownHandler(arangodb::rest::HttpRequest* request,
                                          void* applicationServer)
     : RestBaseHandler(request),
       _applicationServer(
           static_cast<arangodb::rest::ApplicationServer*>(applicationServer)) {}
-
-
 
 bool RestShutdownHandler::isDirect() const { return true; }
 
@@ -59,5 +57,3 @@ HttpHandler::status_t RestShutdownHandler::execute() {
 
   return status_t(HANDLER_DONE);
 }
-
-

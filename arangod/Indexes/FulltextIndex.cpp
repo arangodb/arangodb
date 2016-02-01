@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FulltextIndex.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/Utf8Helper.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-wordlist.h"
@@ -93,8 +93,6 @@ static bool ListTextExtractor(VocShaper* shaper, TRI_shape_t const* shape,
   return true;
 }
 
-
-
 FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
                              TRI_document_collection_t* collection,
                              std::string const& attribute, int minWordLength)
@@ -125,55 +123,38 @@ FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
 
 FulltextIndex::~FulltextIndex() {
   if (_fulltextIndex != nullptr) {
-    LOG_TRACE("destroying fulltext index");
+    LOG(TRACE) << "destroying fulltext index";
     TRI_FreeFtsIndex(_fulltextIndex);
   }
 }
-
 
 size_t FulltextIndex::memory() const {
   return TRI_MemoryFulltextIndex(_fulltextIndex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
+/// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json FulltextIndex::toJson(TRI_memory_zone_t* zone,
-                                             bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
+void FulltextIndex::toVelocyPack(VPackBuilder& builder,
+                                 bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
 
   // hard-coded
-  json("unique", arangodb::basics::Json(false))("sparse",
-                                                arangodb::basics::Json(true));
-
-  json("minLength",
-       arangodb::basics::Json(zone, static_cast<double>(_minWordLength)));
-
-  return json;
+  builder.add("unique", VPackValue(false));
+  builder.add("sparse", VPackValue(true));
+  builder.add("minLength", VPackValue(_minWordLength));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json FulltextIndex::toJsonFigures(
-    TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-
-  return json;
-}
-
-int FulltextIndex::insert(arangodb::Transaction*,
-                          TRI_doc_mptr_t const* doc, bool isRollback) {
+int FulltextIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
+                          bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
   TRI_fulltext_wordlist_t* words = wordlist(doc);
 
   if (words == nullptr) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
-    // LOG_WARNING("could not build wordlist");
+    // LOG(WARNING) << "could not build wordlist";
     return res;
   }
 
@@ -181,7 +162,7 @@ int FulltextIndex::insert(arangodb::Transaction*,
     // TODO: use status codes
     if (!TRI_InsertWordsFulltextIndex(
             _fulltextIndex, (TRI_fulltext_doc_t)((uintptr_t)doc), words)) {
-      LOG_ERROR("adding document to fulltext index failed");
+      LOG(ERROR) << "adding document to fulltext index failed";
       res = TRI_ERROR_INTERNAL;
     }
   }
@@ -191,8 +172,8 @@ int FulltextIndex::insert(arangodb::Transaction*,
   return res;
 }
 
-int FulltextIndex::remove(arangodb::Transaction*,
-                          TRI_doc_mptr_t const* doc, bool) {
+int FulltextIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
+                          bool) {
   TRI_DeleteDocumentFulltextIndex(_fulltextIndex,
                                   (TRI_fulltext_doc_t)((uintptr_t)doc));
 
@@ -200,7 +181,7 @@ int FulltextIndex::remove(arangodb::Transaction*,
 }
 
 int FulltextIndex::cleanup() {
-  LOG_TRACE("fulltext cleanup called");
+  LOG(TRACE) << "fulltext cleanup called";
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -211,7 +192,6 @@ int FulltextIndex::cleanup() {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function called by the fulltext index to determine the
@@ -313,5 +293,3 @@ TRI_fulltext_wordlist_t* FulltextIndex::wordlist(
 
   return wordlist;
 }
-
-

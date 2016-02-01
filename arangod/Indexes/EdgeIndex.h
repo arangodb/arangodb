@@ -32,9 +32,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
-
-
 namespace arangodb {
 namespace aql {
 class SortCondition;
@@ -79,17 +76,15 @@ class EdgeIndexIterator final : public IndexIterator {
 };
 
 class EdgeIndex final : public Index {
-  
  public:
   EdgeIndex() = delete;
 
   EdgeIndex(TRI_idx_iid_t, struct TRI_document_collection_t*);
 
-  explicit EdgeIndex(struct TRI_json_t const*);
+  explicit EdgeIndex(VPackSlice const&);
 
   ~EdgeIndex();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief typedef for hash tables
@@ -98,7 +93,6 @@ class EdgeIndex final : public Index {
   typedef arangodb::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
                                        uint32_t, true> TRI_EdgeIndexHash_t;
 
-  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_EDGE_INDEX;
@@ -114,11 +108,9 @@ class EdgeIndex final : public Index {
 
   size_t memory() const override final;
 
-  std::shared_ptr<VPackBuilder> toVelocyPack(bool, bool) const override final;
-  std::shared_ptr<VPackBuilder> toVelocyPackFigures(bool) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override final;
 
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+  void toVelocyPackFigures(VPackBuilder&) const override final;
 
   int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
@@ -160,7 +152,6 @@ class EdgeIndex final : public Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the iterator
@@ -171,7 +162,6 @@ class EdgeIndex final : public Index {
       arangodb::aql::AstNode const*,
       std::vector<arangodb::aql::AstNode const*> const&) const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the hash table for _from
@@ -194,5 +184,3 @@ class EdgeIndex final : public Index {
 }
 
 #endif
-
-

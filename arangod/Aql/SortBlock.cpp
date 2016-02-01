@@ -26,12 +26,10 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
-
 
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
     : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable) {
@@ -39,7 +37,8 @@ SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
     auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
     TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    _sortRegisters.emplace_back(std::make_pair(it->second.registerId, p.second));
+    _sortRegisters.emplace_back(
+        std::make_pair(it->second.registerId, p.second));
   }
 }
 
@@ -234,7 +233,6 @@ void SortBlock::doSorting() {
   }
 }
 
-
 bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
                                         std::pair<size_t, size_t> const& b) {
   size_t i = 0;
@@ -254,4 +252,3 @@ bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
 
   return false;
 }
-

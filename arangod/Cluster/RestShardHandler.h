@@ -37,14 +37,10 @@ class Dispatcher;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestShardHandler : public admin::RestBaseHandler {
-  
  public:
-
   RestShardHandler(rest::HttpRequest* request, rest::Dispatcher*);
 
-  
  public:
-
   bool isDirect() const override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -53,7 +49,6 @@ class RestShardHandler : public admin::RestBaseHandler {
 
   status_t execute() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispatcher
@@ -64,5 +59,3 @@ class RestShardHandler : public admin::RestBaseHandler {
 }
 
 #endif
-
-

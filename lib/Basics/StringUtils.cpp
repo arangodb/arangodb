@@ -26,12 +26,10 @@
 #include <math.h>
 #include <time.h>
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringBuffer.h"
-
-using namespace std;
 
 // -----------------------------------------------------------------------------
 // helper functions
@@ -615,7 +613,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   delete[] buffer;
 
   if (corrupted) {
-    LOG_WARNING("escaped corrupted unicode string");
+    LOG(WARNING) << "escaped corrupted unicode string";
   }
 
   return result;
@@ -716,7 +714,8 @@ std::string escapeHex(std::string const& name, char quote) {
   return result;
 }
 
-std::string escapeHex(std::string const& name, std::string const& special, char quote) {
+std::string escapeHex(std::string const& name, std::string const& special,
+                      char quote) {
   size_t len = name.length();
 
   if (len == 0) {
@@ -849,7 +848,8 @@ std::string escapeC(std::string const& name) {
   return result;
 }
 
-std::vector<std::string> split(std::string const& source, char delim, char quote) {
+std::vector<std::string> split(std::string const& source, char delim,
+                               char quote) {
   std::vector<std::string> result;
 
   if (source.empty()) {
@@ -896,7 +896,8 @@ std::vector<std::string> split(std::string const& source, char delim, char quote
   return result;
 }
 
-std::vector<std::string> split(std::string const& source, std::string const& delim, char quote) {
+std::vector<std::string> split(std::string const& source,
+                               std::string const& delim, char quote) {
   std::vector<std::string> result;
 
   if (source.empty()) {
@@ -947,8 +948,8 @@ std::string join(std::vector<std::string> const& source, char delim) {
   std::string result = "";
   bool first = true;
 
-  for (std::vector<std::string>::const_iterator i = source.begin(); i != source.end();
-       ++i) {
+  for (std::vector<std::string>::const_iterator i = source.begin();
+       i != source.end(); ++i) {
     if (first) {
       first = false;
     } else {
@@ -961,12 +962,13 @@ std::string join(std::vector<std::string> const& source, char delim) {
   return result;
 }
 
-std::string join(std::vector<std::string> const& source, std::string const& delim) {
+std::string join(std::vector<std::string> const& source,
+                 std::string const& delim) {
   std::string result = "";
   bool first = true;
 
-  for (std::vector<std::string>::const_iterator i = source.begin(); i != source.end();
-       ++i) {
+  for (std::vector<std::string>::const_iterator i = source.begin();
+       i != source.end(); ++i) {
     if (first) {
       first = false;
     } else {
@@ -983,7 +985,8 @@ std::string join(std::set<std::string> const& source, char delim) {
   std::string result = "";
   bool first = true;
 
-  for (std::set<std::string>::const_iterator i = source.begin(); i != source.end(); ++i) {
+  for (std::set<std::string>::const_iterator i = source.begin();
+       i != source.end(); ++i) {
     if (first) {
       first = false;
     } else {
@@ -996,11 +999,13 @@ std::string join(std::set<std::string> const& source, char delim) {
   return result;
 }
 
-std::string join(std::set<std::string> const& source, std::string const& delim) {
+std::string join(std::set<std::string> const& source,
+                 std::string const& delim) {
   std::string result = "";
   bool first = true;
 
-  for (std::set<std::string>::const_iterator i = source.begin(); i != source.end(); ++i) {
+  for (std::set<std::string>::const_iterator i = source.begin();
+       i != source.end(); ++i) {
     if (first) {
       first = false;
     } else {
@@ -1075,7 +1080,8 @@ std::string rFill(std::string const& sourceStr, size_t size, char fill) {
   return sourceStr + std::string(size - l, fill);
 }
 
-std::vector<std::string> wrap(std::string const& sourceStr, size_t size, std::string breaks) {
+std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
+                              std::string breaks) {
   std::vector<std::string> result;
   std::string next = sourceStr;
 
@@ -1108,7 +1114,7 @@ std::vector<std::string> wrap(std::string const& sourceStr, size_t size, std::st
 /// e.g. replace("aaebbbbcce","bbb","bb") = "aaebbbcce"
 
 std::string replace(std::string const& sourceStr, std::string const& fromStr,
-               std::string const& toStr) {
+                    std::string const& toStr) {
   size_t fromLength = fromStr.length();
   size_t toLength = toStr.length();
   size_t sourceLength = sourceStr.length();
@@ -1119,7 +1125,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   }
 
   // the max amount of memory is:
-  size_t mt = max(static_cast<size_t>(1), toLength);
+  size_t mt = (std::max)(static_cast<size_t>(1), toLength);
 
   if ((sourceLength / fromLength) + 1 >= (SIZE_MAX - toLength) / mt) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1129,7 +1135,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
 
   // the min amount of memory we have to allocate for the "replace" (new) string
   // is length of sourceStr
-  maxLength = max(maxLength, sourceLength) + 1;
+  maxLength = (std::max)(maxLength, sourceLength) + 1;
 
   char* result = new char[maxLength];
   size_t k = 0;
@@ -1701,8 +1707,7 @@ int64_t int64(std::string const& str) {
 #else
   try {
     return stoll(str, 0, 10);
-  }
-  catch (...) {
+  } catch (...) {
     return 0;
   }
 #endif
@@ -1736,8 +1741,7 @@ int64_t int64(char const* value, size_t size) {
 #else
   try {
     return stoll(std::string(value, size), 0, 10);
-  }
-  catch (...) {
+  } catch (...) {
     return 0;
   }
 #endif
@@ -1759,8 +1763,7 @@ uint64_t uint64(std::string const& str) {
 #else
   try {
     return stoull(str, 0, 10);
-  }
-  catch (...) {
+  } catch (...) {
     return 0;
   }
 #endif
@@ -1794,8 +1797,7 @@ uint64_t uint64(char const* value, size_t size) {
 #else
   try {
     return stoull(std::string(value, size), 0, 10);
-  }
-  catch (...) {
+  } catch (...) {
     return 0;
   }
 #endif
@@ -2019,7 +2021,8 @@ float floatDecimal(char const* value, size_t size) {
 // encoding
 // of the unicode representation of that character.
 
-bool unicodeToUTF8(char const* inputStr, size_t const& len, std::string& outputStr) {
+bool unicodeToUTF8(char const* inputStr, size_t const& len,
+                   std::string& outputStr) {
   uint32_t outputInt = 0;
   bool ok;
 
@@ -2321,7 +2324,7 @@ std::string correctPath(std::string const& incorrectPath) {
 // by ','. E.g entry(2,str,',') = 'yy'
 
 std::string entry(size_t const pos, std::string const& sourceStr,
-             std::string const& delimiter) {
+                  std::string const& delimiter) {
   size_t delLength = delimiter.length();
   size_t sourceLength = sourceStr.length();
 
@@ -2414,4 +2417,3 @@ std::string decodeHex(std::string const& str) {
 }
 }
 }
-

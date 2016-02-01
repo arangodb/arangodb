@@ -30,7 +30,6 @@
 namespace arangodb {
 namespace basics {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Struct that knows the name of the attribute used to identify its pid
 ///        but also knows if the attribute was followed by [*] which means
@@ -81,7 +80,6 @@ struct AttributeName {
                          std::vector<AttributeName> const&);
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Parse an input string into attribute names and expansion flags
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,5 +121,3 @@ std::ostream& operator<<(std::ostream&,
                          std::vector<arangodb::basics::AttributeName> const&);
 
 #endif
-
-

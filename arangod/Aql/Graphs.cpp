@@ -30,7 +30,6 @@ using namespace arangodb::aql;
 char const* Graph::_attrEdgeDefs = "edgeDefinitions";
 char const* Graph::_attrOrphans = "orphanCollections";
 
-
 void Graph::insertVertexCollectionsFromJsonArray(arangodb::basics::Json& arr) {
   for (size_t j = 0; j < arr.size(); ++j) {
     Json c = arr.at(j);
@@ -39,7 +38,6 @@ void Graph::insertVertexCollectionsFromJsonArray(arangodb::basics::Json& arr) {
     addVertexCollection(name);
   }
 }
-
 
 std::unordered_set<std::string> const& Graph::vertexCollections() const {
   return _vertexColls;

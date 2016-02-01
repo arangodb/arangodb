@@ -25,15 +25,11 @@
 #define ARANGOD_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/logging.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-master.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 struct TRI_json_t;
 class TRI_replication_applier_configuration_t;
@@ -42,6 +38,10 @@ struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
 
 namespace arangodb {
+
+namespace velocypack {
+class Slice;
+}
 
 namespace httpclient {
 class GeneralClientConnection;
@@ -56,18 +56,14 @@ class Endpoint;
 class Transaction;
 
 class Syncer {
-  
  public:
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
-
   Syncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*);
-
 
   virtual ~Syncer();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sleeps (nanoseconds)
   //////////////////////////////////////////////////////////////////////////////
@@ -86,9 +82,7 @@ class Syncer {
 
   static std::string rewriteLocation(void*, std::string const&);
 
-  
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection id from JSON
   //////////////////////////////////////////////////////////////////////////////
@@ -99,7 +93,7 @@ class Syncer {
   /// @brief extract the collection id from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_voc_cid_t getCid(VPackSlice const&) const;
+  TRI_voc_cid_t getCid(arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection name from JSON
@@ -111,7 +105,7 @@ class Syncer {
   /// @brief extract the collection name from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getCName(VPackSlice const&) const;
+  std::string getCName(arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply a single marker from the collection dump
@@ -145,7 +139,7 @@ class Syncer {
   /// @brief creates an index, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int createIndex(VPackSlice const&);
+  int createIndex(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drops an index, based on the JSON provided
@@ -165,7 +159,6 @@ class Syncer {
 
   int handleStateResponse(struct TRI_json_t const*, std::string&);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
@@ -236,5 +229,3 @@ class Syncer {
 }
 
 #endif
-
-

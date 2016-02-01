@@ -39,17 +39,14 @@
 /// @brief shortcut for single-operation write transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-#define SingleWriteTransactionType \
-  arangodb::SingleCollectionWriteTransaction<1>
+#define SingleWriteTransactionType arangodb::SingleCollectionWriteTransaction<1>
 
 namespace arangodb {
 namespace wal {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state that is built up when scanning a WAL logfile during recovery
 ////////////////////////////////////////////////////////////////////////////////
-
 
 struct RecoverState {
   RecoverState(RecoverState const&) = delete;
@@ -67,7 +64,6 @@ struct RecoverState {
 
   ~RecoverState();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if there will be a drop marker for the collection
   //////////////////////////////////////////////////////////////////////////////
@@ -215,7 +211,6 @@ struct RecoverState {
 
   int fillIndexes();
 
-  
   TRI_server_t* server;
   std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>>
       failedTransactions;
@@ -237,5 +232,3 @@ struct RecoverState {
 }
 
 #endif
-
-

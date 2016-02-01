@@ -32,7 +32,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::traverser;
@@ -78,27 +77,28 @@ class MultiCollectionEdgeExpander {
   /// @brief function to check if the edge passes the filter
   //////////////////////////////////////////////////////////////////////////////
 
-  function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> _isAllowed;
+  std::function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> _isAllowed;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief function to check if the vertex passes the filter
   //////////////////////////////////////////////////////////////////////////////
 
-  function<bool(VertexId&)> _isAllowedVertex;
+  std::function<bool(VertexId&)> _isAllowedVertex;
 
  public:
   MultiCollectionEdgeExpander(
       TRI_edge_direction_e const& direction,
       std::vector<EdgeCollectionInfo*> const& edgeCollections,
-      function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> isAllowed,
-      function<bool(VertexId&)> isAllowedVertex)
+      std::function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> isAllowed,
+      std::function<bool(VertexId&)> isAllowedVertex)
       : _direction(direction),
         _edgeCollections(edgeCollections),
         _isAllowed(isAllowed),
         _isAllowedVertex(isAllowedVertex) {}
 
-  void operator()(VertexId& source, std::vector<ArangoDBPathFinder::Step*>& result) {
-    equal_to<VertexId> eq;
+  void operator()(VertexId& source,
+                  std::vector<ArangoDBPathFinder::Step*>& result) {
+    std::equal_to<VertexId> eq;
     for (auto const& edgeCollection : _edgeCollections) {
       TRI_ASSERT(edgeCollection != nullptr);
 
@@ -158,11 +158,12 @@ class SimpleEdgeExpander {
                      EdgeCollectionInfo* edgeCollection)
       : _direction(direction), _edgeCollection(edgeCollection){};
 
-  void operator()(VertexId& source, std::vector<ArangoDBPathFinder::Step*>& result) {
+  void operator()(VertexId& source,
+                  std::vector<ArangoDBPathFinder::Step*>& result) {
     TRI_ASSERT(_edgeCollection != nullptr);
     auto edges = _edgeCollection->getEdges(_direction, source);
 
-    equal_to<VertexId> eq;
+    std::equal_to<VertexId> eq;
     std::unordered_map<VertexId, size_t> candidates;
     for (size_t j = 0; j < edges.size(); ++j) {
       VertexId from = ExtractFromId(edges[j]);
@@ -191,7 +192,6 @@ class SimpleEdgeExpander {
     }
   }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Insert a new vertex matcher object
@@ -276,9 +276,8 @@ void BasicOptions::addEdgeFilter(v8::Isolate* isolate,
   } else {
     // Has to be Object
     _edgeFilter.emplace(
-        cid,
-        new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
-                           shaper, errorMessage));
+        cid, new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
+                                shaper, errorMessage));
   }
 }
 
@@ -318,7 +317,6 @@ bool BasicOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
   return it->second->matches(e.cid, edge);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,7 +328,6 @@ bool ShortestPathOptions::matchesVertex(VertexId const& v) const {
 
   return BasicOptions::matchesVertex(v);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
@@ -359,13 +356,13 @@ void NeighborsOptions::addCollectionRestriction(TRI_voc_cid_t cid) {
   _explicitCollections.emplace(cid);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Wrapper for the shortest path computation
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
-    std::vector<EdgeCollectionInfo*>& collectionInfos, ShortestPathOptions& opts) {
+    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
 
@@ -407,8 +404,9 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
-TRI_RunSimpleShortestPathSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
-                                ShortestPathOptions& opts) {
+TRI_RunSimpleShortestPathSearch(
+    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
 
@@ -423,50 +421,52 @@ TRI_RunSimpleShortestPathSearch(std::vector<EdgeCollectionInfo*>& collectionInfo
     backward = TRI_EDGE_ANY;
   }
 
-  auto fwExpander = [&collectionInfos, forward](
-      VertexId& v, std::vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
-    equal_to<VertexId> eq;
-    for (auto const& edgeCollection : collectionInfos) {
-      TRI_ASSERT(edgeCollection != nullptr);
-      auto edges = edgeCollection->getEdges(forward, v);
-      for (size_t j = 0; j < edges.size(); ++j) {
-        EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
-        VertexId from = ExtractFromId(edges[j]);
-        if (!eq(from, v)) {
-          res_edges.emplace_back(edgeId);
-          neighbors.emplace_back(from);
-        } else {
-          VertexId to = ExtractToId(edges[j]);
-          if (!eq(to, v)) {
-            res_edges.emplace_back(edgeId);
-            neighbors.emplace_back(to);
+  auto fwExpander =
+      [&collectionInfos, forward](VertexId& v, std::vector<EdgeId>& res_edges,
+                                  std::vector<VertexId>& neighbors) {
+        std::equal_to<VertexId> eq;
+        for (auto const& edgeCollection : collectionInfos) {
+          TRI_ASSERT(edgeCollection != nullptr);
+          auto edges = edgeCollection->getEdges(forward, v);
+          for (size_t j = 0; j < edges.size(); ++j) {
+            EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
+            VertexId from = ExtractFromId(edges[j]);
+            if (!eq(from, v)) {
+              res_edges.emplace_back(edgeId);
+              neighbors.emplace_back(from);
+            } else {
+              VertexId to = ExtractToId(edges[j]);
+              if (!eq(to, v)) {
+                res_edges.emplace_back(edgeId);
+                neighbors.emplace_back(to);
+              }
+            }
           }
         }
-      }
-    }
-  };
-  auto bwExpander = [&collectionInfos, backward](
-      VertexId& v, std::vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
-    equal_to<VertexId> eq;
-    for (auto const& edgeCollection : collectionInfos) {
-      TRI_ASSERT(edgeCollection != nullptr);
-      auto edges = edgeCollection->getEdges(backward, v);
-      for (size_t j = 0; j < edges.size(); ++j) {
-        EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
-        VertexId from = ExtractFromId(edges[j]);
-        if (!eq(from, v)) {
-          res_edges.emplace_back(edgeId);
-          neighbors.emplace_back(from);
-        } else {
-          VertexId to = ExtractToId(edges[j]);
-          if (!eq(to, v)) {
-            res_edges.emplace_back(edgeId);
-            neighbors.emplace_back(to);
+      };
+  auto bwExpander =
+      [&collectionInfos, backward](VertexId& v, std::vector<EdgeId>& res_edges,
+                                   std::vector<VertexId>& neighbors) {
+        std::equal_to<VertexId> eq;
+        for (auto const& edgeCollection : collectionInfos) {
+          TRI_ASSERT(edgeCollection != nullptr);
+          auto edges = edgeCollection->getEdges(backward, v);
+          for (size_t j = 0; j < edges.size(); ++j) {
+            EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
+            VertexId from = ExtractFromId(edges[j]);
+            if (!eq(from, v)) {
+              res_edges.emplace_back(edgeId);
+              neighbors.emplace_back(from);
+            } else {
+              VertexId to = ExtractToId(edges[j]);
+              if (!eq(to, v)) {
+                res_edges.emplace_back(edgeId);
+                neighbors.emplace_back(to);
+              }
+            }
           }
         }
-      }
-    }
-  };
+      };
 
   ArangoDBConstDistancePathFinder pathFinder(fwExpander, bwExpander);
   std::unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
@@ -658,7 +658,6 @@ void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
   }
 }
 
-
 Json* SingleServerTraversalPath::pathToJson(Transaction* trx,
                                             CollectionNameResolver* resolver) {
   auto path = std::make_unique<Json>(Json::Object, 2);
@@ -755,7 +754,6 @@ Json* SingleServerTraversalPath::vertexToJson(Transaction* trx,
                            resolver, v.cid, &mptr));
 }
 
-
 DepthFirstTraverser::DepthFirstTraverser(
     std::vector<TRI_document_collection_t*> const& edgeCollections,
     TraverserOptions& opts, CollectionNameResolver* resolver, Transaction* trx,
@@ -763,6 +761,7 @@ DepthFirstTraverser::DepthFirstTraverser(
         expressions)
     : Traverser(opts, expressions),
       _resolver(resolver),
+      _edgeGetter(this, opts, resolver, trx),
       _edgeCols(edgeCollections),
       _trx(trx) {
   _defInternalFunctions();
@@ -874,143 +873,6 @@ void DepthFirstTraverser::_defInternalFunctions() {
     }
     return true;
   };
-
-  if (_opts.direction == TRI_EDGE_ANY) {
-    _getEdge = [&](VertexId const& startVertex, std::vector<EdgeInfo>& edges,
-                   TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
-      std::vector<TRI_doc_mptr_copy_t> tmp;
-      TRI_ASSERT(eColIdx < _edgeCols.size());
-      arangodb::EdgeIndex* edgeIndex =
-          _edgeCols.at(eColIdx)->edgeIndex();
-      if (dir) {
-        TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid,
-                                     startVertex.key);
-        edgeIndex->lookup(_trx, &it, tmp, last, 1);
-
-        while (last == nullptr) {
-          // Switch back direction
-          dir = false;
-          ++eColIdx;
-          if (_edgeCols.size() == eColIdx) {
-            // No more to do, stop here
-            return;
-          }
-          TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid,
-                                       startVertex.key);
-          edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
-          edgeIndex->lookup(_trx, &it, tmp, last, 1);
-          if (last == nullptr) {
-            dir = true;
-            TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid,
-                                         startVertex.key);
-            edgeIndex->lookup(_trx, &it, tmp, last, 1);
-          }
-        }
-      } else {
-        TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid,
-                                     startVertex.key);
-        edgeIndex->lookup(_trx, &it, tmp, last, 1);
-        while (last == nullptr) {
-          // now change direction
-          dir = true;
-          TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid,
-                                       startVertex.key);
-          edgeIndex->lookup(_trx, &it, tmp, last, 1);
-          if (last == nullptr) {
-            // The other direction also has no further edges
-            dir = false;
-            ++eColIdx;
-            if (_edgeCols.size() == eColIdx) {
-              // No more to do, stop here
-              return;
-            }
-            TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid,
-                                         startVertex.key);
-            edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
-            edgeIndex->lookup(_trx, &it, tmp, last, 1);
-          }
-        }
-      }
-      if (last != nullptr) {
-        ++_readDocuments;
-        // sth is stored in tmp. Now push it on edges
-        TRI_ASSERT(tmp.size() == 1);
-        if (!edgeMatchesConditions(tmp.back(), eColIdx, edges.size())) {
-          // Retry with the next element
-          _getEdge(startVertex, edges, last, eColIdx, dir);
-          return;
-        }
-        EdgeInfo e(_edgeCols.at(eColIdx)->_info.id(), tmp.back());
-        VertexId other;
-        // This always returns true and third parameter is ignored
-        _getVertex(e, startVertex, 0, other);
-        if (!vertexMatchesConditions(other, edges.size() + 1)) {
-          // Retry with the next element
-          _getEdge(startVertex, edges, last, eColIdx, dir);
-          return;
-        }
-        auto search = std::find(edges.begin(), edges.end(), e);
-        if (search != edges.end()) {
-          // edges.push_back(e);
-          // The edge is now included twice. Go on with the next
-          _getEdge(startVertex, edges, last, eColIdx, dir);
-          return;
-        }
-        edges.push_back(e);
-      }
-    };
-  } else {
-    _getEdge = [&](VertexId const& startVertex, std::vector<EdgeInfo>& edges,
-                   TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
-      std::vector<TRI_doc_mptr_copy_t> tmp;
-      TRI_ASSERT(eColIdx < _edgeCols.size());
-      // Do not touch the bool parameter, as long as it is default the first
-      // encountered nullptr is final
-      TRI_edge_index_iterator_t it(_opts.direction, startVertex.cid,
-                                   startVertex.key);
-      arangodb::EdgeIndex* edgeIndex =
-          _edgeCols.at(eColIdx)->edgeIndex();
-      edgeIndex->lookup(_trx, &it, tmp, last, 1);
-      while (last == nullptr) {
-        // This edge collection does not have any more edges for this vertex.
-        // Check the next one
-        ++eColIdx;
-        if (_edgeCols.size() == eColIdx) {
-          // No more to do, stop here
-          return;
-        }
-        edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
-        edgeIndex->lookup(_trx, &it, tmp, last, 1);
-      }
-      if (last != nullptr) {
-        // sth is stored in tmp. Now push it on edges
-        ++_readDocuments;
-        TRI_ASSERT(tmp.size() == 1);
-        if (!edgeMatchesConditions(tmp.back(), eColIdx, edges.size())) {
-          // Retry with the next element
-          _getEdge(startVertex, edges, last, eColIdx, dir);
-          return;
-        }
-        EdgeInfo e(_edgeCols.at(eColIdx)->_info.id(), tmp.back());
-        VertexId other;
-        // This always returns true and third parameter is ignored
-        _getVertex(e, startVertex, 0, other);
-        if (!vertexMatchesConditions(other, edges.size() + 1)) {
-          // Retry with the next element
-          _getEdge(startVertex, edges, last, eColIdx, dir);
-          return;
-        }
-        auto search = std::find(edges.begin(), edges.end(), e);
-        if (search != edges.end()) {
-          // edges.push_back(e);
-          // The edge is now included twice. Go on with the next
-          _getEdge(startVertex, edges, last, eColIdx, dir);
-          return;
-        }
-        edges.push_back(e);
-      }
-    };
-  }
 }
 
 void DepthFirstTraverser::setStartVertex(
@@ -1071,7 +933,7 @@ void DepthFirstTraverser::setStartVertex(
     }
   }
   _enumerator.reset(new PathEnumerator<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>(
-      _getEdge, _getVertex, v));
+      _edgeGetter, _getVertex, v));
   _done = false;
 }
 
@@ -1091,11 +953,6 @@ TraversalPath* DepthFirstTraverser::next() {
   }
 
   auto p = std::make_unique<SingleServerTraversalPath>(path);
-
-  if (_opts.shouldPrunePath(p.get())) {
-    _enumerator->prune();
-    return next();
-  }
   if (countEdges >= _opts.maxDepth) {
     _pruneNext = true;
   }
@@ -1103,4 +960,89 @@ TraversalPath* DepthFirstTraverser::next() {
     return next();
   }
   return p.release();
+}
+
+EdgeIndex* DepthFirstTraverser::EdgeGetter::getEdgeIndex(
+    std::string const& eColName,
+    TRI_voc_cid_t& cid) {
+  auto it = _indexCache.find(eColName);
+  if (it == _indexCache.end()) {
+    cid = _resolver->getCollectionId(eColName);
+    TRI_transaction_collection_t* trxCollection = _trx->trxCollection(cid);
+    TRI_ASSERT(trxCollection != nullptr);
+    TRI_document_collection_t* ecl = trxCollection->_collection->_collection;
+    arangodb::EdgeIndex* edgeIndex = ecl->edgeIndex();
+    _indexCache.emplace(eColName, std::make_pair(cid, edgeIndex));
+    return edgeIndex;
+  }
+  cid = it->second.first;
+  return it->second.second;
+}
+
+void DepthFirstTraverser::EdgeGetter::operator()(VertexId const& startVertex,
+                                                 std::vector<EdgeInfo>& edges,
+                                                 TRI_doc_mptr_copy_t*& last,
+                                                 size_t& eColIdx, bool& dir) {
+  std::string eColName;
+  TRI_edge_direction_e direction;
+  while (true) {
+    if (!_opts.getCollection(eColIdx, eColName, direction)) {
+      // We are done traversing.
+      return;
+    }
+    TRI_voc_cid_t cid;
+    arangodb::EdgeIndex* edgeIndex = getEdgeIndex(eColName, cid);
+    std::vector<TRI_doc_mptr_copy_t> tmp;
+    if (direction == TRI_EDGE_ANY) {
+      TRI_edge_direction_e currentDir = dir ? TRI_EDGE_OUT : TRI_EDGE_IN;
+      TRI_edge_index_iterator_t it(currentDir, startVertex.cid,
+                                   startVertex.key);
+      edgeIndex->lookup(_trx, &it, tmp, last, 1);
+      if (last == nullptr) {
+        // Could not find next edge.
+        // Change direction and increase collectionId
+        if (dir) {
+          ++eColIdx;
+        }
+        dir = !dir;
+        continue;
+      }
+    }
+    else {
+      TRI_edge_index_iterator_t it(direction, startVertex.cid,
+                                   startVertex.key);
+      edgeIndex->lookup(_trx, &it, tmp, last, 1);
+      if (last == nullptr) {
+        // Could not find next edge.
+        // Set direction to false and continue with next collection
+        dir = false;
+        ++eColIdx;
+        continue;
+      }
+    }
+    // If we get here we have found the next edge.
+    // Now validate expression checks
+    ++_traverser->_readDocuments;
+    // sth is stored in tmp. Now push it on edges
+    TRI_ASSERT(tmp.size() == 1);
+    if (!_traverser->edgeMatchesConditions(tmp.back(), eColIdx, edges.size())) {
+      // Retry with the next element
+      continue;
+    }
+    EdgeInfo e(cid, tmp.back());
+    VertexId other;
+    // This always returns true and third parameter is ignored
+    _traverser->_getVertex(e, startVertex, 0, other);
+    if (!_traverser->vertexMatchesConditions(other, edges.size() + 1)) {
+      // Retry with the next element
+      continue;
+    }
+    auto search = std::find(edges.begin(), edges.end(), e);
+    if (search != edges.end()) {
+      // The edge is included twice. Go on with the next
+      continue;
+    }
+    edges.push_back(e);
+    return;
+  }
 }

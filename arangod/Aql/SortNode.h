@@ -43,7 +43,6 @@ class ExecutionBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class SortNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +51,6 @@ class SortNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class SortBlock;
   friend class RedundantCalculationsReplacer;
-
 
  public:
   SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements,
@@ -149,7 +147,6 @@ class SortNode : public ExecutionNode {
 
   bool simplify(ExecutionPlan*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pairs, consisting of variable and sort direction
@@ -169,4 +166,3 @@ class SortNode : public ExecutionNode {
 }  // namespace arangodb
 
 #endif
-

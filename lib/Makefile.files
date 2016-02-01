@@ -36,9 +36,9 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/json.cpp \
 	lib/Basics/JsonHelper.cpp \
 	lib/Basics/levenshtein.cpp \
-	lib/Basics/locks-macos.cpp \
 	lib/Basics/locks-posix.cpp \
 	lib/Basics/logging.cpp \
+	lib/Basics/Logger.cpp \
 	lib/Basics/memory-map-posix.cpp \
 	lib/Basics/memory.cpp \
 	lib/Basics/mimetypes.cpp \
@@ -54,8 +54,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ReadWriteLock.cpp \
 	lib/Basics/ReadWriteLockCPP11.cpp \
 	lib/Basics/socket-utils.cpp \
-	lib/Basics/SpinLock.cpp \
-	lib/Basics/SpinLocker.cpp \
 	lib/Basics/ssl-helper.cpp \
 	lib/Basics/StringBuffer.cpp \
 	lib/Basics/StringUtils.cpp \

@@ -29,15 +29,16 @@
 #include "Utils/Cursor.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 
 class CollectionExport;
 
 class CursorRepository {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursors repository
@@ -51,24 +52,24 @@ class CursorRepository {
 
   ~CursorRepository();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
   /// the cursor will be returned with the usage flag set to true. it must be
   /// returned later using release()
-  /// the cursor will take ownership of both json and extra
+  /// the cursor will retain a shared pointer of both json and extra
   //////////////////////////////////////////////////////////////////////////////
 
-  JsonCursor* createFromJson(struct TRI_json_t*, size_t, struct TRI_json_t*,
-                             double, bool, bool);
+  JsonCursor* createFromVelocyPack(
+      std::shared_ptr<arangodb::velocypack::Builder>, size_t,
+      std::shared_ptr<arangodb::velocypack::Builder>, double, bool, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
   //////////////////////////////////////////////////////////////////////////////
 
-  ExportCursor* createFromExport(arangodb::CollectionExport*, size_t,
-                                 double, bool);
+  ExportCursor* createFromExport(arangodb::CollectionExport*, size_t, double,
+                                 bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id
@@ -102,7 +103,6 @@ class CursorRepository {
 
   bool garbageCollect(bool);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase
@@ -114,7 +114,7 @@ class CursorRepository {
   /// @brief mutex for the cursors repository
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _lock;
+  Mutex _lock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of current cursors
@@ -131,5 +131,3 @@ class CursorRepository {
 }
 
 #endif
-
-

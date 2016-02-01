@@ -14,10 +14,6 @@ include_directories(.)
 ### @brief LIB_ARANGO
 ################################################################################
 
-if (APPLE)
-  SET(LIB_ARANGO_APPLE Basics/locks-macos.cpp)
-endif ()
-
 if (MSVC)
   SET(LIB_ARANGO_MSVC
       Basics/locks-win32.cpp
@@ -92,26 +88,27 @@ add_library(
     Basics/conversions.cpp
     Basics/csv.cpp
     Basics/DataProtector.cpp
+    Basics/Exceptions.cpp
+    Basics/FileUtils.cpp
+    Basics/InitializeBasics.cpp
+    Basics/JsonHelper.cpp
+    Basics/Logger.cpp
+    Basics/Mutex.cpp
+    Basics/MutexLocker.cpp
+    Basics/Nonce.cpp
     Basics/debugging.cpp
     Basics/error.cpp
-    Basics/Exceptions.cpp
     Basics/fasthash.cpp
     Basics/files.cpp
-    Basics/FileUtils.cpp
     Basics/fpconv.cpp
     Basics/hashes.cpp
     Basics/init.cpp
-    Basics/InitializeBasics.cpp
-    Basics/json.cpp
     Basics/json-utilities.cpp
-    Basics/JsonHelper.cpp
+    Basics/json.cpp
     Basics/levenshtein.cpp 
     Basics/logging.cpp
     Basics/memory.cpp
     Basics/mimetypes.cpp
-    Basics/Mutex.cpp
-    Basics/MutexLocker.cpp
-    Basics/Nonce.cpp
     Basics/prime-numbers.cpp
     Basics/process-utils.cpp
     Basics/ProgramOptions.cpp
@@ -121,8 +118,6 @@ add_library(
     Basics/ReadWriteLock.cpp
     Basics/ReadWriteLockCPP11.cpp
     Basics/socket-utils.cpp
-    Basics/SpinLock.cpp
-    Basics/SpinLocker.cpp
     Basics/ssl-helper.cpp
     Basics/StringBuffer.cpp
     Basics/StringUtils.cpp

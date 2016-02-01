@@ -37,12 +37,10 @@ struct Variable;
 class Index;
 
 class SimpleAttributeEqualityMatcher {
-  
  public:
   explicit SimpleAttributeEqualityMatcher(
       std::vector<std::vector<arangodb::basics::AttributeName>> const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief match a single of the attributes
@@ -67,8 +65,7 @@ class SimpleAttributeEqualityMatcher {
   /// the caller must not free the returned AstNode*, as it belongs to the ast
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::aql::AstNode* getOne(arangodb::aql::Ast*,
-                                 arangodb::Index const*,
+  arangodb::aql::AstNode* getOne(arangodb::aql::Ast*, arangodb::Index const*,
                                  arangodb::aql::AstNode const*,
                                  arangodb::aql::Variable const*);
 
@@ -92,7 +89,6 @@ class SimpleAttributeEqualityMatcher {
                                         arangodb::aql::AstNode*,
                                         arangodb::aql::Variable const*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine the costs of using this index and the number of items
@@ -108,13 +104,11 @@ class SimpleAttributeEqualityMatcher {
   /// @brief whether or not the access fits
   //////////////////////////////////////////////////////////////////////////////
 
-  bool accessFitsIndex(arangodb::Index const*,
-                       arangodb::aql::AstNode const*,
+  bool accessFitsIndex(arangodb::Index const*, arangodb::aql::AstNode const*,
                        arangodb::aql::AstNode const*,
                        arangodb::aql::AstNode const*,
                        arangodb::aql::Variable const*, bool);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief array of attributes used for comparisons
@@ -132,5 +126,3 @@ class SimpleAttributeEqualityMatcher {
 }
 
 #endif
-
-

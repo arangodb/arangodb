@@ -28,8 +28,6 @@
 
 struct TRI_vector_s;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log levels
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,12 +66,11 @@ typedef struct TRI_log_buffer_s {
   char* _text;
 } TRI_log_buffer_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the log level
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_LogLevelLogging(void);
+char const* TRI_LogLevelLogging();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the log level
@@ -112,60 +109,6 @@ void TRI_SetUseLocalTimeLogging(bool);
 void TRI_SetLineNumberLogging(bool show);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the file to log for debug and trace
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetFileToLog(char const* file);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if usage logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsUsageLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if fatal logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsFatalLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if error logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsErrorLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if warning logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsWarningLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if info logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsInfoLogging();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if debug logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsDebugLogging(char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if trace logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsTraceLogging(char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if performance logging is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsPerformanceLogging();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a new message
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -185,242 +128,6 @@ struct TRI_vector_s* TRI_BufferLogging(TRI_log_level_e, uint64_t pos,
 
 void TRI_FreeBufferLogging(struct TRI_vector_s*);
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief macro that validates printf() style call arguments
-/// the printf() call contained will never be executed but is just there to
-/// enable compile-time error check. it will be optimized away after that
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_ARG_CHECK(...) \
-  if (false) {             \
-    printf(__VA_ARGS__);   \
-  }
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs fatal errors
-////////////////////////////////////////////////////////////////////////////////
-
-void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR(void);
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_FATAL_AND_EXIT(...)                                        \
-  do {                                                                 \
-    LOG_ARG_CHECK(__VA_ARGS__);                                        \
-    if (TRI_IsFatalLogging()) {                                        \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_FATAL,   \
-              TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__);                    \
-      std::string bt;                                                  \
-      TRI_GetBacktrace(bt);                                            \
-      if (!bt.empty()) {                                               \
-        TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_ERROR, \
-                TRI_LOG_SEVERITY_HUMAN, "%s", bt.c_str());             \
-      }                                                                \
-    }                                                                  \
-    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                         \
-  } while (0);                                                         \
-  exit(EXIT_FAILURE)
-
-#else
-
-#define LOG_FATAL_AND_EXIT(...)                \
-  do {                                         \
-    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR(); \
-  } while (0);                                 \
-  exit(EXIT_FAILURE)
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs errors
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_ERROR(...)                                               \
-  do {                                                               \
-    LOG_ARG_CHECK(__VA_ARGS__);                                      \
-    if (TRI_IsErrorLogging()) {                                      \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_ERROR, \
-              TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__);                  \
-    }                                                                \
-  } while (0)
-
-#else
-
-#define LOG_ERROR(...) while (0)
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs warnings
-////////////////////////////////////////////////////////////////////////////////
-
-#undef LOG_WARNING
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_WARNING(...)                                               \
-  do {                                                                 \
-    LOG_ARG_CHECK(__VA_ARGS__)                                         \
-    if (TRI_IsWarningLogging()) {                                      \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_WARNING, \
-              TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__);                    \
-    }                                                                  \
-  } while (0)
-
-#else
-
-#define LOG_WARNING(...) while (0)
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs info messages
-////////////////////////////////////////////////////////////////////////////////
-
-#undef LOG_INFO
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_INFO(...)                                               \
-  do {                                                              \
-    LOG_ARG_CHECK(__VA_ARGS__);                                     \
-    if (TRI_IsInfoLogging()) {                                      \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, \
-              TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__);                 \
-    }                                                               \
-  } while (0)
-
-#else
-
-#define LOG_INFO(...) while (0)
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs debug messages
-////////////////////////////////////////////////////////////////////////////////
-
-#undef LOG_DEBUG
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_DEBUG(...)                                               \
-  do {                                                               \
-    LOG_ARG_CHECK(__VA_ARGS__);                                      \
-    if (TRI_IsDebugLogging(__FILE__)) {                              \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_DEBUG, \
-              TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__);                  \
-    }                                                                \
-  } while (0)
-
-#else
-
-#define LOG_DEBUG(...) while (0)
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs trace messages
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_TRACE(...)                                               \
-  do {                                                               \
-    LOG_ARG_CHECK(__VA_ARGS__);                                      \
-    if (TRI_IsTraceLogging(__FILE__)) {                              \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_TRACE, \
-              TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__);                  \
-    }                                                                \
-  } while (0)
-
-#else
-
-#define LOG_TRACE(...) while (0)
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs usage messages
-////////////////////////////////////////////////////////////////////////////////
-
-#undef LOG_USAGE
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_USAGE(...)                                              \
-  do {                                                              \
-    LOG_ARG_CHECK(__VA_ARGS__);                                     \
-    if (TRI_IsUsageLogging()) {                                     \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, \
-              TRI_LOG_SEVERITY_USAGE, __VA_ARGS__);                 \
-    }                                                               \
-  } while (0)
-
-#else
-
-#define LOG_USAGE(...) while (0)
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs performance messages
-////////////////////////////////////////////////////////////////////////////////
-
-#undef LOG_ACTION
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_ACTION(...)                                             \
-  do {                                                              \
-    LOG_ARG_CHECK(__VA_ARGS__);                                     \
-    if (TRI_IsPerformanceLogging()) {                               \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, \
-              TRI_LOG_SEVERITY_HUMAN, "[action] " __VA_ARGS__);     \
-    }                                                               \
-  } while (0)
-
-#else
-
-#define LOG_ACTION(...) while (0)
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs timings
-////////////////////////////////////////////////////////////////////////////////
-
-#undef LOG_TIMER
-
-#ifdef TRI_ENABLE_LOGGER
-
-#define LOG_TIMER(value, ...)                                           \
-  do {                                                                  \
-    LOG_ARG_CHECK(__VA_ARGS__);                                         \
-    double timerValue = value;                                          \
-    if (timerValue > 1.0 && TRI_IsPerformanceLogging()) {               \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO,     \
-              TRI_LOG_SEVERITY_HUMAN, "[timer] %0.2f s - " __VA_ARGS__, \
-              timerValue);                                              \
-    }                                                                   \
-  } while (0)
-
-#else
-
-#define LOG_TIMER(...) while (0)
-
-#endif
-
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log append for file output
 ////////////////////////////////////////////////////////////////////////////////
@@ -436,8 +143,6 @@ int TRI_CreateLogAppenderFile(char const*, char const*, TRI_log_severity_e,
 int TRI_CreateLogAppenderSyslog(char const*, char const*, char const*,
                                 TRI_log_severity_e, bool);
 #endif
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return global log file name
@@ -476,5 +181,3 @@ void TRI_ReopenLogging();
 void TRI_FlushLogging();
 
 #endif
-
-

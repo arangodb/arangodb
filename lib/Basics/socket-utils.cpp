@@ -34,9 +34,7 @@
 #include <sys/wait.h>
 #endif
 
-#include "Basics/logging.h"
-#include "Basics/locks.h"
-
+#include "Basics/Logger.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a socket
@@ -51,7 +49,7 @@ int TRI_closesocket(TRI_socket_t s) {
     if (res != 0) {
       // Windows complains about shutting down a socket that was not bound
       // so we will not print out the error here
-      // LOG_WARNING("socket shutdown error: %d", WSAGetLastError());
+      // LOG(WARNING) << "socket shutdown error: " << WSAGetLastError();
     } else {
       char buf[256];
       int len;
@@ -62,7 +60,7 @@ int TRI_closesocket(TRI_socket_t s) {
     res = closesocket(s.fileHandle);
 
     if (res != 0) {
-      LOG_WARNING("socket close error: %d", WSAGetLastError());
+      LOG(WARNING) << "socket close error: " << WSAGetLastError();
     }
     // We patch libev on Windows lightly to not really distinguish between
     // socket handles and file descriptors, therefore, we do not have to do the
@@ -84,7 +82,7 @@ int TRI_closesocket(TRI_socket_t s) {
 
     if (res == -1) {
       int myerrno = errno;
-      LOG_WARNING("socket close error: %d: %s", myerrno, strerror(myerrno));
+      LOG(WARNING) << "socket close error: " << myerrno << ": " << strerror(myerrno);
     }
   }
 #endif
@@ -372,5 +370,3 @@ int TRI_InetPton6(char const* src, unsigned char* dst) {
 
   return TRI_ERROR_NO_ERROR;
 }
-
-

@@ -25,15 +25,13 @@
 #define LIB_REST_ENDPOINT_IP_V6_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringUtils.h"
 #include "Rest/EndpointIp.h"
 
 namespace arangodb {
 namespace rest {
 
-
 class EndpointIpV6 final : public EndpointIp {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
@@ -48,7 +46,6 @@ class EndpointIpV6 final : public EndpointIp {
 
   ~EndpointIpV6();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get endpoint domain
@@ -69,5 +66,3 @@ class EndpointIpV6 final : public EndpointIp {
 }
 
 #endif
-
-

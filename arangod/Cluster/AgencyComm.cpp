@@ -20,15 +20,15 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Cluster/AgencyComm.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/random.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
@@ -36,6 +36,9 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -75,15 +78,7 @@ AgencyCommResult::AgencyCommResult()
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult::~AgencyCommResult() {
-  // free all JSON data
-  std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
-
-  while (it != _values.end()) {
-    if ((*it).second._json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, (*it).second._json);
-    }
-    ++it;
-  }
+  // All elements free themselves
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,23 +98,19 @@ int AgencyCommResult::httpCode() const { return _statusCode; }
 ////////////////////////////////////////////////////////////////////////////////
 
 int AgencyCommResult::errorCode() const {
-  int result = 0;
-
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str()));
-
-  if (!TRI_IsObjectJson(json.get())) {
-    return result;
+  try {
+    std::shared_ptr<VPackBuilder> bodyBuilder =
+        VPackParser::fromJson(_body.c_str());
+    VPackSlice body = bodyBuilder->slice();
+    if (!body.isObject()) {
+      return 0;
+    }
+    // get "errorCode" attribute (0 if not exist)
+    return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        body, "errorCode", 0);
+  } catch (VPackException const&) {
+    return 0;
   }
-
-  // get "errorCode" attribute
-  TRI_json_t const* errorCode = TRI_LookupObjectJson(json.get(), "errorCode");
-
-  if (TRI_IsNumberJson(errorCode)) {
-    result = (int)errorCode->_value._number;
-  }
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,8 +119,6 @@ int AgencyCommResult::errorCode() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyCommResult::errorMessage() const {
-  std::string result;
-
   if (!_message.empty()) {
     // return stored message first if set
     return _message;
@@ -139,26 +128,19 @@ std::string AgencyCommResult::errorMessage() const {
     return std::string("unable to connect to agency");
   }
 
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str()));
-
-  if (json == nullptr) {
+  try {
+    std::shared_ptr<VPackBuilder> bodyBuilder =
+        VPackParser::fromJson(_body.c_str());
+    VPackSlice body = bodyBuilder->slice();
+    if (!body.isObject()) {
+      return "";
+    }
+    // get "message" attribute ("" if not exist)
+    return arangodb::basics::VelocyPackHelper::getStringValue(body, "message",
+                                                              "");
+  } catch (VPackException const&) {
     return std::string("Out of memory");
   }
-
-  if (!TRI_IsObjectJson(json.get())) {
-    return result;
-  }
-
-  // get "message" attribute
-  TRI_json_t const* message = TRI_LookupObjectJson(json.get(), "message");
-
-  if (TRI_IsStringJson(message)) {
-    result = std::string(message->_value._string.data,
-                         message->_value._string.length - 1);
-  }
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,16 +163,7 @@ std::string AgencyCommResult::errorDetails() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AgencyCommResult::clear() {
-  // free existing values if any
-  std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
-
-  while (it != _values.end()) {
-    if ((*it).second._json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, (*it).second._json);
-    }
-    ++it;
-  }
-
+  // clear existing values. They free themselves
   _values.clear();
 
   _location = "";
@@ -206,22 +179,21 @@ void AgencyCommResult::clear() {
 /// stripKeyPrefix is decoded, as is the _globalPrefix
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
-                                     std::string const& stripKeyPrefix,
-                                     bool withDirs) {
-  if (!TRI_IsObjectJson(node)) {
+bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
+                                           std::string const& stripKeyPrefix,
+                                           bool withDirs) {
+  if (!node.isObject()) {
     return true;
   }
 
   // get "key" attribute
-  TRI_json_t const* key = TRI_LookupObjectJson(node, "key");
+  VPackSlice const key = node.get("key");
 
-  if (!TRI_IsStringJson(key)) {
+  if (!key.isString()) {
     return false;
   }
 
-  std::string keydecoded = std::move(AgencyComm::decodeKey(
-      std::string(key->_value._string.data, key->_value._string.length - 1)));
+  std::string keydecoded = AgencyComm::decodeKey(key.copyString());
 
   // make sure we don't strip more bytes than the key is long
   size_t const offset =
@@ -236,33 +208,33 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
   }
 
   // get "dir" attribute
-  TRI_json_t const* dir = TRI_LookupObjectJson(node, "dir");
-  bool isDir = (TRI_IsBooleanJson(dir) && dir->_value._boolean);
+  bool isDir =
+      arangodb::basics::VelocyPackHelper::getBooleanValue(node, "dir", false);
 
   if (isDir) {
     if (withDirs) {
       AgencyCommResultEntry entry;
 
       entry._index = 0;
-      entry._json = 0;
+      entry._vpack = std::make_shared<VPackBuilder>();
       entry._isDir = true;
       _values.emplace(prefix, entry);
     }
 
     // is a directory, so there may be a "nodes" attribute
-    TRI_json_t const* nodes = TRI_LookupObjectJson(node, "nodes");
+    if (!node.hasKey("nodes")) {
+      // if directory is empty...
+      return true;
+    }
+    VPackSlice const nodes = node.get("nodes");
 
-    if (!TRI_IsArrayJson(nodes)) {
+    if (!nodes.isArray()) {
       // if directory is empty...
       return true;
     }
 
-    size_t const n = TRI_LengthVector(&nodes->_value._objects);
-
-    for (size_t i = 0; i < n; ++i) {
-      if (!parseJsonNode(
-              (TRI_json_t const*)TRI_AtVector(&nodes->_value._objects, i),
-              stripKeyPrefix, withDirs)) {
+    for (auto const& subNode : VPackArrayIterator(nodes)) {
+      if (!parseVelocyPackNode(subNode, stripKeyPrefix, withDirs)) {
         return false;
       }
     }
@@ -270,17 +242,17 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
     // not a directory
 
     // get "value" attribute
-    TRI_json_t const* value = TRI_LookupObjectJson(node, "value");
+    VPackSlice const value = node.get("value");
 
-    if (TRI_IsStringJson(value)) {
+    if (value.isString()) {
       if (!prefix.empty()) {
         AgencyCommResultEntry entry;
 
         // get "modifiedIndex"
-        entry._index =
-            arangodb::basics::JsonHelper::stringUInt64(node, "modifiedIndex");
-        entry._json = arangodb::basics::JsonHelper::fromString(
-            value->_value._string.data, value->_value._string.length - 1);
+        entry._index = arangodb::basics::VelocyPackHelper::stringUInt64(
+            node.get("modifiedIndex"));
+        std::string tmp = value.copyString();
+        entry._vpack = VPackParser::fromJson(tmp);
         entry._isDir = false;
 
         _values.emplace(prefix, entry);
@@ -297,25 +269,26 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = VPackParser::fromJson(_body.c_str());
+  } catch (...) {
+    return false;
+  }
 
-  if (!TRI_IsObjectJson(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
+  VPackSlice slice = parsedBody->slice();
+
+  if (!slice.isObject()) {
     return false;
   }
 
   // get "node" attribute
-  TRI_json_t const* node = TRI_LookupObjectJson(json, "node");
+  VPackSlice const node = slice.get("node");
 
-  bool const result = parseJsonNode(node, stripKeyPrefix, withDirs);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  bool const result = parseVelocyPackNode(node, stripKeyPrefix, withDirs);
 
   return result;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the static global URL prefix
@@ -352,25 +325,23 @@ AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
     10      // numRetries
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an agency comm locker
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommLocker::AgencyCommLocker(std::string const& key,
                                    std::string const& type, double ttl)
-    : _key(key), _type(type), _json(nullptr), _version(0), _isLocked(false) {
+    : _key(key), _type(type), _version(0), _isLocked(false) {
   AgencyComm comm;
 
-  _json =
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, type.c_str(), type.size());
-
-  if (_json == nullptr) {
+  _vpack = std::make_shared<VPackBuilder>();
+  try {
+    _vpack->add(VPackValue(type));
+  } catch (...) {
     return;
   }
 
-  if (comm.lock(key, ttl, 0.0, _json)) {
+  if (comm.lock(key, ttl, 0.0, _vpack->slice())) {
     fetchVersion(comm);
     _isLocked = true;
   }
@@ -380,14 +351,7 @@ AgencyCommLocker::AgencyCommLocker(std::string const& key,
 /// @brief destroys an agency comm locker
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommLocker::~AgencyCommLocker() {
-  unlock();
-
-  if (_json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
-  }
-}
-
+AgencyCommLocker::~AgencyCommLocker() { unlock(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
@@ -398,12 +362,11 @@ void AgencyCommLocker::unlock() {
     AgencyComm comm;
 
     updateVersion(comm);
-    if (comm.unlock(_key, _json, 0.0)) {
+    if (comm.unlock(_key, _vpack->slice(), 0.0)) {
       _isLocked = false;
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a lock version from the agency
@@ -431,7 +394,8 @@ bool AgencyCommLocker::fetchVersion(AgencyComm& comm) {
     return false;
   }
 
-  _version = arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+  VPackSlice const versionSlice = it->second._vpack->slice();
+  _version = arangodb::basics::VelocyPackHelper::stringUInt64(versionSlice);
   return true;
 }
 
@@ -445,48 +409,38 @@ bool AgencyCommLocker::updateVersion(AgencyComm& comm) {
   }
 
   if (_version == 0) {
-    TRI_json_t* json =
-        arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1);
-
-    if (json == nullptr) {
+    VPackBuilder builder;
+    try {
+      builder.add(VPackValue(1));
+    } catch (...) {
       return false;
     }
 
     // no Version key found, now set it
     AgencyCommResult result =
-        comm.casValue(_key + "/Version", json, false, 0.0, 0.0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        comm.casValue(_key + "/Version", builder.slice(), false, 0.0, 0.0);
 
     return result.successful();
   } else {
     // Version key found, now update it
-    TRI_json_t* oldJson = arangodb::basics::JsonHelper::uint64String(
-        TRI_UNKNOWN_MEM_ZONE, _version);
-
-    if (oldJson == nullptr) {
+    VPackBuilder oldBuilder;
+    try {
+      oldBuilder.add(VPackValue(_version));
+    } catch (...) {
       return false;
     }
-
-    TRI_json_t* newJson = arangodb::basics::JsonHelper::uint64String(
-        TRI_UNKNOWN_MEM_ZONE, _version + 1);
-
-    if (newJson == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+    VPackBuilder newBuilder;
+    try {
+      newBuilder.add(VPackValue(_version + 1));
+    } catch (...) {
       return false;
     }
-
-    AgencyCommResult result =
-        comm.casValue(_key + "/Version", oldJson, newJson, 0.0, 0.0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+    AgencyCommResult result = comm.casValue(
+        _key + "/Version", oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
 
     return result.successful();
   }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an agency communication object
@@ -501,7 +455,6 @@ AgencyComm::AgencyComm(bool addNewEndpoints)
 
 AgencyComm::~AgencyComm() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up all connections
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,7 +465,7 @@ void AgencyComm::cleanup() {
   while (true) {
     {
       bool busyFound = false;
-      WRITE_LOCKER(AgencyComm::_globalLock);
+      WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -542,33 +495,40 @@ void AgencyComm::cleanup() {
 
 bool AgencyComm::tryConnect() {
   {
-    WRITE_LOCKER(AgencyComm::_globalLock);
+    std::string endpointsStr { getUniqueEndpointsString() };
+
+    WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
     if (_globalEndpoints.size() == 0) {
       return false;
     }
+    
+    // mop: not sure if a timeout makes sense here
+    while (true) {
+      LOG(INFO) << "Trying to find an active agency. Checking " << endpointsStr.c_str();
+      std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
-    std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
+      while (it != _globalEndpoints.end()) {
+        AgencyEndpoint* agencyEndpoint = (*it);
 
-    while (it != _globalEndpoints.end()) {
-      AgencyEndpoint* agencyEndpoint = (*it);
+        TRI_ASSERT(agencyEndpoint != nullptr);
+        TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
+        TRI_ASSERT(agencyEndpoint->_connection != nullptr);
 
-      TRI_ASSERT(agencyEndpoint != nullptr);
-      TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
-      TRI_ASSERT(agencyEndpoint->_connection != nullptr);
+        if (agencyEndpoint->_endpoint->isConnected()) {
+          return true;
+        }
 
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
+        agencyEndpoint->_endpoint->connect(
+            _globalConnectionOptions._connectTimeout,
+            _globalConnectionOptions._requestTimeout);
+
+        if (agencyEndpoint->_endpoint->isConnected()) {
+          return true;
+        }
+
+        ++it;
       }
-
-      agencyEndpoint->_endpoint->connect(
-          _globalConnectionOptions._connectTimeout,
-          _globalConnectionOptions._requestTimeout);
-
-      if (agencyEndpoint->_endpoint->isConnected()) {
-        return true;
-      }
-
-      ++it;
+      sleep(1);
     }
   }
 
@@ -581,7 +541,7 @@ bool AgencyComm::tryConnect() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AgencyComm::disconnect() {
-  WRITE_LOCKER(AgencyComm::_globalLock);
+  WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
   std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -605,11 +565,10 @@ void AgencyComm::disconnect() {
 
 bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
                              bool toFront) {
-  LOG_TRACE("adding global agency-endpoint '%s'",
-            endpointSpecification.c_str());
+  LOG(TRACE) << "adding global agency-endpoint '" << endpointSpecification.c_str() << "'";
 
   {
-    WRITE_LOCKER(AgencyComm::_globalLock);
+    WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
     // check if we already have got this endpoint
     std::list<AgencyEndpoint*>::const_iterator it = _globalEndpoints.begin();
@@ -655,7 +614,7 @@ bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
 
 bool AgencyComm::hasEndpoint(std::string const& endpointSpecification) {
   {
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     // check if we have got this endpoint
     std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
@@ -685,7 +644,7 @@ std::vector<std::string> AgencyComm::getEndpoints() {
 
   {
     // iterate over the list of endpoints
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     std::list<AgencyEndpoint*>::const_iterator it =
         AgencyComm::_globalEndpoints.begin();
@@ -704,6 +663,46 @@ std::vector<std::string> AgencyComm::getEndpoints() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a stringified version of all endpoints (unique)
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AgencyComm::getUniqueEndpointsString() {
+  std::string result;
+
+  {
+    // iterate over the list of endpoints
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
+
+    std::list<AgencyEndpoint*> uniqueEndpoints{
+      AgencyComm::_globalEndpoints.begin(),
+      AgencyComm::_globalEndpoints.end()
+    };
+
+    uniqueEndpoints.unique([] (AgencyEndpoint *a, AgencyEndpoint *b) {
+        return a->_endpoint->getSpecification() == b->_endpoint->getSpecification();
+    });
+
+    std::list<AgencyEndpoint*>::const_iterator it =
+        uniqueEndpoints.begin();
+    
+    while (it != uniqueEndpoints.end()) {
+      if (!result.empty()) {
+        result += ", ";
+      }
+
+      AgencyEndpoint const* agencyEndpoint = (*it);
+
+      TRI_ASSERT(agencyEndpoint != nullptr);
+
+      result.append(agencyEndpoint->_endpoint->getSpecification());
+      ++it;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -712,7 +711,7 @@ std::string AgencyComm::getEndpointsString() {
 
   {
     // iterate over the list of endpoints
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     std::list<AgencyEndpoint*>::const_iterator it =
         AgencyComm::_globalEndpoints.begin();
@@ -754,7 +753,7 @@ bool AgencyComm::setPrefix(std::string const& prefix) {
     }
   }
 
-  LOG_TRACE("setting agency-prefix to '%s'", prefix.c_str());
+  LOG(TRACE) << "setting agency-prefix to '" << prefix.c_str() << "'";
   return true;
 }
 
@@ -779,7 +778,6 @@ std::string AgencyComm::generateStamp() {
 
   return std::string(buffer, len);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new agency endpoint
@@ -812,35 +810,28 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint(
   return ep;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends the current server state to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::sendServerState(double ttl) {
   // construct JSON value { "status": "...", "time": "..." }
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 2));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.openObject();
+    std::string const status =
+        ServerState::stateToString(ServerState::instance()->getState());
+    builder.add("status", VPackValue(status));
+    std::string const stamp = AgencyComm::generateStamp();
+    builder.add("time", VPackValue(stamp));
+    builder.close();
+  } catch (...) {
     return AgencyCommResult();
   }
 
-  std::string const status =
-      ServerState::stateToString(ServerState::instance()->getState());
-  std::string const stamp = std::move(AgencyComm::generateStamp());
-
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json.get(), "status",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(),
-                               status.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "time",
-                        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                                 stamp.c_str(), stamp.size()));
-
   AgencyCommResult result(
       setValue("Sync/ServerStates/" + ServerState::instance()->getId(),
-               json.get(), ttl));
+               builder.slice(), ttl));
 
   return result;
 }
@@ -877,15 +868,15 @@ bool AgencyComm::increaseVersion(std::string const& key) {
     }
 
     // no version key found, now set it
-    std::unique_ptr<TRI_json_t> json(
-        arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1));
-
-    if (json == nullptr) {
+    VPackBuilder builder;
+    try {
+      builder.add(VPackValue(1));
+    } catch (...) {
       return false;
     }
 
     result.clear();
-    result = casValue(key, json.get(), false, 0.0, 0.0);
+    result = casValue(key, builder.slice(), false, 0.0, 0.0);
 
     return result.successful();
   }
@@ -898,29 +889,30 @@ bool AgencyComm::increaseVersion(std::string const& key) {
     return false;
   }
 
+  VPackSlice const versionSlice = it->second._vpack->slice();
   uint64_t version =
-      arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+      arangodb::basics::VelocyPackHelper::stringUInt64(versionSlice);
 
   // version key found, now update it
-  std::unique_ptr<TRI_json_t> oldJson(
-      arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
-                                                 version));
-
-  if (oldJson == nullptr) {
+  VPackBuilder oldBuilder;
+  try {
+    if (versionSlice.isString()) {
+      oldBuilder.add(VPackValue(std::to_string(version)));
+    } else {
+      oldBuilder.add(VPackValue(version));
+    }
+  } catch (...) {
     return false;
   }
-
-  std::unique_ptr<TRI_json_t> newJson(
-      arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
-                                                 version + 1));
-
-  if (newJson == nullptr) {
+  VPackBuilder newBuilder;
+  try {
+    newBuilder.add(VPackValue(version + 1));
+  } catch (...) {
     return false;
   }
-
   result.clear();
 
-  result = casValue(key, oldJson.get(), newJson.get(), 0.0, 0.0);
+  result = casValue(key, oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
 
   return result.successful();
 }
@@ -937,8 +929,7 @@ void AgencyComm::increaseVersionRepeated(std::string const& key) {
       return;
     }
     uint32_t val = 300 + TRI_UInt32Random() % 400;
-    LOG_INFO("Could not increase %s in agency, retrying in %dms!", key.c_str(),
-             val);
+    LOG(INFO) << "Could not increase " << key.c_str() << " in agency, retrying in " << val << "!";
     usleep(val * 1000);
   }
 }
@@ -962,24 +953,6 @@ AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::setValue(std::string const& key,
-                                      TRI_json_t const* json, double ttl) {
-  AgencyCommResult result;
-
-  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
-                   _globalConnectionOptions._requestTimeout, result,
-                   buildUrl(key) + ttlParam(ttl, true),
-                   "value=" + arangodb::basics::StringUtils::urlEncode(
-                                  arangodb::basics::JsonHelper::toString(json)),
-                   false);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a value in the backend
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       arangodb::velocypack::Slice const json,
                                       double ttl) {
   AgencyCommResult result;
@@ -990,7 +963,6 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
       buildUrl(key) + ttlParam(ttl, true),
       "value=" + arangodb::basics::StringUtils::urlEncode(json.toJson()),
       false);
-
   return result;
 }
 
@@ -1063,29 +1035,6 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::casValue(std::string const& key,
-                                      TRI_json_t const* json, bool prevExist,
-                                      double ttl, double timeout) {
-  AgencyCommResult result;
-
-  sendWithFailover(
-      arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
-      timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
-      result, buildUrl(key) + "?prevExist=" + (prevExist ? "true" : "false") +
-                  ttlParam(ttl, false),
-      "value=" + arangodb::basics::StringUtils::urlEncode(
-                     arangodb::basics::JsonHelper::toString(json)),
-      false);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares and swaps a single value in the backend
-/// the CAS condition is whether or not a previous value existed for the key
-/// velocypack variant
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       arangodb::velocypack::Slice const json,
                                       bool prevExist, double ttl,
                                       double timeout) {
@@ -1098,7 +1047,6 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
                   ttlParam(ttl, false),
       "value=" + arangodb::basics::StringUtils::urlEncode(json.toJson()),
       false);
-
   return result;
 }
 
@@ -1109,8 +1057,8 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::casValue(std::string const& key,
-                                      TRI_json_t const* oldJson,
-                                      TRI_json_t const* newJson, double ttl,
+                                      VPackSlice const& oldJson,
+                                      VPackSlice const& newJson, double ttl,
                                       double timeout) {
   AgencyCommResult result;
 
@@ -1118,11 +1066,9 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
       arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, buildUrl(key) + "?prevValue=" +
-                  arangodb::basics::StringUtils::urlEncode(
-                      arangodb::basics::JsonHelper::toString(oldJson)) +
+                  arangodb::basics::StringUtils::urlEncode(oldJson.toJson()) +
                   ttlParam(ttl, false),
-      "value=" + arangodb::basics::StringUtils::urlEncode(
-                     arangodb::basics::JsonHelper::toString(newJson)),
+      "value=" + arangodb::basics::StringUtils::urlEncode(newJson.toJson()),
       false);
 
   return result;
@@ -1160,14 +1106,13 @@ AgencyCommResult AgencyComm::watchValue(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ")));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("READ"));
+  } catch (...) {
     return false;
   }
-
-  return lock(key, ttl, timeout, json.get());
+  return lock(key, ttl, timeout, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1175,14 +1120,13 @@ bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE")));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("WRITE"));
+  } catch (...) {
     return false;
   }
-
-  return lock(key, ttl, timeout, json.get());
+  return lock(key, ttl, timeout, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1190,14 +1134,13 @@ bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::unlockRead(std::string const& key, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ")));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("READ"));
+  } catch (...) {
     return false;
   }
-
-  return unlock(key, json.get(), timeout);
+  return unlock(key, builder.slice(), timeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1205,14 +1148,13 @@ bool AgencyComm::unlockRead(std::string const& key, double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
-  std::unique_ptr<TRI_json_t> json(
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE")));
-
-  if (json == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("WRITE"));
+  } catch (...) {
     return false;
   }
-
-  return unlock(key, json.get(), timeout);
+  return unlock(key, builder.slice(), timeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1231,15 +1173,17 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
     result = getValues(key, false);
 
     if (result.httpCode() == (int)arangodb::rest::HttpResponse::NOT_FOUND) {
-      std::unique_ptr<TRI_json_t> json(
-          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
+      try {
+        VPackBuilder builder;
+        builder.add(VPackValue(0));
 
-      if (json != nullptr) {
         // create the key on the fly
-        setValue(key, json.get(), 0.0);
+        setValue(key, builder.slice(), 0.0);
         tries--;
 
         continue;
+      } catch (...) {
+        // Could not build local key. Try again
       }
     }
 
@@ -1249,37 +1193,36 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
 
     result.parse("", false);
 
-    std::unique_ptr<TRI_json_t> oldJson;
+    std::shared_ptr<VPackBuilder> oldBuilder;
 
     std::map<std::string, AgencyCommResultEntry>::iterator it =
         result._values.begin();
 
-    if (it != result._values.end()) {
-      // steal the json
-      oldJson.reset((*it).second._json);
-      (*it).second._json = nullptr;
-    } else {
-      oldJson.reset(
-          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
-    }
-
-    if (oldJson == nullptr) {
+    try {
+      if (it != result._values.end()) {
+        // steal the velocypack
+        oldBuilder.swap((*it).second._vpack);
+      } else {
+        oldBuilder->add(VPackValue(0));
+      }
+    } catch (...) {
       return AgencyCommResult();
     }
 
+    VPackSlice oldSlice = oldBuilder->slice();
     uint64_t const oldValue =
-        arangodb::basics::JsonHelper::stringUInt64(oldJson.get()) + count;
+        arangodb::basics::VelocyPackHelper::stringUInt64(oldSlice) + count;
     uint64_t const newValue = oldValue + count;
-    std::unique_ptr<TRI_json_t> newJson(
-        arangodb::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE,
-                                                   newValue));
 
-    if (newJson == nullptr) {
+    VPackBuilder newBuilder;
+    try {
+      newBuilder.add(VPackValue(newValue));
+    } catch (...) {
       return AgencyCommResult();
     }
 
     result.clear();
-    result = casValue(key, oldJson.get(), newJson.get(), 0.0, timeout);
+    result = casValue(key, oldSlice, newBuilder.slice(), 0.0, timeout);
 
     if (result.successful()) {
       result._index = oldValue + 1;
@@ -1289,7 +1232,6 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
 
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a ttl query parameter
@@ -1309,7 +1251,7 @@ std::string AgencyComm::ttlParam(double ttl, bool isFirst) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
-                      TRI_json_t const* json) {
+                      VPackSlice const& slice) {
   if (ttl == 0.0) {
     ttl = _globalConnectionOptions._lockTimeout;
   }
@@ -1321,21 +1263,22 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
   unsigned long sleepTime = InitialSleepTime;
   double const end = TRI_microtime() + timeout;
 
-  std::unique_ptr<TRI_json_t> oldJson(TRI_CreateStringCopyJson(
-      TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED")));
-
-  if (oldJson == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("UNLOCKED"));
+  } catch (...) {
     return false;
   }
+  VPackSlice oldSlice = builder.slice();
 
   while (true) {
     AgencyCommResult result =
-        casValue(key + "/Lock", oldJson.get(), json, ttl, timeout);
+        casValue(key + "/Lock", oldSlice, slice, ttl, timeout);
 
     if (!result.successful() &&
         result.httpCode() == (int)arangodb::rest::HttpResponse::NOT_FOUND) {
       // key does not yet exist. create it now
-      result = casValue(key + "/Lock", json, false, ttl, timeout);
+      result = casValue(key + "/Lock", slice, false, ttl, timeout);
     }
 
     if (result.successful()) {
@@ -1361,7 +1304,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
 /// @brief releases a lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::unlock(std::string const& key, TRI_json_t const* json,
+bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
                         double timeout) {
   if (timeout == 0.0) {
     timeout = _globalConnectionOptions._lockTimeout;
@@ -1370,16 +1313,18 @@ bool AgencyComm::unlock(std::string const& key, TRI_json_t const* json,
   unsigned long sleepTime = InitialSleepTime;
   double const end = TRI_microtime() + timeout;
 
-  std::unique_ptr<TRI_json_t> newJson(TRI_CreateStringCopyJson(
-      TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED")));
-
-  if (newJson == nullptr) {
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue("UNLOCKED"));
+  } catch (...) {
+    // Out of Memory
     return false;
   }
+  VPackSlice newSlice = builder.slice();
 
   while (true) {
     AgencyCommResult result =
-        casValue(key + "/Lock", json, newJson.get(), 0.0, timeout);
+        casValue(key + "/Lock", slice, newSlice, 0.0, timeout);
 
     if (result.successful()) {
       return true;
@@ -1409,7 +1354,7 @@ AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
 
   while (1) {
     {
-      WRITE_LOCKER(AgencyComm::_globalLock);
+      WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
       size_t const numEndpoints TRI_UNUSED = _globalEndpoints.size();
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
@@ -1465,7 +1410,7 @@ AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
 
 void AgencyComm::requeueEndpoint(AgencyEndpoint* agencyEndpoint,
                                  bool wasWorking) {
-  WRITE_LOCKER(AgencyComm::_globalLock);
+  WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
   size_t const numEndpoints TRI_UNUSED = _globalEndpoints.size();
 
   TRI_ASSERT(agencyEndpoint != nullptr);
@@ -1493,7 +1438,7 @@ void AgencyComm::requeueEndpoint(AgencyEndpoint* agencyEndpoint,
 
 std::string AgencyComm::buildUrl(std::string const& relativePart) const {
   return AgencyComm::AGENCY_URL_PREFIX +
-         std::move(encodeKey(_globalPrefix + relativePart));
+         encodeKey(_globalPrefix + relativePart);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1502,8 +1447,7 @@ std::string AgencyComm::buildUrl(std::string const& relativePart) const {
 
 std::string AgencyComm::buildUrl() const {
   return AgencyComm::AGENCY_URL_PREFIX +
-         std::move(
-             encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1)));
+             encodeKey(_globalPrefix.substr(0, _globalPrefix.size() - 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1517,7 +1461,7 @@ bool AgencyComm::sendWithFailover(
   size_t numEndpoints;
 
   {
-    READ_LOCKER(AgencyComm::_globalLock);
+    READ_LOCKER(readLocker, AgencyComm::_globalLock);
     numEndpoints = AgencyComm::_globalEndpoints.size();
 
     if (numEndpoints == 0) {
@@ -1587,7 +1531,7 @@ bool AgencyComm::sendWithFailover(
         if (_addNewEndpoints) {
           AgencyComm::addEndpoint(endpoint, true);
 
-          LOG_INFO("adding agency-endpoint '%s'", endpoint.c_str());
+          LOG(INFO) << "adding agency-endpoint '" << endpoint.c_str() << "'";
 
           // re-check the new endpoint
           if (AgencyComm::hasEndpoint(endpoint)) {
@@ -1596,9 +1540,7 @@ bool AgencyComm::sendWithFailover(
           }
         }
 
-        LOG_ERROR(
-            "found redirection to unknown endpoint '%s'. Will not follow!",
-            endpoint.c_str());
+        LOG(ERROR) << "found redirection to unknown endpoint '" << endpoint.c_str() << "'. Will not follow!";
 
         // this is an error
         return false;
@@ -1654,10 +1596,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   result._connected = false;
   result._statusCode = 0;
 
-  LOG_TRACE("sending %s request to agency at endpoint '%s', url '%s': %s",
-            arangodb::rest::HttpRequest::translateMethod(method).c_str(),
-            connection->getEndpoint()->getSpecification().c_str(), url.c_str(),
-            body.c_str());
+  LOG(TRACE) << "sending " << arangodb::rest::HttpRequest::translateMethod(method).c_str() << " request to agency at endpoint '" << connection->getEndpoint()->getSpecification().c_str() << "', url '" << url.c_str() << "': " << body.c_str();
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
 
@@ -1678,7 +1617,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   if (response == nullptr) {
     connection->disconnect();
     result._message = "could not send request to agency";
-    LOG_TRACE("sending request to agency failed");
+    LOG(TRACE) << "sending request to agency failed";
 
     return false;
   }
@@ -1686,7 +1625,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   if (!response->isComplete()) {
     connection->disconnect();
     result._message = "sending request to agency failed";
-    LOG_TRACE("sending request to agency failed");
+    LOG(TRACE) << "sending request to agency failed";
 
     return false;
   }
@@ -1700,7 +1639,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
     bool found = false;
     result._location = response->getHeaderField("location", found);
 
-    LOG_TRACE("redirecting to location: '%s'", result._location.c_str());
+    LOG(TRACE) << "redirecting to location: '" << result._location.c_str() << "'";
 
     if (!found) {
       // a 307 without a location header does not make any sense
@@ -1723,9 +1662,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
     result._index = arangodb::basics::StringUtils::uint64(lastIndex);
   }
 
-  LOG_TRACE(
-      "request to agency returned status code %d, message: '%s', body: '%s'",
-      result._statusCode, result._message.c_str(), result._body.c_str());
+  LOG(TRACE) << "request to agency returned status code " << result._statusCode << ", message: '" << result._message.c_str() << "', body: '" << result._body.c_str() << "'";
 
   if (result.successful()) {
     return true;
@@ -1777,5 +1714,3 @@ std::string AgencyComm::decodeKey(std::string const& s) {
   }
   return res;
 }
-
-

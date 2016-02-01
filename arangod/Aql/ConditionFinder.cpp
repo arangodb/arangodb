@@ -65,8 +65,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       return true;
 
     case EN::FILTER: {
-      std::vector<Variable const*> invars(
-          std::move(en->getVariablesUsedHere()));
+      std::vector<Variable const*> invars(en->getVariablesUsedHere());
       TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
       _filters.emplace(invars[0]->id);
@@ -208,4 +207,3 @@ bool ConditionFinder::before(ExecutionNode* en) {
 bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
-

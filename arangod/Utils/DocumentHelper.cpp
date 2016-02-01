@@ -29,7 +29,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a string
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,5 +118,3 @@ int DocumentHelper::getKey(TRI_json_t const* json, TRI_voc_key_t* key) {
 
   return TRI_ERROR_NO_ERROR;
 }
-
-

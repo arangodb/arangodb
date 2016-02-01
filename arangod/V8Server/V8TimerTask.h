@@ -28,9 +28,11 @@
 #include "Scheduler/TimerTask.h"
 #include "VocBase/vocbase.h"
 
-struct TRI_json_t;
-
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace rest {
 class Dispatcher;
 class Scheduler;
@@ -39,23 +41,20 @@ class Scheduler;
 class ApplicationV8;
 
 class V8TimerTask : public rest::TimerTask {
-  
  public:
-
   V8TimerTask(std::string const&, std::string const&, TRI_vocbase_t*,
               ApplicationV8*, rest::Scheduler*, rest::Dispatcher*, double,
-              std::string const&, struct TRI_json_t*, bool);
-
+              std::string const&,
+              std::shared_ptr<arangodb::velocypack::Builder>, bool);
 
   ~V8TimerTask();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a task specific description in JSON format
   //////////////////////////////////////////////////////////////////////////////
 
-  void getDescription(struct TRI_json_t*) const override;
+  void getDescription(arangodb::velocypack::Builder&) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the task is user-defined
@@ -63,7 +62,6 @@ class V8TimerTask : public rest::TimerTask {
 
   bool isUserDefined() const override { return true; }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles the timer event
@@ -71,7 +69,6 @@ class V8TimerTask : public rest::TimerTask {
 
   bool handleTimeout() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief system vocbase
@@ -101,7 +98,7 @@ class V8TimerTask : public rest::TimerTask {
   /// @brief paramaters
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* _parameters;
+  std::shared_ptr<arangodb::velocypack::Builder> _parameters;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creation timestamp
@@ -118,4 +115,3 @@ class V8TimerTask : public rest::TimerTask {
 }
 
 #endif
-

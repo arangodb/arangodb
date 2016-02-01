@@ -27,17 +27,14 @@
 
 #include "Basics/Common.h"
 
-
 namespace arangodb {
 class Completer;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ShellBase
 ////////////////////////////////////////////////////////////////////////////////
 
 class ShellBase {
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief state of the console
@@ -45,7 +42,6 @@ class ShellBase {
 
   enum console_state_e { STATE_NONE = 0, STATE_OPENED = 1, STATE_CLOSED = 2 };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a shell
@@ -59,15 +55,11 @@ class ShellBase {
 
   static void sortAlternatives(std::vector<std::string>&);
 
-  
  public:
-
   ShellBase(std::string const& history, Completer*);
-
 
   virtual ~ShellBase();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief line editor prompt
@@ -76,7 +68,6 @@ class ShellBase {
   std::string prompt(std::string const& prompt, std::string const& begin,
                      bool& eof);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a signal
@@ -120,7 +111,6 @@ class ShellBase {
 
   virtual bool supportsColors() const { return false; }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current text
@@ -149,5 +139,3 @@ class ShellBase {
 }
 
 #endif
-
-

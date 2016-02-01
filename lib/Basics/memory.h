@@ -28,7 +28,6 @@
 #error use <Basics/Common.h>
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief memory zone id
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +43,6 @@ typedef struct TRI_memory_zone_s {
   bool _failed;
   bool _failable;
 } TRI_memory_zone_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief core memory zone, allocation will never fail
@@ -84,7 +82,6 @@ inline TRI_memory_zone_id_t TRI_MemoryZoneId(TRI_memory_zone_t const* zone) {
   }
   return TRI_UNKNOWN_MEM_ZONE->_zid;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system memory allocation
@@ -189,5 +186,3 @@ void TRI_InitializeMemory(void);
 void TRI_ShutdownMemory(void);
 
 #endif
-
-

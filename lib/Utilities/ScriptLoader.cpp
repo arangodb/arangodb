@@ -24,11 +24,10 @@
 #include "ScriptLoader.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -49,7 +48,7 @@ std::string const& ScriptLoader::getDirectory() const { return _directory; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ScriptLoader::setDirectory(std::string const& directory) {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   _directory = directory;
 }
@@ -80,8 +79,9 @@ std::string ScriptLoader::buildScript(char const** script) {
 /// @brief defines a new named script
 ////////////////////////////////////////////////////////////////////////////////
 
-void ScriptLoader::defineScript(std::string const& name, std::string const& script) {
-  MUTEX_LOCKER(_lock);
+void ScriptLoader::defineScript(std::string const& name,
+                                std::string const& script) {
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   _scripts[name] = script;
 }
@@ -93,7 +93,7 @@ void ScriptLoader::defineScript(std::string const& name, std::string const& scri
 void ScriptLoader::defineScript(std::string const& name, char const** script) {
   std::string scriptString = buildScript(script);
 
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   _scripts[name] = scriptString;
 }
@@ -105,7 +105,7 @@ void ScriptLoader::defineScript(std::string const& name, char const** script) {
 std::string const& ScriptLoader::findScript(std::string const& name) {
   static std::string empty = "";
 
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   std::map<std::string, std::string>::iterator i = _scripts.find(name);
 
@@ -121,8 +121,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
       char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, nullptr);
 
       if (result == nullptr && (i == parts.size() - 1)) {
-        LOG_ERROR("cannot locate file '%s': %s",
-                  StringUtils::correctPath(name).c_str(), TRI_last_error());
+        LOG(ERROR) << "cannot locate file '" << StringUtils::correctPath(name).c_str() << "': " << TRI_last_error();
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -137,7 +136,6 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
 
   return empty;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a list of all specified directory parts
@@ -171,5 +169,3 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
 
   return directories;
 }
-
-

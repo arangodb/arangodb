@@ -73,6 +73,7 @@ const optionsDocumentation = [
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipSsl`: omit the ssl_server rspec tests.',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
+  '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '',
   '   - `onlyNightly`: execute only the nightly tests',
   '   - `loopEternal`: to loop one test over and over.',
@@ -99,40 +100,41 @@ const optionsDocumentation = [
   '   - `extraargs`: list of extra commandline arguments to add to arangod',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
-  '   - `portOffset`: move our base port by n ports up',
   ''
 ];
 
 const optionsDefaults = {
+  "cleanup": true,
   "cluster": false,
-  "valgrind": false,
+  "concurrency": 3,
+  "coreDirectory": "/var/tmp",
+  "duration": 10,
+  "extraargs": [],
+  "extremeVerbosity": false,
   "force": true,
-  "skipBoost": false,
-  "skipGeo": false,
-  "skipTimeCritical": false,
-  "skipNightly": true,
+  "jsonReply": false,
+  "loopEternal": false,
+  "loopSleepSec": 1,
+  "loopSleepWhen": 1,
   "onlyNightly": false,
-  "skipMemoryIntense": false,
+  "password": "",
   "skipAql": false,
   "skipArangoB": false,
   "skipArangoBNonConnKeepAlive": false,
-  "skipRanges": false,
+  "skipBoost": false,
+  "skipGeo": false,
   "skipLogAnalysis": false,
-  "username": "root",
-  "password": "",
+  "skipMemoryIntense": false,
+  "skipNightly": true,
+  "skipNondeterministic": false,
+  "skipRanges": false,
+  "skipTimeCritical": false,
   "test": undefined,
-  "cleanup": true,
-  "jsonReply": false,
-  "portOffset": 0,
-  "valgrindargs": [],
+  "username": "root",
+  "valgrind": false,
   "valgrindXmlFileBase": "",
-  "extraargs": [],
-  "coreDirectory": "/var/tmp",
+  "valgrindargs": [],
   "writeXmlReport": true,
-  "extremeVerbosity": false,
-  "loopEternal": false,
-  "loopSleepWhen": 1,
-  "loopSleepSec": 1
 };
 
 const _ = require("lodash");
@@ -176,8 +178,13 @@ function findTopDir() {
 /// @brief arguments for testing (server)
 ////////////////////////////////////////////////////////////////////////////////
 
-function makeTestingArgs(appDir) {
+function makeArgsArangod(options, appDir) {
   const topDir = findTopDir();
+
+  if (appDir === undefined) {
+    appDir = fs.getTempPath();
+  }
+
   fs.makeDirectoryRecursive(appDir, true);
 
   return {
@@ -198,7 +205,7 @@ function makeTestingArgs(appDir) {
 /// @brief arguments for testing (client)
 ////////////////////////////////////////////////////////////////////////////////
 
-function makeTestingArgsClient(options) {
+function makeArgsArangosh(options) {
   const topDir = findTopDir();
 
   return {
@@ -231,10 +238,13 @@ function endpointToURL(endpoint) {
   if (endpoint.substr(0, 6) === "ssl://") {
     return "https://" + endpoint.substr(6);
   }
-  var pos = endpoint.indexOf("://");
+
+  const pos = endpoint.indexOf("://");
+
   if (pos === -1) {
     return "http://" + endpoint;
   }
+
   return "http" + endpoint.substr(pos);
 }
 
@@ -315,6 +325,7 @@ function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief analyzes a core dump using cdb (Windows)
+///  cdb is part of the WinDBG package.
 ////////////////////////////////////////////////////////////////////////////////
 
 function analyzeCoreDumpWindows(instanceInfo) {
@@ -454,7 +465,7 @@ function waitOnServerForGC(instanceInfo, options, waitTime) {
     print("waiting " + waitTime + " for server GC");
     const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
 
-    var requestOptions = makeAuthorizationHeaders(options);
+    const requestOptions = makeAuthorizationHeaders(options);
     requestOptions.method = "POST";
     requestOptions.timeout = waitTime * 10;
     requestOptions.returnBodyOnError = true;
@@ -542,10 +553,10 @@ function runThere(options, instanceInfo, file) {
     let testCode;
 
     if (file.indexOf("-spec") === -1) {
-      testCode = 'var runTest = require("jsunity").runTest; ' +
+      testCode = 'const runTest = require("jsunity").runTest; ' +
         'return runTest(' + JSON.stringify(file) + ', true);';
     } else {
-      testCode = 'var runTest = require("@arangodb/mocha-runner"); ' +
+      testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
         'return runTest(' + JSON.stringify(file) + ', true);';
     }
 
@@ -576,7 +587,6 @@ function runThere(options, instanceInfo, file) {
           status: false,
           message: yaml.safeDump(reply)
         };
-
       }
     }
   } catch (ex) {
@@ -593,8 +603,7 @@ function runThere(options, instanceInfo, file) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function performTests(options, testList, testname) {
-  let instanceInfo;
-  instanceInfo = startInstance("tcp", options, [], testname);
+  let instanceInfo = startInstance("tcp", options, [], testname);
 
   if (instanceInfo === false) {
     return {
@@ -701,6 +710,91 @@ function performTests(options, testList, testname) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief runs a stress test on arangod
+////////////////////////////////////////////////////////////////////////////////
+
+function runStressTest(options, command, testname) {
+  const concurrency = options.concurrency;
+
+  let extra = {
+    "javascript.v8-contexts": concurrency + 1,
+    "server.threads": concurrency + 1
+  };
+
+  let instanceInfo = startInstance("tcp", options, extra, testname);
+
+  if (instanceInfo === false) {
+    return {
+      status: false,
+      message: "failed to start server!"
+    };
+  }
+
+  const requestOptions = makeAuthorizationHeaders(options);
+  requestOptions.method = "POST";
+  requestOptions.returnBodyOnError = true;
+  requestOptions.headers = {
+    "x-arango-async": "store"
+  };
+
+  const reply = download(
+    instanceInfo.url + "/_admin/execute?returnAsJSON=true",
+    command,
+    requestOptions);
+
+  if (reply.error || reply.code !== 202) {
+    print("cannot execute command: (" +
+      reply.code + ") " + reply.message);
+
+    shutdownInstance(instanceInfo, options);
+
+    return {
+      status: false,
+      message: reply.hasOwnProperty('body') ? reply.body : yaml.safeDump(reply)
+    };
+  }
+
+  const id = reply.headers["x-arango-async-id"];
+
+  const checkOpts = makeAuthorizationHeaders(options);
+  checkOpts.method = "GET";
+  checkOpts.returnBodyOnError = true;
+
+  while (true) {
+    const check = download(
+      instanceInfo.url + "/_api/job/" + id,
+      "", checkOpts);
+
+    if (!check.error) {
+      if (check.code === 204) {
+        print("still running (" + (new Date()) + ")");
+        wait(60);
+        continue;
+      }
+
+      if (check.code === 200) {
+        print("stress test finished");
+        break;
+      }
+    }
+
+    print("cannot check job: (" + check.code + ") " + check.message);
+    shutdownInstance(instanceInfo, options);
+
+    return {
+      status: false,
+      message: reply.hasOwnProperty('body') ? reply.body : yaml.safeDump(reply)
+    };
+  }
+
+  print("Shutting down...");
+  shutdownInstance(instanceInfo, options);
+  print("done.");
+
+  return {};
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a command and wait for result
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -769,7 +863,7 @@ function executeAndWait(cmd, args) {
 function runInArangosh(options, instanceInfo, file, addArgs) {
   const topDir = findTopDir();
 
-  let args = makeTestingArgsClient(options);
+  let args = makeArgsArangosh(options);
   args["server.endpoint"] = instanceInfo.endpoint;
   args["javascript.unit-tests"] = fs.join(topDir, file);
 
@@ -800,7 +894,7 @@ function runInArangosh(options, instanceInfo, file, addArgs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function runArangoshCmd(options, instanceInfo, addArgs, cmds) {
-  let args = makeTestingArgsClient(options);
+  let args = makeArgsArangosh(options);
   args["server.endpoint"] = instanceInfo.endpoint;
 
   if (addArgs !== undefined) {
@@ -1057,7 +1151,7 @@ function startDispatcher(instanceInfo) {
   instanceInfo.dispatcherPid = executeExternal(cmd, toArgv(args));
 
   while (arango.GET("/_admin/version").error === true) {
-    print("Waiting to dispatcher to appear");
+    print("Waiting for dispatcher to appear");
     sleep(1);
   }
 
@@ -1079,7 +1173,6 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
   instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
 
   const tmpDataDir = fs.join(instanceInfo.flatTmpDataDir, testname);
-
   const appDir = fs.join(tmpDataDir, "apps");
 
   fs.makeDirectoryRecursive(tmpDataDir);
@@ -1122,7 +1215,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
       clusterNodes = options.clusterNodes;
     }
 
-    let extraargs = makeTestingArgs(appDir);
+    let extraargs = makeArgsArangod(options, appDir);
     extraargs = _.extend(extraargs, optionsExtraArgs);
 
     if (addArgs !== undefined) {
@@ -1201,7 +1294,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
     let td = fs.join(tmpDataDir, "data");
     fs.makeDirectoryRecursive(td);
 
-    let args = makeTestingArgs(appDir);
+    let args = makeArgsArangod(options, appDir);
     args["server.endpoint"] = endpoint;
     args["database.directory"] = td;
     args["log.file"] = fs.join(tmpDataDir, "log");
@@ -1361,7 +1454,9 @@ function rubyTests(options, ssl) {
     res.total++;
 
     if (!status) {
-      var msg = yaml.safeDump(testCase);
+      const msg = yaml.safeDump(testCase)
+        .replace(/.*rspec\/core.*\n/gm, "")
+        .replace(/.*rspec\\core.*\n/gm, "");
       print("RSpec test case falied: \n" + msg);
       res[tName].message += "\n" + msg;
     }
@@ -1386,6 +1481,7 @@ function rubyTests(options, ssl) {
 
         args = ["--color",
           "-I", fs.join("UnitTests", "HttpInterface"),
+          "--format", "d",
           "--format", "j",
           "--out", fs.join("out", "UnitTests", te + ".json"),
           "--require", tmpname,
@@ -1401,7 +1497,7 @@ function rubyTests(options, ssl) {
           status: res.status
         };
 
-        var resultfn = fs.join("out", "UnitTests", te + ".json");
+        const resultfn = fs.join("out", "UnitTests", te + ".json");
 
         try {
           const jsonResult = JSON.parse(fs.read(resultfn));
@@ -1559,6 +1655,11 @@ function filterTestcaseByOptions(testname, options, whichFilter) {
     return false;
   }
 
+  if (testname.indexOf("-nondeterministic") !== -1 && options.skipNondeterministic) {
+    whichFilter.filter = 'nondeterministic';
+    return false;
+  }
+
   if (testname.indexOf("-graph") !== -1 && options.skipGraph) {
     whichFilter.filter = 'graph';
     return false;
@@ -1648,13 +1749,15 @@ testFuncs.arangosh = function(options) {
   const arangosh = fs.join("bin", "arangosh");
 
   let failed = 0;
-  let args = makeTestingArgsClient(options);
+  let args = makeArgsArangosh(options);
 
   let ret = {
-    "suiteName": "ArangoshExitCodeTest",
-    "testArangoshExitCodeFail": {},
-    "testArangoshExitCodeSuccess": {},
-    "total": 2
+    "ArangoshExitCodeTest": {
+      "testArangoshExitCodeFail": {},
+      "testArangoshExitCodeSuccess": {},
+      "total": 2,
+      "duration": 0.0
+    }
   };
 
   // termination by throw
@@ -1667,13 +1770,13 @@ testFuncs.arangosh = function(options) {
   const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
   if (!failSuccess) {
-    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
       yaml.safeDump(rc);
     ++failed;
   }
 
-  ret.testArangoshExitCodeFail['status'] = failSuccess;
-  ret.testArangoshExitCodeFail['duration'] = deltaTime;
+  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['status'] = failSuccess;
+  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['duration'] = deltaTime;
   print("Status: " + ((failSuccess) ? "SUCCESS" : "FAIL") + "\n");
 
   // regular termination
@@ -1687,17 +1790,19 @@ testFuncs.arangosh = function(options) {
   const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
   if (!successSuccess) {
-    ret.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
       yaml.safeDump(rc);
 
     ++failed;
   }
 
+  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['status'] = failSuccess;
+  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['duration'] = deltaTime2;
   print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
 
   // return result
-  ret["status"] = failSuccess && successSuccess;
-  ret["duration"] = deltaTime2 + deltaTime;
+  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess;
+  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2;
   return ret;
 };
 
@@ -2228,7 +2333,7 @@ testFuncs.dump = function(options) {
         print(Date() + ": Dump and Restore - dump 2");
 
         results.test = runInArangosh(options, instanceInfo,
-          makePathUnix("js/server/tests/dump" + cluster + ".js"), {
+          makePathUnix("js/server/tests/dump/dump" + cluster + ".js"), {
             "server.database": "UnitTestsDumpDst"
           });
 
@@ -2752,7 +2857,7 @@ testFuncs.upgrade = function(options) {
   const appDir = fs.join(tmpDataDir, "app");
   const port = findFreePort();
 
-  let args = makeTestingArgs(appDir);
+  let args = makeArgsArangod(options, appDir);
   args["server.endpoint"] = "tcp://127.0.0.1:" + port;
   args["database.directory"] = fs.join(tmpDataDir, "data");
 
@@ -2776,6 +2881,58 @@ testFuncs.upgrade = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief STRESS TEST: stress_crud
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.stress_crud = function(options) {
+  const duration = options.duration;
+  const concurrency = options.concurrency;
+
+  const command = `
+    try {
+      const stressCrud = require("./js/server/tests/stress/crud");
+
+      stressCrud.createDeleteUpdateParallel({
+        concurrency: ${concurrency},
+        duration: ${duration},
+        gnuplot: true,
+        pauseFor: 60
+      });
+    } catch (err) {
+      require("internal").print(err);
+    }
+`;
+
+  return runStressTest(options, command, "stress_crud");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief STRESS TEST: stress_locks
+////////////////////////////////////////////////////////////////////////////////
+
+
+testFuncs.stress_locks = function(options) {
+  const duration = options.duration;
+  const concurrency = options.concurrency;
+
+  const command = `
+    try {
+      const deadlock = require("./js/server/tests/stress/deadlock");
+
+      deadlock.lockCycleParallel({
+        concurrency: ${concurrency},
+        duration: ${duration},
+        gnuplot: true
+      });
+    } catch (err) {
+      require("internal").print(err);
+    }
+`;
+
+  return runStressTest(options, command, "stress_lock");
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief pretty prints the result
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2793,7 +2950,8 @@ function unitTestPrettyPrintResults(r) {
         let oneOutput = "* Testrun: " + testrun + "\n";
 
         for (let test in r[testrun]) {
-          if (r[testrun].hasOwnProperty(test) && (internalMembers.indexOf(test) === -1)) {
+          if (r[testrun].hasOwnProperty(test) &&
+            (internalMembers.indexOf(test) === -1)) {
             if (r[testrun][test].status) {
               const where = test.lastIndexOf(fs.pathSeparator);
               let which;
@@ -2941,6 +3099,9 @@ function unitTest(which, options) {
 
   if (which === undefined) {
     printUsage();
+
+    print('FATAL: "which" is undefined\n');
+
     return {
       ok: false,
       all_ok: false

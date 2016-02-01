@@ -28,7 +28,6 @@
 #include "Basics/tri-strings.h"
 #include "Basics/voc-mimetypes.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mimetype
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +37,6 @@ typedef struct mimetype_s {
   char* _mimetype;
   bool _appendCharset;
 } mimetype_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief already initialized
@@ -51,7 +49,6 @@ static bool Initialized = false;
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_associative_pointer_t Mimetypes;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash function used to hash errors messages (not used)
@@ -73,7 +70,6 @@ static bool EqualMimetype(TRI_associative_pointer_t* array, void const* key,
 
   return (strcmp((char const*)key, entry->_extension) == 0);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a mimetype for an extension
@@ -112,8 +108,6 @@ char* TRI_GetMimetype(char const* extension) {
 
   return entry->_mimetype;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the mimetypes
@@ -157,5 +151,3 @@ void TRI_ShutdownMimetypes() {
 
   Initialized = false;
 }
-
-

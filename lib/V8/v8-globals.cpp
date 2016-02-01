@@ -23,8 +23,6 @@
 
 #include "v8-globals.h"
 
-
-
 TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
     : JSCollections(),
       JSDitches(),
@@ -64,6 +62,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       DatabaseKey(),
       DoCompactKey(),
       DomainKey(),
+      EndpointKey(),
       ErrorKey(),
       ErrorMessageKey(),
       ErrorNumKey(),
@@ -93,6 +92,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       ServerKey(),
       ShardIDKey(),
       SilentKey(),
+      SingleRequestKey(),
       SleepKey(),
       StatusKey(),
       SuffixKey(),
@@ -152,6 +152,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   DatabaseKey.Reset(isolate, TRI_V8_ASCII_STRING("database"));
   DoCompactKey.Reset(isolate, TRI_V8_ASCII_STRING("doCompact"));
   DomainKey.Reset(isolate, TRI_V8_ASCII_STRING("domain"));
+  EndpointKey.Reset(isolate, TRI_V8_ASCII_STRING("endpoint"));
   ErrorKey.Reset(isolate, TRI_V8_ASCII_STRING("error"));
   ErrorMessageKey.Reset(isolate, TRI_V8_ASCII_STRING("errorMessage"));
   ErrorNumKey.Reset(isolate, TRI_V8_ASCII_STRING("errorNum"));
@@ -182,6 +183,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   ServerKey.Reset(isolate, TRI_V8_ASCII_STRING("server"));
   ShardIDKey.Reset(isolate, TRI_V8_ASCII_STRING("shardID"));
   SilentKey.Reset(isolate, TRI_V8_ASCII_STRING("silent"));
+  SingleRequestKey.Reset(isolate, TRI_V8_ASCII_STRING("singleRequest"));
   SleepKey.Reset(isolate, TRI_V8_ASCII_STRING("sleep"));
   StatusKey.Reset(isolate, TRI_V8_ASCII_STRING("status"));
   SuffixKey.Reset(isolate, TRI_V8_ASCII_STRING("suffix"));
@@ -203,9 +205,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING("_to"));
 }
 
-
 TRI_v8_global_s::~TRI_v8_global_s() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global context
@@ -301,5 +301,3 @@ void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate,
   // all global variables are read-only
   context->Global()->ForceSet(name, value, v8::ReadOnly);
 }
-
-

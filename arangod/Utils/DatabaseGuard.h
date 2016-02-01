@@ -33,7 +33,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class DatabaseGuard {
-  
  public:
   DatabaseGuard(DatabaseGuard const&) = delete;
   DatabaseGuard& operator=(DatabaseGuard const&) = delete;
@@ -74,7 +73,6 @@ class DatabaseGuard {
     }
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the database pointer
@@ -82,7 +80,6 @@ class DatabaseGuard {
 
   inline TRI_vocbase_t* database() const { return _database; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief server
@@ -99,4 +96,3 @@ class DatabaseGuard {
 }
 
 #endif
-

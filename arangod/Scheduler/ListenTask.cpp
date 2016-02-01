@@ -42,7 +42,7 @@
 
 #include <sys/types.h>
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/socket-utils.h"
 #include "Basics/StringUtils.h"
@@ -75,7 +75,7 @@ ListenTask::~ListenTask() {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::isBound() const {
-  MUTEX_LOCKER(_changeLock);  // FIX_MUTEX ?
+  MUTEX_LOCKER(mutexLocker, _changeLock);  // FIX_MUTEX ?
 
   return _endpoint != nullptr && _endpoint->isConnected();
 }
@@ -96,12 +96,10 @@ bool ListenTask::setup(Scheduler* scheduler, EventLoop loop) {
   // There is no mechanism to the calling function to report failure.
   // ..........................................................................
 
-  LOG_TRACE("attempting to convert socket handle to socket descriptor");
+  LOG(TRACE) << "attempting to convert socket handle to socket descriptor";
 
   if (!TRI_isvalidsocket(_listenSocket)) {
-    LOG_ERROR(
-        "In ListenTask::setup could not convert socket handle to socket "
-        "descriptor -- invalid socket handle");
+    LOG(ERROR) << "In ListenTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
     return false;
   }
 
@@ -114,17 +112,13 @@ bool ListenTask::setup(Scheduler* scheduler, EventLoop loop) {
   int res = (int)_listenSocket.fileHandle;
 
   if (res == -1) {
-    LOG_ERROR(
-        "In ListenTask::setup could not convert socket handle to socket "
-        "descriptor -- _open_osfhandle(...) failed");
+    LOG(ERROR) << "In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
 
     res = TRI_CLOSE_SOCKET(_listenSocket);
 
     if (res != 0) {
       res = WSAGetLastError();
-      LOG_ERROR(
-          "In ListenTask::setup closesocket(...) failed with error code: %d",
-          (int)res);
+      LOG(ERROR) << "In ListenTask::setup closesocket(...) failed with error code: " << res;
     }
 
     TRI_invalidatesocket(&_listenSocket);
@@ -174,9 +168,9 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
       ++_acceptFailures;
 
       if (_acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOG_WARNING("accept failed with %d (%s)", (int)errno, strerror(errno));
+        LOG(WARNING) << "accept failed with " << errno << " (" << strerror(errno) << ")";
       } else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOG_ERROR("too many accept failures, stopping logging");
+        LOG(ERROR) << "too many accept failures, stopping logging";
       }
 
       return true;
@@ -193,7 +187,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_CLOSE_SOCKET(connectionSocket);
 
-      LOG_WARNING("getsockname failed with %d (%s)", errno, strerror(errno));
+      LOG(WARNING) << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
 
       return true;
     }
@@ -294,5 +288,3 @@ bool ListenTask::bindSocket() {
 
   return true;
 }
-
-

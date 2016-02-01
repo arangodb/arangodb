@@ -30,20 +30,15 @@
 #include <boost/lockfree/queue.hpp>
 
 #include "Basics/Mutex.h"
-#include "Basics/SpinLock.h"
 #include "Basics/Thread.h"
 #include "Scheduler/Task.h"
 #include "Scheduler/TaskManager.h"
 
 #include <deque>
 
-// #define TRI_USE_SPIN_LOCK_SCHEDULER_THREAD 1
-
-
 namespace arangodb {
 namespace rest {
 class Scheduler;
-
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief job scheduler thread
@@ -54,15 +49,10 @@ class SchedulerThread : public basics::Thread, private TaskManager {
   SchedulerThread(SchedulerThread const&);
   SchedulerThread& operator=(SchedulerThread const&);
 
-  
  public:
-
   SchedulerThread(Scheduler*, EventLoop, bool defaultLoop);
-
-
   ~SchedulerThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if the scheduler thread is up and running
@@ -106,15 +96,11 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 
   void signalTask(std::unique_ptr<TaskData>&);
 
-  
  protected:
-
   void run();
-
 
   void addStatus(arangodb::velocypack::Builder* b);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief what to do with the task
@@ -138,7 +124,6 @@ class SchedulerThread : public basics::Thread, private TaskManager {
     Task* task;
   };
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief underlying scheduler
@@ -170,15 +155,11 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 
   std::atomic<bool> _stopped;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief queue lock
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief queue lock
+  ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
-  arangodb::basics::SpinLock _queueLock;
-#else
-  arangodb::basics::Mutex _queueLock;
-#endif
+  Mutex _queueLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief work queue
@@ -216,5 +197,3 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 }
 
 #endif
-
-

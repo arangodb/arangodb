@@ -61,9 +61,7 @@ class ImportHelper {
   ImportHelper& operator=(ImportHelper const&) = delete;
 
  public:
-
   ImportHelper(httpclient::SimpleHttpClient* client, uint64_t maxUploadSize);
-
 
   ~ImportHelper();
 
@@ -235,5 +233,3 @@ class ImportHelper {
 }
 }
 #endif
-
-

@@ -27,10 +27,10 @@
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace aql {
 
 struct ExecutionStats {
@@ -46,13 +46,13 @@ struct ExecutionStats {
   /// @brief convert the statistics to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  VPackBuilder toVelocyPack() const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create empty statistics for VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  static VPackBuilder toVelocyPackStatic();
+  static std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackStatic();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief convert the statistics to JSON
@@ -133,5 +133,3 @@ struct ExecutionStats {
 }
 
 #endif
-
-

@@ -36,6 +36,12 @@
 
 #define TRI_VOC_KEY_MAX_LENGTH (254)
 
+namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+}
 class KeyGenerator {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -73,13 +79,13 @@ class KeyGenerator {
   /// @brief get the generator type from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneratorType generatorType(VPackSlice const&);
+  static GeneratorType generatorType(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a key generator based on the options specified
   //////////////////////////////////////////////////////////////////////////////
 
-  static KeyGenerator* factory(VPackSlice const&);
+  static KeyGenerator* factory(arangodb::velocypack::Slice const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -104,13 +110,13 @@ class KeyGenerator {
   /// @brief return a VelocyPack representation of the generator
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> toVelocyPack() const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void toVelocyPack(VPackBuilder&) const = 0;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check global key attributes
@@ -173,7 +179,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   void track(TRI_voc_key_t) override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the generator name
+  /// @brief return the generator name (must be lowercase)
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string name() { return "traditional"; }
@@ -182,7 +188,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void toVelocyPack(VPackBuilder&) const override;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
 };
 
 class AutoIncrementKeyGenerator : public KeyGenerator {
@@ -226,7 +232,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   void track(TRI_voc_key_t) override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the generator name
+  /// @brief return the generator name (must be lowercase)
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string name() { return "autoincrement"; }
@@ -235,10 +241,10 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   /// @brief build a VelocyPack representation of the generator in the builder
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void toVelocyPack(VPackBuilder&) const override;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
 
  private:
-  arangodb::basics::Mutex _lock;
+  arangodb::Mutex _lock;
 
   uint64_t _lastValue;  // last value assigned
 

@@ -46,15 +46,12 @@
 /// USE OR OTHER DEALINGS IN THE SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "v8-buffer.h"
 
 #include <v8-profiler.h>
 
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-
-using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief safety overhead for buffer allocations
@@ -67,7 +64,6 @@ static void InitSafetyOverhead(char* p, size_t length) {
     memset(p + length, 0, SAFETY_OVERHEAD);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sliceArgs
@@ -103,7 +99,6 @@ static inline bool sliceArgs(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unbase64
@@ -528,7 +523,6 @@ static TRI_V8_encoding_t ParseEncoding(v8::Isolate* isolate,
   }
 }
 
-
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -553,13 +547,11 @@ class RetainedBufferInfo : public v8::RetainedObjectInfo {
   V8Buffer* _buffer;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the class
 ////////////////////////////////////////////////////////////////////////////////
 
 char const RetainedBufferInfo::_label[] = "Buffer";
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructors
@@ -582,7 +574,6 @@ v8::RetainedObjectInfo* WrapperInfo(uint16_t classId,
   V8Buffer* buffer = V8Buffer::unwrap(wrapper.As<v8::Object>());
   return new RetainedBufferInfo(buffer);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the info
@@ -624,8 +615,6 @@ intptr_t RetainedBufferInfo::GetSizeInBytes() {
   return V8Buffer::length(_buffer->_isolate, _buffer);
 }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new buffer from arguments
@@ -735,7 +724,6 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char* data, size_t length,
   return buffer;
 }
 
-
 V8Buffer::~V8Buffer() { replace(_isolate, NULL, 0, NULL, NULL); }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -752,7 +740,6 @@ V8Buffer::V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper,
       _callback(nullptr) {
   replace(isolate, NULL, length, NULL, NULL);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief
@@ -781,7 +768,6 @@ bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
   return strcmp(*v8::String::Utf8Value(obj->GetConstructorName()), "Buffer") ==
          0;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces the buffer
@@ -824,7 +810,6 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
   handle->Set(LengthKey,
               v8::Integer::NewFromUnsigned(isolate, (uint32_t)_length));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief binarySlice
@@ -1662,7 +1647,6 @@ static void MapSetIndexedBuffer(
       v8::Integer::NewFromUnsigned(isolate, ((uint8_t)buffer->_data[idx])));
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the buffer module
 ////////////////////////////////////////////////////////////////////////////////
@@ -1761,5 +1745,3 @@ void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8::HeapProfiler* heap_profiler = isolate->GetHeapProfiler();
   heap_profiler->SetWrapperClassInfoProvider(TRI_V8_BUFFER_CID, WrapperInfo);
 }
-
-

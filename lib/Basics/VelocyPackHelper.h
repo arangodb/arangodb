@@ -57,6 +57,10 @@ class VelocyPackHelper {
   template <typename T>
   static T getNumericValue(VPackSlice const& slice, char const* name,
                            T defaultValue) {
+    TRI_ASSERT(slice.isObject());
+    if (!slice.hasKey(name)) {
+      return defaultValue;
+    }
     VPackSlice sub = slice.get(name);
     if (sub.isNumber()) {
       return sub.getNumber<T>();
@@ -78,6 +82,12 @@ class VelocyPackHelper {
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a string value, or the default value if it is not a string
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::string getStringValue(VPackSlice const&, std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string sub-element, or the default value if it does not
   /// exist
   /// or it is not a string
@@ -85,7 +95,6 @@ class VelocyPackHelper {
 
   static std::string getStringValue(VPackSlice const&, char const*,
                                     std::string const&);
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief convert a Object sub value into a uint64
@@ -121,4 +130,3 @@ class VelocyPackHelper {
 }
 
 #endif
-

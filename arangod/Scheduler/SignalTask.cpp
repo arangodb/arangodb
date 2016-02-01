@@ -25,7 +25,7 @@
 #include "SignalTask.h"
 
 #include "Basics/MutexLocker.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 #include "Scheduler/Scheduler.h"
 
@@ -49,10 +49,10 @@ SignalTask::~SignalTask() { cleanup(); }
 // -----------------------------------------------------------------------------
 
 bool SignalTask::addSignal(int signal) {
-  MUTEX_LOCKER(_changeLock);
+  MUTEX_LOCKER(mutexLocker, _changeLock);
 
   if (_signals.size() >= MAX_SIGNALS) {
-    LOG_ERROR("maximal number of signals reached");
+    LOG(ERROR) << "maximal number of signals reached";
     return false;
   } else {
     if (_scheduler != nullptr) {
@@ -113,5 +113,3 @@ bool SignalTask::handleEvent(EventToken token, EventType revents) {
 }
 
 bool SignalTask::needsMainEventLoop() const { return true; }
-
-

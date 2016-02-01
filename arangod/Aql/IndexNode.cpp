@@ -23,7 +23,6 @@
 
 #include "IndexNode.h"
 #include "Aql/Ast.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
@@ -199,4 +198,3 @@ void IndexNode::getVariablesUsedHere(
 
   vars.erase(_outVariable);
 }
-

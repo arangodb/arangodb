@@ -30,12 +30,10 @@
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
-
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
-
 
 ModificationBlock::ModificationBlock(ExecutionEngine* engine,
                                      ModificationNode const* ep)
@@ -205,8 +203,8 @@ bool ModificationBlock::isShardKeyChange(TRI_json_t const* oldJson,
 
   auto planId = _collection->documentCollection()->_info.planId();
   auto vocbase = static_cast<ModificationNode const*>(_exeNode)->_vocbase;
-  return arangodb::shardKeysChanged(
-      vocbase->_name, std::to_string(planId), oldJson, newJson, isPatch);
+  return arangodb::shardKeysChanged(vocbase->_name, std::to_string(planId),
+                                    oldJson, newJson, isPatch);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +247,6 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
 
   THROW_ARANGO_EXCEPTION(code);
 }
-
 
 RemoveBlock::RemoveBlock(ExecutionEngine* engine, RemoveNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -363,7 +360,6 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   return result.release();
 }
-
 
 InsertBlock::InsertBlock(ExecutionEngine* engine, InsertNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -494,7 +490,6 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   return result.release();
 }
-
 
 UpdateBlock::UpdateBlock(ExecutionEngine* engine, UpdateNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -682,7 +677,6 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   return result.release();
 }
-
 
 UpsertBlock::UpsertBlock(ExecutionEngine* engine, UpsertNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -932,7 +926,6 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   return result.release();
 }
 
-
 ReplaceBlock::ReplaceBlock(ExecutionEngine* engine, ReplaceNode const* ep)
     : ModificationBlock(engine, ep) {}
 
@@ -1094,4 +1087,3 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   return result.release();
 }
-

@@ -65,7 +65,6 @@ HttpHandler::status_t RestEdgesHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id,
     std::vector<traverser::TraverserExpression*> const& expressions,
@@ -113,7 +112,6 @@ bool RestEdgesHandler::getEdgesForVertex(
   }
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock API_EDGE_READINOUTBOUND

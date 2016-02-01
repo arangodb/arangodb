@@ -32,11 +32,8 @@
 #include "Utilities/LinenoiseShell.h"
 #endif
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a shell
@@ -70,8 +67,6 @@ void ShellBase::sortAlternatives(std::vector<std::string>& completions) {
             });
 }
 
-
-
 ShellBase::ShellBase(std::string const& history, Completer* completer)
     : _current(),
       _historyFilename(),
@@ -95,9 +90,7 @@ ShellBase::ShellBase(std::string const& history, Completer* completer)
   _historyFilename = path;
 }
 
-
 ShellBase::~ShellBase() { delete _completer; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a signal
@@ -107,12 +100,12 @@ void ShellBase::signal() {
   // do nothing special
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shell prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string ShellBase::prompt(std::string const& prompt, std::string const& plain, bool& eof) {
+std::string ShellBase::prompt(std::string const& prompt,
+                              std::string const& plain, bool& eof) {
   size_t lineno = 0;
   std::string dotdot = "...> ";
   std::string p = prompt;
@@ -143,7 +136,7 @@ std::string ShellBase::prompt(std::string const& prompt, std::string const& plai
     ++lineno;
 
     // remove any prompt at the beginning of the line
-    size_t pos = string::npos;
+    size_t pos = std::string::npos;
 
     if (StringUtils::isPrefix(line, plain)) {
       pos = line.find('>');
@@ -151,10 +144,10 @@ std::string ShellBase::prompt(std::string const& prompt, std::string const& plai
       pos = line.find('>');
     }
 
-    if (pos != string::npos) {
+    if (pos != std::string::npos) {
       pos = line.find_first_not_of(" \t", pos + 1);
 
-      if (pos != string::npos) {
+      if (pos != std::string::npos) {
         line = line.substr(pos);
       } else {
         line.clear();
@@ -178,5 +171,3 @@ std::string ShellBase::prompt(std::string const& prompt, std::string const& plai
 
   return line;
 }
-
-

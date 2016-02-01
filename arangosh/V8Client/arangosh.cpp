@@ -28,24 +28,22 @@
 #include <libplatform/libplatform.h>
 
 #include "ArangoShell/ArangoClient.h"
-#include "Basics/messages.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/csv.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
+#include "Basics/Logger.h"
 #include "Basics/shell-colors.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/Version.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-buffer.h"
@@ -64,7 +62,6 @@ using namespace arangodb::httpclient;
 using namespace arangodb::v8client;
 
 using namespace arangodb;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief command prompt
@@ -182,7 +179,6 @@ static uint64_t GcInterval = 10;
 
 static bool VoiceMode = false;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
@@ -223,8 +219,8 @@ static void JS_StartOutputPager(
   } else {
     BaseClient.setUsePager(true);
     BaseClient.internalPrint(std::string(std::string("Using pager ") +
-                                    BaseClient.outputPager() +
-                                    " for output buffering.\n"));
+                                         BaseClient.outputPager() +
+                                         " for output buffering.\n"));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -251,7 +247,6 @@ static void JS_StopOutputPager(
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a CSV file
@@ -443,13 +438,11 @@ static void JS_CompareString(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enum for wrapped V8 objects
 ////////////////////////////////////////////////////////////////////////////////
 
 enum WRAP_CLASS_TYPES { WRAP_TYPE_CONNECTION = 1 };
-
 
 typedef enum __eRunMode {
   eInteractive,
@@ -465,7 +458,7 @@ typedef enum __eRunMode {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::vector<std::string> ParseProgramOptions(int argc, char* args[],
-                                          eRunMode* runMode) {
+                                                    eRunMode* runMode) {
   ProgramOptionsDescription description("STANDARD options");
   ProgramOptionsDescription javascript("JAVASCRIPT options");
 
@@ -565,7 +558,8 @@ static std::vector<std::string> ParseProgramOptions(int argc, char* args[],
 /// @brief copies v8::Object to std::map<std::string, std::string>
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ObjectToMap(v8::Isolate* isolate, std::map<std::string, std::string>& myMap,
+static void ObjectToMap(v8::Isolate* isolate,
+                        std::map<std::string, std::string>& myMap,
                         v8::Handle<v8::Value> val) {
   v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
 
@@ -613,8 +607,9 @@ static V8ClientConnection* CreateConnection() {
 /// @brief weak reference callback for queries (call the destructor here)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_DestructorCallback(const v8::WeakCallbackData<
-    v8::External, v8::Persistent<v8::External>>& data) {
+static void ClientConnection_DestructorCallback(
+    const v8::WeakCallbackData<v8::External, v8::Persistent<v8::External>>&
+        data) {
   auto persistent = data.GetParameter();
   auto myConnection =
       v8::Local<v8::External>::New(data.GetIsolate(), *persistent);
@@ -1388,7 +1383,7 @@ static void ClientConnection_toString(
   }
 
   std::string result = "[object ArangoConnection:" +
-                  BaseClient.endpointServer()->getSpecification();
+                       BaseClient.endpointServer()->getSpecification();
 
   if (connection->isConnected()) {
     result += "," + connection->getVersion() + ",connected]";
@@ -1768,7 +1763,8 @@ static bool RunScripts(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   for (size_t i = 0; i < scripts.size(); ++i) {
     if (!FileUtils::exists(scripts[i])) {
-      std::string msg = "error: Javascript file not found: '" + scripts[i] + "'";
+      std::string msg =
+          "error: Javascript file not found: '" + scripts[i] + "'";
 
       BaseClient.printErrLine(msg.c_str());
       BaseClient.log("%s", msg.c_str());
@@ -1900,7 +1896,6 @@ static bool RunJsLint(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   return ok;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -2294,11 +2289,11 @@ static int WarmupEnvironment(v8::Isolate* isolate,
 
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "no 'javascript.startup-directory' has been supplied, giving up");
+    LOG(FATAL) << "no 'javascript.startup-directory' has been supplied, giving up"; FATAL_ERROR_EXIT();
   }
 
-  LOG_DEBUG("using JavaScript startup files at '%s'", StartupPath.c_str());
+  LOG(DEBUG) << "using JavaScript startup files at '" << StartupPath << "'";
+
   StartupLoader.setDirectory(StartupPath);
 
   // load all init files
@@ -2331,15 +2326,13 @@ static int WarmupEnvironment(v8::Isolate* isolate,
   for (size_t i = 0; i < files.size(); ++i) {
     switch (StartupLoader.loadScript(isolate, context, files[i])) {
       case JSLoader::eSuccess:
-        LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
+        LOG(TRACE) << "loaded JavaScript file '" << files[i] << "'";
         break;
       case JSLoader::eFailLoad:
-        LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'",
-                           files[i].c_str());
+        LOG(FATAL) << "cannot load JavaScript file '" << files[i].c_str() << "'"; FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
-        LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'",
-                           files[i].c_str());
+        LOG(FATAL) << "error during execution of JavaScript file '" << files[i].c_str() << "'"; FATAL_ERROR_EXIT();
         break;
     }
   }
@@ -2430,6 +2423,10 @@ int main(int argc, char* args[]) {
   if (getenv("SHELL") != nullptr) {
     cygwinShell = true;
   }
+  if (!TRI_InitWindowsEventLog()) {
+    std::cerr << "failed to init event log" << std::endl;
+    return EXIT_FAILURE;
+  }
 #endif
   LocalEntryFunction();
 
@@ -2458,7 +2455,8 @@ int main(int argc, char* args[]) {
   // parse the program options
   // .............................................................................
 
-  std::vector<std::string> positionals = ParseProgramOptions(argc, args, &runMode);
+  std::vector<std::string> positionals =
+      ParseProgramOptions(argc, args, &runMode);
 
   // .............................................................................
   // set-up client connection
@@ -2565,11 +2563,10 @@ int main(int argc, char* args[]) {
         try {
           ret = Run(isolate, runMode, promptError);
         } catch (std::bad_alloc const&) {
-          LOG_ERROR("caught exception %s",
-                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+          LOG(ERROR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ret = EXIT_FAILURE;
         } catch (...) {
-          LOG_ERROR("caught unknown exception");
+          LOG(ERROR) << "caught unknown exception";
           ret = EXIT_FAILURE;
         }
       }
@@ -2577,9 +2574,9 @@ int main(int argc, char* args[]) {
       isolate->LowMemoryNotification();
 
       // spend at least 3 seconds in GC
-      LOG_DEBUG("entering final garbage collection");
+      LOG(DEBUG) << "entering final garbage collection";
       TRI_RunGarbageCollectionV8(isolate, 3000);
-      LOG_DEBUG("final garbage collection completed");
+      LOG(DEBUG) << "final garbage collection completed";
 
       localContext->Exit();
       context.Reset();
@@ -2608,5 +2605,3 @@ int main(int argc, char* args[]) {
 
   return ret;
 }
-
-

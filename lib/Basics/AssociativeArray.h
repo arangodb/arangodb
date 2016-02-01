@@ -30,7 +30,6 @@
 namespace arangodb {
 namespace basics {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default fillup
 ///
@@ -44,7 +43,6 @@ struct ExtendAtFillup {
     return false;
   }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array for POD data
@@ -65,7 +63,6 @@ class AssociativeArray {
   AssociativeArray& operator=(AssociativeArray const&);
 
  public:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new associative array for POD data
   //////////////////////////////////////////////////////////////////////////////
@@ -120,7 +117,6 @@ class AssociativeArray {
 
   ~AssociativeArray() { delete[] _table; }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief swaps two dictonaries
@@ -520,7 +516,6 @@ class AssociativeArray {
     return true;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the internal table
@@ -570,7 +565,6 @@ class AssociativeArray {
     _nrUsed++;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief description of the elements
@@ -651,5 +645,3 @@ class AssociativeArray {
 }
 
 #endif
-
-

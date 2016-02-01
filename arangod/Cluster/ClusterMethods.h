@@ -26,27 +26,20 @@
 
 #include "Basics/Common.h"
 
-#include "Rest/HttpRequest.h"
+#include "Cluster/AgencyComm.h"
 #include "Rest/HttpResponse.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
-#include "Cluster/AgencyComm.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterComm.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 struct TRI_json_t;
-struct TRI_vector_pointer_s;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
 
 namespace traverser {
 class TraverserExpression;
@@ -79,9 +72,8 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
 /// @brief returns users
 ////////////////////////////////////////////////////////////////////////////////
 
-int usersOnCoordinator(std::string const& dbname, VPackBuilder& result,
-                       double timeout);
-
+int usersOnCoordinator(std::string const& dbname,
+                       arangodb::velocypack::Builder& result, double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
@@ -110,7 +102,8 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 
 int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
-    VPackSlice const& slice, std::map<std::string, std::string> const& headers,
+    arangodb::velocypack::Slice const& slice,
+    std::map<std::string, std::string> const& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
@@ -205,7 +198,7 @@ int modifyDocumentOnCoordinator(
     TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
     bool keepNull,      // only counts for isPatch == true
     bool mergeObjects,  // only counts for isPatch == true
-    VPackSlice const& slice,
+    arangodb::velocypack::Slice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
@@ -251,4 +244,3 @@ int flushWalOnAllDBServers(bool, bool);
 }  // namespace arangodb
 
 #endif
-

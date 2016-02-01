@@ -52,17 +52,12 @@ struct NonConstExpression {
 
 class ExecutionEngine;
 
-
 class ExecutionBlock {
-  
  public:
-
   ExecutionBlock(ExecutionEngine*, ExecutionNode const*);
-
 
   virtual ~ExecutionBlock();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine the number of rows in a vector of blocks
@@ -161,7 +156,6 @@ class ExecutionBlock {
 
   virtual AqlItemBlock* getSome(size_t atLeast, size_t atMost);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request an AqlItemBlock from the memory manager
@@ -298,7 +292,6 @@ class ExecutionBlock {
 
   bool _done;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief batch size value
@@ -311,4 +304,3 @@ class ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

@@ -24,8 +24,10 @@
 #include "HeartbeatThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerJob.h"
@@ -105,7 +107,7 @@ void HeartbeatThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runDBServer() {
-  LOG_TRACE("starting heartbeat thread (DBServer version)");
+  LOG(TRACE) << "starting heartbeat thread (DBServer version)";
 
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
@@ -123,7 +125,7 @@ void HeartbeatThread::runDBServer() {
   uint64_t agencyIndex = 0;
 
   while (!_stop) {
-    LOG_TRACE("sending heartbeat to agency");
+    LOG(TRACE) << "sending heartbeat to agency";
 
     double const start = TRI_microtime();
 
@@ -161,14 +163,11 @@ void HeartbeatThread::runDBServer() {
       // First see whether a previously scheduled job has done some good:
       double timeout = remain;
       {
-        MUTEX_LOCKER(_statusLock);
+        MUTEX_LOCKER(mutexLocker, _statusLock);
         if (_numDispatchedJobs == -1) {
           if (_lastDispatchedJobResult) {
             lastPlanVersionJobSuccess = _versionThatTriggeredLastJob;
-            LOG_INFO(
-                "Found result of successful handleChangesDBServer job, "
-                "have now version %llu.",
-                (unsigned long long)lastPlanVersionJobSuccess);
+            LOG(INFO) << "Found result of successful handleChangesDBServer job, have now version " << lastPlanVersionJobSuccess << ".";
           }
           _numDispatchedJobs = 0;
         } else if (_numDispatchedJobs > 0) {
@@ -202,7 +201,8 @@ void HeartbeatThread::runDBServer() {
         if (it != result._values.end()) {
           // there is a plan version
           uint64_t planVersion =
-              arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+              arangodb::basics::VelocyPackHelper::stringUInt64(
+                  it->second._vpack->slice());
 
           if (planVersion > lastPlanVersionNoticed) {
             lastPlanVersionNoticed = planVersion;
@@ -231,14 +231,14 @@ void HeartbeatThread::runDBServer() {
   int count = 0;
   while (count++ < 10000) {
     {
-      MUTEX_LOCKER(_statusLock);
+      MUTEX_LOCKER(mutexLocker, _statusLock);
       if (_numDispatchedJobs <= 0) {
         break;
       }
     }
     usleep(1000);
   }
-  LOG_TRACE("stopped heartbeat thread (DBServer version)");
+  LOG(TRACE) << "stopped heartbeat thread (DBServer version)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +246,7 @@ void HeartbeatThread::runDBServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::hasPendingJob() {
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
   return _numDispatchedJobs != 0;
 }
 
@@ -255,7 +255,7 @@ bool HeartbeatThread::hasPendingJob() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runCoordinator() {
-  LOG_TRACE("starting heartbeat thread (coordinator version)");
+  LOG(TRACE) << "starting heartbeat thread (coordinator version)";
 
   uint64_t oldUserVersion = 0;
 
@@ -271,7 +271,7 @@ void HeartbeatThread::runCoordinator() {
   setReady();
 
   while (!_stop) {
-    LOG_TRACE("sending heartbeat to agency");
+    LOG(TRACE) << "sending heartbeat to agency";
 
     double const start = TRI_microtime();
 
@@ -310,8 +310,9 @@ void HeartbeatThread::runCoordinator() {
 
       if (it != result._values.end()) {
         // there is a plan version
-        uint64_t planVersion =
-            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+
+        uint64_t planVersion = arangodb::basics::VelocyPackHelper::stringUInt64(
+            it->second._vpack->slice());
 
         if (planVersion > lastPlanVersionNoticed) {
           if (handlePlanChangeCoordinator(planVersion)) {
@@ -330,8 +331,8 @@ void HeartbeatThread::runCoordinator() {
           result._values.begin();
       if (it != result._values.end()) {
         // there is a UserVersion
-        uint64_t userVersion =
-            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+        uint64_t userVersion = arangodb::basics::VelocyPackHelper::stringUInt64(
+            it->second._vpack->slice());
         if (userVersion != oldUserVersion) {
           // reload user cache for all databases
           std::vector<DatabaseID> dbs =
@@ -343,7 +344,7 @@ void HeartbeatThread::runCoordinator() {
                 TRI_UseCoordinatorDatabaseServer(_server, i->c_str());
 
             if (vocbase != nullptr) {
-              LOG_INFO("Reloading users for database %s.", vocbase->_name);
+              LOG(INFO) << "Reloading users for database " << vocbase->_name << ".";
 
               if (!fetchUsers(vocbase)) {
                 // something is wrong... probably the database server
@@ -384,9 +385,8 @@ void HeartbeatThread::runCoordinator() {
   // properly
   _stop = 2;
 
-  LOG_TRACE("stopped heartbeat thread");
+  LOG(TRACE) << "stopped heartbeat thread";
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the heartbeat
@@ -407,7 +407,7 @@ bool HeartbeatThread::init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::isReady() {
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
 
   return _ready;
 }
@@ -417,7 +417,7 @@ bool HeartbeatThread::isReady() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::setReady() {
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
   _ready = true;
 }
 
@@ -426,12 +426,11 @@ void HeartbeatThread::setReady() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::removeDispatchedJob(bool success) {
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
   TRI_ASSERT(_numDispatchedJobs > 0);
   _numDispatchedJobs = -1;
   _lastDispatchedJobResult = success;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the index id of the value of Sync/Commands/my-id from the
@@ -451,8 +450,7 @@ uint64_t HeartbeatThread::getLastCommandIndex() {
 
     if (it != result._values.end()) {
       // found something
-      LOG_TRACE("last command index was: '%llu'",
-                (unsigned long long)(*it).second._index);
+      LOG(TRACE) << "last command index was: '" << (*it).second._index << "'";
       return (*it).second._index;
     }
   }
@@ -485,7 +483,7 @@ static bool myDBnamesComparer(std::string const& a, std::string const& b) {
 static std::string const prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   bool fetchingUsersFailed = false;
-  LOG_TRACE("found a plan update");
+  LOG(TRACE) << "found a plan update";
 
   AgencyCommResult result;
 
@@ -514,16 +512,16 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
     // loop over all database names we got and create a local database
     // instance if not yet present:
-    std::vector<std::string>::iterator it1;
-    for (it1 = names.begin(); it1 != names.end(); ++it1) {
-      it = result._values.find(*it1);
-      std::string const& name = *it1;
-      TRI_json_t const* options = (*it).second._json;
+    for (std::string const& name : names) {
+      it = result._values.find(name);
+      VPackSlice const options = it->second._vpack->slice();
 
       TRI_voc_tick_t id = 0;
-      TRI_json_t const* v = TRI_LookupObjectJson(options, "id");
-      if (TRI_IsStringJson(v)) {
-        id = arangodb::basics::StringUtils::uint64(v->_value._string.data);
+      if (options.hasKey("id")) {
+        VPackSlice const v = options.get("id");
+        if (v.isString()) {
+          id = arangodb::basics::StringUtils::uint64(v.copyString());
+        }
       }
 
       if (id > 0) {
@@ -597,7 +595,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
   // turn on error logging now
   if (!ClusterComm::instance()->enableConnectionErrorLogging(true)) {
-    LOG_INFO("created coordinator databases for the first time");
+    LOG(INFO) << "created coordinator databases for the first time";
   }
 
   return true;
@@ -609,9 +607,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
-  LOG_TRACE("found a plan update");
+  LOG(TRACE) << "found a plan update";
 
-  MUTEX_LOCKER(_statusLock);
+  MUTEX_LOCKER(mutexLocker, _statusLock);
   if (_numDispatchedJobs > 0) {
     // do not flood the dispatcher queue with multiple server jobs
     // as this may lead to all dispatcher threads being blocked
@@ -626,11 +624,11 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
     ++_numDispatchedJobs;
     _versionThatTriggeredLastJob = currentPlanVersion;
 
-    LOG_TRACE("scheduled plan update handler");
+    LOG(TRACE) << "scheduled plan update handler";
     return true;
   }
 
-  LOG_ERROR("could not schedule plan update handler");
+  LOG(ERROR) << "could not schedule plan update handler";
 
   return false;
 }
@@ -653,8 +651,11 @@ bool HeartbeatThread::handleStateChange(AgencyCommResult& result,
   if (it != result._values.end()) {
     lastCommandIndex = (*it).second._index;
 
-    std::string const command =
-        arangodb::basics::JsonHelper::getStringValue((*it).second._json, "");
+    std::string command = "";
+    VPackSlice const slice = it->second._vpack->slice();
+    if (slice.isString()) {
+      command = slice.copyString();
+    }
     ServerState::StateEnum newState = ServerState::stringToState(command);
 
     if (newState != ServerState::STATE_UNDEFINED) {
@@ -683,10 +684,7 @@ bool HeartbeatThread::sendState() {
   if (++_numFails % _maxFailsBeforeWarning == 0) {
     std::string const endpoints = AgencyComm::getEndpointsString();
 
-    LOG_WARNING(
-        "heartbeat could not be sent to agency endpoints (%s): http code: %d, "
-        "body: %s",
-        endpoints.c_str(), result.httpCode(), result.body().c_str());
+    LOG(WARNING) << "heartbeat could not be sent to agency endpoints (" << endpoints.c_str() << "): http code: " << result.httpCode() << ", body: " << result.body().c_str();
     _numFails = 0;
   }
 
@@ -702,7 +700,7 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
   VPackBuilder builder;
   builder.openArray();
 
-  LOG_TRACE("fetching users for database '%s'", vocbase->_name);
+  LOG(TRACE) << "fetching users for database '" << vocbase->_name << "'";
 
   int res = usersOnCoordinator(std::string(vocbase->_name), builder, 10.0);
 
@@ -734,15 +732,12 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
   }
 
   if (result) {
-    LOG_TRACE("fetching users for database '%s' successful", vocbase->_name);
+    LOG(TRACE) << "fetching users for database '" << vocbase->_name << "' successful";
     _refetchUsers.erase(vocbase);
   } else {
-    LOG_TRACE("fetching users for database '%s' failed with error: %s",
-              vocbase->_name, TRI_errno_string(res));
+    LOG(TRACE) << "fetching users for database '" << vocbase->_name << "' failed with error: " << TRI_errno_string(res);
     _refetchUsers.insert(vocbase);
   }
 
   return result;
 }
-
-

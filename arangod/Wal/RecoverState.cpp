@@ -30,7 +30,6 @@
 #include "Utils/SingleCollectionWriteTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
-#include "VocBase/replication-applier.h"
 #include "VocBase/VocShaper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
@@ -69,24 +68,6 @@ static std::string GetDatabaseDirectory(TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the directory for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string GetCollectionDirectory(TRI_vocbase_t* vocbase,
-                                          TRI_voc_cid_t collectionId) {
-  char* dirname =
-      TRI_GetDirectoryCollection(vocbase->_path,
-                                 "empty",                // does not matter
-                                 TRI_COL_TYPE_DOCUMENT,  // does not matter
-                                 collectionId);
-
-  std::string result(dirname);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wait until a database directory disappears
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -98,67 +79,21 @@ static int WaitForDeletion(TRI_server_t* server, TRI_voc_tick_t databaseId,
   // wait for at most 30 seconds for the directory to be removed
   while (TRI_IsDirectory(result.c_str())) {
     if (iterations == 0) {
-      LOG_TRACE(
-          "waiting for deletion of database directory '%s', called with status "
-          "code %d",
-          result.c_str(), statusCode);
+      LOG(TRACE) << "waiting for deletion of database directory '" << result.c_str() << "', called with status code " << statusCode;
 
       if (statusCode != TRI_ERROR_FORBIDDEN &&
           (statusCode == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
            statusCode != TRI_ERROR_NO_ERROR)) {
-        LOG_WARNING("forcefully deleting database directory '%s'",
-                    result.c_str());
+        LOG(WARNING) << "forcefully deleting database directory '" << result.c_str() << "'";
         TRI_RemoveDirectory(result.c_str());
       }
     } else if (iterations >= 30 * 10) {
-      LOG_WARNING("unable to remove database directory '%s'", result.c_str());
+      LOG(WARNING) << "unable to remove database directory '" << result.c_str() << "'";
       return TRI_ERROR_INTERNAL;
     }
 
     if (iterations == 5 * 10) {
-      LOG_INFO("waiting for deletion of database directory '%s'",
-               result.c_str());
-    }
-
-    ++iterations;
-    usleep(100000);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait until a collection directory disappears
-////////////////////////////////////////////////////////////////////////////////
-
-static int WaitForDeletion(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                           int statusCode) {
-  std::string const result = GetCollectionDirectory(vocbase, collectionId);
-
-  int iterations = 0;
-  // wait for at most 30 seconds for the directory to be removed
-  while (TRI_IsDirectory(result.c_str())) {
-    if (iterations == 0) {
-      LOG_TRACE(
-          "waiting for deletion of collection directory '%s', called with "
-          "status code %d",
-          result.c_str(), statusCode);
-
-      if (statusCode != TRI_ERROR_FORBIDDEN &&
-          (statusCode == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND ||
-           statusCode != TRI_ERROR_NO_ERROR)) {
-        LOG_WARNING("forcefully deleting collection directory '%s'",
-                    result.c_str());
-        TRI_RemoveDirectory(result.c_str());
-      }
-    } else if (iterations >= 30 * 10) {
-      LOG_WARNING("unable to remove collection directory '%s'", result.c_str());
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (iterations == 5 * 10) {
-      LOG_INFO("waiting for deletion of collection directory '%s'",
-               result.c_str());
+      LOG(INFO) << "waiting for deletion of database directory '" << result.c_str() << "'";
     }
 
     ++iterations;
@@ -320,10 +255,7 @@ TRI_vocbase_col_t* RecoverState::useCollection(TRI_vocbase_t* vocbase,
     res = TRI_errno();
 
     if (res == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
-      LOG_WARNING(
-          "unable to open collection %llu. Please check the logs above for "
-          "errors.",
-          (unsigned long long)collectionId);
+      LOG(WARNING) << "unable to open collection " << collectionId << ". Please check the logs above for errors.";
     }
 
     return nullptr;
@@ -352,7 +284,7 @@ TRI_document_collection_t* RecoverState::getCollection(
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
   if (vocbase == nullptr) {
-    LOG_TRACE("database %llu not found", (unsigned long long)databaseId);
+    LOG(TRACE) << "database " << databaseId << " not found";
     return nullptr;
   }
 
@@ -360,8 +292,7 @@ TRI_document_collection_t* RecoverState::getCollection(
   TRI_vocbase_col_t* collection = useCollection(vocbase, collectionId, res);
 
   if (collection == nullptr) {
-    LOG_TRACE("collection %llu of database %llu not found",
-              (unsigned long long)collectionId, (unsigned long long)databaseId);
+    LOG(TRACE) << "collection " << collectionId << " of database " << databaseId << " not found";
     return nullptr;
   }
 
@@ -383,7 +314,7 @@ int RecoverState::executeSingleOperation(
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
   if (vocbase == nullptr) {
-    LOG_TRACE("database %llu not found", (unsigned long long)databaseId);
+    LOG(TRACE) << "database " << databaseId << " not found";
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
 
@@ -410,8 +341,7 @@ int RecoverState::executeSingleOperation(
 
   try {
     trx = new SingleWriteTransactionType(
-        new arangodb::StandaloneTransactionContext(), vocbase,
-        collectionId);
+        new arangodb::StandaloneTransactionContext(), vocbase, collectionId);
 
     if (trx == nullptr) {
       THROW_ARANGO_EXCEPTION(res);
@@ -627,7 +557,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
   RecoverState* state = reinterpret_cast<RecoverState*>(data);
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-  LOG_TRACE("replaying marker of type %s", TRI_NameMarkerDatafile(marker));
+  LOG(TRACE) << "replaying marker of type " << TRI_NameMarkerDatafile(marker);
 #endif
 
   switch (marker->_type) {
@@ -659,8 +589,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG_WARNING("could not apply attribute marker: %s",
-                    TRI_errno_string(res));
+        LOG(WARNING) << "could not apply attribute marker: " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -690,7 +619,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG_WARNING("could not apply shape marker: %s", TRI_errno_string(res));
+        LOG(WARNING) << "could not apply shape marker: " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -748,10 +677,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG_WARNING(
-            "unable to insert document in collection %llu of database %llu: %s",
-            (unsigned long long)collectionId, (unsigned long long)databaseId,
-            TRI_errno_string(res));
+        LOG(WARNING) << "unable to insert document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -809,10 +735,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG_WARNING(
-            "unable to insert edge in collection %llu of database %llu: %s",
-            (unsigned long long)collectionId, (unsigned long long)databaseId,
-            TRI_errno_string(res));
+        LOG(WARNING) << "unable to insert edge in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -857,10 +780,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG_WARNING(
-            "unable to remove document in collection %llu of database %llu: %s",
-            (unsigned long long)collectionId, (unsigned long long)databaseId,
-            TRI_errno_string(res));
+        LOG(WARNING) << "unable to remove document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -885,7 +805,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       if (vocbase == nullptr) {
         // if the underlying database is gone, we can go on
-        LOG_TRACE("cannot open database %llu", (unsigned long long)databaseId);
+        LOG(TRACE) << "cannot open database " << databaseId;
         return true;
       }
 
@@ -897,8 +817,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       if (collection == nullptr) {
         // if the underlying collection is gone, we can go on
-        LOG_TRACE("cannot open collection %llu",
-                  (unsigned long long)collectionId);
+        LOG(TRACE) << "cannot open collection " << collectionId;
         return true;
       }
 
@@ -912,18 +831,15 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (other != nullptr) {
         TRI_voc_cid_t otherCid = other->_cid;
         state->releaseCollection(otherCid);
-        int statusCode = TRI_DropCollectionVocBase(vocbase, other, false);
-        WaitForDeletion(vocbase, otherCid, statusCode);
+        TRI_DropCollectionVocBase(vocbase, other, false);
       }
+
 
       int res =
           TRI_RenameCollectionVocBase(vocbase, collection, name, true, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING(
-            "cannot rename collection collection %llu in database %llu: %s",
-            (unsigned long long)collectionId, (unsigned long long)databaseId,
-            TRI_errno_string(res));
+        LOG(WARNING) << "cannot rename collection collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -944,7 +860,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       if (vocbase == nullptr) {
         // if the underlying database is gone, we can go on
-        LOG_TRACE("cannot open database %llu", (unsigned long long)databaseId);
+        LOG(TRACE) << "cannot open database " << databaseId;
         return true;
       }
 
@@ -953,10 +869,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       if (document == nullptr) {
         // if the underlying collection is gone, we can go on
-        LOG_TRACE(
-            "cannot change properties of collection %llu in database %llu: %s",
-            (unsigned long long)collectionId, (unsigned long long)databaseId,
-            TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
+        LOG(TRACE) << "cannot change properties of collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
         return true;
       }
 
@@ -966,10 +879,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       try {
         parsedProperties = VPackParser::fromJson(properties);
       } catch (...) {
-        LOG_WARNING(
-            "cannot unpack collection properties for collection %llu in "
-            "database %llu",
-            (unsigned long long)collectionId, (unsigned long long)databaseId);
+        LOG(WARNING) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -980,11 +890,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           vocbase, document, slice, vocbase->_settings.forceSyncProperties);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING(
-            "cannot change collection properties for collection %llu in "
-            "database %llu: %s",
-            (unsigned long long)collectionId, (unsigned long long)databaseId,
-            TRI_errno_string(res));
+        LOG(WARNING) << "cannot change collection properties for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1011,10 +917,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       if (vocbase == nullptr) {
         // if the underlying database is gone, we can go on
-        LOG_TRACE(
-            "cannot create index for collection %llu in database %llu: %s",
-            (unsigned long long)collectionId, (unsigned long long)databaseId,
-            TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+        LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
         return true;
       }
 
@@ -1023,10 +926,15 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       if (document == nullptr) {
         // if the underlying collection is gone, we can go on
-        LOG_TRACE(
-            "cannot create index for collection %llu in database %llu: %s",
-            (unsigned long long)collectionId, (unsigned long long)databaseId,
-            TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
+        LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+        return true;
+      }
+      
+      TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+
+      if (col == nullptr) {
+        // if the underlying collection gone, we can go on
+        LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
         return true;
       }
 
@@ -1036,47 +944,30 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       try {
         builder = VPackParser::fromJson(properties);
       } catch (...) {
-        LOG_WARNING(
-            "cannot unpack index properties for index %llu, collection %llu in "
-            "database %llu",
-            (unsigned long long)indexId, (unsigned long long)collectionId,
-            (unsigned long long)databaseId);
+        LOG(WARNING) << "cannot unpack index properties for index " << indexId << ", collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
       VPackSlice slice = builder->slice();
       if (!slice.isObject()) {
-        LOG_WARNING(
-            "cannot unpack index properties for index %llu, collection %llu in "
-            "database %llu",
-            (unsigned long long)indexId, (unsigned long long)collectionId,
-            (unsigned long long)databaseId);
+        LOG(WARNING) << "cannot unpack index properties for index " << indexId << ", collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
 
-      std::string collectionDirectory =
-          GetCollectionDirectory(vocbase, collectionId);
-      char* idString = TRI_StringUInt64(indexId);
-      char* indexName = TRI_Concatenate3String("index-", idString, ".json");
-      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-      char* filename =
-          TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
+      std::string const indexName("index-" + std::to_string(indexId) + ".json");
+      std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
 
       bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-          filename, slice, vocbase->_settings.forceSyncProperties);
+          filename.c_str(), slice, vocbase->_settings.forceSyncProperties);
 
       if (!ok) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-        LOG_WARNING(
-            "cannot create index %llu, collection %llu in database %llu",
-            (unsigned long long)indexId, (unsigned long long)collectionId,
-            (unsigned long long)databaseId);
+        LOG(WARNING) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       } else {
-        TRI_PushBackVectorString(&document->_indexFiles, filename);
+        char* p = TRI_DuplicateString(TRI_CORE_MEM_ZONE, filename.c_str(), filename.size());
+        TRI_PushBackVectorString(&document->_indexFiles, p);
       }
 
       break;
@@ -1099,7 +990,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       if (vocbase == nullptr) {
         // if the underlying database is gone, we can go on
-        LOG_TRACE("cannot open database %llu", (unsigned long long)databaseId);
+        LOG(TRACE) << "cannot open database " << databaseId;
         return true;
       }
 
@@ -1108,11 +999,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       if (collection == nullptr) {
         collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
       }
-
+      
       if (collection != nullptr) {
         // drop an existing collection
-        int statusCode = TRI_DropCollectionVocBase(vocbase, collection, false);
-        WaitForDeletion(vocbase, collectionId, statusCode);
+        TRI_DropCollectionVocBase(vocbase, collection, false);
       }
 
       char const* properties =
@@ -1121,19 +1011,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       try {
         builder = VPackParser::fromJson(properties);
       } catch (...) {
-        LOG_WARNING(
-            "cannot unpack collection properties for collection %llu in "
-            "database %llu",
-            (unsigned long long)collectionId, (unsigned long long)databaseId);
+        LOG(WARNING) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
       VPackSlice slice = builder->slice();
       if (!slice.isObject()) {
-        LOG_WARNING(
-            "cannot unpack collection properties for collection %llu in "
-            "database %llu",
-            (unsigned long long)collectionId, (unsigned long long)databaseId);
+        LOG(WARNING) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1154,15 +1038,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_voc_cid_t otherCid = collection->_cid;
 
           state->releaseCollection(otherCid);
-          int statusCode =
-              TRI_DropCollectionVocBase(vocbase, collection, false);
-          WaitForDeletion(vocbase, otherCid, statusCode);
+          TRI_DropCollectionVocBase(vocbase, collection, false);
         }
       } else {
-        LOG_WARNING(
-            "empty name attribute in create collection marker for collection "
-            "%llu and database %llu",
-            (unsigned long long)collectionId, (unsigned long long)databaseId);
+        LOG(WARNING) << "empty name attribute in create collection marker for collection " << collectionId << " and database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1181,11 +1060,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
       slice = b2.slice();
 
-      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(),
-                                                   slice);
-
-      WaitForDeletion(vocbase, collectionId,
-                      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), slice);
 
       if (state->willBeDropped(collectionId)) {
         // in case we detect that this collection is going to be deleted anyway,
@@ -1204,9 +1079,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       if (collection == nullptr) {
-        LOG_WARNING("cannot create collection %llu in database %llu: %s",
-                    (unsigned long long)collectionId,
-                    (unsigned long long)databaseId, TRI_last_error());
+        LOG(WARNING) << "cannot create collection " << collectionId << " in database " << databaseId << ": " << TRI_last_error();
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1235,16 +1108,14 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       try {
         parsedProperties = VPackParser::fromJson(properties);
       } catch (...) {
-        LOG_WARNING("cannot unpack database properties for database %llu",
-                    (unsigned long long)databaseId);
+        LOG(WARNING) << "cannot unpack database properties for database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
       VPackSlice const slice = parsedProperties->slice();
 
       if (!slice.isObject()) {
-        LOG_WARNING("cannot unpack database properties for database %llu",
-                    (unsigned long long)databaseId);
+        LOG(WARNING) << "cannot unpack database properties for database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1252,8 +1123,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       VPackSlice const nameSlice = slice.get("name");
 
       if (!nameSlice.isString()) {
-        LOG_WARNING("cannot unpack database properties for database %llu",
-                    (unsigned long long)databaseId);
+        LOG(WARNING) << "cannot unpack database properties for database " << databaseId;
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1284,8 +1154,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
                                          &vocbase, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("cannot create database %llu: %s",
-                    (unsigned long long)databaseId, TRI_errno_string(res));
+        LOG(WARNING) << "cannot create database " << databaseId << ": " << TRI_errno_string(res);
         ++state->errorCount;
         return state->canContinue();
       }
@@ -1311,7 +1180,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       if (vocbase == nullptr) {
         // if the underlying database is gone, we can go on
-        LOG_TRACE("cannot open database %llu", (unsigned long long)databaseId);
+        LOG(TRACE) << "cannot open database " << databaseId;
         return true;
       }
 
@@ -1322,22 +1191,22 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         return true;
       }
 
+      TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+
+      if (col == nullptr) {
+        // if the underlying collection gone, we can go on
+        return true;
+      }
+
       // ignore any potential error returned by this call
       TRI_DropIndexDocumentCollection(document, indexId, false);
       TRI_RemoveFileIndexCollection(document, indexId);
 
       // additionally remove the index file
-      std::string collectionDirectory =
-          GetCollectionDirectory(vocbase, collectionId);
-      char* idString = TRI_StringUInt64(indexId);
-      char* indexName = TRI_Concatenate3String("index-", idString, ".json");
-      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-      char* filename =
-          TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
+      std::string const indexName("index-" + std::to_string(indexId) + ".json");
+      std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
 
-      TRI_UnlinkFile(filename);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+      TRI_UnlinkFile(filename.c_str());
       break;
     }
 
@@ -1351,6 +1220,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       state->droppedCollections.insert(collectionId);
 
       TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
       if (vocbase == nullptr) {
         // database already deleted - do nothing
         return true;
@@ -1364,8 +1234,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       if (collection != nullptr) {
-        int statusCode = TRI_DropCollectionVocBase(vocbase, collection, false);
-        WaitForDeletion(vocbase, collectionId, statusCode);
+        TRI_DropCollectionVocBase(vocbase, collection, false);
       }
       break;
     }
@@ -1395,10 +1264,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RecoverState::replayLogfile(Logfile* logfile, int number) {
+  std::string const logfileName = logfile->filename();
+
   int const n = static_cast<int>(logfilesToProcess.size());
 
-  LOG_INFO("replaying WAL logfile '%s' (%d of %d)", logfile->filename().c_str(),
-           number + 1, n);
+  LOG(INFO) << "replaying WAL logfile '" << logfileName.c_str() << "' (" << number + 1 << " of " << n << ")";
 
   // Advise on sequential use:
   TRI_MMFileAdvise(logfile->df()->_data, logfile->df()->_maximalSize,
@@ -1408,8 +1278,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
 
   if (!TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker,
                            static_cast<void*>(this))) {
-    LOG_WARNING("WAL inspection failed when scanning logfile '%s'",
-                logfile->filename().c_str());
+    LOG(WARNING) << "WAL inspection failed when scanning logfile '" << logfileName.c_str() << "'";
     return TRI_ERROR_ARANGO_RECOVERY;
   }
 
@@ -1451,7 +1320,7 @@ int RecoverState::abortOpenTransactions() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TRACE("writing abort markers for still open transactions");
+  LOG(TRACE) << "writing abort markers for still open transactions";
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -1494,13 +1363,13 @@ int RecoverState::removeEmptyLogfiles() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TRACE("removing empty WAL logfiles");
+  LOG(TRACE) << "removing empty WAL logfiles";
 
   for (auto it = emptyLogfiles.begin(); it != emptyLogfiles.end(); ++it) {
     auto filename = (*it);
 
     if (basics::FileUtils::remove(filename, 0)) {
-      LOG_TRACE("removing empty WAL logfile '%s'", filename.c_str());
+      LOG(TRACE) << "removing empty WAL logfile '" << filename.c_str() << "'";
     }
   }
 
@@ -1526,8 +1395,8 @@ int RecoverState::fillIndexes() {
     document->useSecondaryIndexes(true);
 
     arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new arangodb::StandaloneTransactionContext(),
-        collection->_vocbase, document->_info.id());
+        new arangodb::StandaloneTransactionContext(), collection->_vocbase,
+        document->_info.id());
 
     int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);
 
@@ -1538,4 +1407,3 @@ int RecoverState::fillIndexes() {
 
   return TRI_ERROR_NO_ERROR;
 }
-

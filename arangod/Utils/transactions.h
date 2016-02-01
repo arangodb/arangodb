@@ -34,5 +34,3 @@
 #include "Utils/V8TransactionContext.h"
 
 #endif
-
-

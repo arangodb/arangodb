@@ -31,9 +31,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 
-struct TRI_json_t;
 class VocShaper;
-
 
 namespace arangodb {
 namespace aql {
@@ -63,8 +61,6 @@ class PathBasedIndex : public Index {
     size_t const n;
   };
 
-  
-  
  public:
   PathBasedIndex() = delete;
 
@@ -73,11 +69,10 @@ class PathBasedIndex : public Index {
       std::vector<std::vector<arangodb::basics::AttributeName>> const&,
       bool unique, bool sparse, bool allowPartialIndex);
 
-  explicit PathBasedIndex(struct TRI_json_t const*, bool);
+  explicit PathBasedIndex(VPackSlice const&, bool);
 
   ~PathBasedIndex();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the index should reveal its fields
@@ -102,7 +97,6 @@ class PathBasedIndex : public Index {
     return TRI_index_element_t::memoryUsage(_paths.size());
   }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief helper function to insert a document into any index type
@@ -117,7 +111,6 @@ class PathBasedIndex : public Index {
 
   inline size_t numPaths() const { return _paths.size(); }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief helper function to transform AttributeNames into pid lists
@@ -142,7 +135,6 @@ class PathBasedIndex : public Index {
                         std::unordered_set<std::vector<TRI_shaped_json_t>>&,
                         std::vector<TRI_shaped_json_t>&, bool);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the shaper for the collection
@@ -171,5 +163,3 @@ class PathBasedIndex : public Index {
 }
 
 #endif
-
-

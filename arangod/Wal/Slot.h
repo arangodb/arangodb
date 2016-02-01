@@ -25,7 +25,6 @@
 #define ARANGOD_WAL_SLOT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/Legends.h"
 #include "Wal/Logfile.h"
 
 struct TRI_df_marker_s;
@@ -35,11 +34,9 @@ namespace wal {
 
 class Slots;
 
-
 class Slot {
   friend class Slots;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief tick typedef
@@ -58,7 +55,6 @@ class Slot {
     RETURNED_WFS = 3
   };
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a slot
   //////////////////////////////////////////////////////////////////////////////
@@ -66,7 +62,6 @@ class Slot {
  private:
   Slot();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the tick assigned to the slot
@@ -105,7 +100,6 @@ class Slot {
 
   void fill(void*, size_t);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the slot is unused
@@ -154,7 +148,6 @@ class Slot {
 
   void setReturned(bool);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief slot tick
@@ -196,5 +189,3 @@ static_assert(sizeof(Slot) == 32, "invalid slot size");
 }
 
 #endif
-
-

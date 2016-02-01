@@ -24,7 +24,7 @@
 #include "PathHandler.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/mimetypes.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -98,7 +98,7 @@ HttpHandler::status_t PathHandler::execute() {
     std::string const& next = *j;
 
     if (next == ".") {
-      LOG_WARNING("file '%s' contains '.'", name.c_str());
+      LOG(WARNING) << "file '" << name.c_str() << "' contains '.'";
 
       createResponse(HttpResponse::FORBIDDEN);
       _response->body().appendText("path contains '.'");
@@ -106,7 +106,7 @@ HttpHandler::status_t PathHandler::execute() {
     }
 
     if (next == "..") {
-      LOG_WARNING("file '%s' contains '..'", name.c_str());
+      LOG(WARNING) << "file '" << name.c_str() << "' contains '..'";
 
       createResponse(HttpResponse::FORBIDDEN);
       _response->body().appendText("path contains '..'");
@@ -116,7 +116,7 @@ HttpHandler::status_t PathHandler::execute() {
     std::string::size_type sc = next.find_first_not_of(allowed);
 
     if (sc != std::string::npos) {
-      LOG_WARNING("file '%s' contains illegal character", name.c_str());
+      LOG(WARNING) << "file '" << name.c_str() << "' contains illegal character";
 
       createResponse(HttpResponse::FORBIDDEN);
       _response->body().appendText("path contains illegal character '" +
@@ -126,7 +126,7 @@ HttpHandler::status_t PathHandler::execute() {
 
     if (!path.empty()) {
       if (!FileUtils::isDirectory(path)) {
-        LOG_WARNING("file '%s' not found", name.c_str());
+        LOG(WARNING) << "file '" << name.c_str() << "' not found";
 
         createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not found");
@@ -138,7 +138,7 @@ HttpHandler::status_t PathHandler::execute() {
     last = next;
 
     if (!allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
-      LOG_WARNING("file '%s' contains symbolic link", name.c_str());
+      LOG(WARNING) << "file '" << name.c_str() << "' contains symbolic link";
 
       createResponse(HttpResponse::FORBIDDEN);
       _response->body().appendText("symbolic links are not allowed");
@@ -147,7 +147,7 @@ HttpHandler::status_t PathHandler::execute() {
   }
 
   if (!FileUtils::isRegularFile(name)) {
-    LOG_WARNING("file '%s' not found", name.c_str());
+    LOG(WARNING) << "file '" << name.c_str() << "' not found";
 
     createResponse(HttpResponse::NOT_FOUND);
     _response->body().appendText("file not found");
@@ -159,7 +159,7 @@ HttpHandler::status_t PathHandler::execute() {
   try {
     FileUtils::slurp(name, _response->body());
   } catch (...) {
-    LOG_WARNING("file '%s' not readable", name.c_str());
+    LOG(WARNING) << "file '" << name.c_str() << "' not readable";
 
     createResponse(HttpResponse::NOT_FOUND);
     _response->body().appendText("file not readable");
@@ -190,7 +190,7 @@ HttpHandler::status_t PathHandler::execute() {
     } else {
       // note: changed the log level to debug. an unknown content-type does not
       // justify a warning
-      LOG_TRACE("unknown suffix '%s'", suffix.c_str());
+      LOG(TRACE) << "unknown suffix '" << suffix.c_str() << "'";
     }
   }
 
@@ -204,5 +204,3 @@ void PathHandler::handleError(const Exception&) {
 }
 }
 }
-
-

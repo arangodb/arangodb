@@ -30,14 +30,13 @@
 #include <boost/lockfree/queue.hpp>
 
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Dispatcher/Dispatcher.h"
-
 
 namespace arangodb {
 namespace rest {
 class DispatcherThread;
 class Job;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatcher queue
@@ -50,7 +49,6 @@ class DispatcherQueue {
   friend class Dispatcher;
   friend class DispatcherThread;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new dispatcher queue
@@ -60,10 +58,8 @@ class DispatcherQueue {
                   Dispatcher::newDispatcherThread_fptr, size_t nrThreads,
                   size_t maxSize);
 
-
   ~DispatcherQueue();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a job
@@ -140,7 +136,6 @@ class DispatcherQueue {
 
   void setProcessorAffinity(std::vector<size_t> const& cores);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief deletes old threads
@@ -148,7 +143,6 @@ class DispatcherQueue {
 
   void deleteOldThreads();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief id
@@ -196,7 +190,7 @@ class DispatcherQueue {
   /// @brief guard for hazard pointer
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::Mutex _hazardLock;
+  Mutex _hazardLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief hazard pointer for jobs
@@ -214,7 +208,7 @@ class DispatcherQueue {
   /// @brief guard for _startedThreads
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::Mutex _threadsLock;
+  Mutex _threadsLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of started threads
@@ -333,5 +327,3 @@ class DispatcherQueue {
 }
 
 #endif
-
-

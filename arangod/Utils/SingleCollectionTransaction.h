@@ -25,13 +25,10 @@
 #define ARANGOD_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/logging.h"
 #include "Basics/voc-errors.h"
 #include "Basics/StringUtils.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -42,8 +39,6 @@
 namespace arangodb {
 
 class SingleCollectionTransaction : public Transaction {
-  
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection id
@@ -87,7 +82,6 @@ class SingleCollectionTransaction : public Transaction {
 
   ~SingleCollectionTransaction() {}
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying transaction collection
@@ -146,9 +140,7 @@ class SingleCollectionTransaction : public Transaction {
     return trxCollection->_ditch;
   }
 
-  inline arangodb::DocumentDitch* ditch(TRI_voc_cid_t) {
-    return ditch();
-  }
+  inline arangodb::DocumentDitch* ditch(TRI_voc_cid_t) { return ditch(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a ditch is available for a collection
@@ -242,7 +234,6 @@ class SingleCollectionTransaction : public Transaction {
     return this->readSlice(this->trxCollection(), docs);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id
@@ -271,4 +262,3 @@ class SingleCollectionTransaction : public Transaction {
 }
 
 #endif
-

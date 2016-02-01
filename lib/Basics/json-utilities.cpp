@@ -27,7 +27,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
-
 static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
                                   TRI_json_t const* lhs, TRI_json_t const* rhs,
                                   bool nullMeansRemove, bool mergeObjects) {
@@ -206,7 +205,7 @@ int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
       return 1;
     }
 
-    TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
+    TRI_ASSERT(lWeight == rWeight);
   }
 
   // lhs and rhs have equal weights
@@ -689,5 +688,3 @@ static uint64_t FastHashJsonRecursive(uint64_t hash, TRI_json_t const* object) {
 uint64_t TRI_FastHashJson(TRI_json_t const* json) {
   return FastHashJsonRecursive(0x012345678, json);
 }
-
-

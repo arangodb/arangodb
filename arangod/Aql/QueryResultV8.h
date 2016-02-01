@@ -32,7 +32,6 @@
 namespace arangodb {
 namespace aql {
 
-
 struct QueryResultV8 : public QueryResult {
   QueryResultV8& operator=(QueryResultV8 const& other) = delete;
 
@@ -53,5 +52,3 @@ struct QueryResultV8 : public QueryResult {
 }
 
 #endif
-
-

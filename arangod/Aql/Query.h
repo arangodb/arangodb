@@ -33,18 +33,18 @@
 #include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Utils/AqlTransaction.h"
-#include "Utils/V8TransactionContext.h"
 #include "VocBase/voc-types.h"
 #include "V8Server/ApplicationV8.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class TransactionContext;
+
+namespace velocypack {
+class Builder;
+}
 
 namespace aql {
 
@@ -58,7 +58,6 @@ class Parser;
 class Query;
 class QueryRegistry;
 struct Variable;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief equery part
@@ -82,7 +81,6 @@ enum ExecutionState {
   INVALID_STATE
 };
 
-
 struct Profile {
   Profile(Profile const&) = delete;
   Profile& operator=(Profile const&) = delete;
@@ -97,7 +95,7 @@ struct Profile {
   /// @brief convert the profile to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  VPackBuilder toVelocyPack();
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
 
   TRI_json_t* toJson(TRI_memory_zone_t*);
 
@@ -107,16 +105,14 @@ struct Profile {
   bool tracked;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
 class Query {
-  
  public:
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*,
-        size_t, struct TRI_json_t*, struct TRI_json_t*, QueryPart);
+  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
+        struct TRI_json_t*, struct TRI_json_t*, QueryPart);
 
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
         arangodb::basics::Json queryStruct, struct TRI_json_t*, QueryPart);
@@ -131,7 +127,6 @@ class Query {
 
   Query* clone(QueryPart, bool);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query is killed
@@ -412,19 +407,35 @@ class Query {
     DoDisableQueryTracking = value;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get a description of the query's current state
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::string getStateString () const;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief look up a graph in the _graphs collection
   //////////////////////////////////////////////////////////////////////////////
 
   Graph const* lookupGraphByName(std::string const& name);
 
-  
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the query
   //////////////////////////////////////////////////////////////////////////////
 
   void init();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief log a query
+  //////////////////////////////////////////////////////////////////////////////
+
+  void log();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief calculate a hash value for the query and bind parameters
@@ -469,12 +480,6 @@ class Query {
   void enterState(ExecutionState);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a description of the query's current state
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string getStateString() const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup plan and engine for current query
   //////////////////////////////////////////////////////////////////////////////
 
@@ -486,7 +491,6 @@ class Query {
 
   arangodb::TransactionContext* createTransactionContext();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief query id
@@ -672,5 +676,3 @@ class Query {
 }
 
 #endif
-
-

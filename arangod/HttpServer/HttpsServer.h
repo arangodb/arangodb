@@ -28,7 +28,6 @@
 
 #include <openssl/ssl.h>
 
-
 namespace arangodb {
 namespace rest {
 
@@ -37,7 +36,6 @@ namespace rest {
 ////////////////////////////////////////////////////////////////////////////////
 
 class HttpsServer : public HttpServer {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new http server
@@ -46,10 +44,8 @@ class HttpsServer : public HttpServer {
   HttpsServer(Scheduler*, Dispatcher*, HttpHandlerFactory*, AsyncJobManager*,
               double keepAliveTimeout, SSL_CTX*);
 
-
   ~HttpsServer();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the verification mode
@@ -63,20 +59,15 @@ class HttpsServer : public HttpServer {
 
   void setVerificationCallback(int (*func)(int, X509_STORE_CTX*));
 
-  
  public:
-
   char const* protocol() const override { return "https"; }
-
 
   Endpoint::EncryptionType encryptionType() const override {
     return Endpoint::ENCRYPTION_SSL;
   }
 
-
   HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&) override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ssl context
@@ -100,5 +91,3 @@ class HttpsServer : public HttpServer {
 }
 
 #endif
-
-

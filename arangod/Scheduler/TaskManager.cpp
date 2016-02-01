@@ -39,5 +39,3 @@ bool TaskManager::setupTask(Task* task, Scheduler* scheduler, EventLoop loop) {
 }
 
 void TaskManager::cleanupTask(Task* task) { task->cleanup(); }
-
-

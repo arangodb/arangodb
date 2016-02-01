@@ -38,12 +38,13 @@
 #include <iostream>
 #endif
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 #include <array>
 
 using namespace arangodb::aql;
 using JsonHelper = arangodb::basics::JsonHelper;
 using Json = arangodb::basics::Json;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quick translation array from an AST node value type to a JSON type
@@ -267,8 +268,8 @@ static TRI_json_type_e GetNodeCompareType(AstNode const* node) {
 
 int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
                                    bool compareUtf8) {
-  TRI_ASSERT_EXPENSIVE(lhs != nullptr);
-  TRI_ASSERT_EXPENSIVE(rhs != nullptr);
+  TRI_ASSERT(lhs != nullptr);
+  TRI_ASSERT(rhs != nullptr);
 
   if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     lhs = ResolveAttribute(lhs);
@@ -283,7 +284,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
   if (lType != rType) {
     int diff = static_cast<int>(lType) - static_cast<int>(rType);
 
-    TRI_ASSERT_EXPENSIVE(diff != 0);
+    TRI_ASSERT(diff != 0);
 
     if (diff < 0) {
       return -1;
@@ -407,7 +408,6 @@ static bool IsEmptyString(char const* p, size_t length) {
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,8 +421,8 @@ AstNode::AstNode(AstNodeType type)
 
 AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
   value.type = valueType;
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,8 +433,8 @@ AstNode::AstNode(bool v, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_BOOL);
   value.value._bool = v;
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,8 +445,8 @@ AstNode::AstNode(int64_t v, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_INT);
   value.value._int = v;
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,8 +457,8 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_STRING);
   setStringValue(v, length);
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,8 +467,8 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
 
 AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 
   auto query = ast->query();
 
@@ -640,8 +640,8 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
                  std::function<char const*(std::string const&)> registerString,
                  arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 
   switch (type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
@@ -791,7 +791,6 @@ AstNode::~AstNode() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if all members of a node are equality comparisons
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,7 +915,7 @@ TRI_json_t* AstNode::computeJson() const {
 
 void AstNode::sort() {
   TRI_ASSERT(type == NODE_TYPE_ARRAY);
-  TRI_ASSERT_EXPENSIVE(isConstant());
+  TRI_ASSERT(isConstant());
 
   std::sort(members.begin(), members.end(),
             [](AstNode const* lhs, AstNode const* rhs) {
@@ -1230,6 +1229,27 @@ TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   }
 
   return node;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the node value
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
+  std::unique_ptr<TRI_json_t> tmp(toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+  if (tmp == nullptr) {
+    return nullptr;
+  }
+  return arangodb::basics::JsonHelper::toVelocyPack(tmp.get());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the node
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> AstNode::toVelocyPack(bool verbose) const {
+  std::unique_ptr<TRI_json_t> tmp(toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
+  return arangodb::basics::JsonHelper::toVelocyPack(tmp.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2590,7 +2610,6 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
   return ret;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the value of a node into a string buffer
 /// this creates an equivalent to what JSON.stringify() would do
@@ -2635,7 +2654,6 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the AstNode to an output stream
 ////////////////////////////////////////////////////////////////////////////////
@@ -2657,5 +2675,3 @@ std::ostream& operator<<(std::ostream& stream,
   stream << arangodb::aql::AstNode::toString(&node);
   return stream;
 }
-
-

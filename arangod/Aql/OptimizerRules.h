@@ -31,7 +31,6 @@
 namespace arangodb {
 namespace aql {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a SORT operation for IN right-hand side operands
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,7 +60,8 @@ void removeUnnecessaryFiltersRule(Optimizer*, ExecutionPlan*,
 /// @brief remove unused INTO variable from COLLECT, or unused aggregates
 ////////////////////////////////////////////////////////////////////////////////
 
-void removeCollectVariablesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+void removeCollectVariablesRule(Optimizer*, ExecutionPlan*,
+                                Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief propagate constant attributes in FILTERs
@@ -267,8 +267,13 @@ void patchUpdateStatementsRule(Optimizer*, ExecutionPlan*,
 void mergeFilterIntoTraversalRule(Optimizer* opt, ExecutionPlan* plan,
                                   Optimizer::Rule const* rule);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moves simple subqueries one level higher
+////////////////////////////////////////////////////////////////////////////////
+
+void inlineSubqueriesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
 }  // namespace aql
 }  // namespace arangodb
 
 #endif
-

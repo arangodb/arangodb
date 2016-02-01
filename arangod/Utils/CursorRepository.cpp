@@ -23,16 +23,18 @@
 
 #include "CursorRepository.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Utils/CollectionExport.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 
 size_t const CursorRepository::MaxCollectCount = 32;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor repository
@@ -62,9 +64,9 @@ CursorRepository::~CursorRepository() {
     }
 
     if (tries == 0) {
-      LOG_INFO("waiting for used cursors to become unused");
+      LOG(INFO) << "waiting for used cursors to become unused";
     } else if (tries == 120) {
-      LOG_WARNING("giving up waiting for unused cursors");
+      LOG(WARNING) << "giving up waiting for unused cursors";
     }
 
     usleep(500000);
@@ -72,7 +74,7 @@ CursorRepository::~CursorRepository() {
   }
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it : _cursors) {
       delete it.second;
@@ -82,7 +84,6 @@ CursorRepository::~CursorRepository() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cursor and stores it in the registry
 /// the cursor will be returned with the usage flag set to true. it must be
@@ -90,29 +91,21 @@ CursorRepository::~CursorRepository() {
 /// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-JsonCursor* CursorRepository::createFromJson(TRI_json_t* json, size_t batchSize,
-                                             TRI_json_t* extra, double ttl,
-                                             bool count, bool cached) {
+JsonCursor* CursorRepository::createFromVelocyPack(
+    std::shared_ptr<VPackBuilder> json, size_t batchSize,
+    std::shared_ptr<VPackBuilder> extra, double ttl, bool count, bool cached) {
+
   TRI_ASSERT(json != nullptr);
 
   CursorId const id = TRI_NewTickServer();
   arangodb::JsonCursor* cursor = nullptr;
 
-  try {
-    cursor = new arangodb::JsonCursor(_vocbase, id, json, batchSize,
-                                              extra, ttl, count, cached);
-  } catch (...) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    if (extra != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
-    }
-    throw;
-  }
-
+  cursor = new arangodb::JsonCursor(_vocbase, id, json, batchSize, extra, ttl,
+                                    count, cached);
   cursor->use();
 
   try {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     _cursors.emplace(std::make_pair(id, cursor));
     return cursor;
   } catch (...) {
@@ -125,19 +118,19 @@ JsonCursor* CursorRepository::createFromJson(TRI_json_t* json, size_t batchSize,
 /// @brief creates a cursor and stores it in the registry
 ////////////////////////////////////////////////////////////////////////////////
 
-ExportCursor* CursorRepository::createFromExport(
-    arangodb::CollectionExport* ex, size_t batchSize, double ttl,
-    bool count) {
+ExportCursor* CursorRepository::createFromExport(arangodb::CollectionExport* ex,
+                                                 size_t batchSize, double ttl,
+                                                 bool count) {
   TRI_ASSERT(ex != nullptr);
 
   CursorId const id = TRI_NewTickServer();
-  arangodb::ExportCursor* cursor = new arangodb::ExportCursor(
-      _vocbase, id, ex, batchSize, ttl, count);
+  arangodb::ExportCursor* cursor =
+      new arangodb::ExportCursor(_vocbase, id, ex, batchSize, ttl, count);
 
   cursor->use();
 
   try {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     _cursors.emplace(std::make_pair(id, cursor));
     return cursor;
   } catch (...) {
@@ -154,7 +147,7 @@ bool CursorRepository::remove(CursorId id) {
   arangodb::Cursor* cursor = nullptr;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _cursors.find(id);
     if (it == _cursors.end()) {
@@ -196,7 +189,7 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
   busy = false;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _cursors.find(id);
     if (it == _cursors.end()) {
@@ -228,7 +221,7 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
 
 void CursorRepository::release(Cursor* cursor) {
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     TRI_ASSERT(cursor->isUsed());
     cursor->release();
@@ -250,7 +243,7 @@ void CursorRepository::release(Cursor* cursor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CursorRepository::containsUsedCursor() {
-  MUTEX_LOCKER(_lock);
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   for (auto it : _cursors) {
     if (it.second->isUsed()) {
@@ -272,7 +265,7 @@ bool CursorRepository::garbageCollect(bool force) {
   auto const now = TRI_microtime();
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it = _cursors.begin(); it != _cursors.end(); /* no hoisting */) {
       auto cursor = (*it).second;
@@ -312,5 +305,3 @@ bool CursorRepository::garbageCollect(bool force) {
 
   return (!found.empty());
 }
-
-

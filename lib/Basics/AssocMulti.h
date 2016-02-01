@@ -31,7 +31,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -43,8 +43,6 @@
 
 namespace arangodb {
 namespace basics {
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array of pointers, tolerating repeated keys.
@@ -173,8 +171,6 @@ class AssocMulti {
 
   std::function<std::string()> _contextCallback;
 
-  
-
  public:
   AssocMulti(HashKeyFuncType hashKey, HashElementFuncType hashElement,
              IsEqualKeyElementFuncType isEqualKeyElement,
@@ -247,7 +243,6 @@ class AssocMulti {
     }
   }
 
-
   ~AssocMulti() {
     for (auto& b : _buckets) {
       if (b._table != nullptr) {
@@ -257,7 +252,6 @@ class AssocMulti {
     }
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the memory used by the hash table
   //////////////////////////////////////////////////////////////////////////////
@@ -289,17 +283,17 @@ class AssocMulti {
   /// @brief Appends information about statistics in the given VPackBuilder
   //////////////////////////////////////////////////////////////////////////////
 
-  void appendToVelocyPack(std::shared_ptr<VPackBuilder> builder) {
-    builder->add("buckets", VPackValue(VPackValueType::Array));
+  void appendToVelocyPack(VPackBuilder& builder) {
+    builder.add("buckets", VPackValue(VPackValueType::Array));
     for (auto& b : _buckets) {
-      builder->add(VPackValue(VPackValueType::Object));
-      builder->add("nrAlloc", VPackValue(b._nrAlloc));
-      builder->add("nrUsed", VPackValue(b._nrUsed));
-      builder->close();
+      builder.openObject();
+      builder.add("nrAlloc", VPackValue(b._nrAlloc));
+      builder.add("nrUsed", VPackValue(b._nrUsed));
+      builder.close();
     }
-    builder->close();  // buckets
-    builder->add("nrBuckets", VPackValue(_buckets.size()));
-    builder->add("totalUsed", VPackValue(size()));
+    builder.close();  // buckets
+    builder.add("nrBuckets", VPackValue(_buckets.size()));
+    builder.add("totalUsed", VPackValue(size()));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -393,7 +387,7 @@ class AssocMulti {
 
     typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
 
-    arangodb::basics::Mutex bucketMapLocker;
+    arangodb::Mutex bucketMapLocker;
 
     std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
 
@@ -418,7 +412,7 @@ class AssocMulti {
           }
 
           // transfer ownership to the central map
-          MUTEX_LOCKER(bucketMapLocker);
+          MUTEX_LOCKER(mutexLocker, bucketMapLocker);
 
           for (auto& it : partitions) {
             auto it2 = allBuckets.find(it.first);
@@ -1070,7 +1064,6 @@ class AssocMulti {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increment IndexType by 1 modulo _nrAlloc:
@@ -1086,8 +1079,13 @@ class AssocMulti {
   //////////////////////////////////////////////////////////////////////////////
 
   void resizeInternal(UserData* userData, Bucket& b, size_t size) {
-    LOG_ACTION("index-resize %s, target size: %llu", _contextCallback().c_str(),
-               (unsigned long long)size);
+    std::string const cb(_contextCallback());
+
+    LOG(TRACE) << "resizing index " << cb.c_str() << ", target size: " << size;
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
+        "index-resize " << cb << ", target size: " << size;
+
     double start = TRI_microtime();
 
     EntryType* oldTable = b._table;
@@ -1160,8 +1158,9 @@ class AssocMulti {
 
     delete[] oldTable;
 
-    LOG_TIMER((TRI_microtime() - start), "index-resize, %s, target size: %llu",
-              _contextCallback().c_str(), (unsigned long long)size);
+    LOG(TRACE) << "resizing index " << cb.c_str() << " done";
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << size;
   }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
@@ -1428,5 +1427,3 @@ class AssocMulti {
 }  // namespace arangodb
 
 #endif
-
-

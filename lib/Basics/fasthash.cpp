@@ -82,4 +82,3 @@ uint32_t fasthash32(const void* buf, size_t len, uint32_t seed) {
   uint64_t h = fasthash64(buf, len, seed);
   return (uint32_t)(h - (h >> 32));
 }
-

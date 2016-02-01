@@ -24,19 +24,17 @@
 #include "RestJobHandler.h"
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::admin;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
-
-
-
 
 RestJobHandler::RestJobHandler(HttpRequest* request,
                                std::pair<Dispatcher*, AsyncJobManager*>* data)
@@ -44,10 +42,7 @@ RestJobHandler::RestJobHandler(HttpRequest* request,
       _dispatcher(data->first),
       _jobManager(data->second) {}
 
-
-
 bool RestJobHandler::isDirect() const { return true; }
-
 
 HttpHandler::status_t RestJobHandler::execute() {
   // extract the sub-request type
@@ -74,7 +69,6 @@ HttpHandler::status_t RestJobHandler::execute() {
 
   return status_t(HANDLER_DONE);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_job_fetch_result
@@ -294,5 +288,3 @@ void RestJobHandler::deleteJob() {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
 }
-
-

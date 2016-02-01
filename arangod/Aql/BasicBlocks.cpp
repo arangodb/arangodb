@@ -26,11 +26,9 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor, store a copy of the register values coming from
@@ -133,7 +131,6 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
   _done = true;
   return TRI_ERROR_NO_ERROR;
 }
-
 
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
     : ExecutionBlock(engine, en), _inReg(ExecutionNode::MaxRegisterId) {
@@ -321,7 +318,6 @@ bool FilterBlock::hasMore() {
   return true;
 }
 
-
 int LimitBlock::initialize() {
   int res = ExecutionBlock::initialize();
 
@@ -422,7 +418,6 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   return TRI_ERROR_NO_ERROR;
 }
 
-
 AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
@@ -494,7 +489,6 @@ RegisterId ReturnBlock::returnInheritedResults() {
   return it->second.registerId;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor, only call base
 ////////////////////////////////////////////////////////////////////////////////
@@ -511,4 +505,3 @@ int NoResultsBlock::getOrSkipSome(size_t,  // atLeast
   TRI_ASSERT(result == nullptr && skipped == 0);
   return TRI_ERROR_NO_ERROR;
 }
-

@@ -154,7 +154,6 @@ class IndexNode : public ExecutionNode {
 
   std::vector<Index const*> getIndexes() const { return _indexes; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the database
@@ -197,4 +196,3 @@ class IndexNode : public ExecutionNode {
 }  // namespace arangodb
 
 #endif
-

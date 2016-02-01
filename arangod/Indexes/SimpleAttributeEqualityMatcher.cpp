@@ -34,7 +34,6 @@ SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes)
     : _attributes(attributes), _found() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief match a single of the attributes
 /// this is used for the primary index and the edge index
@@ -264,7 +263,6 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
   return node;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the costs of using this index and the number of items
 /// that will return in average
@@ -273,8 +271,8 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 ////////////////////////////////////////////////////////////////////////////////
 
 void SimpleAttributeEqualityMatcher::calculateIndexCosts(
-    arangodb::Index const* index, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) const {
+    arangodb::Index const* index, size_t itemsInIndex, size_t& estimatedItems,
+    double& estimatedCost) const {
   double equalityReductionFactor = 20.0;
 
   if (index->unique()) {
@@ -417,5 +415,3 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
 
   return false;
 }
-
-

@@ -38,8 +38,24 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-const static bool Optional = true;
+// uncomment the following to get some debugging information
+#if 0
+#define ENTER_BLOCK \
+  try {             \
+    (void)0;
+#define LEAVE_BLOCK                                                            \
+  }                                                                            \
+  catch (...) {                                                                \
+    std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ \
+              << ":" << __LINE__ << "!\n";                                     \
+    throw;                                                                     \
+  }
+#else
+#define ENTER_BLOCK
+#define LEAVE_BLOCK
+#endif
 
+static bool const Optional = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum register id that can be assigned.
@@ -76,7 +92,6 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(NORESULTS), "NoResultsNode"},
     {static_cast<int>(UPSERT), "UpsertNode"},
     {static_cast<int>(TRAVERSAL), "TraversalNode"}};
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the type name of the node
@@ -169,7 +184,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                        "invalid groups definition");
       }
-      
+
       arangodb::basics::Json jsonAggregates = oneNode.get("aggregates");
       if (!jsonAggregates.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -189,8 +204,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         }
       }
 
-      std::vector<std::pair<Variable const*, Variable const*>>
-        groupVariables;
+      std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
       {
         size_t const len = jsonGroups.size();
         groupVariables.reserve(len);
@@ -205,9 +219,10 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
           groupVariables.emplace_back(std::make_pair(outVar, inVar));
         }
       }
-      
-      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>
-        aggregateVariables;
+
+      std::vector<
+          std::pair<Variable const*, std::pair<Variable const*, std::string>>>
+          aggregateVariables;
       {
         size_t const len = jsonAggregates.size();
         aggregateVariables.reserve(len);
@@ -219,8 +234,10 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
           Variable* inVar =
               varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
-          std::string const type = JsonHelper::checkAndGetStringValue(oneJsonAggregate.json(), "type");
-          aggregateVariables.emplace_back(std::make_pair(outVar, std::make_pair(inVar, type)));
+          std::string const type = JsonHelper::checkAndGetStringValue(
+              oneJsonAggregate.json(), "type");
+          aggregateVariables.emplace_back(
+              std::make_pair(outVar, std::make_pair(inVar, type)));
         }
       }
 
@@ -416,6 +433,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
 arangodb::basics::Json ExecutionNode::toJson(TRI_memory_zone_t* zone,
                                              bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json nodes =
       arangodb::basics::Json(arangodb::basics::Json::Array, 10);
   toJsonHelper(nodes, zone, verbose);
@@ -424,6 +442,7 @@ arangodb::basics::Json ExecutionNode::toJson(TRI_memory_zone_t* zone,
       arangodb::basics::Json(arangodb::basics::Json::Object, 1)("nodes", nodes);
 
   return json;
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -625,13 +644,13 @@ Variable* ExecutionNode::varFromJson(Ast* ast,
   if (variableJson.isEmpty()) {
     if (optional) {
       return nullptr;
-    } 
-    
+    }
+
     std::string msg;
     msg +=
         "Mandatory variable \"" + std::string(variableName) + "\" not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
-  } 
+  }
 
   return ast->variables()->createVariable(variableJson);
 }
@@ -643,6 +662,7 @@ Variable* ExecutionNode::varFromJson(Ast* ast,
 arangodb::basics::Json ExecutionNode::toJsonHelperGeneric(
     arangodb::basics::Json& nodes, TRI_memory_zone_t* zone,
     bool verbose) const {
+  ENTER_BLOCK
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
     _dependencies[i]->toJsonHelper(nodes, zone, verbose);
@@ -745,7 +765,9 @@ arangodb::basics::Json ExecutionNode::toJsonHelperGeneric(
 
     json("varsValid", jsonvarsValidList);
   }
+
   return json;
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -828,7 +850,6 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   std::cout << std::endl;
   */
 }
-
 
 // Copy constructor used for a subquery:
 ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v,
@@ -1180,7 +1201,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -1191,6 +1211,7 @@ SingletonNode::SingletonNode(ExecutionPlan* plan,
 
 void SingletonNode::toJsonHelper(arangodb::basics::Json& nodes,
                                  TRI_memory_zone_t* zone, bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
@@ -1200,6 +1221,7 @@ void SingletonNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1210,7 +1232,6 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
   nrItems = 1;
   return 1.0;
 }
-
 
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::basics::Json const& base)
@@ -1228,6 +1249,7 @@ EnumerateCollectionNode::EnumerateCollectionNode(
 void EnumerateCollectionNode::toJsonHelper(arangodb::basics::Json& nodes,
                                            TRI_memory_zone_t* zone,
                                            bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
@@ -1243,6 +1265,7 @@ void EnumerateCollectionNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1272,6 +1295,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   size_t incoming;
   double depCost = _dependencies.at(0)->getCost(incoming);
   size_t count = _collection->count();
@@ -1279,8 +1303,8 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   return depCost + nrItems * (_random ? 1.005 : 1.0);
+  LEAVE_BLOCK
 }
-
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
                                      arangodb::basics::Json const& base)
@@ -1295,6 +1319,7 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
 void EnumerateListNode::toJsonHelper(arangodb::basics::Json& nodes,
                                      TRI_memory_zone_t* zone,
                                      bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
@@ -1305,6 +1330,7 @@ void EnumerateListNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1334,6 +1360,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 double EnumerateListNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
 
@@ -1382,8 +1409,8 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
 
   nrItems = length * incoming;
   return depCost + static_cast<double>(length) * incoming;
+  LEAVE_BLOCK
 }
-
 
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -1400,6 +1427,7 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
 
 void LimitNode::toJsonHelper(arangodb::basics::Json& nodes,
                              TRI_memory_zone_t* zone, bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
@@ -1412,6 +1440,7 @@ void LimitNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1419,14 +1448,15 @@ void LimitNode::toJsonHelper(arangodb::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 double LimitNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
   nrItems = (std::min)(_limit,
                        (std::max)(static_cast<size_t>(0), incoming - _offset));
 
   return depCost + nrItems;
+  LEAVE_BLOCK
 }
-
 
 CalculationNode::CalculationNode(ExecutionPlan* plan,
                                  arangodb::basics::Json const& base)
@@ -1444,6 +1474,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
 void CalculationNode::toJsonHelper(arangodb::basics::Json& nodes,
                                    TRI_memory_zone_t* zone,
                                    bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
@@ -1452,8 +1483,8 @@ void CalculationNode::toJsonHelper(arangodb::basics::Json& nodes,
   }
 
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
-       "outVariable", _outVariable->toJson())(
-       "canThrow", arangodb::basics::Json(_expression->canThrow()));
+      "outVariable", _outVariable->toJson())(
+      "canThrow", arangodb::basics::Json(_expression->canThrow()));
 
   if (_conditionVariable != nullptr) {
     json("conditionVariable", _conditionVariable->toJson());
@@ -1463,6 +1494,7 @@ void CalculationNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+  LEAVE_BLOCK
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
@@ -1493,11 +1525,12 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 double CalculationNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
+  LEAVE_BLOCK
 }
-
 
 SubqueryNode::SubqueryNode(ExecutionPlan* plan,
                            arangodb::basics::Json const& base)
@@ -1511,6 +1544,7 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan,
 
 void SubqueryNode::toJsonHelper(arangodb::basics::Json& nodes,
                                 TRI_memory_zone_t* zone, bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
@@ -1521,6 +1555,7 @@ void SubqueryNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+  LEAVE_BLOCK
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1572,10 +1607,12 @@ void SubqueryNode::replaceOutVariable(Variable const* var) {
 ////////////////////////////////////////////////////////////////////////////////
 
 double SubqueryNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   size_t nrItemsSubquery;
   double subCost = _subquery->getCost(nrItemsSubquery);
   return depCost + nrItems * subCost;
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1692,7 +1729,6 @@ bool SubqueryNode::canThrow() {
   return finder._canThrow;
 }
 
-
 FilterNode::FilterNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
@@ -1703,6 +1739,7 @@ FilterNode::FilterNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
 
 void FilterNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
@@ -1713,6 +1750,7 @@ void FilterNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+  LEAVE_BLOCK
 }
 
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1734,6 +1772,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
 ////////////////////////////////////////////////////////////////////////////////
 
 double FilterNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   // We are pessimistic here by not reducing the nrItems. However, in the
   // worst case the filter does not reduce the items at all. Furthermore,
@@ -1745,8 +1784,8 @@ double FilterNode::estimateCost(size_t& nrItems) const {
   // the rule throwing away a FilterNode that is already covered by an
   // IndexNode cannot reduce the costs.
   return depCost + nrItems;
+  LEAVE_BLOCK
 }
-
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -1758,6 +1797,7 @@ ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
 
 void ReturnNode::toJsonHelper(arangodb::basics::Json& nodes,
                               TRI_memory_zone_t* zone, bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
@@ -1769,6 +1809,7 @@ void ReturnNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1795,10 +1836,11 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
 ////////////////////////////////////////////////////////////////////////////////
 
 double ReturnNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
+  LEAVE_BLOCK
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for NoResultsNode
@@ -1806,6 +1848,7 @@ double ReturnNode::estimateCost(size_t& nrItems) const {
 
 void NoResultsNode::toJsonHelper(arangodb::basics::Json& nodes,
                                  TRI_memory_zone_t* zone, bool verbose) const {
+  ENTER_BLOCK
   arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
 
@@ -1815,6 +1858,7 @@ void NoResultsNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1822,7 +1866,9 @@ void NoResultsNode::toJsonHelper(arangodb::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 double NoResultsNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   nrItems = 0;
   return 0.5;  // just to make it non-zero
+  LEAVE_BLOCK
 }
 

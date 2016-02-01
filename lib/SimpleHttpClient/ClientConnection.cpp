@@ -54,8 +54,6 @@
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-using namespace std;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
@@ -71,7 +69,6 @@ ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClientConnection::~ClientConnection() { disconnect(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the socket is still alive
@@ -101,7 +98,6 @@ bool ClientConnection::checkSocket() {
 
   return false;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect
@@ -404,5 +400,3 @@ bool ClientConnection::readable() {
 
   return false;
 }
-
-

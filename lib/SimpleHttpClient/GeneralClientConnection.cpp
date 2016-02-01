@@ -28,8 +28,6 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::httpclient;
-using namespace std;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
@@ -52,7 +50,6 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralClientConnection::~GeneralClientConnection() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new connection from an endpoint
@@ -163,5 +160,3 @@ bool GeneralClientConnection::handleRead(double timeout, StringBuffer& buffer,
   connectionClosed = true;
   return false;
 }
-
-
