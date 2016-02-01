@@ -25,20 +25,14 @@
 
 using namespace arangodb::aql;
 
-
-
 CollectionScanner::CollectionScanner(
-    arangodb::AqlTransaction* trx,
-    TRI_transaction_collection_t* trxCollection)
+    arangodb::AqlTransaction* trx, TRI_transaction_collection_t* trxCollection)
     : trx(trx), trxCollection(trxCollection), totalCount(0) {}
 
 CollectionScanner::~CollectionScanner() {}
 
-
-
 RandomCollectionScanner::RandomCollectionScanner(
-    arangodb::AqlTransaction* trx,
-    TRI_transaction_collection_t* trxCollection)
+    arangodb::AqlTransaction* trx, TRI_transaction_collection_t* trxCollection)
     : CollectionScanner(trx, trxCollection), step(0) {}
 
 int RandomCollectionScanner::scan(std::vector<TRI_doc_mptr_copy_t>& docs,
@@ -58,18 +52,14 @@ int RandomCollectionScanner::forward(size_t batchSize, size_t& skipped) {
   return res;
 }
 
-
 void RandomCollectionScanner::reset() {
   initialPosition.reset();
   position.reset();
   step = 0;
 }
 
-
-
 LinearCollectionScanner::LinearCollectionScanner(
-    arangodb::AqlTransaction* trx,
-    TRI_transaction_collection_t* trxCollection)
+    arangodb::AqlTransaction* trx, TRI_transaction_collection_t* trxCollection)
     : CollectionScanner(trx, trxCollection) {}
 
 int LinearCollectionScanner::scan(std::vector<TRI_doc_mptr_copy_t>& docs,
@@ -85,11 +75,10 @@ int LinearCollectionScanner::forward(size_t batchSize, size_t& skipped) {
   std::vector<TRI_doc_mptr_copy_t> unusedDocs;
   uint64_t toSkip = static_cast<uint64_t>(batchSize);
 
-  int res =
-      trx->readIncremental(trxCollection, unusedDocs, position, 0,
-                           toSkip,  // Will be modified. Will reach 0 if
-                                    // batchSize many docs have been skipped
-                           UINT64_MAX, totalCount);
+  int res = trx->readIncremental(trxCollection, unusedDocs, position, 0,
+                                 toSkip,  // Will be modified. Will reach 0 if
+                                 // batchSize many docs have been skipped
+                                 UINT64_MAX, totalCount);
   uint64_t reallySkipped = static_cast<uint64_t>(batchSize) - toSkip;
   skipped += static_cast<size_t>(reallySkipped);
   TRI_ASSERT(unusedDocs.empty());
@@ -97,5 +86,3 @@ int LinearCollectionScanner::forward(size_t batchSize, size_t& skipped) {
 }
 
 void LinearCollectionScanner::reset() { position.reset(); }
-
-

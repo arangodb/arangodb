@@ -28,13 +28,11 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Wal/Logfile.h"
-#include "Wal/SyncRegion.h"
 
 namespace arangodb {
 namespace wal {
 
 class LogfileManager;
-
 
 class SynchronizerThread : public basics::Thread {
   //////////////////////////////////////////////////////////////////////////////
@@ -45,7 +43,6 @@ class SynchronizerThread : public basics::Thread {
   SynchronizerThread(SynchronizerThread const&) = delete;
   SynchronizerThread& operator=(SynchronizerThread const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the synchronizer thread
@@ -59,7 +56,6 @@ class SynchronizerThread : public basics::Thread {
 
   ~SynchronizerThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stops the synchronizer thread
@@ -73,7 +69,6 @@ class SynchronizerThread : public basics::Thread {
 
   void signalSync();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
@@ -81,7 +76,6 @@ class SynchronizerThread : public basics::Thread {
 
   void run();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief synchronize an unsynchronized region
@@ -95,7 +89,6 @@ class SynchronizerThread : public basics::Thread {
 
   int getLogfileDescriptor(Logfile::IdType);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -140,5 +133,3 @@ class SynchronizerThread : public basics::Thread {
 }
 
 #endif
-
-

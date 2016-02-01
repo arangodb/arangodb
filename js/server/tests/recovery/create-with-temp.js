@@ -36,11 +36,11 @@ var fs = require("fs");
 function runSetup () {
   'use strict';
 
-  var path = fs.join(db._path(), "collection-999999999999");
+  var path = fs.join(db._path(), "collection-999999999999-123456");
   fs.makeDirectory(path);
   fs.write(fs.join(path, ".tmp"), ""); // create .tmp file
 
-  path = fs.join(db._path(), "collection-999999999998.tmp");
+  path = fs.join(db._path(), "collection-999999999998-123456.tmp");
   fs.makeDirectory(path);
 
   internal.debugSegfault("crashing server");

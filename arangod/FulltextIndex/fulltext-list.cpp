@@ -23,7 +23,6 @@
 
 #include "fulltext-list.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we'll set this bit (the highest of a uint32_t) if the list is sorted
 /// if the list is not sorted, this bit is cleared
@@ -40,7 +39,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define GROWTH_FACTOR 1.2
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two entries in a list
@@ -190,7 +188,6 @@ static TRI_fulltext_list_t* IncreaseList(TRI_fulltext_list_t* list,
   return copy;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a list by copying an existing one
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,7 +240,6 @@ TRI_fulltext_list_t* TRI_CreateListFulltextIndex(uint32_t size) {
 void TRI_FreeListFulltextIndex(TRI_fulltext_list_t* list) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the memory usage of a list
@@ -672,5 +668,3 @@ TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex(
     TRI_fulltext_list_t const* list) {
   return GetStart(list);
 }
-
-

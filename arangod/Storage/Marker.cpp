@@ -176,5 +176,3 @@ std::ostream& operator<<(std::ostream& stream,
          << ", size: " << marker->length() << "]";
   return stream;
 }
-
-

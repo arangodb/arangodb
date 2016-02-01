@@ -32,7 +32,6 @@ struct TRI_json_t;
 namespace arangodb {
 namespace basics {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ProgramOptionsDescription
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,11 +39,8 @@ namespace basics {
 class ProgramOptionsDescription {
   friend class ProgramOptions;
 
-  
  public:
-
   ProgramOptionsDescription();
-
 
   explicit ProgramOptionsDescription(std::string const& name);
 
@@ -60,7 +56,6 @@ class ProgramOptionsDescription {
 
   ProgramOptionsDescription& operator=(const ProgramOptionsDescription&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief changes the name
@@ -221,7 +216,6 @@ class ProgramOptionsDescription {
 
   struct TRI_json_t* getDefault(std::string const&) const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief option types
@@ -245,7 +239,6 @@ class ProgramOptionsDescription {
     OPTION_TYPE_TIME
   };
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief computes all names
@@ -281,7 +274,6 @@ class ProgramOptionsDescription {
 
   std::string check(std::string const& name, void* value);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief name of the section
@@ -445,5 +437,3 @@ class ProgramOptionsDescription {
 }
 
 #endif
-
-

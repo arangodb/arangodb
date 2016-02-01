@@ -23,11 +23,9 @@
 
 #include "Syncer.h"
 
-#include "Basics/files.h"
-#include "Basics/json.h"
-#include "Basics/tri-strings.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/json.h"
+#include "Basics/JsonHelper.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -206,8 +204,7 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::applyCollectionDumpMarker(
-    arangodb::Transaction* trx,
-    TRI_transaction_collection_t* trxCollection,
+    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
     TRI_replication_operation_e type, const TRI_voc_key_t key,
     const TRI_voc_rid_t rid, TRI_json_t const* json, std::string& errorMsg) {
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_EDGE) {
@@ -324,8 +321,8 @@ int Syncer::applyCollectionDumpMarker(
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg =
-          "document removal operation failed: " + std::string(TRI_errno_string(res));
+      errorMsg = "document removal operation failed: " +
+                 std::string(TRI_errno_string(res));
     }
 
     return res;
@@ -393,27 +390,6 @@ int Syncer::createCollection(TRI_json_t const* json, TRI_vocbase_col_t** dst) {
       arangodb::basics::JsonHelper::toVelocyPack(json);
 
   VocbaseCollectionInfo params(_vocbase, name.c_str(), builder->slice());
-
-  // wait for "old" collection to be dropped
-  char* dirName =
-      TRI_GetDirectoryCollection(_vocbase->_path, name.c_str(), type, cid);
-
-  if (dirName != nullptr) {
-    char* parameterName = TRI_Concatenate2File(dirName, TRI_VOC_PARAMETER_FILE);
-
-    if (parameterName != nullptr) {
-      int iterations = 0;
-
-      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) &&
-             iterations++ < 1200) {
-        usleep(1000 * 100);
-      }
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, parameterName);
-    }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dirName);
-  }
 
   col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
 
@@ -736,4 +712,3 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
 
   return TRI_ERROR_NO_ERROR;
 }
-

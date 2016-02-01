@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for a fulltext word list
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +34,6 @@ typedef struct TRI_fulltext_wordlist_s {
   uint32_t _numWords;
   char** _words;
 } TRI_fulltext_wordlist_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a wordlist
@@ -57,7 +55,6 @@ void TRI_DestroyWordlistFulltextIndex(TRI_fulltext_wordlist_t*);
 
 void TRI_FreeWordlistFulltextIndex(TRI_fulltext_wordlist_t*);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort a wordlist in place
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,5 +62,3 @@ void TRI_FreeWordlistFulltextIndex(TRI_fulltext_wordlist_t*);
 void TRI_SortWordlistFulltextIndex(TRI_fulltext_wordlist_t*);
 
 #endif
-
-

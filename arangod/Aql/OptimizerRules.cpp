@@ -44,7 +44,6 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using EN = arangodb::aql::ExecutionNode;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a SORT operation for IN right-hand side operands
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,7 +437,8 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
 /// additionally remove all unused aggregate calculations from a COLLECT
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::aql::removeCollectVariablesRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
+                                               ExecutionPlan* plan,
                                                Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::COLLECT, true));
@@ -457,19 +457,22 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt, ExecutionPlan* pl
       modified = true;
     }
 
-    collectNode->clearAggregates([&varsUsedLater, &modified] (std::pair<Variable const*, std::pair<Variable const*, std::string>> const& aggregate) -> bool {
-      if (varsUsedLater.find(aggregate.first) == varsUsedLater.end()) {
-        // result of aggregate function not used later
-        modified = true;
-        return true;
-      }
-      return false;
-    });
+    collectNode->clearAggregates(
+        [&varsUsedLater, &modified](
+            std::pair<Variable const*,
+                      std::pair<Variable const*, std::string>> const& aggregate)
+            -> bool {
+              if (varsUsedLater.find(aggregate.first) == varsUsedLater.end()) {
+                // result of aggregate function not used later
+                modified = true;
+                return true;
+              }
+              return false;
+            });
   }
 
   opt->addPlan(plan, rule, modified);
 }
-
 
 class PropagateConstantAttributesHelper {
  public:
@@ -898,6 +901,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt, ExecutionPlan* plan,
 
       // first, unlink the calculation from the plan
       plan->unlinkNode(n);
+
       // and re-insert into before the current node
       plan->insertDependency(current, n);
       modified = true;
@@ -1050,7 +1054,7 @@ void arangodb::aql::fuseCalculationsRule(Optimizer* opt, ExecutionPlan* plan,
             otherExpression->canRunOnDBServer() ==
                 nn->expression()->canRunOnDBServer()) {
           // found another calculation node
-          auto varsSet(std::move(current->getVariablesSetHere()));
+          auto varsSet(current->getVariablesSetHere());
           if (varsSet.size() == 1) {
             // check if it is a calculation for a variable that we are looking
             // for
@@ -1227,7 +1231,7 @@ void arangodb::aql::splitFiltersRule(Optimizer* opt, ExecutionPlan* plan,
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto inVars(std::move(n->getVariablesUsedHere()));
+    auto inVars(n->getVariablesUsedHere());
     TRI_ASSERT(inVars.size() == 1);
     auto setter = plan->getVarSetBy(inVars[0]->id);
 
@@ -1419,6 +1423,9 @@ class arangodb::aql::RedundantCalculationsReplacer final
         auto node = static_cast<CollectNode*>(en);
         for (auto& variable : node->_groupVariables) {
           variable.second = Variable::replace(variable.second, _replacements);
+        }
+        for (auto& variable : node->_aggregateVariables) {
+          variable.second.first = Variable::replace(variable.second.first, _replacements);
         }
         break;
       }
@@ -3535,12 +3542,136 @@ void arangodb::aql::mergeFilterIntoTraversalRule(Optimizer* opt,
   // These are all the end nodes where we start
   std::vector<ExecutionNode*> nodes(plan->findEndNodes(true));
 
-  bool planAltered = false;
+  bool modified = false;
   for (auto const& n : nodes) {
-    TraversalConditionFinder finder(plan, &planAltered);
+    TraversalConditionFinder finder(plan, &modified);
     n->walk(&finder);
   }
 
-  opt->addPlan(plan, rule, planAltered);
+  opt->addPlan(plan, rule, modified);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pulls out simple subqueries and merges them with the level above
+///
+/// For example, if we have the input query
+///
+/// FOR x IN (
+///     FOR y IN collection FILTER y.value >= 5 RETURN y.test
+///   ) 
+///   RETURN x.a
+///
+/// then this rule will transform it into:
+/// 
+/// FOR tmp IN collection
+///   FILTER tmp.value >= 5 
+///   LET x = tmp.test
+///   RETURN x.a
+////////////////////////////////////////////////////////////////////////////////
+
+void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, 
+                                         ExecutionPlan* plan, 
+                                         Optimizer::Rule const* rule) {
+
+  std::vector<ExecutionNode*> nodes(
+      plan->findNodesOfType(EN::SUBQUERY, true));
+
+  if (nodes.empty()) {
+    opt->addPlan(plan, rule, false);
+    return;
+  }
+
+  bool modified = false;
+
+  for (auto const& n : nodes) {
+    auto subqueryNode = static_cast<SubqueryNode const*>(n);
+  
+    if (subqueryNode->isModificationQuery()) {
+      // can't modify modifying subqueries
+      continue;
+    }
+
+    Variable const* out = subqueryNode->outVariable();
+    TRI_ASSERT(out != nullptr);
+
+    auto current = n;
+    // now check where the subquery is used
+    while (current->hasParent()) {
+      if (current->getType() == EN::ENUMERATE_LIST) {
+        // we're only interested in FOR loops...
+        auto listNode = static_cast<EnumerateListNode*>(current);
+
+        // ...that use our subquery as its input
+        if (listNode->inVariable() == out) {
+          // bingo!
+          auto queryVariables = plan->getAst()->variables();
+          std::vector<ExecutionNode*> subNodes(subqueryNode->getSubquery()->getDependencyChain(true));
+
+          TRI_ASSERT(! subNodes.empty());
+          auto returnNode = static_cast<ReturnNode*>(subNodes[0]);
+          TRI_ASSERT(returnNode->getType() == EN::RETURN);
+
+          modified = true;
+          auto previous = n->getFirstDependency();
+          auto insert = n->getFirstParent();
+          TRI_ASSERT(insert != nullptr);
+  
+          // unlink the original SubqueryNode
+          plan->unlinkNode(n, false);
+           
+          for (auto& it : subNodes) {
+            // first unlink them all
+            plan->unlinkNode(it, true);
+
+            if (it->getType() == EN::SINGLETON) {
+              // reached the singleton node already. that means we can stop
+              break;
+            }
+
+            // and now insert them one level up
+            if (it != returnNode) {
+              // we skip over the subquery's return node. we don't need it anymore
+              insert->removeDependencies();
+              insert->addDependency(it);
+              insert = it;
+
+              // additionally rename the variables from the subquery so they cannot
+              // conflict with the ones from the top query
+              for (auto const& variable : it->getVariablesSetHere()) {
+                queryVariables->renameVariable(variable->id);
+              }
+            }
+          } 
+
+          // link the top node in the subquery with the original plan
+          if (previous != nullptr) {
+            insert->addDependency(previous);
+          }
+
+          // remove the list node from the plan
+          plan->unlinkNode(listNode, false);
+
+          queryVariables->renameVariable(returnNode->inVariable()->id, listNode->outVariable()->name);
+
+          // finally replace the variables
+          std::unordered_map<VariableId, Variable const*> replacements;
+          replacements.emplace(listNode->outVariable()->id, returnNode->inVariable());
+          RedundantCalculationsReplacer finder(replacements);
+          plan->root()->walk(&finder);
+    
+          current = nullptr;
+        }
+      }
+
+      if (current == nullptr) {
+        break;
+      }
+
+      auto const& parents = current->getParents();
+      current = parents[0];
+    }
+  }
+
+  opt->addPlan(plan, rule, modified);
 }
 

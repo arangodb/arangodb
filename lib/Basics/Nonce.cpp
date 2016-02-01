@@ -26,17 +26,13 @@
 
 #include <math.h>
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
-
-// -----------------------------------------------------------------------------
-// statistic nonce buffer
-// -----------------------------------------------------------------------------
 
 namespace {
 Mutex MutexNonce;
@@ -45,47 +41,20 @@ size_t SizeNonces = 16777216;
 
 uint32_t* TimestampNonces = 0;
 
-uint32_t StatisticsNonces[32][5] = {{0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0},
-                                    {0, 0, 0, 0, 0}};
+uint32_t StatisticsNonces[32][5] = {
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
 }
 
 namespace arangodb {
 namespace basics {
 namespace Nonce {
-
-// -----------------------------------------------------------------------------
-// static functions
-// -----------------------------------------------------------------------------
 
 void create(size_t size) {
   if (SizeNonces < 64) {
@@ -151,10 +120,10 @@ bool checkAndMark(std::string const& nonce) {
 }
 
 bool checkAndMark(uint32_t timestamp, uint64_t random) {
-  MUTEX_LOCKER(MutexNonce);
+  MUTEX_LOCKER(mutexLocker, MutexNonce);
 
   if (TimestampNonces == 0) {
-    LOG_TRACE("setting nonce hash size to %d", (int)SizeNonces);
+    LOG(TRACE) << "setting nonce hash size to " << SizeNonces;
     create(SizeNonces);
   }
 
@@ -194,8 +163,7 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
     age >>= 1;
   }
 
-  LOG_TRACE("age of timestamp %ld is %ld (log %ld)", (unsigned long)timestamp,
-            (unsigned long)age, (unsigned long)l2age);
+  LOG(TRACE) << "age of timestamp " << timestamp << " is " << age << " (log " << l2age << ")";
 
   StatisticsNonces[l2age][proofs]++;
 
@@ -219,8 +187,8 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
   return 0 < proofs;
 }
 
-vector<Statistics> statistics() {
-  MUTEX_LOCKER(MutexNonce);
+std::vector<Statistics> statistics() {
+  MUTEX_LOCKER(mutexLocker, MutexNonce);
 
   int const N = 4;
   std::vector<Statistics> result;
@@ -260,5 +228,3 @@ vector<Statistics> statistics() {
 }
 }
 }
-
-

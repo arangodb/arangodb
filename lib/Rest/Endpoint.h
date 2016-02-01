@@ -25,9 +25,7 @@
 #define LIB_REST_ENDPOINT_H 1
 
 #include "Basics/socket-utils.h"
-
 #include "Basics/Common.h"
-#include "Basics/StringUtils.h"
 
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <arpa/inet.h>
@@ -44,7 +42,6 @@
 #include <WS2tcpip.h>
 #endif
 
-
 namespace arangodb {
 namespace rest {
 
@@ -53,7 +50,6 @@ namespace rest {
 ////////////////////////////////////////////////////////////////////////////////
 
 class Endpoint {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief endpoint types
@@ -73,13 +69,12 @@ class Endpoint {
 
   enum EncryptionType { ENCRYPTION_NONE = 0, ENCRYPTION_SSL };
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  Endpoint(const EndpointType, const DomainType, const EncryptionType,
+  Endpoint(EndpointType, DomainType, EncryptionType,
            std::string const&, int);
 
  public:
@@ -89,7 +84,6 @@ class Endpoint {
 
   virtual ~Endpoint();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint specification in a unified form
@@ -212,7 +206,6 @@ class Endpoint {
 
   virtual std::string getHostString() const = 0;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief error message if failure occurred
@@ -220,7 +213,6 @@ class Endpoint {
 
   std::string _errorMessage;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the endpoint is connected
@@ -268,5 +260,3 @@ class Endpoint {
 }
 
 #endif
-
-

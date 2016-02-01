@@ -290,4 +290,3 @@ OF((char* pData, int* dataLen, short sHeader));
 #endif
 
 #endif /* _zip64_H */
-

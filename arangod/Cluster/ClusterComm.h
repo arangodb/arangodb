@@ -25,17 +25,15 @@
 #define ARANGOD_CLUSTER_CLUSTER_COMM_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Logger.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
 #include "Rest/HttpRequest.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/voc-types.h"
 #include "Cluster/AgencyComm.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
+#include "Utils/Transaction.h"
 
 namespace arangodb {
 
@@ -84,8 +82,9 @@ struct ClusterCommResult {
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   OperationID operationID;
-  ShardID shardID;
-  ServerID serverID;  // the actual server ID of the sender
+  ShardID shardID;       // the shard to which we want to send, can be empty
+  ServerID serverID;     // the actual server ID of the recipient, can be empty
+  std::string endpoint;  // the actual endpoint of the recipient, always set
   std::string errorMessage;
   ClusterCommOpStatus status;
   bool dropped;  // this is set to true, if the operation
@@ -93,18 +92,32 @@ struct ClusterCommResult {
                  // it is then actually dropped when it has
                  // been sent
   bool invalid;  // can only explicitly be set
+  bool single;   // operation only needs a single round trip (and no request/
+                 // response in the opposite direction
 
-  // The field result is != 0 ifs status is >= CL_COMM_SENT.
+  // Usually, the field result is != nullptr if status is >=
+  // CL_COMM_SENT. As an exception to this rule, if status is
+  // CL_COMM_SENT and the error occurred already before the connection
+  // could be opened, then result is still nullptr.
   // Note that if status is CL_COMM_TIMEOUT, then the result
-  // field is a response object that only says "timeout"
+  // field is a response object that only says "timeout".
   std::shared_ptr<httpclient::SimpleHttpResult> result;
-  // the field answer is != 0 if status is == CL_COMM_RECEIVED
+  // the field answer is != nullptr if status is == CL_COMM_RECEIVED
   // answer_code is valid iff answer is != 0
   std::shared_ptr<rest::HttpRequest> answer;
   rest::HttpResponse::HttpResponseCode answer_code;
 
   ClusterCommResult()
-      : dropped(false), invalid(false), answer_code(rest::HttpResponse::OK) {}
+      : dropped(false),
+        invalid(false),
+        single(false),
+        answer_code(rest::HttpResponse::OK) {}
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief routine to set the destination
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setDestination(std::string const& dest, bool logConnectionErrors);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +173,6 @@ struct ClusterCommOperation {
 void ClusterCommRestCallback(std::string& coordinator,
                              rest::HttpResponse* response);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the class for the cluster communications library
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +180,6 @@ void ClusterCommRestCallback(std::string& coordinator,
 class ClusterComm {
   friend class ClusterCommThread;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
   ///
@@ -187,7 +198,6 @@ class ClusterComm {
  public:
   ~ClusterComm();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the unique instance
   //////////////////////////////////////////////////////////////////////////////
@@ -241,8 +251,8 @@ class ClusterComm {
       rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
       std::shared_ptr<std::string const> body,
       std::unique_ptr<std::map<std::string, std::string>>& headerFields,
-      std::shared_ptr<ClusterCommCallback> callback,
-      ClusterCommTimeout timeout);
+      std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
+      bool singleRequest = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit a single HTTP request to a shard synchronously.
@@ -295,7 +305,6 @@ class ClusterComm {
   void asyncAnswer(std::string& coordinatorHeader,
                    rest::HttpResponse* responseToSend);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
@@ -379,13 +388,11 @@ class ClusterComm {
 
 };  // end of class ClusterComm
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our background communications thread
 ////////////////////////////////////////////////////////////////////////////////
 
 class ClusterCommThread : public basics::Thread {
-  
  private:
   ClusterCommThread(ClusterCommThread const&);
   ClusterCommThread& operator=(ClusterCommThread const&);
@@ -403,7 +410,6 @@ class ClusterCommThread : public basics::Thread {
 
   ~ClusterCommThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the ClusterCommThread
@@ -420,7 +426,7 @@ class ClusterCommThread : public basics::Thread {
       return;
     }
 
-    LOG_TRACE("stopping ClusterCommThread");
+    LOG(TRACE) << "stopping ClusterCommThread";
 
     _stop = 1;
     _condition.signal();
@@ -430,7 +436,6 @@ class ClusterCommThread : public basics::Thread {
     }
   }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ClusterCommThread main loop
@@ -438,9 +443,7 @@ class ClusterCommThread : public basics::Thread {
 
   void run();
 
-  
  private:
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyComm instance
@@ -463,5 +466,3 @@ class ClusterCommThread : public basics::Thread {
 }  // namespace arangodb
 
 #endif
-
-

@@ -23,12 +23,15 @@
 
 #include "V8QueueJob.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -39,34 +42,22 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8QueueJob::V8QueueJob(size_t queue, TRI_vocbase_t* vocbase,
-                       ApplicationV8* v8Dealer, TRI_json_t const* parameters)
+                       ApplicationV8* v8Dealer,
+                       std::shared_ptr<VPackBuilder> parameters)
     : Job("V8 Queue Job"),
       _queue(queue),
       _vocbase(vocbase),
       _v8Dealer(v8Dealer),
-      _parameters(nullptr),
-      _canceled(false) {
-  if (parameters != nullptr) {
-    // create our own copy of the parameters
-    _parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-  }
-}
+      _parameters(parameters),
+      _canceled(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8QueueJob::~V8QueueJob() {
-  if (_parameters != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
-    _parameters = nullptr;
-  }
-}
-
-
+V8QueueJob::~V8QueueJob() {}
 
 size_t V8QueueJob::queue() const { return _queue; }
-
 
 void V8QueueJob::work() {
   if (_canceled) {
@@ -95,7 +86,7 @@ void V8QueueJob::work() {
       v8::Handle<v8::Value> fArgs;
 
       if (_parameters != nullptr) {
-        fArgs = TRI_ObjectJson(isolate, _parameters);
+        fArgs = TRI_VPackToV8(isolate, _parameters->slice());
       } else {
         fArgs = v8::Undefined(isolate);
       }
@@ -112,19 +103,15 @@ void V8QueueJob::work() {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG_WARNING(
-                "caught non-catchable exception (aka termination) in V8 queue "
-                "job");
+            LOG(WARN) << "caught non-catchable exception (aka termination) in V8 queue job";
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG_ERROR("caught exception in V8 queue job: %s %s",
-                  TRI_errno_string(ex.code()), ex.what());
+        LOG(ERR) << "caught exception in V8 queue job: " << TRI_errno_string(ex.code()) << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG_ERROR("caught exception in V8 queue job: %s",
-                  TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+        LOG(ERR) << "caught exception in V8 queue job: " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
-        LOG_ERROR("caught unknown exception in V8 queue job");
+        LOG(ERR) << "caught unknown exception in V8 queue job";
       }
     }
   }
@@ -132,19 +119,14 @@ void V8QueueJob::work() {
   _v8Dealer->exitContext(context);
 }
 
-
 bool V8QueueJob::cancel() {
   _canceled = true;
   return true;
 }
-
 
 void V8QueueJob::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
 
-
 void V8QueueJob::handleError(Exception const& ex) {}
-
-

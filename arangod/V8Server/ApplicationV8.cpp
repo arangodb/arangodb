@@ -35,7 +35,7 @@
 #include "Basics/Thread.h"
 #include "Basics/WorkMonitor.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
@@ -44,6 +44,7 @@
 #include "Rest/HttpRequest.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "Scheduler/Scheduler.h"
+#include "Utils/V8TransactionContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
@@ -62,9 +63,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-
 using namespace arangodb::rest;
-using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the routing cache
@@ -128,7 +127,7 @@ class V8GcThread : public Thread {
   /// @brief collect garbage in an endless loop (main functon of GC thread)
   //////////////////////////////////////////////////////////////////////////////
 
-  void run() { _applicationV8->collectGarbage(); }
+  void run() override { _applicationV8->collectGarbage(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timestamp of the last GC
@@ -164,7 +163,7 @@ bool ApplicationV8::V8Context::addGlobalContextMethod(
     return false;
   }
 
-  MUTEX_LOCKER(_globalMethodsLock);
+  MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
 
   for (auto& it : _globalMethods) {
     if (it == type) {
@@ -191,7 +190,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods() {
     // this avoids potential deadlocks when one of the executed functions itself
     // registers a context method
 
-    MUTEX_LOCKER(_globalMethodsLock);
+    MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
     copy.swap(_globalMethods);
   } catch (...) {
     // if we failed, we shouldn't have modified _globalMethods yet, so we can
@@ -204,8 +203,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods() {
     // all functions are hard-coded, static const char*s
     TRI_ASSERT(func != nullptr);
 
-    LOG_DEBUG("executing global context method '%s' for context %d", func,
-              (int)_id);
+    LOG(DEBUG) << "executing global context method '" << func << "' for context " << _id;
 
     TRI_GET_GLOBALS();
     bool allowUseDatabase = v8g->_allowUseDatabase;
@@ -234,7 +232,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods() {
 void ApplicationV8::V8Context::handleCancelationCleanup() {
   v8::HandleScope scope(isolate);
 
-  LOG_DEBUG("executing cancelation cleanup context %d", (int)_id);
+  LOG(DEBUG) << "executing cancelation cleanup context " << _id;
 
   TRI_ExecuteJavaScriptString(
       isolate, isolate->GetCurrentContext(),
@@ -344,7 +342,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext(TRI_vocbase_t* vocbase,
         }
       }
 
-      LOG_DEBUG("waiting for V8 context %d to become available", (int)id);
+      LOG(DEBUG) << "waiting for V8 context " << id << " to become available";
       usleep(100 * 1000);
     }
 
@@ -360,7 +358,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext(TRI_vocbase_t* vocbase,
     CONDITION_LOCKER(guard, _contextCondition);
 
     while (_freeContexts.empty() && !_stopping) {
-      LOG_DEBUG("waiting for unused V8 context");
+      LOG(DEBUG) << "waiting for unused V8 context";
 
       if (!_dirtyContexts.empty()) {
         // we'll use a dirty context in this case
@@ -387,7 +385,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext(TRI_vocbase_t* vocbase,
       return nullptr;
     }
 
-    LOG_TRACE("found unused V8 context");
+    LOG(TRACE) << "found unused V8 context";
     TRI_ASSERT(!_freeContexts.empty());
 
     context = _freeContexts.back();
@@ -426,7 +424,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext(TRI_vocbase_t* vocbase,
 
     TRI_UseVocBase(vocbase);
 
-    LOG_TRACE("entering V8 context %d", (int)context->_id);
+    LOG(TRACE) << "entering V8 context " << context->_id;
     context->handleGlobalContextMethods();
   }
 
@@ -441,7 +439,7 @@ void ApplicationV8::exitContext(V8Context* context) {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   TRI_ASSERT(gc != nullptr);
 
-  LOG_TRACE("leaving V8 context %d", (int)context->_id);
+  LOG(TRACE) << "leaving V8 context " << context->_id;
   double lastGc = gc->getLastGcStamp();
 
   auto isolate = context->isolate;
@@ -466,7 +464,7 @@ void ApplicationV8::exitContext(V8Context* context) {
   bool runGlobal = false;
 
   {
-    MUTEX_LOCKER(context->_globalMethodsLock);
+    MUTEX_LOCKER(mutexLocker, context->_globalMethodsLock);
     runGlobal = !context->_globalMethods.empty();
   }
 
@@ -503,21 +501,17 @@ void ApplicationV8::exitContext(V8Context* context) {
   v8g->_vocbase = nullptr;
   v8g->_allowUseDatabase = false;
 
-  LOG_TRACE("returned dirty V8 context");
+  LOG(TRACE) << "returned dirty V8 context";
 
   // default is false
   bool performGarbageCollection = false;
 
   // postpone garbage collection for standard contexts
   if (context->_lastGcStamp + _gcFrequency < lastGc) {
-    LOG_TRACE(
-        "V8 context has reached GC timeout threshold and will be scheduled for "
-        "GC");
+    LOG(TRACE) << "V8 context has reached GC timeout threshold and will be scheduled for GC";
     performGarbageCollection = true;
   } else if (context->_numExecutions >= _gcInterval) {
-    LOG_TRACE(
-        "V8 context has reached maximum number of requests and will be "
-        "scheduled for GC");
+    LOG(TRACE) << "V8 context has reached maximum number of requests and will be scheduled for GC";
     performGarbageCollection = true;
   }
 
@@ -572,7 +566,7 @@ void ApplicationV8::collectGarbage() {
   // can be performed more early for all dirty contexts. The flag is set
   // to false again once all contexts have been cleaned up and there is nothing
   // more to do
-  volatile bool useReducedWait = false;
+  bool useReducedWait = false;
   bool preferFree = false;
 
   // the time we'll wait for a signal
@@ -595,10 +589,6 @@ void ApplicationV8::collectGarbage() {
 
         // we'll wait for a signal or a timeout
         gotSignal = guard.wait(waitTime);
-
-        // use a reduced wait time in the next round because we seem to be idle
-        // the reduced wait time will allow to perfom GC for more contexts
-        useReducedWait = !gotSignal;
       }
 
       if (preferFree && !_freeContexts.empty()) {
@@ -640,11 +630,7 @@ void ApplicationV8::collectGarbage() {
     if (context != nullptr) {
       arangodb::CustomWorkStack custom("V8 GC", (uint64_t)context->_id);
 
-      LOG_TRACE(
-          "collecting V8 garbage in context #%d, numExecutions: %d, hasActive: "
-          "%d, wasDirty: %d",
-          (int)context->_id, (int)context->_numExecutions,
-          (int)context->_hasActiveExternals, (int)wasDirty);
+      LOG(TRACE) << "collecting V8 garbage in context #" << context->_id << ", numExecutions: " << context->_numExecutions << ", hasActive: " << context->_hasActiveExternals << ", wasDirty: " << wasDirty;
       bool hasActiveExternals = false;
       auto isolate = context->isolate;
       TRI_ASSERT(context->_locker == nullptr);
@@ -707,7 +693,7 @@ void ApplicationV8::disableActions() { _useActions = false; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
-  LOG_TRACE("starting database init/upgrade");
+  LOG(TRACE) << "starting database init/upgrade";
 
   // enter context and isolate
   V8Context* context = _contexts[0];
@@ -725,7 +711,7 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
 
     // run upgrade script
     if (!skip) {
-      LOG_DEBUG("running database init/upgrade");
+      LOG(DEBUG) << "running database init/upgrade";
 
       auto unuser(_server->_databasesProtector.use());
       auto theLists = _server->_databasesLists.load();
@@ -749,21 +735,15 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
                   TRI_V8_ASCII_STRING("UPGRADE_STARTED"))) {
             localContext->Exit();
             if (perform) {
-              LOG_FATAL_AND_EXIT(
-                  "Database '%s' upgrade failed. Please inspect the logs from "
-                  "the upgrade procedure",
-                  vocbase->_name);
+              LOG(FATAL) << "Database '" << vocbase->_name << "' upgrade failed. Please inspect the logs from the upgrade procedure"; FATAL_ERROR_EXIT();
             } else {
-              LOG_FATAL_AND_EXIT(
-                  "Database '%s' needs upgrade. Please start the server with "
-                  "the --upgrade option",
-                  vocbase->_name);
+              LOG(FATAL) << "Database '" << vocbase->_name << "' needs upgrade. Please start the server with the --upgrade option"; FATAL_ERROR_EXIT();
             }
           } else {
-            LOG_FATAL_AND_EXIT("JavaScript error during server start");
+            LOG(FATAL) << "JavaScript error during server start"; FATAL_ERROR_EXIT();
           }
 
-          LOG_DEBUG("database '%s' init/upgrade done", vocbase->_name);
+          LOG(DEBUG) << "database '" << vocbase->_name << "' init/upgrade done";
         }
       }
     }
@@ -781,7 +761,7 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
   if (perform) {
     // issue #391: when invoked with --upgrade, the server will not always shut
     // down
-    LOG_INFO("database upgrade passed");
+    LOG(INFO) << "database upgrade passed";
 
     // regular shutdown... wait for all threads to finish
 
@@ -799,16 +779,15 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
       res |= TRI_JoinThread(&vocbase->_cleanup);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_ERROR("unable to join database threads for database '%s'",
-                  vocbase->_name);
+        LOG(ERR) << "unable to join database threads for database '" << vocbase->_name << "'";
       }
     }
 
-    LOG_INFO("finished");
+    LOG(INFO) << "finished";
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   } else {
     // and return from the context
-    LOG_TRACE("finished database init/upgrade");
+    LOG(TRACE) << "finished database init/upgrade";
   }
 }
 
@@ -818,7 +797,7 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
 
 void ApplicationV8::versionCheck() {
   int result = 1;
-  LOG_TRACE("starting version check");
+  LOG(TRACE) << "starting version check";
 
   // enter context and isolate
   V8Context* context = _contexts[0];
@@ -834,7 +813,7 @@ void ApplicationV8::versionCheck() {
     v8::Context::Scope contextScope(localContext);
 
     // run upgrade script
-    LOG_DEBUG("running database version check");
+    LOG(DEBUG) << "running database version check";
 
     // can do this without a lock as this is the startup
 
@@ -850,10 +829,7 @@ void ApplicationV8::versionCheck() {
           TRI_CheckDatabaseVersion(vocbase, &_startupLoader, localContext);
 
       if (status < 0) {
-        LOG_FATAL_AND_EXIT(
-            "Database version check failed for '%s'. Please inspect the logs "
-            "from any errors",
-            vocbase->_name);
+        LOG(FATAL) << "Database version check failed for '" << vocbase->_name << "'. Please inspect the logs from any errors"; FATAL_ERROR_EXIT();
       } else if (status == 3) {
         result = 3;
       } else if (status == 2 && result == 1) {
@@ -885,8 +861,7 @@ void ApplicationV8::versionCheck() {
     res |= TRI_JoinThread(&vocbase->_cleanup);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to join database threads for database '%s'",
-                vocbase->_name);
+      LOG(ERR) << "unable to join database threads for database '" << vocbase->_name << "'";
     }
   }
 
@@ -917,7 +892,7 @@ void ApplicationV8::setupOptions(
       "javascript.gc-frequency", &_gcFrequency,
       "JavaScript time-based garbage collection frequency (each x seconds)")(
       "javascript.app-path", &_appPath,
-      "directory for Foxx applications (normal mode)")(
+      "directory for Foxx applications")(
       "javascript.startup-directory", &_startupPath,
       "path to the directory containing JavaScript startup scripts")(
       "javascript.v8-options", &_v8Options, "options to pass to v8");
@@ -941,8 +916,7 @@ void ApplicationV8::setupOptions(
 bool ApplicationV8::prepare() {
   // check the startup path
   if (_startupPath.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "no 'javascript.startup-directory' has been supplied, giving up");
+    LOG(FATAL) << "no 'javascript.startup-directory' has been supplied, giving up"; FATAL_ERROR_EXIT();
   }
 
   // remove trailing / from path
@@ -962,13 +936,12 @@ bool ApplicationV8::prepare() {
       paths.push_back(std::string("dev application '" + _devAppPath + "'"));
     }
 
-    LOG_INFO("JavaScript using %s", StringUtils::join(paths, ", ").c_str());
+    LOG(INFO) << "JavaScript using " << StringUtils::join(paths, ", ").c_str();
   }
 
   // check whether app-path was specified
   if (_appPath.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "no value has been specified for --javascript.app-path.");
+    LOG(FATAL) << "no value has been specified for --javascript.app-path."; FATAL_ERROR_EXIT();
   }
 
   _startupLoader.setDirectory(_startupPath);
@@ -976,7 +949,7 @@ bool ApplicationV8::prepare() {
 
   // add v8 options
   if (!_v8Options.empty()) {
-    LOG_INFO("using V8 options '%s'", _v8Options.c_str());
+    LOG(INFO) << "using V8 options '" << _v8Options.c_str() << "'";
     v8::V8::SetFlagsFromString(_v8Options.c_str(), (int)_v8Options.size());
   }
 
@@ -1007,7 +980,7 @@ bool ApplicationV8::prepare2() {
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts = new V8Context*[nrInstances];
+    _contexts = new V8Context* [nrInstances];
   }
 
   std::vector<std::thread> threads;
@@ -1046,12 +1019,11 @@ void ApplicationV8::close() {
 
   for (size_t n = 0; n < 10 * 5; ++n) {
     if (_busyContexts.empty()) {
-      LOG_DEBUG("no busy V8 contexts");
+      LOG(DEBUG) << "no busy V8 contexts";
       break;
     }
 
-    LOG_DEBUG("waiting for %d busy V8 contexts to finish",
-              (int)_busyContexts.size());
+    LOG(DEBUG) << "waiting for " << _busyContexts.size() << " busy V8 contexts to finish";
 
     guard.wait(100000);
   }
@@ -1063,7 +1035,7 @@ void ApplicationV8::stop() {
     CONDITION_LOCKER(guard, _contextCondition);
 
     for (auto& it : _busyContexts) {
-      LOG_WARNING("sending termination signal to V8 context");
+      LOG(WARN) << "sending termination signal to V8 context";
       v8::V8::TerminateExecution(it->isolate);
     }
   }
@@ -1081,14 +1053,14 @@ void ApplicationV8::stop() {
     }
   }
 
-  LOG_DEBUG("Waiting for GC Thread to finish action");
+  LOG(DEBUG) << "Waiting for GC Thread to finish action";
 
   // wait until garbage collector thread is done
   while (!_gcFinished) {
     usleep(10000);
   }
 
-  LOG_DEBUG("Commanding GC Thread to terminate");
+  LOG(DEBUG) << "Commanding GC Thread to terminate";
   // stop GC thread
   _gcThread->shutdown();
 
@@ -1105,7 +1077,7 @@ void ApplicationV8::stop() {
     delete[] _contexts;
   }
 
-  LOG_DEBUG("Shutting down V8");
+  LOG(DEBUG) << "Shutting down V8";
 
   v8::V8::Dispose();
   v8::V8::ShutdownPlatform();
@@ -1198,7 +1170,7 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
   V8Context* context = _contexts[i] = new V8Context();
 
   if (context == nullptr) {
-    LOG_FATAL_AND_EXIT("cannot initialize V8 context #%d", (int)i);
+    LOG(FATAL) << "cannot initialize V8 context #" << i; FATAL_ERROR_EXIT();
   }
 
   TRI_ASSERT(context->_locker == nullptr);
@@ -1227,7 +1199,7 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     context->_context.Reset(context->isolate, localContext);
 
     if (context->_context.IsEmpty()) {
-      LOG_FATAL_AND_EXIT("cannot initialize V8 engine");
+      LOG(FATAL) << "cannot initialize V8 engine"; FATAL_ERROR_EXIT();
     }
 
     v8::Handle<v8::Object> globalObj = localContext->Global();
@@ -1301,18 +1273,16 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     }
 
     // load all init files
-    for (size_t j = 0; j < files.size(); ++j) {
-      switch (_startupLoader.loadScript(isolate, localContext, files[j])) {
+    for (auto& file : files) {
+      switch (_startupLoader.loadScript(isolate, localContext, file)) {
         case JSLoader::eSuccess:
-          LOG_TRACE("loaded JavaScript file '%s'", files[j].c_str());
+          LOG(TRACE) << "loaded JavaScript file '" << file.c_str() << "'";
           break;
         case JSLoader::eFailLoad:
-          LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'",
-                             files[j].c_str());
+          LOG(FATAL) << "cannot load JavaScript file '" << file.c_str() << "'"; FATAL_ERROR_EXIT();
           break;
         case JSLoader::eFailExecute:
-          LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'",
-                             files[j].c_str());
+          LOG(FATAL) << "error during execution of JavaScript file '" << file.c_str() << "'"; FATAL_ERROR_EXIT();
           break;
       }
     }
@@ -1335,7 +1305,7 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
   context->_hasActiveExternals = hasActiveExternals;
   context->_lastGcStamp = TRI_microtime() + randomWait;
 
-  LOG_TRACE("initialized V8 context #%d", (int)i);
+  LOG(TRACE) << "initialized V8 context #" << i;
 
   _freeContexts.emplace_back(context);
 
@@ -1374,16 +1344,13 @@ void ApplicationV8::prepareV8Server(size_t i, std::string const& startupFile) {
     // load server startup file
     switch (_startupLoader.loadScript(isolate, localContext, startupFile)) {
       case JSLoader::eSuccess:
-        LOG_TRACE("loaded JavaScript file '%s'", startupFile.c_str());
+        LOG(TRACE) << "loaded JavaScript file '" << startupFile.c_str() << "'";
         break;
       case JSLoader::eFailLoad:
-        LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'",
-                           startupFile.c_str());
+        LOG(FATAL) << "cannot load JavaScript utilities from file '" << startupFile.c_str() << "'"; FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
-        LOG_FATAL_AND_EXIT(
-            "error during execution of JavaScript utilities from file '%s'",
-            startupFile.c_str());
+        LOG(FATAL) << "error during execution of JavaScript utilities from file '" << startupFile.c_str() << "'"; FATAL_ERROR_EXIT();
         break;
     }
 
@@ -1395,7 +1362,7 @@ void ApplicationV8::prepareV8Server(size_t i, std::string const& startupFile) {
   context->_locker = nullptr;
 
   // initialize garbage collection for context
-  LOG_TRACE("initialized V8 server #%d", (int)i);
+  LOG(TRACE) << "initialized V8 server #" << i;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1403,7 +1370,7 @@ void ApplicationV8::prepareV8Server(size_t i, std::string const& startupFile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::shutdownV8Instance(size_t i) {
-  LOG_TRACE("shutting down V8 context #%d", (int)i);
+  LOG(TRACE) << "shutting down V8 context #" << i;
 
   V8Context* context = _contexts[i];
 
@@ -1427,7 +1394,7 @@ void ApplicationV8::shutdownV8Instance(size_t i) {
       while (tries++ < 10 &&
              TRI_RunGarbageCollectionV8(isolate, availableTime)) {
         if (tries > 3) {
-          LOG_WARNING("waiting for garbage v8 collection to end");
+          LOG(WARN) << "waiting for garbage v8 collection to end";
         }
       }
     } else {
@@ -1455,5 +1422,5 @@ void ApplicationV8::shutdownV8Instance(size_t i) {
 
   delete context;
 
-  LOG_TRACE("closed V8 context #%d", (int)i);
+  LOG(TRACE) << "closed V8 context #" << i;
 }

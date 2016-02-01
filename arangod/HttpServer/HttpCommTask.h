@@ -42,7 +42,6 @@ class HttpResponse;
 class HttpServer;
 class HttpServerJob;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief http communication
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +50,6 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   HttpCommTask(HttpCommTask const&) = delete;
   HttpCommTask const& operator=(HttpCommTask const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new task
@@ -67,7 +65,6 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
  protected:
   ~HttpCommTask();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles response
@@ -99,7 +96,6 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   void setupDone();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reads data from the socket
@@ -159,32 +155,22 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   int32_t getCompatibility() const;
 
-  
  protected:
-
   bool setup(Scheduler* scheduler, EventLoop loop) override;
-
 
   void cleanup() override;
 
-
   bool handleEvent(EventToken token, EventType events) override;
-
 
   void signalTask(TaskData*) override;
 
-  
  protected:
-
   bool handleRead() override;
-
 
   void completedWriteBuffer() override;
 
-
   void handleTimeout() override;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connection info
@@ -198,7 +184,6 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   HttpServer* const _server;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write buffers
@@ -352,5 +337,3 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 }
 
 #endif
-
-

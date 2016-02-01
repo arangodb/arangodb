@@ -33,7 +33,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/WorkMonitor.h"
 
 #include <velocypack/Builder.h>
@@ -127,7 +127,7 @@ Thread::Thread(std::string const& name)
 Thread::~Thread() {
   if (_running) {
     if (!isSilent()) {
-      LOG_WARNING("forcefully shutting down thread '%s'", _name.c_str());
+      LOG(WARN) << "forcefully shutting down thread '" << _name.c_str() << "'";
     }
 
     int res = TRI_StopThread(&_thread);
@@ -136,8 +136,7 @@ Thread::~Thread() {
       errno = res;
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-      LOG_WARNING("unable to stop thread '%s': %s", _name.c_str(),
-                  TRI_last_error());
+      LOG(WARN) << "unable to stop thread '" << _name.c_str() << "': " << TRI_last_error();
     }
   }
 
@@ -149,8 +148,7 @@ Thread::~Thread() {
       errno = res;
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-      LOG_WARNING("unable to detach thread '%s': %s", _name.c_str(),
-                  TRI_last_error());
+      LOG(WARN) << "unable to detach thread '" << _name.c_str() << "': " << TRI_last_error();
     }
   }
 }
@@ -193,7 +191,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   _finishedCondition = finishedCondition;
 
   if (_started) {
-    LOG_FATAL_AND_EXIT("called started on an already started thread");
+    LOG(FATAL) << "called started on an already started thread"; FATAL_ERROR_EXIT();
   }
 
   _started = true;
@@ -202,8 +200,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
       TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
   if (!ok) {
-    LOG_ERROR("could not start thread '%s': %s", _name.c_str(),
-              strerror(errno));
+    LOG(ERR) << "could not start thread '" << _name.c_str() << "': " << strerror(errno);
   }
 
   if (0 <= _affinity) {
@@ -219,7 +216,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
 int Thread::stop() {
   if (_running) {
-    LOG_TRACE("trying to cancel (aka stop) the thread '%s'", _name.c_str());
+    LOG(TRACE) << "trying to cancel (aka stop) the thread '" << _name.c_str() << "'";
     return TRI_StopThread(&_thread);
   }
 
@@ -267,8 +264,7 @@ int Thread::shutdown() {
       errno = res;
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-      LOG_WARNING("unable to stop thread '%s': %s", _name.c_str(),
-                  TRI_last_error());
+      LOG(WARN) << "unable to stop thread '" << _name.c_str() << "': " << TRI_last_error();
     }
   }
 
@@ -322,18 +318,13 @@ void Thread::allowAsynchronousCancelation() {
   if (_started) {
     if (_running) {
       if (TRI_IsSelfThread(&_thread)) {
-        LOG_DEBUG("set asynchronous cancelation for thread '%s'",
-                  _name.c_str());
+        LOG(DEBUG) << "set asynchronous cancelation for thread '" << _name.c_str() << "'";
         TRI_AllowCancelation();
       } else {
-        LOG_ERROR(
-            "cannot change cancelation type of an already running thread from "
-            "the outside");
+        LOG(ERR) << "cannot change cancelation type of an already running thread from the outside";
       }
     } else {
-      LOG_WARNING(
-          "thread has already stopped, it is useless to change the cancelation "
-          "type");
+      LOG(WARN) << "thread has already stopped, it is useless to change the cancelation type";
     }
   } else {
     _asynchronousCancelation = true;
@@ -342,7 +333,7 @@ void Thread::allowAsynchronousCancelation() {
 
 void Thread::runMe() {
   if (_asynchronousCancelation) {
-    LOG_DEBUG("set asynchronous cancelation for thread '%s'", _name.c_str());
+    LOG(DEBUG) << "set asynchronous cancelation for thread '" << _name.c_str() << "'";
     TRI_AllowCancelation();
   }
 
@@ -351,17 +342,17 @@ void Thread::runMe() {
   try {
     run();
   } catch (Exception const& ex) {
-    LOG_ERROR("exception caught in thread '%s': %s", _name.c_str(), ex.what());
+    LOG(ERR) << "exception caught in thread '" << _name.c_str() << "': " << ex.what();
     TRI_FlushLogging();
     throw;
   } catch (std::exception const& ex) {
-    LOG_ERROR("exception caught in thread '%s': %s", _name.c_str(), ex.what());
+    LOG(ERR) << "exception caught in thread '" << _name.c_str() << "': " << ex.what();
     TRI_FlushLogging();
     throw;
   } catch (...) {
     _running = false;
     if (!isSilent()) {
-      LOG_ERROR("exception caught in thread '%s'", _name.c_str());
+      LOG(ERR) << "exception caught in thread '" << _name.c_str() << "'";
       TRI_FlushLogging();
     }
     throw;

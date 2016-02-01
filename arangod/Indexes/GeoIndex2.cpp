@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeoIndex2.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
@@ -86,7 +86,6 @@ GeoIndex2::~GeoIndex2() {
   }
 }
 
-
 size_t GeoIndex2::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +127,7 @@ void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
     return;
   }
 
-  // Basic index 
+  // Basic index
   Index::toVelocyPack(builder, withFigures);
 
   if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
@@ -148,8 +147,7 @@ void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   builder.add("sparse", VPackValue(true));
 }
 
-int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
-                      bool) {
+int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   auto shaper =
       _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
@@ -186,12 +184,12 @@ int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
   int res = GeoIndex_insert(_geoIndex, &gc);
 
   if (res == -1) {
-    LOG_WARNING("found duplicate entry in geo-index, should not happen");
+    LOG(WARN) << "found duplicate entry in geo-index, should not happen";
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   } else if (res == -2) {
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   } else if (res == -3) {
-    LOG_DEBUG("illegal geo-coordinates, ignoring entry");
+    LOG(DEBUG) << "illegal geo-coordinates, ignoring entry";
     return TRI_ERROR_NO_ERROR;
   } else if (res < 0) {
     return TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -200,8 +198,7 @@ int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
 
-int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
-                      bool) {
+int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   TRI_shaped_json_t shapedJson;
 
   auto shaper =
@@ -239,9 +236,8 @@ int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
 /// @brief looks up all points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx,
-                                       double lat, double lon,
-                                       double radius) const {
+GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx, double lat,
+                                       double lon, double radius) const {
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
@@ -253,16 +249,14 @@ GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx,
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::nearQuery(arangodb::Transaction* trx,
-                                     double lat, double lon,
-                                     size_t count) const {
+GeoCoordinates* GeoIndex2::nearQuery(arangodb::Transaction* trx, double lat,
+                                     double lon, size_t count) const {
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
 
   return GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a double value from an object
@@ -427,5 +421,3 @@ bool GeoIndex2::extractDoubleArray(VocShaper* shaper,
 
   return false;
 }
-
-

@@ -26,7 +26,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/json-utilities.h"
 
-
 using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,14 +34,11 @@ using namespace arangodb::aql;
 
 size_t const ExecutionBlock::DefaultBatchSize = 1000;
 
-
-
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
       _exeNode(ep),
       _done(false) {}
-
 
 ExecutionBlock::~ExecutionBlock() {
   for (auto& it : _buffer) {
@@ -51,7 +47,6 @@ ExecutionBlock::~ExecutionBlock() {
 
   _buffer.clear();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of rows in a vector of blocks
@@ -169,7 +164,6 @@ AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
   clearRegisters(result.get());
   return result.release();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request an AqlItemBlock from the memory manager
@@ -503,4 +497,3 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   freeCollector();
   return TRI_ERROR_NO_ERROR;
 }
-

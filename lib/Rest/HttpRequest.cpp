@@ -24,7 +24,7 @@
 
 #include "HttpRequest.h"
 #include "Basics/conversions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -35,13 +35,10 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 static char const* EMPTY_STR = "";
-
 
 int32_t const HttpRequest::MinCompatibility = 10300L;
 
@@ -49,7 +46,6 @@ std::string const HttpRequest::BatchContentType =
     "application/x-arango-batchpart";
 
 std::string const HttpRequest::MultiPartContentType = "multipart/form-data";
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief http request constructor
@@ -91,7 +87,6 @@ HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
   }
 }
 
-
 HttpRequest::~HttpRequest() {
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
@@ -116,10 +111,7 @@ HttpRequest::~HttpRequest() {
   }
 }
 
-
-
 char const* HttpRequest::requestPath() const { return _requestPath; }
-
 
 void HttpRequest::write(TRI_string_buffer_t* buffer) const {
   std::string&& method = translateMethod(_type);
@@ -215,9 +207,7 @@ void HttpRequest::write(TRI_string_buffer_t* buffer) const {
   }
 }
 
-
 int64_t HttpRequest::contentLength() const { return _contentLength; }
-
 
 char const* HttpRequest::header(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
@@ -228,7 +218,6 @@ char const* HttpRequest::header(char const* key) const {
     return kv->_value;
   }
 }
-
 
 char const* HttpRequest::header(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
@@ -241,7 +230,6 @@ char const* HttpRequest::header(char const* key, bool& found) const {
     return kv->_value;
   }
 }
-
 
 std::map<std::string, std::string> HttpRequest::headers() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
@@ -264,7 +252,6 @@ std::map<std::string, std::string> HttpRequest::headers() const {
   return result;
 }
 
-
 char const* HttpRequest::value(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
@@ -274,7 +261,6 @@ char const* HttpRequest::value(char const* key) const {
     return kv->_value;
   }
 }
-
 
 char const* HttpRequest::value(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
@@ -287,7 +273,6 @@ char const* HttpRequest::value(char const* key, bool& found) const {
     return kv->_value;
   }
 }
-
 
 std::map<std::string, std::string> HttpRequest::values() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
@@ -308,8 +293,8 @@ std::map<std::string, std::string> HttpRequest::values() const {
   return result;
 }
 
-
-std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues() const {
+std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues()
+    const {
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
 
@@ -328,7 +313,6 @@ std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues() cons
   return result;
 }
 
-
 char const* HttpRequest::cookieValue(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
@@ -338,7 +322,6 @@ char const* HttpRequest::cookieValue(char const* key) const {
     return kv->_value;
   }
 }
-
 
 char const* HttpRequest::cookieValue(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
@@ -351,7 +334,6 @@ char const* HttpRequest::cookieValue(char const* key, bool& found) const {
     return kv->_value;
   }
 }
-
 
 std::map<std::string, std::string> HttpRequest::cookieValues() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
@@ -372,14 +354,11 @@ std::map<std::string, std::string> HttpRequest::cookieValues() const {
   return result;
 }
 
-
 char const* HttpRequest::body() const {
   return _body == nullptr ? EMPTY_STR : _body;
 }
 
-
 size_t HttpRequest::bodySize() const { return _bodySize; }
-
 
 int HttpRequest::setBody(char const* newBody, size_t length) {
   _body = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, newBody, length);
@@ -526,7 +505,9 @@ std::string const& HttpRequest::protocol() const { return _protocol; }
 /// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setProtocol(std::string const& protocol) { _protocol = protocol; }
+void HttpRequest::setProtocol(std::string const& protocol) {
+  _protocol = protocol;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the connection info
@@ -591,7 +572,6 @@ uint64_t HttpRequest::clientTaskId() const { return _clientTaskId; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the header type
@@ -1105,7 +1085,6 @@ void HttpRequest::setValues(char* buffer, char* end) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the prefix path of the request
 ////////////////////////////////////////////////////////////////////////////////
@@ -1160,7 +1139,6 @@ void HttpRequest::setRequestContext(RequestContext* requestContext,
   _isRequestContextOwner = isRequestContextOwner;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translate the HTTP protocol version
 ////////////////////////////////////////////////////////////////////////////////
@@ -1197,7 +1175,7 @@ std::string HttpRequest::translateMethod(HttpRequestType method) {
     return "PUT";
   }
 
-  LOG_WARNING("illegal http request method encountered in switch");
+  LOG(WARN) << "illegal http request method encountered in switch";
   return "UNKNOWN";
 }
 
@@ -1366,5 +1344,3 @@ void HttpRequest::parseCookies(char const* buffer) {
     setCookie(keyBegin, key - keyBegin, valueBegin);
   }
 }
-
-

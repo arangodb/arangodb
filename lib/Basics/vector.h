@@ -44,7 +44,6 @@ static_assert(sizeof(TRI_memory_zone_id_t) == 4,
 static_assert(sizeof(TRI_vector_t) == sizeof(char*) + 4 * sizeof(uint32_t),
               "invalid size for TRI_vector_t");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +180,6 @@ typedef struct TRI_vector_pointer_s {
   size_t _capacity;
 } TRI_vector_pointer_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +203,6 @@ void TRI_DestroyVectorPointer(TRI_vector_pointer_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeVectorPointer(TRI_memory_zone_t*, TRI_vector_pointer_t*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures a vector has space for more items
@@ -244,8 +241,6 @@ void* TRI_RemoveVectorPointer(TRI_vector_pointer_t*, size_t);
 
 void* TRI_AtVectorPointer(TRI_vector_pointer_t const*, size_t);
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief string vector
 ///
@@ -259,7 +254,6 @@ typedef struct TRI_vector_string_s {
   size_t _length;
   size_t _capacity;
 } TRI_vector_string_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a string vector
@@ -285,7 +279,6 @@ void TRI_DestroyVectorString(TRI_vector_string_t*);
 
 void TRI_FreeVectorString(TRI_memory_zone_t*, TRI_vector_string_t*);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element at the end
 ///
@@ -307,5 +300,3 @@ void TRI_RemoveVectorString(TRI_vector_string_t*, size_t n);
 char* TRI_AtVectorString(TRI_vector_string_t const*, size_t);
 
 #endif
-
-

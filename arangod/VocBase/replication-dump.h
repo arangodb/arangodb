@@ -32,11 +32,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-
 struct TRI_shape_s;
 class TRI_vocbase_col_t;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication dump container
@@ -90,7 +87,6 @@ struct TRI_replication_dump_t {
   bool _fromTickIncluded;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a single collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,5 +112,3 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t*,
                                              TRI_voc_tick_t, TRI_voc_tick_t);
 
 #endif
-
-

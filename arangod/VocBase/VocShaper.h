@@ -35,10 +35,8 @@
 
 #define NUM_SHAPE_ACCESSORS 8
 
-
 class VocShaper : public Shaper {
  public:
-  
   VocShaper(VocShaper const&);
   VocShaper& operator=(VocShaper const&);
 
@@ -46,7 +44,6 @@ class VocShaper : public Shaper {
 
   ~VocShaper();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the shaper's memory zone
@@ -145,7 +142,6 @@ class VocShaper : public Shaper {
                          TRI_shape_pid_t pid, TRI_shaped_json_t* result,
                          TRI_shape_t const** shape);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up a shape path by identifier
@@ -153,13 +149,12 @@ class VocShaper : public Shaper {
 
   TRI_shape_path_t const* findShapePathByName(char const* name, bool create);
 
-  
  private:
   TRI_memory_zone_t* _memoryZone;
   TRI_document_collection_t* _collection;
 
   // attribute paths
-  arangodb::basics::Mutex _attributePathsCreateLock;
+  arangodb::Mutex _attributePathsCreateLock;
 
   arangodb::basics::ReadWriteLock _attributePathsByNameLock;
   TRI_associative_pointer_t _attributePathsByName;
@@ -168,7 +163,7 @@ class VocShaper : public Shaper {
   TRI_associative_pointer_t _attributePathsByPid;
 
   // attributes
-  arangodb::basics::Mutex _attributeCreateLock;
+  arangodb::Mutex _attributeCreateLock;
 
   arangodb::basics::ReadWriteLock _attributeNamesLock;
   TRI_associative_pointer_t _attributeNames;
@@ -177,7 +172,7 @@ class VocShaper : public Shaper {
   TRI_associative_pointer_t _attributeIds;
 
   // shapes
-  arangodb::basics::Mutex _shapeCreateLock;
+  arangodb::Mutex _shapeCreateLock;
 
   arangodb::basics::ReadWriteLock _shapeDictionaryLock;
   TRI_associative_pointer_t _shapeDictionary;
@@ -280,5 +275,3 @@ void TRI_FillShapedSub(TRI_shaped_sub_t*, TRI_shaped_json_t const*,
                        char const*);
 
 #endif
-
-

@@ -24,12 +24,8 @@
 
 #include "SchedulerThread.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/SpinLocker.h"
-#include "velocypack/Value.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -38,14 +34,12 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/Task.h"
 
+#include <velocypack/Value.h>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-#ifdef TRI_USE_SPIN_LOCK_SCHEDULER_THREAD
-#define SCHEDULER_LOCKER(a) SPIN_LOCKER(a)
-#else
-#define SCHEDULER_LOCKER(a) MUTEX_LOCKER(a)
-#endif
 
 SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
                                  bool defaultLoop)
@@ -85,8 +79,7 @@ bool SchedulerThread::open() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::beginShutdown() {
-  LOG_TRACE("beginning shutdown sequence of scheduler thread (%llu)",
-            (unsigned long long)threadId());
+  LOG(TRACE) << "beginning shutdown sequence of scheduler thread (" << threadId() << ")";
 
   _stopping = true;
   _scheduler->wakeupLoop(_loop);
@@ -114,7 +107,7 @@ bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
     if (ok) {
       ++_numberTasks;
     } else {
-      LOG_WARNING("In SchedulerThread::registerTask setupTask has failed");
+      LOG(WARN) << "In SchedulerThread::registerTask setupTask has failed";
       cleanupTask(task);
       deleteTask(task);
     }
@@ -126,7 +119,7 @@ bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   // put the register request onto the queue
-  SCHEDULER_LOCKER(_queueLock);
+  MUTEX_LOCKER(mutexLocker, _queueLock);
 
   _queue.push_back(w);
   _hasWork = true;
@@ -157,7 +150,7 @@ void SchedulerThread::unregisterTask(Task* task) {
     Work w(CLEANUP, nullptr, task);
 
     // put the unregister request into the queue
-    SCHEDULER_LOCKER(_queueLock);
+    MUTEX_LOCKER(mutexLocker, _queueLock);
 
     _queue.push_back(w);
     _hasWork = true;
@@ -188,7 +181,7 @@ void SchedulerThread::destroyTask(Task* task) {
     // put the unregister request into the queue
     Work w(DESTROY, nullptr, task);
 
-    SCHEDULER_LOCKER(_queueLock);
+    MUTEX_LOCKER(mutexLocker, _queueLock);
 
     _queue.push_back(w);
     _hasWork = true;
@@ -207,7 +200,7 @@ void SchedulerThread::signalTask(std::unique_ptr<TaskData>& data) {
 }
 
 void SchedulerThread::run() {
-  LOG_TRACE("scheduler thread started (%llu)", (unsigned long long)threadId());
+  LOG(TRACE) << "scheduler thread started (" << threadId() << ")";
 
   if (_defaultLoop) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -241,23 +234,24 @@ void SchedulerThread::run() {
     } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
       if (_stopping.load()) {
-        LOG_WARNING("caught cancelation exception during work");
+        LOG(WARN) << "caught cancelation exception during work";
         throw;
       }
 #endif
 
-      LOG_WARNING("caught exception from ev_loop");
+      LOG(WARN) << "caught exception from ev_loop";
     }
 
 #if defined(DEBUG_SCHEDULER_THREAD)
-    LOG_TRACE("left scheduler loop %d", (int)threadId());
+    LOG(TRACE) << "left scheduler loop " << threadId();
 #endif
 
     while (true) {
       Work w;
 
       {
-        SCHEDULER_LOCKER(_queueLock);  // TODO(fc) XXX goto boost lockfree
+        MUTEX_LOCKER(mutexLocker,
+                     _queueLock);  // TODO(fc) XXX goto boost lockfree
 
         if (!_hasWork.load() || _queue.empty()) {
           break;
@@ -296,14 +290,14 @@ void SchedulerThread::run() {
         }
 
         case INVALID: {
-          LOG_ERROR("logic error. got invalid Work item");
+          LOG(ERR) << "logic error. got invalid Work item";
           break;
         }
       }
     }
   }
 
-  LOG_TRACE("scheduler thread stopped (%llu)", (unsigned long long)threadId());
+  LOG(TRACE) << "scheduler thread stopped (" << threadId() << ")";
 
   _stopped = true;
 
@@ -321,7 +315,7 @@ void SchedulerThread::run() {
     Work w;
 
     {
-      SCHEDULER_LOCKER(_queueLock);
+      MUTEX_LOCKER(mutexLocker, _queueLock);
 
       if (_queue.empty()) {
         break;
@@ -344,7 +338,7 @@ void SchedulerThread::run() {
         break;
 
       case INVALID:
-        LOG_ERROR("logic error. got invalid Work item");
+        LOG(ERR) << "logic error. got invalid Work item";
         break;
     }
   }

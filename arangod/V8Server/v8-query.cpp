@@ -23,8 +23,6 @@
 
 #include "v8-query.h"
 #include "Aql/Query.h"
-#include "Basics/logging.h"
-#include "Basics/random.h"
 #include "Basics/StringBuffer.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
@@ -58,8 +56,6 @@ using namespace arangodb::basics;
 #define WRAP_SHAPED_JSON(...) \
   TRI_WrapShapedJson<SingleCollectionReadOnlyTransaction>(isolate, __VA_ARGS__)
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo coordinate container, also containing the distance
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +70,6 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum { QUERY_EXAMPLE, QUERY_CONDITION } query_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return an empty result set
@@ -187,7 +182,8 @@ static TRI_index_operator_t* SetupConditionsSkiplist(
       }
 
       // iterator over all conditions
-      v8::Handle<v8::Array> values = v8::Handle<v8::Array>::Cast(fieldConditions);
+      v8::Handle<v8::Array> values =
+          v8::Handle<v8::Array>::Cast(fieldConditions);
       for (uint32_t j = 0; j < values->Length(); ++j) {
         v8::Handle<v8::Value> fieldCondition = values->Get(j);
 
@@ -228,12 +224,14 @@ static TRI_index_operator_t* SetupConditionsSkiplist(
           }
 
           parameters.add(element.slice());
-          // creation of equality operator is deferred until it is finally needed
+          // creation of equality operator is deferred until it is finally
+          // needed
           ++numEq;
           break;
         } else {
           if (lastNonEq > 0 && lastNonEq != i) {
-            // if we already had a range condition and a previous field, we cannot
+            // if we already had a range condition and a previous field, we
+            // cannot
             // continue
             // because the skiplist interface does not support such queries
             return nullptr;
@@ -267,7 +265,8 @@ static TRI_index_operator_t* SetupConditionsSkiplist(
             TRI_ASSERT(!cloned->isClosed());
             cloned->close();
 
-            // Assert that the buffer is actualy copied and we can work with both Builders
+            // Assert that the buffer is actualy copied and we can work with
+            // both Builders
             TRI_ASSERT(cloned->isClosed());
             TRI_ASSERT(!parameters.isClosed());
 
@@ -295,7 +294,8 @@ static TRI_index_operator_t* SetupConditionsSkiplist(
 
             cloned->close();
 
-            // Assert that the buffer is actualy copied and we can work with both Builders
+            // Assert that the buffer is actualy copied and we can work with
+            // both Builders
             TRI_ASSERT(cloned->isClosed());
             TRI_ASSERT(!parameters.isClosed());
             VPackSlice tmp = cloned->slice();
@@ -315,14 +315,16 @@ static TRI_index_operator_t* SetupConditionsSkiplist(
             // AND
 
             std::unique_ptr<TRI_index_operator_t> newOperator(
-                TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, lastOperator.get(),
-                                        current.get(), nullptr, shaper, 2));
+                TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
+                                        lastOperator.get(), current.get(),
+                                        nullptr, shaper, 2));
 
             if (newOperator == nullptr) {
               // current and lastOperator are still responsible and will free
               return nullptr;
             } else {
-              // newOperator is now responsible for current and lastOperator. release them
+              // newOperator is now responsible for current and lastOperator.
+              // release them
               current.release();
               lastOperator.release();
               lastOperator.swap(newOperator);
@@ -349,9 +351,9 @@ static TRI_index_operator_t* SetupConditionsSkiplist(
     }
     VPackSlice tmp = clonedParams->slice();
 
-    lastOperator.reset(TRI_CreateIndexOperator(
-        TRI_EQ_INDEX_OPERATOR, nullptr, nullptr, clonedParams, shaper,
-        tmp.length()));
+    lastOperator.reset(TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,
+                                               nullptr, clonedParams, shaper,
+                                               tmp.length()));
   }
   return lastOperator.release();
 }
@@ -367,45 +369,39 @@ static TRI_index_operator_t* SetupExampleSkiplist(
     v8::Isolate* isolate,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     VocShaper* shaper, v8::Handle<v8::Object> example) {
-  TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  auto builder = std::make_shared<VPackBuilder>();
+  try {
+    VPackArrayBuilder b(builder.get());
 
-  if (parameters == nullptr) {
+    for (auto const& field : fields) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString, true);
+      v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
+
+      if (!example->HasOwnProperty(key)) {
+        break;
+      }
+
+      v8::Handle<v8::Value> value = example->Get(key);
+
+      int res = TRI_V8ToVPack(isolate, *builder, value, false);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return nullptr;
+      }
+    }
+
+  } catch (...) {
     return nullptr;
   }
-
-  for (auto const& field : fields) {
-    std::string fieldString;
-    TRI_AttributeNamesToString(field, fieldString, true);
-    v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
-
-    if (!example->HasOwnProperty(key)) {
-      break;
-    }
-
-    v8::Handle<v8::Value> value = example->Get(key);
-
-    TRI_json_t* json = TRI_ObjectToJson(isolate, value);
-
-    if (json == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-
-      return nullptr;
-    }
-
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
-  }
-
-  if (TRI_LengthArrayJson(parameters) > 0) {
+  VPackSlice const slice = builder->slice();
+  size_t l = static_cast<size_t>(slice.length());
+  if (l > 0) {
     // example means equality comparisons only
-    // // TODO FIX parameters to be VelocyPack in the first place
-    return TRI_CreateIndexOperator(
-        TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
-        arangodb::basics::JsonHelper::toVelocyPack(parameters), shaper,
-        TRI_LengthArrayJson(parameters));
+    return TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
+                                   builder, shaper, l);
   }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   return nullptr;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,8 +700,6 @@ static int StoreGeoResult(v8::Isolate* isolate,
   return TRI_ERROR_NO_ERROR;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges for given direction
 ////////////////////////////////////////////////////////////////////////////////
@@ -790,9 +784,9 @@ static void EdgesQuery(TRI_edge_direction_e direction,
           TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid,
                                             key.get());
 
-      for (size_t j = 0; j < edges.size(); ++j) {
+      for (auto& edge : edges) {
         v8::Handle<v8::Value> doc =
-            WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
+            WRAP_SHAPED_JSON(trx, col->_cid, edge.getDataPtr());
 
         if (doc.IsEmpty()) {
           // error
@@ -854,7 +848,6 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 
   TRI_V8_RETURN(documents);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all documents from a collection
@@ -1195,8 +1188,7 @@ static void ByExampleHashIndexQuery(
 
   // find the matches
   std::vector<TRI_doc_mptr_t*> list;
-  static_cast<arangodb::HashIndex*>(idx)
-      ->lookup(&trx, &searchValue, list);
+  static_cast<arangodb::HashIndex*>(idx)->lookup(&trx, &searchValue, list);
 
   // convert result
   size_t total = list.size();
@@ -1339,18 +1331,18 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
 
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_WAL_MARKER_DOCUMENT) {
-    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(
-        mptr));  // PROTECTED by trx in calling function
-                 // TRI_DocumentIteratorDocumentCollection
+    localCrc = TRI_Crc32HashString(
+        TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
+    // TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
   } else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
              marker->_type == TRI_WAL_MARKER_EDGE) {
     // must convert _rid, _fromCid, _toCid into strings for portability
-    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(
-        mptr));  // PROTECTED by trx in calling function
-                 // TRI_DocumentIteratorDocumentCollection
+    localCrc = TRI_Crc32HashString(
+        TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
+    // TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
@@ -2071,8 +2063,10 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bindVars("keys", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
                                           TRI_ObjectToJson(isolate, args[0])));
 
+  std::string const collectionName(col->name());
+
   arangodb::aql::BindParameters::StripCollectionNames(
-      TRI_LookupObjectJson(bindVars.json(), "keys"), col->_name);
+      TRI_LookupObjectJson(bindVars.json(), "keys"), collectionName.c_str());
 
   std::string const aql(
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
@@ -2149,18 +2143,20 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   size_t ignored = 0;
   size_t removed = 0;
 
-  VPackSlice stats = queryResult.stats->slice();
+  if (queryResult.stats != nullptr) {
+    VPackSlice stats = queryResult.stats->slice();
 
-  if (!stats.isNone()) {
-    TRI_ASSERT(stats.isObject());
-    VPackSlice found = stats.get("writesIgnored");
-    if (found.isNumber()) {
-      ignored = found.getNumericValue<size_t>();
-    }
+    if (!stats.isNone()) {
+      TRI_ASSERT(stats.isObject());
+      VPackSlice found = stats.get("writesIgnored");
+      if (found.isNumber()) {
+        ignored = found.getNumericValue<size_t>();
+      }
 
-    found = stats.get("writesExecuted");
-    if (found.isNumber()) {
-      removed = found.getNumericValue<size_t>();
+      found = stats.get("writesExecuted");
+      if (found.isNumber()) {
+        removed = found.getNumericValue<size_t>();
+      }
     }
   }
 
@@ -2173,8 +2169,6 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the query functions
@@ -2234,5 +2228,3 @@ void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        TRI_V8_ASCII_STRING("removeByKeys"), JS_RemoveByKeys,
                        true);
 }
-
-

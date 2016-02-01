@@ -44,4 +44,3 @@ uint32_t fasthash32(const void* buf, size_t len, uint32_t seed);
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed);
 
 #endif
-

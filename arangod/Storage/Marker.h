@@ -29,7 +29,6 @@
 
 namespace arangodb {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available marker types. values must be < 128
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,7 +60,6 @@ enum MarkerType : uint8_t {
 };
 
 static_assert(MarkerMax < 128, "invalid maximum marker type value");
-
 
 struct MarkerHelper {
   uint32_t alignedSize(uint32_t value) { return ((value + 7) / 8) * 8; }
@@ -131,7 +129,6 @@ struct MarkerHelper {
    if the highest bit in the first byte (type) is not set, then the length
    of the marker is coded in bytes from offset 1 to (including) 3.
 */
-
 
 class MarkerReader {
  public:
@@ -211,7 +208,6 @@ class MarkerReader {
   uint64_t _length;
 };
 
-
 class MarkerWriter : public MarkerReader {
  public:
   MarkerWriter(uint8_t* begin) : MarkerReader(begin) {}
@@ -242,7 +238,6 @@ class MarkerWriter : public MarkerReader {
   }
 };
 
-
 template <typename T>
 class MarkerAccessorMeta : public T {
   /* this is a marker for meta data (header, footer etc)
@@ -257,15 +252,12 @@ class MarkerAccessorMeta : public T {
   static uint64_t staticLength() { return 0; }
 };
 
-
 typedef MarkerAccessorMeta<MarkerReader> MarkerReaderMeta;
-
 
 class MarkerWriterMeta : public MarkerAccessorMeta<MarkerWriter> {
  public:
   MarkerWriterMeta(uint8_t* begin) : MarkerAccessorMeta<MarkerWriter>(begin) {}
 };
-
 
 template <typename T>
 class MarkerAccessorDocumentPreface : public T {
@@ -294,9 +286,7 @@ class MarkerAccessorDocumentPreface : public T {
   static uint64_t staticLength() { return 16; }
 };
 
-
 typedef MarkerAccessorDocumentPreface<MarkerReader> MarkerReaderDocumentPreface;
-
 
 class MarkerWriterDocumentPreface
     : public MarkerAccessorDocumentPreface<MarkerWriter> {
@@ -314,7 +304,6 @@ class MarkerWriterDocumentPreface
                                                8);
   }
 };
-
 
 template <typename T>
 class MarkerAccessorDocument : public T {
@@ -345,9 +334,7 @@ class MarkerAccessorDocument : public T {
   static uint64_t staticLength() { return 8; }
 };
 
-
 typedef MarkerAccessorDocument<MarkerReader> MarkerReaderDocument;
-
 
 class MarkerWriterDocument : public MarkerAccessorDocument<MarkerWriter> {
  public:
@@ -359,7 +346,6 @@ class MarkerWriterDocument : public MarkerAccessorDocument<MarkerWriter> {
     MarkerWriter::storeAlignedNumber<uint64_t>(MarkerReader::payload(), tid, 8);
   }
 };
-
 
 template <typename T>
 class MarkerAccessorTransaction : public T {
@@ -382,9 +368,7 @@ class MarkerAccessorTransaction : public T {
   static uint64_t staticLength() { return 0; }
 };
 
-
 typedef MarkerAccessorTransaction<MarkerReader> MarkerReaderTransaction;
-
 
 class MarkerWriterTransaction : public MarkerAccessorTransaction<MarkerWriter> {
   /* this is a marker accessor for transaction handling.
@@ -403,7 +387,6 @@ class MarkerWriterTransaction : public MarkerAccessorTransaction<MarkerWriter> {
     MarkerWriter::storeAlignedNumber<uint64_t>(MarkerReader::payload(), tid, 8);
   }
 };
-
 
 template <typename T>
 class MarkerAccessorStructural : public T {
@@ -429,7 +412,6 @@ class MarkerAccessorStructural : public T {
   static uint64_t staticLength() { return 0; }
 };
 
-
 template <typename T>
 class MarkerAccessorDatabase : public MarkerAccessorStructural<T> {
   /* this is a marker accessor for database.
@@ -448,16 +430,13 @@ class MarkerAccessorDatabase : public MarkerAccessorStructural<T> {
   static uint64_t staticLength() { return 0; }
 };
 
-
 typedef MarkerAccessorDatabase<MarkerReader> MarkerReaderDatabase;
-
 
 class MarkerWriterDatabase : public MarkerAccessorDatabase<MarkerWriter> {
  public:
   MarkerWriterDatabase(uint8_t* begin)
       : MarkerAccessorDatabase<MarkerWriter>(begin) {}
 };
-
 
 template <typename T>
 class MarkerAccessorCollection : public MarkerAccessorStructural<T> {
@@ -478,16 +457,13 @@ class MarkerAccessorCollection : public MarkerAccessorStructural<T> {
   static uint64_t staticLength() { return 0; }
 };
 
-
 typedef MarkerAccessorCollection<MarkerReader> MarkerReaderCollection;
-
 
 class MarkerWriterCollection : public MarkerAccessorCollection<MarkerWriter> {
  public:
   MarkerWriterCollection(uint8_t* begin)
       : MarkerAccessorCollection<MarkerWriter>(begin) {}
 };
-
 
 template <typename T>
 class MarkerAccessorIndex : public MarkerAccessorStructural<T> {
@@ -504,9 +480,7 @@ class MarkerAccessorIndex : public MarkerAccessorStructural<T> {
   static uint64_t staticLength() { return 0; }
 };
 
-
 typedef MarkerAccessorIndex<MarkerReader> MarkerReaderIndex;
-
 
 class MarkerWriterIndex : public MarkerReaderIndex {
  public:
@@ -566,5 +540,3 @@ std::ostream& operator<<(std::ostream& stream,
 }
 
 #endif
-
-

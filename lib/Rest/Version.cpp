@@ -34,6 +34,7 @@
 
 #include <openssl/ssl.h>
 #include <sstream>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
 #include <velocypack/velocypack-aliases.h>
@@ -82,7 +83,7 @@ void Version::initialize() {
 #else
   Values["fd-client-event-handler"] = "select";
 #endif
-    
+
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
   }
@@ -325,7 +326,4 @@ void Version::getVPack(VPackBuilder& dst) {
   }
 }
 
-
 std::map<std::string, std::string> Version::Values;
-
-

@@ -27,9 +27,7 @@
 #include "Basics/Common.h"
 
 #include "ApplicationServer/ApplicationFeature.h"
-
 #include "Scheduler/ApplicationScheduler.h"
-
 
 namespace arangodb {
 namespace rest {
@@ -37,25 +35,20 @@ class ApplicationScheduler;
 class Dispatcher;
 class Task;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application server with dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
 class ApplicationDispatcher : virtual public ApplicationFeature {
  private:
-  ApplicationDispatcher(ApplicationDispatcher const&);
-  ApplicationDispatcher& operator=(ApplicationDispatcher const&);
+  ApplicationDispatcher(ApplicationDispatcher const&) = delete;
+  ApplicationDispatcher& operator=(ApplicationDispatcher const&) = delete;
 
-  
  public:
-
   ApplicationDispatcher();
-
 
   ~ApplicationDispatcher();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the scheduler
@@ -99,27 +92,19 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 
   void setProcessorAffinity(std::vector<size_t> const& cores);
 
-  
  public:
+  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&) override final;
 
-  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&);
+  bool prepare() override final;
 
+  bool start() override final;
 
-  bool prepare();
+  bool open() override final;
 
+  void close() override final;
 
-  bool start();
+  void stop() override final;
 
-
-  bool open();
-
-
-  void close();
-
-
-  void stop();
-
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds the dispatcher
   //////////////////////////////////////////////////////////////////////////////
@@ -132,7 +117,6 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 
   void buildDispatcherReporter();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief application dispatcher
@@ -168,5 +152,3 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 }
 
 #endif
-
-

@@ -27,7 +27,6 @@
 
 using namespace arangodb::wal;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the logfile
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +45,6 @@ Logfile::~Logfile() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new logfile
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,8 +58,7 @@ Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to create logfile '%s': %s", filename.c_str(),
-                TRI_errno_string(res));
+      LOG(ERR) << "unable to create logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
       return nullptr;
     }
   }
@@ -81,13 +78,12 @@ Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to open logfile '%s': %s", filename.c_str(),
-                TRI_errno_string(res));
+      LOG(ERR) << "unable to open logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
       return nullptr;
     }
 
     // cannot figure out the type of error
-    LOG_ERROR("unable to open logfile '%s'", filename.c_str());
+    LOG(ERR) << "unable to open logfile '" << filename.c_str() << "'";
     return nullptr;
   }
 
@@ -151,7 +147,6 @@ int Logfile::judge(std::string const& filename) {
   return TRI_ERROR_ARANGO_DATAFILE_EMPTY;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reserve space and update the current write position
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,5 +189,3 @@ TRI_df_footer_marker_t Logfile::getFooterMarker() const {
 
   return footer;
 }
-
-

@@ -40,9 +40,7 @@
 namespace arangodb {
 namespace rest {
 
-
 class EndpointUnixDomain final : public Endpoint {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
@@ -57,7 +55,6 @@ class EndpointUnixDomain final : public Endpoint {
 
   ~EndpointUnixDomain();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect the endpoint
@@ -101,7 +98,6 @@ class EndpointUnixDomain final : public Endpoint {
 
   std::string getHostString() const override { return "localhost"; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief socket file
@@ -115,5 +111,3 @@ class EndpointUnixDomain final : public Endpoint {
 #endif
 
 #endif
-
-

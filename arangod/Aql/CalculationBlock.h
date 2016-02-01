@@ -35,7 +35,6 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-
 class CalculationBlock : public ExecutionBlock {
  public:
   CalculationBlock(ExecutionEngine*, CalculationNode const*);
@@ -113,4 +112,3 @@ class CalculationBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

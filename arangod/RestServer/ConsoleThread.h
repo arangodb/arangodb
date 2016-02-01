@@ -48,7 +48,6 @@ class ConsoleThread : public basics::Thread {
   ConsoleThread(const ConsoleThread&) = delete;
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the line editor object for use in debugging
@@ -60,25 +59,20 @@ class ConsoleThread : public basics::Thread {
   /// @brief mutex for console access
   //////////////////////////////////////////////////////////////////////////////
 
-  static arangodb::basics::Mutex serverConsoleMutex;
+  static arangodb::Mutex serverConsoleMutex;
 
-  
  public:
-
   ConsoleThread(arangodb::rest::ApplicationServer*, ApplicationV8*,
                 TRI_vocbase_t*);
 
-
   ~ConsoleThread();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief runs the thread
   //////////////////////////////////////////////////////////////////////////////
 
   void run() override;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the console thread is done
@@ -98,7 +92,6 @@ class ConsoleThread : public basics::Thread {
 
   bool isSilent() override { return true; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief inner thread loop
@@ -106,7 +99,6 @@ class ConsoleThread : public basics::Thread {
 
   void inner();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief application server
@@ -147,4 +139,3 @@ class ConsoleThread : public basics::Thread {
 }
 
 #endif
-

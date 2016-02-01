@@ -23,25 +23,18 @@
 
 #include "Basics/Common.h"
 #include "ArangoShell/ArangoClient.h"
+#include "Basics/init.h"
+#include "Basics/Logger.h"
 #include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
-#include "Basics/StringUtils.h"
-#include "Basics/init.h"
-#include "Basics/logging.h"
 #include "Basics/random.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/tri-strings.h"
-#include "Basics/terminal-utils.h"
 #include "Rest/Endpoint.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/InitializeRest.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 #include <iostream>
 
@@ -50,7 +43,6 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 using namespace arangodb::arangob;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -142,7 +134,6 @@ static bool verbose = false;
 
 #include "Benchmark/test-cases.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update the number of ready threads. this is a callback function
 /// that is called by each thread after it is created
@@ -204,7 +195,6 @@ static void ParseProgramOptions(int argc, char* argv[]) {
       "--concurrency <concurrency> --requests <request> --test-case <case> ...",
       argc, argv, "arangob.conf");
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -295,14 +285,14 @@ int main(int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == nullptr) {
-    LOG_FATAL_AND_EXIT("invalid value for --server.endpoint ('%s')",
-                       BaseClient.endpointString().c_str());
+    std::string endpointString = BaseClient.endpointString();
+    LOG(FATAL) << "invalid value for --server.endpoint ('" << endpointString.c_str() << "')"; FATAL_ERROR_EXIT();
   }
 
   BenchmarkOperation* testCase = GetTestCase(TestCase);
 
   if (testCase == nullptr) {
-    LOG_FATAL_AND_EXIT("invalid test case name '%s'", TestCase.c_str());
+    LOG(FATAL) << "invalid test case name '" << TestCase.c_str() << "'"; FATAL_ERROR_EXIT();
     return EXIT_FAILURE;  // will not be reached
   }
 
@@ -378,7 +368,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (Progress && numOperations >= nextReportValue) {
-      LOG_INFO("number of operations: %d", (int)nextReportValue);
+      LOG(INFO) << "number of operations: " << nextReportValue;
       nextReportValue += stepValue;
     }
 
@@ -397,34 +387,38 @@ int main(int argc, char* argv[]) {
 
   std::cout << std::endl;
   std::cout << "Total number of operations: " << Operations
-       << ", keep alive: " << (KeepAlive ? "yes" : "no")
-       << ", async: " << (Async ? "yes" : "no") << ", batch size: " << BatchSize
-       << ", concurrency level (threads): " << ThreadConcurrency << std::endl;
+            << ", keep alive: " << (KeepAlive ? "yes" : "no")
+            << ", async: " << (Async ? "yes" : "no")
+            << ", batch size: " << BatchSize
+            << ", concurrency level (threads): " << ThreadConcurrency
+            << std::endl;
 
   std::cout << "Test case: " << TestCase << ", complexity: " << Complexity
-       << ", database: '" << BaseClient.databaseName() << "', collection: '"
-       << Collection << "'" << std::endl;
+            << ", database: '" << BaseClient.databaseName()
+            << "', collection: '" << Collection << "'" << std::endl;
 
-  std::cout << "Total request/response duration (sum of all threads): " << std::fixed
-       << requestTime << " s" << std::endl;
+  std::cout << "Total request/response duration (sum of all threads): "
+            << std::fixed << requestTime << " s" << std::endl;
   std::cout << "Request/response duration (per thread): " << std::fixed
-       << (requestTime / (double)ThreadConcurrency) << " s" << std::endl;
-  std::cout << "Time needed per operation: " << std::fixed << (time / Operations) << " s"
-       << std::endl;
+            << (requestTime / (double)ThreadConcurrency) << " s" << std::endl;
+  std::cout << "Time needed per operation: " << std::fixed
+            << (time / Operations) << " s" << std::endl;
   std::cout << "Time needed per operation per thread: " << std::fixed
-       << (time / (double)Operations * (double)ThreadConcurrency) << " s"
-       << std::endl;
-  std::cout << "Operations per second rate: " << std::fixed << ((double)Operations / time)
-       << std::endl;
-  std::cout << "Elapsed time since start: " << std::fixed << time << " s" << std::endl
-       << std::endl;
+            << (time / (double)Operations * (double)ThreadConcurrency) << " s"
+            << std::endl;
+  std::cout << "Operations per second rate: " << std::fixed
+            << ((double)Operations / time) << std::endl;
+  std::cout << "Elapsed time since start: " << std::fixed << time << " s"
+            << std::endl
+            << std::endl;
 
   if (failures > 0) {
-    std::cerr << "WARNING: " << failures << " arangob request(s) failed!!" << std::endl;
+    std::cerr << "WARNING: " << failures << " arangob request(s) failed!!"
+              << std::endl;
   }
   if (incomplete > 0) {
     std::cerr << "WARNING: " << incomplete
-         << " arangob requests with incomplete results!!" << std::endl;
+              << " arangob requests with incomplete results!!" << std::endl;
   }
 
   testCase->tearDown();
@@ -447,4 +441,3 @@ int main(int argc, char* argv[]) {
 
   return ret;
 }
-

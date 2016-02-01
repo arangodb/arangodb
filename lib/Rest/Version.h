@@ -37,7 +37,6 @@ class Builder;
 namespace rest {
 
 class Version {
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the version information
@@ -47,7 +46,6 @@ class Version {
   Version(Version const&) = delete;
   Version& operator=(Version const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize
@@ -150,7 +148,7 @@ class Version {
   //////////////////////////////////////////////////////////////////////////////
 
   static void getVPack(arangodb::velocypack::Builder&);
-  
+
  public:
   static std::map<std::string, std::string> Values;
 };
@@ -158,5 +156,3 @@ class Version {
 }
 
 #endif
-
-

@@ -36,14 +36,11 @@
 namespace arangodb {
 namespace basics {
 
-
 class JsonHelper {
-  
  private:
   JsonHelper() = delete;
   ~JsonHelper() = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief convert a uint64 into a JSON string
@@ -308,7 +305,6 @@ class Json {
 
   enum autofree_e { AUTOFREE, NOFREE };
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal helper for the generic constructor
@@ -344,7 +340,6 @@ class Json {
     }
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief default constructor making an empty Json
   //////////////////////////////////////////////////////////////////////////////
@@ -613,14 +608,12 @@ class Json {
 
   Json(Json const&&) = delete;
 
-
   ~Json() noexcept {
     if (_json != nullptr && _autofree == AUTOFREE) {
       TRI_FreeJson(TRI_MemoryZone(_zone), _json);
     }
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return internal TRI_json_t*, this does not change the ownership
   /// of the pointer
@@ -1006,7 +999,6 @@ class Json {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual TRI_json_t*
@@ -1035,5 +1027,3 @@ std::ostream& operator<<(std::ostream&, TRI_json_t const*);
 std::ostream& operator<<(std::ostream&, TRI_json_t const&);
 
 #endif
-
-

@@ -30,7 +30,6 @@
 namespace arangodb {
 namespace aql {
 
-
 enum ScopeType {
   AQL_SCOPE_MAIN,
   AQL_SCOPE_SUBQUERY,
@@ -38,9 +37,7 @@ enum ScopeType {
   AQL_SCOPE_COLLECT
 };
 
-
 class Scope {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a scope
@@ -54,7 +51,6 @@ class Scope {
 
   ~Scope();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the name of a scope type
@@ -111,7 +107,6 @@ class Scope {
 
   Variable const* getVariable(char const*, size_t, bool) const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief scope type
@@ -126,13 +121,11 @@ class Scope {
   std::unordered_map<std::string, Variable*> _variables;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scope management
 ////////////////////////////////////////////////////////////////////////////////
 
 class Scopes {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the scopes
@@ -146,7 +139,6 @@ class Scopes {
 
   ~Scopes();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of currently active scopes
@@ -245,7 +237,6 @@ class Scopes {
 
   void unstackCurrentVariable();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently active scopes
@@ -263,5 +254,3 @@ class Scopes {
 }
 
 #endif
-
-

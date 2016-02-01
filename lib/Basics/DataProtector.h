@@ -164,4 +164,3 @@ class DataProtector {
 }  // namespace arangodb
 
 #endif
-

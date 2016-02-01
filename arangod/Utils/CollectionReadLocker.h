@@ -31,7 +31,6 @@
 namespace arangodb {
 
 class CollectionReadLocker {
-  
  public:
   CollectionReadLocker(CollectionReadLocker const&) = delete;
   CollectionReadLocker& operator=(CollectionReadLocker const&) = delete;
@@ -54,7 +53,6 @@ class CollectionReadLocker {
 
   ~CollectionReadLocker() { unlock(); }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief release the lock
   //////////////////////////////////////////////////////////////////////////////
@@ -66,7 +64,6 @@ class CollectionReadLocker {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection pointer
@@ -83,4 +80,3 @@ class CollectionReadLocker {
 }
 
 #endif
-

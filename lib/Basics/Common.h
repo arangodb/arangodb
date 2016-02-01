@@ -33,12 +33,9 @@
 
 #endif
 
-
 #define TRI_WITHIN_COMMON 1
 #include "Basics/operating-system.h"
-#ifdef _WIN32
-#include "Basics/local-configuration-win.h"
-#else
+#ifndef _WIN32
 #include "Basics/local-configuration.h"
 #endif
 #include "Basics/application-exit.h"
@@ -52,7 +49,6 @@
 #endif
 
 #undef TRI_WITHIN_COMMON
-
 
 #include <assert.h>
 #include <ctype.h>
@@ -122,7 +118,6 @@
 typedef long suseconds_t;
 #endif
 
-
 #include <algorithm>
 #include <map>
 #include <set>
@@ -134,7 +129,6 @@ typedef long suseconds_t;
 #include <memory>
 #include <atomic>
 
-
 #define TRI_WITHIN_COMMON 1
 #include "Basics/voc-errors.h"
 #include "Basics/error.h"
@@ -145,7 +139,6 @@ typedef long suseconds_t;
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementing a uint64_t modulo a number with wraparound
@@ -190,14 +183,10 @@ static inline void TRI_MemoryPrefetch(void* p) {}
 #define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fake spinlocks
-/// spin locks seem to have issues when used under Valgrind
-/// we thus mimic spinlocks using ordinary mutexes when in maintainer mode
+/// @brief asserts
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-
-#define TRI_FAKE_SPIN_LOCKS 1
 
 #ifndef TRI_ASSERT
 #define TRI_ASSERT(expr)    \
@@ -207,40 +196,41 @@ static inline void TRI_MemoryPrefetch(void* p) {}
       assert(expr);         \
     }                       \
   }
-#define TRI_ASSERT_EXPENSIVE(expr) \
-  {                                \
-    if (!(expr)) {                 \
-      TRI_PrintBacktrace();        \
-      assert(expr);                \
-    }                              \
-  }
 #endif
 
 #else
-
-#undef TRI_FAKE_SPIN_LOCKS
 
 #ifndef TRI_ASSERT
 #define TRI_ASSERT(expr) \
   do {                   \
     (void)0;             \
   } while (0)
-#define TRI_ASSERT_EXPENSIVE(expr) \
-  do {                             \
-    (void)0;                       \
-  } while (0)
 
 #endif
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aborts program execution
+/// if backtraces are enabled, a backtrace will be printed before
+////////////////////////////////////////////////////////////////////////////////
+
+#define FATAL_ERROR_EXIT(...)                       \
+  do {                                              \
+    std::string bt;                                 \
+    TRI_GetBacktrace(bt);                           \
+    if (!bt.empty()) {                              \
+      LOG(WARN) << bt;                           \
+    }                                               \
+    TRI_ShutdownLogging(true);                      \
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);       \
+  } while (0);                                      \
+  exit(EXIT_FAILURE)
+
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTIONS--                                                          alignas
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct alignas(x) ... does not work in Visual Studio 2013
@@ -304,5 +294,3 @@ typedef TRI_seconds_t seconds_t;
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199
 
 #endif
-
-

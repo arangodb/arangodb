@@ -64,8 +64,8 @@ V8TransactionContext::~V8TransactionContext() {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionNameResolver const* V8TransactionContext::getResolver() const {
-  TRI_ASSERT_EXPENSIVE(_sharedTransactionContext != nullptr);
-  TRI_ASSERT_EXPENSIVE(_sharedTransactionContext->_resolver != nullptr);
+  TRI_ASSERT(_sharedTransactionContext != nullptr);
+  TRI_ASSERT(_sharedTransactionContext->_resolver != nullptr);
   return _sharedTransactionContext->_resolver;
 }
 
@@ -74,7 +74,7 @@ CollectionNameResolver const* V8TransactionContext::getResolver() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 VPackOptions const* V8TransactionContext::getVPackOptions() const {
-  TRI_ASSERT_EXPENSIVE(_sharedTransactionContext != nullptr);
+  TRI_ASSERT(_sharedTransactionContext != nullptr);
   return &_sharedTransactionContext->_options;
 }
 
@@ -85,7 +85,7 @@ VPackOptions const* V8TransactionContext::getVPackOptions() const {
 TRI_transaction_t* V8TransactionContext::getParentTransaction() const {
   // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
   // " GETPARENT: " << _sharedTransactionContext->_currentTransaction << "\r\n";
-  TRI_ASSERT_EXPENSIVE(_sharedTransactionContext != nullptr);
+  TRI_ASSERT(_sharedTransactionContext != nullptr);
   return _sharedTransactionContext->_currentTransaction;
 }
 
@@ -94,8 +94,8 @@ TRI_transaction_t* V8TransactionContext::getParentTransaction() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
-  TRI_ASSERT_EXPENSIVE(_sharedTransactionContext != nullptr);
-  TRI_ASSERT_EXPENSIVE(_sharedTransactionContext->_currentTransaction ==
+  TRI_ASSERT(_sharedTransactionContext != nullptr);
+  TRI_ASSERT(_sharedTransactionContext->_currentTransaction ==
                        nullptr);
   _sharedTransactionContext->_currentTransaction = trx;
 
@@ -124,7 +124,7 @@ int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int V8TransactionContext::unregisterTransaction() {
-  TRI_ASSERT_EXPENSIVE(_sharedTransactionContext != nullptr);
+  TRI_ASSERT(_sharedTransactionContext != nullptr);
   _sharedTransactionContext->_currentTransaction = nullptr;
 
   // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
@@ -183,5 +183,3 @@ bool V8TransactionContext::IsEmbedded() {
   return static_cast<V8TransactionContext*>(v8g->_transactionContext)
              ->_currentTransaction != nullptr;
 }
-
-

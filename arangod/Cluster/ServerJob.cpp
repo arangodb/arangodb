@@ -24,7 +24,7 @@
 #include "ServerJob.h"
 
 #include "Basics/MutexLocker.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ClusterInfo.h"
 #include "Dispatcher/DispatcherQueue.h"
@@ -34,16 +34,9 @@
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
-
-static arangodb::basics::Mutex ExecutorLock;
-
-
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief general server job
-////////////////////////////////////////////////////////////////////////////////
-
+static arangodb::Mutex ExecutorLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new db server job
@@ -64,10 +57,8 @@ ServerJob::ServerJob(HeartbeatThread* heartbeat, TRI_server_t* server,
 
 ServerJob::~ServerJob() {}
 
-
-
 void ServerJob::work() {
-  LOG_TRACE("starting plan update handler");
+  LOG(TRACE) << "starting plan update handler";
 
   if (_shutdown != 0) {
     return;
@@ -79,7 +70,7 @@ void ServerJob::work() {
 
   {
     // only one plan change at a time
-    MUTEX_LOCKER(ExecutorLock);
+    MUTEX_LOCKER(mutexLocker, ExecutorLock);
 
     result = execute();
   }
@@ -87,15 +78,12 @@ void ServerJob::work() {
   _heartbeat->removeDispatchedJob(result);
 }
 
-
 bool ServerJob::cancel() { return false; }
-
 
 void ServerJob::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute job
@@ -131,9 +119,7 @@ bool ServerJob::execute() {
     v8::Handle<v8::Value> res = TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(), content, file, false);
     if (res->IsBoolean() && res->IsTrue()) {
-      LOG_ERROR(
-          "An error occurred whilst executing the handlePlanChange in "
-          "JavaScript.");
+      LOG(ERR) << "An error occurred whilst executing the handlePlanChange in JavaScript.";
       ok = false;  // The heartbeat thread will notice this!
     }
     // invalidate our local cache, even if an error occurred
@@ -150,5 +136,3 @@ bool ServerJob::execute() {
 
   return ok;
 }
-
-

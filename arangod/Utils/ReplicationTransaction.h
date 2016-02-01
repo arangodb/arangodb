@@ -36,7 +36,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class ReplicationTransaction : public Transaction {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
@@ -56,7 +55,6 @@ class ReplicationTransaction : public Transaction {
 
   ~ReplicationTransaction() { TRI_ReleaseDatabaseServer(_server, vocbase()); }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the remote (external) id of the transaction
@@ -94,7 +92,6 @@ class ReplicationTransaction : public Transaction {
     return trxCollection;
   }
 
-  
  private:
   TRI_server_t* _server;
 
@@ -103,5 +100,3 @@ class ReplicationTransaction : public Transaction {
 }
 
 #endif
-
-

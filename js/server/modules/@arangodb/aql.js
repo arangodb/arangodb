@@ -2953,10 +2953,10 @@ function AQL_REVERSE (value) {
 function AQL_RANGE (from, to, step) {
   'use strict';
 
-  from = AQL_TO_NUMBER(from);
-  to = AQL_TO_NUMBER(to);
+  from = AQL_TO_NUMBER(from) || 0;
+  to = AQL_TO_NUMBER(to) || 0;
   
-  if (step === undefined) {
+  if (step === undefined || step === null) {
     if (from <= to) {
       step = 1;
     }
@@ -2968,7 +2968,7 @@ function AQL_RANGE (from, to, step) {
   step = AQL_TO_NUMBER(step);
 
   // check if we would run into an endless loop
-  if (step === 0) {
+  if (step === 0 || step === null) {
     WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -4246,6 +4246,31 @@ function AQL_PARSE_IDENTIFIER (value) {
   }
 
   WARN("PARSE_IDENTIFIER", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  return null;
+}
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validates if a document or object is from the specified collection
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_IS_SAME_COLLECTION (collection, value) {
+  'use strict';
+
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
+    if (value.hasOwnProperty('_id')) {
+      value = value._id;
+    }
+  }
+
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
+    var pos = value.indexOf('/');
+    if (pos !== -1) {
+      return value.substr(0, pos) === collection;
+    }
+    // fall through intentional
+  }
+
+  WARN("AQL_IS_SAME_COLLECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
@@ -8137,6 +8162,7 @@ exports.AQL_NOT_NULL = AQL_NOT_NULL;
 exports.AQL_FIRST_LIST = AQL_FIRST_LIST;
 exports.AQL_FIRST_DOCUMENT = AQL_FIRST_DOCUMENT;
 exports.AQL_PARSE_IDENTIFIER = AQL_PARSE_IDENTIFIER;
+exports.AQL_IS_SAME_COLLECTION = AQL_IS_SAME_COLLECTION;
 exports.AQL_HAS = AQL_HAS;
 exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
 exports.AQL_VALUES = AQL_VALUES;

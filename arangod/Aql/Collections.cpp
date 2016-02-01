@@ -27,7 +27,6 @@
 
 using namespace arangodb::aql;
 
-
 Collections::Collections(TRI_vocbase_t* vocbase)
     : _vocbase(vocbase), _collections() {}
 
@@ -36,7 +35,6 @@ Collections::~Collections() {
     delete it.second;
   }
 }
-
 
 Collection* Collections::get(std::string const& name) const {
   auto it = _collections.find(name);
@@ -95,5 +93,3 @@ std::map<std::string, Collection*>* Collections::collections() {
 std::map<std::string, Collection*> const* Collections::collections() const {
   return &_collections;
 }
-
-

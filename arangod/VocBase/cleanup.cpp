@@ -23,14 +23,13 @@
 
 #include "cleanup.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clean interval in microseconds
@@ -49,7 +48,6 @@ static int const CLEANUP_CURSOR_ITERATIONS = 3;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int const CLEANUP_INDEX_ITERATIONS = 5;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks all datafiles of a collection
@@ -72,8 +70,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
     // check and remove all callback elements at the beginning of the list
     auto callback = [&](arangodb::Ditch const* ditch) -> bool {
-      if (ditch->type() ==
-          arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
+      if (ditch->type() == arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
         // check if we can really unload, this is only the case if the
         // collection's WAL markers
         // were fully collected
@@ -107,24 +104,29 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
       // check if the collection is still in the "unloading" state. if not,
       // then someone has already triggered a reload or a deletion of the
       // collection
-      if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-        bool isUnloading =
-            (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      bool isUnloading = false;
+      bool gotStatus = false;
+      {
+        TRY_READ_LOCKER(readLocker, collection->_lock);
 
-        if (!isUnloading) {
-          popped = false;
-          auto unloader = ditches->process(
-              popped, [](arangodb::Ditch const* ditch) -> bool {
-                return (ditch->type() ==
-                        arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
-              });
-          if (popped) {
-            // we've changed the list. try with current state in next turn
-            TRI_ASSERT(unloader != nullptr);
-            delete unloader;
-            return;
-          }
+        if (readLocker.isLocked()) {
+          isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
+          gotStatus = true;
+        }
+      }
+
+      if (gotStatus && !isUnloading) {
+        popped = false;
+        auto unloader =
+            ditches->process(popped, [](arangodb::Ditch const* ditch) -> bool {
+              return (ditch->type() ==
+                      arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
+            });
+        if (popped) {
+          // we've changed the list. try with current state in next turn
+          TRI_ASSERT(unloader != nullptr);
+          delete unloader;
+          return;
         }
       }
 
@@ -133,9 +135,12 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
         // if there is still some garbage collection to perform,
         // check if the collection was deleted already
-        if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-          isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
-          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        {
+          TRY_READ_LOCKER(readLocker, collection->_lock);
+
+          if (readLocker.isLocked()) {
+            isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
+          }
         }
 
         if (!isDeleted && TRI_IsDeletedVocBase(collection->_vocbase)) {
@@ -166,19 +171,17 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
     auto const type = ditch->type();
 
     if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_DROP) {
-      dynamic_cast<arangodb::DropDatafileDitch*>(ditch)
-          ->executeCallback();
+      dynamic_cast<arangodb::DropDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
       // next iteration
     } else if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_RENAME) {
-      dynamic_cast<arangodb::RenameDatafileDitch*>(ditch)
-          ->executeCallback();
+      dynamic_cast<arangodb::RenameDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
       // next iteration
     } else if (type == arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
       // collection will be unloaded
-      bool hasUnloaded = dynamic_cast<arangodb::UnloadCollectionDitch*>(
-                             ditch)->executeCallback();
+      bool hasUnloaded = dynamic_cast<arangodb::UnloadCollectionDitch*>(ditch)
+                             ->executeCallback();
       delete ditch;
 
       if (hasUnloaded) {
@@ -187,8 +190,8 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
       }
     } else if (type == arangodb::Ditch::TRI_DITCH_COLLECTION_DROP) {
       // collection will be dropped
-      bool hasDropped = dynamic_cast<arangodb::DropCollectionDitch*>(
-                            ditch)->executeCallback();
+      bool hasDropped = dynamic_cast<arangodb::DropCollectionDitch*>(ditch)
+                            ->executeCallback();
       delete ditch;
 
       if (hasDropped) {
@@ -197,7 +200,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
       }
     } else {
       // unknown type
-      LOG_FATAL_AND_EXIT("unknown ditch type '%d'", (int)type);
+      LOG(FATAL) << "unknown ditch type '" << type << "'"; FATAL_ERROR_EXIT();
     }
 
     // next iteration
@@ -210,17 +213,16 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
 static void CleanupCursors(TRI_vocbase_t* vocbase, bool force) {
   // clean unused cursors
-  auto cursors = static_cast<arangodb::CursorRepository*>(
-      vocbase->_cursorRepository);
+  auto cursors =
+      static_cast<arangodb::CursorRepository*>(vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
   try {
     cursors->garbageCollect(force);
   } catch (...) {
-    LOG_WARNING("caught exception during cursor cleanup");
+    LOG(WARN) << "caught exception during cursor cleanup";
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup event loop
@@ -253,7 +255,7 @@ void TRI_CleanupVocBase(void* data) {
     // check if we can get the compactor lock exclusively
     if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
       try {
-        READ_LOCKER(vocbase->_collectionsLock);
+        READ_LOCKER(readLocker, vocbase->_collectionsLock);
         // copy all collections
         collections = vocbase->_collections;
       } catch (...) {
@@ -262,18 +264,17 @@ void TRI_CleanupVocBase(void* data) {
 
       for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);
+        TRI_document_collection_t* document;
 
-        TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-
-        TRI_document_collection_t* document = collection->_collection;
+        {
+          READ_LOCKER(readLocker, collection->_lock);
+          document = collection->_collection;
+        }
 
         if (document == nullptr) {
           // collection currently not loaded
-          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
           continue;
         }
-
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
         TRI_ASSERT(document != nullptr);
 
@@ -318,7 +319,5 @@ void TRI_CleanupVocBase(void* data) {
     }
   }
 
-  LOG_TRACE("shutting down cleanup thread");
+  LOG(TRACE) << "shutting down cleanup thread";
 }
-
-

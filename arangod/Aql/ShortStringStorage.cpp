@@ -26,13 +26,11 @@
 
 using namespace arangodb::aql;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of a "short" string
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t const ShortStringStorage::MaxStringLength = 127;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a short string storage instance
@@ -53,22 +51,21 @@ ShortStringStorage::~ShortStringStorage() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a short string
 ////////////////////////////////////////////////////////////////////////////////
 
 char* ShortStringStorage::registerString(char const* p, size_t length) {
-  TRI_ASSERT_EXPENSIVE(length <= MaxStringLength);
+  TRI_ASSERT(length <= MaxStringLength);
 
   if (_current == nullptr || (_current + length + 1 > _end)) {
     allocateBlock();
   }
 
-  TRI_ASSERT_EXPENSIVE(!_blocks.empty());
-  TRI_ASSERT_EXPENSIVE(_current != nullptr);
-  TRI_ASSERT_EXPENSIVE(_end != nullptr);
-  TRI_ASSERT_EXPENSIVE(_current + length + 1 <= _end);
+  TRI_ASSERT(!_blocks.empty());
+  TRI_ASSERT(_current != nullptr);
+  TRI_ASSERT(_end != nullptr);
+  TRI_ASSERT(_current + length + 1 <= _end);
 
   char* position = _current;
   memcpy(static_cast<void*>(position), p, length);
@@ -77,7 +74,6 @@ char* ShortStringStorage::registerString(char const* p, size_t length) {
 
   return position;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate a new block of memory
@@ -95,5 +91,3 @@ void ShortStringStorage::allocateBlock() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }
-
-

@@ -25,7 +25,6 @@
 #define ARANGOD_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/logging.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-master.h"
 #include "VocBase/server.h"
@@ -57,18 +56,14 @@ class Endpoint;
 class Transaction;
 
 class Syncer {
-  
  public:
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
-
   Syncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*);
-
 
   virtual ~Syncer();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sleeps (nanoseconds)
   //////////////////////////////////////////////////////////////////////////////
@@ -87,9 +82,7 @@ class Syncer {
 
   static std::string rewriteLocation(void*, std::string const&);
 
-  
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection id from JSON
   //////////////////////////////////////////////////////////////////////////////
@@ -166,7 +159,6 @@ class Syncer {
 
   int handleStateResponse(struct TRI_json_t const*, std::string&);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
@@ -237,5 +229,3 @@ class Syncer {
 }
 
 #endif
-
-

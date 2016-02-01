@@ -28,7 +28,6 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-
 namespace arangodb {
 
 namespace traverser {
@@ -36,17 +35,12 @@ class TraverserExpression;
 }
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
-  
  public:
-
   explicit RestEdgesHandler(rest::HttpRequest*);
 
-  
  public:
-
   status_t execute() override final;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reads all edges in given direction for given vertex

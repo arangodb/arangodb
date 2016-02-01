@@ -84,7 +84,7 @@ class Dumper {
     std::string buffer;
     StringSink sink(&buffer);
     dump(slice, &sink, options);
-    return std::move(buffer);
+    return buffer;
   }
 
   static std::string toString(Slice const* slice,

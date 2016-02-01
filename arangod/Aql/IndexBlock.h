@@ -32,8 +32,6 @@
 #include "VocBase/shaped-json.h"
 
 struct TRI_doc_mptr_copy_t;
-struct TRI_edge_index_iterator_t;
-struct TRI_hash_index_element_multi_s;
 
 namespace arangodb {
 class IndexIterator;
@@ -45,7 +43,6 @@ class AqlItemBlock;
 struct AstNode;
 struct Collection;
 class ExecutionEngine;
-
 
 class IndexBlock : public ExecutionBlock {
  public:
@@ -75,7 +72,6 @@ class IndexBlock : public ExecutionBlock {
 
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a SORT to a dynamic IN condition
@@ -125,7 +121,6 @@ class IndexBlock : public ExecutionBlock {
 
   void cleanupNonConstExpressions();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection
@@ -215,4 +210,3 @@ class IndexBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

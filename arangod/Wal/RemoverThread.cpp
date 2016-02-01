@@ -23,20 +23,18 @@
 
 #include "RemoverThread.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb::wal;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait interval for the remover thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t const RemoverThread::Interval = 500000;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the remover thread
@@ -56,7 +54,6 @@ RemoverThread::RemoverThread(LogfileManager* logfileManager)
 
 RemoverThread::~RemoverThread() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops the remover thread
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +71,6 @@ void RemoverThread::stop() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main loop
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,10 +86,9 @@ void RemoverThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
-      LOG_ERROR("got unexpected error in removerThread::run: %s",
-                TRI_errno_string(res));
+      LOG(ERR) << "got unexpected error in removerThread::run: " << TRI_errno_string(res);
     } catch (...) {
-      LOG_ERROR("got unspecific error in removerThread::run");
+      LOG(ERR) << "got unspecific error in removerThread::run";
     }
 
     if (stop == 0 && !worked) {
@@ -110,5 +105,3 @@ void RemoverThread::run() {
 
   _stop = 2;
 }
-
-

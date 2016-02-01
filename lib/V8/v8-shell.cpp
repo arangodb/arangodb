@@ -23,12 +23,9 @@
 
 #include "v8-shell.h"
 
-#include "Basics/conversions.h"
 #include "Basics/csv.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
 #include "Basics/shell-colors.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
@@ -36,10 +33,6 @@
 #include "V8/v8-utils.h"
 
 #include <fstream>
-
-using namespace std;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begins a new CSV line
@@ -85,7 +78,6 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Value> args[] = {*array, r};
   (*cb)->Call(*cb, 2, args);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a CSV file
@@ -247,13 +239,13 @@ static void JS_ProcessJsonFile(
 
   // read and convert
   std::string line;
-  ifstream file(*filename);
+  std::ifstream file(*filename);
 
   if (file.is_open()) {
     size_t row = 0;
 
     while (file.good()) {
-      getline(file, line);
+      std::getline(file, line);
 
       char const* ptr = line.c_str();
       char const* end = ptr + line.length();
@@ -299,8 +291,6 @@ static void JS_ProcessJsonFile(
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 shell functions inside the global variable
@@ -430,5 +420,3 @@ void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("COLORS"),
                                colors);
 }
-
-

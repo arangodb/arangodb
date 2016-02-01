@@ -33,13 +33,11 @@ struct TRI_json_t;
 namespace arangodb {
 
 class DocumentHelper {
-  
  private:
   DocumentHelper() = delete;
 
   ~DocumentHelper() = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief assemble a document id from a string and a string
@@ -72,4 +70,3 @@ class DocumentHelper {
 }
 
 #endif
-

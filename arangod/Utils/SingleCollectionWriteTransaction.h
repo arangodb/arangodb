@@ -36,9 +36,7 @@ namespace arangodb {
 
 template <uint64_t N>
 class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
-  
  public:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection object
   ///
@@ -83,7 +81,6 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
   virtual ~SingleCollectionWriteTransaction() {}
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether a write in the transaction was synchronous
@@ -305,7 +302,6 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
     return this->removeAll(this->trxCollection(), forceSync);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of writes the transaction has executed
@@ -318,5 +314,3 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 }
 
 #endif
-
-

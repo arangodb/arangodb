@@ -26,7 +26,6 @@
 
 #include "fulltext-common.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for a fulltext result list
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +34,6 @@ typedef struct TRI_fulltext_result_s {
   uint32_t _numDocuments;
   TRI_fulltext_doc_t* _documents;
 } TRI_fulltext_result_t;
-
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief create a result
@@ -56,5 +54,3 @@ void TRI_DestroyResultFulltextIndex(TRI_fulltext_result_t*);
 void TRI_FreeResultFulltextIndex(TRI_fulltext_result_t*);
 
 #endif
-
-
