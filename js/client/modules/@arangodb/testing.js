@@ -1003,8 +1003,6 @@ function shutdownInstance(instanceInfo, options) {
   }
 
   if (options.cluster) {
-    killExternal(instanceInfo.dispatcherPid);
-
     let rc = instanceInfo.kickstarter.shutdown();
 
     if (!options.skipLogAnalysis) {
@@ -1024,17 +1022,20 @@ function shutdownInstance(instanceInfo, options) {
               if ((rc.results[i].serverStates[serverState].status === "NOT-FOUND") ||
                 (rc.results[i].serverStates[serverState].hasOwnProperty('signal'))) {
                 print("Server " + serverState + " shut down with:\n" +
-                  yaml.safeDump(rc.results[i].serverStates[serverState]) +
-                  " marking run as crashy.");
-                print("marking crashy");
+                      yaml.safeDump(rc.results[i].serverStates[serverState]));
 
-                serverCrashed = true;
+                if (!serverCrashed) {
+                  print("marking run as crashy");
+                  serverCrashed = true;
+                }
               }
             }
           }
         }
       }
     }
+
+    killExternal(instanceInfo.dispatcherPid);
   }
 
   // single server
@@ -2330,7 +2331,7 @@ testFuncs.dump = function(options) {
         "UnitTestsDumpDst");
 
       if (checkInstanceAlive(instanceInfo, options)) {
-        print(Date() + ": Dump and Restore - dump 2");
+        print(Date() + ": Dump and Restore - dump after restore");
 
         results.test = runInArangosh(options, instanceInfo,
           makePathUnix("js/server/tests/dump/dump" + cluster + ".js"), {
