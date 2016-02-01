@@ -28,16 +28,15 @@
 #include <libplatform/libplatform.h>
 
 #include "ArangoShell/ArangoClient.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/csv.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
 #include "Basics/Logger.h"
-#include "Basics/messages.h"
 #include "Basics/shell-colors.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
@@ -45,8 +44,6 @@
 #include "Rest/HttpResponse.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/Version.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-buffer.h"
@@ -2292,11 +2289,11 @@ static int WarmupEnvironment(v8::Isolate* isolate,
 
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "no 'javascript.startup-directory' has been supplied, giving up");
+    LOG(FATAL) << "no 'javascript.startup-directory' has been supplied, giving up"; FATAL_ERROR_EXIT();
   }
 
-  LOG_DEBUG("using JavaScript startup files at '%s'", StartupPath.c_str());
+  LOG(DEBUG) << "using JavaScript startup files at '" << StartupPath << "'";
+
   StartupLoader.setDirectory(StartupPath);
 
   // load all init files
@@ -2329,15 +2326,13 @@ static int WarmupEnvironment(v8::Isolate* isolate,
   for (size_t i = 0; i < files.size(); ++i) {
     switch (StartupLoader.loadScript(isolate, context, files[i])) {
       case JSLoader::eSuccess:
-        LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
+        LOG(TRACE) << "loaded JavaScript file '" << files[i] << "'";
         break;
       case JSLoader::eFailLoad:
-        LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'",
-                           files[i].c_str());
+        LOG(FATAL) << "cannot load JavaScript file '" << files[i].c_str() << "'"; FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
-        LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'",
-                           files[i].c_str());
+        LOG(FATAL) << "error during execution of JavaScript file '" << files[i].c_str() << "'"; FATAL_ERROR_EXIT();
         break;
     }
   }
@@ -2568,11 +2563,10 @@ int main(int argc, char* args[]) {
         try {
           ret = Run(isolate, runMode, promptError);
         } catch (std::bad_alloc const&) {
-          LOG_ERROR("caught exception %s",
-                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+          LOG(ERROR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ret = EXIT_FAILURE;
         } catch (...) {
-          LOG_ERROR("caught unknown exception");
+          LOG(ERROR) << "caught unknown exception";
           ret = EXIT_FAILURE;
         }
       }
@@ -2580,9 +2574,9 @@ int main(int argc, char* args[]) {
       isolate->LowMemoryNotification();
 
       // spend at least 3 seconds in GC
-      LOG_DEBUG("entering final garbage collection");
+      LOG(DEBUG) << "entering final garbage collection";
       TRI_RunGarbageCollectionV8(isolate, 3000);
-      LOG_DEBUG("final garbage collection completed");
+      LOG(DEBUG) << "final garbage collection completed";
 
       localContext->Exit();
       context.Reset();

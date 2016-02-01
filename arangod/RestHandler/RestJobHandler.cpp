@@ -24,7 +24,6 @@
 #include "RestJobHandler.h"
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"
@@ -36,7 +35,6 @@
 using namespace arangodb::admin;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
 
 RestJobHandler::RestJobHandler(HttpRequest* request,
                                std::pair<Dispatcher*, AsyncJobManager*>* data)

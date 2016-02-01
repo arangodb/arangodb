@@ -24,10 +24,8 @@
 
 #include "Cluster/ClusterInfo.h"
 
-#include "Basics/conversions.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
+#include "Basics/Logger.h"
 #include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
@@ -35,7 +33,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "VocBase/server.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -520,11 +517,7 @@ void ClusterInfo::loadPlannedDatabases() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixPlannedDatabases.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixPlannedDatabases.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -636,11 +629,7 @@ void ClusterInfo::loadCurrentDatabases() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixCurrentDatabases.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixCurrentDatabases.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -666,7 +655,7 @@ void ClusterInfo::loadPlannedCollections() {
     if (locker.successful()) {
       result = _agency.getValues(prefixPlannedCollections, true);
     } else {
-      LOG_ERROR("Error while locking %s", prefixPlannedCollections.c_str());
+      LOG(ERROR) << "Error while locking " << prefixPlannedCollections.c_str();
       return;
     }
   }
@@ -691,8 +680,7 @@ void ClusterInfo::loadPlannedCollections() {
 
       if (parts.size() != 2) {
         // invalid entry
-        LOG_WARNING("found invalid collection key in agency: '%s'",
-                    key.c_str());
+        LOG(WARNING) << "found invalid collection key in agency: '" << key.c_str() << "'";
         continue;
       }
 
@@ -753,11 +741,7 @@ void ClusterInfo::loadPlannedCollections() {
     return;
   }
 
-  LOG_ERROR(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixPlannedCollections.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(ERROR) << "Error while loading " << prefixPlannedCollections.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -901,8 +885,7 @@ void ClusterInfo::loadCurrentCollections() {
 
       if (parts.size() != 3) {
         // invalid entry
-        LOG_WARNING("found invalid collection key in current in agency: '%s'",
-                    key.c_str());
+        LOG(WARNING) << "found invalid collection key in current in agency: '" << key.c_str() << "'";
         continue;
       }
 
@@ -961,11 +944,7 @@ void ClusterInfo::loadCurrentCollections() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixCurrentCollections.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixCurrentCollections.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1312,7 +1291,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     index = res._index;
   }
 
-  // LOG_ERROR("GOT TIMEOUT. NUMBEROFSHARDS: %d", (int) numberOfShards);
+  // LOG(ERROR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
@@ -1597,7 +1576,7 @@ int ClusterInfo::ensureIndexCoordinator(
   auto it = previous._values.begin();
   bool usePrevious = true;
   if (it == previous._values.end()) {
-    LOG_INFO("Entry for collection in Plan does not exist!");
+    LOG(INFO) << "Entry for collection in Plan does not exist!";
     usePrevious = false;
   }
 
@@ -2079,11 +2058,7 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixServers.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixServers.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2207,11 +2182,7 @@ void ClusterInfo::loadCurrentCoordinators() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixCurrentCoordinators.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixCurrentCoordinators.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2264,11 +2235,7 @@ void ClusterInfo::loadCurrentDBServers() {
     return;
   }
 
-  LOG_DEBUG(
-      "Error while loading %s httpCode: %d "
-      "errorCode: %d errorMessage: %s body: %s",
-      prefixCurrentDBServers.c_str(), result.httpCode(), result.errorCode(),
-      result.errorMessage().c_str(), result.body().c_str());
+  LOG(DEBUG) << "Error while loading " << prefixCurrentDBServers.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

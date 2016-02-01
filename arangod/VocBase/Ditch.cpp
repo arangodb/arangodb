@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ditch.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "VocBase/document-collection.h"
 
@@ -157,9 +157,9 @@ void Ditches::destroy() {
         type == Ditch::TRI_DITCH_COMPACTION) {
       delete ptr;
     } else if (type == Ditch::TRI_DITCH_DOCUMENT) {
-      LOG_ERROR("logic error. shouldn't have document ditches on unload");
+      LOG(ERROR) << "logic error. shouldn't have document ditches on unload";
     } else {
-      LOG_ERROR("unknown ditch type");
+      LOG(ERROR) << "unknown ditch type";
     }
 
     ptr = next;

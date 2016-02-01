@@ -27,10 +27,9 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Rest/HttpRequest.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,11 +75,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
       TRI_action_t* oldAction = PrefixActions[url];
 
       if (oldAction->_type != action->_type) {
-        LOG_ERROR(
-            "trying to define two incompatible actions of type '%s' and '%s' "
-            "for prefix url '%s'",
-            oldAction->_type.c_str(), action->_type.c_str(),
-            action->_url.c_str());
+        LOG(ERROR) << "trying to define two incompatible actions of type '" << oldAction->_type.c_str() << "' and '" << action->_type.c_str() << "' for prefix url '" << action->_url.c_str() << "'";
 
         delete oldAction;
       } else {
@@ -95,11 +90,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
       TRI_action_t* oldAction = Actions[url];
 
       if (oldAction->_type != action->_type) {
-        LOG_ERROR(
-            "trying to define two incompatible actions of type '%s' and type "
-            "'%s' for url '%s'",
-            oldAction->_type.c_str(), action->_type.c_str(),
-            action->_url.c_str());
+        LOG(ERROR) << "trying to define two incompatible actions of type '" << oldAction->_type.c_str() << "' and type '" << action->_type.c_str() << "' for url '" << action->_url.c_str() << "'";
 
         delete oldAction;
       } else {
@@ -110,8 +101,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
   }
 
   // some debug output
-  LOG_DEBUG("created %s %saction '%s'", action->_type.c_str(),
-            (action->_isPrefix ? "prefix " : ""), url.c_str());
+  LOG(DEBUG) << "created " << action->_type.c_str() << " " << (action->_isPrefix ? "prefix " : "") << " '" << url.c_str() << "'";
 
   // return old or new action description
   return action;

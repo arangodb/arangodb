@@ -32,8 +32,6 @@
 #include "VocBase/shaped-json.h"
 
 struct TRI_doc_mptr_copy_t;
-struct TRI_edge_index_iterator_t;
-struct TRI_hash_index_element_multi_s;
 
 namespace arangodb {
 class IndexIterator;

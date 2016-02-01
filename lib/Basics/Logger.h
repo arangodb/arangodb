@@ -95,16 +95,18 @@ class LogTopic {
   LogTopic(std::string const& name, LogLevel level);
 
   LogTopic(LogTopic const& that) noexcept : _topicId(that._topicId),
-                                            _topics(that._topics),
-                                            _level(that._level) {}
+                                            _topics(that._topics) {
+    _level.store(that._level, std::memory_order_relaxed);
+  }
 
   LogTopic(LogTopic&& that) noexcept : _topicId(that._topicId),
-                                       _topics(std::move(that._topics)),
-                                       _level(that._level) {}
+                                       _topics(std::move(that._topics)) {
+    _level.store(that._level, std::memory_order_relaxed);
+  }
 
  public:
-  LogLevel level() const { return _level; }
-  void setLevel(LogLevel level) { _level = level; }
+  LogLevel level() const { return _level.load(std::memory_order_relaxed); }
+  void setLevel(LogLevel level) { _level.store(level, std::memory_order_relaxed); }
   std::bitset<MAX_LOG_TOPICS> const& bits() const { return _topics; }
 
   LogTopic operator|(LogTopic const&);
@@ -112,7 +114,7 @@ class LogTopic {
  private:
   size_t _topicId;
   std::bitset<MAX_LOG_TOPICS> _topics;
-  LogLevel _level;
+  std::atomic<LogLevel> _level;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,15 +158,26 @@ class Logger {
   static LogTopic COLLECTOR;
   static LogTopic COMPACTOR;
   static LogTopic PERFORMANCE;
+  static LogTopic QUERIES;
   static LogTopic REQUESTS;
 
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief duration
+  //////////////////////////////////////////////////////////////////////////////
+
+  struct DURATION {
+    explicit DURATION(double duration, int precision = 6) : _duration(duration), _precision(precision){};
+    double _duration;
+    int _precision;
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief line number helper class
   //////////////////////////////////////////////////////////////////////////////
 
   struct LINE {
-    LINE(long int line) : _line(line){};
+    explicit LINE(long int line) : _line(line){};
     long int _line;
   };
 
@@ -173,7 +186,7 @@ class Logger {
   //////////////////////////////////////////////////////////////////////////////
 
   struct FILE {
-    FILE(char const* file) : _file(file){};
+    explicit FILE(char const* file) : _file(file){};
     char const* _file;
   };
 
@@ -182,16 +195,36 @@ class Logger {
   //////////////////////////////////////////////////////////////////////////////
 
   struct FUNCTION {
-    FUNCTION(char const* function) : _function(function){};
+    explicit FUNCTION(char const* function) : _function(function){};
     char const* _function;
   };
 
  public:
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the global log level
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setLevel(LogLevel);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief determines the global log level
+  //////////////////////////////////////////////////////////////////////////////
+
+  static LogLevel logLevel();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a string description for the log level
+  //////////////////////////////////////////////////////////////////////////////
+
+  static char const* translateLogLevel(LogLevel);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if logging is enabled for log level
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool isEnabled(LogLevel level) { return (int)level <= (int)_level; }
+  static bool isEnabled(LogLevel level) {
+    return (int)level <= (int)_level.load(std::memory_order_relaxed);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if logging is enabled for log topic
@@ -199,7 +232,8 @@ class Logger {
 
   static bool isEnabled(LogLevel level, LogTopic const& topic) {
     return (int)level <=
-           (int)((topic.level() == LogLevel::DEFAULT) ? _level : topic.level());
+     (int)((topic.level() == LogLevel::DEFAULT) ? _level.load(std::memory_order_relaxed)
+     : topic.level());
   }
 
  private:
@@ -207,7 +241,7 @@ class Logger {
   /// @brief current log level
   //////////////////////////////////////////////////////////////////////////////
 
-  static LogLevel _level;
+  static std::atomic<LogLevel> _level;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,6 +276,8 @@ class LoggerStream {
     _topics = topics.bits();
     return *this;
   }
+
+  LoggerStream& operator<<(Logger::DURATION duration);
 
   LoggerStream& operator<<(Logger::LINE line) {
     _line = line._line;
@@ -283,5 +319,7 @@ class LogVoidify {
   void operator&(LoggerStream const&) {}
 };
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::LogLevel);
 
 #endif

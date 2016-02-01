@@ -23,25 +23,18 @@
 
 #include "Basics/Common.h"
 #include "ArangoShell/ArangoClient.h"
+#include "Basics/init.h"
+#include "Basics/Logger.h"
 #include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
-#include "Basics/StringUtils.h"
-#include "Basics/init.h"
-#include "Basics/logging.h"
 #include "Basics/random.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/tri-strings.h"
-#include "Basics/terminal-utils.h"
 #include "Rest/Endpoint.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/InitializeRest.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 #include <iostream>
 
@@ -293,14 +286,13 @@ int main(int argc, char* argv[]) {
 
   if (BaseClient.endpointServer() == nullptr) {
     std::string endpointString = BaseClient.endpointString();
-    LOG_FATAL_AND_EXIT("invalid value for --server.endpoint ('%s')",
-                       endpointString.c_str());
+    LOG(FATAL) << "invalid value for --server.endpoint ('" << endpointString.c_str() << "')"; FATAL_ERROR_EXIT();
   }
 
   BenchmarkOperation* testCase = GetTestCase(TestCase);
 
   if (testCase == nullptr) {
-    LOG_FATAL_AND_EXIT("invalid test case name '%s'", TestCase.c_str());
+    LOG(FATAL) << "invalid test case name '" << TestCase.c_str() << "'"; FATAL_ERROR_EXIT();
     return EXIT_FAILURE;  // will not be reached
   }
 
@@ -376,7 +368,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (Progress && numOperations >= nextReportValue) {
-      LOG_INFO("number of operations: %d", (int)nextReportValue);
+      LOG(INFO) << "number of operations: " << nextReportValue;
       nextReportValue += stepValue;
     }
 

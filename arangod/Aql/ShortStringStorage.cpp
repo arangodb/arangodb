@@ -56,16 +56,16 @@ ShortStringStorage::~ShortStringStorage() {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* ShortStringStorage::registerString(char const* p, size_t length) {
-  TRI_ASSERT_EXPENSIVE(length <= MaxStringLength);
+  TRI_ASSERT(length <= MaxStringLength);
 
   if (_current == nullptr || (_current + length + 1 > _end)) {
     allocateBlock();
   }
 
-  TRI_ASSERT_EXPENSIVE(!_blocks.empty());
-  TRI_ASSERT_EXPENSIVE(_current != nullptr);
-  TRI_ASSERT_EXPENSIVE(_end != nullptr);
-  TRI_ASSERT_EXPENSIVE(_current + length + 1 <= _end);
+  TRI_ASSERT(!_blocks.empty());
+  TRI_ASSERT(_current != nullptr);
+  TRI_ASSERT(_end != nullptr);
+  TRI_ASSERT(_current + length + 1 <= _end);
 
   char* position = _current;
   memcpy(static_cast<void*>(position), p, length);

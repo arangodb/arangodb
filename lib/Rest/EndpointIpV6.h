@@ -25,7 +25,7 @@
 #define LIB_REST_ENDPOINT_IP_V6_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringUtils.h"
 #include "Rest/EndpointIp.h"
 
 namespace arangodb {

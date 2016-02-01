@@ -32,12 +32,11 @@
 #include <malloc.h>
 #include <crtdbg.h>
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/files.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 // .............................................................................
@@ -95,7 +94,7 @@ void TRI_usleep(unsigned long waitTime) {
   }
 
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG_FATAL_AND_EXIT("internal error in TRI_usleep()");
+    LOG(FATAL) << "internal error in TRI_usleep()"; FATAL_ERROR_EXIT();
   }
 
   // Set timer to wait for indicated micro seconds.
@@ -110,7 +109,7 @@ void TRI_usleep(unsigned long waitTime) {
 
   if (result != WAIT_OBJECT_0) {
     CloseHandle(hTimer);
-    LOG_FATAL_AND_EXIT("couldn't wait for timer in TRI_usleep()");
+    LOG(FATAL) << "couldn't wait for timer in TRI_usleep()"; FATAL_ERROR_EXIT();
   }
 
   CloseHandle(hTimer);
@@ -131,7 +130,7 @@ static void InvalidParameterHandler(
     const wchar_t* file,        // file where code resides - NULL
     unsigned int line,          // line within file - NULL
     uintptr_t pReserved) {      // in case microsoft forget something
-  LOG_ERROR("Invalid handle parameter passed");
+  LOG(ERROR) << "Invalid handle parameter passed";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,16 +215,12 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG_ERROR(
-            "Could not find a usable Winsock DLL. WSAStartup returned an "
-            "error.");
+        LOG(ERROR) << "Could not find a usable Winsock DLL. WSAStartup returned an error.";
         return -1;
       }
 
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG_ERROR(
-            "Could not find a usable Winsock DLL. WSAStartup did not return "
-            "version 2.2.");
+        LOG(ERROR) << "Could not find a usable Winsock DLL. WSAStartup did not return version 2.2.";
         WSACleanup();
         return -1;
       }
@@ -233,7 +228,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
     }
 
     default: {
-      LOG_ERROR("Invalid windows initialization called");
+      LOG(ERROR) << "Invalid windows initialization called";
       return -1;
     }
   }

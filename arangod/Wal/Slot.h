@@ -25,7 +25,6 @@
 #define ARANGOD_WAL_SLOT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/Legends.h"
 #include "Wal/Logfile.h"
 
 struct TRI_df_marker_s;

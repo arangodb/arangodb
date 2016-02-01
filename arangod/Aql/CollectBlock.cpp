@@ -724,7 +724,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
     for (auto const& it : allGroups) {
       auto& keys = it.first;
 
-      TRI_ASSERT_EXPENSIVE(keys.size() == n);
+      TRI_ASSERT(keys.size() == n);
       size_t i = 0;
       for (auto& key : keys) {
         result->setValue(row, _groupRegisters[i++].first, key);

@@ -24,7 +24,7 @@
 
 #include "HttpRequest.h"
 #include "Basics/conversions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -35,7 +35,6 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -1176,7 +1175,7 @@ std::string HttpRequest::translateMethod(HttpRequestType method) {
     return "PUT";
   }
 
-  LOG_WARNING("illegal http request method encountered in switch");
+  LOG(WARNING) << "illegal http request method encountered in switch";
   return "UNKNOWN";
 }
 

@@ -28,7 +28,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Cluster/AgencyComm.h"
 
 struct TRI_server_t;
@@ -76,7 +76,7 @@ class HeartbeatThread : public basics::Thread {
       return;
     }
 
-    LOG_TRACE("stopping heartbeat thread");
+    LOG(TRACE) << "stopping heartbeat thread";
 
     _stop = 1;
     _condition.signal();

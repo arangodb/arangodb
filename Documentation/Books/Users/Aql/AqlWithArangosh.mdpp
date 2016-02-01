@@ -1,7 +1,7 @@
 !CHAPTER Executing queries from Arangosh 
 
 Within the ArangoDB shell, the *_query* and *_createStatement* methods of the *db* object can be used to execute AQL queries. 
-This chapter also describes how to use data binding, counting, statistics and cursors. 
+This chapter also describes how to use bind parameters, counting, statistics and cursors. 
 
 !SUBSECTION with db._query
 

@@ -522,7 +522,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx,
     std::unordered_set<std::string> const& attributes,
     TRI_document_collection_t const* document) const {
-  TRI_ASSERT_EXPENSIVE(_type == JSON);
+  TRI_ASSERT(_type == JSON);
   TRI_ASSERT(_json != nullptr);
 
   TRI_json_t const* json = _json->json();

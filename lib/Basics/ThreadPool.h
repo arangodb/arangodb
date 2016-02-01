@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 
 #include <functional>
 #include <deque>

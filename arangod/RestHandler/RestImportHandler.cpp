@@ -23,6 +23,7 @@
 
 #include "RestImportHandler.h"
 #include "Basics/json-utilities.h"
+#include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
@@ -101,7 +102,7 @@ HttpHandler::status_t RestImportHandler::execute() {
 TRI_col_type_e RestImportHandler::getCollectionType() {
   // extract the collection type from the request
   bool found;
-  std::string const& collectionType =
+  std::string const collectionType =
       _request->value("createCollectionType", found);
 
   if (found && !collectionType.empty() && collectionType == "edge") {
@@ -375,7 +376,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   // extract the collection name
   bool found;
-  std::string const& collection = _request->value("collection", found);
+  std::string const collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -602,7 +603,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // extract the collection name
   bool found;
-  std::string const& collection = _request->value("collection", found);
+  std::string const collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -815,8 +816,8 @@ void RestImportHandler::generateDocumentsCreated(
     if (found && StringUtils::boolean(detailsStr)) {
       json.add("details", VPackValue(VPackValueType::Array));
 
-      for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
-        json.add(VPackValue(result._errors[i]));
+      for (auto const& elem : result._errors) {
+        json.add(VPackValue(elem));
       }
       json.close();
     }
@@ -900,7 +901,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
 
     return result;
   } catch (std::bad_alloc const&) {
-    LOG_ERROR("out of memory");
+    LOG(ERROR) << "out of memory";
     throw;
   }
 }

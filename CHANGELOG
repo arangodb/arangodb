@@ -1,6 +1,10 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* removed configure option `--enable-logger`
+
+* removed startup option `--log.source-filter`
+
 * change collection directory names to include a random id component at the end
 
   The new pattern is `collection-<id>-<random>`, where `<id>` is the collection

@@ -85,8 +85,8 @@ typedef struct {
   double* distances;
 } GeoCoordinates;
 
-typedef char GeoIndex;  /* to keep the structure private  */
-typedef char GeoCursor; /* to keep the structure private  */
+typedef void GeoIndex;  /* to keep the structure private  */
+typedef void GeoCursor; /* to keep the structure private  */
 
 size_t GeoIndex_MemoryUsage(void*);
 

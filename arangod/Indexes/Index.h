@@ -119,9 +119,9 @@ struct TRI_index_element_t {
   //////////////////////////////////////////////////////////////////////////////
 
   static void freeElement(TRI_index_element_t* el) {
-    TRI_ASSERT_EXPENSIVE(el != nullptr);
-    TRI_ASSERT_EXPENSIVE(el->document() != nullptr);
-    TRI_ASSERT_EXPENSIVE(el->subObjects() != nullptr);
+    TRI_ASSERT(el != nullptr);
+    TRI_ASSERT(el->document() != nullptr);
+    TRI_ASSERT(el->subObjects() != nullptr);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, el);
   }

@@ -31,7 +31,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::rest;
-using namespace std;
 
 namespace {
 std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
@@ -44,7 +43,7 @@ std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
 
 Task::Task(std::string const& id, std::string const& name)
     : _scheduler(nullptr),
-      _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_seq_cst)),
+      _taskId(NEXT_TASK_ID.fetch_add(1, std::memory_order_seq_cst)),
       _loop(0),  // TODO(fc) XXX this should be an "invalid" marker!
       _id(id),
       _name(name) {}

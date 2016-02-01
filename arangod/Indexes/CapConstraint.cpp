@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CapConstraint.h"
+#include "Basics/Logger.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -162,7 +163,7 @@ int CapConstraint::apply(arangodb::Transaction* trx,
                                                    oldest);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_WARNING("cannot cap collection: %s", TRI_errno_string(res));
+          LOG(WARNING) << "cannot cap collection: " << TRI_errno_string(res);
           break;
         }
       } else {
@@ -173,7 +174,7 @@ int CapConstraint::apply(arangodb::Transaction* trx,
       currentSize -= (int64_t)oldSize;
     } else {
       // we should not get here
-      LOG_WARNING("logic error in %s", __FUNCTION__);
+      LOG(WARNING) << "logic error in " << __FUNCTION__;
       break;
     }
   }

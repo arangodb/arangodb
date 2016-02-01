@@ -1009,18 +1009,16 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Array> collections = v8::Array::New(isolate);
     result->Set(TRI_V8_ASCII_STRING("collections"), collections);
     uint32_t i = 0;
-    for (auto it = parseResult.collectionNames.begin();
-         it != parseResult.collectionNames.end(); ++it) {
-      collections->Set(i++, TRI_V8_STD_STRING((*it)));
+    for (auto& elem : parseResult.collectionNames) {
+      collections->Set(i++, TRI_V8_STD_STRING((elem)));
     }
   }
 
   {
     v8::Handle<v8::Array> bindVars = v8::Array::New(isolate);
     uint32_t i = 0;
-    for (auto it = parseResult.bindParameters.begin();
-         it != parseResult.bindParameters.end(); ++it) {
-      bindVars->Set(i++, TRI_V8_STD_STRING((*it)));
+    for (auto const& elem : parseResult.bindParameters) {
+      bindVars->Set(i++, TRI_V8_STD_STRING((elem)));
     }
     result->Set(TRI_V8_ASCII_STRING("parameters"), bindVars);
   }
@@ -3875,7 +3873,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
 
   v8::Handle<v8::Object> v = WrapVocBase(isolate, vocbase);
   if (v.IsEmpty()) {
-    LOG_ERROR("out of memory when initializing VocBase");
+    LOG(ERROR) << "out of memory when initializing VocBase";
   } else {
     TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("db"),
                                  v);

@@ -26,7 +26,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
@@ -177,10 +177,7 @@ static void IterateDatafiles(TRI_vector_pointer_t const* datafiles,
     df_entry_t entry = {df, df->_dataMin, df->_dataMax, df->_tickMax,
                         isJournal};
 
-    LOG_TRACE(
-        "checking datafile %llu with data range %llu - %llu, tick max: %llu",
-        (unsigned long long)df->_fid, (unsigned long long)df->_dataMin,
-        (unsigned long long)df->_dataMax, (unsigned long long)df->_tickMax);
+    LOG(TRACE) << "checking datafile " << df->_fid << " with data range " << df->_dataMin << " - " << df->_dataMax << ", tick max: " << df->_tickMax;
 
     if (df->_dataMin == 0 || df->_dataMax == 0) {
       // datafile doesn't have any data
@@ -211,8 +208,7 @@ static void IterateDatafiles(TRI_vector_pointer_t const* datafiles,
 static std::vector<df_entry_t> GetRangeDatafiles(
     TRI_document_collection_t* document, TRI_voc_tick_t dataMin,
     TRI_voc_tick_t dataMax) {
-  LOG_TRACE("getting datafiles in data range %llu - %llu",
-            (unsigned long long)dataMin, (unsigned long long)dataMax);
+  LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
 
   std::vector<df_entry_t> datafiles;
 
@@ -880,7 +876,7 @@ static TRI_replication_operation_e TranslateType(
 
 static int StringifyWalMarker(TRI_replication_dump_t* dump,
                               TRI_df_marker_t const* marker) {
-  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
+  TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
   APPEND_STRING(dump->_buffer, "{\"tick\":\"");
   APPEND_UINT64(dump->_buffer, (uint64_t)marker->_tick);
@@ -972,7 +968,7 @@ static TRI_voc_tick_t GetDatabaseId(TRI_df_marker_t const* marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_tick_t GetDatabaseFromWalMarker(TRI_df_marker_t const* marker) {
-  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
+  TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
   switch (marker->_type) {
     case TRI_WAL_MARKER_ATTRIBUTE:
@@ -1070,7 +1066,7 @@ static TRI_voc_tid_t GetTransactionId(TRI_df_marker_t const* marker) {
 
 static TRI_voc_tid_t GetTransactionFromWalMarker(
     TRI_df_marker_t const* marker) {
-  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
+  TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
   switch (marker->_type) {
     case TRI_WAL_MARKER_DOCUMENT:
@@ -1164,9 +1160,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
                           bool withTicks, bool translateCollectionIds,
                           bool failOnUnknown,
                           arangodb::CollectionNameResolver* resolver) {
-  LOG_TRACE("dumping collection %llu, tick range %llu - %llu",
-            (unsigned long long)document->_info.id(),
-            (unsigned long long)dataMin, (unsigned long long)dataMax);
+  LOG(TRACE) << "dumping collection " << document->_info.id() << ", tick range " << dataMin << " - " << dataMax;
 
   TRI_string_buffer_t* buffer = dump->_buffer;
 
@@ -1392,8 +1386,7 @@ int TRI_DumpLogReplication(
     std::unordered_set<TRI_voc_tid_t> const& transactionIds,
     TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t tickMin,
     TRI_voc_tick_t tickMax, bool outputAsArray) {
-  LOG_TRACE("dumping log, tick range %llu - %llu", (unsigned long long)tickMin,
-            (unsigned long long)tickMax);
+  LOG(TRACE) << "dumping log, tick range " << tickMin << " - " << tickMax;
 
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
@@ -1526,8 +1519,7 @@ int TRI_DumpLogReplication(
 int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
                                              TRI_voc_tick_t tickMin,
                                              TRI_voc_tick_t tickMax) {
-  LOG_TRACE("determining transactions, tick range %llu - %llu",
-            (unsigned long long)tickMin, (unsigned long long)tickMax);
+  LOG(TRACE) << "determining transactions, tick range " << tickMin << " - " << tickMax;
 
   std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
 
@@ -1541,7 +1533,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
   TRI_voc_tick_t lastFoundTick = 0;
   int res = TRI_ERROR_NO_ERROR;
 
-  // LOG_INFO("found logfiles: %d", (int) logfiles.size());
+  // LOG(INFO) << "found logfiles: " << logfiles.size();
 
   try {
     // iterate over the datafiles found
@@ -1554,7 +1546,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
       arangodb::wal::LogfileManager::instance()->getActiveLogfileRegion(
           logfile, ptr, end);
 
-      // LOG_INFO("scanning logfile %d", (int) i);
+      // LOG(INFO) << "scanning logfile " << i;
       while (ptr < end) {
         TRI_df_marker_t const* marker =
             reinterpret_cast<TRI_df_marker_t const*>(ptr);
@@ -1576,7 +1568,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
         if (foundTick > tickMax) {
           // marker too new
-          // LOG_INFO("marker too new. aborting logfile %d", (int) i);
+          // LOG(INFO) << "marker too new. aborting logfile " << i;
           break;
         }
 
@@ -1589,29 +1581,29 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
           continue;
         }
 
-        // LOG_INFO("found transaction marker");
+        // LOG(INFO) << "found transaction marker";
 
         if (marker->_type == TRI_WAL_MARKER_BEGIN_TRANSACTION) {
           auto m = reinterpret_cast<
               arangodb::wal::transaction_begin_marker_t const*>(marker);
           transactions.emplace(m->_transactionId, foundTick);
-          // LOG_INFO("found begin: %llu", m->_transactionId);
+          // LOG(INFO) << "found begin: " << m->_transactionId;
         } else if (marker->_type == TRI_WAL_MARKER_COMMIT_TRANSACTION) {
           auto m = reinterpret_cast<
               arangodb::wal::transaction_commit_marker_t const*>(marker);
           transactions.erase(m->_transactionId);
-          // LOG_INFO("found commit: %llu", m->_transactionId);
+          // LOG(INFO) << "found commit: " << m->_transactionId;
         } else if (marker->_type == TRI_WAL_MARKER_ABORT_TRANSACTION) {
           auto m = reinterpret_cast<
               arangodb::wal::transaction_abort_marker_t const*>(marker);
           transactions.erase(m->_transactionId);
-          // LOG_INFO("found abort: %llu", m->_transactionId);
+          // LOG(INFO) << "found abort: " << m->_transactionId;
         }
       }
     }
 
-    // LOG_INFO("found transactions: %d", (int) transactions.size());
-    // LOG_INFO("last tick: %llu", lastFoundTick);
+    // LOG(INFO) << "found transactions: " << transactions.size();
+    // LOG(INFO) << "last tick: " << lastFoundTick;
 
     if (transactions.empty()) {
       TRI_AppendStringStringBuffer(dump->_buffer, "[]");
@@ -1638,7 +1630,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
     dump->_fromTickIncluded = fromTickIncluded;
     dump->_lastFoundTick = lastFoundTick;
-    // LOG_INFO("last tick2: %llu", lastFoundTick);
+    // LOG(INFO) << "last tick2: " << lastFoundTick;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {

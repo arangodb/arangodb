@@ -39,7 +39,7 @@ std::string HexDump::toHex(uint8_t value) {
   x = value % 16;
   result.push_back((x < 10 ? ('0' + x) : ('a' + x - 10)));
 
-  return std::move(result);
+  return result;
 }
 
 std::ostream& operator<<(std::ostream& stream, HexDump const* hexdump) {

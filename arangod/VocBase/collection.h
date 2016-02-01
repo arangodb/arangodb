@@ -354,27 +354,6 @@ void TRI_DestroyCollection(TRI_collection_t*);
 void TRI_FreeCollection(TRI_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return JSON information about the collection from the collection's
-/// "parameter.json" file. This function does not require the collection to be
-/// loaded.
-/// The caller must make sure that the files is not modified while this
-/// function is called.
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_json_t* TRI_ReadJsonCollectionInfo(TRI_vocbase_col_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over the index (JSON) files of a collection, using a callback
-/// function for each.
-/// This function does not require the collection to be loaded.
-/// The caller must make sure that the files is not modified while this
-/// function is called.
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_IterateJsonIndexesCollectionInfo(
-    TRI_vocbase_col_t*, int (*)(TRI_vocbase_col_t*, char const*, void*), void*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief jsonify a parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 

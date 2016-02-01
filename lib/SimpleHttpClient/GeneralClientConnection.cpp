@@ -28,7 +28,6 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::httpclient;
-using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection

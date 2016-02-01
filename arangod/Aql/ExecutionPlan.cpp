@@ -217,7 +217,7 @@ arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
   arangodb::basics::Json result = _root->toJson(zone, verbose);
 
   // set up rules
-  auto appliedRules(std::move(Optimizer::translateRules(_appliedRules)));
+  auto appliedRules(Optimizer::translateRules(_appliedRules));
   arangodb::basics::Json rules(arangodb::basics::Json::Array,
                                appliedRules.size());
 

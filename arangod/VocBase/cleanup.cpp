@@ -23,7 +23,7 @@
 
 #include "cleanup.h"
 #include "Basics/files.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/compactor.h"
@@ -200,7 +200,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
       }
     } else {
       // unknown type
-      LOG_FATAL_AND_EXIT("unknown ditch type '%d'", (int)type);
+      LOG(FATAL) << "unknown ditch type '" << type << "'"; FATAL_ERROR_EXIT();
     }
 
     // next iteration
@@ -220,7 +220,7 @@ static void CleanupCursors(TRI_vocbase_t* vocbase, bool force) {
   try {
     cursors->garbageCollect(force);
   } catch (...) {
-    LOG_WARNING("caught exception during cursor cleanup");
+    LOG(WARNING) << "caught exception during cursor cleanup";
   }
 }
 
@@ -319,5 +319,5 @@ void TRI_CleanupVocBase(void* data) {
     }
   }
 
-  LOG_TRACE("shutting down cleanup thread");
+  LOG(TRACE) << "shutting down cleanup thread";
 }

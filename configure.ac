@@ -402,7 +402,6 @@ dnl ----------------------------------------------------------------------------
 dnl load sub systems
 dnl ----------------------------------------------------------------------------
 
-m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
 m4_include([m4/configure.documentation])

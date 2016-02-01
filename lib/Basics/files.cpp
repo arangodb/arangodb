@@ -40,7 +40,7 @@
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/random.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/threads.h"
@@ -557,7 +557,7 @@ int TRI_RemoveEmptyDirectory(char const* filename) {
   int res = TRI_RMDIR(filename);
 
   if (res != 0) {
-    LOG_TRACE("cannot remove directory '%s': %s", filename, TRI_LAST_ERROR_STR);
+    LOG(TRACE) << "cannot remove directory '" << filename << "': " << TRI_LAST_ERROR_STR;
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
@@ -572,7 +572,7 @@ int TRI_RemoveDirectory(char const* filename) {
   if (TRI_IsDirectory(filename)) {
     int res;
 
-    LOG_TRACE("removing directory '%s'", filename);
+    LOG(TRACE) << "removing directory '" << filename << "'";
 
     res = TRI_ERROR_NO_ERROR;
     std::vector<std::string> files = TRI_FilesDirectory(filename);
@@ -596,11 +596,11 @@ int TRI_RemoveDirectory(char const* filename) {
 
     return res;
   } else if (TRI_ExistsFile(filename)) {
-    LOG_TRACE("removing file '%s'", filename);
+    LOG(TRACE) << "removing file '" << filename << "'";
 
     return TRI_UnlinkFile(filename);
   } else {
-    LOG_TRACE("attempt to remove non-existing file/directory '%s'", filename);
+    LOG(TRACE) << "attempt to remove non-existing file/directory '" << filename << "'";
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -843,8 +843,7 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
     if (systemErrorStr != nullptr) {
       *systemErrorStr = windowsErrorBuf;
     }
-    LOG_TRACE("cannot rename file from '%s' to '%s': %d - %s", old, filename,
-              (int)errno, windowsErrorBuf);
+    LOG(TRACE) << "cannot rename file from '" << old << "' to '" << filename << "': " << errno << " - " << windowsErrorBuf;
     res = -1;
   } else {
     res = 0;
@@ -860,8 +859,7 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
     if (systemErrorStr != nullptr) {
       *systemErrorStr = TRI_LAST_ERROR_STR;
     }
-    LOG_TRACE("cannot rename file from '%s' to '%s': %s", old, filename,
-              TRI_LAST_ERROR_STR);
+    LOG(TRACE) << "cannot rename file from '" << old << "' to '" << filename << "': " << TRI_LAST_ERROR_STR;
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
@@ -877,7 +875,7 @@ int TRI_UnlinkFile(char const* filename) {
 
   if (res != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TRACE("cannot unlink file '%s': %s", filename, TRI_LAST_ERROR_STR);
+    LOG(TRACE) << "cannot unlink file '" << filename << "': " << TRI_LAST_ERROR_STR;
     int e = TRI_errno();
     if (e == ENOENT) {
       return TRI_ERROR_FILE_NOT_FOUND;
@@ -900,11 +898,11 @@ bool TRI_ReadPointer(int fd, void* buffer, size_t length) {
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_ERROR("cannot read: %s", TRI_LAST_ERROR_STR);
+      LOG(ERROR) << "cannot read: " << TRI_LAST_ERROR_STR;
       return false;
     } else if (n == 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_ERROR("cannot read, end-of-file");
+      LOG(ERROR) << "cannot read, end-of-file";
       return false;
     }
 
@@ -927,7 +925,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length) {
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_ERROR("cannot write: %s", TRI_LAST_ERROR_STR);
+      LOG(ERROR) << "cannot write: " << TRI_LAST_ERROR_STR;
       return false;
     }
 
@@ -1073,7 +1071,7 @@ int TRI_CreateLockFile(char const* filename) {
 
   if (fd == INVALID_HANDLE_VALUE) {
     TRI_SYSTEM_ERROR();
-    LOG_ERROR("cannot create Lockfile '%s': %s", filename, TRI_GET_ERRORBUF);
+    LOG(ERROR) << "cannot create Lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
@@ -1084,7 +1082,7 @@ int TRI_CreateLockFile(char const* filename) {
 
   if (!r || len != strlen(buf)) {
     TRI_SYSTEM_ERROR();
-    LOG_ERROR("cannot write Lockfile '%s': %s", filename, TRI_GET_ERRORBUF);
+    LOG(ERROR) << "cannot write Lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
@@ -1106,8 +1104,7 @@ int TRI_CreateLockFile(char const* filename) {
 
   if (!r) {
     TRI_SYSTEM_ERROR();
-    LOG_ERROR("cannot set Lockfile status '%s': %s", filename,
-              TRI_GET_ERRORBUF);
+    LOG(ERROR) << "cannot set Lockfile status '" << filename << "': " << TRI_GET_ERRORBUF;
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     CloseHandle(fd);
@@ -1289,8 +1286,7 @@ int TRI_VerifyLockFile(char const* filename) {
 
   TRI_CLOSE(fd);
 
-  LOG_WARNING("flock on lockfile '%s' failed: %s", filename,
-              TRI_errno_string(canLock));
+  LOG(WARNING) << "flock on lockfile '" << filename << "' failed: " << TRI_errno_string(canLock);
 
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
@@ -2083,8 +2079,7 @@ std::string TRI_GetTempPath() {
 
   if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
     // something wrong
-    LOG_TRACE("GetTempPathA failed: LOCAL_MAX_PATH_BUFFER=%d:dwReturnValue=%d",
-              LOCAL_MAX_PATH_BUFFER, dwReturnValue);
+    LOG(TRACE) << "GetTempPathA failed: LOCAL_MAX_PATH_BUFFER=" << LOCAL_MAX_PATH_BUFFER << ":dwReturnValue=" << dwReturnValue;
     // attempt to simply use the current directory
     _tcscpy(tempFileName, TEXT("."));
   }
@@ -2097,7 +2092,7 @@ std::string TRI_GetTempPath() {
   uReturnValue = GetTempFileName(tempPathName, TEXT("TRI_"), 0, tempFileName);
 
   if (uReturnValue == 0) {
-    LOG_TRACE("GetTempFileNameA failed");
+    LOG(TRACE) << "GetTempFileNameA failed";
     _tcscpy(tempFileName, TEXT("TRI_tempFile"));
   }
 
@@ -2110,19 +2105,19 @@ std::string TRI_GetTempPath() {
                               NULL);                  // no template
 
   if (tempFileHandle == INVALID_HANDLE_VALUE) {
-    LOG_FATAL_AND_EXIT("Can not create a temporary file");
+    LOG(FATAL) << "Can not create a temporary file"; FATAL_ERROR_EXIT();
   }
 
   ok = CloseHandle(tempFileHandle);
 
   if (!ok) {
-    LOG_FATAL_AND_EXIT("Can not close the handle of a temporary file");
+    LOG(FATAL) << "Can not close the handle of a temporary file"; FATAL_ERROR_EXIT();
   }
 
   ok = DeleteFile(tempFileName);
 
   if (!ok) {
-    LOG_FATAL_AND_EXIT("Can not destroy a temporary file");
+    LOG(FATAL) << "Can not destroy a temporary file"; FATAL_ERROR_EXIT();
   }
 
   // ...........................................................................
@@ -2137,12 +2132,12 @@ std::string TRI_GetTempPath() {
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
 
     if (temp == nullptr) {
-      LOG_FATAL_AND_EXIT("Out of memory");
+      LOG(FATAL) << "Out of memory"; FATAL_ERROR_EXIT();
     }
 
     for (j = 0; j < pathSize; ++j) {
       if (tempPathName[j] > 127) {
-        LOG_FATAL_AND_EXIT("Invalid characters in temporary path name");
+        LOG(FATAL) << "Invalid characters in temporary path name"; FATAL_ERROR_EXIT();
       }
       temp[j] = (char)(tempPathName[j]);
     }

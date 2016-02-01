@@ -23,9 +23,8 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/tri-strings.h"
-#include "Basics/vector.h"
 #include "Basics/associative.h"
+#include "Basics/tri-strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief error number and system error

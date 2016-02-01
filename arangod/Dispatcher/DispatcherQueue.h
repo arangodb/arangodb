@@ -30,6 +30,7 @@
 #include <boost/lockfree/queue.hpp>
 
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Dispatcher/Dispatcher.h"
 
 namespace arangodb {

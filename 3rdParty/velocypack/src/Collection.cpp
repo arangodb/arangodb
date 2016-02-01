@@ -211,7 +211,7 @@ Builder Collection::keep(Slice const& slice,
   ObjectIterator it(slice);
 
   while (it.valid()) {
-    auto key = std::move(it.key().copyString());
+    auto key = it.key().copyString();
     if (std::find(keys.begin(), keys.end(), key) != keys.end()) {
       b.add(key, it.value());
     }
@@ -230,7 +230,7 @@ Builder Collection::keep(Slice const& slice,
   ObjectIterator it(slice);
 
   while (it.valid()) {
-    auto key = std::move(it.key().copyString());
+    auto key = it.key().copyString();
     if (keys.find(key) != keys.end()) {
       b.add(key, it.value());
     }
@@ -255,7 +255,7 @@ Builder Collection::remove(Slice const& slice,
   ObjectIterator it(slice);
 
   while (it.valid()) {
-    auto key = std::move(it.key().copyString());
+    auto key = it.key().copyString();
     if (std::find(keys.begin(), keys.end(), key) == keys.end()) {
       b.add(key, it.value());
     }
@@ -274,7 +274,7 @@ Builder Collection::remove(Slice const& slice,
   ObjectIterator it(slice);
 
   while (it.valid()) {
-    auto key = std::move(it.key().copyString());
+    auto key = it.key().copyString();
     if (keys.find(key) == keys.end()) {
       b.add(key, it.value());
     }
@@ -298,7 +298,7 @@ Builder Collection::merge(Slice const& left, Slice const& right,
   {
     ObjectIterator it(right);
     while (it.valid()) {
-      rightValues.emplace(std::move(it.key().copyString()), it.value());
+      rightValues.emplace(it.key().copyString(), it.value());
       it.next();
     }
   }
@@ -307,7 +307,7 @@ Builder Collection::merge(Slice const& left, Slice const& right,
     ObjectIterator it(left);
 
     while (it.valid()) {
-      auto key = std::move(it.key().copyString());
+      auto key = it.key().copyString();
       auto found = rightValues.find(key);
 
       if (found == rightValues.end()) {

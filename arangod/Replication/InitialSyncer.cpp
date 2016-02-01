@@ -26,7 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -173,9 +173,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
 
     if (_masterInfo._majorVersion == 1 ||
         (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion <= 6)) {
-      LOG_WARNING(
-          "incremental replication is not supported with a master < ArangoDB "
-          "2.7");
+      LOG(WARNING) << "incremental replication is not supported with a master < ArangoDB 2.7";
       incremental = false;
     }
 

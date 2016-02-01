@@ -26,9 +26,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
-#include "Basics/logging.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
 #include <velocypack/Iterator.h>
@@ -1520,7 +1518,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
         while (true) {
           if (++permutationStates[np - current].current <
               permutationStates[np - current].n) {
-            current = 0;
+            current = 0; // note: resetting the variable has no effect here
             // abort inner iteration
             break;
           }

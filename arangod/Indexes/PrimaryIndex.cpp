@@ -23,12 +23,9 @@
 
 #include "PrimaryIndex.h"
 #include "Aql/AstNode.h"
-#include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
-#include "Basics/logging.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 

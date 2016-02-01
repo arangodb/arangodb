@@ -24,10 +24,9 @@
 
 #include "HttpServer.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/WorkMonitor.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
@@ -106,18 +105,14 @@ void HttpServer::startListening() {
   auto endpoints = _endpointList->getByPrefix(encryptionType());
 
   for (auto&& i : endpoints) {
-    LOG_TRACE("trying to bind to endpoint '%s' for requests", i.first.c_str());
+    LOG(TRACE) << "trying to bind to endpoint '" << i.first.c_str() << "' for requests";
 
     bool ok = openEndpoint(i.second);
 
     if (ok) {
-      LOG_DEBUG("bound to endpoint '%s'", i.first.c_str());
+      LOG(DEBUG) << "bound to endpoint '" << i.first.c_str() << "'";
     } else {
-      LOG_FATAL_AND_EXIT(
-          "failed to bind to endpoint '%s'. Please check "
-          "whether another instance is already running or "
-          "review your endpoints configuration.",
-          i.first.c_str());
+      LOG(FATAL) << "failed to bind to endpoint '" << i.first.c_str() << "'. Please check whether another instance is already running or review your endpoints configuration."; FATAL_ERROR_EXIT();
     }
   }
 }
@@ -227,8 +222,7 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
-    LOG_WARNING("unable to add job to the job queue: %s",
-                TRI_errno_string(res));
+    LOG(WARNING) << "unable to add job to the job queue: " << TRI_errno_string(res);
     // todo send info to async work manager?
     return false;
   }
@@ -254,8 +248,7 @@ bool HttpServer::handleRequest(HttpCommTask* task,
   // use a dispatcher queue, handler belongs to the job
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
 
-  LOG_TRACE("HttpCommTask %p created HttpServerJob %p", (void*)task,
-            (void*)job.get());
+  LOG(TRACE) << "HttpCommTask " << (void*)task << " created HttpServerJob " << (void*)job.get();
 
   // add the job to the dispatcher
   int res = _dispatcher->addJob(job);

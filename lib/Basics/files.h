@@ -29,7 +29,6 @@
 #endif
 
 #include "Basics/Common.h"
-#include "Basics/socket-utils.h"
 #include "Basics/vector.h"
 
 ////////////////////////////////////////////////////////////////////////////////

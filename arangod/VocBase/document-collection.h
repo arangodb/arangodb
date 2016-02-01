@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/ReadWriteLock.h"
+#include "Cluster/ClusterInfo.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
@@ -35,12 +35,7 @@
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
-#include "Cluster/ClusterInfo.h"
 
-#include <regex.h>
-
-struct TRI_cap_constraint_s;
-struct TRI_document_edge_s;
 class TRI_headers_t;
 
 class VocShaper;
@@ -49,12 +44,8 @@ namespace arangodb {
 class CapConstraint;
 class EdgeIndex;
 class ExampleMatcher;
-class FulltextIndex;
-class GeoIndex2;
-class HashIndex;
 class Index;
 class PrimaryIndex;
-class SkiplistIndex;
 class Transaction;
 namespace velocypack {
 class Builder;

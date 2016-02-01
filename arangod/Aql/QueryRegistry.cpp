@@ -22,8 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/QueryRegistry.h"
-#include "Basics/WriteLocker.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Aql/ExecutionEngine.h"
 
 using namespace arangodb::aql;
@@ -76,7 +77,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
     m = _queries.emplace(vocbase->_name,
                          std::unordered_map<QueryId, QueryInfo*>()).first;
 
-    TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name) != _queries.end());
+    TRI_ASSERT(_queries.find(vocbase->_name) != _queries.end());
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -90,7 +91,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
     m->second.emplace(id, p.get());
     p.release();
 
-    TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name)->second.find(id) !=
+    TRI_ASSERT(_queries.find(vocbase->_name)->second.find(id) !=
                          _queries.find(vocbase->_name)->second.end());
 
     // If we have set _makeNolockHeaders, we need to unset it:
@@ -139,7 +140,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
       // std::cout << "Setting _makeNolockHeaders\n";
       Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
     } else {
-      LOG_WARNING("Found strange lockedShards in thread, not overwriting!");
+      LOG(WARNING) << "Found strange lockedShards in thread, not overwriting!";
     }
   }
 
@@ -223,7 +224,7 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
       if (Transaction::_makeNolockHeaders == nullptr) {
         Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
       } else {
-        LOG_WARNING("Found strange lockedShards in thread, not overwriting!");
+        LOG(WARNING) << "Found strange lockedShards in thread, not overwriting!";
       }
     }
   }

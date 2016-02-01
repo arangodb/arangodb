@@ -124,7 +124,7 @@ class EdgeIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   void lookup(arangodb::Transaction*, TRI_edge_index_iterator_t const*,
-              std::vector<TRI_doc_mptr_copy_t>&, TRI_doc_mptr_copy_t*&, size_t);
+              std::vector<TRI_doc_mptr_copy_t>&, TRI_doc_mptr_t*&, size_t);
 
   int batchInsert(arangodb::Transaction*,
                   std::vector<TRI_doc_mptr_t const*> const*,
