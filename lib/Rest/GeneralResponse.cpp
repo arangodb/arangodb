@@ -35,19 +35,19 @@ using namespace std;
 /// @brief batch error count header
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const HttpResponse::BatchErrorHeader = "X-Arango-Errors";
+std::string const GeneralResponse::BatchErrorHeader = "X-Arango-Errors";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hide header "Server: ArangoDB" in HTTP responses
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpResponse::HideProductHeader = false;
+bool GeneralResponse::HideProductHeader = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief http response string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpResponse::responseString(HttpResponseCode code) {
+std::string GeneralResponse::responseString(HttpResponseCode code) {
   switch (code) {
     //  Informational 1xx
     case CONTINUE:
@@ -180,7 +180,7 @@ std::string HttpResponse::responseString(HttpResponseCode code) {
 /// @brief get http response code from string
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpResponse::responseCode(
+GeneralResponse::HttpResponseCode GeneralResponse::responseCode(
     std::string const& str) {
   int number = ::atoi(str.c_str());
 
@@ -289,11 +289,107 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode(
   }
 }
 
+///// @Todo: There is a lot of code duplication in here, change it
+
+GeneralResponse::VstreamResponseCode GeneralResponse::responseCodeVstream(
+    std::string const& str) {
+  int number = ::atoi(str.c_str());
+
+  switch (number) {
+    case 100:
+      return CONTINUE;
+    case 101:
+      return SWITCHING_PROTOCOLS;
+    case 102:
+      return PROCESSING;
+
+    case 200:
+      return OK;
+    case 201:
+      return CREATED;
+    case 202:
+      return ACCEPTED;
+    case 203:
+      return PARTIAL;
+    case 204:
+      return NO_CONTENT;
+    case 205:
+      return RESET_CONTENT;
+    case 206:
+      return PARTIAL_CONTENT;
+
+    case 301:
+      return MOVED_PERMANENTLY;
+    case 302:
+      return FOUND;
+    case 303:
+      return SEE_OTHER;
+    case 304:
+      return NOT_MODIFIED;
+    case 307:
+      return TEMPORARY_REDIRECT;
+    case 308:
+      return PERMANENT_REDIRECT;
+
+    case 400:
+      return BAD;
+    case 403:
+      return FORBIDDEN;
+    case 404:
+      return NOT_FOUND;
+    case 405:
+      return METHOD_NOT_ALLOWED;
+    case 406:
+      return NOT_ACCEPTABLE;
+    case 408:
+      return REQUEST_TIMEOUT;
+    case 409:
+      return CONFLICT;
+    case 410:
+      return GONE;
+    case 414:
+      return REQUEST_URI_TOO_LONG;
+    case 415:
+      return UNSUPPORTED_MEDIA_TYPE;
+    case 416:
+      return REQUESTED_RANGE_NOT_SATISFIABLE;
+    case 422:
+      return UNPROCESSABLE_ENTITY;
+    case 423:
+      return LOCKED;
+    case 428:
+      return PRECONDITION_REQUIRED;
+    case 429:
+      return TOO_MANY_REQUESTS;
+    case 451:
+      return UNAVAILABLE_FOR_LEGAL_REASONS;
+
+    case 500:
+      return SERVER_ERROR;
+    case 501:
+      return NOT_IMPLEMENTED;
+    case 502:
+      return BAD_GATEWAY;
+    case 503:
+      return SERVICE_UNAVAILABLE;
+    case 505:
+      return HTTP_VERSION_NOT_SUPPORTED;
+    case 509:
+      return BANDWIDTH_LIMIT_EXCEEDED;
+    case 510:
+      return NOT_EXTENDED;
+      
+    default:
+      return NOT_IMPLEMENTED;
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get http response code from integer error code
+/// @TODO: Work on code duplication for VelocystreamResponseCode
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpResponse::responseCode(int code) {
+GeneralResponse::HttpResponseCode GeneralResponse::responseCode(int code) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
   switch (code) {
@@ -440,7 +536,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode(int code) {
 /// @brief constructs a new http response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponse(HttpResponseCode code, uint32_t apiCompatibility)
+GeneralResponse::GeneralResponse(HttpResponseCode code, uint32_t apiCompatibility)
     : _code(code),
       _apiCompatibility(apiCompatibility),
       _isHeadResponse(false),
@@ -458,10 +554,28 @@ HttpResponse::HttpResponse(HttpResponseCode code, uint32_t apiCompatibility)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new vstream response (constructor overloading)
+////////////////////////////////////////////////////////////////////////////////
+
+GeneralResponse::GeneralResponse(VstreamResponseCode code, uint32_t apiCompatibility)
+    : _codeVstream(code),
+      _apiCompatibility(apiCompatibility),
+      _isHeadResponse(false),
+      _isChunked(false),
+      _headers(6),
+      _body(TRI_UNKNOWN_MEM_ZONE),
+      _bodySize(0),
+      _freeables() {
+  if (!HideProductHeader) {
+    _headers.insert(TRI_CHAR_LENGTH_PAIR("server"), "ArangoDB");
+  }
+  _headers.insert(TRI_CHAR_LENGTH_PAIR("connection"), "Keep-Alive");
+}
+////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a http response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::~HttpResponse() {
+GeneralResponse::~GeneralResponse() {
 
   // @BrainStorming Needed :-> One possible approach to handle velocypack is to handle it as json and then destroy.
   // Other could be to use it as private destructor overloading: http://stackoverflow.com/questions/17863715/calling-a-self-destructor-from-inside-a-method
@@ -472,24 +586,38 @@ HttpResponse::~HttpResponse() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the response code
+/// @brief returns the response code (http)
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpResponse::responseCode() const {
+GeneralResponse::HttpResponseCode GeneralResponse::responseCode() const {
   return _code;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the response code
+/// @brief returns the response code (vstream)
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setResponseCode(HttpResponseCode code) { _code = code; }
+GeneralResponse::VstreamResponseCode GeneralResponse::responseCodeVstream() const {
+  return _codeVstream;
+} 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the response code (http)
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralResponse::setResponseCode(HttpResponseCode code) { _code = code; }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the response code (vstream)
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralResponse::setResponseCode(VstreamResponseCode code) { _codeVstream = code;}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the content length
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t HttpResponse::contentLength() {
+size_t GeneralResponse::contentLength() {
   if (_isHeadResponse) {
     return _bodySize;
   }
@@ -508,7 +636,7 @@ size_t HttpResponse::contentLength() {
 /// @brief sets the content type
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setContentType(std::string const& contentType) {
+void GeneralResponse::setContentType(std::string const& contentType) {
   setHeader(TRI_CHAR_LENGTH_PAIR("content-type"), contentType);
 }
 
@@ -516,13 +644,13 @@ void HttpResponse::setContentType(std::string const& contentType) {
 /// @brief checks if chunked encoding is set
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpResponse::isChunked() const { return _isChunked; }
+bool GeneralResponse::isChunked() const { return _isChunked; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpResponse::header(std::string const& key) const {
+std::string GeneralResponse::header(std::string const& key) const {
   std::string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
@@ -536,7 +664,7 @@ std::string HttpResponse::header(std::string const& key) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpResponse::header(char const* key, size_t keyLength) const {
+std::string GeneralResponse::header(char const* key, size_t keyLength) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
   if (kv == nullptr) {
@@ -549,7 +677,7 @@ std::string HttpResponse::header(char const* key, size_t keyLength) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpResponse::header(std::string const& key, bool& found) const {
+std::string GeneralResponse::header(std::string const& key, bool& found) const {
   std::string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
@@ -565,7 +693,7 @@ std::string HttpResponse::header(std::string const& key, bool& found) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpResponse::header(char const* key, size_t keyLength,
+std::string GeneralResponse::header(char const* key, size_t keyLength,
                                  bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
@@ -581,7 +709,7 @@ std::string HttpResponse::header(char const* key, size_t keyLength,
 /// @brief returns all header fields
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::string> HttpResponse::headers() const {
+std::map<std::string, std::string> GeneralResponse::headers() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -604,7 +732,7 @@ std::map<std::string, std::string> HttpResponse::headers() const {
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setHeader(char const* key, size_t keyLength,
+void GeneralResponse::setHeader(char const* key, size_t keyLength,
                              std::string const& value) {
   if (value.empty()) {
     _headers.erase(key);
@@ -624,7 +752,7 @@ void HttpResponse::setHeader(char const* key, size_t keyLength,
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setHeader(char const* key, size_t keyLength,
+void GeneralResponse::setHeader(char const* key, size_t keyLength,
                              char const* value) {
   if (*value == '\0') {
     _headers.erase(key);
@@ -638,7 +766,7 @@ void HttpResponse::setHeader(char const* key, size_t keyLength,
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setHeader(std::string const& key, std::string const& value) {
+void GeneralResponse::setHeader(std::string const& key, std::string const& value) {
   std::string lk = StringUtils::tolower(key);
 
   if (value.empty()) {
@@ -661,7 +789,7 @@ void HttpResponse::setHeader(std::string const& key, std::string const& value) {
 /// @brief sets many header fields
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setHeaders(std::string const& headers, bool includeLine0) {
+void GeneralResponse::setHeaders(std::string const& headers, bool includeLine0) {
   // make a copy we can change, this buffer will be deleted in the destructor
   char* headerBuffer = new char[headers.size() + 1];
   memcpy(headerBuffer, headers.c_str(), headers.size() + 1);
@@ -759,7 +887,7 @@ void HttpResponse::setHeaders(std::string const& headers, bool includeLine0) {
 /// @brief add a cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setCookie(std::string const& name, std::string const& value,
+void GeneralResponse::setCookie(std::string const& name, std::string const& value,
                              int lifeTimeSeconds, std::string const& path,
                              std::string const& domain, bool secure,
                              bool httpOnly) {
@@ -823,8 +951,8 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
 /// @brief swaps data
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* HttpResponse::swap() {
-  HttpResponse* response = new HttpResponse(_code, _apiCompatibility);
+GeneralResponse* GeneralResponse::swap() {
+  GeneralResponse* response = new GeneralResponse(_code, _apiCompatibility);
 
   response->_headers.swap(&_headers);
   response->_body.swap(&_body);
@@ -842,10 +970,69 @@ HttpResponse* HttpResponse::swap() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes the header
+/// @brief writes the header (velocystream)
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::writeHeader(StringBuffer* output) {
+velocypack::Builder GeneralResponse::writeHeader(velocypack::Builder vobject) {
+
+  Builder b; // { VPackObjectBuilder bb(&b, "parameter");//   b.add("a", Value("1");// }  
+  basics::Dictionary<char const*>::KeyValue const* begin;
+  basics::Dictionary<char const*>::KeyValue const* end;
+
+  bool seenTransferEncoding = false;
+  std::string transferEncoding;
+  bool const capitalizeHeaders = (_apiCompatibility >= 20100);
+  b.add(Value(ValueType::Object));
+  b.add("version", "VSTREAM_1_0");
+  b.add("code", _codeVstream);
+  for (_headers.range(begin, end); begin < end; ++begin) {
+    char const* key = begin->_key;
+
+    if (key == nullptr) {
+      continue;
+    }
+
+    size_t const keyLength = strlen(key);
+
+    if (capitalizeHeaders) {
+      b.add(::toupper(key), begin->_value);
+    } else {
+      b.add(key, begin->_value);
+    }
+  }
+
+  for (std::vector<char const*>::iterator iter = _cookies.begin();
+       iter != _cookies.end(); ++iter) {
+    if (capitalizeHeaders) {
+      b.add("Set-Cookie: ", *iter);
+    } else {
+      b.add("set-cookie: ", *iter);
+    }
+  }
+
+  // Size of Entire Document, not just current chunk
+    if (capitalizeHeaders) {
+      if (_isHeadResponse) {
+        b.add("Content-Size: ", _bodySize);
+      }else{
+        b.add("Content-Size: ", _body.length());
+      }
+    } else {
+      if (_isHeadResponse) {
+        b.add("content-size: ", _bodySize);
+      }else{
+        b.add("content-size: ", _body.length());
+      }
+    }
+  b.close();  
+  return b;
+
+}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes the header (http)
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralResponse::writeHeader(StringBuffer* output) {
   bool const capitalizeHeaders = (_apiCompatibility >= 20100);
 
   output->appendText(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 "));
@@ -972,7 +1159,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 /// @brief returns the size of the body
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t HttpResponse::bodySize() const {
+size_t GeneralResponse::bodySize() const {
   if (_isHeadResponse) {
     return _bodySize;
   }
@@ -983,13 +1170,13 @@ size_t HttpResponse::bodySize() const {
 /// @brief returns the body
 ////////////////////////////////////////////////////////////////////////////////
 
-StringBuffer& HttpResponse::body() { return _body; }
+StringBuffer& GeneralResponse::body() { return _body; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates a head response
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::headResponse(size_t size) {
+void GeneralResponse::headResponse(size_t size) {
   _body.clear();
   _isHeadResponse = true;
   _bodySize = size;
@@ -1001,7 +1188,7 @@ void HttpResponse::headResponse(size_t size) {
 /// the body must already be set. deflate is then run on the existing body
 ////////////////////////////////////////////////////////////////////////////////
 
-int HttpResponse::deflate(size_t bufferSize) {
+int GeneralResponse::deflate(size_t bufferSize) {
   int res = _body.deflate(bufferSize);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1016,7 +1203,7 @@ int HttpResponse::deflate(size_t bufferSize) {
 /// @brief checks for special headers
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::checkHeader(char const* key, char const* value) {
+void GeneralResponse::checkHeader(char const* key, char const* value) {
   if (key[0] == 't' && strcmp(key, "transfer-encoding") == 0) {
     if (TRI_CaseEqualString(value, "chunked")) {
       _isChunked = true;

@@ -40,10 +40,10 @@ namespace rest {
 /// answer as http response.
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpResponse {
-  HttpResponse() = delete;
-  HttpResponse(HttpResponse const&) = delete;
-  HttpResponse& operator=(HttpResponse const&) = delete;
+class GeneralResponse {
+  GeneralResponse() = delete;
+  GeneralResponse(GeneralResponse const&) = delete;
+  GeneralResponse& operator=(GeneralResponse const&) = delete;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -129,8 +129,6 @@ class HttpResponse {
     VSTREAM_PERMANENT_REDIRECT = 308,
 
     VSTREAM_BAD = 400,
-    VSTREAM_UNAUTHORIZED = 401,
-    VSTREAM_PAYMENT_REQUIRED = 402,
     VSTREAM_FORBIDDEN = 403,
     VSTREAM_NOT_FOUND = 404,
     VSTREAM_METHOD_NOT_ALLOWED = 405,
@@ -138,19 +136,13 @@ class HttpResponse {
     VSTREAM_REQUEST_TIMEOUT = 408,
     VSTREAM_CONFLICT = 409,
     VSTREAM_GONE = 410,
-    VSTREAM_LENGTH_REQUIRED = 411,
-    VSTREAM_PRECONDITION_FAILED = 412,
-    VSTREAM_REQUEST_ENTITY_TOO_LARGE = 413,
     VSTREAM_REQUEST_URI_TOO_LONG = 414,
     VSTREAM_UNSUPPORTED_MEDIA_TYPE = 415,
     VSTREAM_REQUESTED_RANGE_NOT_SATISFIABLE = 416,
-    VSTREAM_EXPECTATION_FAILED = 417,
-    VSTREAM_I_AM_A_TEAPOT = 418,
     VSTREAM_UNPROCESSABLE_ENTITY = 422,
     VSTREAM_LOCKED = 423,
     VSTREAM_PRECONDITION_REQUIRED = 428,
     VSTREAM_TOO_MANY_REQUESTS = 429,
-    VSTREAM_REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
     VSTRAM_UNAVAILABLE_FOR_LEGAL_REASONS = 451,
 
     VSTREAM_SERVER_ERROR = 500,
@@ -159,7 +151,11 @@ class HttpResponse {
     VSTREAM_SERVICE_UNAVAILABLE = 503,
     VSTREAM_VERSION_NOT_SUPPORTED = 505, 
     VSTREAM_BANDWIDTH_LIMIT_EXCEEDED = 509,
-    VSTREAM_NOT_EXTENDED = 510
+    VSTREAM_NOT_EXTENDED = 510,
+
+    // For Cred purpose
+    VSTREAM_CRED_PASS = 601,
+    VSTREAM_CRED_FAIL = 602
   };
 
  public:
@@ -398,7 +394,7 @@ class HttpResponse {
   /// @brief swaps data
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* swap();
+  GeneralResponse* swap();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief writes the header
@@ -466,10 +462,15 @@ class HttpResponse {
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief response code
+  /// @brief response code(Http)
   //////////////////////////////////////////////////////////////////////////////
 
   HttpResponseCode _code;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief response code(Velocystream)
+  //////////////////////////////////////////////////////////////////////////////
+  VstreamResponseCode _codeVstream;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compatibility
