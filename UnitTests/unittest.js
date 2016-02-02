@@ -73,13 +73,17 @@ function resultsToXml(results, baseName, cluster) {
     return (internalMembers.indexOf(b) === -1) && a.hasOwnProperty(b);
   };
 
-  for (let testrun in results) {
-    if (isSignificant(results, testrun)) {
-      for (let test in results[testrun]) {
-        let run = results[test];
+  for (let resultName in results) {
+    if (isSignificant(results, resultName)) {
+      let run = results[resultName];
 
-        if (isSignificant(run, test) && !run[test].hasOwnProperty('skipped')) {
-          const current = run[test];
+      for (let runName in run) {
+        if (isSignificant(run, runName)) {
+          const current = run[runName];
+
+          if (current.skipped) {
+            continue;
+          }
 
           let xml = buildXml();
           let failuresFound = "";
@@ -91,7 +95,7 @@ function resultsToXml(results, baseName, cluster) {
           xml.elem("testsuite", {
             errors: 0,
             failures: failuresFound,
-            name: clprefix + test,
+            name: clprefix + runName,
             tests: current.total,
             time: current.duration
           });
@@ -118,7 +122,7 @@ function resultsToXml(results, baseName, cluster) {
 
           if (!current.status) {
             xml.elem("testcase", {
-              name: 'all tests in ' + clprefix + test,
+              name: 'all tests in ' + clprefix + runName,
               time: current.duration
             }, false);
 
@@ -133,7 +137,7 @@ function resultsToXml(results, baseName, cluster) {
           xml.elem("/testsuite");
 
           const fn = makePathGeneric(baseName + clprefix +
-            testrun + '_' + test + ".xml").join('_');
+            resultName + '_' + runName + ".xml").join('_');
 
           fs.write("out/" + fn, xml.join(""));
         }
