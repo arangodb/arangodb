@@ -394,7 +394,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
     case TRI_ERROR_ARANGO_READ_ONLY:
       generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
       return;
-
+    
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
       generateError(HttpResponse::CONFLICT, res,
                     "cannot create document, unique constraint violated");
@@ -443,6 +443,22 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED: {
       generateError(HttpResponse::NOT_IMPLEMENTED, res);
+      return;
+    }
+    
+    case TRI_ERROR_FORBIDDEN: {
+      generateError(HttpResponse::FORBIDDEN, res);
+      return;
+    }
+        
+    case TRI_ERROR_OUT_OF_MEMORY: 
+    case TRI_ERROR_LOCK_TIMEOUT: 
+    case TRI_ERROR_AID_NOT_FOUND:
+    case TRI_ERROR_DEBUG:
+    case TRI_ERROR_LEGEND_NOT_IN_WAL_FILE:
+    case TRI_ERROR_LOCKED:
+    case TRI_ERROR_DEADLOCK: {
+      generateError(HttpResponse::SERVER_ERROR, res);
       return;
     }
 
