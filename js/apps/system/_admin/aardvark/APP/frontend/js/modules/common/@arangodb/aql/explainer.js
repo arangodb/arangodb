@@ -788,7 +788,7 @@ function processQuery (query, explain) {
           node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
         }
         else {
-          var edgeCols = node.graph;
+          var edgeCols = node.graph || [ ];
           edgeCols.forEach(function(ecn) {
             e.push(collection(ecn));
           });
@@ -809,7 +809,7 @@ function processQuery (query, explain) {
                  (node.count ? " " + keyword("WITH COUNT") : "") + 
                  (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
                  (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
-                 "   " + annotation("/* " + node.aggregationOptions.method + "*/");
+                 "   " + annotation("/* " + node.aggregationOptions.method + " */");
       case "CollectNode":
         var collect = keyword("COLLECT") + " " + 
           node.groups.map(function(node) {
