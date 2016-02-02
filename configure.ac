@@ -167,8 +167,11 @@ AC_PROG_RANLIB
 
 AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
 AX_CXX_CHECK_UNORDERED_MAP_EMPLACE
+AX_COMPILER_VENDOR
 
-
+if test "$ax_cv_c_compiler_vendor" == "gnu"; then
+  echo "GNU"
+fi
 dnl ----------------------------------------------------------------------------
 dnl bits
 dnl ----------------------------------------------------------------------------

@@ -57,7 +57,7 @@ set(EXTERNAL_BUILD_ARGS "-j" CACHE STRING "flags for external project builds")
 ExternalProject_Add(v8_build
     SOURCE_DIR          "${V8_DIR}"
     BUILD_IN_SOURCE     TRUE
-    BUILD_COMMAND       CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} CXX_FLAGS=-std=c++11 make -j8 -f Makefile-v8 strictaliasing=off snapshot=off werror=no  "${V8_PLATFORM}" 
+    BUILD_COMMAND       CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} make -j8 -f Makefile-v8 strictaliasing=off snapshot=off werror=no  "${V8_PLATFORM}" 
     INSTALL_COMMAND     ""
 )
 
