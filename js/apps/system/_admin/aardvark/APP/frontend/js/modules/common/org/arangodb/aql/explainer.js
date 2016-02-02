@@ -699,7 +699,6 @@ function processQuery (query, explain) {
           keyword("IN") + " " +
           value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
 
-require("internal").print(node);
         var translate = ["ANY", "INBOUND", "OUTBOUND"];
         var defaultDirection = node.directions[0];
         rc += keyword(translate[defaultDirection]);
