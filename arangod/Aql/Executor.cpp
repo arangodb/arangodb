@@ -67,7 +67,15 @@ std::unordered_map<int,
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD), "ARITHMETIC_MODULUS"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND), "LOGICAL_AND"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR), "LOGICAL_OR"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_TERNARY), "TERNARY_OPERATOR"}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_TERNARY), "TERNARY_OPERATOR"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), "RELATIONAL_ARRAY_EQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE), "RELATIONAL_ARRAY_UNEQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), "RELATIONAL_ARRAY_GREATER"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), "RELATIONAL_ARRAY_GREATEREQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), "RELATIONAL_ARRAY_LESS"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), "RELATIONAL_ARRAY_LESSEQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), "RELATIONAL_ARRAY_IN"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), "RELATIONAL_ARRAY_NOT_IN"}};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user-accessible functions
@@ -1068,6 +1076,15 @@ void Executor::generateCodeBinaryOperator(AstNode const* node) {
     generateCodeNode(node->getMember(1));
   }
 
+  if (node->isArrayComparisonOperator()) {
+    if (node->getIntValue() == 0) {
+      _buffer->appendText(",true"); // ALL
+    }
+    else {
+      _buffer->appendText(",false"); // ANY
+    }
+  }
+
   _buffer->appendChar(')');
 }
 
@@ -1389,6 +1406,14 @@ void Executor::generateCodeNode(AstNode const* node) {
     case NODE_TYPE_OPERATOR_BINARY_MOD:
     case NODE_TYPE_OPERATOR_BINARY_AND:
     case NODE_TYPE_OPERATOR_BINARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
       generateCodeBinaryOperator(node);
       break;
 

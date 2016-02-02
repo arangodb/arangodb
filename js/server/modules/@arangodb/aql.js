@@ -1454,6 +1454,30 @@ function LOGICAL_NOT (lhs) {
   return ! AQL_TO_BOOL(lhs);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform equality check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_FUNC (lhs, rhs, all, func) {
+  'use strict';
+
+  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_ARRAY) {
+    return false;
+  }
+
+  var n = lhs.length;
+  for (var i = 0; i < n; ++i) {
+    var result = func(lhs[i], rhs);
+    if (all && !result) {
+      return false;
+    }
+    if (!all && result) {
+      return true;
+    }
+  }
+  return true;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform equality check
@@ -1897,6 +1921,85 @@ function RELATIONAL_NOT_IN (lhs, rhs) {
   return ! RELATIONAL_IN(lhs, rhs);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform equality check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_EQUAL (lhs, rhs, all) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_EQUAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform unequality check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_UNEQUAL (lhs, rhs, all) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_UNEQUAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform greater check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_GREATER (lhs, rhs, all) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_GREATER);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform greater equal check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_GREATEREQUAL (lhs, rhs, all) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_GREATEREQUAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform less check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_LESS (lhs, rhs, all) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_LESS);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform less equal check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_LESSEQUAL (lhs, rhs, all) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_LESSEQUAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform in check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_IN (lhs, rhs, all) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_IN);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform in check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_NOT_IN (lhs, rhs, all) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_NOT_IN);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform unary plus operation
@@ -8038,6 +8141,12 @@ exports.RELATIONAL_GREATER = RELATIONAL_GREATER;
 exports.RELATIONAL_GREATEREQUAL = RELATIONAL_GREATEREQUAL;
 exports.RELATIONAL_LESS = RELATIONAL_LESS;
 exports.RELATIONAL_LESSEQUAL = RELATIONAL_LESSEQUAL;
+exports.RELATIONAL_ARRAY_EQUAL = RELATIONAL_ARRAY_EQUAL;
+exports.RELATIONAL_ARRAY_UNEQUAL = RELATIONAL_ARRAY_UNEQUAL;
+exports.RELATIONAL_ARRAY_GREATER = RELATIONAL_ARRAY_GREATER;
+exports.RELATIONAL_ARRAY_GREATEREQUAL = RELATIONAL_ARRAY_GREATEREQUAL;
+exports.RELATIONAL_ARRAY_LESS = RELATIONAL_ARRAY_LESS;
+exports.RELATIONAL_ARRAY_LESSEQUAL = RELATIONAL_ARRAY_LESSEQUAL;
 exports.RELATIONAL_CMP = RELATIONAL_CMP;
 exports.RELATIONAL_IN = RELATIONAL_IN;
 exports.RELATIONAL_NOT_IN = RELATIONAL_NOT_IN;

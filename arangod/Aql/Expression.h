@@ -401,6 +401,14 @@ class Expression {
   AqlValue executeSimpleExpressionComparison(
       AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
       std::vector<Variable const*> const&, std::vector<RegisterId> const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
+  //////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionArrayComparison(
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with TERNARY
