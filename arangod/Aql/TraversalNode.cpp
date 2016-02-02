@@ -238,8 +238,9 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _minDepth(minDepth),
     _maxDepth(maxDepth),
     _directions(directions),
+    _graphObj(nullptr),
     _CalculationNodeId(0),
-   _condition(nullptr) {
+    _condition(nullptr) {
 
   for (auto& it : edgeColls) {
     _edgeColls.push_back(it);
