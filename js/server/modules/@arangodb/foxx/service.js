@@ -348,7 +348,10 @@ module.exports = class FoxxService {
     this.main.context = new FoxxContext(this);
     this.router = new Router();
     this.types = new Map(defaultTypes);
-
+    this.routes = {
+      name: `foxx("${this.mount}")`,
+      routes: []
+    };
 
     if (this.legacy) {
       this.main.context.foxxFilename = this.main.context.fileName;

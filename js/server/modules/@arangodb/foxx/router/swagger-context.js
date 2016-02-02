@@ -158,7 +158,7 @@ module.exports = exports = class SwaggerContext {
     }
 
     this._bodyParam = {
-      model: model || null,
+      model: model,
       multiple: multiple,
       contentTypes: contentTypes,
       description: description
@@ -257,7 +257,7 @@ module.exports = exports = class SwaggerContext {
     }
 
     this._responses.set(statusCode, {
-      model: model || null,
+      model: model,
       multiple: multiple,
       contentTypes: contentTypes,
       description: description
