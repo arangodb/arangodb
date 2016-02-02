@@ -58,6 +58,12 @@ This involves more operations inside the database which don't come for free.
 Therefore anonymous graphs may be faster in many operations.
 So this question boils down to 'Can I afford the additional effort or do I need the warranty for integrity?'. 
 
+!SUBSECTION Backup and restore
+For sure you want to have backups of your graph data, you can use [ArangoDump](../HttpBulkImports/Arangodump.md) to create the backup,
+and [ArangoRestore](../HttpBulkImports/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
+- you need the system collection `_graphs` if you backup named graphs.
+- you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
+
 !SUBSECTION Blueprint Graphs
 *Blueprint 2 graphs* are a subset of *named graphs*. It only supports one edge and one vertex collection per graph. Both vertices and edges have to contain a label attribute; the Blueprints API defines a special `LABEL` attribute for this.
 We offer [blueprints support via an api compatible java driver](https://github.com/arangodb/blueprints-arangodb-graph).
