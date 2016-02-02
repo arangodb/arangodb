@@ -699,6 +699,7 @@ function processQuery (query, explain) {
           keyword("IN") + " " +
           value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
 
+require("internal").print(node);
         var translate = ["ANY", "INBOUND", "OUTBOUND"];
         var defaultDirection = node.directions[0];
         rc += keyword(translate[defaultDirection]);
@@ -745,7 +746,7 @@ function processQuery (query, explain) {
           node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
         }
         else {
-          var edgeCols = node.graph;
+          var edgeCols = node.graph || [ ];
           edgeCols.forEach(function(ecn) {
             e.push(collection(ecn));
           });

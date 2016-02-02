@@ -744,7 +744,7 @@ function processQuery (query, explain) {
           node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
         }
         else {
-          var edgeCols = node.graph;
+          var edgeCols = node.graph || [ ];
           edgeCols.forEach(function(ecn) {
             e.push(collection(ecn));
           });
