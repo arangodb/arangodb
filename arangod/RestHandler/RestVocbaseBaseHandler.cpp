@@ -470,6 +470,22 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
       return;
     }
 
+    case TRI_ERROR_FORBIDDEN: {
+      generateError(HttpResponse::FORBIDDEN, res);
+      return;
+    }
+          
+    case TRI_ERROR_OUT_OF_MEMORY: 
+    case TRI_ERROR_LOCK_TIMEOUT: 
+    case TRI_ERROR_AID_NOT_FOUND:
+    case TRI_ERROR_DEBUG:
+    case TRI_ERROR_LEGEND_NOT_IN_WAL_FILE:
+    case TRI_ERROR_LOCKED:
+    case TRI_ERROR_DEADLOCK: {
+      generateError(HttpResponse::SERVER_ERROR, res);
+      return;
+    }
+
     default:
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "failed with error: " + string(TRI_errno_string(res)));
   }
