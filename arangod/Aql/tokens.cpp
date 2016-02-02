@@ -200,7 +200,7 @@ typedef size_t yy_size_t;
      */
     #define  YY_LESS_LINENO(n) \
             do { \
-                int yyl;\
+                size_t yyl;\
                 for ( yyl = n; yyl < yyleng; ++yyl )\
                     if ( yytext[yyl] == '\n' )\
                         --yylineno;\
@@ -1138,7 +1138,6 @@ YY_RULE_SETUP
 case 12:
 YY_RULE_SETUP
 {
-  printf("not\n");
   BEGIN(NOT);
 }
 	YY_BREAK
@@ -1686,7 +1685,7 @@ YY_RULE_SETUP
 case 87:
 YY_RULE_SETUP
 {
-  printf("nin\n");
+  /* T_NOT + T_IN => T_NIN */
   BEGIN(INITIAL);
   return T_NIN;
 }
@@ -1694,20 +1693,22 @@ YY_RULE_SETUP
 case 88:
 YY_RULE_SETUP
 {
-  printf("white\n");
+  /* ignore whitespace */
 }
 	YY_BREAK
 case 89:
 /* rule 89 can match eol */
 YY_RULE_SETUP
 {
+  /* count line numbers */
   yylineno++;
 }
 	YY_BREAK
 case 90:
 YY_RULE_SETUP
 {
-  printf("other\n");
+  /* found something different to T_IN */
+  /* now push the character back into the input stream and return a T_NOT token */
   BEGIN(INITIAL);
   yyless(0);
   return T_NOT;
@@ -1715,7 +1716,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case YY_STATE_EOF(NOT):
 {
-  printf("eof\n");
+  /* make sure that we still return a T_NOT when we reach the end of the input */
   BEGIN(INITIAL);
   return T_NOT;
 }

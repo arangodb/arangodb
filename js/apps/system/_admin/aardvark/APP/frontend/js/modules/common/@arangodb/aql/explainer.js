@@ -443,6 +443,19 @@ function processQuery (query, explain) {
   // };
 
   var buildExpression = function (node) {
+    var binaryOperator = function (node, name) {
+      var lhs = buildExpression(node.subNodes[0]);
+      var rhs = buildExpression(node.subNodes[1]);
+      if (node.subNodes.length === 3) {
+        // array operator node... prepend "all" | "any" | "none"
+        name = node.subNodes[2].quantifier + " " + name;
+      }
+      if (node.sorted) {
+        return lhs + " " + name + " " + annotation("/* sorted */") + " " + rhs;
+      }
+      return lhs + " " + name + " " + rhs;;
+    };
+
     isConst = isConst && ([ "value", "object", "object element", "array" ].indexOf(node.type) !== -1);
         
     if (node.type !== "attribute access" &&
@@ -551,41 +564,43 @@ function processQuery (query, explain) {
       case "function call":
         return func(node.name) + "(" + ((node.subNodes && node.subNodes[0].subNodes) || [ ]).map(buildExpression).join(", ") + ")";
       case "plus":
-        return buildExpression(node.subNodes[0]) + " + " + buildExpression(node.subNodes[1]);
+        return binaryOperator(node, "+");
       case "minus":
-        return buildExpression(node.subNodes[0]) + " - " + buildExpression(node.subNodes[1]);
+        return binaryOperator(node, "-");
       case "times":
-        return buildExpression(node.subNodes[0]) + " * " + buildExpression(node.subNodes[1]);
+        return binaryOperator(node, "*");
       case "division":
-        return buildExpression(node.subNodes[0]) + " / " + buildExpression(node.subNodes[1]);
+        return binaryOperator(node, "/");
       case "modulus":
-        return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);
+        return binaryOperator(node, "%");
       case "compare not in":
-        if (node.sorted) {
-          return buildExpression(node.subNodes[0]) + " not in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
-        }
-        return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);
+      case "array compare not in":
+        return binaryOperator(node, "not in");
       case "compare in":
-        if (node.sorted) {
-          return buildExpression(node.subNodes[0]) + " in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
-        }
-        return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);
+      case "array compare in":
+        return binaryOperator(node, "in");
       case "compare ==":
-        return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);
+      case "array compare ==":
+        return binaryOperator(node, "==");
       case "compare !=":
-        return buildExpression(node.subNodes[0]) + " != " + buildExpression(node.subNodes[1]);
+      case "array compare !=":
+        return binaryOperator(node, "!=");
       case "compare >":
-        return buildExpression(node.subNodes[0]) + " > " + buildExpression(node.subNodes[1]);
+      case "array compare >":
+        return binaryOperator(node, ">");
       case "compare >=":
-        return buildExpression(node.subNodes[0]) + " >= " + buildExpression(node.subNodes[1]);
+      case "array compare >=":
+        return binaryOperator(node, ">=");
       case "compare <":
-        return buildExpression(node.subNodes[0]) + " < " + buildExpression(node.subNodes[1]);
+      case "array compare <":
+        return binaryOperator(node, "<");
       case "compare <=":
-        return buildExpression(node.subNodes[0]) + " <= " + buildExpression(node.subNodes[1]);
+      case "array compare <=":
+        return binaryOperator(node, "<=");
       case "logical or":
-        return buildExpression(node.subNodes[0]) + " || " + buildExpression(node.subNodes[1]);
+        return binaryOperator(node, "||");
       case "logical and":
-        return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);
+        return binaryOperator(node, "&&");
       case "ternary":
         return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);
       case "n-ary or":
