@@ -68,8 +68,9 @@ class RequestContext {
   /// @brief authenticate user
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual HttpResponse::HttpResponseCode authenticate() = 0;
+  virtual GeneralResponse::HttpResponseCode authenticate() = 0;
 
+  virtual GeneralResponse::VstreamResponseCode authenticate() = 0;
   
  protected:
   //////////////////////////////////////////////////////////////////////////////

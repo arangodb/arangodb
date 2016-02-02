@@ -57,7 +57,7 @@ class EndpointIpV6 final : public EndpointIp {
   int getDomain() const { return AF_INET6; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get host string for HTTP requests
+  /// @brief get host string for HTTP/Vstream requests
   //////////////////////////////////////////////////////////////////////////////
 
   std::string getHostString() const {

@@ -57,7 +57,7 @@ class EndpointIpV4 final : public EndpointIp {
   int getDomain() const { return AF_INET; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get host string for HTTP requests
+  /// @brief get host string for HTTP/Vstream requests
   //////////////////////////////////////////////////////////////////////////////
 
   std::string getHostString() const {

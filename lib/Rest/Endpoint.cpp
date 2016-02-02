@@ -87,6 +87,10 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
     copy = copy.substr(5);
   }
 
+  if (StringUtils::isPrefix(copy, "velocy@")) {
+    copy = copy.substr(7);
+  }
+
 #if TRI_HAVE_LINUX_SOCKETS
   if (StringUtils::isPrefix(copy, "unix://")) {
     // unix socket
@@ -199,7 +203,9 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
     std::string protoString = StringUtils::tolower(copy.substr(0, found));
     if (protoString == "http") {
       copy = copy.substr(strlen("http@"));
-    } else {
+    } else if(protoString == "velocy"){
+      copy = copy.substr(strlen("velocy@"));
+    }else {
       // invalid protocol
       return nullptr;
     }
