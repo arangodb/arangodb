@@ -113,6 +113,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _vertexOutVariable(nullptr),
     _edgeOutVariable(nullptr),
     _pathOutVariable(nullptr),
+    _inVariable(nullptr),
     _graphObj(nullptr),
     _condition(nullptr) {
 
@@ -255,6 +256,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _edgeOutVariable(nullptr),
     _pathOutVariable(nullptr),
     _inVariable(nullptr),
+    _graphObj(nullptr),
     _condition(nullptr) {
 
       _minDepth = triagens::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
