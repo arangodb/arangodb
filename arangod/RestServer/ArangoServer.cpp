@@ -1168,6 +1168,13 @@ int ArangoServer::startupServer() {
     }
   }
 
+
+  // active deadlock detection in case we're not running in cluster mode
+  if (!arangodb::ServerState::instance()->isRunningInCluster()) {
+    TRI_EnableDeadlockDetectionDatabasesServer(_server);
+  }
+
+
   // .............................................................................
   // start the work monitor
   // .............................................................................

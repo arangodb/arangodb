@@ -203,7 +203,7 @@ class DepthFirstTraverser : public Traverser {
 
   class EdgeGetter {
    public:
-    explicit EdgeGetter(DepthFirstTraverser* traverser,
+    EdgeGetter(DepthFirstTraverser* traverser,
                         TraverserOptions const& opts,
                         CollectionNameResolver* resolver, Transaction* trx)
         : _traverser(traverser), _resolver(resolver), _opts(opts), _trx(trx) {}

@@ -130,6 +130,7 @@ function HashIndexMultiFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      internal.debugClearFailAt();
       internal.db._drop(cn);
       collection = internal.db._create(cn);
       collection.ensureHashIndex("a");
@@ -140,8 +141,8 @@ function HashIndexMultiFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      internal.db._drop(cn);
       internal.debugClearFailAt();
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

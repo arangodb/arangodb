@@ -3362,6 +3362,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(database != nullptr);
 
+  database->_deadlockDetector.enabled(!arangodb::ServerState::instance()->isRunningInCluster());
+
   // copy users into context
   if (args.Length() >= 3 && args[2]->IsArray()) {
     v8::Handle<v8::Object> users = v8::Object::New(isolate);
