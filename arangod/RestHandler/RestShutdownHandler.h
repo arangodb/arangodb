@@ -30,7 +30,6 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace admin {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown request handler
@@ -56,7 +55,6 @@ class RestShutdownHandler : public RestBaseHandler {
 
   arangodb::rest::ApplicationServer* _applicationServer;
 };
-}
 }
 
 #endif
