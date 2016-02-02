@@ -30,6 +30,8 @@
 
 #include <functional>
 
+#define TMPUSEVPACK 1
+
 namespace arangodb {
 namespace aql {
 
@@ -71,16 +73,35 @@ struct Functions {
                               VPackFunctionParameters const&);
   static AqlValue IsNumber(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
+  static AqlValue IsNumberVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
   static AqlValue IsString(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
+  static AqlValue IsStringVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
   static AqlValue IsArray(arangodb::aql::Query*, arangodb::AqlTransaction*,
                           FunctionParameters const&);
+  static AqlValue IsArrayVPack(arangodb::aql::Query*,
+                               arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
   static AqlValue IsObject(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
+  static AqlValue IsObjectVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
   static AqlValue ToNumber(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
+
+  static AqlValue ToNumberVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
   static AqlValue ToString(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
+  static AqlValue ToStringVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
   static AqlValue ToBool(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
   static AqlValue ToArray(arangodb::aql::Query*, arangodb::AqlTransaction*,

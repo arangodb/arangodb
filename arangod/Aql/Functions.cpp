@@ -31,6 +31,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
@@ -42,10 +43,9 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
 
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-#define TMPUSEVPACK = 1
 
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
@@ -173,8 +173,6 @@ static Json ExtractFunctionParameter(arangodb::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a function parameter from the arguments list
 ///        VelocyPack variant
-///        TODO: I think this could return a Slice instead.
-///              Iff the AQLValue is repsonsible for the data
 ////////////////////////////////////////////////////////////////////////////////
 
 static VPackSlice ExtractFunctionParameter(
@@ -265,9 +263,9 @@ static double ValueToNumber(TRI_json_t const* json, bool& isValid) {
 
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE: {
+      std::string const str =
+          arangodb::basics::JsonHelper::getStringValue(json, "");
       try {
-        std::string const str =
-            arangodb::basics::JsonHelper::getStringValue(json, "");
         size_t behind = 0;
         double value = std::stod(str, &behind);
         while (behind < str.size()) {
@@ -281,6 +279,19 @@ static double ValueToNumber(TRI_json_t const* json, bool& isValid) {
         isValid = true;
         return value;
       } catch (...) {
+        size_t behind = 0;
+        while (behind < str.size()) {
+          char c = str[behind];
+          if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
+            isValid = false;
+            return 0.0;
+          }
+          ++behind;
+        }
+        // A string only containing whitespae-characters is valid and should return 0.0
+        // It throws in std::stod
+        isValid = true;
+        return 0.0;
       }
       // fall-through to invalidity
       break;
@@ -310,7 +321,6 @@ static double ValueToNumber(TRI_json_t const* json, bool& isValid) {
   return 0.0;
 }
 
-#if 0
 static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
   if (slice.isNull()) {
     isValid = true;
@@ -325,8 +335,12 @@ static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
     return slice.getNumericValue<double>();
   }
   if (slice.isString()) {
+    std::string const str = slice.copyString();
     try {
-      std::string const str = slice.copyString();
+      if (str.empty()) {
+        isValid = true;
+        return 0.0;
+      }
       size_t behind = 0;
       double value = std::stod(str, &behind);
       while (behind < str.size()) {
@@ -340,6 +354,19 @@ static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
       isValid = true;
       return value;
     } catch (...) {
+      size_t behind = 0;
+      while (behind < str.size()) {
+        char c = str[behind];
+        if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
+          isValid = false;
+          return 0.0;
+        }
+        ++behind;
+      }
+      // A string only containing whitespae-characters is valid and should return 0.0
+      // It throws in std::stod
+      isValid = true;
+      return 0.0;
     }
   }
   if (slice.isArray()) {
@@ -357,7 +384,6 @@ static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
   isValid = false;
   return 0.0;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a value into a boolean value
@@ -508,6 +534,34 @@ static void AppendAsString(arangodb::basics::StringBuffer& buffer,
       buffer.appendText(TRI_CHAR_LENGTH_PAIR("[object Object]"));
       break;
     }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the VelocyPack value to a string buffer
+///        Note: Backwards compatibility. Is different than Slice.toJson()
+////////////////////////////////////////////////////////////////////////////////
+
+static void AppendAsString(arangodb::basics::VPackStringBufferAdapter& buffer,
+                           VPackSlice const& slice) {
+  if (slice.isString()) {
+    // dumping adds additional ''
+    buffer.append(slice.copyString());
+  } else if (slice.isArray()) {
+    bool first = true;
+    for (auto const& sub : VPackArrayIterator(slice)) {
+      if (!first) {
+        buffer.append(",");
+      } else {
+        first = false;
+      }
+      AppendAsString(buffer, sub);
+    }
+  } else if (slice.isObject()) {
+    buffer.append("[object Object]");
+  } else {
+    VPackDumper dumper(&buffer);
+    dumper.dump(slice);
   }
 }
 
@@ -899,57 +953,125 @@ AqlValue Functions::IsBoolVPack(arangodb::aql::Query*,
 /// @brief function IS_NUMBER
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsNumber(arangodb::aql::Query*,
+AqlValue Functions::IsNumber(arangodb::aql::Query* q,
                              arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return IsNumberVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isNumber()));
+#endif
+}
+
+AqlValue Functions::IsNumberVPack(arangodb::aql::Query*,
+                                  arangodb::AqlTransaction* trx,
+                                  VPackFunctionParameters const& parameters) {
+  auto const slice = ExtractFunctionParameter(trx, parameters, 0);
+  return AqlValue(new Json(slice.isNumber()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function IS_STRING
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsString(arangodb::aql::Query*,
+AqlValue Functions::IsString(arangodb::aql::Query* q,
                              arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
+
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return IsStringVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isString()));
+#endif
+}
+
+AqlValue Functions::IsStringVPack(arangodb::aql::Query*,
+                                  arangodb::AqlTransaction* trx,
+                                  VPackFunctionParameters const& parameters) {
+  auto const slice = ExtractFunctionParameter(trx, parameters, 0);
+  return AqlValue(new Json(slice.isString()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function IS_ARRAY
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsArray(arangodb::aql::Query*,
+AqlValue Functions::IsArray(arangodb::aql::Query* q,
                             arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return IsArrayVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isArray()));
+#endif
+}
+
+AqlValue Functions::IsArrayVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  auto const slice = ExtractFunctionParameter(trx, parameters, 0);
+  return AqlValue(new Json(slice.isArray()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function IS_OBJECT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsObject(arangodb::aql::Query*,
+AqlValue Functions::IsObject(arangodb::aql::Query* q,
                              arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return IsObjectVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
   return AqlValue(new Json(value.isObject()));
+#endif
+}
+
+AqlValue Functions::IsObjectVPack(arangodb::aql::Query*,
+                                  arangodb::AqlTransaction* trx,
+                                  VPackFunctionParameters const& parameters) {
+  auto const slice = ExtractFunctionParameter(trx, parameters, 0);
+  return AqlValue(new Json(slice.isObject()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function TO_NUMBER
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ToNumber(arangodb::aql::Query*,
+AqlValue Functions::ToNumber(arangodb::aql::Query* q,
                              arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return ToNumberVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
   bool isValid;
   double v = ValueToNumber(value.json(), isValid);
+
+  if (!isValid) {
+    return AqlValue(new Json(Json::Null));
+  }
+  return AqlValue(new Json(v));
+#endif
+}
+
+AqlValue Functions::ToNumberVPack(arangodb::aql::Query*,
+                                  arangodb::AqlTransaction* trx,
+                                  VPackFunctionParameters const& parameters) {
+  auto const slice = ExtractFunctionParameter(trx, parameters, 0);
+
+  bool isValid;
+  double v = ValueToNumber(slice, isValid);
 
   if (!isValid) {
     return AqlValue(new Json(Json::Null));
@@ -961,14 +1083,41 @@ AqlValue Functions::ToNumber(arangodb::aql::Query*,
 /// @brief function TO_STRING
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ToString(arangodb::aql::Query*,
+AqlValue Functions::ToString(arangodb::aql::Query* q,
                              arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return ToStringVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
 
   AppendAsString(buffer, value.json());
+  size_t length = buffer.length();
+  std::unique_ptr<TRI_json_t> j(
+      TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, buffer.steal(), length));
+
+  if (j == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
+  j.release();
+  return AqlValue(jr);
+#endif
+}
+
+AqlValue Functions::ToStringVPack(arangodb::aql::Query*,
+                                  arangodb::AqlTransaction* trx,
+                                  VPackFunctionParameters const& parameters) {
+  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+  AppendAsString(adapter, value);
   size_t length = buffer.length();
   std::unique_ptr<TRI_json_t> j(
       TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, buffer.steal(), length));
