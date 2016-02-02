@@ -645,9 +645,9 @@ function ahuacatlOperatorsTestSuite () {
         {ex: null, val: "{ 'a' : [ ], 'b' : [ ] }"}
       ]
       values.forEach(function(v) {
-        var q = `RETURN TO_BOOL(${v.val})`;
+        var q = `RETURN TO_NUMBER(${v.val})`;
         assertEqual(v.ex, db._query(q).next(), q);
-        var q = `RETURN NOOPT(TO_BOOL(${v.val}))`;
+        var q = `RETURN NOOPT(TO_NUMBER(${v.val}))`;
         assertEqual(v.ex, db._query(q).next(), q);
       });
     },
@@ -679,7 +679,7 @@ function ahuacatlOperatorsTestSuite () {
         {ex: "0,1", val: "[ 0, 1 ]"},
         {ex: "1,2", val: "[ 1, 2 ]"},
         {ex: "-1,0", val: "[ -1, 0 ]"},
-        {ex: "0,1,1,2,9,4", val: "[ 0, 0, [1, 2], [ [ 9, 4 ] ] ]"},
+        {ex: "0,1,1,2,9,4", val: "[ 0, 1, [1, 2], [ [ 9, 4 ] ] ]"},
         {ex: "[object Object]", val: "[ { } ]"},
         {ex: "0,1,[object Object]", val: "[ 0, 1, { } ]"},
         {ex: "[object Object],[object Object]", val: "[ { }, { } ]"},

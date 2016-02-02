@@ -407,7 +407,6 @@ static bool ValueToBoolean(TRI_json_t const* json) {
   return boolValue;
 }
 
-#if 0
 static bool ValueToBoolean(VPackSlice const& slice) {
   if (slice.isBoolean()) {
     return slice.getBoolean();
@@ -416,14 +415,13 @@ static bool ValueToBoolean(VPackSlice const& slice) {
     return slice.getNumericValue<double>() != 0.0;
   }
   if (slice.isString()) {
-    return slice.length() != 0;
+    return slice.getStringLength() != 0;
   }
   if (slice.isArray() || slice.isObject()) {
     return true;
   }
   return false;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a boolean parameter from an array
@@ -1135,20 +1133,35 @@ AqlValue Functions::ToStringVPack(arangodb::aql::Query*,
 /// @brief function TO_BOOL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ToBool(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
+AqlValue Functions::ToBool(arangodb::aql::Query* q, arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return ToBoolVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
   return AqlValue(new Json(ValueToBoolean(value.json())));
+#endif
+}
+
+AqlValue Functions::ToBoolVPack(arangodb::aql::Query* q, arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+  return AqlValue(new Json(ValueToBoolean(value)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function TO_ARRAY
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::ToArray(arangodb::aql::Query*,
+AqlValue Functions::ToArray(arangodb::aql::Query* q,
                             arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return ToArrayVPack(q, trx, tmp);
+#else
   auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
 
   if (value.isBoolean() || value.isNumber() || value.isString()) {
@@ -1179,8 +1192,40 @@ AqlValue Functions::ToArray(arangodb::aql::Query*,
 
   // return empty array
   return AqlValue(new Json(Json::Array));
+#endif
 }
 
+AqlValue Functions::ToArrayVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (value.isArray()) {
+    // return copy of the original array
+    return AqlValue(
+        new Json(TRI_UNKNOWN_MEM_ZONE,
+                 arangodb::basics::VelocyPackHelper::velocyPackToJson(value)));
+  }
+
+  VPackBuilder result;
+  {
+    VPackArrayBuilder b(&result);
+    if (value.isBoolean() || value.isNumber() || value.isString()) {
+      // return array with single member
+      result.add(value);
+    } else if (value.isObject()) {
+      // return an array with the attribute values
+      for (auto const& it : VPackObjectIterator(value)) {
+        result.add(it.value);
+      }
+    }
+    // else return empty array
+  }
+
+  return AqlValue(
+      new Json(TRI_UNKNOWN_MEM_ZONE,
+               arangodb::basics::VelocyPackHelper::velocyPackToJson(result.slice())));
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function LENGTH
 ////////////////////////////////////////////////////////////////////////////////

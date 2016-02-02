@@ -104,8 +104,12 @@ struct Functions {
                                 VPackFunctionParameters const&);
   static AqlValue ToBool(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
+  static AqlValue ToBoolVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
   static AqlValue ToArray(arangodb::aql::Query*, arangodb::AqlTransaction*,
                           FunctionParameters const&);
+  static AqlValue ToArrayVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
   static AqlValue Length(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
   static AqlValue First(arangodb::aql::Query*, arangodb::AqlTransaction*,
