@@ -1495,6 +1495,9 @@ class triagens::aql::RedundantCalculationsReplacer final : public WalkerWorker<E
           for (auto& variable : node->_groupVariables) {
             variable.second = Variable::replace(variable.second, _replacements);
           }
+          for (auto& variable : node->_aggregateVariables) {
+            variable.second.first = Variable::replace(variable.second.first, _replacements);
+          }
           break;
         }
 
