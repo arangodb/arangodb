@@ -387,7 +387,7 @@ class Marker {
 
 class EnvelopeMarker : public Marker {
  public:
-  explicit EnvelopeMarker(TRI_df_marker_t const*, TRI_voc_fid_t);
+  EnvelopeMarker(TRI_df_marker_t const*, TRI_voc_fid_t);
 
   ~EnvelopeMarker();
 };
