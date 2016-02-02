@@ -30,6 +30,8 @@
 
 #include <sys/mman.h>
 
+using namespace arangodb;
+
 ////////////////////////////////////////////////////////////////////////////////
 // @brief flush memory mapped file to disk
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,10 +88,14 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
                  fileDescriptor, offsetRetyped);
 
   if (*result != MAP_FAILED) {
+    LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor;
+
     return TRI_ERROR_NO_ERROR;
   }
 
   if (errno == ENOMEM) {
+    LOG_TOPIC(DEBUG, Logger::MMAP) << "out of memory in mmap";
+    
     return TRI_ERROR_OUT_OF_MEMORY_MMAP;
   }
 
@@ -107,8 +113,12 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
   int res = munmap(memoryAddress, numOfBytesToUnMap);
 
   if (res == 0) {
+    LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-unmapped range " << Logger::RANGE(memoryAddress, numOfBytesToUnMap) << ", file-descriptor " << fileDescriptor;
+
     return TRI_ERROR_NO_ERROR;
   }
+
+  // error
 
   if (errno == ENOSPC) {
     return TRI_ERROR_ARANGO_FILESYSTEM_FULL;
@@ -143,17 +153,18 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
 
 int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
-  LOG(DEBUG) << "Doing madvise " << advice << " for " << memoryAddress << " length " << numOfBytes;
+  LOG(TRACE) << "madvise " << advice << " for range " << Logger::RANGE(memoryAddress, numOfBytes);
+  
   int res = madvise(memoryAddress, numOfBytes, advice);
 
   if (res == 0) {
     return TRI_ERROR_NO_ERROR;
-  } else {
-    char buffer[256];
-    char* p = strerror_r(errno, buffer, 256);
-    LOG(INFO) << "madvise " << advice << " for " << memoryAddress << " length " << numOfBytes << " failed with: " << p << " ";
-    return TRI_ERROR_INTERNAL;
-  }
+  } 
+    
+  char buffer[256];
+  char* p = strerror_r(errno, buffer, 256);
+  LOG(ERR) << "madvise " << advice << " for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << p << " ";
+  return TRI_ERROR_INTERNAL;
 #else
   return TRI_ERROR_NO_ERROR;
 #endif
