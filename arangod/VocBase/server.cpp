@@ -2095,6 +2095,23 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief activates or deactivates deadlock detection in all existing 
+/// databases
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_EnableDeadlockDetectionDatabasesServer(TRI_server_t* server) {
+  auto unuser(server->_databasesProtector.use());
+  auto theLists = server->_databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+
+    vocbase->_deadlockDetector.enabled(true);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 ////////////////////////////////////////////////////////////////////////////////
 

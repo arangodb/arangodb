@@ -51,7 +51,7 @@ namespace triagens {
 
       public:
 
-        DeadlockDetector () = default;
+        explicit DeadlockDetector(bool enabled) : _enabled(enabled) {};
         ~DeadlockDetector () = default;
 
         DeadlockDetector (DeadlockDetector const&) = delete;
@@ -62,6 +62,24 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enable / disable
+////////////////////////////////////////////////////////////////////////////////
+
+        void enabled(bool value) {
+          MUTEX_LOCKER(_lock);
+          _enabled = value;
+        }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the enabled status
+////////////////////////////////////////////////////////////////////////////////
+
+        bool enabled() {
+          MUTEX_LOCKER(_lock);
+          return _enabled;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a thread to the list of blocked threads
@@ -145,6 +163,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int detectDeadlock (T const* value, TRI_tid_t tid, bool isWrite) const {
+          if (!_enabled) {
+            return TRI_ERROR_NO_ERROR;
+          }
+
           struct StackValue {
             StackValue(T const* value, TRI_tid_t tid, bool isWrite) : value(value), tid(tid), isWrite(isWrite) {
             }
@@ -221,6 +243,10 @@ namespace triagens {
           auto tid = TRI_CurrentThreadId();
           
           MUTEX_LOCKER(_lock);
+          
+          if (!_enabled) {
+            return TRI_ERROR_NO_ERROR;
+          }
 
           auto it = _blocked.find(tid);
 
@@ -256,6 +282,10 @@ namespace triagens {
           auto tid = TRI_CurrentThreadId();
           
           MUTEX_LOCKER(_lock);
+          
+          if (!_enabled) {
+            return;
+          }
 
           _blocked.erase(tid);
         }
@@ -268,6 +298,11 @@ namespace triagens {
           auto tid = TRI_CurrentThreadId();
        
           MUTEX_LOCKER(_lock);
+
+          if (!_enabled) {
+            return;
+          }
+
           auto it = _active.find(value);
 
           if (it == _active.end()) {
@@ -301,6 +336,11 @@ namespace triagens {
           auto tid = TRI_CurrentThreadId();
        
           MUTEX_LOCKER(_lock);
+
+          if (!_enabled) {
+            return;
+          }
+
           auto it = _active.find(value);
 
           if (it == _active.end()) {
@@ -342,6 +382,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         std::unordered_map<T const*, std::pair<std::unordered_set<TRI_tid_t>, bool>> _active;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the detector is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _enabled;
 
     };
 

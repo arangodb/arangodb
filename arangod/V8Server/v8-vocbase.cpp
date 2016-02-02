@@ -3578,6 +3578,8 @@ static void JS_CreateDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
   TRI_ASSERT(database != nullptr);
 
+  database->_deadlockDetector.enabled(!triagens::arango::ServerState::instance()->isRunningInCluster());
+
   // copy users into context
   if (args.Length() >= 3 && args[2]->IsArray()) {
     v8::Handle<v8::Object> users = v8::Object::New(isolate);
