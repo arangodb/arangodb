@@ -737,6 +737,17 @@ AstNode* Ast::createNodeParameter(char const* name, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST quantifier node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeQuantifier(int64_t type) {
+  AstNode* node = createNode(NODE_TYPE_QUANTIFIER);
+  node->setIntValue(type);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST unary operator node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -760,6 +771,22 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
 
   // initialize sortedness information (currently used for the IN operator only)
   node->setBoolValue(false);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST binary array operator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs,
+                                            AstNode const* rhs, AstNode const* quantifier) {
+  // re-use existing function
+  AstNode* node = createNodeBinaryOperator(type, lhs, rhs);
+  node->addMember(quantifier);
+  
+  TRI_ASSERT(node->isArrayComparisonOperator());
+  TRI_ASSERT(node->numMembers() == 3);
 
   return node;
 }
@@ -1888,8 +1915,12 @@ AstNode* Ast::clone(AstNode const* node) {
     copy->setData(node->getData());
   } else if (type == NODE_TYPE_UPSERT || type == NODE_TYPE_EXPANSION) {
     copy->setIntValue(node->getIntValue(true));
+  } else if (type == NODE_TYPE_QUANTIFIER) {
+    copy->setIntValue(node->getIntValue(true));
   } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
-             type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+             type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     // copy sortedness information
     copy->setBoolValue(node->getBoolValue());
   } else if (type == NODE_TYPE_ARRAY) {

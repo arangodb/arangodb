@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
+#include "Aql/Quantifier.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
@@ -1097,16 +1098,20 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     }
   }
 
-  bool const isAllQuery = (node->getIntValue() == 0);
+  size_t const n = left.arraySize();
+  std::pair<size_t, size_t> requiredMatches = Quantifier::RequiredMatches(n, node->getMember(2));
+
+  TRI_ASSERT(requiredMatches.first <= requiredMatches.second);
   
   // for equality and non-equality we can use a binary comparison
   bool const compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
                             node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE);
 
   bool overallResult = true;
-  size_t const n = left.arraySize();
+  size_t matches = 0;
+  size_t numLeft = n;
   
-  for (size_t i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i, --numLeft) {
     auto leftItem = left.extractArrayMember(trx, leftCollection, static_cast<int64_t>(i), false);
     AqlValue leftItemValue(&leftItem);
     bool result;
@@ -1152,18 +1157,29 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
       }
     }
       
-    leftItemValue.destroy();
-
-    if (isAllQuery && !result) {
-      overallResult = false;
-      break;
+    if (result) {
+      ++matches;
+      if (matches > requiredMatches.second) {
+        // too many matches
+        overallResult = false;
+        break;
+      }
+      if (matches >= requiredMatches.first && matches + numLeft <= requiredMatches.second) {
+        // enough matches
+        overallResult = true;
+        break;
+      }
     }
-    if (!isAllQuery && result) {
-      overallResult = true;
-      break;
+    else {
+      if (matches + numLeft < requiredMatches.first) {
+        // too few matches
+        overallResult = false;
+        break;
+      }
     }
   }
       
+  left.destroy();
   right.destroy();
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, overallResult ? &TrueJson : &FalseJson, Json::NOFREE));
 }

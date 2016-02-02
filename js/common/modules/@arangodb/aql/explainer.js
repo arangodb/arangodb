@@ -445,8 +445,9 @@ function processQuery (query, explain) {
     var binaryOperator = function (node, name) {
       var lhs = buildExpression(node.subNodes[0]);
       var rhs = buildExpression(node.subNodes[1]);
-      if (node.hasOwnProperty("all")) {
-        name = (node.all ? "all" : "any") + " ";
+      if (node.subNodes.length === 3) {
+        // array operator node... prepend "all" | "any" | "none"
+        name = node.subNodes[2].quantifier + " " + name;
       }
       if (node.sorted) {
         return lhs + " " + name + " " + annotation("/* sorted */") + " " + rhs;
@@ -576,7 +577,7 @@ function processQuery (query, explain) {
         return binaryOperator(node, "not in");
       case "compare in":
       case "array compare in":
-        return binaryOperator(node, "not in");
+        return binaryOperator(node, "in");
       case "compare ==":
       case "array compare ==":
         return binaryOperator(node, "==");
