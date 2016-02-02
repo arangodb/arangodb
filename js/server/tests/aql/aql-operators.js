@@ -591,55 +591,65 @@ function ahuacatlOperatorsTestSuite () {
 
     testCastNumber: function() {
       assertEqual(null, aql.AQL_TO_NUMBER(undefined));
-      assertEqual(0, aql.AQL_TO_NUMBER(null));
-      assertEqual(0, aql.AQL_TO_NUMBER(false));
-      assertEqual(1, aql.AQL_TO_NUMBER(true));
-      assertEqual(1, aql.AQL_TO_NUMBER(1));
-      assertEqual(2, aql.AQL_TO_NUMBER(2));
-      assertEqual(-1, aql.AQL_TO_NUMBER(-1));
-      assertEqual(0, aql.AQL_TO_NUMBER(0));
       assertEqual(null, aql.AQL_TO_NUMBER(NaN));
-      assertEqual(0, aql.AQL_TO_NUMBER(''));
-      assertEqual(0, aql.AQL_TO_NUMBER(' '));
-      assertEqual(0, aql.AQL_TO_NUMBER('  '));
-      assertEqual(1, aql.AQL_TO_NUMBER('1'));
-      assertEqual(1, aql.AQL_TO_NUMBER('1 '));
-      assertEqual(0, aql.AQL_TO_NUMBER('0'));
-      assertEqual(-1, aql.AQL_TO_NUMBER('-1'));
-      assertEqual(-1, aql.AQL_TO_NUMBER('-1 '));
-      assertEqual(-1, aql.AQL_TO_NUMBER(' -1 '));
-      assertEqual(null, aql.AQL_TO_NUMBER(' -1a'));
-      assertEqual(null, aql.AQL_TO_NUMBER(' 1a'));
-      assertEqual(null, aql.AQL_TO_NUMBER(' 12335.3 a'));
-      assertEqual(null, aql.AQL_TO_NUMBER('a1bc'));
-      assertEqual(null, aql.AQL_TO_NUMBER('aaaa1'));
-      assertEqual(null, aql.AQL_TO_NUMBER('-a1'));
-      assertEqual(-1.255, aql.AQL_TO_NUMBER('-1.255'));
-      assertEqual(-1.23456, aql.AQL_TO_NUMBER('-1.23456'));
-      assertEqual(-1.23456, aql.AQL_TO_NUMBER('-1.23456 '));
-      assertEqual(1.23456, aql.AQL_TO_NUMBER('  1.23456 '));
-      assertEqual(null, aql.AQL_TO_NUMBER('   1.23456a'));
-      assertEqual(null, aql.AQL_TO_NUMBER('--1'));
-      assertEqual(1, aql.AQL_TO_NUMBER('+1'));
-      assertEqual(12.42e32, aql.AQL_TO_NUMBER('12.42e32'));
-      assertEqual(0, aql.AQL_TO_NUMBER([ ]));
-      assertEqual(0, aql.AQL_TO_NUMBER([ 0 ]));
-      assertEqual(-17, aql.AQL_TO_NUMBER([ -17 ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ 0, 1 ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ 1, 2 ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ -1, 0 ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ 0, 1, [ 1, 2 ], [ [ 9, 4 ] ] ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ { } ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ 0, 1, { } ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ { }, { } ]));
-      assertEqual(0, aql.AQL_TO_NUMBER([ '' ]));
-      assertEqual(0, aql.AQL_TO_NUMBER([ false ]));
-      assertEqual(1, aql.AQL_TO_NUMBER([ true ]));
-      assertEqual(null, aql.AQL_TO_NUMBER({ }));
-      assertEqual(null, aql.AQL_TO_NUMBER({ 'a' : true }));
-      assertEqual(null, aql.AQL_TO_NUMBER({ 'a' : true, 'b' : 0 }));
-      assertEqual(null, aql.AQL_TO_NUMBER({ 'a' : { }, 'b' : { } }));
-      assertEqual(null, aql.AQL_TO_NUMBER({ 'a' : [ ], 'b' : [ ] }));
+
+      var values = [
+        {ex: 0, val: null},
+        {ex: 0, val: false},
+        {ex: 1, val: true},
+        {ex: 1, val: 1},
+        {ex: 2, val: 2},
+        {ex: -1, val: -1},
+        {ex: 0, val: 0},
+        {ex: 0, val: "''"},
+        {ex: 0, val: "' '"},
+        {ex: 0, val: "'  '"},
+        {ex: 1, val: "'1'"},
+        {ex: 1, val: "'1 '"},
+        {ex: 1, val: "' 1 '"},
+        {ex: 0, val: "'0'"},
+        {ex: -1, val: "'-1'"},
+        {ex: -1, val: "'-1 '"},
+        {ex: -1, val: "' -1 '"},
+        {ex: null, val: "' -1a '"},
+        {ex: null, val: "' 1a '"},
+        {ex: null, val: "' 12335.3 a '"},
+        {ex: null, val: "'a1bc'"},
+        {ex: null, val: "'aaa1'"},
+        {ex: null, val: "'-a1'"},
+        {ex: -1.255, val: "'-1.255'"},
+        {ex: -1.23456, val: "'-1.23456'"},
+        {ex: -1.23456, val: "'-1.23456 '"},
+        {ex: 1.23456, val: "' 1.23456 '"},
+        {ex: null, val: "'  1.23456a'"},
+        {ex: null, val: "'--1'"},
+        {ex: 1, val: "'+1'"},
+        {ex: 12.42e32, val: "'12.42e32'"},
+        {ex: 0, val: "[]"},
+        {ex: 0, val: "[ 0 ]"},
+        {ex: -17, val: "[ -17 ]"},
+        {ex: null, val: "[ 0, 1 ]"},
+        {ex: null, val: "[ 1, 2 ]"},
+        {ex: null, val: "[ -1, 0 ]"},
+        {ex: null, val: "[ 0, 1, [ 1, 2 ], [ [ 9, 4 ] ] ]"},
+        {ex: null, val: "[ { } ]"},
+        {ex: null, val: "[ 0, 1, { } ]"},
+        {ex: null, val: "[ { }, { } ]"},
+        {ex: 0, val: "[ '' ]"},
+        {ex: 0, val: "[ false ]"},
+        {ex: 1, val: "[ true ]"},
+        {ex: null, val: "{ }"},
+        {ex: null, val: "{ 'a' : true }"},
+        {ex: null, val: "{ 'a' : true, 'b' : 0 }"},
+        {ex: null, val: "{ 'a' : { }, 'b' : { } }"},
+        {ex: null, val: "{ 'a' : [ ], 'b' : [ ] }"}
+      ]
+      values.forEach(function(v) {
+        var q = `RETURN TO_BOOL(${v.val})`;
+        assertEqual(v.ex, db._query(q).next(), q);
+        var q = `RETURN NOOPT(TO_BOOL(${v.val}))`;
+        assertEqual(v.ex, db._query(q).next(), q);
+      });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -648,38 +658,46 @@ function ahuacatlOperatorsTestSuite () {
 
     testCastString: function() {
       assertEqual('null', aql.AQL_TO_STRING(undefined));
-      assertEqual('null', aql.AQL_TO_STRING(null));
-      assertEqual('false', aql.AQL_TO_STRING(false));
-      assertEqual('true', aql.AQL_TO_STRING(true));
-      assertEqual('1', aql.AQL_TO_STRING(1));
-      assertEqual('2', aql.AQL_TO_STRING(2));
-      assertEqual('-1', aql.AQL_TO_STRING(-1));
-      assertEqual('0', aql.AQL_TO_STRING(0));
       assertEqual('null', aql.AQL_TO_STRING(NaN));
-      assertEqual('', aql.AQL_TO_STRING(''));
-      assertEqual(' ', aql.AQL_TO_STRING(' '));
-      assertEqual('  ', aql.AQL_TO_STRING('  '));
-      assertEqual('1', aql.AQL_TO_STRING('1'));
-      assertEqual('1 ', aql.AQL_TO_STRING('1 '));
-      assertEqual('0', aql.AQL_TO_STRING('0'));
-      assertEqual('-1', aql.AQL_TO_STRING('-1'));
-      assertEqual('', aql.AQL_TO_STRING([ ]));
-      assertEqual('0', aql.AQL_TO_STRING([ 0 ]));
-      assertEqual('0,1', aql.AQL_TO_STRING([ 0, 1 ]));
-      assertEqual('1,2', aql.AQL_TO_STRING([ 1, 2 ]));
-      assertEqual('-1,0', aql.AQL_TO_STRING([ -1, 0 ]));
-      assertEqual('0,1,1,2,9,4', aql.AQL_TO_STRING([ 0, 1, [ 1, 2 ], [ [ 9, 4 ] ] ]));
-      assertEqual('[object Object]', aql.AQL_TO_STRING([ { } ]));
-      assertEqual('0,1,[object Object]', aql.AQL_TO_STRING([ 0, 1, { } ]));
-      assertEqual('[object Object],[object Object]', aql.AQL_TO_STRING([ { }, { } ]));
-      assertEqual('', aql.AQL_TO_STRING([ '' ]));
-      assertEqual('false', aql.AQL_TO_STRING([ false ]));
-      assertEqual('true', aql.AQL_TO_STRING([ true ]));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ }));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ 'a' : true }));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ 'a' : true, 'b' : 0 }));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ 'a' : { }, 'b' : { } }));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ 'a' : [ ], 'b' : [ ] }));
+      var values = [
+        {ex: "null", val: null},
+        {ex: "false", val: false},
+        {ex: "true", val: true},
+        {ex: "1", val: 1},
+        {ex: "2", val: 2},
+        {ex: "-1", val: -1},
+        {ex: "0", val: 0},
+        {ex: "", val: "''"},
+        {ex: " ", val: "' '"},
+        {ex: "  ", val: "'  '"},
+        {ex: "1", val: "'1'"},
+        {ex: "1 ", val: "'1 '"},
+        {ex: "0", val: "'0'"},
+        {ex: "-1", val: "'-1'"},
+        {ex: "", val: "[ ]"},
+        {ex: "0", val: "[ 0 ]"},
+        {ex: "0,1", val: "[ 0, 1 ]"},
+        {ex: "1,2", val: "[ 1, 2 ]"},
+        {ex: "-1,0", val: "[ -1, 0 ]"},
+        {ex: "0,1,1,2,9,4", val: "[ 0, 0, [1, 2], [ [ 9, 4 ] ] ]"},
+        {ex: "[object Object]", val: "[ { } ]"},
+        {ex: "0,1,[object Object]", val: "[ 0, 1, { } ]"},
+        {ex: "[object Object],[object Object]", val: "[ { }, { } ]"},
+        {ex: "", val: "['']"},
+        {ex: "false", val: "[ false ]"},
+        {ex: "true", val: "[ true ]"},
+        {ex: "[object Object]", val: "{ }"},
+        {ex: "[object Object]", val: "{ 'a' : true }"},
+        {ex: "[object Object]", val: "{ 'a' : true, 'b' : 0 }"},
+        {ex: "[object Object]", val: "{ 'a' : { }, 'b' : { } }"},
+        {ex: "[object Object]", val: "{ 'a' : [ ], 'b' : [ ] }"}
+      ];
+      values.forEach(function(v) {
+        var q = `RETURN TO_STRING(${v.val})`;
+        assertEqual(v.ex, db._query(q).next(), q);
+        var q = `RETURN NOOPT(TO_STRING(${v.val}))`;
+        assertEqual(v.ex, db._query(q).next(), q);
+      });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
