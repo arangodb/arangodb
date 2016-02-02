@@ -147,8 +147,6 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
   }
 
-
-
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     _graphJson = triagens::basics::Json(triagens::basics::Json::Array, edgeCollectionCount);
@@ -218,7 +216,6 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   }
 }
 
-
 TraversalNode::TraversalNode (ExecutionPlan* plan,
                        size_t id,
                        TRI_vocbase_t* vocbase, 
@@ -242,8 +239,11 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _CalculationNodeId(0),
     _condition(nullptr) {
 
+  _graphJson = triagens::basics::Json(triagens::basics::Json::Array, edgeColls.size());
+
   for (auto& it : edgeColls) {
     _edgeColls.push_back(it);
+    _graphJson.add(triagens::basics::Json(it));
   }
 }
 

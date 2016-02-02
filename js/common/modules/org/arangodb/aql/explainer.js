@@ -765,7 +765,7 @@ function processQuery (query, explain) {
                  (node.count ? " " + keyword("WITH COUNT") : "") + 
                  (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
                  (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
-                 "   " + annotation("/* " + node.aggregationOptions.method + "*/");
+                 "   " + annotation("/* " + node.aggregationOptions.method + " */");
       case "CollectNode":
         var collect = keyword("COLLECT") + " " + 
           node.groups.map(function(node) {
