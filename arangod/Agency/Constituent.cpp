@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/logging.h"
 #include "Cluster/ClusterComm.h"
+#include "Basics/Logger.h"
 
 #include "Constituent.h"
 
@@ -30,6 +30,7 @@
 #include <thread>
 
 using namespace arangodb::consensus;
+
 
 Constituent::Constituent (const uint32_t n) : Thread("Constituent"),
 	_term(0), _gen(std::random_device()()), _mode(FOLLOWER), _run(true),
@@ -60,7 +61,7 @@ Constituent::mode_t Constituent::mode () const {
 }
 
 bool Constituent::vote (id_t id, term_t term) {
-	LOG_WARNING("(%d %d) (%d %d)", _id, _term, id, term);
+	LOG(WARN) << _id << "," << _term << " " << id << "," << term;
 	if (id == _id)
 		return false;
 	else {
@@ -97,9 +98,10 @@ void Constituent::callElection() {
       0, 0, i.address, rest::HttpRequest::HTTP_REQUEST_GET,
       "/_api/agency/vote?id=0&term=3", nullptr, headerFields, nullptr,
       .75*.15);
-	std::this_thread::sleep_for(sleepFor(.9*.15));
-  for (auto i : _votes)
-	  arangodb::ClusterComm::instance()->enquire(results[i.id].OperationID);
+	std::this_thread::sleep_for(Constituent::duration_t(.9*.15));
+	for (auto& i : _constituency)
+	  arangodb::ClusterComm::instance()->enquire(results[i.id].operationID);
+
 	// time out
 	//count votes
 }
@@ -107,7 +109,7 @@ void Constituent::callElection() {
 void Constituent::run() {
   while (_run) {
     if (_state == FOLLOWER) {
-      LOG_WARNING ("sleeping ... ");
+      LOG(WARN) << "sleeping ... ";
       std::this_thread::sleep_for(sleepFor());
     } else {
       callElection();
