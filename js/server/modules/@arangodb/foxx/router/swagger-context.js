@@ -473,6 +473,9 @@ module.exports = exports = class SwaggerContext {
       if (def.description) {
         response.description = def.description;
       }
+      if (!response.description) {
+        response.description = `The ${code} response body.`;
+      }
       operation.responses[code] = response;
     }
 
