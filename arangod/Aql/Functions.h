@@ -65,63 +65,30 @@ struct Functions {
 
   static AqlValue IsNull(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
-  static AqlValue$ IsNullVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
-                               VPackFunctionParameters const&);
   static AqlValue IsBool(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
-  static AqlValue$ IsBoolVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
-                               VPackFunctionParameters const&);
   static AqlValue IsNumber(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
-  static AqlValue$ IsNumberVPack(arangodb::aql::Query*,
-                                 arangodb::AqlTransaction*,
-                                 VPackFunctionParameters const&);
   static AqlValue IsString(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
-  static AqlValue$ IsStringVPack(arangodb::aql::Query*,
-                                 arangodb::AqlTransaction*,
-                                 VPackFunctionParameters const&);
   static AqlValue IsArray(arangodb::aql::Query*, arangodb::AqlTransaction*,
                           FunctionParameters const&);
-  static AqlValue$ IsArrayVPack(arangodb::aql::Query*,
-                                arangodb::AqlTransaction*,
-                                VPackFunctionParameters const&);
   static AqlValue IsObject(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
-  static AqlValue$ IsObjectVPack(arangodb::aql::Query*,
-                                 arangodb::AqlTransaction*,
-                                 VPackFunctionParameters const&);
   static AqlValue ToNumber(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
-
-  static AqlValue$ ToNumberVPack(arangodb::aql::Query*,
-                                 arangodb::AqlTransaction*,
-                                 VPackFunctionParameters const&);
   static AqlValue ToString(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            FunctionParameters const&);
-  static AqlValue$ ToStringVPack(arangodb::aql::Query*,
-                                 arangodb::AqlTransaction*,
-                                 VPackFunctionParameters const&);
   static AqlValue ToBool(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
-  static AqlValue$ ToBoolVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
-                               VPackFunctionParameters const&);
   static AqlValue ToArray(arangodb::aql::Query*, arangodb::AqlTransaction*,
                           FunctionParameters const&);
-  static AqlValue$ ToArrayVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
-                                VPackFunctionParameters const&);
   static AqlValue Length(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          FunctionParameters const&);
-  static AqlValue$ LengthVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
-                               VPackFunctionParameters const&);
   static AqlValue First(arangodb::aql::Query*, arangodb::AqlTransaction*,
                         FunctionParameters const&);
-  static AqlValue$ FirstVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
-                              VPackFunctionParameters const&);
   static AqlValue Last(arangodb::aql::Query*, arangodb::AqlTransaction*,
                        FunctionParameters const&);
-  static AqlValue$ LastVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
-                             VPackFunctionParameters const&);
   static AqlValue Nth(arangodb::aql::Query*, arangodb::AqlTransaction*,
                       FunctionParameters const&);
   static AqlValue Concat(arangodb::aql::Query*, arangodb::AqlTransaction*,
@@ -256,6 +223,41 @@ struct Functions {
                            FunctionParameters const&);
   static AqlValue IsSameCollection(arangodb::aql::Query*, arangodb::AqlTransaction*, 
                                    FunctionParameters const&);
+
+
+  static AqlValue$ IsNullVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
+  static AqlValue$ IsBoolVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
+  static AqlValue$ IsNumberVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction*,
+                                 VPackFunctionParameters const&);
+  static AqlValue$ IsStringVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction*,
+                                 VPackFunctionParameters const&);
+  static AqlValue$ IsArrayVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
+  static AqlValue$ IsObjectVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction*,
+                                 VPackFunctionParameters const&);
+  static AqlValue$ ToNumberVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction*,
+                                 VPackFunctionParameters const&);
+  static AqlValue$ ToStringVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction*,
+                                 VPackFunctionParameters const&);
+  static AqlValue$ ToBoolVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
+  static AqlValue$ ToArrayVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
+  static AqlValue$ LengthVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
+  static AqlValue$ FirstVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
+  static AqlValue$ LastVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                             VPackFunctionParameters const&);
 };
 }
 }
