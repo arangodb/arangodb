@@ -169,13 +169,6 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Memory prefetch, gives a hint to the CPU that some memory location
-/// (cache line) will be needed soon.
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void TRI_MemoryPrefetch(void* p) {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper macro for calculating strlens for static strings at
 /// a compile-time (unless compiled with fno-builtin-strlen etc.)
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,43 +183,40 @@ static inline void TRI_MemoryPrefetch(void* p) {}
 
 #ifndef TRI_ASSERT
 #define TRI_ASSERT(expr)    \
-  {                         \
+  do {                      \
     if (!(expr)) {          \
       TRI_PrintBacktrace(); \
       assert(expr);         \
     }                       \
-  }
+  } while (0)
 #endif
 
 #else
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) \
-  do {                   \
-    (void)0;             \
-  } while (0)
-
+#define TRI_ASSERT(expr) while (0)
 #endif
 
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aborts program execution
+///
 /// if backtraces are enabled, a backtrace will be printed before
 ////////////////////////////////////////////////////////////////////////////////
 
-#define FATAL_ERROR_EXIT(...)                       \
-  do {                                              \
-    std::string bt;                                 \
-    TRI_GetBacktrace(bt);                           \
-    if (!bt.empty()) {                              \
-      LOG(WARN) << bt;                           \
-    }                                               \
-    TRI_ShutdownLogging(true);                      \
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);       \
-  } while (0);                                      \
-  exit(EXIT_FAILURE)
-
+#define FATAL_ERROR_EXIT(...)                 \
+  do {                                        \
+    std::string bt;                           \
+    TRI_GetBacktrace(bt);                     \
+    if (!bt.empty()) {                        \
+      LOG(WARN) << bt;                        \
+    }                                         \
+    arangodb::Logger::flush();                \
+    arangodb::Logger::shutdown(true);         \
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr); \
+    exit(EXIT_FAILURE);                       \
+  } while (0)
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
