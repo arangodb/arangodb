@@ -258,6 +258,27 @@ struct Functions {
                               VPackFunctionParameters const&);
   static AqlValue$ LastVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
                              VPackFunctionParameters const&);
+  static AqlValue$ NthVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ ConcatVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
+  static AqlValue$ LikeVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                             VPackFunctionParameters const&);
+  static AqlValue$ PassthruVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction*,
+                                 VPackFunctionParameters const&);
+  static AqlValue$ UnsetVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
+  static AqlValue$ UnsetRecursiveVPack(arangodb::aql::Query*,
+                                       arangodb::AqlTransaction*,
+                                       VPackFunctionParameters const&);
+  static AqlValue$ KeepVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                             VPackFunctionParameters const&);
+  static AqlValue$ MergeVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
+  static AqlValue$ MergeRecursiveVPack(arangodb::aql::Query*,
+                                       arangodb::AqlTransaction*,
+                                       VPackFunctionParameters const&);
 };
 }
 }

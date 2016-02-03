@@ -440,6 +440,20 @@ static bool GetBooleanParameter(arangodb::AqlTransaction* trx,
   return ValueToBoolean(temp.json());
 }
 
+static bool GetBooleanParameter(arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters,
+                                size_t startParameter, bool defaultValue) {
+  size_t const n = parameters.size();
+
+  if (startParameter >= n) {
+    return defaultValue;
+  }
+
+  auto temp = ExtractFunctionParameter(trx, parameters, startParameter);
+  return ValueToBoolean(temp);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract attribute names from the arguments
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,6 +491,40 @@ static void ExtractKeys(std::unordered_set<std::string>& names,
             TRI_AtVector(&p->_value._objects, j));
         if (TRI_IsStringJson(v)) {
           names.emplace(arangodb::basics::JsonHelper::getStringValue(v, ""));
+        } else {
+          RegisterInvalidArgumentWarning(query, functionName);
+        }
+      }
+    }
+  }
+}
+
+static void ExtractKeys(std::unordered_set<std::string>& names,
+                        arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        size_t startParameter, char const* functionName) {
+  size_t const n = parameters.size();
+
+  for (size_t i = startParameter; i < n; ++i) {
+    auto param = ExtractFunctionParameter(trx, parameters, i);
+
+    if (param.isString()) {
+      names.emplace(param.copyString());
+    } else if (param.isNumber()) {
+      double number = param.getNumericValue<double>();
+
+      if (std::isnan(number) || number == HUGE_VAL || number == -HUGE_VAL) {
+        names.emplace("null");
+      } else {
+        char buffer[24];
+        int length = fpconv_dtoa(number, &buffer[0]);
+        names.emplace(std::string(&buffer[0], static_cast<size_t>(length)));
+      }
+    } else if (param.isArray()) {
+      for (auto const& v : VPackArrayIterator(param)) {
+        if (v.isString()) {
+          names.emplace(v.copyString());
         } else {
           RegisterInvalidArgumentWarning(query, functionName);
         }
@@ -888,6 +936,110 @@ static void RequestEdges(arangodb::basics::Json const& vertexJson,
       result.add(ExpandShapedJson(shaper, resolver, cid, &(edges[i])));
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function to unset or keep all given names in the value.
+///        Recursively iterates over sub-object and unsets or keeps their values
+///        as well
+////////////////////////////////////////////////////////////////////////////////
+
+static void UnsetOrKeep(VPackSlice const& value,
+                        std::unordered_set<std::string> const& names,
+                        bool unset,  // true means unset, false means keep
+                        bool recursive, VPackBuilder& result) {
+  TRI_ASSERT(value.isObject());
+  VPackObjectBuilder b(&result); // Close the object after this function
+  for (auto const& entry : VPackObjectIterator(value)) {
+    TRI_ASSERT(entry.key.isString());
+    std::string key = entry.key.copyString();
+    if (!(names.find(key) == names.end() ^ unset)) {
+      // not found and unset or found and keep 
+      if (recursive && entry.value.isObject()) {
+        result.add(entry.key); // Add the key
+        UnsetOrKeep(entry.value, names, unset, recursive, result); // Adds the object
+      } else {
+        result.add(key, entry.value);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function to merge given parameters
+///        Works for an array of objects as first parameter or arbitrary many
+///        object parameters
+////////////////////////////////////////////////////////////////////////////////
+
+static AqlValue$ MergeParameters(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters,
+                                 std::string const& funcName,
+                                 bool recursive) {
+  size_t const n = parameters.size();
+  if (n == 0) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    {
+      VPackObjectBuilder guard(b.get());
+    }
+    return AqlValue$(b.get());
+  }
+  // use the first argument as the preliminary result
+  VPackBuilder b;
+  auto initial = ExtractFunctionParameter(trx, parameters, 0);
+  if (initial.isArray() && n == 1) {
+    // special case: a single array parameter
+    try {
+      // Create an empty document as start point
+      VPackObjectBuilder guard(&b);
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    // merge in all other arguments
+    for (auto const& it : VPackArrayIterator(initial)) {
+      if (!it.isObject()) {
+        RegisterInvalidArgumentWarning(query, "MERGE");
+        b.clear();
+        b.add(VPackValue(VPackValueType::Null));
+        return AqlValue$(b);
+      }
+      try {
+        b = arangodb::basics::VelocyPackHelper::merge(b.slice(), it, false,
+                                                      recursive);
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+    }
+    return AqlValue$(b);
+  }
+
+  if (!initial.isObject()) {
+    RegisterInvalidArgumentWarning(query, "MERGE");
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  // merge in all other arguments
+  for (size_t i = 1; i < n; ++i) {
+    auto param = ExtractFunctionParameter(trx, parameters, i);
+
+    if (!param.isObject()) {
+      RegisterInvalidArgumentWarning(query, "MERGE");
+      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+      b->add(VPackValue(VPackValueType::Null));
+      return AqlValue$(b.get());
+    }
+
+    try {
+      b = arangodb::basics::VelocyPackHelper::merge(initial, param, false,
+                                                    recursive);
+      initial = b.slice();
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  }
+  return AqlValue$(b);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1485,6 +1637,10 @@ AqlValue$ Functions::LastVPack(arangodb::aql::Query* query,
 AqlValue Functions::Nth(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(NthVPack(query, trx, tmp));
+#else
   if (parameters.size() < 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LAST", (int)2,
@@ -1522,14 +1678,67 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
   auto j = new Json(TRI_UNKNOWN_MEM_ZONE, value.at(index).copy().steal(),
                     Json::AUTOFREE);
   return AqlValue(j);
+#endif
+}
+
+AqlValue$ Functions::NthVPack(arangodb::aql::Query* query,
+                              arangodb::AqlTransaction* trx,
+                              VPackFunctionParameters const& parameters) {
+  if (parameters.size() < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LAST", (int)2,
+        (int)2);
+  }
+
+  auto value = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!value.isArray()) {
+    // not an array
+    RegisterWarning(query, "NTH", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+    builder->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(builder.get());
+  }
+
+  VPackValueLength const n = value.length();
+
+  if (n == 0) {
+    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+    builder->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(builder.get());
+  }
+
+  VPackSlice indexSlice = ExtractFunctionParameter(trx, parameters, 1);
+  bool isValid = true;
+  double numValue = ValueToNumber(indexSlice, isValid);
+
+  if (!isValid || numValue < 0.0) {
+    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+    builder->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(builder.get());
+  }
+
+  size_t index = static_cast<size_t>(numValue);
+
+  if (index >= n) {
+    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+    builder->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(builder.get());
+  }
+  return AqlValue$(value.at(index));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function CONCAT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Concat(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
+AqlValue Functions::Concat(arangodb::aql::Query* query,
+                           arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(ConcatVPack(query, trx, tmp));
+#else
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
 
   size_t const n = parameters.size();
@@ -1576,6 +1785,50 @@ AqlValue Functions::Concat(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
   j.release();
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::ConcatVPack(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+
+  size_t const n = parameters.size();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto const member = ExtractFunctionParameter(trx, parameters, i);
+
+    if (member.isNone() || member.isNull()) {
+      continue;
+    }
+
+    if (member.isArray()) {
+      // append each member individually
+      for (auto const& sub : VPackArrayIterator(member)) {
+        if (sub.isNone() || sub.isNull()) {
+          continue;
+        }
+
+        AppendAsString(adapter, sub);
+      }
+    } else {
+      // convert member to a string and append
+      AppendAsString(adapter, member);
+    }
+  }
+
+  // steal the StringBuffer's char* pointer so we can avoid copying data around
+  // multiple times
+  size_t length = buffer.length();
+  try {
+    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+    std::string res(buffer.steal(), length);
+    builder->add(VPackValue(std::move(res)));
+    return AqlValue$(builder.get());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1585,6 +1838,10 @@ AqlValue Functions::Concat(arangodb::aql::Query*, arangodb::AqlTransaction* trx,
 AqlValue Functions::Like(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(LikeVPack(query, trx, tmp));
+#else
   if (parameters.size() < 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LIKE", (int)2,
@@ -1651,21 +1908,117 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
   }
 
   return AqlValue(new Json(result));
+#endif
+}
+
+AqlValue$ Functions::LikeVPack(arangodb::aql::Query* query,
+                               arangodb::AqlTransaction* trx,
+                               VPackFunctionParameters const& parameters) {
+  if (parameters.size() < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LIKE", (int)2,
+        (int)3);
+  }
+
+  bool const caseInsensitive = GetBooleanParameter(trx, parameters, 2, false);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+
+  // build pattern from parameter #1
+  auto const regex = ExtractFunctionParameter(trx, parameters, 1);
+  AppendAsString(adapter, regex);
+
+  size_t const length = buffer.length();
+
+  std::string const pattern =
+      BuildRegexPattern(buffer.c_str(), length, caseInsensitive);
+  RegexMatcher* matcher = nullptr;
+
+  if (RegexCache != nullptr) {
+    auto it = RegexCache->find(pattern);
+
+    // check regex cache
+    if (it != RegexCache->end()) {
+      matcher = (*it).second;
+    }
+  }
+
+  if (matcher == nullptr) {
+    matcher =
+        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+
+    try {
+      if (RegexCache == nullptr) {
+        RegexCache = new std::unordered_map<std::string, RegexMatcher*>();
+      }
+      // insert into cache, no matter if pattern is valid or not
+      RegexCache->emplace(pattern, matcher);
+    } catch (...) {
+      delete matcher;
+      ClearRegexCache();
+      throw;
+    }
+  }
+
+  if (matcher == nullptr) {
+    // compiling regular expression failed
+    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  // extract value
+  buffer.clear();
+  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+  AppendAsString(adapter, value);
+
+  bool error = false;
+  bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
+      matcher, buffer.c_str(), buffer.length(), error);
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  if (error) {
+    // compiling regular expression failed
+    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    b->add(VPackValue(VPackValueType::Null));
+  } else {
+    b->add(VPackValue(result));
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function PASSTHRU
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Passthru(arangodb::aql::Query*,
+AqlValue Functions::Passthru(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(PassthruVPack(query, trx, tmp));
+#else
   if (parameters.empty()) {
     return AqlValue(new Json(Json::Null));
   }
 
   auto json = ExtractFunctionParameter(trx, parameters, 0, true);
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, json.steal()));
+#endif
+}
+
+AqlValue$ Functions::PassthruVPack(arangodb::aql::Query* query,
+                                   arangodb::AqlTransaction* trx,
+                                   VPackFunctionParameters const& parameters) {
+  if (parameters.empty()) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  auto value = ExtractFunctionParameter(trx, parameters, 0);
+  return AqlValue$(value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1675,6 +2028,10 @@ AqlValue Functions::Passthru(arangodb::aql::Query*,
 AqlValue Functions::Unset(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(UnsetVPack(query, trx, tmp));
+#else
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
   if (!value.isObject()) {
@@ -1721,6 +2078,31 @@ AqlValue Functions::Unset(arangodb::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
   j.release();
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::UnsetVPack(arangodb::aql::Query* query,
+                                arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  auto value = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!value.isObject()) {
+    RegisterInvalidArgumentWarning(query, "UNSET");
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::unordered_set<std::string> names;
+  ExtractKeys(names, query, trx, parameters, 1, "UNSET");
+
+  try {
+    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+    UnsetOrKeep(value, names, true, false, *builder);
+    return AqlValue$(builder.get());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1730,6 +2112,10 @@ AqlValue Functions::Unset(arangodb::aql::Query* query,
 AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
                                    arangodb::AqlTransaction* trx,
                                    FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(UnsetRecursiveVPack(query, trx, tmp));
+#else
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
   if (!value.isObject()) {
@@ -1793,6 +2179,31 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
   TRI_json_t* result = func(value.json(), names);
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result);
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::UnsetRecursiveVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  auto value = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!value.isObject()) {
+    RegisterInvalidArgumentWarning(query, "UNSET_RECURSIVE");
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::unordered_set<std::string> names;
+  ExtractKeys(names, query, trx, parameters, 1, "UNSET_RECURSIVE");
+
+  try {
+    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+    UnsetOrKeep(value, names, true, true, *builder);
+    return AqlValue$(builder.get());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1802,6 +2213,10 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
 AqlValue Functions::Keep(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(KeepVPack(query, trx, tmp));
+#else
   auto value = ExtractFunctionParameter(trx, parameters, 0, false);
 
   if (!value.isObject()) {
@@ -1845,6 +2260,31 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
   j.release();
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::KeepVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  auto value = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!value.isObject()) {
+    RegisterInvalidArgumentWarning(query, "KEEP");
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::unordered_set<std::string> names;
+  ExtractKeys(names, query, trx, parameters, 1, "KEEP");
+
+  try {
+    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+    UnsetOrKeep(value, names, false, false, *builder);
+    return AqlValue$(builder.get());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1854,6 +2294,10 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
 AqlValue Functions::Merge(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(MergeVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n == 0) {
@@ -1930,6 +2374,13 @@ AqlValue Functions::Merge(arangodb::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::MergeVPack(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters) {
+  return MergeParameters(query, trx, parameters, "MERGE", false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1939,6 +2390,10 @@ AqlValue Functions::Merge(arangodb::aql::Query* query,
 AqlValue Functions::MergeRecursive(arangodb::aql::Query* query,
                                    arangodb::AqlTransaction* trx,
                                    FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(MergeRecursiveVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n == 0) {
@@ -2015,6 +2470,13 @@ AqlValue Functions::MergeRecursive(arangodb::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::MergeRecursiveVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  return MergeParameters(query, trx, parameters, "MERGE_RECURSIVE", true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
