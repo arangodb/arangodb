@@ -36,11 +36,18 @@ module.exports = class Route extends SwaggerContext {
     this._methods = methods;
     this._handler = handler;
     this.name = name;
-    this.response(200, SwaggerContext.DEFAULT_BODY_SCHEMA);
+    this.response(
+      200,
+      SwaggerContext.DEFAULT_BODY_SCHEMA
+      .description('Undocumented response body')
+    );
     if (methods.some(function (method) {
       return actions.BODYFREE_METHODS.indexOf(method) === -1;
     })) {
-      this.body(SwaggerContext.DEFAULT_BODY_SCHEMA);
+      this.body(
+        SwaggerContext.DEFAULT_BODY_SCHEMA
+        .description('Undocumented request body')
+      );
     }
   }
 };
