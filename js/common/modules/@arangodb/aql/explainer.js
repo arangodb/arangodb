@@ -446,13 +446,13 @@ function processQuery (query, explain) {
       var lhs = buildExpression(node.subNodes[0]);
       var rhs = buildExpression(node.subNodes[1]);
       if (node.subNodes.length === 3) {
-        // array operator node... prepend "all" | "any" | "none"
+        // array operator node... prepend "all" | "any" | "none" to node type
         name = node.subNodes[2].quantifier + " " + name;
       }
       if (node.sorted) {
         return lhs + " " + name + " " + annotation("/* sorted */") + " " + rhs;
       }
-      return lhs + " " + name + " " + rhs;;
+      return lhs + " " + name + " " + rhs;
     };
 
     isConst = isConst && ([ "value", "object", "object element", "array" ].indexOf(node.type) !== -1);

@@ -68,14 +68,14 @@ std::unordered_map<int,
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND), "LOGICAL_AND"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR), "LOGICAL_OR"},
     {static_cast<int>(NODE_TYPE_OPERATOR_TERNARY), "TERNARY_OPERATOR"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), "RELATIONAL_ARRAY_EQUAL"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE), "RELATIONAL_ARRAY_UNEQUAL"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), "RELATIONAL_ARRAY_GREATER"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), "RELATIONAL_ARRAY_GREATEREQUAL"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), "RELATIONAL_ARRAY_LESS"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), "RELATIONAL_ARRAY_LESSEQUAL"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), "RELATIONAL_ARRAY_IN"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), "RELATIONAL_ARRAY_NOT_IN"}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ), "RELATIONAL_ARRAY_EQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE), "RELATIONAL_ARRAY_UNEQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT), "RELATIONAL_ARRAY_GREATER"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE), "RELATIONAL_ARRAY_GREATEREQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT), "RELATIONAL_ARRAY_LESS"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE), "RELATIONAL_ARRAY_LESSEQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "RELATIONAL_ARRAY_IN"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "RELATIONAL_ARRAY_NOT_IN"}};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user-accessible functions
@@ -1103,9 +1103,10 @@ void Executor::generateCodeBinaryArrayOperator(AstNode const* node) {
   generateCodeNode(node->getMember(1));
 
   AstNode const* quantifier = node->getMember(2);
+
   if (quantifier->type == NODE_TYPE_QUANTIFIER) {
     _buffer->appendChar(',');
-    _buffer->appendInteger(node->getIntValue());
+    _buffer->appendInteger(quantifier->getIntValue(true));
   }
 
   _buffer->appendChar(')');

@@ -1102,7 +1102,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   std::pair<size_t, size_t> requiredMatches = Quantifier::RequiredMatches(n, node->getMember(2));
 
   TRI_ASSERT(requiredMatches.first <= requiredMatches.second);
-  
+ 
   // for equality and non-equality we can use a binary comparison
   bool const compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
                             node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE);
@@ -1111,7 +1111,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   size_t matches = 0;
   size_t numLeft = n;
   
-  for (size_t i = 0; i < n; ++i, --numLeft) {
+  for (size_t i = 0; i < n; ++i) {
     auto leftItem = left.extractArrayMember(trx, leftCollection, static_cast<int64_t>(i), false);
     AqlValue leftItemValue(&leftItem);
     bool result;
@@ -1156,6 +1156,8 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
           TRI_ASSERT(false);
       }
     }
+    
+    --numLeft;
       
     if (result) {
       ++matches;

@@ -1458,26 +1458,54 @@ function LOGICAL_NOT (lhs) {
 /// @brief perform equality check for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function RELATIONAL_ARRAY_FUNC (lhs, rhs, all, func) {
+function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   'use strict';
 
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_ARRAY) {
     return false;
   }
 
-  var n = lhs.length;
+  var n = lhs.length, min, max;
+  if (quantifier === 1) {
+    // NONE
+    min = max = 0;
+  }
+  else if (quantifier === 2) {
+    // ALL
+    min = max = n;
+  }
+  else if (quantifier === 3) {
+    // ANY
+    min = (n === 0 ? 0 : 1);
+    max = n;
+  }
+
+  var left = n, matches = 0;
   for (var i = 0; i < n; ++i) {
     var result = func(lhs[i], rhs);
-    if (all && !result) {
-      return false;
+    --left;
+
+    if (result) {
+      ++matches;
+      if (matches > max) {
+        // too many matches
+        return false;
+      }
+      if (matches >= min && matches + left <= max) {
+        // enough matches
+        return true;
+      }
     }
-    if (!all && result) {
-      return true;
+    else {
+      if (matches + left < min) {
+        // too few matches
+        return false;
+      }
     }
   }
+
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform equality check
@@ -1925,80 +1953,80 @@ function RELATIONAL_NOT_IN (lhs, rhs) {
 /// @brief perform equality check for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function RELATIONAL_ARRAY_EQUAL (lhs, rhs, all) {
+function RELATIONAL_ARRAY_EQUAL (lhs, rhs, quantifier) {
   'use strict';
 
-  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_EQUAL);
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_EQUAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform unequality check for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function RELATIONAL_ARRAY_UNEQUAL (lhs, rhs, all) {
+function RELATIONAL_ARRAY_UNEQUAL (lhs, rhs, quantifier) {
   'use strict';
 
-  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_UNEQUAL);
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_UNEQUAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform greater check for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function RELATIONAL_ARRAY_GREATER (lhs, rhs, all) {
+function RELATIONAL_ARRAY_GREATER (lhs, rhs, quantifier) {
   'use strict';
 
-  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_GREATER);
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_GREATER);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform greater equal check for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function RELATIONAL_ARRAY_GREATEREQUAL (lhs, rhs, all) {
+function RELATIONAL_ARRAY_GREATEREQUAL (lhs, rhs, quantifier) {
   'use strict';
 
-  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_GREATEREQUAL);
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_GREATEREQUAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform less check for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function RELATIONAL_ARRAY_LESS (lhs, rhs, all) {
+function RELATIONAL_ARRAY_LESS (lhs, rhs, quantifier) {
   'use strict';
 
-  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_LESS);
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_LESS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform less equal check for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function RELATIONAL_ARRAY_LESSEQUAL (lhs, rhs, all) {
+function RELATIONAL_ARRAY_LESSEQUAL (lhs, rhs, quantifier) {
   'use strict';
 
-  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_LESSEQUAL);
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_LESSEQUAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform in check for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function RELATIONAL_ARRAY_IN (lhs, rhs, all) {
+function RELATIONAL_ARRAY_IN (lhs, rhs, quantifier) {
   'use strict';
 
-  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_IN);
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_IN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform in check for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function RELATIONAL_ARRAY_NOT_IN (lhs, rhs, all) {
+function RELATIONAL_ARRAY_NOT_IN (lhs, rhs, quantifier) {
   'use strict';
 
-  return RELATIONAL_ARRAY_FUNC(lhs, rhs, all, RELATIONAL_NOT_IN);
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_NOT_IN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -87,6 +87,7 @@ std::pair<size_t, size_t> Quantifier::RequiredMatches(size_t inputSize, AstNode 
   }
 
   // won't be reached
+  TRI_ASSERT(false);
   return std::make_pair(SIZE_MAX, SIZE_MAX);
 }
 
