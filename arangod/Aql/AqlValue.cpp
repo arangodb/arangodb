@@ -37,6 +37,11 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
+AqlValue::AqlValue(AqlValue$ const& other) : _json(nullptr), _type(JSON) {
+  _json = new Json(TRI_UNKNOWN_MEM_ZONE, arangodb::basics::VelocyPackHelper::velocyPackToJson(other.slice()));
+  TRI_ASSERT(_json != nullptr);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a quick method to decide whether a value is true
 ////////////////////////////////////////////////////////////////////////////////
@@ -724,18 +729,64 @@ Json AqlValue::toJson(arangodb::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$::AqlValue$(VPackBuilder const& data) {
+  TRI_ASSERT(data.isClosed());
+  VPackValueLength l = data.size();
+  if (l < 16) {
+    // Use internal
+    memcpy(_data.internal, data.data(), l);
+    _data.internal[15] = AqlValueType::INTERNAL; 
+  } else {
+    // Use external
+    _data.external = new VPackBuffer<uint8_t>(l);
+    memcpy(_data.external->data(), data.data(), l);
+    _data.internal[15] = AqlValueType::EXTERNAL; 
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$::AqlValue$(VPackBuilder const* data) : AqlValue$(*data){};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$::AqlValue$(VPackSlice const& data) {
+  VPackValueLength l = data.byteSize();
+  if (l < 16) {
+    // Use internal
+    memcpy(_data.internal, data.start(), l);
+    _data.internal[15] = AqlValueType::INTERNAL; 
+  } else {
+    // Use external
+    _data.external = new VPackBuffer<uint8_t>(l);
+    memcpy(_data.external->data(), data.start(), l);
+    _data.internal[15] = AqlValueType::EXTERNAL; 
+  }
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Copy Constructor.
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue$::AqlValue$(AqlValue$ const& other) {
   VPackSlice s = other.slice();
-  VPackValueLength length = s.length();
+  VPackValueLength length = s.byteSize();
   if (other.type()) {
     // Isse external
     _data.external = new VPackBuffer<uint8_t>(length);
     memcpy(_data.external->data(), other._data.external->data(), length);
+    _data.internal[15] = AqlValueType::EXTERNAL; 
   } else {
     memcpy(_data.internal, other._data.internal, length);
+    _data.internal[15] = AqlValueType::INTERNAL; 
   }
 }
 
@@ -785,18 +836,15 @@ AqlValue$::AqlValue$(AqlValue const& other, arangodb::AqlTransaction* trx,
     }
     case AqlValue::RANGE: {
       // TODO Has to be replaced by VPackCustom Type
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      /*
-      TRI_ASSERT(_range != nullptr);
+      TRI_ASSERT(other._range != nullptr);
       try {
         VPackArrayBuilder b(&builder);
-        size_t const n = _range->size();
+        size_t const n = other._range->size();
         for (size_t i = 0; i < n; ++i) {
-          builder.add(VPackValue(_range->at(i)));
+          builder.add(VPackValue(other._range->at(i)));
         }
       } catch (...) {
       }
-      */
       break;
     }
     case AqlValue::EMPTY: {
@@ -813,18 +861,18 @@ AqlValue$::AqlValue$(AqlValue const& other, arangodb::AqlTransaction* trx,
     // Small enough for local
     // copy memory from the builder into the internal data.
     memcpy(_data.internal, builder.data(), length);
-    _data.internal[15] = 1; 
+    _data.internal[15] = AqlValueType::INTERNAL; 
   } else {
     // We need a large external buffer
     // TODO: Replace by SlimBuffer
     _data.external = new VPackBuffer<uint8_t>(length);
     memcpy(_data.external->data(), builder.data(), length);
-    _data.internal[15] = 0; 
+    _data.internal[15] = AqlValueType::EXTERNAL; 
   }
 }
 
-bool AqlValue$::type() const {
-  return _data.internal[15] == 0;
+AqlValue$::AqlValueType AqlValue$::type() const {
+  return static_cast<AqlValueType>(_data.internal[15]);
 }
 
 VPackSlice AqlValue$::slice() const {

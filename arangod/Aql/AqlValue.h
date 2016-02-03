@@ -46,6 +46,9 @@ namespace aql {
 
 class AqlItemBlock;
 
+// Temporary Forward
+struct AqlValue$;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a struct to hold a value, registers hole AqlValue* during the
 /// execution
@@ -88,6 +91,8 @@ struct AqlValue {
   AqlValue(int64_t low, int64_t high) : _range(nullptr), _type(RANGE) {
     _range = new Range(low, high);
   }
+
+  explicit AqlValue(AqlValue$ const& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructor, doing nothing automatically!
@@ -358,6 +363,13 @@ struct AqlValue {
 };
 
 struct AqlValue$ {
+ public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief AqlValueType, indicates what sort of value we have
+  //////////////////////////////////////////////////////////////////////////////
+
+  enum AqlValueType { INTERNAL, EXTERNAL };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Holds the actual data for this AqlValue it has the following
   /// semantics:
@@ -378,8 +390,9 @@ struct AqlValue$ {
   } _data;
 
  public:
-  AqlValue$(VPackBuilder const& data);
-  AqlValue$(VPackBuilder const* data);
+  AqlValue$(arangodb::velocypack::Builder const&);
+  AqlValue$(arangodb::velocypack::Builder const*);
+  AqlValue$(arangodb::velocypack::Slice const&);
 
   AqlValue$(AqlValue const&, arangodb::AqlTransaction*,
             TRI_document_collection_t const*);
@@ -402,7 +415,7 @@ struct AqlValue$ {
   //////////////////////////////////////////////////////////////////////////////
 
   // Read last bit of the union
-  bool type() const;
+  AqlValueType type() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a slice to read this Value's data
