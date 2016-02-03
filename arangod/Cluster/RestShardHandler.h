@@ -36,7 +36,7 @@ class Dispatcher;
 /// @brief shard control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestShardHandler : public admin::RestBaseHandler {
+class RestShardHandler : public RestBaseHandler {
  public:
   RestShardHandler(rest::HttpRequest* request, rest::Dispatcher*);
 

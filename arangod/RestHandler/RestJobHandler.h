@@ -34,8 +34,6 @@ class AsyncJobManager;
 class Dispatcher;
 }
 
-namespace admin {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief job control request handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +101,6 @@ class RestJobHandler : public RestBaseHandler {
 
   rest::AsyncJobManager* _jobManager;
 };
-}
 }
 
 #endif

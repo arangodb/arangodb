@@ -294,7 +294,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson(
     TRI_shape_t const* shape = shaper->lookupShapeId(json._sid);
 
     if (shape == nullptr) {
-      LOG(WARN) << "cannot find shape #" << (unsigned int)json._sid;
+      LOG(WARN) << "cannot find shape #" << json._sid;
       return scope.Escape<v8::Value>(v8::Object::New(isolate));
     }
 
@@ -390,7 +390,7 @@ static void KeysOfShapedJson(const v8::PropertyCallbackInfo<v8::Array>& args) {
   if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
     n = 0;
     aids = nullptr;
-    LOG(WARN) << "cannot find shape #" << (unsigned int)sid;
+    LOG(WARN) << "cannot find shape #" << sid;
   } else {
     // shape is an array
     TRI_array_shape_t const* s = (TRI_array_shape_t const*)shape;
@@ -494,7 +494,7 @@ static void CopyAttributes(v8::Isolate* isolate, v8::Handle<v8::Object> self,
   TRI_shape_t const* shape = shaper->lookupShapeId(sid);
 
   if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
-    LOG(WARN) << "cannot find shape #" << (unsigned int)sid;
+    LOG(WARN) << "cannot find shape #" << sid;
     return;
   }
 

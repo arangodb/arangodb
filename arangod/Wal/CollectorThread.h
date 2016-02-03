@@ -71,7 +71,7 @@ struct CollectorCache {
   CollectorCache(CollectorCache const&) = delete;
   CollectorCache& operator=(CollectorCache const&) = delete;
 
-  explicit CollectorCache(TRI_voc_cid_t collectionId, TRI_voc_tick_t databaseId,
+  CollectorCache(TRI_voc_cid_t collectionId, TRI_voc_tick_t databaseId,
                           Logfile* logfile, int64_t totalOperationsCount,
                           size_t operationsSize)
       : collectionId(collectionId),

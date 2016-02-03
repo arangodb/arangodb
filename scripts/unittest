@@ -14,31 +14,15 @@ LOGFILE="out${PS}log-$PID"
 
 export PORT=`expr 1024 + $RANDOM`
 declare -a ARGS
-export VG=''
-export VXML=''
-
-for i in "$@"; do
-  # no valgrind on cygwin, don't care.
-  if test "$i" == valgrind; then
-    export VG='/usr/bin/valgrind --log-file=/tmp/valgrindlog.%p'
-  elif test "$i" == valgrindxml; then
-    export VG='/usr/bin/valgrind --xml=yes --xml-file=valgrind_testrunner'
-    export VXML="valgrind=\"${VG}\""
-    export VG=${VG}'.xml '
-  else
-    ARGS+=("$i")
-  fi
-done
 
 echo Logfile is in ${LOGFILE}
 
-$VG bin/arangosh \
+bin/arangosh \
   -c etc${PS}relative${PS}arangosh.conf \
   --server.endpoint tcp://127.0.0.1:${PORT} \
   --javascript.execute UnitTests${PS}unittest.js \
   -- \
-  "${ARGS[@]}" \
-  $VXML
+  "$@"
 
 if test $? -eq 0; then
   echo "removing ${LOGFILE}"

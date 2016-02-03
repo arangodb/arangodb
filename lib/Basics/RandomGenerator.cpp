@@ -450,7 +450,7 @@ struct UniformIntegerMersenne : public UniformIntegerImpl {
     TRI_ASSERT(range > 0);
 
     uint32_t result = engine();
-    result = (int32_t)(abs((int64_t)result % range) + (int64_t)left);
+    result = (int32_t)(std::abs((int64_t)result % range) + (int64_t)left);
 
     return result;
   }
