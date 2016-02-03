@@ -413,6 +413,12 @@ class Query {
 
   std::string getStateString () const;
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get a shared builder for in-place VelocyPack construction
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  std::shared_ptr<arangodb::velocypack::Builder> getSharedBuilder ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
