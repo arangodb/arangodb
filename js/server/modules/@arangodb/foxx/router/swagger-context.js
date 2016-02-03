@@ -27,6 +27,7 @@ const assert = require('assert');
 const mimeTypes = require('mime-types');
 const mediaTyper = require('media-typer');
 const joiToJsonSchema = require('joi-to-json-schema');
+const il = require('@arangodb/util').inline;
 const tokenize = require('@arangodb/foxx/router/tokenize');
 
 const MIME_JSON = 'application/json; charset=utf-8';
@@ -100,12 +101,12 @@ module.exports = exports = class SwaggerContext {
     let multiple = false;
     if (Array.isArray(model)) {
       if (model.length !== 1) {
-        throw new Error(
-          'Model must be a model or schema'
-          + ' or an array containing exactly one model or schema.'
-          + ' If you are trying to use multiple schemas'
-          + ' try using joi.alternatives.'
-        );
+        throw new Error(il`
+          Model must be a model or schema
+          or an array containing exactly one model or schema.
+          If you are trying to use multiple schemas
+          try using joi.alternatives instead.
+        `);
       }
       model = model[0];
       multiple = true;
@@ -141,19 +142,19 @@ module.exports = exports = class SwaggerContext {
       if (model.schema && !model.schema.isJoi) {
         model.schema = joi.object(model.schema).required();
       }
-      assert(
-        !model.forClient || typeof model.forClient === 'function',
-        `Request body model forClient handler must be a function, not ${typeof model.forClient}`
-      );
-      assert(
-        !model.fromClient || typeof model.fromClient === 'function',
-        `Request body model fromClient handler must be a function, not ${typeof model.fromClient}`
-      );
+      assert(!model.forClient || typeof model.forClient === 'function', il`
+        Request body model forClient handler must be a function,
+        not ${typeof model.forClient}
+      `);
+      assert(!model.fromClient || typeof model.fromClient === 'function', il`
+        Request body model fromClient handler must be a function,
+        not ${typeof model.fromClient}
+      `);
       if (!model.forClient && typeof model.toClient === 'function') {
-        console.log(
-          `Found unexpected "toClient" method on request body model.`
-          + ' Did you mean "forClient"?'
-        );
+        console.log(il`
+          Found unexpected "toClient" method on request body model.
+          Did you mean "forClient"?
+        `);
       }
     }
 
@@ -197,12 +198,12 @@ module.exports = exports = class SwaggerContext {
     let multiple = false;
     if (Array.isArray(model)) {
       if (model.length !== 1) {
-        throw new Error(
-          'Model must be a model or schema'
-          + ' or an array containing exactly one model or schema.'
-          + ' If you are trying to use multiple schemas'
-          + ' try using joi.alternatives.'
-        );
+        throw new Error(il`
+          Model must be a model or schema
+          or an array containing exactly one model or schema.
+          If you are trying to use multiple schemas
+          try using joi.alternatives instead.
+        `);
       }
       model = model[0];
       multiple = true;
@@ -238,19 +239,19 @@ module.exports = exports = class SwaggerContext {
       if (model.schema && !model.schema.isJoi) {
         model.schema = joi.object(model.schema).required();
       }
-      assert(
-        !model.forClient || typeof model.forClient === 'function',
-        `Response body model forClient handler at ${statusCode} must be a function, not ${typeof model.forClient}`
-      );
-      assert(
-        !model.fromClient || typeof model.fromClient === 'function',
-        `Response body model fromClient handler at ${statusCode} must be a function, not ${typeof model.fromClient}`
-      );
+      assert(!model.forClient || typeof model.forClient === 'function', il`
+        Response body model forClient handler at ${statusCode} must be a function,
+        not ${typeof model.forClient}
+      `);
+      assert(!model.fromClient || typeof model.fromClient === 'function', il`
+        Response body model fromClient handler at ${statusCode} must be a function,
+        not ${typeof model.fromClient}
+      `);
       if (!model.forClient && typeof model.toClient === 'function') {
-        console.log(
-          `Found unexpected "toClient" method on response body model at ${statusCode}.`
-          + ' Did you mean "forClient"?'
-        );
+        console.log(il`
+          Found unexpected "toClient" method on response body model at ${statusCode}.
+          Did you mean "forClient"?
+        `);
       }
     }
 

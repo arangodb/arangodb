@@ -70,3 +70,18 @@ exports.drain = function (generator) {
   }
   return results;
 };
+
+exports.inline = function (strs) {
+  let str;
+  if (typeof strs === 'string') {
+    str = strs;
+  } else {
+    const strb = [strs[0]];
+    const vars = Array.prototype.slice.call(arguments, 1);
+    for (let i = 0; i < vars.length; i++) {
+      strb.push(vars[i], strs[i + 1]);
+    }
+    str = strb.join('');
+  }
+  return str.replace(/\s*\n\s*/g, ' ').replace(/(^\s|\s$)/g, '');
+};
