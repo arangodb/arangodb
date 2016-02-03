@@ -138,13 +138,22 @@ function ahuacatlNumericFunctionsTestSuite () {
     testAbs : function () {
       var expected = [ 99.999, 3, 2.1, 2.01, 2, 1.99, 1.1, 1.01, 1, 0.9, 0.6, 0.5, 0.4, 0.1, 0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ];
       var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ABS(r)");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, expected.length);
+      for (var i = 0; i < expected.length; ++i) {
+        assertEqual(expected[i].toPrecision(5), actual[i].toPrecision(5));
+      }
 
       actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(ABS(r))");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, expected.length);
+      for (var i = 0; i < expected.length; ++i) {
+        assertEqual(expected[i].toPrecision(5), actual[i].toPrecision(5));
+      }
 
       actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(V8(ABS(r)))");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, expected.length);
+      for (var i = 0; i < expected.length; ++i) {
+        assertEqual(expected[i].toPrecision(5), actual[i].toPrecision(5));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
