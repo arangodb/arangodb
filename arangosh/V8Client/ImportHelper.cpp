@@ -411,7 +411,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
     static int64_t nextProcessed = 10 * 1000 * 1000;
 
     if (totalRead >= nextProcessed) {
-      LOG(INFO) << "processed " << (long long)totalRead << " bytes of input file";
+      LOG(INFO) << "processed " << totalRead << " bytes of input file";
       nextProcessed += 10 * 1000 * 1000;
     }
   } else {

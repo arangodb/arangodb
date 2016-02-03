@@ -36,8 +36,6 @@ WorkMonitorHandler::WorkMonitorHandler(HttpRequest* request)
 
 bool WorkMonitorHandler::isDirect() const { return true; }
 
-#include <iostream>
-
 HttpHandler::status_t WorkMonitorHandler::execute() {
   WorkMonitor::requestWorkOverview(_taskId);
   return status_t(HANDLER_ASYNC);

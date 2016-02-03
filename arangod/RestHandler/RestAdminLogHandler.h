@@ -28,7 +28,6 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace admin {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
@@ -47,7 +46,6 @@ class RestAdminLogHandler : public RestBaseHandler {
 
   status_t execute() override;
 };
-}
 }
 
 #endif

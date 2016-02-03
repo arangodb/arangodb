@@ -3,117 +3,133 @@
 'use strict';
 
 const yaml = require("js-yaml");
+const _ = require("lodash");
 
 const UnitTest = require("@arangodb/testing");
 
 const internalMembers = UnitTest.internalMembers;
 const fs = require("fs");
 const internal = require("internal");
+const inspect = internal.inspect;
 
 function makePathGeneric(path) {
   return path.split(fs.pathSeparator);
 }
 
+function xmlEscape(s) {
+  return s.replace(/[<>&"]/g, function(c) {
+    return "&" + {
+      "<": "lt",
+      ">": "gt",
+      "&": "amp",
+      "\"": "quot"
+    }[c] + ";";
+  });
+}
+
+function buildXml() {
+  let xml = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"];
+
+  xml.text = function(s) {
+    Array.prototype.push.call(this, s);
+    return this;
+  };
+
+  xml.elem = function(tagName, attrs, close) {
+    this.text("<").text(tagName);
+    attrs = attrs || {};
+
+    for (let a in attrs) {
+      if (attrs.hasOwnProperty(a)) {
+        this.text(" ").text(a).text("=\"")
+          .text(xmlEscape(String(attrs[a]))).text("\"");
+      }
+    }
+
+    if (close) {
+      this.text("/");
+    }
+
+    this.text(">\n");
+
+    return this;
+  };
+
+  return xml;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts results to XML representation
+////////////////////////////////////////////////////////////////////////////////
+
 function resultsToXml(results, baseName, cluster) {
-  function xmlEscape(s) {
-    return s.replace(/[<>&"]/g, function(c) {
-      return "&" + {
-        "<": "lt",
-        ">": "gt",
-        "&": "amp",
-        "\"": "quot"
-      }[c] + ";";
-    });
-  }
-
-  function buildXml() {
-    let xml = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"];
-
-    xml.text = function(s) {
-      Array.prototype.push.call(this, s);
-      return this;
-    };
-
-    xml.elem = function(tagName, attrs, close) {
-      this.text("<").text(tagName);
-      attrs = attrs || {};
-
-      for (let a in attrs) {
-        if (attrs.hasOwnProperty(a)) {
-          this.text(" ").text(a).text("=\"")
-            .text(xmlEscape(String(attrs[a]))).text("\"");
-        }
-      }
-
-      if (close) {
-        this.text("/");
-      }
-
-      this.text(">\n");
-
-      return this;
-    };
-
-    return xml;
-  }
-
   let clprefix = '';
 
   if (cluster) {
     clprefix = 'CL_';
   }
 
-  for (let testrun in results) {
-    if ((internalMembers.indexOf(testrun) === -1) && (results.hasOwnProperty(testrun))) {
-      for (let test in results[testrun]) {
-        if ((internalMembers.indexOf(test) === -1) &&
-          results[testrun].hasOwnProperty(test) &&
-          !results[testrun][test].hasOwnProperty('skipped')) {
+  const isSignificant = function(a, b) {
+    return (internalMembers.indexOf(b) === -1) && a.hasOwnProperty(b);
+  };
+
+  for (let resultName in results) {
+    if (isSignificant(results, resultName)) {
+      let run = results[resultName];
+
+      for (let runName in run) {
+        if (isSignificant(run, runName)) {
+          const current = run[runName];
+
+          if (current.skipped) {
+            continue;
+          }
 
           let xml = buildXml();
           let failuresFound = "";
 
-          if (results[testrun][test].hasOwnProperty('failed')) {
-            failuresFound = results[testrun][test].failed;
+          if (current.hasOwnProperty('failed')) {
+            failuresFound = current.failed;
           }
 
           xml.elem("testsuite", {
             errors: 0,
             failures: failuresFound,
-            name: clprefix + test,
-            tests: results[testrun][test].total,
-            time: results[testrun][test].duration
+            name: clprefix + runName,
+            tests: current.total,
+            time: current.duration
           });
 
-          for (let oneTest in results[testrun][test]) {
-            if (internalMembers.indexOf(oneTest) === -1) {
-              const result = results[testrun][test][oneTest].status;
+          for (let oneTestName in current) {
+            if (isSignificant(current, oneTestName)) {
+              const oneTest = current[oneTestName];
+              const result = oneTest.status || false;
               const success = (typeof(result) === 'boolean') ? result : false;
 
               xml.elem("testcase", {
-                name: clprefix + oneTest,
-                time: results[testrun][test][oneTest].duration
+                name: clprefix + oneTestName,
+                time: oneTest.duration
               }, success);
 
               if (!success) {
                 xml.elem("failure");
-                xml.text('<![CDATA[' + results[testrun][test][oneTest].message + ']]>\n');
+                xml.text('<![CDATA[' + oneTest.message + ']]>\n');
                 xml.elem("/failure");
                 xml.elem("/testcase");
               }
             }
           }
 
-          if ((!results[testrun][test].status) &&
-            results[testrun][test].hasOwnProperty('message')) {
-
+          if (!current.status) {
             xml.elem("testcase", {
-              name: 'all tests in ' + clprefix + test,
-              time: results[testrun][test].duration
+              name: 'all tests in ' + clprefix + runName,
+              time: current.duration
             }, false);
 
             xml.elem("failure");
-            xml.text('<![CDATA[' + JSON.stringify(results[testrun][test].message) + ']]>\n');
+            xml.text('<![CDATA[' +
+              JSON.stringify(current.message || "unknown failure reason") +
+              ']]>\n');
             xml.elem("/failure");
             xml.elem("/testcase");
           }
@@ -121,7 +137,7 @@ function resultsToXml(results, baseName, cluster) {
           xml.elem("/testsuite");
 
           const fn = makePathGeneric(baseName + clprefix +
-            testrun + '_' + test + ".xml").join('_');
+            resultName + '_' + runName + ".xml").join('_');
 
           fs.write("out/" + fn, xml.join(""));
         }
@@ -129,6 +145,10 @@ function resultsToXml(results, baseName, cluster) {
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs the test using testing.js
+////////////////////////////////////////////////////////////////////////////////
 
 function main(argv) {
   const test = argv[0];
@@ -153,6 +173,7 @@ function main(argv) {
 
   start_pretty_print();
 
+  // run the test and store the result
   let r = {};
 
   try {
@@ -174,15 +195,17 @@ function main(argv) {
     print(JSON.stringify(r));
   }
 
+  _.defaults(r, {
+    all_ok: false,
+    crashed: true
+  });
+
   // whether or not there was an error 
-  fs.write("out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", JSON.stringify(r.all_ok));
+  fs.write("out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.all_ok));
 
   if (options.writeXmlReport) {
-    fs.write("out/UNITTEST_RESULT.json", JSON.stringify(r));
-
-    // should be renamed to UNITTEST_RESULT_CRASHED, because that's what
-    // it actually contains
-    fs.write("out/UNITTEST_RESULT_SUMMARY.txt", JSON.stringify(!r.crashed));
+    fs.write("out/UNITTEST_RESULT.json", inspect(r));
+    fs.write("out/UNITTEST_RESULT_CRASHED.txt", String(r.crashed));
 
     try {
       resultsToXml(r,

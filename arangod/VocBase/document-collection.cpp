@@ -96,6 +96,10 @@ TRI_document_collection_t::~TRI_document_collection_t() {
   delete _keyGenerator;
 }
 
+std::string TRI_document_collection_t::label() const {
+  return std::string(_vocbase->_name) + " / " + _info.name();
+}
+
 void TRI_document_collection_t::setNextCompactionStartIndex(size_t index) {
   MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   _nextCompactionStartIndex = index;

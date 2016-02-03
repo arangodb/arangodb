@@ -31,7 +31,14 @@ v3.0.0 (XXXX-XX-XX)
 * added WorkMonitor to inspect server threads
 
 
-v2.8.1 (XXXX-XX-XX)
+v2.8.2 (XXXX-XX-XX)
+-------------------
+
+* fixed undefined behavior when explaining some types of AQL traversals, fixed
+  display of some types of traversals in AQL explain output
+
+
+v2.8.1 (2016-01-29)
 -------------------
 
 * Improved AQL Pattern matching by allowing to specify a different traversal
