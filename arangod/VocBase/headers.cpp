@@ -100,11 +100,13 @@ TRI_headers_t::~TRI_headers_t () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_headers_t::moveBack (TRI_doc_mptr_t* header,
-                              TRI_doc_mptr_t* old) {
+                              TRI_doc_mptr_t const* old) {
   if (header == nullptr) {
     return;
   }
 
+  validate("before moveback", header, old);
+  
   TRI_ASSERT(_nrAllocated > 0);
   TRI_ASSERT(_nrLinked > 0);
   TRI_ASSERT(_totalSize > 0);
@@ -157,6 +159,8 @@ void TRI_headers_t::moveBack (TRI_doc_mptr_t* header,
   TRI_ASSERT(header->_next != header);
 
   TRI_ASSERT(_totalSize > 0);
+  
+  validate("after moveback", header, old);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,14 +168,14 @@ void TRI_headers_t::moveBack (TRI_doc_mptr_t* header,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_headers_t::unlink (TRI_doc_mptr_t* header) {
-  int64_t size;
+  validate("before unlink", header, nullptr);
 
   TRI_ASSERT(header != nullptr);
   TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
 
-  size = (int64_t) ((TRI_df_marker_t*) header->getDataPtr())->_size; // ONLY IN HEADERS, PROTECTED by RUNTIME
+  int64_t size = (int64_t) ((TRI_df_marker_t*) header->getDataPtr())->_size; // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(size > 0);
 
   // unlink the header
@@ -212,6 +216,8 @@ void TRI_headers_t::unlink (TRI_doc_mptr_t* header) {
 
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
+  
+  validate("after unlink", header, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,11 +226,13 @@ void TRI_headers_t::unlink (TRI_doc_mptr_t* header) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_headers_t::move (TRI_doc_mptr_t* header,
-                          TRI_doc_mptr_t* old) {
+                          TRI_doc_mptr_t const* old) {
   if (header == nullptr) {
     return;
   }
-
+  
+  validate("before move", header, old);
+  
   TRI_ASSERT(_nrAllocated > 0);
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
@@ -243,31 +251,25 @@ void TRI_headers_t::move (TRI_doc_mptr_t* header,
   _totalSize -= (  TRI_DF_ALIGN_BLOCK(newSize)
                  - TRI_DF_ALIGN_BLOCK(oldSize));
 
-  // adjust list start and end pointers
-  if (old->_prev == nullptr) {
-    _begin = header;
-  }
-  else if (_begin == header) {
-    if (old->_prev != nullptr) {
-      _begin = old->_prev;
-    }
-  }
-
-  if (old->_next == nullptr) {
-    _end = header;
-  }
-  else if (_end == header) {
-    if (old->_next != nullptr) {
-      _end = old->_next;
-    }
-  }
-
+  // first unlink
   if (header->_prev != nullptr) {
     header->_prev->_next = header->_next;
   }
   if (header->_next != nullptr) {
     header->_next->_prev = header->_prev;
   }
+  // adjust begin & end pointers
+  if (_begin == header) {
+    _begin = header->_next;
+  }
+  if (_end == header) {
+    _end = header->_prev;
+  }
+
+  // now header is unlinked
+
+  header->_prev = old->_prev;
+  header->_next = old->_next;
 
   if (old->_prev != nullptr) {
     old->_prev->_next = header;
@@ -276,13 +278,19 @@ void TRI_headers_t::move (TRI_doc_mptr_t* header,
     old->_next->_prev = header;
   }
 
-  header->_prev = old->_prev;
-  header->_next = old->_next;
+  if (old->_prev == nullptr) {
+    _begin = header;
+  }
+  if (old->_next == nullptr) {
+    _end = header;
+  }
 
   TRI_ASSERT(_begin != nullptr);
   TRI_ASSERT(_end != nullptr);
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
+  
+  validate("after move", header, old);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,10 +299,12 @@ void TRI_headers_t::move (TRI_doc_mptr_t* header,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_headers_t::relink (TRI_doc_mptr_t* header,
-                            TRI_doc_mptr_t* old) {
+                            TRI_doc_mptr_t const* old) {
   if (header == nullptr) {
     return;
   }
+  
+  validate("before relink", header, old);
 
   TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS, PROTECTED by RUNTIME
 
@@ -311,6 +321,8 @@ void TRI_headers_t::relink (TRI_doc_mptr_t* header,
 
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
+  
+  validate("after relink", header, old);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,7 +411,7 @@ TRI_doc_mptr_t* TRI_headers_t::request (size_t size) {
   _nrAllocated++;
   _nrLinked++;
   _totalSize += (int64_t) TRI_DF_ALIGN_BLOCK(size);
-
+      
   return result;
 }
 
@@ -412,6 +424,8 @@ void TRI_headers_t::release (TRI_doc_mptr_t* header,
   if (header == nullptr) {
     return;
   }
+  
+  validate("before release", header, nullptr);
 
   if (unlinkHeader) {
     this->unlink(header);
@@ -440,6 +454,8 @@ void TRI_headers_t::release (TRI_doc_mptr_t* header,
     _begin = nullptr;
     _end = nullptr;
   }
+  
+  validate("after release", header, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -455,6 +471,41 @@ void TRI_headers_t::adjustTotalSize (int64_t oldSize,
   _totalSize -= (  TRI_DF_ALIGN_BLOCK(oldSize) 
                  - TRI_DF_ALIGN_BLOCK(newSize));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validates the linked list
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef VALIDATE_MASTER_POINTERS
+void TRI_headers_t::validate (char const* msg, 
+                              TRI_doc_mptr_t const* header, 
+                              TRI_doc_mptr_t const* old) {
+  LOG_TRACE("validating master pointers for %p, stage: %s", (void*) this, msg);
+  LOG_TRACE("begin: %p, end: %p, nrLinked: %llu", (void*) _begin, (void*) _end, (unsigned long long) _nrLinked);
+  if (header != nullptr) {
+    LOG_TRACE("header: %p, rid: %llu, fid: %llu, prev: %p, next: %p, dataptr: %p, key: %s", (void*) header, (unsigned long long) header->_rid, (unsigned long long) header->_fid, (void*) header->_prev, (void*) header->_next, (void*) header->getDataPtr(), TRI_EXTRACT_MARKER_KEY(header));
+  }
+  if (old != nullptr) {
+    LOG_TRACE("old: %p, rid: %llu, fid: %llu, prev: %p, next: %p, dataptr: %p, key: %s", (void*) old, (unsigned long long) old->_rid, (unsigned long long) old->_fid, (void*) old->_prev, (void*) old->_next, (void*) old->getDataPtr(), TRI_EXTRACT_MARKER_KEY(old));
+  }
+  
+  auto current = _begin;
+  size_t i = 0;
+  while (current != nullptr) {
+    LOG_TRACE("- mptr #%llu, current: %p, rid: %llu, fid: %llu, prev: %p, next: %p, dataptr: %p, key: %s", (unsigned long long) ++i, (void*) current, (unsigned long long) current->_rid, (unsigned long long) current->_fid, (void*) current->_prev, (void*) current->_next, (void*) current->getDataPtr(), TRI_EXTRACT_MARKER_KEY(current));
+    
+    if (current->_next == nullptr) {
+      // last element
+      break;
+    }
+    TRI_ASSERT(current == current->_next->_prev);
+    decltype(current) last = current;
+    current = current->_next;
+    TRI_ASSERT(last == current->_prev);
+  }
+  TRI_ASSERT(current == _end);
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
