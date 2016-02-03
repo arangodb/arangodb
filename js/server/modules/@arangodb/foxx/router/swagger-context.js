@@ -31,7 +31,7 @@ const tokenize = require('@arangodb/foxx/router/tokenize');
 
 const MIME_JSON = 'application/json; charset=utf-8';
 const MIME_BINARY = 'application/octet-stream';
-const DEFAULT_BODY_SCHEMA = joi.object().optional().meta({allowInvalid: true});
+const DEFAULT_BODY_SCHEMA = joi.object().unknown().meta({allowInvalid: true}).optional();
 const DEFAULT_ERROR_SCHEMA = joi.object().keys({
   error: joi.allow(true).required(),
   errorNum: joi.number().integer().optional(),
@@ -175,11 +175,9 @@ module.exports = exports = class SwaggerContext {
       statusCode = 200;
     }
 
-    if (model === null) {
-      if (statusCode === 200) {
-        this._responses.delete(200);
-        statusCode = 204;
-      }
+    if (model === null && statusCode === 200) {
+      this._responses.delete(200);
+      statusCode = 204;
     }
 
     if (
@@ -460,7 +458,7 @@ module.exports = exports = class SwaggerContext {
         : null
       );
       const response = {};
-      if (def.contentTypes) {
+      if (def.contentTypes && def.contentTypes.length) {
         response.schema = (
           schema
           ? joi2schema(schema.isJoi ? schema : joi.object(schema), def.multiple)
@@ -469,12 +467,17 @@ module.exports = exports = class SwaggerContext {
       }
       if (schema && schema._description) {
         response.description = schema._description;
+        delete response.schema.description;
       }
       if (def.description) {
         response.description = def.description;
       }
       if (!response.description) {
-        response.description = `The ${code} response body.`;
+        if (response.schema) {
+          response.description = `Undocumented ${code} response`;
+        } else {
+          response.description = `No ${code} response body`;
+        }
       }
       operation.responses[code] = response;
     }
