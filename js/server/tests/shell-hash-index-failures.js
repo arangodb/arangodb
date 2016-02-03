@@ -51,6 +51,7 @@ function UniqueHashIndexFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      internal.debugClearFailAt();
       internal.db._drop(cn);
       collection = internal.db._create(cn);
       collection.ensureUniqueConstraint("a");
@@ -61,6 +62,7 @@ function UniqueHashIndexFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDrop : function () {
+      internal.debugClearFailAt();
       internal.db._drop(cn);
     },
 
