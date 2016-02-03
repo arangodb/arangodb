@@ -169,16 +169,12 @@ module.exports = exports = class SwaggerContext {
 
   response(status, model, mimes, description) {
     let statusCode = Number(status);
+
     if (!status || Number.isNaN(statusCode)) {
       description = mimes;
       mimes = model;
       model = status;
-      statusCode = 200;
-    }
-
-    if (model === null && statusCode === 200) {
-      this._responses.delete(200);
-      statusCode = 204;
+      statusCode = model === null ? 204 : 200;
     }
 
     if (
