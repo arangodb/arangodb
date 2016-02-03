@@ -1,5 +1,6 @@
 'use strict';
 const _ = require('lodash');
+const dd = require('dedent');
 const joi = require('joi');
 const httpError = require('http-errors');
 const status = require('statuses');
@@ -26,8 +27,8 @@ router.get(function (req, res) {
 }, 'list')
 .response([<%= model %>], 'A list of <%= documents %>.')
 .summary('List all <%= documents %>')
-.description(`
-  This function simply returns a list of all <%= model %>.
+.description(dd`
+  Retrieves a list of all <%= documents %>.
 `);
 
 
@@ -53,7 +54,7 @@ router.post(function (req, res) {
 .response(201, <%= model %>, 'The created <%= document %>.')
 .error(HTTP_CONFLICT, 'The <%= document %> already exists.')
 .summary('Create a new <%= document %>')
-.description(`
+.description(dd`
   Creates a new <%= document %> from the request body and
   returns the saved document.
 `);
@@ -75,7 +76,7 @@ router.get(':key', function (req, res) {
 .pathParam('key', keySchema)
 .response(<%= model %>, 'The <%= document %>.')
 .summary('Fetch a <%= document %>')
-.description(`
+.description(dd`
   Retrieves a <%= document %> by its key.
 `);
 
@@ -102,7 +103,7 @@ router.put(':key', function (req, res) {
 .body(<%= model %>, 'The data to replace the <%= document %> with.')
 .response(<%= model %>, 'The new <%= document %>.')
 .summary('Replace a <%= document %>')
-.description(`
+.description(dd`
   Replaces an existing <%= document %> with the request body and
   returns the new document.
 `);
@@ -130,7 +131,7 @@ router.patch(':key', function (req, res) {
 .body(joi.object().description('The data to update the <%= document %> with.'))
 .response(<%= model %>, 'The updated <%= document %>.')
 .summary('Update a <%= document %>')
-.description(`
+.description(dd`
   Patches a <%= document %> with the request body and
   returns the updated document.
 `);
@@ -150,6 +151,6 @@ router.delete(':key', function (req, res) {
 .pathParam('key', keySchema)
 .response(null)
 .summary('Remove a <%= document %>')
-.description(`
+.description(dd`
   Deletes a <%= document %> from the database.
 `);
