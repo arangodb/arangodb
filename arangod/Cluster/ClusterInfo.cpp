@@ -33,6 +33,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "VocBase/document-collection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -2524,6 +2525,13 @@ void FollowerInfo::add(ServerID const& s) {
   auto v = std::make_shared<std::vector<ServerID>>(*_followers);
   v->push_back(s);  // add a single entry
   _followers = v;   // will cast to std::vector<ServerID> const
+  std::string path = "Current/Collections/";
+  path += _docColl->_vocbase->_name;
+  path += "/";
+  path += std::to_string(_docColl->_info.planId());
+  path += "/";
+  path += _docColl->_info.name();
+  AgencyComm ac;
   // Now tell the agency:
   // Path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
@@ -2552,6 +2560,12 @@ void FollowerInfo::remove(ServerID const& s) {
     }
   }
   _followers = v;  // will cast to std::vector<ServerID> const
+  std::string path = "Current/Collections/";
+  path += _docColl->_vocbase->_name;
+  path += "/";
+  path += std::to_string(_docColl->_info.planId());
+  path += "/";
+  path += _docColl->_info.name();
   // Now tell the agency:
   // Path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
