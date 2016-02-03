@@ -199,7 +199,7 @@ describe('Foxx Swagger', function () {
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
         .with.a.deep.property('get.responses.default')
-        .that.has.a.property('description', 'Unexpected error');
+        .that.has.a.property('description', 'Unexpected error.');
       });
 
       it('provides a default 200 response', function () {
@@ -207,7 +207,7 @@ describe('Foxx Swagger', function () {
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
         .with.a.deep.property('get.responses.200')
-        .that.has.a.property('description', 'Undocumented response body');
+        .that.has.a.property('description', 'HTTP 200 OK.');
       });
 
       it('TODO');

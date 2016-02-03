@@ -24,6 +24,7 @@
 const _ = require('lodash');
 const joi = require('joi');
 const assert = require('assert');
+const statuses = require('statuses');
 const mimeTypes = require('mime-types');
 const mediaTyper = require('media-typer');
 const joiToJsonSchema = require('joi-to-json-schema');
@@ -441,12 +442,20 @@ module.exports = exports = class SwaggerContext {
 
     operation.responses = {
       default: {
-        description: 'Unexpected error',
+        description: 'Unexpected error.',
         schema: joi2schema(DEFAULT_ERROR_SCHEMA)
       }
     };
 
-    for (const entry of this._responses.entries()) {
+    const responses = this._responses.size ? this._responses : new Map([
+      [200, {
+        model: DEFAULT_BODY_SCHEMA,
+        multiple: false,
+        contentTypes: ['application/json']
+      }]
+    ]);
+
+    for (const entry of responses.entries()) {
       const code = entry[0];
       const def = entry[1];
       const schema = (
@@ -470,11 +479,12 @@ module.exports = exports = class SwaggerContext {
         response.description = def.description;
       }
       if (!response.description) {
-        if (response.schema) {
-          response.description = `Undocumented ${code} response`;
-        } else {
-          response.description = `No ${code} response body`;
-        }
+        const message = statuses[code];
+        response.description = message ? `HTTP ${code} ${message}.` : (
+          response.schema
+          ? `Nondescript ${code} response.`
+          : `Nondescript ${code} response without body.`
+        );
       }
       operation.responses[code] = response;
     }
