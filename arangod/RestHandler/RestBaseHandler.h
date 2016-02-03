@@ -36,7 +36,6 @@ namespace arangodb {
 namespace velocypack {
 class Slice;
 }
-namespace admin {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default handler for error handling and json in-/output
@@ -101,7 +100,6 @@ class RestBaseHandler : public rest::HttpHandler {
 
   virtual void generateOOMError();
 };
-}
 }
 
 #endif

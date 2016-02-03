@@ -92,7 +92,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::admin;
 
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
@@ -216,7 +215,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   // And now some handlers which are registered in both /_api and /_admin
   factory->addPrefixHandler(
       "/_api/job",
-      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
+      RestHandlerCreator<arangodb::RestJobHandler>::createData<
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
@@ -227,7 +226,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   // And now the _admin handlers
   factory->addPrefixHandler(
       "/_admin/job",
-      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
+      RestHandlerCreator<arangodb::RestJobHandler>::createData<
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
@@ -238,7 +237,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   // further admin handlers
   factory->addHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::admin::RestAdminLogHandler>::createNoData,
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData,
       nullptr);
 
   factory->addHandler("/_admin/work-monitor",
@@ -254,7 +253,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 
   factory->addPrefixHandler(
       "/_admin/shutdown",
-      RestHandlerCreator<arangodb::admin::RestShutdownHandler>::createData<
+      RestHandlerCreator<arangodb::RestShutdownHandler>::createData<
           void*>,
       static_cast<void*>(_applicationServer));
 }
