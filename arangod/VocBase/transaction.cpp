@@ -437,7 +437,7 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
              trxCollection->_lockType == TRI_TRANSACTION_READ) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG(ERROR) << "logic error in UnlockCollection";
+    LOG(ERR) << "logic error in UnlockCollection";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }
@@ -651,7 +651,7 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARNING) << "could not save transaction begin marker in log: " << TRI_errno_string(res);
+    LOG(WARN) << "could not save transaction begin marker in log: " << TRI_errno_string(res);
   }
 
   return res;
@@ -686,7 +686,7 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARNING) << "could not save transaction abort marker in log: " << TRI_errno_string(res);
+    LOG(WARN) << "could not save transaction abort marker in log: " << TRI_errno_string(res);
   }
 
   return res;
@@ -717,7 +717,7 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARNING) << "could not save transaction commit marker in log: " << TRI_errno_string(res);
+    LOG(WARN) << "could not save transaction commit marker in log: " << TRI_errno_string(res);
   }
 
   return res;
@@ -1026,7 +1026,7 @@ bool TRI_IsLockedCollectionTransaction(
   if (accessType == TRI_TRANSACTION_WRITE &&
       trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
     // wrong lock type
-    LOG(WARNING) << "logic error. checking wrong lock type";
+    LOG(WARN) << "logic error. checking wrong lock type";
     return false;
   }
 

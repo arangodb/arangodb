@@ -271,7 +271,7 @@ bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
   LOG(TRACE) << "attempting to convert socket handle to socket descriptor";
 
   if (!TRI_isvalidsocket(_commSocket)) {
-    LOG(ERROR) << "In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
+    LOG(ERR) << "In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
     return false;
   }
 
@@ -284,12 +284,12 @@ bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
   int res = (int)_commSocket.fileHandle;
 
   if (res == -1) {
-    LOG(ERROR) << "In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
+    LOG(ERR) << "In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
     res = TRI_CLOSE_SOCKET(_commSocket);
 
     if (res != 0) {
       res = WSAGetLastError();
-      LOG(ERROR) << "In SocketTask::setup closesocket(...) failed with error code: " << res;
+      LOG(ERR) << "In SocketTask::setup closesocket(...) failed with error code: " << res;
     }
 
     TRI_invalidatesocket(&_commSocket);

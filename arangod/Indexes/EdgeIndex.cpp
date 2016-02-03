@@ -541,7 +541,7 @@ int EdgeIndex::batchInsert(arangodb::Transaction* trx,
 void EdgeIndex::lookup(arangodb::Transaction* trx,
                        TRI_edge_index_iterator_t const* edgeIndexIterator,
                        std::vector<TRI_doc_mptr_copy_t>& result,
-                       TRI_doc_mptr_copy_t*& next, size_t batchSize) {
+                       TRI_doc_mptr_t*& next, size_t batchSize) {
   auto callback =
       [&result](TRI_doc_mptr_t* data) -> void { result.emplace_back(*(data)); };
 
@@ -557,7 +557,7 @@ void EdgeIndex::lookup(arangodb::Transaction* trx,
       TRI_ASSERT(false);
     }
     if (found != nullptr && found->size() != 0) {
-      next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
+      next = found->back();
     }
   } else {
     if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
@@ -568,7 +568,7 @@ void EdgeIndex::lookup(arangodb::Transaction* trx,
       TRI_ASSERT(false);
     }
     if (found != nullptr && found->size() != 0) {
-      next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
+      next = found->back();
     } else {
       next = nullptr;
     }

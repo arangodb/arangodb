@@ -53,7 +53,7 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOG(ERROR) << "unknown script '" << StringUtils::correctPath(name).c_str() << "'";
+    LOG(ERR) << "unknown script '" << StringUtils::correctPath(name).c_str() << "'";
     return v8::Undefined(isolate);
   }
 
@@ -92,7 +92,7 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOG(ERROR) << "unknown script '" << StringUtils::correctPath(name).c_str() << "'";
+    LOG(ERR) << "unknown script '" << StringUtils::correctPath(name).c_str() << "'";
     return eFailLoad;
   }
 

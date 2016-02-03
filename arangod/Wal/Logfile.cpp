@@ -58,7 +58,7 @@ Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERROR) << "unable to create logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
+      LOG(ERR) << "unable to create logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
       return nullptr;
     }
   }
@@ -78,12 +78,12 @@ Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERROR) << "unable to open logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
+      LOG(ERR) << "unable to open logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
       return nullptr;
     }
 
     // cannot figure out the type of error
-    LOG(ERROR) << "unable to open logfile '" << filename.c_str() << "'";
+    LOG(ERR) << "unable to open logfile '" << filename.c_str() << "'";
     return nullptr;
   }
 

@@ -314,7 +314,7 @@ bool ApplicationCluster::start() {
     if (_heartbeatInterval == 0) {
       _heartbeatInterval = 5000; // 1/s
 
-      LOG(WARNING) << "unable to read heartbeat interval from agency. Using default value '" << _heartbeatInterval << " ms'";
+      LOG(WARN) << "unable to read heartbeat interval from agency. Using default value '" << _heartbeatInterval << " ms'";
     }
 
     // start heartbeat thread

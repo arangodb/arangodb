@@ -1175,7 +1175,7 @@ std::string HttpRequest::translateMethod(HttpRequestType method) {
     return "PUT";
   }
 
-  LOG(WARNING) << "illegal http request method encountered in switch";
+  LOG(WARN) << "illegal http request method encountered in switch";
   return "UNKNOWN";
 }
 

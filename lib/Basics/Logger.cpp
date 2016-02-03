@@ -57,11 +57,12 @@ LogTopic LogTopic::operator|(LogTopic const& that) {
   return result;
 }
 
-LogTopic Logger::COLLECTOR("collector", LogLevel::INFO);
-LogTopic Logger::COMPACTOR("compactor", LogLevel::INFO);
-LogTopic Logger::PERFORMANCE("performance", LogLevel::INFO);
-LogTopic Logger::QUERIES("queries", LogLevel::INFO);
-LogTopic Logger::REQUESTS("requests", LogLevel::INFO);
+LogTopic Logger::COLLECTOR("collector");
+LogTopic Logger::COMPACTOR("compactor");
+LogTopic Logger::MMAP("mmap");
+LogTopic Logger::PERFORMANCE("performance");
+LogTopic Logger::QUERIES("queries");
+LogTopic Logger::REQUESTS("requests");
 
 void Logger::setLevel(LogLevel level) {
   _level = level;
@@ -75,8 +76,8 @@ char const* Logger::translateLogLevel(LogLevel level) {
   switch (level) {
     case LogLevel::DEFAULT: return "default";
     case LogLevel::FATAL: return "fatal"; 
-    case LogLevel::ERROR: return "error";
-    case LogLevel::WARNING: return "warning";
+    case LogLevel::ERR: return "error";
+    case LogLevel::WARN: return "warning";
     case LogLevel::INFO: return "info";
     case LogLevel::DEBUG: return "debug";
     case LogLevel::TRACE: return "trace";
@@ -87,6 +88,15 @@ char const* Logger::translateLogLevel(LogLevel level) {
 std::ostream& operator<<(std::ostream& stream, LogLevel level) {
   stream << Logger::translateLogLevel(level);
   return stream;
+}
+
+LoggerStream& LoggerStream::operator<<(Logger::RANGE range) {
+  std::ostringstream tmp;
+  tmp << range.baseAddress << " - " 
+      << static_cast<void const*>(static_cast<char const*>(range.baseAddress) + range.size) 
+      << " (" << range.size << " bytes)";
+  _out << tmp.str();
+  return *this;
 }
 
 LoggerStream& LoggerStream::operator<<(Logger::DURATION duration) {

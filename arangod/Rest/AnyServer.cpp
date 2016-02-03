@@ -93,7 +93,7 @@ static void CheckPidFile(std::string const& pidFile) {
         } else if (errno == EPERM) {
           LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' exists and process with pid " << oldPid << " is still running"; FATAL_ERROR_EXIT();
         } else if (errno == ESRCH) {
-          LOG(ERROR) << "pid-file '" << pidFile.c_str() << " exists, but no process with pid " << oldPid << " exists";
+          LOG(ERR) << "pid-file '" << pidFile.c_str() << " exists, but no process with pid " << oldPid << " exists";
 
           if (!FileUtils::remove(pidFile)) {
             LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed"; FATAL_ERROR_EXIT();
@@ -235,7 +235,7 @@ int WaitForSupervisor(int pid) {
       }
 
       // failure!
-      LOG(ERROR) << "unable to start arangod. please check the logfiles for errors";
+      LOG(ERR) << "unable to start arangod. please check the logfiles for errors";
       return EXIT_FAILURE;
     }
 
@@ -391,10 +391,10 @@ int AnyServer::startupSupervisor() {
           } else {
             t = time(0) - startTime;
 
-            LOG(ERROR) << "child " << pid << " died a horrible death, exit status " << WEXITSTATUS(status);
+            LOG(ERR) << "child " << pid << " died a horrible death, exit status " << WEXITSTATUS(status);
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
-              LOG(ERROR) << "child only survived for " << t << " seconds, this will not work - please fix the error first";
+              LOG(ERR) << "child only survived for " << t << " seconds, this will not work - please fix the error first";
               done = true;
             } else {
               done = false;
@@ -413,15 +413,15 @@ int AnyServer::startupSupervisor() {
             default:
               t = time(0) - startTime;
 
-              LOG(ERROR) << "child " << pid << " died a horrible death, signal " << WTERMSIG(status);
+              LOG(ERR) << "child " << pid << " died a horrible death, signal " << WTERMSIG(status);
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
-                LOG(ERROR) << "child only survived for " << t << " seconds, this will not work - please fix the error first";
+                LOG(ERR) << "child only survived for " << t << " seconds, this will not work - please fix the error first";
                 done = true;
 
 #ifdef WCOREDUMP
                 if (WCOREDUMP(status)) {
-                  LOG(WARNING) << "child process " << pid << " produced a core dump";
+                  LOG(WARN) << "child process " << pid << " produced a core dump";
                 }
 #endif
               } else {
@@ -431,7 +431,7 @@ int AnyServer::startupSupervisor() {
               break;
           }
         } else {
-          LOG(ERROR) << "child " << pid << " died a horrible death, unknown cause";
+          LOG(ERR) << "child " << pid << " died a horrible death, unknown cause";
           done = false;
         }
 

@@ -573,7 +573,7 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
     res = TRI_ERROR_INTERNAL;
   }
 
-  LOG(WARNING) << "could not save attribute marker in log: " << TRI_errno_string(res);
+  LOG(WARN) << "could not save attribute marker in log: " << TRI_errno_string(res);
 
   return 0;
 }
@@ -675,7 +675,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
           TRI_InsertKeyAssociativePointer(&_shapeIds, &sid, (void*)m, false);
 
       if (f != nullptr) {
-        LOG(ERROR) << "logic error when inserting shape into id dictionary";
+        LOG(ERR) << "logic error when inserting shape into id dictionary";
       }
 
       TRI_ASSERT(f == nullptr);  // will abort here
@@ -687,7 +687,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
                                                     false);
 
       if (f != nullptr) {
-        LOG(ERROR) << "logic error when inserting shape into dictionary";
+        LOG(ERR) << "logic error when inserting shape into dictionary";
       }
 
       TRI_ASSERT(f == nullptr);  // will abort here
@@ -701,7 +701,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
     res = TRI_ERROR_INTERNAL;
   }
 
-  LOG(WARNING) << "could not save shape marker in log: " << TRI_errno_string(res);
+  LOG(WARN) << "could not save shape marker in log: " << TRI_errno_string(res);
 
   // must not free the shape here, as the caller is going to free it...
 
@@ -864,7 +864,7 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
       // duplicate shape, but with identical content. simply ignore it
       LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape dictionary";
     } else {
-      LOG(ERROR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape dictionary";
+      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape dictionary";
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
@@ -884,7 +884,7 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
       // duplicate shape, but with identical content. simply ignore it
       LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape ids table";
     } else {
-      LOG(ERROR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape ids table";
+      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape ids table";
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
@@ -942,7 +942,7 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
       // duplicate attribute, but with identical content. simply ignore it
       LOG(TRACE) << "found duplicate attribute name '" << name << "' in collection '" << cname.c_str() << "'";
     } else {
-      LOG(ERROR) << "found heterogenous attribute name '" << name << "' in collection '" << cname.c_str() << "'";
+      LOG(ERR) << "found heterogenous attribute name '" << name << "' in collection '" << cname.c_str() << "'";
     }
   }
 
@@ -960,7 +960,7 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
       // duplicate attribute, but with identical content. simply ignore it
       LOG(TRACE) << "found duplicate attribute id '" << aid << "' in collection '" << cname.c_str() << "'";
     } else {
-      LOG(ERROR) << "found heterogenous attribute id '" << aid << "' in collection '" << cname.c_str() << "'";
+      LOG(ERR) << "found heterogenous attribute id '" << aid << "' in collection '" << cname.c_str() << "'";
     }
   }
 
@@ -1130,7 +1130,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
       TRI_Allocate(_memoryZone, len * sizeof(TRI_shape_aid_t), false));
 
   if (aids == nullptr) {
-    LOG(ERROR) << "out of memory in shaper";
+    LOG(ERR) << "out of memory in shaper";
     return nullptr;
   }
 
@@ -1138,7 +1138,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
 
   if (buffer == nullptr) {
     TRI_Free(_memoryZone, aids);
-    LOG(ERROR) << "out of memory in shaper";
+    LOG(ERR) << "out of memory in shaper";
     return nullptr;
   }
 
@@ -1179,7 +1179,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
 
   if (result == nullptr) {
     TRI_Free(_memoryZone, aids);
-    LOG(ERROR) << "out of memory in shaper";
+    LOG(ERR) << "out of memory in shaper";
     return nullptr;
   }
 
@@ -1219,7 +1219,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
                                                     name, result, false);
 
     if (f != nullptr) {
-      LOG(WARNING) << "duplicate shape path " << result->_pid;
+      LOG(WARN) << "duplicate shape path " << result->_pid;
     }
 
     TRI_ASSERT(f == nullptr);  // will abort here
@@ -1231,7 +1231,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
         &_attributePathsByPid, &result->_pid, result, false);
 
     if (f != nullptr) {
-      LOG(WARNING) << "duplicate shape path " << result->_pid;
+      LOG(WARN) << "duplicate shape path " << result->_pid;
     }
 
     TRI_ASSERT(f == nullptr);  // will abort here
@@ -1448,7 +1448,7 @@ int TRI_CompareShapeTypes(char const* leftDocument,
   }
 
   if (leftShape == nullptr || rightShape == nullptr) {
-    LOG(ERROR) << "shape not found";
+    LOG(ERR) << "shape not found";
     TRI_ASSERT(false);
     return -1;
   }
@@ -1861,8 +1861,10 @@ void TRI_FillShapedSub(TRI_shaped_sub_t* element,
   element->_sid = shapedObject->_sid;
 
   if (element->_sid <= BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
-    memcpy((char*)&element->_value._data, shapedObject->_data.data,
-           BasicShapes::TypeLengths[element->_sid]);
+    if (shapedObject->_data.data != nullptr) {
+      memcpy((char*)&element->_value._data, shapedObject->_data.data,
+             BasicShapes::TypeLengths[element->_sid]);
+    }
   } else {
     element->_value._position._length = shapedObject->_data.length;
     element->_value._position._offset =

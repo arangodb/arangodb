@@ -246,7 +246,7 @@ exports.lockCycleParallel = function(opts) {
   print("Starting", n, "worker");
 
   const cmd = function(params) {
-    require("./js/server/tests/stress/deadLock").lockCycleRaw(params);
+    require("./js/server/tests/stress/deadlock").lockCycleRaw(params);
   };
 
   for (let i = 0; i < n; ++i) {
@@ -276,16 +276,26 @@ exports.lockCycleParallel = function(opts) {
     return a.count() === b.count();
   };
 
-  sleep(10);
+  let m = 0;
 
-  const m = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
-    '@results': 'results'
-  }).count();
+  for (let i = 0; i < 10; ++i) {
+    m = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
+      '@results': 'results'
+    }).count();
+
+    print(m + " workers are up and running");
+
+    if (m === n) {
+      break;
+    }
+
+    sleep(30);
+  }
 
   if (m < n) {
-    print("cannot start enough servers (want", n + ",", "got", m + "),",
+    print("cannot start enough workers (want", n + ",", "got", m + "),",
       "please check number V8 contexts");
-    return false;
+    throw new Error("cannot start workers");
   }
 
   if (opts.gnuplot) {

@@ -105,7 +105,7 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
 static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                               std::string const& message) {
   if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
-    LOG(ERROR) << "encountered out-of-memory error";
+    LOG(ERR) << "encountered out-of-memory error";
   }
 
   v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(message);
@@ -157,7 +157,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
 
   if (content == nullptr) {
-    LOG(ERROR) << "cannot load java script file '" << filename << "': " << TRI_last_error();
+    LOG(ERR) << "cannot load java script file '" << filename << "': " << TRI_last_error();
     return false;
   }
 
@@ -175,7 +175,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   if (content == nullptr) {
-    LOG(ERROR) << "cannot load java script file '" << filename << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+    LOG(ERR) << "cannot load java script file '" << filename << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
 
@@ -195,7 +195,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    LOG(ERROR) << "cannot load java script file '" << filename << "': compilation failed.";
+    LOG(ERR) << "cannot load java script file '" << filename << "': compilation failed.";
     return false;
   }
 
@@ -1673,11 +1673,11 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (TRI_CaseEqualString(*level, "fatal")) {
-    LOG(ERROR) << "(FATAL) " << *message;
+    LOG(ERR) << "(FATAL) " << *message;
   } else if (TRI_CaseEqualString(*level, "error")) {
-    LOG(ERROR) << "" << *message;
+    LOG(ERR) << "" << *message;
   } else if (TRI_CaseEqualString(*level, "warning")) {
-    LOG(WARNING) << "" << *message;
+    LOG(WARN) << "" << *message;
   } else if (TRI_CaseEqualString(*level, "info")) {
     LOG(INFO) << "" << *message;
   } else if (TRI_CaseEqualString(*level, "debug")) {
@@ -1685,7 +1685,7 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else if (TRI_CaseEqualString(*level, "trace")) {
     LOG(TRACE) << "" << *message;
   } else {
-    LOG(ERROR) << "(unknown log level '" << *level << "') " << *message;
+    LOG(ERR) << "(unknown log level '" << *level << "') " << *message;
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -3732,9 +3732,9 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   // exception.
   if (message.IsEmpty()) {
     if (exceptionString == nullptr) {
-      LOG(ERROR) << "JavaScript exception";
+      LOG(ERR) << "JavaScript exception";
     } else {
-      LOG(ERROR) << "JavaScript exception: " << exceptionString;
+      LOG(ERR) << "JavaScript exception: " << exceptionString;
     }
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
@@ -3748,15 +3748,15 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
     if (filenameString == nullptr) {
       if (exceptionString == nullptr) {
-        LOG(ERROR) << "JavaScript exception";
+        LOG(ERR) << "JavaScript exception";
       } else {
-        LOG(ERROR) << "JavaScript exception: " << exceptionString;
+        LOG(ERR) << "JavaScript exception: " << exceptionString;
       }
     } else {
       if (exceptionString == nullptr) {
-        LOG(ERROR) << "JavaScript exception in file '" << filenameString << "' at " << linenum << "," << start;
+        LOG(ERR) << "JavaScript exception in file '" << filenameString << "' at " << linenum << "," << start;
       } else {
-        LOG(ERROR) << "JavaScript exception in file '" << filenameString << "' at " << linenum << "," << start << ": " << exceptionString;
+        LOG(ERR) << "JavaScript exception in file '" << filenameString << "' at " << linenum << "," << start << ": " << exceptionString;
       }
     }
 
@@ -3765,7 +3765,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     if (*sourceline) {
       std::string l = *sourceline;
 
-      LOG(ERROR) << "!" << l.c_str();
+      LOG(ERR) << "!" << l.c_str();
 
       if (1 < start) {
         l = std::string(start - 1, ' ');
@@ -3775,13 +3775,13 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
       l += std::string((size_t)(end - start + 1), '^');
 
-      LOG(ERROR) << "!" << l.c_str();
+      LOG(ERR) << "!" << l.c_str();
     }
 
     TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
-      LOG(ERROR) << "stacktrace: " << *stacktrace;
+      LOG(ERR) << "stacktrace: " << *stacktrace;
     }
   }
 }

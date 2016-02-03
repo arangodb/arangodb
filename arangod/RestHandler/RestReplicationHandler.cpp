@@ -2297,7 +2297,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
               if (result.getBoolean()) {
                 nrok++;
               } else {
-                LOG(ERROR) << "some shard result not OK";
+                LOG(ERR) << "some shard result not OK";
               }
             } else {
               VPackSlice const errorMessage = answer.get("errorMessage");
@@ -2307,7 +2307,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
               }
             }
           } else {
-            LOG(ERROR) << "result body is no object";
+            LOG(ERR) << "result body is no object";
           }
         } else if (result.answer_code ==
                    arangodb::rest::HttpResponse::SERVER_ERROR) {
@@ -2331,19 +2331,19 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
             }
           }
         } else {
-          LOG(ERROR) << "Bad answer code from shard: " << result.answer_code;
+          LOG(ERR) << "Bad answer code from shard: " << result.answer_code;
         }
       } else {
-        LOG(ERROR) << "Bad status from DBServer: " << result.status << ", msg: " << result.errorMessage.c_str() << ", shard: " << result.shardID.c_str();
+        LOG(ERR) << "Bad status from DBServer: " << result.status << ", msg: " << result.errorMessage.c_str() << ", shard: " << result.shardID.c_str();
         if (result.status >= CL_COMM_SENT) {
           if (result.result.get() == nullptr) {
-            LOG(ERROR) << "result.result is nullptr";
+            LOG(ERR) << "result.result is nullptr";
           } else {
             auto msg = result.result->getResultTypeMessage();
-            LOG(ERROR) << "Bad HTTP return code: " << result.result->getHttpReturnCode() << ", msg: " << msg.c_str();
+            LOG(ERR) << "Bad HTTP return code: " << result.result->getHttpReturnCode() << ", msg: " << msg.c_str();
             auto body = result.result->getBodyVelocyPack();
             msg = body->toString();
-            LOG(ERROR) << "Body: " << msg.c_str();
+            LOG(ERR) << "Body: " << msg.c_str();
           }
         }
       }

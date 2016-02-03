@@ -901,7 +901,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
 
     return result;
   } catch (std::bad_alloc const&) {
-    LOG(ERROR) << "out of memory";
+    LOG(ERR) << "out of memory";
     throw;
   }
 }

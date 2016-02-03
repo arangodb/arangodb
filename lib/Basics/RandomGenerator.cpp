@@ -403,7 +403,7 @@ class UniformGenerator {
 
     while (r >= g) {
       if (++count >= MAX_COUNT) {
-        LOG(ERROR) << "cannot generate small random number after " << count << " tries";
+        LOG(ERR) << "cannot generate small random number after " << count << " tries";
         r %= g;
         continue;
       }
@@ -450,7 +450,7 @@ struct UniformIntegerMersenne : public UniformIntegerImpl {
     TRI_ASSERT(range > 0);
 
     uint32_t result = engine();
-    result = (int32_t)(abs((int64_t)result % range) + (int64_t)left);
+    result = (int32_t)(std::abs((int64_t)result % range) + (int64_t)left);
 
     return result;
   }

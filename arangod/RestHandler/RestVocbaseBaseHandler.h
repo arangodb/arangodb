@@ -43,7 +43,7 @@ class VocbaseContext;
 /// @brief abstract base request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestVocbaseBaseHandler : public admin::RestBaseHandler {
+class RestVocbaseBaseHandler : public RestBaseHandler {
  private:
   RestVocbaseBaseHandler(RestVocbaseBaseHandler const&) = delete;
   RestVocbaseBaseHandler& operator=(RestVocbaseBaseHandler const&) = delete;

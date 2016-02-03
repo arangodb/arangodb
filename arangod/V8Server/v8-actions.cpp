@@ -126,7 +126,7 @@ class v8_action_t : public TRI_action_t {
           _callbacks.find(context->isolate);
 
       if (i == _callbacks.end()) {
-        LOG(WARNING) << "no callback function for JavaScript action '" << _url.c_str() << "'";
+        LOG(WARN) << "no callback function for JavaScript action '" << _url.c_str() << "'";
 
         GlobalV8Dealer->exitContext(context);
 
@@ -826,10 +826,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (action != nullptr) {
       action->createCallback(isolate, callback);
     } else {
-      LOG(ERROR) << "cannot create callback for V8 action";
+      LOG(ERR) << "cannot create callback for V8 action";
     }
   } else {
-    LOG(ERROR) << "cannot define V8 action";
+    LOG(ERR) << "cannot define V8 action";
   }
 
   TRI_V8_RETURN_UNDEFINED();

@@ -72,8 +72,8 @@ namespace arangodb {
 enum class LogLevel {
   DEFAULT = 0,
   FATAL = 1,
-  ERROR = 2,
-  WARNING = 3,
+  ERR = 2,
+  WARN = 3,
   INFO = 4,
   DEBUG = 5,
   TRACE = 6
@@ -157,6 +157,7 @@ class Logger {
 
   static LogTopic COLLECTOR;
   static LogTopic COMPACTOR;
+  static LogTopic MMAP;
   static LogTopic PERFORMANCE;
   static LogTopic QUERIES;
   static LogTopic REQUESTS;
@@ -170,6 +171,16 @@ class Logger {
     explicit DURATION(double duration, int precision = 6) : _duration(duration), _precision(precision){};
     double _duration;
     int _precision;
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief range
+  //////////////////////////////////////////////////////////////////////////////
+
+  struct RANGE {
+    RANGE(void const* baseAddress, size_t size) : baseAddress(baseAddress), size(size){};
+    void const* baseAddress;
+    size_t size;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -276,6 +287,8 @@ class LoggerStream {
     _topics = topics.bits();
     return *this;
   }
+
+  LoggerStream& operator<<(Logger::RANGE range);
 
   LoggerStream& operator<<(Logger::DURATION duration);
 

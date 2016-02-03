@@ -69,7 +69,7 @@ class PathBasedIndex : public Index {
       std::vector<std::vector<arangodb::basics::AttributeName>> const&,
       bool unique, bool sparse, bool allowPartialIndex);
 
-  explicit PathBasedIndex(VPackSlice const&, bool);
+  PathBasedIndex(VPackSlice const&, bool);
 
   ~PathBasedIndex();
 

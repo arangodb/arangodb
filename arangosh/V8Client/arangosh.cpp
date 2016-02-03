@@ -2563,10 +2563,10 @@ int main(int argc, char* args[]) {
         try {
           ret = Run(isolate, runMode, promptError);
         } catch (std::bad_alloc const&) {
-          LOG(ERROR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+          LOG(ERR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ret = EXIT_FAILURE;
         } catch (...) {
-          LOG(ERROR) << "caught unknown exception";
+          LOG(ERR) << "caught unknown exception";
           ret = EXIT_FAILURE;
         }
       }
