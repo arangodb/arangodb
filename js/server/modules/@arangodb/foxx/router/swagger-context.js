@@ -168,11 +168,11 @@ module.exports = exports = class SwaggerContext {
     return this;
   }
 
-  response(status, model, mimes, description) {
+  response(status, model, mimes, reason) {
     let statusCode = Number(status);
 
     if (!status || Number.isNaN(statusCode)) {
-      description = mimes;
+      reason = mimes;
       mimes = model;
       model = status;
       statusCode = model === null ? 204 : 200;
@@ -182,13 +182,13 @@ module.exports = exports = class SwaggerContext {
       typeof model === 'string'
       || (Array.isArray(model) && typeof model[0] === 'string')
     ) {
-      description = mimes;
+      reason = mimes;
       mimes = model;
       model = undefined;
     }
 
     if (typeof mimes === 'string') {
-      description = mimes;
+      reason = mimes;
       mimes = undefined;
     }
 
@@ -256,17 +256,17 @@ module.exports = exports = class SwaggerContext {
       model: model,
       multiple: multiple,
       contentTypes: contentTypes,
-      description: description
+      description: reason
     });
     return this;
   }
 
-  error(status, description) {
+  error(status, reason) {
     return this.response(
       status,
       DEFAULT_ERROR_SCHEMA,
       null,
-      description
+      reason
     );
   }
 
