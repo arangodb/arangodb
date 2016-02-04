@@ -3447,6 +3447,7 @@ static void DropDatabaseCoordinator(
       break;
     }
 
+    TRI_ReleaseVocBase(vocbase);
     // sleep
     usleep(10000);
   }
