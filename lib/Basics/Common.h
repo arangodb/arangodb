@@ -194,7 +194,7 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 #else
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) while (0)
+#define TRI_ASSERT(expr) do { } while (0)
 #endif
 
 #endif
