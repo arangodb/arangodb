@@ -299,6 +299,16 @@ struct Functions {
                             VPackFunctionParameters const&);
   static AqlValue$ Sha1VPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
                              VPackFunctionParameters const&);
+  static AqlValue$ UniqueVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
+  static AqlValue$ SortedUniqueVPack(arangodb::aql::Query*,
+                                     arangodb::AqlTransaction*,
+                                     VPackFunctionParameters const&);
+  static AqlValue$ UnionVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
+  static AqlValue$ UnionDistinctVPack(arangodb::aql::Query*,
+                                      arangodb::AqlTransaction*,
+                                      VPackFunctionParameters const&);
 };
 }
 }

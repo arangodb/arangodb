@@ -42,6 +42,14 @@ bool VelocyPackHelper::AttributeSorter::operator()(std::string const& l,
   return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
 }
 
+size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
+  return slice.hash();
+};
+
+bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
+  return VelocyPackHelper::compare(lhs, rhs, false) == 0;
+};
+
 static int TypeWeight(VPackSlice const& slice) {
   switch (slice.type()) {
     case VPackValueType::Bool:

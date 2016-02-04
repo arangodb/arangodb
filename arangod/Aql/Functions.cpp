@@ -3300,6 +3300,10 @@ AqlValue$ Functions::Sha1VPack(arangodb::aql::Query* query,
 AqlValue Functions::Unique(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(UniqueVPack(query, trx, tmp));
+#else
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE", (int)1,
@@ -3347,6 +3351,50 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::UniqueVPack(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  if (parameters.size() != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE", (int)1,
+        (int)1);
+  }
+
+  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!value.isArray()) {
+    // not an array
+    RegisterWarning(query, "UNIQUE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::unordered_set<VPackSlice const,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
+             arangodb::basics::VelocyPackHelper::VPackEqual());
+
+  for (auto const& s : VPackArrayIterator(value)) {
+    if (!s.isNone()) {
+      values.emplace(s);
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackArrayBuilder guard(b.get());
+    for (auto const& it : values) {
+      b->add(it);
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3356,6 +3404,10 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
 AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
                                  arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(SortedUniqueVPack(query, trx, tmp));
+#else
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SORTED_UNIQUE",
@@ -3406,6 +3458,45 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::SortedUniqueVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  if (parameters.size() != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SORTED_UNIQUE",
+        (int)1, (int)1);
+  }
+
+  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!value.isArray()) {
+    // not an array
+    // this is an internal function - do NOT issue a warning here
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::set<VPackSlice const, arangodb::basics::VelocyPackHelper::VPackLess<true>> values;
+  for (auto const& it : VPackArrayIterator(value)) {
+    if (!it.isNone()) {
+      values.insert(it);
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackArrayBuilder guard(b.get());
+    for (auto const& it : values) {
+      b->add(it);
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3415,6 +3506,10 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
 AqlValue Functions::Union(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(UnionVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n < 2) {
@@ -3470,6 +3565,57 @@ AqlValue Functions::Union(arangodb::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::UnionVPack(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION", (int)2,
+        (int)Function::MaxArguments);
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackArrayBuilder guard(b.get());
+    for (size_t i = 0; i < n; ++i) {
+      auto value = ExtractFunctionParameter(trx, parameters, i);
+
+      if (!value.isArray()) {
+        // not an array
+        RegisterInvalidArgumentWarning(query, "UNION");
+        b->clear();
+        b->add(VPackValue(VPackValueType::Null));
+        return AqlValue$(b.get());
+      }
+
+      TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      // this passes ownership for the JSON contens into result
+      for (auto const& it : VPackArrayIterator(value)) {
+        b->add(it);
+        TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+      }
+    }
+  } catch (arangodb::basics::Exception const& e) {
+    // Rethrow arangodb Errors
+    throw e;
+  } catch (std::exception const& e) {
+    // All other exceptions are OUT_OF_MEMORY
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3479,6 +3625,10 @@ AqlValue Functions::Union(arangodb::aql::Query* query,
 AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
                                   arangodb::AqlTransaction* trx,
                                   FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(UnionDistinctVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n < 2) {
@@ -3560,6 +3710,68 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
   return AqlValue(jr);
+#endif
+}
+
+AqlValue$ Functions::UnionDistinctVPack(arangodb::aql::Query* query,
+                                        arangodb::AqlTransaction* trx,
+                                        VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION_DISTINCT",
+        (int)2, (int)Function::MaxArguments);
+  }
+
+  std::unordered_set<VPackSlice const,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
+             arangodb::basics::VelocyPackHelper::VPackEqual());
+
+
+  for (size_t i = 0; i < n; ++i) {
+    auto value = ExtractFunctionParameter(trx, parameters, i);
+
+    if (!value.isArray()) {
+      // not an array
+      RegisterInvalidArgumentWarning(query, "UNION_DISTINCT");
+      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+      b->add(VPackValue(VPackValueType::Null));
+      return AqlValue$(b.get());
+    }
+
+    for (auto const& v : VPackArrayIterator(value)) {
+      if (values.find(v) == values.end()) {
+        TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        values.emplace(v);
+      }
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  try {
+    VPackArrayBuilder guard(b.get());
+    for (auto const& it : values) {
+      b->add(it);
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
