@@ -645,10 +645,13 @@ function ahuacatlOperatorsTestSuite () {
         {ex: null, val: "{ 'a' : [ ], 'b' : [ ] }"}
       ]
       values.forEach(function(v) {
+        // double precission check for e=0.0001
         var q = `RETURN TO_NUMBER(${v.val})`;
-        assertEqual(v.ex, db._query(q).next(), q);
-        var q = `RETURN NOOPT(TO_NUMBER(${v.val}))`;
-        assertEqual(v.ex, db._query(q).next(), q);
+        var diff = db._query(q).next() - v.ex;
+        assertTrue(diff < 0.0001, q);
+        q = `RETURN NOOPT(TO_NUMBER(${v.val}))`;
+        diff = db._query(q).next() - v.ex;
+        assertTrue(diff < 0.0001, q);
       });
     },
 

@@ -38,6 +38,10 @@ class VelocyPackHelper {
   ~VelocyPackHelper() = delete;
 
  public:
+  struct AttributeSorter {
+    bool operator()(std::string const& l, std::string const& r) const;
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a numeric value
   //////////////////////////////////////////////////////////////////////////////

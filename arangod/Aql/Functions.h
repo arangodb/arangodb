@@ -279,6 +279,26 @@ struct Functions {
   static AqlValue$ MergeRecursiveVPack(arangodb::aql::Query*,
                                        arangodb::AqlTransaction*,
                                        VPackFunctionParameters const&);
+  static AqlValue$ HasVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ AttributesVPack(arangodb::aql::Query*,
+                                   arangodb::AqlTransaction*,
+                                   VPackFunctionParameters const&);
+  static AqlValue$ ValuesVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
+  static AqlValue$ MinVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ MaxVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ SumVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ AverageVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
+  static AqlValue$ Md5VPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ Sha1VPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                             VPackFunctionParameters const&);
 };
 }
 }

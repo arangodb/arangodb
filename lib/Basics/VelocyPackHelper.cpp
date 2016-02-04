@@ -37,11 +37,10 @@
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-struct AttributeSorter {
-  bool operator()(std::string const& l, std::string const& r) const {
-    return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
-  }
-};
+bool VelocyPackHelper::AttributeSorter::operator()(std::string const& l,
+                                                   std::string const& r) const {
+  return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
+}
 
 static int TypeWeight(VPackSlice const& slice) {
   switch (slice.type()) {
