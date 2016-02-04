@@ -31,7 +31,6 @@ using namespace arangodb;
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::admin;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server

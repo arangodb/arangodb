@@ -1057,6 +1057,10 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIndex* gi, GeoCoordinate* c,
   int r, pot, slot, i;
   double snmd, maxsnmd;
   GeoIx* gix;
+  if (c->longitude < -180.0) return NULL;
+  if (c->longitude > 180.0) return NULL;
+  if (c->latitude < -90.0) return NULL;
+  if (c->latitude > 90.0) return NULL;
   gix = (GeoIx*)gi;
   gres = GeoResultsCons(100);
   if (gres == NULL) return NULL;
@@ -1118,6 +1122,10 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIndex* gi, GeoCoordinate* c,
   int pot, slot, i, left;
   double snmd;
   GeoIx* gix;
+  if (c->longitude < -180.0) return NULL;
+  if (c->longitude > 180.0) return NULL;
+  if (c->latitude < -90.0) return NULL;
+  if (c->latitude > 90.0) return NULL;
 
   gix = (GeoIx*)gi;
   gr = GeoResultsCons(count);
@@ -1671,6 +1679,10 @@ int GeoIndex_remove(GeoIndex* gi, GeoCoordinate* c) {
   int i, j, js, pot, potix, slot, pathix;
   GeoString mings, gs;
   GeoIx* gix;
+  if (c->longitude < -180.0) return -3;
+  if (c->longitude > 180.0) return -3;
+  if (c->latitude < -90.0) return -3;
+  if (c->latitude > 90.0) return -3;
   gix = (GeoIx*)gi;
   GeoMkDetail(gix, &gd, c);
   i = GeoFind(&gt, &gd);
@@ -2026,6 +2038,10 @@ GeoCursor* GeoIndex_NewCursor(GeoIndex* gi, GeoCoordinate* c) {
   GeoIx* gix;
   GeoCr* gcr;
   hpot hp;
+  if (c->longitude < -180.0) return NULL;
+  if (c->longitude > 180.0) return NULL;
+  if (c->latitude < -90.0) return NULL;
+  if (c->latitude > 90.0) return NULL;
   gix = (GeoIx*)gi;
   gcr = static_cast<GeoCr*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCr), false));

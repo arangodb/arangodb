@@ -111,6 +111,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
       _pathOutVariable(nullptr),
+      _inVariable(nullptr),
       _graphObj(nullptr),
       _condition(nullptr) {
   TRI_ASSERT(_vocbase != nullptr);
@@ -244,9 +245,14 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _minDepth(minDepth),
       _maxDepth(maxDepth),
       _directions(directions),
+      _graphObj(nullptr),
       _condition(nullptr) {
+
+  _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
+
   for (auto& it : edgeColls) {
     _edgeColls.push_back(it);
+    _graphJson.add(arangodb::basics::Json(it));
   }
 }
 
@@ -258,6 +264,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _edgeOutVariable(nullptr),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
+      _graphObj(nullptr),
       _condition(nullptr) {
   _minDepth =
       arangodb::basics::JsonHelper::stringUInt64(base.json(), "minDepth");

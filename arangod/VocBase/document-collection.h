@@ -230,6 +230,12 @@ typedef struct TRI_doc_collection_info_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_document_collection_t : public TRI_collection_t {
+  TRI_document_collection_t();
+
+  ~TRI_document_collection_t();
+
+  std::string label() const;
+
   // ...........................................................................
   // this lock protects the indexes and _headers attributes
   // ...........................................................................
@@ -325,10 +331,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
-
-  TRI_document_collection_t();
-
-  ~TRI_document_collection_t();
 
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const*,
              TRI_doc_mptr_copy_t*, bool, bool);

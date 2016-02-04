@@ -113,7 +113,9 @@ struct DocumentOperation {
     if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
       document->_headersPtr->release(header, true);  // PROTECTED by trx
     } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-      document->_headersPtr->move(header, &oldHeader);  // PROTECTED by trx
+      if (status != StatusType::CREATED && status != StatusType::INDEXED) {
+        document->_headersPtr->move(header, &oldHeader);  // PROTECTED by trx in trxCollection
+      }
       header->copy(oldHeader);
     } else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       if (status != StatusType::CREATED) {

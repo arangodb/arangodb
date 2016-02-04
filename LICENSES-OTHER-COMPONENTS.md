@@ -132,6 +132,11 @@
 * GITHUB: https://github.com/jshttp/content-disposition
 * License: [MIT License](https://github.com/jshttp/content-disposition/blob/master/LICENSE)
 
+#### dedent
+
+* GITHUB: https://github.com/dmnd/dedent
+* License: [MIT License](https://github.com/dmnd/dedent/blob/master/LICENSE)
+
 #### expect.js
 
 * GITHUB: https://github.com/Automattic/expect.js

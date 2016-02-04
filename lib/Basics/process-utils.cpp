@@ -1044,12 +1044,12 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         if (result == WAIT_FAILED) {
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                         windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-          LOG(WARN) << "could not wait for subprocess with PID '" << (unsigned int)external->_pid << "': " << windowsErrorBuf;
+          LOG(WARN) << "could not wait for subprocess with pid " << external->_pid << ": " << windowsErrorBuf;
           status._errorMessage =
-              std::string("could not wait for subprocess with PID '") +
+              std::string("could not wait for subprocess with pid ") +
               arangodb::basics::StringUtils::itoa(
                   static_cast<int64_t>(external->_pid)) +
-              std::string("'") + windowsErrorBuf;
+              windowsErrorBuf;
           status._exitStatus = GetLastError();
         }
       } else {
@@ -1058,7 +1058,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         switch (result) {
           case WAIT_ABANDONED:
             wantGetExitCode = true;
-            LOG(WARN) << "WAIT_ABANDONED while waiting for subprocess with PID '" << (unsigned int)external->_pid << "'";
+            LOG(WARN) << "WAIT_ABANDONED while waiting for subprocess with pid " << external->_pid;
             break;
           case WAIT_OBJECT_0:
             /// this seems to be the exit case - want getExitCodeProcess here.
@@ -1071,7 +1071,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
           case WAIT_FAILED:
             FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                           windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-            LOG(WARN) << "could not wait for subprocess with PID '" << (unsigned int)external->_pid << "': " << windowsErrorBuf;
+            LOG(WARN) << "could not wait for subprocess with pid " << external->_pid << ": " << windowsErrorBuf;
             status._errorMessage =
                 std::string("could not wait for subprocess with PID '") +
                 arangodb::basics::StringUtils::itoa(
@@ -1080,18 +1080,17 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
             status._exitStatus = GetLastError();
           default:
             wantGetExitCode = true;
-            LOG(WARN) << "unexpected status while waiting for subprocess with PID '" << (unsigned int)external->_pid << "'";
+            LOG(WARN) << "unexpected status while waiting for subprocess with pid " << external->_pid;
         }
       }
       if (wantGetExitCode) {
         DWORD exitCode = STILL_ACTIVE;
         if (!GetExitCodeProcess(external->_process, &exitCode)) {
-          LOG(WARN) << "exit status could not be determined for PID '" << (unsigned int)external->_pid << "'";
+          LOG(WARN) << "exit status could not be determined for pid " << external->_pid;
           status._errorMessage =
-              std::string("exit status could not be determined for PID '") +
+              std::string("exit status could not be determined for pid ") +
               arangodb::basics::StringUtils::itoa(
-                  static_cast<int64_t>(external->_pid)) +
-              std::string("'");
+                  static_cast<int64_t>(external->_pid));
         } else {
           if (exitCode == STILL_ACTIVE) {
             external->_exitStatus = 0;

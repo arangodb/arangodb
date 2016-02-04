@@ -21,12 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-#include <iostream>
-
 #include "ApplicationScheduler.h"
+
+#include <iostream>
 
 #include "Basics/Exceptions.h"
 #include "Basics/Logger.h"
@@ -35,6 +32,7 @@
 #include "Scheduler/SchedulerLibev.h"
 #include "Scheduler/SignalTask.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -147,7 +145,7 @@ class HangupTask : public SignalTask {
  public:
   bool handleSignal() override {
     LOG(INFO) << "hangup received, about to reopen logfile";
-    TRI_ReopenLogging();
+    Logger::reopen();
     LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }
