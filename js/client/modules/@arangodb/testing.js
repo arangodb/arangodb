@@ -1729,7 +1729,6 @@ const internalMembers = [
   "failed",
   "total",
   "crashed",
-  "all_ok",
   "ok",
   "message",
   "suiteName"
@@ -3020,9 +3019,9 @@ function unitTestPrettyPrintResults(r) {
       print(fail);
     }
 
-    print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
+    print("Overall state: " + ((r.status === true) ? "Success" : "Fail"));
 
-    if (r.all_ok !== true) {
+    if (r.status !== true) {
       print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
     }
 
@@ -3098,7 +3097,7 @@ function unitTest(which, options) {
 
     return {
       ok: false,
-      all_ok: false
+      status: false
     };
   }
 
@@ -3132,11 +3131,9 @@ function unitTest(which, options) {
       if (!ok) {
         allok = false;
       }
-
-      results.all_ok = allok;
     }
 
-    results.all_ok = allok;
+    results.status = allok;
     results.crashed = serverCrashed;
 
     if (allok) {
@@ -3166,8 +3163,7 @@ function unitTest(which, options) {
 
     print(line);
     return {
-      ok: false,
-      all_ok: false
+      status: false
     };
   }
 
@@ -3192,8 +3188,8 @@ function unitTest(which, options) {
       }
     }
 
-    thisReply.ok = ok;
-    results.all_ok = ok;
+    thisReply.status = ok;
+    results.status = ok;
     results.crashed = serverCrashed;
 
     if (allok) {
@@ -3212,8 +3208,7 @@ function unitTest(which, options) {
   }
 
   return {
-    ok: false,
-    all_ok: false
+    status: false
   };
 }
 
