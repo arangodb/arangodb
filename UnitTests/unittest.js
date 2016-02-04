@@ -205,7 +205,7 @@ function main(argv) {
 
   if (options.writeXmlReport) {
     fs.write("out/UNITTEST_RESULT.json", inspect(r));
-    fs.write("out/UNITTEST_RESULT_CRASHED.txt", String(r.crashed));
+    fs.write("out/UNITTEST_RESULT_CRASHED.json", String(r.crashed));
 
     try {
       resultsToXml(r,
