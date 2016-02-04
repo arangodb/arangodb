@@ -865,8 +865,10 @@ static int GetDatabases (TRI_server_t* server,
   TRI_DestroyVectorString(&files);
   regfree(&re);
 
-  // sort by id
-  qsort(databases->_buffer, databases->_length, sizeof(char*), &DatabaseIdComparator);
+  if (databases->_buffer != nullptr) {
+    // sort by id
+    qsort(databases->_buffer, databases->_length, sizeof(char*), &DatabaseIdComparator);
+  }
 
   return res;
 }
