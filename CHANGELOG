@@ -1,6 +1,51 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* added a new log option "--log.output <definition>". The output definition
+  "<definition>" can either
+
+    "-" for stdin
+    "+" for stderr
+    "syslog://<syslog-facility>"
+    "syslog://<syslog-facility>/<application-name>"
+    "file://<relative-path>"
+
+  "--log.level <level>" sets the global log level to <level>.
+
+  It is also possible to configure logging for topics.
+
+  "--log.level topic=<level>" sets the log level for a specific topic.
+  Currently, the following topics exists: collector, compactor, mmap,
+  performance, queries, and requests. Performance and requests are
+  set to FATAL by default. Queries is set to info. All others are
+  set to the global level by default.
+
+  You can also output specicify topics to specicify output channels.
+  For example
+
+    queries=file://queries.txt
+
+  logs all queries requests to the file "queries.txt".
+
+  "--log.requests" is now deprecated. Use
+
+    "--log.level requests=info"
+    "--log.output requests=file://requests.txt"
+
+  instead.
+
+  "--log.facility" is now deprected. Use
+
+    "--log.output requests=syslog://facility"
+
+  instead.
+
+  "--log.performance" is now deprected. Use
+
+    "--log.level requests=trace"
+
+  instead.
+
 * removed configure option `--enable-logger`
 
 * removed startup option `--log.source-filter`
@@ -16,7 +61,7 @@ v3.0.0 (XXXX-XX-XX)
 * removed mostly unused internal spin-lock implementation
 
 * removed support for pre-Windows 7-style locks. This removes compatibility with
-  Windows versions older than Windows 7 (e.g. Windows Vista, Windows XP) or 
+  Windows versions older than Windows 7 (e.g. Windows Vista, Windows XP) or
   Windows 2008R2 (e.g. Windows 2008).
 
 * changed names of sub-threads started by arangod
