@@ -447,15 +447,7 @@ module.exports = exports = class SwaggerContext {
       }
     };
 
-    const responses = this._responses.size ? this._responses : new Map([
-      [200, {
-        model: DEFAULT_BODY_SCHEMA,
-        multiple: false,
-        contentTypes: ['application/json']
-      }]
-    ]);
-
-    for (const entry of responses.entries()) {
+    for (const entry of this._responses.entries()) {
       const code = entry[0];
       const def = entry[1];
       const schema = (
