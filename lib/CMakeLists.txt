@@ -101,7 +101,6 @@ add_library(
     Basics/json-utilities.cpp
     Basics/json.cpp
     Basics/levenshtein.cpp 
-    Basics/logging.cpp
     Basics/memory.cpp
     Basics/mimetypes.cpp
     Basics/prime-numbers.cpp

@@ -23,15 +23,15 @@
 
 #include "ArangoClient.h"
 
-#include "Basics/files.h"
-#include "Basics/Logger.h"
-#include "Basics/messages.h"
-#include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
-#include "Basics/terminal-utils.h"
 #include "Basics/FileUtils.h"
-#include "Basics/ProgramOptionsDescription.h"
+#include "Basics/Logger.h"
 #include "Basics/ProgramOptions.h"
+#include "Basics/ProgramOptionsDescription.h"
+#include "Basics/StringUtils.h"
+#include "Basics/files.h"
+#include "Basics/messages.h"
+#include "Basics/terminal-utils.h"
+#include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
 
 #include <iostream>
@@ -112,8 +112,6 @@ char const* ArangoClient::PROMPT_IGNORE_END = "\002";
 ArangoClient::ArangoClient(char const* appName)
     : _configFile(),
       _tempPath(),
-      _logLevel("info"),
-      _logLocalTime(false),
       _quiet(false),
 
       _colorOptions(false),
@@ -130,9 +128,8 @@ ArangoClient::ArangoClient(char const* appName)
       _pager(stdout),
       _usePager(false),
 
-      _logFile(""),
-      _log(nullptr),
-      _logOptions(false),
+      _auditLog(""),
+      _auditFile(nullptr),
 
       _serverOptions(false),
       _disableAuthentication(false),
@@ -147,6 +144,8 @@ ArangoClient::ArangoClient(char const* appName)
       _sslProtocol(4) {
   TRI_SetApplicationName(appName);
   std::string p = TRI_GetTempPath();
+
+  _logLevel.push_back("info");
 
   if (p.empty()) {
     _tempPath = p;
@@ -172,13 +171,23 @@ void ArangoClient::setupSpecificHelp(std::string const& progname,
 void ArangoClient::setupGeneral(ProgramOptionsDescription& description) {
   ProgramOptionsDescription loggingOptions("LOGGING options");
 
-  loggingOptions("log.level,l", &_logLevel, "log level")(
-      "log.use-local-time", "log local dates and times in log messages");
+  // clang-format off
 
-  description("configuration,c", &_configFile, "read configuration file")(
-      "help,h", "help message")("temp-path", &_tempPath,
-                                "path for temporary files")(
-      "quiet,s", "no banner")(loggingOptions, false);
+  loggingOptions
+    ("log.level,l", &_logLevel, "log level")
+    ("log.use-local-time", "log local dates and times in log messages")
+    ("log.output,o", &_logOutput, "log output")
+  ;
+
+  description
+    ("configuration,c", &_configFile, "read configuration file")
+    ("help,h", "help message")
+    ("temp-path", &_tempPath, "path for temporary files")
+    ("quiet,s", "no banner")
+    (loggingOptions, false)
+  ;
+
+  // clang-format on
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,9 +197,18 @@ void ArangoClient::setupGeneral(ProgramOptionsDescription& description) {
 void ArangoClient::setupColors(ProgramOptionsDescription& description) {
   ProgramOptionsDescription hiddenOptions("HIDDEN options");
 
-  hiddenOptions("colors", "activate color support");
+  // clang-format off
 
-  description("no-colors", "deactivate color support")(hiddenOptions, true);
+  hiddenOptions
+    ("colors", "activate color support")
+  ;
+
+  description
+    ("no-colors", "deactivate color support")
+    (hiddenOptions, true)
+  ;
+
+  // clang-format on
 
   _colorOptions = true;
 }
@@ -202,11 +220,18 @@ void ArangoClient::setupColors(ProgramOptionsDescription& description) {
 void ArangoClient::setupAutoComplete(ProgramOptionsDescription& description) {
   ProgramOptionsDescription hiddenOptions("HIDDEN options");
 
-  hiddenOptions("auto-complete",
-                "enable auto completion, use no-auto-complete to disable");
+  // clang-format off
 
-  description("no-auto-complete", "disable auto completion")(hiddenOptions,
-                                                             true);
+  hiddenOptions
+    ("auto-complete", "enable auto completion, use no-auto-complete to disable")
+  ;
+
+  description
+    ("no-auto-complete", "disable auto completion")
+    (hiddenOptions, true)
+  ;
+
+  // clang-format on
 
   _autoCompleteOptions = true;
 }
@@ -218,9 +243,18 @@ void ArangoClient::setupAutoComplete(ProgramOptionsDescription& description) {
 void ArangoClient::setupPrettyPrint(ProgramOptionsDescription& description) {
   ProgramOptionsDescription hiddenOptions("HIDDEN options");
 
-  hiddenOptions("no-pretty-print", "disable pretty printting");
+  // clang-format off
 
-  description("pretty-print", "pretty print values")(hiddenOptions, true);
+  hiddenOptions
+    ("no-pretty-print", "disable pretty printting")
+  ;
+
+  description
+    ("pretty-print", "pretty print values")
+    (hiddenOptions, true)
+  ;
+
+  // clang-format on
 
   _prettyPrintOptions = true;
 }
@@ -230,10 +264,13 @@ void ArangoClient::setupPrettyPrint(ProgramOptionsDescription& description) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::setupLog(ProgramOptionsDescription& description) {
-  description("audit-log", &_logFile,
-              "audit log file to save commands and results to");
+  // clang-format off
 
-  _logOptions = true;
+  description
+    ("audit-log", &_auditLog, "audit log file to save commands and results to")
+  ;
+
+  // clang-format on
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,7 +278,14 @@ void ArangoClient::setupLog(ProgramOptionsDescription& description) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::setupPager(ProgramOptionsDescription& description) {
-  description("pager", &_outputPager, "output pager")("use-pager", "use pager");
+  // clang-format off
+
+  description
+    ("pager", &_outputPager, "output pager")
+    ("use-pager", "use pager")
+  ;
+
+  // clang-format on
 
   _pagerOptions = true;
 }
@@ -253,24 +297,31 @@ void ArangoClient::setupPager(ProgramOptionsDescription& description) {
 void ArangoClient::setupServer(ProgramOptionsDescription& description) {
   ProgramOptionsDescription clientOptions("CLIENT options");
 
-  clientOptions("server.database", &_databaseName,
-                "database name to use when connecting")(
-      "server.disable-authentication", &_disableAuthentication,
-      "disable the password prompt and authentication when connecting (note: "
-      "this doesn't control whether a server requires authentication)")(
-      "server.endpoint", &_endpointString,
-      "endpoint to connect to, use 'none' to start without a server")(
-      "server.username", &_username, "username to use when connecting")(
-      "server.password", &_password,
-      "password to use when connecting. Don't specify this option to be "
-      "prompted for the password (note: this requires "
-      "--server.disable-authentication to be 'false')")(
-      "server.connect-timeout", &_connectTimeout, "connect timeout in seconds")(
-      "server.request-timeout", &_requestTimeout, "request timeout in seconds")(
-      "server.ssl-protocol", &_sslProtocol,
-      "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1");
+  // clang-format off
 
-  description(clientOptions, false);
+  clientOptions
+    ("server.database", &_databaseName, "database name to use when connecting")
+    ("server.disable-authentication", &_disableAuthentication,
+       "disable the password prompt and authentication when connecting (note: "
+       "this doesn't control whether a server requires authentication)")
+    ("server.endpoint", &_endpointString,
+       "endpoint to connect to, use 'none' to start without a server")
+    ("server.username", &_username, "username to use when connecting")
+    ("server.password", &_password,
+       "password to use when connecting. Don't specify this option to be "
+       "prompted for the password (note: this requires "
+       "--server.disable-authentication to be 'false')")
+    ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
+    ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
+    ("server.ssl-protocol", &_sslProtocol,
+       "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
+  ;
+
+  description
+    (clientOptions, false)
+  ;
+
+  // clang-format on
 
   _serverOptions = true;
 }
@@ -285,19 +336,23 @@ void ArangoClient::parse(ProgramOptions& options,
                          std::string const& initFilename) {
   // if options are invalid, exit directly
   if (!options.parse(description, argc, argv)) {
-    LOG(FATAL) << "" << options.lastError().c_str(); FATAL_ERROR_EXIT();
-  }
-
-  if (options.has("log.use-local-time")) {
-    _logLocalTime = true;
+    LOG(FATAL) << options.lastError();
+    FATAL_ERROR_EXIT();
   }
 
   // setup the logging
-  TRI_SetLogLevelLogging(_logLevel.c_str());
-  TRI_SetUseLocalTimeLogging(_logLocalTime);
-  TRI_CreateLogAppenderFile("-", 0, TRI_LOG_SEVERITY_UNKNOWN, false, true);
-  TRI_SetLineNumberLogging(false);
-  TRI_SetThreadIdentifierLogging(false);
+  Logger::setLogLevel(_logLevel);
+  Logger::setUseLocalTime(options.has("log.use-local-time"));
+  Logger::setShowLineNumber(false);
+  Logger::setShowThreadIdentifier(false);
+
+  if (_logOutput.empty()) {
+    Logger::addAppender("-", true, "");
+  } else {
+    for (auto& definition : _logOutput) {
+      Logger::addAppender(definition, true, "");
+    }
+  }
 
   // parse config file
   std::string configFile = "";
@@ -322,7 +377,7 @@ void ArangoClient::parse(ProgramOptions& options,
         configFile = sysDir;
         allowLocal = true;
       } else {
-        LOG(DEBUG) << "no system init file '" << sysDir.c_str() << "'";
+        LOG(DEBUG) << "no system init file '" << sysDir << "'";
       }
     }
   }
@@ -332,18 +387,23 @@ void ArangoClient::parse(ProgramOptions& options,
       std::string localConfigFile = configFile + ".local";
 
       if (FileUtils::exists(localConfigFile)) {
-        LOG(DEBUG) << "using init override file '" << localConfigFile.c_str() << "'";
+        LOG(DEBUG) << "using init override file '" << localConfigFile
+                   << "'";
 
         if (!options.parse(description, localConfigFile)) {
-          LOG(FATAL) << "cannot parse config file '" << localConfigFile.c_str() << "': " << options.lastError().c_str(); FATAL_ERROR_EXIT();
+          LOG(FATAL) << "cannot parse config file '" << localConfigFile
+                     << "': " << options.lastError();
+          FATAL_ERROR_EXIT();
         }
       }
     }
 
-    LOG(DEBUG) << "using init file '" << configFile.c_str() << "'";
+    LOG(DEBUG) << "using init file '" << configFile << "'";
 
     if (!options.parse(description, configFile)) {
-      LOG(FATAL) << "cannot parse config file '" << configFile.c_str() << "': " << options.lastError().c_str(); FATAL_ERROR_EXIT();
+      LOG(FATAL) << "cannot parse config file '" << configFile
+                 << "': " << options.lastError();
+      FATAL_ERROR_EXIT();
     }
   }
 
@@ -432,20 +492,24 @@ void ArangoClient::parse(ProgramOptions& options,
   if (_serverOptions) {
     // check connection args
     if (_connectTimeout < 0.0) {
-      LOG(FATAL) << "invalid value for --server.connect-timeout, must be >= 0"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "invalid value for --server.connect-timeout, must be >= 0";
+      FATAL_ERROR_EXIT();
     } else if (_connectTimeout == 0.0) {
       _connectTimeout = LONG_TIMEOUT;
     }
 
     if (_requestTimeout < 0.0) {
-      LOG(FATAL) << "invalid value for --server.request-timeout, must be positive"; FATAL_ERROR_EXIT();
+      LOG(FATAL)
+          << "invalid value for --server.request-timeout, must be positive";
+      FATAL_ERROR_EXIT();
     } else if (_requestTimeout == 0.0) {
       _requestTimeout = LONG_TIMEOUT;
     }
 
     // must specify a user name
     if (_username.size() == 0) {
-      LOG(FATAL) << "no value specified for --server.username"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "no value specified for --server.username";
+      FATAL_ERROR_EXIT();
     }
 
     // no password given on command-line
@@ -648,7 +712,7 @@ void ArangoClient::internalPrint(std::string const& str) {
 #else
     fprintf(_pager, "%s", str.c_str());
 #endif
-    if (_log) {
+    if (_auditFile) {
       std::string sanitized = StripBinary(str.c_str());
       log("%s", sanitized.c_str());
     }
@@ -667,15 +731,15 @@ void ArangoClient::internalPrint(std::string const& str) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::openLog() {
-  if (!_logFile.empty()) {
-    _log = fopen(_logFile.c_str(), "w");
+  if (!_auditLog.empty()) {
+    _auditFile = fopen(_auditLog.c_str(), "w");
 
     std::ostringstream s;
-    if (_log == nullptr) {
-      s << "Cannot open file '" << _logFile << "' for logging.";
+    if (_auditFile == nullptr) {
+      s << "Cannot open file '" << _auditLog << "' for logging.";
       printErrLine(s.str());
     } else {
-      s << "Logging input and output to '" << _logFile << "'.";
+      s << "Logging input and output to '" << _auditLog << "'.";
       printLine(s.str());
     }
   }
@@ -686,9 +750,9 @@ void ArangoClient::openLog() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::closeLog() {
-  if (!_logFile.empty() && _log != nullptr) {
-    fclose(_log);
-    _log = nullptr;
+  if (!_auditLog.empty() && _auditFile != nullptr) {
+    fclose(_auditFile);
+    _auditFile = nullptr;
   }
 }
 
@@ -725,12 +789,12 @@ void ArangoClient::printByeBye() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::log(char const* format, char const* str) {
-  if (_log) {
+  if (_auditFile) {
     std::string sanitized = StripBinary(str);
 
     if (!sanitized.empty()) {
       // do not print terminal escape sequences into log
-      fprintf(_log, format, sanitized.c_str());
+      fprintf(_auditFile, format, sanitized.c_str());
     }
   }
 }
@@ -741,12 +805,12 @@ void ArangoClient::log(char const* format, char const* str) {
 
 void ArangoClient::log(std::string const& format, std::string const& prompt,
                        std::string const& str) {
-  if (_log) {
+  if (_auditFile) {
     std::string sanitized = StripBinary(str.c_str());
 
     if (!sanitized.empty()) {
       // do not print terminal escape sequences into log
-      fprintf(_log, format.c_str(), prompt.c_str(), sanitized.c_str());
+      fprintf(_auditFile, format.c_str(), prompt.c_str(), sanitized.c_str());
     }
   }
 }
@@ -756,8 +820,8 @@ void ArangoClient::log(std::string const& format, std::string const& prompt,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::flushLog() {
-  if (_log) {
-    fflush(_log);
+  if (_auditFile) {
+    fflush(_auditFile);
   }
 }
 
