@@ -237,7 +237,7 @@
   * [Tasks](HttpTasks/README.md)
   * [Monitoring](HttpAdministrationAndMonitoring/README.md)
   * [User Management](HttpUserManagement/README.md)
-  * [Async Result](HttpAsyncResultsManagement/README.md)
+  * [Async Result Handling](HttpAsyncResultsManagement/README.md)
   * [Endpoints](HttpEndpoints/README.md)
   * [Sharding](HttpShardingInterface/README.md)
   * [Miscellaneous functions](HttpMiscellaneousFunctions/README.md)
