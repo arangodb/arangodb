@@ -64,7 +64,7 @@
 #include <iosfwd>
 #include <sstream>
 
-bool TRI_ShutdownLogging(bool);  // TODO(fc) remove
+static inline bool TRI_ShutdownLogging(bool) { return true; }  // TODO(fc) remove
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal number of log topics

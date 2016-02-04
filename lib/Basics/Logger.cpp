@@ -120,7 +120,7 @@ struct LogMessage {
 
 class LogAppender {
  public:
-  LogAppender(std::string const& filter) : _filter(filter) {}
+  explicit LogAppender(std::string const& filter) : _filter(filter) {}
   virtual ~LogAppender() {}
 
   virtual void logMessage(LogLevel, std::string const& message,
@@ -641,7 +641,7 @@ static void QueueMessage(char const* function, char const* file, long int line,
 
 class LogThread : public Thread {
  public:
-  LogThread(std::string const& name) : Thread(name) {}
+  explicit LogThread(std::string const& name) : Thread(name) {}
 
  public:
   void run();

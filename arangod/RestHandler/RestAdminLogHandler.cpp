@@ -167,7 +167,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
 
     if (offset < 0) {
       offset = 0;
-    } else if (offset >= length) {
+    } else if (offset >= static_cast<int64_t>(length)) {
       length = 0;
       offset = 0;
     } else if (offset > 0) {

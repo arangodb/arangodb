@@ -171,11 +171,12 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
   Logger::setOutputPrefix(_logPrefix);
   Logger::setShowThreadIdentifier(_logThreadId);
 
-  char const* contentFilter = nullptr;
+// TODO(FC) fixme
+//  char const* contentFilter = nullptr;
 
-  if (_options.has("log.content-filter")) {
-    contentFilter = _logContentFilter.c_str();
-  }
+//  if (_options.has("log.content-filter")) {
+//    contentFilter = _logContentFilter.c_str();
+//  }
 
   std::vector<std::string> levels;
   std::vector<std::string> outputs;
