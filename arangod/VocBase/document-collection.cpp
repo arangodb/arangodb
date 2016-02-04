@@ -508,7 +508,7 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures () {
   for (size_t i = 0; i < base->_datafiles._length; ++i) {
     auto df = static_cast<TRI_datafile_t const*>(base->_datafiles._buffer[i]);
 
-    info->_datafileSize += (int64_t) df->_maximalSize;
+    info->_datafileSize += (int64_t) df->_initSize;
     ++info->_numberDatafiles;
   }
 
@@ -1937,7 +1937,7 @@ static int OpenIteratorHandleAttributeMarker (TRI_df_marker_t const* marker,
     }
 
     state->_dfi->numberAttributes++;
-    state->_dfi->sizeShapes += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
+    state->_dfi->sizeAttributes += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
   }
 
   return res;
