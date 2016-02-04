@@ -107,8 +107,6 @@ char const* GlobalContextMethods::CodeWarmupExports =
 
 static std::string DeprecatedPath;
 
-static bool DeprecatedOption;
-
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
