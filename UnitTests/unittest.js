@@ -196,12 +196,12 @@ function main(argv) {
   }
 
   _.defaults(r, {
-    all_ok: false,
+    status: false,
     crashed: true
   });
 
   // whether or not there was an error 
-  fs.write("out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.all_ok));
+  fs.write("out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.status));
 
   if (options.writeXmlReport) {
     fs.write("out/UNITTEST_RESULT.json", inspect(r));
