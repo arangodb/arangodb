@@ -252,7 +252,7 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
   size_t escapedLength;
   char* escaped =
       TRI_EscapeControlsCString(TRI_UNKNOWN_MEM_ZONE, message.c_str(),
-                                message.size(), &escapedLength, true);
+                                message.size(), &escapedLength, true, false);
 
   if (escaped != nullptr) {
     writeLogFile(fd, escaped, (ssize_t)escapedLength);
