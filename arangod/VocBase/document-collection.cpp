@@ -471,21 +471,21 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
   for (size_t i = 0; i < base->_datafiles._length; ++i) {
     auto df = static_cast<TRI_datafile_t const*>(base->_datafiles._buffer[i]);
 
-    info->_datafileSize += (int64_t)df->_maximalSize;
+    info->_datafileSize += (int64_t)df->_initSize;
     ++info->_numberDatafiles;
   }
 
   for (size_t i = 0; i < base->_journals._length; ++i) {
     auto df = static_cast<TRI_datafile_t const*>(base->_journals._buffer[i]);
 
-    info->_journalfileSize += (int64_t)df->_maximalSize;
+    info->_journalfileSize += (int64_t)df->_initSize;
     ++info->_numberJournalfiles;
   }
 
   for (size_t i = 0; i < base->_compactors._length; ++i) {
     auto df = static_cast<TRI_datafile_t const*>(base->_compactors._buffer[i]);
 
-    info->_compactorfileSize += (int64_t)df->_maximalSize;
+    info->_compactorfileSize += (int64_t)df->_initSize;
     ++info->_numberCompactorfiles;
   }
 

@@ -1,0 +1,33 @@
+#!/bin/sh
+# https://raw.githubusercontent.com/OpenIndiana/oi-userland/99a87285ed04d3e99bc8e321f272301e444b1561/components/firefox/files/gld-wrapper
+
+was_Y=0
+skip_next=0
+args=""
+
+for arg in "$@"; do
+  if [ $was_Y -eq 1 ]; then
+    arg=$(echo $arg | sed 's/P,//')
+    was_Y=0;
+  fi
+  if [ $skip_next -eq 0 ]; then
+    if [ "$arg" = "-G" ] ; then
+        args="$args -shared";
+    elif [ "$arg" = "-dy" ] ; then
+        ; # skipping
+    elif [ "$arg" = "-M" ]; then
+         skip_next=1; # skipping this one and the next one
+    elif [ "$arg" = "-Y" ]; then
+         args="$args -rpath"
+         was_Y=1;
+    else
+         args="$args $arg"
+    fi
+  else
+    skip_next=0;
+  fi
+done
+
+args="$args"
+
+exec /opt/local/x86_64-sun-solaris2.11/bin/ld $args

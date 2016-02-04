@@ -21,12 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-#include <iostream>
-
 #include "ApplicationScheduler.h"
+
+#include <iostream>
 
 #include "Basics/Exceptions.h"
 #include "Basics/Logger.h"
@@ -35,6 +32,7 @@
 #include "Scheduler/SchedulerLibev.h"
 #include "Scheduler/SignalTask.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -132,7 +130,7 @@ class HangupTask : public SignalTask {
  public:
   bool handleSignal() {
     LOG(INFO) << "hangup received, about to reopen logfile";
-    TRI_ReopenLogging();
+    Logger::reopen();
     LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }
@@ -147,7 +145,7 @@ class HangupTask : public SignalTask {
  public:
   bool handleSignal() override {
     LOG(INFO) << "hangup received, about to reopen logfile";
-    TRI_ReopenLogging();
+    Logger::reopen();
     LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }
@@ -429,7 +427,15 @@ bool ApplicationScheduler::start() {
   int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
   if (res == 0) {
-    LOG(INFO) << "file-descriptors (nofiles) hard limit is " << rlim.rlim_max << ", soft limit is " << rlim.rlim_cur;
+    auto stringifier = [] (decltype(rlim.rlim_max) value) -> std::string {
+      if (value == std::numeric_limits<decltype(value)>::max()) {
+        return "unlimited";
+      }
+      return std::to_string(value);
+    };
+
+    LOG(INFO) << "file-descriptors (nofiles) hard limit is " << stringifier(rlim.rlim_max) 
+              << ", soft limit is " << stringifier(rlim.rlim_cur);
   }
 #endif
 
@@ -576,8 +582,16 @@ void ApplicationScheduler::adjustFileDescriptors() {
     if (res != 0) {
       LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
     }
+    
+    auto stringifier = [] (decltype(rlim.rlim_max) value) -> std::string {
+      if (value == std::numeric_limits<decltype(value)>::max()) {
+        return "unlimited";
+      }
+      return std::to_string(value);
+    };
 
-    LOG(DEBUG) << "file-descriptors (nofiles) hard limit is " << rlim.rlim_max << ", soft limit is " << rlim.rlim_cur;
+    LOG(DEBUG) << "file-descriptors (nofiles) hard limit is " << stringifier(rlim.rlim_max)
+               << ", soft limit is " << stringifier(rlim.rlim_cur); 
 
     bool changed = false;
 
@@ -615,7 +629,8 @@ void ApplicationScheduler::adjustFileDescriptors() {
         LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
-      LOG(INFO) << "file-descriptors (nofiles) new hard limit is " << rlim.rlim_max << ", new soft limit is " << rlim.rlim_cur;
+      LOG(INFO) << "file-descriptors (nofiles) new hard limit is " << stringifier(rlim.rlim_max) 
+                << ", new soft limit is " << ", soft limit is " << stringifier(rlim.rlim_cur); 
     }
 
     // the select backend has more restrictions

@@ -87,15 +87,6 @@ if (global.THREAD_NUMBER) {
 exports.developmentMode = false;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logfilePath
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.LOGFILE_PATH) {
-  exports.logfilePath = global.LOGFILE_PATH;
-  delete global.LOGFILE_PATH;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief quiet
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1867,11 +1858,6 @@ if (global.EXPORTS_SLOW_BUFFER) {
 if (global.APP_PATH) {
   exports.appPath = global.APP_PATH;
   delete global.APP_PATH;
-}
-
-if (global.DEV_APP_PATH) {
-  exports.devAppPath = global.APP_PATH;
-  delete global.DEV_APP_PATH;
 }
 
 return exports;

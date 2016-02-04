@@ -876,6 +876,7 @@ function runInArangosh(options, instanceInfo, file, addArgs) {
   let rc = executeAndWait(arangosh, toArgv(args));
 
   let result;
+
   try {
     result = JSON.parse(fs.read("testresult.json"));
   } catch (x) {
@@ -1023,7 +1024,7 @@ function shutdownInstance(instanceInfo, options) {
               if ((rc.results[i].serverStates[serverState].status === "NOT-FOUND") ||
                 (rc.results[i].serverStates[serverState].hasOwnProperty('signal'))) {
                 print("Server " + serverState + " shut down with:\n" +
-                      yaml.safeDump(rc.results[i].serverStates[serverState]));
+                  yaml.safeDump(rc.results[i].serverStates[serverState]));
 
                 if (!serverCrashed) {
                   print("marking run as crashy");
@@ -1729,7 +1730,6 @@ const internalMembers = [
   "failed",
   "total",
   "crashed",
-  "all_ok",
   "ok",
   "message",
   "suiteName"
@@ -1772,7 +1772,8 @@ testFuncs.arangosh = function(options) {
   const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
   if (!failSuccess) {
-    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
+      "didn't get expected return code (1): \n" +
       yaml.safeDump(rc);
     ++failed;
   }
@@ -1792,7 +1793,8 @@ testFuncs.arangosh = function(options) {
   const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
   if (!successSuccess) {
-    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
+      "didn't get expected return code (0): \n" +
       yaml.safeDump(rc);
 
     ++failed;
@@ -1904,7 +1906,12 @@ const benchTodos = [{
 testFuncs.arangob = function(options) {
   if (options.skipArangoB === true) {
     print("skipping Benchmark tests!");
-    return {};
+    return {
+      arangob: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   print("arangob tests...");
@@ -1913,8 +1920,10 @@ testFuncs.arangob = function(options) {
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      arangob: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -1999,7 +2008,12 @@ testFuncs.authentication = function(options) {
   if (options.skipAuth === true) {
     print("skipping Authentication tests!");
 
-    return {};
+    return {
+      authentication: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   print("Authentication tests...");
@@ -2010,14 +2024,16 @@ testFuncs.authentication = function(options) {
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      authentication: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
   let results = {};
 
-  results.auth = runInArangosh(options, instanceInfo,
+  results.authentication = runInArangosh(options, instanceInfo,
     fs.join("js", "client", "tests", "auth.js"));
 
   print("Shutting down...");
@@ -2080,7 +2096,12 @@ function checkBodyForJsonToParse(request) {
 testFuncs.authentication_parameters = function(options) {
   if (options.skipAuth === true) {
     print("skipping Authentication with parameters tests!");
-    return {};
+    return {
+      authentication_parameters: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   print("Authentication with parameters tests...");
@@ -2104,7 +2125,7 @@ testFuncs.authentication_parameters = function(options) {
 
     if (instanceInfo === false) {
       return {
-        authentication: {
+        authentication_parameters: {
           status: false,
           total: 1,
           failed: 1,
@@ -2210,7 +2231,12 @@ testFuncs.boost = function(options) {
 
 testFuncs.config = function(options) {
   if (options.skipConfig) {
-    return {};
+    return {
+      config: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   let results = {
@@ -2671,7 +2697,12 @@ testFuncs.shell_server_aql = function(options) {
     }
   }
 
-  return "skipped";
+  return {
+    shell_server_aql: {
+      status: true,
+      skipped: true
+    }
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2825,7 +2856,12 @@ testFuncs.single_server = function(options) {
 
 testFuncs.ssl_server = function(options) {
   if (options.hasOwnProperty('skipSsl')) {
-    return {};
+    return {
+      ssl_server: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   return rubyTests(options, true);
@@ -3020,9 +3056,9 @@ function unitTestPrettyPrintResults(r) {
       print(fail);
     }
 
-    print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
+    print("Overall state: " + ((r.status === true) ? "Success" : "Fail"));
 
-    if (r.all_ok !== true) {
+    if (r.status !== true) {
       print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
     }
 
@@ -3097,8 +3133,7 @@ function unitTest(which, options) {
     print('FATAL: "which" is undefined\n');
 
     return {
-      ok: false,
-      all_ok: false
+      status: false
     };
   }
 
@@ -3114,9 +3149,11 @@ function unitTest(which, options) {
   // running all tests
   if (which === "all") {
     for (let n = 0; n < allTests.length; n++) {
-      print("Executing test", allTests[n], "with options", options);
+      const currentTest = allTests[n];
 
-      results[allTests[n]] = thisReply = testFuncs[allTests[n]](options);
+      print("Executing test", currentTest, "with options", options);
+
+      results[currentTest] = thisReply = testFuncs[currentTest](options);
       ok = true;
 
       for (let i in thisReply) {
@@ -3132,11 +3169,9 @@ function unitTest(which, options) {
       if (!ok) {
         allok = false;
       }
-
-      results.all_ok = allok;
     }
 
-    results.all_ok = allok;
+    results.status = allok;
     results.crashed = serverCrashed;
 
     if (allok) {
@@ -3146,10 +3181,11 @@ function unitTest(which, options) {
         yaml.safeDump(cleanupDirectories));
     }
 
+    yaml.safeDump(results);
+
     if (jsonReply === true) {
       return results;
     } else {
-      unitTestPrettyPrintResults(results);
       return allok;
     }
   }
@@ -3165,9 +3201,9 @@ function unitTest(which, options) {
     });
 
     print(line);
+
     return {
-      ok: false,
-      all_ok: false
+      status: false
     };
   }
 
@@ -3182,9 +3218,7 @@ function unitTest(which, options) {
     ok = true;
 
     for (let i in thisReply) {
-      if (thisReply.hasOwnProperty(i) &&
-        (which !== "single" || i !== "test")) {
-
+      if (thisReply.hasOwnProperty(i)) {
         if (thisReply[i].status !== true) {
           ok = false;
           allok = false;
@@ -3192,8 +3226,8 @@ function unitTest(which, options) {
       }
     }
 
-    thisReply.ok = ok;
-    results.all_ok = ok;
+    thisReply.status = ok;
+    results.status = ok;
     results.crashed = serverCrashed;
 
     if (allok) {
@@ -3203,17 +3237,17 @@ function unitTest(which, options) {
         yaml.safeDump(cleanupDirectories));
     }
 
+    yaml.safeDump(results);
+
     if (jsonReply === true) {
       return results;
     } else {
-      unitTestPrettyPrintResults(results);
       return allok;
     }
   }
 
   return {
-    ok: false,
-    all_ok: false
+    status: false
   };
 }
 

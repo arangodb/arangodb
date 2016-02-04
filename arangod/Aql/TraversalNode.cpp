@@ -29,6 +29,8 @@
 #include "Aql/Ast.h"
 #include "Aql/Index.h"
 
+#include <cmath>
+
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
@@ -565,7 +567,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
 double TraversalNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  double expectedEdgesPerDepth = 0;
+  double expectedEdgesPerDepth = 0.0;
   auto collections = _plan->getAst()->query()->collections();
 
   TRI_ASSERT(collections != nullptr);
@@ -593,7 +595,7 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
     }
   }
   nrItems =
-      static_cast<size_t>(incoming * pow(expectedEdgesPerDepth, _maxDepth));
+      static_cast<size_t>(incoming * std::pow(expectedEdgesPerDepth, static_cast<double>(_maxDepth)));
   if (nrItems == 0 && incoming > 0) {
     nrItems = 1;  // min value
   }

@@ -44,8 +44,8 @@ V8DIR=@V8_DIR@
 if ENABLE_ARMV6
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
-	  && $(MAKE) \
+		&& export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
+		&& $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -58,8 +58,8 @@ if ENABLE_V8_DEBUG
 		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
-	  && $(MAKE) \
+		&& export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
+		&& $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -79,8 +79,8 @@ else # ! ENABLE_ARM6
 if ENABLE_ARMV7
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
-	  && $(MAKE) \
+		&& export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
+		&& $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -93,8 +93,8 @@ if ENABLE_V8_DEBUG
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
-	  && $(MAKE) \
+		&& export GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
+		&& $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -114,8 +114,8 @@ else # ! ENABLE_ARM7
 if ENABLE_DARWIN
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
-	  && $(MAKE) \
+		&& export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
+		&& $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -133,8 +133,8 @@ if ENABLE_V8_DEBUG
 
 else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
-	  && $(MAKE) \
+		&& export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
+		&& $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -153,8 +153,8 @@ endif # ENABLE_V8_DEBUG
 else # ! ENABLE_DARWIN
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
-	  && $(MAKE) \
+		&& export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
+		&& $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -166,8 +166,8 @@ if ENABLE_V8_DEBUG
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
-	  && $(MAKE) \
+		&& export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
+		&& $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
