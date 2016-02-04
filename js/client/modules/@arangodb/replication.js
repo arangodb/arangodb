@@ -30,16 +30,14 @@
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-
-
-var logger  = { };
-var applier = { };
+var logger = {};
+var applier = {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the replication logger state
 ////////////////////////////////////////////////////////////////////////////////
 
-logger.state = function () {
+logger.state = function() {
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/logger-state");
@@ -52,7 +50,7 @@ logger.state = function () {
 /// @brief return the tick ranges that can be provided by the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
-logger.tickRanges = function () {
+logger.tickRanges = function() {
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/logger-tick-ranges");
@@ -65,7 +63,7 @@ logger.tickRanges = function () {
 /// @brief return the first tick that can be provided by the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
-logger.firstTick = function () {
+logger.firstTick = function() {
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/logger-first-tick");
@@ -78,7 +76,7 @@ logger.firstTick = function () {
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.start = function (initialTick) {
+applier.start = function(initialTick) {
   var db = internal.db;
   var append = "";
 
@@ -96,7 +94,7 @@ applier.start = function (initialTick) {
 /// @brief stops the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.stop = applier.shutdown = function () {
+applier.stop = applier.shutdown = function() {
   var db = internal.db;
 
   var requestResult = db._connection.PUT("/_api/replication/applier-stop", "");
@@ -109,7 +107,7 @@ applier.stop = applier.shutdown = function () {
 /// @brief return the replication applier state
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.state = function () {
+applier.state = function() {
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/applier-state");
@@ -122,7 +120,7 @@ applier.state = function () {
 /// @brief stop the replication applier state and "forget" all state
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.forget = function () {
+applier.forget = function() {
   var db = internal.db;
 
   var requestResult = db._connection.DELETE("/_api/replication/applier-state");
@@ -135,14 +133,13 @@ applier.forget = function () {
 /// @brief configures the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.properties = function (config) {
+applier.properties = function(config) {
   var db = internal.db;
 
   var requestResult;
   if (config === undefined) {
     requestResult = db._connection.GET("/_api/replication/applier-config");
-  }
-  else {
+  } else {
     requestResult = db._connection.PUT("/_api/replication/applier-config",
       JSON.stringify(config));
   }
@@ -157,25 +154,41 @@ applier.properties = function (config) {
 /// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var sync = function (config) {
-  var db = internal.db;
+var sync = function(config) {
+  const db = internal.db;
 
-  var body = JSON.stringify(config || { });
-  var requestResult;
-  if (config.async) {
-    var headers = { "X-Arango-Async" : "store" };
-    requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
-  }
-  else {
-    requestResult = db._connection.PUT("/_api/replication/sync", body);
-  }
+  const body = JSON.stringify(config || {});
+  const headers = {
+    "X-Arango-Async": "store"
+  };
 
-  arangosh.checkRequestResult(requestResult);
   if (config.async) {
+    const requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
+    arangosh.checkRequestResult(requestResult);
+
     return requestResult.headers["x-arango-async-id"];
-  }
+  } else {
+    const requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
+    arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+    let count = 0;
+
+    while (true) {
+      const jobResult = db._connection.PUT(
+        "/_api/job/" + requestResult.headers["x-arango-async-id"], "");
+      arangosh.checkRequestResult(jobResult);
+
+      if (jobResult.code !== 204) {
+        return jobResult;
+      }
+
+      if (++count % 6 === 0) {
+        internal.print("still synchronizing, please wait...");
+      }
+
+      internal.sleep(10);
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,20 +196,21 @@ var sync = function (config) {
 /// a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
-var syncCollection = function (collection, config) {
+var syncCollection = function(collection, config) {
   var db = internal.db;
 
-  config = config || { };
+  config = config || {};
   config.restrictType = "include";
-  config.restrictCollections = [ collection ];
+  config.restrictCollections = [collection];
   config.includeSystem = true;
   var body = JSON.stringify(config);
   var requestResult;
   if (config.async) {
-    var headers = { "X-Arango-Async" : "store" };
+    var headers = {
+      "X-Arango-Async": "store"
+    };
     requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
-  }
-  else {
+  } else {
     requestResult = db._connection.PUT("/_api/replication/sync", body);
   }
 
@@ -208,7 +222,7 @@ var syncCollection = function (collection, config) {
   return requestResult;
 };
 
-var getSyncResult = function (id) {
+var getSyncResult = function(id) {
   var db = internal.db;
 
   var requestResult = db._connection.PUT_RAW("/_api/job/" + encodeURIComponent(id), "");
@@ -225,7 +239,7 @@ var getSyncResult = function (id) {
 /// @brief fetches a server's id
 ////////////////////////////////////////////////////////////////////////////////
 
-var serverId = function () {
+var serverId = function() {
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/server-id");
@@ -236,11 +250,9 @@ var serverId = function () {
 };
 
 
-exports.logger          = logger;
-exports.applier         = applier;
-exports.sync            = sync;
-exports.syncCollection  = syncCollection;
-exports.getSyncResult   = getSyncResult;
-exports.serverId        = serverId;
-
-
+exports.logger = logger;
+exports.applier = applier;
+exports.sync = sync;
+exports.syncCollection = syncCollection;
+exports.getSyncResult = getSyncResult;
+exports.serverId = serverId;
