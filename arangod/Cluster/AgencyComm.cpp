@@ -681,7 +681,7 @@ bool AgencyComm::tryInitializeStructure() {
 bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
   bool ret = true;
   AgencyCommResult result;
-  if (s.type() == VPackValueType::Object) {
+  if (s.isObject()) {
     if (!key.empty()) {
       result = createDirectory(key);
       if (!result.successful()) {
@@ -1076,7 +1076,7 @@ bool AgencyComm::increaseVersion(std::string const& key) {
     try {
       builder.add(VPackValue(1));
     } catch (...) {
-      LOG(TRACE) << ("Couldn't add value to builder");
+      LOG(ERR) << "Couldn't add value to builder";
       return false;
     }
 
