@@ -619,7 +619,7 @@ static void QueueMessage(char const* function, char const* file, long int line,
   // now either queue or output the message
   if (ThreadedLogging.load(std::memory_order_relaxed)) {
     auto msg = std::make_unique<LogMessage>(level, topicId,
-                                            std::move(out.str()), offset);
+                                            out.str(), offset);
 
     try {
       MessageQueue.push(msg.get());
