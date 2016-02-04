@@ -3657,6 +3657,7 @@ static void DropDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>& 
       break;
     }
 
+    TRI_ReleaseVocBase(vocbase);
     // sleep
     usleep(10000);
   }

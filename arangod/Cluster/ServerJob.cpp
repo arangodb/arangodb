@@ -149,10 +149,11 @@ bool ServerJob::execute () {
     return false;
   }
 
+  TRI_DEFER(TRI_ReleaseVocBase(vocbase));
+
   ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
 
   if (context == nullptr) {
-    TRI_ReleaseDatabaseServer(_server, vocbase);
     return false;
   }
 
@@ -175,13 +176,7 @@ bool ServerJob::execute () {
   catch (...) {
   }
 
-
-  // get the pointer to the last used vocbase
-  TRI_GET_GLOBALS();
-  void* orig = v8g->_vocbase;
-
   _applicationV8->exitContext(context);
-  TRI_ReleaseDatabaseServer(_server, static_cast<TRI_vocbase_t*>(orig));
 
   return ok;
 }
