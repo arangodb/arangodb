@@ -95,46 +95,42 @@ void Constituent::callElection() {
   LOG(WARN) << "Calling for election " << _agent->config().end_points.size();
   std::string body;
   arangodb::velocypack::Options opts;
-	std::unique_ptr<std::map<std::string, std::string>> headerFields;
+	std::unique_ptr<std::map<std::string, std::string>> headerFields =
+	    std::make_unique<std::map<std::string, std::string> >();
+	  (new std::map<std::string, std::string>());
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
 
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) {
-	  LOG(WARN) << "+++ " << i << " +++ " << _agent->config().end_points[i] ;
 		results[i] = arangodb::ClusterComm::instance()->asyncRequest(
       "1", 1, _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
       "/_api/agency/vote?id=0&term=3", std::make_shared<std::string>(body),
-      headerFields, nullptr, .75*_agent->config().min_ping, true);
-    LOG(WARN) << "+++ " << i << " +++ " << results[i].operationID ;
+      headerFields, nullptr, 0./*.75*_agent->config().min_ping*/, true);
 	}
 
-/*
 	std::this_thread::sleep_for(Constituent::duration_t(
 	  .85*_agent->config().min_ping));
 
-/*	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) {
+	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) {
 	  ClusterCommResult res = arangodb::ClusterComm::instance()->
 	      enquire(results[i].operationID);
-
-	  //TRI_ASSERT(res.status == CL_COMM_SENT);
+	  TRI_ASSERT(res.status == CL_COMM_SENT);
 	  if (res.status == CL_COMM_SENT) {
 	    res = arangodb::ClusterComm::instance()->wait("1", 1, results[i].operationID, "1");
-	    //std::shared_ptr< arangodb::velocypack::Builder > answer = res.answer->toVelocyPack(&opts);
-	    //LOG(WARN) << answer->toString();
+	    std::shared_ptr< arangodb::velocypack::Builder > answer = res.answer->toVelocyPack(&opts);
+	    /*LOG(WARN) << answer->toString();*/
+	  } else {
+	    /**/
 	  }
-  }*/
-/*	for (auto& i : _agent->config().end_points) {
-	  ClusterCommResult res = arangodb::ClusterComm::instance()->
-	      enquire(results[i.id].operationID);
-	  //LOG(WARN) << res.answer_code << "\n";
-	}*/
 
 
-	// time out
-	//count votes
+  }
+	// count votes
+
 }
 
 void Constituent::run() {
   //while (_run) {
+
     if (_state == FOLLOWER) {
       LOG(WARN) << "sleeping ... ";
       std::this_thread::sleep_for(sleepFor());
