@@ -1252,16 +1252,6 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     {
       v8::HandleScope scope(isolate);
 
-      char const* logfile = TRI_GetFilenameLogging();
-      if (logfile != nullptr) {
-        TRI_AddGlobalVariableVocbase(isolate, localContext,
-                                     TRI_V8_ASCII_STRING("LOGFILE_PATH"),
-                                     TRI_V8_STRING(logfile));
-      } else {
-        TRI_AddGlobalVariableVocbase(isolate, localContext,
-                                     TRI_V8_ASCII_STRING("LOGFILE_PATH"),
-                                     v8::Null(isolate));
-      }
       TRI_AddGlobalVariableVocbase(isolate, localContext,
                                    TRI_V8_ASCII_STRING("APP_PATH"),
                                    TRI_V8_STD_STRING(_appPath));
@@ -1286,15 +1276,16 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     for (auto& file : files) {
       switch (_startupLoader.loadScript(isolate, localContext, file)) {
         case JSLoader::eSuccess:
-          LOG(TRACE) << "loaded JavaScript file '" << file.c_str() << "'";
+          LOG(TRACE) << "loaded JavaScript file '" << file << "'";
           break;
         case JSLoader::eFailLoad:
-          LOG(FATAL) << "cannot load JavaScript file '" << file.c_str() << "'";
+          LOG(FATAL) << "cannot load JavaScript file '" << file
+                     << "'";
           FATAL_ERROR_EXIT();
           break;
         case JSLoader::eFailExecute:
           LOG(FATAL) << "error during execution of JavaScript file '"
-                     << file.c_str() << "'";
+                     << file << "'";
           FATAL_ERROR_EXIT();
           break;
       }

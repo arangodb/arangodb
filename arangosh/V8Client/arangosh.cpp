@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+
 #include <iostream>
 
 #include <v8.h>
@@ -30,13 +31,14 @@
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Logger.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
-#include "Basics/Logger.h"
+#include "Basics/messages.h"
 #include "Basics/shell-colors.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
@@ -2433,7 +2435,7 @@ int main(int argc, char* args[]) {
   TRIAGENS_C_INITIALIZE(argc, args);
   TRIAGENS_REST_INITIALIZE(argc, args);
 
-  TRI_InitializeLogging(false);
+  Logger::initialize(false);
 
   {
     std::ostringstream foxxManagerHelp;

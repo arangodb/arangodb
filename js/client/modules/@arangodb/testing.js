@@ -1730,7 +1730,6 @@ const internalMembers = [
   "failed",
   "total",
   "crashed",
-  "all_ok",
   "ok",
   "message",
   "suiteName"
@@ -2097,7 +2096,12 @@ function checkBodyForJsonToParse(request) {
 testFuncs.authentication_parameters = function(options) {
   if (options.skipAuth === true) {
     print("skipping Authentication with parameters tests!");
-    return {};
+    return {
+      authentication_parameters: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   print("Authentication with parameters tests...");
@@ -2121,7 +2125,7 @@ testFuncs.authentication_parameters = function(options) {
 
     if (instanceInfo === false) {
       return {
-        authentication: {
+        authentication_parameters: {
           status: false,
           total: 1,
           failed: 1,
@@ -2227,7 +2231,12 @@ testFuncs.boost = function(options) {
 
 testFuncs.config = function(options) {
   if (options.skipConfig) {
-    return {};
+    return {
+      config: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   let results = {
@@ -2688,7 +2697,12 @@ testFuncs.shell_server_aql = function(options) {
     }
   }
 
-  return "skipped";
+  return {
+    shell_server_aql: {
+      status: true,
+      skipped: true
+    }
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2842,7 +2856,12 @@ testFuncs.single_server = function(options) {
 
 testFuncs.ssl_server = function(options) {
   if (options.hasOwnProperty('skipSsl')) {
-    return {};
+    return {
+      ssl_server: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   return rubyTests(options, true);
@@ -3037,9 +3056,9 @@ function unitTestPrettyPrintResults(r) {
       print(fail);
     }
 
-    print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
+    print("Overall state: " + ((r.status === true) ? "Success" : "Fail"));
 
-    if (r.all_ok !== true) {
+    if (r.status !== true) {
       print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
     }
 
@@ -3114,8 +3133,7 @@ function unitTest(which, options) {
     print('FATAL: "which" is undefined\n');
 
     return {
-      ok: false,
-      all_ok: false
+      status: false
     };
   }
 
@@ -3153,7 +3171,7 @@ function unitTest(which, options) {
       }
     }
 
-    results.all_ok = allok;
+    results.status = allok;
     results.crashed = serverCrashed;
 
     if (allok) {
@@ -3185,7 +3203,7 @@ function unitTest(which, options) {
     print(line);
 
     return {
-      all_ok: false
+      status: false
     };
   }
 
@@ -3208,8 +3226,8 @@ function unitTest(which, options) {
       }
     }
 
-    thisReply.ok = ok;
-    results.all_ok = ok;
+    thisReply.status = ok;
+    results.status = ok;
     results.crashed = serverCrashed;
 
     if (allok) {
@@ -3229,7 +3247,7 @@ function unitTest(which, options) {
   }
 
   return {
-    all_ok: false
+    status: false
   };
 }
 

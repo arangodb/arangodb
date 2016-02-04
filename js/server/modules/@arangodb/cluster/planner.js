@@ -499,6 +499,8 @@ Planner.prototype.makePlan = function() {
   // Finally Launchers:
   prefix.Launchers = objmap(launchers, JSON.stringify);
 
+  prefix.InitDone = "true";
+
   // make commands
   tmp = this.commands = [];
   var tmp2,j;

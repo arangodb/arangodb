@@ -719,12 +719,11 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
     TRI_ASSERT(!en->_count || _collectRegister != ExecutionNode::MaxRegisterId);
 
-    size_t const n = _groupRegisters.size();
     size_t row = 0;
     for (auto const& it : allGroups) {
       auto& keys = it.first;
 
-      TRI_ASSERT(keys.size() == n);
+      TRI_ASSERT(keys.size() == _groupRegisters.size());
       size_t i = 0;
       for (auto& key : keys) {
         result->setValue(row, _groupRegisters[i++].first, key);
