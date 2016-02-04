@@ -1,6 +1,7 @@
 /*global describe, it, beforeEach */
 'use strict';
 require('chai').config.truncateThreshold = 0;
+const joi = require('joi');
 const expect = require('chai').expect;
 const Service = require('@arangodb/foxx/service');
 const createRouter = require('@arangodb/foxx/router');
@@ -202,15 +203,40 @@ describe('Foxx Swagger', function () {
         .that.has.a.property('description', 'Unexpected error.');
       });
 
-      it('provides a default 200 response', function () {
+      it('does not provide any other default responses', function () {
         service.router.get('/hello', noop());
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.responses.200')
-        .that.has.a.property('description', 'HTTP 200 OK.');
+        .with.a.deep.property('get.responses')
+        .that.has.all.keys('default');
       });
 
-      it('TODO');
+      it('includes explicit responses', function () {
+        service.router.get('/hello', noop())
+        .response(200, 'Some response')
+        .response(400, 'Some error');
+        service.buildRoutes();
+        expect(service.docs.paths).to.have.a.property('/hello')
+        .with.a.deep.property('get.responses.200')
+        .that.has.a.property('description', 'Some response');
+        expect(service.docs.paths).to.have.a.property('/hello')
+        .with.a.deep.property('get.responses.400')
+        .that.has.a.property('description', 'Some error');
+      });
+
+      it('includes explicit schemas', function () {
+        service.router.get('/hello', noop())
+        .response(200, joi.object());
+        service.buildRoutes();
+        expect(service.docs.paths).to.have.a.property('/hello')
+        .with.a.deep.property('get.responses.200')
+        .that.has.a.property('schema')
+        .that.is.eql({
+          type: 'object',
+          properties: {},
+          additionalProperties: false
+        });
+      });
     });
 
     describe('"parameters"', function () {
