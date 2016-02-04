@@ -166,25 +166,41 @@ applier.properties = function (config) {
 /// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var sync = function (config) {
-  var db = internal.db;
+var sync = function(config) {
+  const db = internal.db;
 
-  var body = JSON.stringify(config || { });
-  var requestResult;
-  if (config.async) {
-    var headers = { "X-Arango-Async" : "store" };
-    requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
-  }
-  else {
-    requestResult = db._connection.PUT("/_api/replication/sync", body);
-  }
+  const body = JSON.stringify(config || {});
+  const headers = {
+    "X-Arango-Async": "store"
+  };
 
-  arangosh.checkRequestResult(requestResult);
   if (config.async) {
+    const requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
+    arangosh.checkRequestResult(requestResult);
+
     return requestResult.headers["x-arango-async-id"];
-  }
+  } else {
+    const requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
+    arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+    let count = 0;
+
+    while (true) {
+      const jobResult = db._connection.PUT(
+        "/_api/job/" + requestResult.headers["x-arango-async-id"], "");
+      arangosh.checkRequestResult(jobResult);
+
+      if (jobResult.code !== 204) {
+        return jobResult;
+      }
+
+      if (++count % 6 === 0) {
+        internal.print("still synchronizing, please wait...");
+      }
+
+      internal.sleep(10);
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
