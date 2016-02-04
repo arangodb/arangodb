@@ -1732,7 +1732,7 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Array> object =
           v8::Array::New(isolate, static_cast<int>(n));
 
-      size_t pos = 0;
+      uint32_t pos = 0;
 
       for (auto level : levels) {
         std::string output =

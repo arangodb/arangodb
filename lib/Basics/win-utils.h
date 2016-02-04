@@ -25,6 +25,7 @@
 #define LIB_BASICS_WIN_UTILS_H 1
 
 #include <WinSock2.h>
+#include <string>
 
 // .............................................................................
 // Called before anything else starts - initializes whatever is required to be
@@ -109,6 +110,8 @@ void TRI_CloseWindowsEventlog(void);
 /// with fancy dynamic buffers; thus we work with a static buffer.
 /// the arango internal logging will handle that usually.
 ////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const&);
 
 void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap);

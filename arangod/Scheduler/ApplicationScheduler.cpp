@@ -130,7 +130,7 @@ class HangupTask : public SignalTask {
  public:
   bool handleSignal() {
     LOG(INFO) << "hangup received, about to reopen logfile";
-    TRI_ReopenLogging();
+    Logger::reopen();
     LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }

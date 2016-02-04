@@ -543,11 +543,8 @@ static void QueueMessage(char const* function, char const* file, long int line,
                          LogLevel level, size_t topicId,
                          std::string const& message) {
 #ifdef _WIN32
-  if (level == LogLevel::FATAL || level == LogLevel::ERROR) {
-    va_list wva;
-    va_copy(wva, ap);
-    TRI_LogWindowsEventlog(func, file, line, "%s", message.c_str());
-    va_end(wva);
+  if (level == LogLevel::FATAL || level == LogLevel::ERR) {
+    TRI_LogWindowsEventlog(function, file, line, message);
   }
 #endif
 
