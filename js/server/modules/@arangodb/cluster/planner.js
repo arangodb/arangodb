@@ -41,7 +41,7 @@ var PlannerLocalDefaults = {
   "startSecondaries"        : false,
   "numberOfCoordinators"    : 1,
   "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", "Pierre",
-                               "Pit", "Pia", "Pablo" ],
+                               "Pit", "Pia", "Pablo", "Peggy" ],
   "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
                                "Claas", "Clemens", "Chris" ],
   "dataPath"                : "",   // means configured in dispatcher
