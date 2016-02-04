@@ -563,7 +563,7 @@ bool AgencyComm::initialize() {
 bool AgencyComm::tryInitializeStructure() {
   VPackBuilder trueBuilder;
   trueBuilder.add(VPackValue(true));
-  
+
   VPackSlice trueSlice = trueBuilder.slice();
 
   AgencyCommResult result;
@@ -605,17 +605,7 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder c(&builder);
         builder.add("Version", VPackValue("\"1\""));
       }
-      builder.add(VPackValue("Databases"));
-      {
-        VPackObjectBuilder d(&builder);
-        builder.add(VPackValue("_system"));
-        {
-          VPackObjectBuilder e(&builder);
-          builder.add("id", VPackValue("\"1\""));
-          // mop: seems wrong to me but this was present in the initial json
-          builder.add("name", VPackValue("\"name\""));
-        }
-      }
+      addEmptyVPackObject("Databases", builder);
     }
     builder.add(VPackValue("Plan"));
     {
@@ -624,13 +614,9 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
-        builder.add(VPackValue("_system"));
-        {
-          VPackObjectBuilder e(&builder);
-          builder.add("id", VPackValue("\"1\""));
-          builder.add("name", VPackValue("\"_system\""));
-        }
+        builder.add("_system", VPackValue("{\"name\":\"_system\", \"id\":\"1\"}"));
       }
+      builder.add("Lock", VPackValue("\"UNLOCKED\""));
       addEmptyVPackObject("DBServers", builder);
       builder.add("Version", VPackValue("\"1\""));
       builder.add(VPackValue("Collections"));
@@ -655,12 +641,7 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
-        builder.add(VPackValue("_system"));
-        {
-          VPackObjectBuilder e(&builder);
-          builder.add("id", VPackValue("\"1\""));
-          builder.add("name", VPackValue("\"_system\""));
-        }
+        builder.add("_system", VPackValue("{\"name\":\"_system\", \"id\":\"1\"}"));
       }
       addEmptyVPackObject("DBServers", builder);
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
@@ -670,44 +651,56 @@ bool AgencyComm::tryInitializeStructure() {
     return false;
   }
 
-  VPackSlice s = builder.slice();
+  try {
+    VPackSlice s = builder.slice();
 
-  VPackOptions dumperOptions;
-  // now dump the Slice into an std::string
-  std::string buffer;
-  VPackStringSink sink(&buffer);
-  VPackDumper::dump(s, &sink, &dumperOptions);
+    VPackOptions dumperOptions;
+    // now dump the Slice into an std::string
+    std::string buffer;
+    VPackStringSink sink(&buffer);
+    VPackDumper::dump(s, &sink, &dumperOptions);
 
-  LOG(DEBUG) << "Initializing agency with " << buffer;
+    LOG(DEBUG) << "Initializing agency with " << buffer;
 
-  if (!initFromVPackSlice(std::string(""), s)) {
-    LOG(FATAL) << "Couldn't initialize agency";
-    FATAL_ERROR_EXIT();
-    return false;
-  } else {
-    setValue("InitDone", trueSlice, 0.0);
-    return true;
+    if (!initFromVPackSlice(std::string(""), s)) {
+      LOG(FATAL) << "Couldn't initialize agency";
+      FATAL_ERROR_EXIT();
+    } else {
+      setValue("InitDone", trueSlice, 0.0);
+      return true;
+    }
+  } catch (std::exception const& e) {
+      LOG(FATAL) << "Fatal error initializing agency " << e.what();
+      FATAL_ERROR_EXIT();
+  } catch (...) {
+      LOG(FATAL) << "Fatal error initializing agency";
+      FATAL_ERROR_EXIT();
   }
 }
 
 bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
   bool ret = true;
-  LOG(TRACE) << "Initializing " << key << " with " << s.type();
+  AgencyCommResult result;
   if (s.type() == VPackValueType::Object) {
+    if (!key.empty()) {
+      result = createDirectory(key);
+      if (!result.successful()) {
+        ret = false;
+        return ret;
+      }
+    }
+
     for (auto const& it : VPackObjectIterator(s)) {
       std::string subKey("");
       if (!key.empty()) {
         subKey += key + "/";
       }
       subKey += it.key.copyString();
+
       ret = ret && initFromVPackSlice(subKey, it.value);
     }
   } else {
-    AgencyCommResult result;
-    result = casValue(key, s, false, 0.0, 0.0);
-    if (!result.successful()) {
-      ret = false;
-    }
+    result = setValue(key, s.copyString(), 0.0);
   }
 
   return ret;
@@ -1153,7 +1146,13 @@ void AgencyComm::increaseVersionRepeated(std::string const& key) {
 AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
   AgencyCommResult result;
   
-  std::string url = buildUrl(key) + "?dir=true";
+  std::string url;
+  if (key.empty()) {
+    url = buildUrl();
+  } else {
+    url = buildUrl(key);
+  }
+  url += "?dir=true";
   sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
                    _globalConnectionOptions._requestTimeout, result,
                    url, "", false);
@@ -1164,19 +1163,27 @@ AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a value in the backend
 ////////////////////////////////////////////////////////////////////////////////
-
 AgencyCommResult AgencyComm::setValue(std::string const& key,
-                                      arangodb::velocypack::Slice const json,
+                                      std::string const& value,
                                       double ttl) {
   AgencyCommResult result;
-
   sendWithFailover(
       arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
       _globalConnectionOptions._requestTimeout, result,
       buildUrl(key) + ttlParam(ttl, true),
-      "value=" + arangodb::basics::StringUtils::urlEncode(json.toJson()),
+      "value=" + arangodb::basics::StringUtils::urlEncode(value),
       false);
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a value in the backend
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult AgencyComm::setValue(std::string const& key,
+                                      arangodb::velocypack::Slice const& json,
+                                      double ttl) {
+  return setValue(key, json.toJson(), ttl);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

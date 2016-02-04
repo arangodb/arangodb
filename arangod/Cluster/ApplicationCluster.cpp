@@ -85,6 +85,7 @@ void ApplicationCluster::setupOptions(
       "cluster.my-local-info", &_myLocalInfo, "this server's local info")(
       "cluster.my-id", &_myId, "this server's id")(
       "cluster.my-address", &_myAddress, "this server's endpoint")(
+      "cluster.my-role", &_myRole, "this server's role")(
       "cluster.username", &_username,
       "username used for cluster-internal communication")(
       "cluster.password", &_password,
@@ -180,8 +181,9 @@ bool ApplicationCluster::prepare() {
   // validate --cluster.my-id
   if (_myId.empty()) {
     if (_myLocalInfo.empty()) {
-      LOG(FATAL) << "invalid value specified for --cluster.my-id and --cluster.my-local-info"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "Need to specify a local cluster identifier via --cluster.my-local-info"; FATAL_ERROR_EXIT();
     }
+
     if (_myAddress.empty()) {
       LOG(FATAL) << "must specify --cluster.my-address if --cluster.my-id is empty"; FATAL_ERROR_EXIT();
     }
@@ -215,10 +217,21 @@ bool ApplicationCluster::prepare() {
   if (!AgencyComm::initialize()) {
     LOG(FATAL) << "Could not connect to agency endpoints (" << endpoints.c_str() << ")"; FATAL_ERROR_EXIT();
   }
-
+    
   ServerState::instance()->setLocalInfo(_myLocalInfo);
   if (!_myId.empty()) {
     ServerState::instance()->setId(_myId);
+  }
+  
+  if (!_myRole.empty()) {
+    ServerState::RoleEnum role = ServerState::stringToRole(_myRole);
+    if (role == ServerState::ROLE_SINGLE
+        || role == ServerState::ROLE_UNDEFINED) {
+      LOG(FATAL) << "Invalid role provided. Possible values: PRIMARY, SECONDARY, COORDINATOR";FATAL_ERROR_EXIT();
+    }
+    if (!ServerState::instance()->registerWithRole(role)) {
+      LOG(FATAL) << "Couldn't register at agency.";FATAL_ERROR_EXIT();
+    }
   }
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
